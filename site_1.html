@@ -887,40 +887,51 @@
             // Custom slider — setPointerCapture ile smooth drag, re-render takılması yok
             const AdsrSlider = ({ min, max, step, value, onChange }) => {
                 const trackRef = React.useRef(null);
-                const dragging = React.useRef(false);
+                // onChange'i ref'te tut — stale closure sorunu olmadan her render'daki güncel fonksiyonu alır
+                const onChangeRef = React.useRef(onChange);
+                React.useEffect(() => { onChangeRef.current = onChange; });
+                const stateRef = React.useRef({ dragging: false });
 
-                const getVal = (clientX) => {
-                    const rect = trackRef.current.getBoundingClientRect();
-                    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-                    const raw = min + pct * (max - min);
-                    const stepped = Math.round(raw / step) * step;
-                    return parseFloat(Math.max(min, Math.min(max, stepped)).toFixed(4));
-                };
+                // Bir kez attach et — React synthetic event değil, direkt DOM listener
+                React.useEffect(() => {
+                    const track = trackRef.current;
+                    if (!track) return;
 
-                const onPointerDown = (e) => {
-                    e.preventDefault();
-                    trackRef.current.setPointerCapture(e.pointerId);
-                    dragging.current = true;
-                    onChange(getVal(e.clientX));
-                };
-                const onPointerMove = (e) => {
-                    if (!dragging.current) return;
-                    onChange(getVal(e.clientX));
-                };
-                const onPointerUp = (e) => {
-                    dragging.current = false;
-                };
+                    const getVal = (clientX) => {
+                        const rect = track.getBoundingClientRect();
+                        const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                        const raw = min + pct * (max - min);
+                        const stepped = Math.round(raw / step) * step;
+                        return parseFloat(Math.max(min, Math.min(max, stepped)).toFixed(4));
+                    };
+
+                    const onDown = (e) => {
+                        e.preventDefault();
+                        track.setPointerCapture(e.pointerId);
+                        stateRef.current.dragging = true;
+                        onChangeRef.current(getVal(e.clientX));
+                    };
+                    const onMove = (e) => {
+                        if (!stateRef.current.dragging) return;
+                        onChangeRef.current(getVal(e.clientX));
+                    };
+                    const onUp = () => { stateRef.current.dragging = false; };
+
+                    track.addEventListener('pointerdown', onDown);
+                    track.addEventListener('pointermove', onMove);
+                    track.addEventListener('pointerup', onUp);
+                    track.addEventListener('pointercancel', onUp);
+                    return () => {
+                        track.removeEventListener('pointerdown', onDown);
+                        track.removeEventListener('pointermove', onMove);
+                        track.removeEventListener('pointerup', onUp);
+                        track.removeEventListener('pointercancel', onUp);
+                    };
+                }, [min, max, step]); // min/max/step değişirse yeniden attach et
 
                 const pct = ((value - min) / (max - min)) * 100;
                 return (
-                    <div
-                        ref={trackRef}
-                        className="adsr-track"
-                        onPointerDown={onPointerDown}
-                        onPointerMove={onPointerMove}
-                        onPointerUp={onPointerUp}
-                        onPointerCancel={onPointerUp}
-                    >
+                    <div ref={trackRef} className="adsr-track">
                         <div className="adsr-fill" style={{ width: pct + '%' }} />
                         <div className="adsr-thumb" style={{ left: pct + '%' }} />
                     </div>
