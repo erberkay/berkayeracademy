@@ -2852,9 +2852,9 @@ function renderModule4() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MODULE 5 — MASTERING
+// MODULE 5 — MASTERING (Educational)
 // ═══════════════════════════════════════════════════════════════════
-function buildMasteringSection() {
+function buildMasteringSection_UNUSED() { // kept for reference
     // ── Chain state ────────────────────────────────────────────────
     const chain = {
         sat:  { on:true, drive:3, type:'soft' },
@@ -2929,24 +2929,17 @@ function buildMasteringSection() {
             const sg=chainCtx.createGain(); sg.gain.value=0.85;
             node.connect(ws); ws.connect(sg); liveNodes.push(ws,sg); node=sg;
         }
-        // 2. Mono Bass
+        // 2. Mono — sum L+R into both channels (full mono, no phase issues)
         if(chain.mono.on){
-            const c=chain.mono.cutoff;
             const spl=chainCtx.createChannelSplitter(2), mrg=chainCtx.createChannelMerger(2);
-            const lpL=chainCtx.createBiquadFilter(); lpL.type='lowpass'; lpL.frequency.value=c; lpL.Q.value=0.5;
-            const lpR=chainCtx.createBiquadFilter(); lpR.type='lowpass'; lpR.frequency.value=c; lpR.Q.value=0.5;
             const gL=chainCtx.createGain(); gL.gain.value=0.5;
             const gR=chainCtx.createGain(); gR.gain.value=0.5;
             const ms=chainCtx.createGain(); ms.gain.value=1;
-            const hpL=chainCtx.createBiquadFilter(); hpL.type='highpass'; hpL.frequency.value=c; hpL.Q.value=0.5;
-            const hpR=chainCtx.createBiquadFilter(); hpR.type='highpass'; hpR.frequency.value=c; hpR.Q.value=0.5;
             node.connect(spl);
-            spl.connect(lpL,0); spl.connect(lpR,1);
-            lpL.connect(gL); lpR.connect(gR); gL.connect(ms); gR.connect(ms);
+            spl.connect(gL,0); spl.connect(gR,1);
+            gL.connect(ms); gR.connect(ms);
             ms.connect(mrg,0,0); ms.connect(mrg,0,1);
-            spl.connect(hpL,0); spl.connect(hpR,1);
-            hpL.connect(mrg,0,0); hpR.connect(mrg,0,1);
-            liveNodes.push(spl,mrg,lpL,lpR,gL,gR,ms,hpL,hpR); node=mrg;
+            liveNodes.push(spl,mrg,gL,gR,ms); node=mrg;
         }
         // 3. Glue Compressor
         if(chain.glue.on){
@@ -3165,18 +3158,91 @@ function renderModule5() {
     const root=mk('div','container'); root.append(mk('div','accent-bar'));
     const bk=mk('button','back-btn','← Ana Menü'); bk.onclick=()=>navigate(null); root.append(bk);
     const shell=mk('div','synth-container');
-    shell.innerHTML=`<div class="synth-header"><h2>🎚 Mastering</h2></div>`;
+    shell.innerHTML=`<div class="synth-header"><h2>🎚 Mastering</h2><p style="font-size:.68rem;color:var(--dim);margin-top:4px">Miksinin son hali — profesyonel ses zinciri</p></div>`;
 
-    const mastWrap=buildMasteringSection();
-    shell.append(mastWrap);
+    const S = 'background:rgba(255,255,255,.03);border:1px solid var(--mid);border-radius:8px;padding:14px 16px;margin-bottom:12px;';
 
-    shell.append(theoryCard(
-        'Mastering — Ableton\'da Nerede?',
-        'Mastering zinciri genellikle <strong>Master track</strong>\'e yüklenir. Tipik sıralama: <strong>EQ</strong> (HPF 20-30Hz, air shelf) → <strong>Multiband Compressor</strong> → <strong>Limiter</strong> (Ceiling: −0.1 dBFS). Hedef loudness: −14 LUFS (streaming). Ableton\'da <em>Glue Compressor</em> + <em>Limiter</em> kullanılır.',
-        'Master Track → EQ Eight → Glue Compressor → Limiter'
-    ));
+    // ── What is mastering ─────────────────────────────────────────
+    const intro = mk('div'); intro.style.cssText = S;
+    intro.innerHTML = `
+      <div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:#e8b84b;font-size:.95rem;margin-bottom:8px">🎯 Mastering Nedir?</div>
+      <p style="font-size:.65rem;color:var(--dim);line-height:1.7">Mastering, mikslenmiş ses dosyasını her platformda (Spotify, YouTube, vinyl, kulüp sistemi) doğru ve güçlü çalacak hale getirme sürecidir.
+      Ses mühendisi gözünden bakıldığında üç temel amaç vardır: <strong style="color:var(--white)">tonal denge</strong>, <strong style="color:var(--white)">dinamik kontrol</strong> ve <strong style="color:var(--white)">seviye standardı</strong>.</p>
+      <div style="margin-top:10px;padding:8px 12px;background:rgba(232,184,75,.06);border-left:2px solid #e8b84b;border-radius:0 4px 4px 0;font-size:.6rem;color:#e8b84b">
+        🎧 Hedef loudness: <strong>−14 LUFS</strong> (Spotify) · <strong>−16 LUFS</strong> (YouTube) · <strong>−23 LUFS</strong> (broadcast) · Ceiling: <strong>−0.1 dBTP</strong>
+      </div>`;
+    shell.append(intro);
 
-    _m5StopAudio = () => { if(mastWrap._stopPlayback) mastWrap._stopPlayback(); };
+    // ── Chain visual ──────────────────────────────────────────────
+    const chainWrap = mk('div'); chainWrap.style.cssText = S;
+    chainWrap.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:#8fc8e8;font-size:.95rem;margin-bottom:12px">⛓ Mastering Zinciri — Ableton Master Track</div>`;
+    const CHAIN_TOOLS = [
+        { icon:'🔊', name:'EQ Eight', color:'#e8b84b', sub:'Giriş EQ\'su', desc:'20-30 Hz HPF — rumble sil · 16 kHz Shelf +1.5 dB — hava ekle · Sorunlu frekansları (200-400 Hz) keş', detail:'Master track\'e ilk yüklenen araç. Alçak frekanslardaki istenmeyen titreşimi (mikrofon gürültüsü, stüdyo uğultusu) temizler.' },
+        { icon:'🗜', name:'Glue Compressor', color:'#d4722a', sub:'Bant tutkalı', desc:'Ratio 2:1 · Threshold −12 dB · Attack 30ms · Release 200ms · Knee 4', detail:'Tüm frekans bandını birbirine "yapıştırır". Kick ve bas arasındaki boşluğu kapatır. Çok yavaş attack ile transient\'ları korur.' },
+        { icon:'🎚', name:'Multiband Compressor', color:'#a855f7', sub:'Frekans bazlı dinamik', desc:'Low 20-200 Hz · Mid 200-4k Hz · High 4k-20k Hz — her bant bağımsız sıkıştırılır', detail:'Miksinde aşırı bas varsa sadece bass bandını sıkıştırır, tizlere dokunmaz. Ableton\'da "Multiband Dynamics" aracı.' },
+        { icon:'📈', name:'Limiter', color:'#6fc', sub:'Brick wall — son koruma', desc:'Ceiling −0.1 dBTP · Lookahead 5ms · Release Auto', detail:'Ses asla belirlenen seviyenin üstüne çıkmaz. Dijital kırpma (clipping) engeller. Her mastering zincirinin son halkası.' },
+    ];
+    const chainFlow = mk('div'); chainFlow.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+    CHAIN_TOOLS.forEach((t, i) => {
+        const card = mk('div'); card.style.cssText = `background:rgba(255,255,255,.02);border:1px solid ${t.color}33;border-radius:6px;padding:10px 12px;position:relative;`;
+        const arrow = i < CHAIN_TOOLS.length-1 ? `<div style="text-align:center;color:var(--mid);font-size:.7rem;margin-top:8px">↓</div>` : '';
+        card.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <span style="font-size:1.1rem">${t.icon}</span>
+            <div>
+              <div style="font-family:'Bebas Neue',sans-serif;color:${t.color};font-size:.9rem;letter-spacing:.06em">${t.name}</div>
+              <div style="font-size:.52rem;color:var(--dim)">${t.sub}</div>
+            </div>
+          </div>
+          <div style="font-size:.58rem;color:rgba(238,235,230,.55);line-height:1.6;font-family:'Space Mono',monospace;background:rgba(0,0,0,.25);padding:6px 8px;border-radius:4px;margin-bottom:5px">${t.desc}</div>
+          <div style="font-size:.58rem;color:var(--dim);line-height:1.55">${t.detail}</div>
+        `;
+        chainFlow.append(card);
+        if (arrow) { const arrowEl = mk('div'); arrowEl.innerHTML = arrow; chainFlow.append(arrowEl); }
+    });
+    chainWrap.append(chainFlow);
+    shell.append(chainWrap);
+
+    // ── Ableton tools visual ───────────────────────────────────────
+    const toolsWrap = mk('div'); toolsWrap.style.cssText = S;
+    toolsWrap.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:#a855f7;font-size:.95rem;margin-bottom:12px">🔧 Ableton'daki Araçlar — Nerede Bulunur?</div>`;
+    const TOOLS_DETAIL = [
+        { name:'EQ Eight', path:'Audio Effects → EQ Eight', color:'#e8b84b', tip:'Her bant sürüklenebilir. Sağ tık → Bell/Shelf/Notch. Spectrum tuşu ile frekans içeriğini göster.' },
+        { name:'Glue Compressor', path:'Audio Effects → Dynamics → Glue Compressor', color:'#d4722a', tip:'SSL bus compressor emulatörü. "Glue" knob ile bant tutkalını ayarla. Soft Clip ile doğal sınırlama.' },
+        { name:'Multiband Dynamics', path:'Audio Effects → Dynamics → Multiband Dynamics', color:'#a855f7', tip:'Above/Below threshold ile genişletme veya sıkıştırma. Her bant ayrı zarf. Master\'de hassas kullan.' },
+        { name:'Limiter', path:'Audio Effects → Dynamics → Limiter', color:'#6fc', tip:'Gain knob ile seviyeyi celing\'e taşı. True Peak mode ile dijital kırpmayı önle. Lookahead: 5-10ms ideal.' },
+        { name:'Spectrum', path:'Audio Effects → Spectrum', color:'#8fc8e8', tip:'Her aracın çıkışına yerleştir. Frekans problemlerini görsel olarak tespit et. Tizler 10 kHz üstünde çok düşükse EQ ile artır.' },
+    ];
+    TOOLS_DETAIL.forEach(t => {
+        const row = mk('div'); row.style.cssText = 'display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);align-items:flex-start;';
+        row.innerHTML = `
+          <div style="min-width:8px;height:8px;border-radius:50%;background:${t.color};margin-top:5px;flex-shrink:0"></div>
+          <div>
+            <div style="font-size:.68rem;color:${t.color};font-weight:700">${t.name}</div>
+            <div style="font-size:.54rem;color:rgba(238,235,230,.4);margin:1px 0 4px;font-family:'Space Mono',monospace">${t.path}</div>
+            <div style="font-size:.58rem;color:var(--dim);line-height:1.55">${t.tip}</div>
+          </div>`;
+        toolsWrap.append(row);
+    });
+    shell.append(toolsWrap);
+
+    // ── Common mistakes ───────────────────────────────────────────
+    const mistakesWrap = mk('div'); mistakesWrap.style.cssText = S;
+    mistakesWrap.innerHTML = `
+      <div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:#b82d45;font-size:.95rem;margin-bottom:10px">⚠ Sık Yapılan Hatalar</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${[
+          ['Çok yüksek mastering', 'Limiter\'ı aşırı itmek transientları yok eder — ses "yorucu" hale gelir. Hedef: −14 LUFS, zorlama.'],
+          ['Mixi düzeltmeye çalışmak', 'Mastering mixi telafi edemez. Bas karmaşıksa, tizler gömülüyse — önce mikse dön.'],
+          ['EQ\'da aşırı boost', '+6 dB üstü her boost sorun işareti. Büyük artışlar yerine kesme (cut) tercih et.'],
+          ['Referans almamak', 'Her mastering oturumunda başarılı referans parça dinle (aynı türde). Kulaklık + monitör karşılaştır.'],
+        ].map(([t,d]) => `<div style="padding:7px 10px;background:rgba(184,45,69,.05);border-left:2px solid rgba(184,45,69,.35);border-radius:0 4px 4px 0">
+          <div style="font-size:.63rem;color:#e88;margin-bottom:2px">${t}</div>
+          <div style="font-size:.57rem;color:var(--dim);line-height:1.55">${d}</div>
+        </div>`).join('')}
+      </div>`;
+    shell.append(mistakesWrap);
+
     root.append(shell); root.append(makeTaskPanel(5));
     return root;
 }

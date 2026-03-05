@@ -129,8 +129,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .notif-item-text { font-size:.63rem; color:var(--white); line-height:1.5; margin-bottom:3px; }
 .notif-item-time { font-size:.5rem; color:rgba(238,235,230,.25); }
 .notif-empty { padding:20px 14px; text-align:center; font-size:.62rem; color:var(--dim); }
-.notif-del-btn { position:absolute; top:50%; right:8px; transform:translateY(-50%); background:none; border:none; color:rgba(238,235,230,.5); font-size:.9rem; cursor:pointer; padding:2px 6px; line-height:1; border-radius:3px; transition:color .12s,background .12s,opacity .12s; opacity:0; }
-.notif-item:hover .notif-del-btn { opacity:1; }
+.notif-del-btn { position:absolute; top:50%; right:6px; transform:translateY(-50%); background:none; border:none; color:rgba(238,235,230,.3); font-size:.9rem; cursor:pointer; padding:2px 6px; line-height:1; border-radius:3px; transition:color .12s,background .12s; }
 .notif-del-btn:hover { color:var(--crimson); background:rgba(184,45,69,.15); }
 
 /* ── Toast ── */
@@ -454,11 +453,42 @@ async function renderProfile() {
     const editForm = document.createElement('div'); editForm.className = 'edit-form';
     let editGenres = [...(prof.genres || [])];
 
-    editForm.innerHTML = `<div class="ef-label">Profil Fotoğrafı URL</div>`;
-    const photoInput = document.createElement('input'); photoInput.className = 'ef-input'; photoInput.type = 'url';
-    photoInput.placeholder = 'https://... (boş bırakırsan Google fotoğrafın kullanılır)';
-    photoInput.value = prof.customPhotoURL || '';
-    editForm.append(photoInput);
+    // Photo section
+    const photoLabel = document.createElement('div'); photoLabel.className = 'ef-label'; photoLabel.textContent = 'Profil Fotoğrafı';
+    editForm.append(photoLabel);
+    const photoWrap = document.createElement('div'); photoWrap.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:8px;';
+    const curPhoto = prof.customPhotoURL || prof.photoURL || _user?.photoURL || '';
+    const photoPreview = document.createElement('img'); photoPreview.style.cssText = 'width:52px;height:52px;border-radius:50%;border:2px solid var(--mid);object-fit:cover;background:var(--mid);';
+    if (curPhoto) photoPreview.src = curPhoto; else photoPreview.style.display = 'none';
+    const uploadBtn = document.createElement('label'); uploadBtn.className = 'ef-save-btn'; uploadBtn.style.cssText = 'cursor:pointer;font-size:.6rem;padding:6px 12px;';
+    uploadBtn.textContent = '📷 Fotoğraf Seç';
+    const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
+    uploadBtn.append(fileInput);
+    const photoHint = document.createElement('div'); photoHint.style.cssText = 'font-size:.52rem;color:var(--dim);margin-top:4px;';
+    photoHint.textContent = 'Google fotoğrafın otomatik kullanılır. Değiştirmek için seç.';
+    // Hidden field to hold processed data URL
+    let _customPhotoData = prof.customPhotoURL || '';
+    fileInput.onchange = e => {
+      const file = e.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image(); img.onload = () => {
+          const MAX = 240;
+          let w = img.width, h = img.height;
+          if (w > h) { if (w > MAX) { h = h * MAX / w; w = MAX; } } else { if (h > MAX) { w = w * MAX / h; h = MAX; } }
+          const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          _customPhotoData = canvas.toDataURL('image/jpeg', 0.72);
+          photoPreview.src = _customPhotoData; photoPreview.style.display = '';
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+    photoWrap.append(photoPreview, uploadBtn);
+    editForm.append(photoWrap, photoHint);
+    // Dummy photoInput object to keep save logic working
+    const photoInput = { get value() { return _customPhotoData; }, trim() { return _customPhotoData; } };
 
     const aboutLabel2 = document.createElement('div'); aboutLabel2.className = 'ef-label'; aboutLabel2.textContent = 'Hakkında';
     editForm.append(aboutLabel2);
@@ -674,13 +704,12 @@ auth.onAuthStateChanged(async user => {
   _user = user;
   updateAuthBar(user);
   initNotifications(user);
-  // Save/update profile photoURL on login
   if (user) {
-    db.collection('users').doc(user.uid).set({
-      displayName: user.displayName || '',
-      photoURL:    user.photoURL    || '',
-      email:       user.email,
-    }, { merge: true });
+    const uref = db.collection('users').doc(user.uid);
+    const snap = await uref.get().catch(() => null);
+    const update = { displayName: user.displayName || '', photoURL: user.photoURL || '', email: user.email };
+    if (!snap?.data()?.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
+    uref.set(update, { merge: true }).catch(() => {});
   }
   await renderProfile();
 });

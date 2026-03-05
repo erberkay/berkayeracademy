@@ -180,8 +180,7 @@ body::before {
 .notif-item-text { font-size:.63rem; color:var(--white); line-height:1.5; margin-bottom:3px; }
 .notif-item-time { font-size:.5rem; color:rgba(238,235,230,.25); }
 .notif-empty { padding:20px 14px; text-align:center; font-size:.62rem; color:var(--dim); }
-.notif-del-btn { position:absolute; top:50%; right:8px; transform:translateY(-50%); background:none; border:none; color:rgba(238,235,230,.5); font-size:.9rem; cursor:pointer; padding:2px 6px; line-height:1; border-radius:3px; transition:color .12s,background .12s,opacity .12s; opacity:0; }
-.notif-item:hover .notif-del-btn { opacity:1; }
+.notif-del-btn { position:absolute; top:50%; right:6px; transform:translateY(-50%); background:none; border:none; color:rgba(238,235,230,.3); font-size:.9rem; cursor:pointer; padding:2px 6px; line-height:1; border-radius:3px; transition:color .12s,background .12s; }
 .notif-del-btn:hover { color:var(--crimson); background:rgba(184,45,69,.15); }
 
 /* ── Toast ── */
@@ -495,18 +494,7 @@ async function renderFeed() {
   scl.onclick = () => { _search=''; sinp.value=''; scl.classList.remove('visible'); renderPosts(); };
   sw.append(si, sinp, scl); feed.append(sw);
 
-  // Solved/open filter
-  const solved = _allPosts.filter(p => p.solved).length;
-  const open   = _allPosts.length - solved;
-  const fbar = document.createElement('div'); fbar.className = 'filter-bar';
-  [{key:'all',label:`Tümü (${_allPosts.length})`},{key:'open',label:`Açık (${open})`},{key:'solved',label:`✓ Çözüldü (${solved})`}]
-    .forEach(f => {
-      const b = document.createElement('button');
-      b.className = 'fbtn' + (_filter===f.key?' active':'');
-      b.textContent = f.label;
-      b.onclick = () => { _filter=f.key; renderPosts(); };
-      fbar.append(b);
-    });
+  const fbar = document.createElement('div'); fbar.className = 'filter-bar'; fbar.id = 'filterBar';
   feed.append(fbar);
 
   // Category filter
@@ -538,6 +526,21 @@ async function renderFeed() {
 function renderPosts(postList) {
   if (!postList) postList = document.getElementById('postList');
   if (!postList) return;
+  // Update filter bar counts
+  const fbar = document.getElementById('filterBar');
+  if (fbar) {
+    const solved = _allPosts.filter(p => p.solved).length;
+    const open   = _allPosts.length - solved;
+    fbar.innerHTML = '';
+    [{key:'all',label:`Tümü (${_allPosts.length})`},{key:'open',label:`Açık (${open})`},{key:'solved',label:`✓ Çözüldü (${solved})`}]
+      .forEach(f => {
+        const b = document.createElement('button');
+        b.className = 'fbtn' + (_filter===f.key?' active':'');
+        b.textContent = f.label;
+        b.onclick = () => { _filter=f.key; renderPosts(); };
+        fbar.append(b);
+      });
+  }
   postList.innerHTML = '';
 
   let visible = _allPosts;
@@ -829,6 +832,14 @@ auth.onAuthStateChanged(async user => {
   _user = user;
   updateAuthBar(user);
   initNotifications(user);
+  if (user) {
+    const uref = db.collection('users').doc(user.uid);
+    uref.get().then(snap => {
+      const update = { displayName: user.displayName||'', photoURL: user.photoURL||'', email: user.email };
+      if (!snap.data()?.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
+      uref.set(update, { merge: true }).catch(() => {});
+    }).catch(() => {});
+  }
   if (!user && _unsubscribe) { _unsubscribe(); _unsubscribe = null; }
   await renderFeed();
   loadMembersSidebar();
