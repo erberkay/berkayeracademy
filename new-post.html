@@ -245,17 +245,25 @@ function renderForm(user) {
     const body  = bodyInput.value.trim();
     if (!title) { titleInput.focus(); titleInput.style.borderColor='var(--crimson)'; return; }
     submitBtn.disabled = true; submitBtn.textContent = '⏳ Gönderiliyor...';
-    await db.collection('forum').add({
-      title,
-      text:       body,
-      authorName: user.displayName?.split(' ')[0] || 'Üye',
-      authorEmail:user.email,
-      authorId:   user.uid,
-      createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
-      replyCount: 0,
-      solved:     false,
-    });
-    window.location.href = 'forum.html';
+    try {
+      await db.collection('forum').add({
+        title,
+        text:           body,
+        authorName:     user.displayName?.split(' ')[0] || 'Üye',
+        authorEmail:    user.email,
+        authorId:       user.uid,
+        authorPhotoURL: user.photoURL || '',
+        createdAt:      firebase.firestore.FieldValue.serverTimestamp(),
+        replyCount:     0,
+        solved:         false,
+      });
+      window.location.href = 'forum.html';
+    } catch(e) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Yayınla';
+      alert('Gönderilemedi: ' + e.message);
+      console.error(e);
+    }
   };
   btns.append(cancelBtn, submitBtn);
   actions.append(postingAs, btns);

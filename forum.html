@@ -78,17 +78,23 @@ body::before {
 
 /* ── Post card ── */
 .pcard { background:var(--card); border:1px solid var(--mid); border-radius:8px; margin-bottom:12px; transition:border-color .15s; overflow:hidden; }
-.pcard:hover { border-color:rgba(232,184,75,.18); }
+.pcard:hover { border-color:rgba(232,184,75,.25); box-shadow:0 2px 18px rgba(0,0,0,.25); }
 .pcard.is-solved { border-color:rgba(100,200,100,.25); }
-.pcard-body { padding:16px 20px 12px; }
-.pcard-meta { display:flex; align-items:center; gap:9px; margin-bottom:10px; flex-wrap:wrap; }
-.pcard-author { font-size:.63rem; color:var(--gold); font-weight:bold; }
+.pcard-body { padding:16px 20px 12px; display:flex; gap:14px; align-items:flex-start; }
+.pcard-avatar { width:40px; height:40px; border-radius:50%; border:2px solid rgba(232,184,75,.35); object-fit:cover; flex-shrink:0; cursor:pointer; background:var(--mid); }
+.pcard-avatar-placeholder { width:40px; height:40px; border-radius:50%; border:2px solid rgba(232,184,75,.35); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.85rem; font-weight:bold; color:var(--gold); background:rgba(232,184,75,.08); cursor:pointer; }
+.pcard-content { flex:1; min-width:0; }
+.pcard-meta { display:flex; align-items:center; gap:9px; margin-bottom:7px; flex-wrap:wrap; }
+.pcard-author { font-size:.63rem; color:var(--gold); font-weight:bold; cursor:pointer; }
+.pcard-author:hover { text-decoration:underline; }
 .pcard-author.is-admin::after { content:'⚡'; margin-left:3px; font-size:.55rem; }
 .pcard-date { font-size:.55rem; color:rgba(238,235,230,.22); }
 .solved-badge { font-size:.5rem; padding:2px 8px; border-radius:10px; background:rgba(100,200,100,.12); border:1px solid rgba(100,200,100,.3); color:#6fc; font-family:'Space Mono',monospace; }
-.pcard-title { font-size:1rem; font-weight:bold; color:var(--white); margin-bottom:6px; line-height:1.4; letter-spacing:.01em; }
-.pcard-text { font-size:.78rem; color:var(--dim); line-height:1.75; word-break:break-word; }
-.pcard-actions { padding:8px 20px 12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.pcard-title { font-size:1.05rem; font-weight:bold; color:var(--white); margin-bottom:8px; line-height:1.4; letter-spacing:.01em; }
+.pcard-text { font-size:.78rem; color:var(--dim); line-height:1.8; word-break:break-word; }
+.pcard-actions { padding:8px 20px 12px 74px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.pcard-goto-btn { background:none; border:1px solid rgba(232,184,75,.3); color:rgba(232,184,75,.75); font-family:'Space Mono',monospace; font-size:.58rem; cursor:pointer; padding:3px 12px; border-radius:10px; transition:all .15s; }
+.pcard-goto-btn:hover { background:rgba(232,184,75,.08); color:var(--gold); border-color:var(--gold); }
 .pcard-reply-toggle { background:none; border:none; color:var(--dim); font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; padding:3px 0; transition:color .15s; }
 .pcard-reply-toggle:hover { color:var(--gold); }
 .pcard-solve-btn { background:none; border:1px solid rgba(100,200,100,.35); color:rgba(100,200,100,.7); font-family:'Space Mono',monospace; font-size:.58rem; cursor:pointer; padding:3px 10px; border-radius:10px; transition:all .15s; }
@@ -324,25 +330,41 @@ function renderPost(post, container) {
 
   // Body
   const body = document.createElement('div'); body.className = 'pcard-body';
+
+  // Avatar
+  const goAuthor = () => { if (post.authorId) location.href = `profile.html?uid=${post.authorId}`; };
+  if (post.authorPhotoURL) {
+    const av = document.createElement('img'); av.className = 'pcard-avatar';
+    av.src = post.authorPhotoURL; av.alt = ''; av.onclick = goAuthor;
+    body.append(av);
+  } else {
+    const av = document.createElement('div'); av.className = 'pcard-avatar-placeholder';
+    av.textContent = (post.authorName || '?')[0].toUpperCase(); av.onclick = goAuthor;
+    body.append(av);
+  }
+
+  const content = document.createElement('div'); content.className = 'pcard-content';
+
   const meta = document.createElement('div'); meta.className = 'pcard-meta';
   const au   = document.createElement('span');
   au.className = 'pcard-author' + (post.authorEmail === ADMIN_EMAIL ? ' is-admin' : '');
-  au.textContent = post.authorName;
+  au.textContent = post.authorName; au.onclick = goAuthor;
   const dt = document.createElement('span'); dt.className = 'pcard-date'; dt.textContent = fmtDate(post.createdAt);
   meta.append(au, dt);
   if (post.solved) {
     const sb = document.createElement('span'); sb.className = 'solved-badge'; sb.textContent = '✓ Çözüldü';
     meta.append(sb);
   }
-  body.append(meta);
+  content.append(meta);
   if (post.title) {
     const ttl = document.createElement('div'); ttl.className = 'pcard-title'; ttl.textContent = post.title;
-    body.append(ttl);
+    content.append(ttl);
   }
   if (post.text) {
-    const txt = document.createElement('div'); txt.className = 'pcard-text'; txt.textContent = post.text.length > 200 ? post.text.slice(0,200)+'…' : post.text;
-    body.append(txt);
+    const txt = document.createElement('div'); txt.className = 'pcard-text'; txt.textContent = post.text.length > 300 ? post.text.slice(0,300)+'…' : post.text;
+    content.append(txt);
   }
+  body.append(content);
   card.append(body);
 
   // Actions bar
@@ -359,7 +381,10 @@ function renderPost(post, container) {
     repliesWrap.style.display='block';
     if (!repliesLoaded) { repliesLoaded = true; await loadReplies(post.id, repliesWrap); }
   };
-  actions.append(toggleBtn);
+  const gotoBtn = document.createElement('button'); gotoBtn.className = 'pcard-goto-btn';
+  gotoBtn.textContent = '→ Konuya Git';
+  gotoBtn.onclick = () => location.href = `post.html?id=${post.id}`;
+  actions.append(toggleBtn, gotoBtn);
 
   if (isAdmin(_user)) {
     // Solve toggle
