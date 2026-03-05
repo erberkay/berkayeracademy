@@ -222,10 +222,12 @@ try {
 let currentUser = null;
 
 // ── Auth ────────────────────────────────────────────────────────────
+let _signingIn = false;
 function signInWithGoogle() {
-    if (!_fbReady) return alert('Firebase config ayarlanmamış.');
-    const provider = new firebase.auth.GoogleAuthProvider();
-    _auth.signInWithPopup(provider).catch(e => console.error(e));
+    if (!_fbReady || _signingIn) return;
+    _signingIn = true;
+    _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .catch(e => console.error(e)).finally(() => { _signingIn = false; });
 }
 function signOut() { _auth?.signOut(); }
 

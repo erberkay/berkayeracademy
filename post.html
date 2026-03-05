@@ -129,7 +129,13 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 let _user = null;
 
-function doSignIn() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error); }
+let _signingIn = false;
+function doSignIn() {
+  if (_signingIn) return;
+  _signingIn = true;
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+    .catch(console.error).finally(() => { _signingIn = false; });
+}
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 function fmtDate(ts) {
   if (!ts) return '';
