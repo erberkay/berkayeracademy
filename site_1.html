@@ -30,7 +30,14 @@
         .topnav-back { color:rgba(238,235,230,.45); font-size:.65rem; letter-spacing:.08em; text-decoration:none; transition:color .15s; }
         .topnav-back:hover { color:var(--gold); }
         .topnav-brand { font-family:'Bebas Neue',sans-serif; font-size:1rem; color:var(--gold); letter-spacing:.08em; }
-        .container { max-width:1400px; margin:0 auto; padding:24px; padding-top:72px; position:relative; z-index:1; }
+        .container { max-width:1400px; margin:0 auto; padding:24px; padding-top:108px; position:relative; z-index:1; }
+        /* ── Module nav ── */
+        #moduleNav { position:fixed; top:48px; left:0; right:0; z-index:98; background:rgba(6,6,9,.96); border-bottom:1px solid var(--mid); backdrop-filter:blur(10px); display:flex; overflow-x:auto; scrollbar-width:none; }
+        #moduleNav::-webkit-scrollbar { display:none; }
+        .mnav-item { flex-shrink:0; padding:0 16px; height:34px; display:flex; align-items:center; gap:6px; font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.05em; color:rgba(238,235,230,.35); cursor:pointer; border:none; background:transparent; border-bottom:2px solid transparent; transition:color .15s,border-color .15s; white-space:nowrap; }
+        .mnav-item:hover { color:rgba(238,235,230,.7); }
+        .mnav-item.active { color:var(--gold); border-bottom-color:var(--gold); }
+        .mnav-sep { width:1px; height:14px; background:var(--mid); flex-shrink:0; align-self:center; margin:0 2px; }
         .accent-bar { height:4px; background:linear-gradient(90deg,var(--crimson),var(--amber),var(--gold)); animation:shimmer 4s ease-in-out infinite alternate; }
         @keyframes shimmer { from{filter:brightness(1)} to{filter:brightness(1.5)} }
         @keyframes fadeUp  { from{opacity:0;transform:translateY(32px)} to{opacity:1;transform:translateY(0)} }
@@ -219,6 +226,7 @@
   </div>
   <div id="authBar"></div>
 </nav>
+<nav id="moduleNav"></nav>
 <div id="app"></div>
 
 <script>
@@ -845,13 +853,38 @@ function makeTaskPanel(mid) {
 // ═══════════════════════════════════════════════════════════════════
 let _cleanup = null;
 let _m1Update = null;
+let _m3StopAudio = null;
+
+const MODULE_NAV_ITEMS = [
+    { mod: null, icon: '⌂',  label: 'Menü'        },
+    { mod: 1,    icon: '🎹', label: 'Synth'        },
+    { mod: 2,    icon: '🥁', label: 'Beat Maker'   },
+    { mod: 3,    icon: '🎚️', label: 'Mixing'       },
+    { mod: 4,    icon: '🎵', label: 'Arrangement'  },
+];
+
+function updateModuleNav() {
+    const nav = document.getElementById('moduleNav');
+    if (!nav) return;
+    nav.innerHTML = '';
+    MODULE_NAV_ITEMS.forEach((item, i) => {
+        if (i === 1) { const sep = mk('div','mnav-sep'); nav.append(sep); }
+        const btn = mk('button','mnav-item');
+        btn.innerHTML = `<span>${item.icon}</span><span>${item.label}</span>`;
+        if (state.currentModule === item.mod) btn.classList.add('active');
+        btn.onclick = () => navigate(item.mod);
+        nav.append(btn);
+    });
+}
 
 function navigate(mod) {
     if (_cleanup) { _cleanup(); _cleanup = null; }
     if (state.currentModule === 2 && mod !== 2) stopBeat(false);
     if (state.currentModule === 1) stopOsc();
+    if (state.currentModule === 3 && _m3StopAudio) { _m3StopAudio(); _m3StopAudio = null; }
     state.currentModule = mod;
     render();
+    updateModuleNav();
     window.scrollTo(0, 0);
 }
 
@@ -1477,6 +1510,14 @@ function buildEQSection() {
             })
             .catch(()=>{ playBtn.disabled=false; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; });
     };
+    // Register EQ audio cleanup
+    const _prevM3 = _m3StopAudio;
+    _m3StopAudio = () => {
+        if (_prevM3) _prevM3();
+        if (eqTestSrc) { try { eqTestSrc.stop(); } catch(_) {} eqTestSrc = null; }
+        if (eqACtx) { try { eqACtx.suspend(); } catch(_) {} }
+    };
+
     wrap.append(playBtn);
     return wrap;
 }
@@ -1608,6 +1649,13 @@ function buildMixerSection() {
         vuBars.forEach(v=>v.style.height='0%');
         playBtn.textContent='▶ MIX ÇAL'; playBtn.classList.remove('active');
     }
+
+    // Register Mixer audio cleanup (chain with EQ cleanup already set)
+    const _prevM3mix = _m3StopAudio;
+    _m3StopAudio = () => {
+        if (_prevM3mix) _prevM3mix();
+        if (mixPlaying) stopMix();
+    };
 
     // Live pattern status banner
     const patBanner=mk('div');
@@ -2261,6 +2309,7 @@ function render() {
     const app=document.getElementById('app'); app.innerHTML='';
     const views={1:renderModule1, 2:renderModule2, 3:renderModule3, 4:renderModule4};
     app.append((views[state.currentModule] || renderHome)());
+    updateModuleNav();
 }
 
 // Scroll progress bar
