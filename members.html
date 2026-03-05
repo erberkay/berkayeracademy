@@ -115,6 +115,24 @@ body::before {
 .mcard-skel { background:var(--card); border:1px solid var(--mid); border-radius:10px; overflow:hidden; }
 .mcard-skel-cover { height:52px; background:var(--mid2); position:relative; }
 
+/* ── Notification Bell ── */
+.notif-bell-wrap { position:relative; }
+.notif-bell { background:none; border:none; color:rgba(238,235,230,.45); font-size:1.1rem; cursor:pointer; padding:4px; line-height:1; transition:color .15s; }
+.notif-bell:hover { color:var(--gold); }
+.notif-badge { position:absolute; top:0; right:0; background:var(--crimson); color:#fff; font-size:.42rem; font-family:'Space Mono',monospace; border-radius:6px; padding:1px 4px; min-width:12px; text-align:center; pointer-events:none; }
+.notif-panel { position:absolute; top:40px; right:0; width:290px; background:var(--card); border:1px solid var(--mid); border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
+.notif-panel.open { display:block; }
+.notif-panel-head { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; }
+.notif-panel-title { font-size:.62rem; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
+.notif-read-all { background:none; border:none; color:rgba(238,235,230,.35); font-size:.55rem; cursor:pointer; font-family:'Space Mono',monospace; padding:0; }
+.notif-list { max-height:320px; overflow-y:auto; }
+.notif-item { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; transition:background .1s; }
+.notif-item:hover { background:rgba(255,255,255,.03); }
+.notif-item.unread { background:rgba(232,184,75,.04); border-left:2px solid rgba(232,184,75,.4); padding-left:12px; }
+.notif-item-text { font-size:.63rem; color:var(--white); line-height:1.5; margin-bottom:3px; }
+.notif-item-time { font-size:.5rem; color:rgba(238,235,230,.25); }
+.notif-empty { padding:20px 14px; text-align:center; font-size:.62rem; color:var(--dim); }
+
 /* Bottom Nav */
 .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:500; background:rgba(6,6,9,.96); border-top:1px solid var(--mid); backdrop-filter:blur(16px); display:flex; height:58px; }
 .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; text-decoration:none; color:rgba(238,235,230,.3); transition:color .15s; position:relative; }
@@ -163,6 +181,7 @@ body::before {
     </select>
   </div>
   <div class="filter-bar" id="titleFilter"></div>
+  <div class="filter-bar" id="genreFilter" style="display:none"></div>
   <div class="members-grid" id="grid"></div>
 </div>
 
@@ -205,8 +224,12 @@ function fmtJoined(ts) {
   return d.toLocaleDateString('tr-TR', { month:'long', year:'numeric' }) + "'dan beri üye";
 }
 
+let _notifUnsub = null;
+let _notifPanelEl = null;
+
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar'); bar.innerHTML = '';
+  _notifPanelEl = null;
   if (user) {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
     const img  = document.createElement('img');  img.className = 'auth-avatar';
@@ -215,7 +238,18 @@ function updateAuthBar(user) {
     name.textContent = user.email === ADMIN_EMAIL ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Üye');
     const out = document.createElement('button'); out.className = 'auth-out-btn';
     out.textContent = '✕'; out.onclick = () => auth.signOut();
-    wrap.append(img, name, out); bar.append(wrap);
+    wrap.append(img, name, out);
+
+    const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
+    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = 'Bildirimler';
+    const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
+    _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
+    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all">Tümünü Oku</button></div><div class="notif-list"></div>';
+    _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
+    bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
+    bellWrap.append(bell, badge, _notifPanelEl);
+    bar.append(bellWrap, wrap);
+    document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
     btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
@@ -223,8 +257,52 @@ function updateAuthBar(user) {
   }
 }
 
+function toggleNotifPanel(user) {
+  if (!_notifPanelEl) return;
+  const isOpen = _notifPanelEl.classList.contains('open');
+  if (isOpen) { _notifPanelEl.classList.remove('open'); return; }
+  _notifPanelEl.classList.add('open');
+  setTimeout(() => document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true }), 0);
+  markAllNotifRead(user.uid);
+}
+
+function markAllNotifRead(uid) {
+  db.collection('notifications').doc(uid).collection('items')
+    .where('read', '==', false).get().then(snap => {
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+      batch.commit();
+    }).catch(() => {});
+}
+
+function initNotifications(user) {
+  if (_notifUnsub) { _notifUnsub(); _notifUnsub = null; }
+  if (!user) return;
+  _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
+    .orderBy('createdAt', 'desc').limit(20)
+    .onSnapshot(snap => {
+      const unread = snap.docs.filter(d => !d.data().read).length;
+      const badge = document.querySelector('.notif-badge');
+      if (badge) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.style.display = unread > 0 ? 'block' : 'none'; }
+      if (_notifPanelEl) {
+        const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
+        list.innerHTML = '';
+        if (!snap.docs.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
+        snap.docs.forEach(d => {
+          const n = d.data();
+          const item = document.createElement('div'); item.className = 'notif-item' + (n.read ? '' : ' unread');
+          const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+          item.innerHTML = `<div class="notif-item-text">${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
+          if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
+          list.append(item);
+        });
+      }
+    }, () => {});
+}
+
 let _allMembers = [];
 let _titleFilter = 'all';
+let _genreFilter = '';
 let _search = '';
 let _sort = 'new';
 
@@ -266,10 +344,31 @@ function buildFilters() {
   bar.append(openBtn);
 }
 
+function buildGenreFilter() {
+  const bar = document.getElementById('genreFilter');
+  const genreSet = new Set();
+  _allMembers.forEach(m => (m.genres||[]).forEach(g => genreSet.add(g)));
+  if (genreSet.size === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex'; bar.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.className = 'fbtn' + (_genreFilter === '' ? ' active' : '');
+  allBtn.textContent = '🎵 Tüm Genreler';
+  allBtn.onclick = () => { _genreFilter = ''; buildGenreFilter(); renderGrid(); };
+  bar.append(allBtn);
+  [...genreSet].sort().forEach(g => {
+    const b = document.createElement('button');
+    b.className = 'fbtn' + (_genreFilter === g ? ' active' : '');
+    b.textContent = g;
+    b.onclick = () => { _genreFilter = g; buildGenreFilter(); renderGrid(); };
+    bar.append(b);
+  });
+}
+
 function getVisible() {
   let list = [..._allMembers];
   if (_titleFilter === 'collab_open') list = list.filter(m => m.collabStatus === 'open');
   else if (_titleFilter !== 'all') list = list.filter(m => m.title === _titleFilter);
+  if (_genreFilter) list = list.filter(m => (m.genres||[]).includes(_genreFilter));
   if (_search) {
     list = list.filter(m => {
       const q = _search;
@@ -358,21 +457,31 @@ function renderGrid() {
     }
 
     // Social links
-    if (m.instagram || m.spotify) {
+    if (m.instagram || m.spotify || m.soundcloudUrl || m.mixcloudUrl) {
       const sw = document.createElement('div'); sw.className = 'mcard-socials';
       if (m.instagram) {
         const ig = document.createElement('a'); ig.className = 'mcard-social ig';
         ig.href = m.instagram; ig.target = '_blank'; ig.rel = 'noopener';
-        ig.textContent = '📷 IG';
-        ig.onclick = e => e.stopPropagation();
+        ig.textContent = '📷 IG'; ig.onclick = e => e.stopPropagation();
         sw.append(ig);
       }
       if (m.spotify) {
         const sp = document.createElement('a'); sp.className = 'mcard-social sp';
         sp.href = m.spotify; sp.target = '_blank'; sp.rel = 'noopener';
-        sp.textContent = '🎵 Spotify';
-        sp.onclick = e => e.stopPropagation();
+        sp.textContent = '🎵 Spotify'; sp.onclick = e => e.stopPropagation();
         sw.append(sp);
+      }
+      if (m.soundcloudUrl) {
+        const sc = document.createElement('a'); sc.className = 'mcard-social' ; sc.style.cssText = 'background:rgba(255,85,0,.08);border:1px solid rgba(255,85,0,.2);color:#ff5500;';
+        sc.href = m.soundcloudUrl; sc.target = '_blank'; sc.rel = 'noopener';
+        sc.textContent = '☁️ SC'; sc.onclick = e => e.stopPropagation();
+        sw.append(sc);
+      }
+      if (m.mixcloudUrl) {
+        const mc = document.createElement('a'); mc.className = 'mcard-social'; mc.style.cssText = 'background:rgba(82,158,214,.08);border:1px solid rgba(82,158,214,.2);color:#529ed6;';
+        mc.href = m.mixcloudUrl; mc.target = '_blank'; mc.rel = 'noopener';
+        mc.textContent = '🎙️ MC'; mc.onclick = e => e.stopPropagation();
+        sw.append(mc);
       }
       body.append(sw);
     }
@@ -401,6 +510,7 @@ async function loadMembers() {
   document.getElementById('memberCountWrap').classList.add('loaded');
 
   buildFilters();
+  buildGenreFilter();
   renderGrid();
 }
 
@@ -416,6 +526,7 @@ document.getElementById('sortSelect').onchange = e => {
 auth.onAuthStateChanged(user => {
   _user = user;
   updateAuthBar(user);
+  initNotifications(user);
   loadMembers();
 });
 </script>

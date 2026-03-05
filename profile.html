@@ -62,6 +62,12 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .profile-social-ig:hover { background:rgba(232,184,75,.18); }
 .profile-social-sp { background:rgba(30,215,96,.08); border:1px solid rgba(30,215,96,.25); color:#1ed760; }
 .profile-social-sp:hover { background:rgba(30,215,96,.18); }
+.profile-social-sc { background:rgba(255,85,0,.08); border:1px solid rgba(255,85,0,.25); color:#ff5500; }
+.profile-social-sc:hover { background:rgba(255,85,0,.18); }
+.profile-social-mc { background:rgba(82,158,214,.08); border:1px solid rgba(82,158,214,.25); color:#529ed6; }
+.profile-social-mc:hover { background:rgba(82,158,214,.18); }
+.contact-btn { display:block; width:100%; margin-top:10px; padding:8px; text-align:center; background:rgba(143,200,232,.1); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; cursor:pointer; text-decoration:none; transition:background .15s; }
+.contact-btn:hover { background:rgba(143,200,232,.2); }
 .profile-stats { display:flex; gap:16px; border-top:1px solid rgba(255,255,255,.05); padding-top:12px; }
 .pstat { text-align:center; }
 .pstat-val { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); }
@@ -99,6 +105,24 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .title-save-btn { margin-top:10px; padding:5px 16px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.6rem; font-weight:bold; cursor:pointer; transition:filter .15s; }
 .title-save-btn:hover { filter:brightness(1.1); }
 .title-save-btn:disabled { opacity:.5; cursor:default; }
+
+/* ── Notification Bell ── */
+.notif-bell-wrap { position:relative; }
+.notif-bell { background:none; border:none; color:rgba(238,235,230,.45); font-size:1.1rem; cursor:pointer; padding:4px; line-height:1; transition:color .15s; }
+.notif-bell:hover { color:var(--gold); }
+.notif-badge { position:absolute; top:0; right:0; background:var(--crimson); color:#fff; font-size:.42rem; font-family:'Space Mono',monospace; border-radius:6px; padding:1px 4px; min-width:12px; text-align:center; pointer-events:none; }
+.notif-panel { position:absolute; top:40px; right:0; width:290px; background:var(--card); border:1px solid var(--mid); border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
+.notif-panel.open { display:block; }
+.notif-panel-head { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; }
+.notif-panel-title { font-size:.62rem; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
+.notif-read-all { background:none; border:none; color:rgba(238,235,230,.35); font-size:.55rem; cursor:pointer; font-family:'Space Mono',monospace; padding:0; }
+.notif-list { max-height:320px; overflow-y:auto; }
+.notif-item { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; transition:background .1s; }
+.notif-item:hover { background:rgba(255,255,255,.03); }
+.notif-item.unread { background:rgba(232,184,75,.04); border-left:2px solid rgba(232,184,75,.4); padding-left:12px; }
+.notif-item-text { font-size:.63rem; color:var(--white); line-height:1.5; margin-bottom:3px; }
+.notif-item-time { font-size:.5rem; color:rgba(238,235,230,.25); }
+.notif-empty { padding:20px 14px; text-align:center; font-size:.62rem; color:var(--dim); }
 
 /* ── Toast ── */
 .toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
@@ -191,8 +215,12 @@ function fmtDate(ts) {
   return d.toLocaleDateString('tr-TR', {month:'long', year:'numeric'});
 }
 
+let _notifUnsub = null;
+let _notifPanelEl = null;
+
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar'); bar.innerHTML = '';
+  _notifPanelEl = null;
   if (user) {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
     const img  = document.createElement('img');  img.className = 'auth-avatar';
@@ -201,12 +229,66 @@ function updateAuthBar(user) {
     name.textContent = isAdmin(user) ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Üye');
     const out = document.createElement('button'); out.className = 'auth-out-btn';
     out.textContent = '✕'; out.onclick = () => auth.signOut();
-    wrap.append(img, name, out); bar.append(wrap);
+    wrap.append(img, name, out);
+
+    const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
+    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = 'Bildirimler';
+    const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
+    _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
+    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all">Tümünü Oku</button></div><div class="notif-list"></div>';
+    _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
+    bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
+    bellWrap.append(bell, badge, _notifPanelEl);
+    bar.append(bellWrap, wrap);
+    document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
     btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
     bar.append(btn);
   }
+}
+
+function toggleNotifPanel(user) {
+  if (!_notifPanelEl) return;
+  const isOpen = _notifPanelEl.classList.contains('open');
+  if (isOpen) { _notifPanelEl.classList.remove('open'); return; }
+  _notifPanelEl.classList.add('open');
+  setTimeout(() => document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true }), 0);
+  markAllNotifRead(user.uid);
+}
+
+function markAllNotifRead(uid) {
+  db.collection('notifications').doc(uid).collection('items')
+    .where('read', '==', false).get().then(snap => {
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+      batch.commit();
+    }).catch(() => {});
+}
+
+function initNotifications(user) {
+  if (_notifUnsub) { _notifUnsub(); _notifUnsub = null; }
+  if (!user) return;
+  _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
+    .orderBy('createdAt', 'desc').limit(20)
+    .onSnapshot(snap => {
+      const unread = snap.docs.filter(d => !d.data().read).length;
+      const badge = document.querySelector('.notif-badge');
+      if (badge) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.style.display = unread > 0 ? 'block' : 'none'; }
+      if (_notifPanelEl) {
+        const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
+        list.innerHTML = '';
+        if (!snap.docs.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
+        snap.docs.forEach(d => {
+          const n = d.data();
+          const item = document.createElement('div'); item.className = 'notif-item' + (n.read ? '' : ' unread');
+          const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+          item.innerHTML = `<div class="notif-item-text">${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
+          if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
+          list.append(item);
+        });
+      }
+    }, () => {});
 }
 
 async function renderProfile() {
@@ -223,7 +305,7 @@ async function renderProfile() {
 
   // Load auth display name/photo if own profile
   const displayName = prof.displayName || (_user?.uid===uid ? _user.displayName : null) || 'Üye';
-  const photoURL    = prof.photoURL    || (_user?.uid===uid ? _user.photoURL    : null) || '';
+  const photoURL    = prof.customPhotoURL || prof.photoURL || (_user?.uid===uid ? _user.photoURL : null) || '';
 
   // Load posts & replies count
   const postsSnap = await db.collection('forum').where('authorId','==',uid).limit(20).get();
@@ -284,7 +366,7 @@ async function renderProfile() {
   info.append(nameDiv, joined, aboutDiv, genresDiv);
 
   // Social links
-  if (prof.instagram || prof.spotify) {
+  if (prof.instagram || prof.spotify || prof.soundcloudUrl || prof.mixcloudUrl) {
     const socialsDiv = document.createElement('div'); socialsDiv.className = 'profile-socials';
     if (prof.instagram) {
       const igLink = document.createElement('a'); igLink.className = 'profile-social-link profile-social-ig';
@@ -297,6 +379,18 @@ async function renderProfile() {
       spLink.href = prof.spotify; spLink.target = '_blank'; spLink.rel = 'noopener';
       spLink.textContent = '🎵 Spotify';
       socialsDiv.append(spLink);
+    }
+    if (prof.soundcloudUrl) {
+      const scLink = document.createElement('a'); scLink.className = 'profile-social-link profile-social-sc';
+      scLink.href = prof.soundcloudUrl; scLink.target = '_blank'; scLink.rel = 'noopener';
+      scLink.textContent = '☁️ SoundCloud';
+      socialsDiv.append(scLink);
+    }
+    if (prof.mixcloudUrl) {
+      const mcLink = document.createElement('a'); mcLink.className = 'profile-social-link profile-social-mc';
+      mcLink.href = prof.mixcloudUrl; mcLink.target = '_blank'; mcLink.rel = 'noopener';
+      mcLink.textContent = '🎙️ Mixcloud';
+      socialsDiv.append(mcLink);
     }
     info.append(socialsDiv);
   }
@@ -311,6 +405,15 @@ async function renderProfile() {
 
   info.append(statsDiv);
 
+  // Contact button (other people's profiles)
+  if (!isOwn && _user) {
+    const contactHref = prof.instagram ? prof.instagram : `mailto:${prof.email || ''}`;
+    const contactBtn = document.createElement('a'); contactBtn.className = 'contact-btn';
+    contactBtn.href = contactHref; contactBtn.target = '_blank'; contactBtn.rel = 'noopener';
+    contactBtn.textContent = prof.instagram ? '📩 Instagram\'dan Ulaş' : '📩 İletişim';
+    info.append(contactBtn);
+  }
+
   // Edit button (own profile only)
   if (isOwn) {
     const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = '✏️ Profili Düzenle';
@@ -320,12 +423,18 @@ async function renderProfile() {
     const editForm = document.createElement('div'); editForm.className = 'edit-form';
     let editGenres = [...(prof.genres || [])];
 
-    editForm.innerHTML = `<div class="ef-label">Hakkında</div>`;
+    editForm.innerHTML = `<div class="ef-label">Profil Fotoğrafı URL</div>`;
+    const photoInput = document.createElement('input'); photoInput.className = 'ef-input'; photoInput.type = 'url';
+    photoInput.placeholder = 'https://... (boş bırakırsan Google fotoğrafın kullanılır)';
+    photoInput.value = prof.customPhotoURL || '';
+    editForm.append(photoInput);
+
+    const aboutLabel2 = document.createElement('div'); aboutLabel2.className = 'ef-label'; aboutLabel2.textContent = 'Hakkında';
+    editForm.append(aboutLabel2);
     const aboutInput = document.createElement('textarea'); aboutInput.className = 'ef-ta'; aboutInput.maxLength = 300;
     aboutInput.placeholder = 'Kendinden, müzik tarzından bahset...'; aboutInput.value = prof.about || '';
     editForm.append(aboutInput);
 
-    editForm.innerHTML += '';
     const genresLabel = document.createElement('div'); genresLabel.className = 'ef-label'; genresLabel.textContent = 'Genreler';
     editForm.append(genresLabel);
     const genresWrap = document.createElement('div'); genresWrap.className = 'ef-genres-wrap';
@@ -363,6 +472,18 @@ async function renderProfile() {
     spInput.placeholder = 'https://open.spotify.com/artist/...'; spInput.value = prof.spotify || '';
     editForm.append(spInput);
 
+    const scLabel = document.createElement('div'); scLabel.className = 'ef-label'; scLabel.textContent = 'SoundCloud URL';
+    editForm.append(scLabel);
+    const scInput = document.createElement('input'); scInput.className = 'ef-input'; scInput.type = 'url';
+    scInput.placeholder = 'https://soundcloud.com/kullaniciadi'; scInput.value = prof.soundcloudUrl || '';
+    editForm.append(scInput);
+
+    const mcLabel = document.createElement('div'); mcLabel.className = 'ef-label'; mcLabel.textContent = 'Mixcloud URL';
+    editForm.append(mcLabel);
+    const mcInput = document.createElement('input'); mcInput.className = 'ef-input'; mcInput.type = 'url';
+    mcInput.placeholder = 'https://www.mixcloud.com/kullaniciadi'; mcInput.value = prof.mixcloudUrl || '';
+    editForm.append(mcInput);
+
     const collabLabel = document.createElement('div'); collabLabel.className = 'ef-label'; collabLabel.textContent = 'İşbirliği Durumu';
     editForm.append(collabLabel);
     const collabWrap = document.createElement('div'); collabWrap.style.cssText = 'display:flex;gap:8px;margin-top:4px;';
@@ -395,12 +516,20 @@ async function renderProfile() {
         email:   _user.email,
         instagram:     igInput.value.trim(),
         spotify:       spInput.value.trim(),
+        soundcloudUrl: scInput.value.trim(),
+        mixcloudUrl:   mcInput.value.trim(),
+        customPhotoURL: photoInput.value.trim(),
         collabStatus:  selCollab,
       };
       if (!prof.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection('users').doc(uid).set(update, { merge: true });
-      saveBtn.textContent = '✓ Kaydedildi';
-      setTimeout(() => renderProfile(), 800);
+      try {
+        await db.collection('users').doc(uid).set(update, { merge: true });
+        saveBtn.textContent = '✓ Kaydedildi';
+        setTimeout(() => renderProfile(), 800);
+      } catch(e) {
+        showToast('⚠️ Kayıt başarısız: ' + (e.code || e.message), 'error');
+        saveBtn.disabled = false; saveBtn.textContent = '💾 Kaydet';
+      }
     };
     editForm.append(saveBtn);
 
@@ -480,6 +609,7 @@ async function renderProfile() {
 auth.onAuthStateChanged(async user => {
   _user = user;
   updateAuthBar(user);
+  initNotifications(user);
   // Save/update profile photoURL on login
   if (user) {
     db.collection('users').doc(user.uid).set({

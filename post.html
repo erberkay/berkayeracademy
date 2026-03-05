@@ -70,6 +70,16 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .solve-btn:hover,.solve-btn.active { background:rgba(100,200,100,.12); color:#6fc; border-color:rgba(100,200,100,.5); }
 .delete-btn { color:rgba(184,45,69,.55); margin-left:auto; }
 .delete-btn:hover { color:var(--crimson); }
+.like-btn { border:1px solid rgba(184,45,69,.3); color:rgba(184,45,69,.6); padding:3px 12px; border-radius:10px; transition:all .15s; }
+.like-btn:hover,.like-btn.liked { background:rgba(184,45,69,.12); color:var(--crimson); border-color:rgba(184,45,69,.5); }
+.edit-own-btn { color:rgba(143,200,232,.4); padding:3px 6px; transition:color .15s; }
+.edit-own-btn:hover { color:var(--ice); }
+.inline-edit-wrap { padding:14px 18px; border-top:1px solid rgba(255,255,255,.05); }
+.inline-edit-ta { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.8rem; padding:9px 12px; resize:vertical; outline:none; line-height:1.65; transition:border-color .15s; min-height:80px; }
+.inline-edit-ta:focus { border-color:var(--gold); }
+.inline-edit-btns { display:flex; gap:8px; margin-top:8px; }
+.inline-edit-save { padding:6px 16px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; font-weight:bold; cursor:pointer; }
+.inline-edit-cancel { padding:6px 14px; background:none; border:1px solid var(--mid); color:var(--dim); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; cursor:pointer; }
 
 /* ── Replies ── */
 .replies-section { margin-bottom:24px; }
@@ -107,6 +117,25 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .toast.error { border-left-color:var(--crimson); }
 .toast.info  { border-left-color:var(--ice); }
 @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+/* ── Notification Bell ── */
+.notif-bell-wrap { position:relative; }
+.notif-bell { background:none; border:none; color:rgba(238,235,230,.45); font-size:1.1rem; cursor:pointer; padding:4px; line-height:1; transition:color .15s; }
+.notif-bell:hover { color:var(--gold); }
+.notif-badge { position:absolute; top:0; right:0; background:var(--crimson); color:#fff; font-size:.42rem; font-family:'Space Mono',monospace; border-radius:6px; padding:1px 4px; min-width:12px; text-align:center; pointer-events:none; }
+.notif-panel { position:absolute; top:40px; right:0; width:290px; background:var(--card); border:1px solid var(--mid); border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
+.notif-panel.open { display:block; }
+.notif-panel-head { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; }
+.notif-panel-title { font-size:.62rem; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
+.notif-read-all { background:none; border:none; color:rgba(238,235,230,.35); font-size:.55rem; cursor:pointer; font-family:'Space Mono',monospace; padding:0; }
+.notif-read-all:hover { color:var(--dim); }
+.notif-list { max-height:320px; overflow-y:auto; }
+.notif-item { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; transition:background .1s; }
+.notif-item:hover { background:rgba(255,255,255,.03); }
+.notif-item.unread { background:rgba(232,184,75,.04); border-left:2px solid rgba(232,184,75,.4); padding-left:12px; }
+.notif-item-text { font-size:.63rem; color:var(--white); line-height:1.5; margin-bottom:3px; }
+.notif-item-time { font-size:.5rem; color:rgba(238,235,230,.25); }
+.notif-empty { padding:20px 14px; text-align:center; font-size:.62rem; color:var(--dim); }
 
 /* ── Bottom Nav ── */
 .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:500; background:rgba(6,6,9,.96); border-top:1px solid var(--mid); backdrop-filter:blur(16px); display:flex; height:58px; }
@@ -178,8 +207,12 @@ function showToast(msg, type='success', ms=3000) {
   setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
 }
 
+let _notifUnsub = null;
+let _notifPanelEl = null;
+
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar'); bar.innerHTML = '';
+  _notifPanelEl = null;
   if (user) {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
     const img  = document.createElement('img');  img.className = 'auth-avatar';
@@ -190,12 +223,72 @@ function updateAuthBar(user) {
     name.onclick = () => goProfile(user.uid);
     const out = document.createElement('button'); out.className = 'auth-out-btn';
     out.textContent = '✕'; out.onclick = () => auth.signOut();
-    wrap.append(img, name, out); bar.append(wrap);
+    wrap.append(img, name, out);
+
+    // Notification bell
+    const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
+    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = 'Bildirimler';
+    const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
+    _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
+    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all" id="notifReadAll">Tümünü Oku</button></div><div class="notif-list"></div>';
+    document.getElementById('notifReadAll', _notifPanelEl)?.addEventListener('click', () => markAllRead(user.uid));
+    bell.onclick = (e) => { e.stopPropagation(); toggleNotifPanel(user); };
+    bellWrap.append(bell, badge, _notifPanelEl);
+    bar.append(bellWrap, wrap);
+
+    document.addEventListener('click', closeNotifPanel, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
     btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
     bar.append(btn);
   }
+}
+
+function closeNotifPanel() {
+  if (_notifPanelEl) _notifPanelEl.classList.remove('open');
+}
+
+function toggleNotifPanel(user) {
+  if (!_notifPanelEl) return;
+  const isOpen = _notifPanelEl.classList.contains('open');
+  if (isOpen) { _notifPanelEl.classList.remove('open'); return; }
+  _notifPanelEl.classList.add('open');
+  setTimeout(() => document.addEventListener('click', closeNotifPanel, { once: true }), 0);
+  markAllRead(user.uid);
+}
+
+function markAllRead(uid) {
+  db.collection('notifications').doc(uid).collection('items')
+    .where('read', '==', false).get().then(snap => {
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+      batch.commit();
+    }).catch(() => {});
+}
+
+function initNotifications(user) {
+  if (_notifUnsub) { _notifUnsub(); _notifUnsub = null; }
+  if (!user) return;
+  _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
+    .orderBy('createdAt', 'desc').limit(20)
+    .onSnapshot(snap => {
+      const unread = snap.docs.filter(d => !d.data().read).length;
+      const badge = document.querySelector('.notif-badge');
+      if (badge) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.style.display = unread > 0 ? 'block' : 'none'; }
+      if (_notifPanelEl) {
+        const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
+        list.innerHTML = '';
+        if (!snap.docs.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
+        snap.docs.forEach(d => {
+          const n = d.data();
+          const item = document.createElement('div'); item.className = 'notif-item' + (n.read ? '' : ' unread');
+          const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+          item.innerHTML = `<div class="notif-item-text">${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
+          if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
+          list.append(item);
+        });
+      }
+    }, () => {});
 }
 
 async function getProfile(uid) {
@@ -288,6 +381,51 @@ async function renderPost() {
   };
   actions.append(copyBtn);
 
+  // Like button
+  const likedBy = post.likedBy || [];
+  const isLiked = _user && likedBy.includes(_user.uid);
+  const likeBtn = document.createElement('button');
+  likeBtn.className = 'action-btn like-btn' + (isLiked ? ' liked' : '');
+  likeBtn.textContent = `♥ ${post.likeCount || 0}`;
+  likeBtn.onclick = async () => {
+    if (!_user) { showToast('Beğenmek için giriş yap', 'info'); return; }
+    const ref = db.collection('forum').doc(postId);
+    if (isLiked) {
+      await ref.update({ likedBy: firebase.firestore.FieldValue.arrayRemove(_user.uid), likeCount: firebase.firestore.FieldValue.increment(-1) });
+    } else {
+      await ref.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(_user.uid), likeCount: firebase.firestore.FieldValue.increment(1) });
+    }
+    renderPost();
+  };
+  actions.append(likeBtn);
+
+  // Edit own post
+  if (_user && post.authorId === _user.uid) {
+    const editBtn = document.createElement('button'); editBtn.className = 'action-btn edit-own-btn'; editBtn.textContent = '✏️ Düzenle';
+    let editWrap = null;
+    editBtn.onclick = () => {
+      if (editWrap) { editWrap.remove(); editWrap = null; return; }
+      editWrap = document.createElement('div'); editWrap.className = 'inline-edit-wrap';
+      const ta = document.createElement('textarea'); ta.className = 'inline-edit-ta';
+      ta.value = post.text || '';
+      const btns = document.createElement('div'); btns.className = 'inline-edit-btns';
+      const saveB = document.createElement('button'); saveB.className = 'inline-edit-save'; saveB.textContent = '💾 Kaydet';
+      const cancelB = document.createElement('button'); cancelB.className = 'inline-edit-cancel'; cancelB.textContent = 'Vazgeç';
+      cancelB.onclick = () => { editWrap.remove(); editWrap = null; };
+      saveB.onclick = async () => {
+        const newText = ta.value.trim(); if (!newText) return;
+        saveB.disabled = true; saveB.textContent = '⏳';
+        await db.collection('forum').doc(postId).update({ text: newText, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        editWrap.remove(); editWrap = null;
+        showToast('✓ Konu güncellendi');
+        renderPost();
+      };
+      btns.append(saveB, cancelB); editWrap.append(ta, btns);
+      card.append(editWrap);
+    };
+    actions.append(editBtn);
+  }
+
   if (_user && isAdmin(_user)) {
     const solveBtn = document.createElement('button');
     solveBtn.className = 'action-btn solve-btn' + (post.solved ? ' active' : '');
@@ -350,6 +488,31 @@ async function renderReplies(layout, post) {
       };
       rAuthorRow.append(rdel);
     }
+    // Edit own reply
+    if (_user && r.authorId === _user.uid) {
+      const replyEditBtn = document.createElement('button'); replyEditBtn.className = 'reply-del'; replyEditBtn.style.color = 'rgba(143,200,232,.4)'; replyEditBtn.textContent = '✏️';
+      replyEditBtn.title = 'Düzenle';
+      let replyEditWrap = null;
+      replyEditBtn.onclick = () => {
+        if (replyEditWrap) { replyEditWrap.remove(); replyEditWrap = null; return; }
+        replyEditWrap = document.createElement('div'); replyEditWrap.className = 'inline-edit-wrap'; replyEditWrap.style.padding = '10px 0 0';
+        const ta = document.createElement('textarea'); ta.className = 'inline-edit-ta'; ta.value = r.text || '';
+        const btns = document.createElement('div'); btns.className = 'inline-edit-btns';
+        const saveB = document.createElement('button'); saveB.className = 'inline-edit-save'; saveB.textContent = '💾';
+        const cancelB = document.createElement('button'); cancelB.className = 'inline-edit-cancel'; cancelB.textContent = 'Vazgeç';
+        cancelB.onclick = () => { replyEditWrap.remove(); replyEditWrap = null; };
+        saveB.onclick = async () => {
+          const t = ta.value.trim(); if (!t) return;
+          saveB.disabled = true;
+          await db.collection('forum').doc(postId).collection('replies').doc(r.id).update({ text: t, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          replyEditWrap.remove(); replyEditWrap = null;
+          rTxt.textContent = t; showToast('✓ Yanıt güncellendi');
+        };
+        btns.append(saveB, cancelB); replyEditWrap.append(ta, btns);
+        rBody.append(replyEditWrap);
+      };
+      rAuthorRow.append(replyEditBtn);
+    }
     const rTxt = document.createElement('div'); rTxt.className = 'reply-text'; rTxt.textContent = r.text;
     rBody.append(rAuthorRow, rTxt);
     rCard.append(rAv, rBody);
@@ -384,6 +547,17 @@ async function renderReplies(layout, post) {
         createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
       });
       await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(1) });
+      // Notify post author
+      if (post.authorId && post.authorId !== _user.uid) {
+        db.collection('notifications').doc(post.authorId).collection('items').add({
+          text: `${_user.displayName?.split(' ')[0] || 'Biri'}, "${post.title || 'konuna'}" konusuna yanıt verdi`,
+          postId: postId,
+          fromId: _user.uid,
+          fromName: _user.displayName?.split(' ')[0] || 'Üye',
+          read: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        }).catch(() => {});
+      }
       ta.value = '';
       await renderPost();
     };
@@ -397,6 +571,7 @@ async function renderReplies(layout, post) {
 auth.onAuthStateChanged(async user => {
   _user = user;
   updateAuthBar(user);
+  initNotifications(user);
   await renderPost();
 });
 </script>

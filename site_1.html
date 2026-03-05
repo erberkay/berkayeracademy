@@ -755,9 +755,40 @@ function getProgress(mid) {
 }
 function toggleTask(mid, tid) {
     const k = `${mid}-${tid}`;
-    state.completedTasks[k] = !state.completedTasks[k];
+    const wasDone = !!state.completedTasks[k];
+    state.completedTasks[k] = !wasDone;
     localStorage.setItem('berkay_tasks', JSON.stringify(state.completedTasks));
     saveProgress(); // sync to cloud if logged in
+    // Check if module just became 100%
+    if (!wasDone && getProgress(mid) === 100) {
+        showModuleCompletion(mid);
+    }
+}
+
+const MODULE_NAMES = { 1: 'Synthesizer', 2: 'Beat Maker', 3: 'Mixing', 4: 'Arrangement Builder' };
+function showModuleCompletion(mid) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#13131f;border:1px solid #e8b84b;border-radius:12px;padding:36px 32px;text-align:center;max-width:380px;width:100%;animation:celebIn .35s cubic-bezier(.34,1.56,.64,1);';
+    box.innerHTML = `
+        <div style="font-size:3rem;margin-bottom:12px">🏆</div>
+        <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:#e8b84b;letter-spacing:.06em;margin-bottom:8px">Modül Tamamlandı!</div>
+        <div style="font-size:.85rem;color:rgba(238,235,230,.6);margin-bottom:4px">Tebrikler!</div>
+        <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.1rem;color:#fff;margin-bottom:20px;letter-spacing:.04em">${MODULE_NAMES[mid] || 'Modül'} ✓</div>
+        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4);border-radius:20px;padding:6px 18px;font-size:.72rem;color:#e8b84b;margin-bottom:24px;">🎖️ Rozet Kazanıldı</div>
+        <br>
+        <button id="celebClose" style="padding:10px 28px;background:#e8b84b;color:#060609;border:none;border-radius:6px;font-family:\'Space Mono\',monospace;font-size:.75rem;font-weight:bold;cursor:pointer;">Harika!</button>
+    `;
+    overlay.append(box);
+    document.body.append(overlay);
+    overlay.querySelector('#celebClose').onclick = () => overlay.remove();
+    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    if (!document.getElementById('celebKeyframes')) {
+        const s = document.createElement('style'); s.id = 'celebKeyframes';
+        s.textContent = '@keyframes celebIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}';
+        document.head.append(s);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -843,6 +874,16 @@ function makeTaskPanel(mid) {
         const p = getProgress(mid);
         fill.style.width   = p + '%';
         pLabel.textContent = p + '%';
+        // Show badge if 100%
+        let badge = panel.querySelector('.module-complete-badge');
+        if (p === 100) {
+            if (!badge) {
+                badge = mk('div','module-complete-badge');
+                badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4);border-radius:12px;padding:4px 12px;font-size:.62rem;color:#e8b84b;margin-top:8px;';
+                badge.textContent = '🏆 Modül Tamamlandı';
+                panel.append(badge);
+            }
+        } else if (badge) { badge.remove(); }
     }
     refreshBar();
     return panel;
