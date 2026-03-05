@@ -348,6 +348,155 @@
             transition: box-shadow 0.15s, transform 0.15s;
         }
 
+        /* ── Oscilloscope ────────────────────── */
+        .oscilloscope-wrap {
+            margin: 0 0 16px;
+            border: 1px solid var(--mid);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+        .oscilloscope-label {
+            position: absolute;
+            top: 6px; left: 10px;
+            font-size: 0.6rem;
+            letter-spacing: 0.12em;
+            color: rgba(232,184,75,0.5);
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+        canvas.oscilloscope {
+            display: block;
+            width: 100%;
+            height: 80px;
+            background: #060609;
+        }
+
+        /* ── Preset buttons ──────────────────── */
+        .preset-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin: 4px 0 16px;
+        }
+        .preset-btn {
+            background: var(--deep);
+            border: 1px solid var(--mid);
+            color: var(--dim);
+            padding: 7px 13px;
+            border-radius: 4px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.68rem;
+            cursor: pointer;
+            transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+            letter-spacing: 0.04em;
+        }
+        .preset-btn:hover { border-color: var(--gold); color: var(--gold); }
+        .preset-btn.active {
+            border-color: var(--gold);
+            color: var(--gold);
+            box-shadow: 0 0 8px rgba(232,184,75,0.25);
+        }
+        .preset-desc {
+            font-size: 0.6rem;
+            color: var(--dim);
+            opacity: 0.6;
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* ── Filter section ──────────────────── */
+        .filter-section {
+            background: rgba(184,45,69,0.06);
+            border: 1px solid rgba(184,45,69,0.25);
+            border-radius: 6px;
+            padding: 14px;
+            margin: 8px 0;
+            grid-column: 1 / -1;
+        }
+        .filter-section h3 { color: var(--crimson); margin-bottom: 10px; font-size: 0.85rem; }
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        /* ── Theory card ─────────────────────── */
+        .theory-card {
+            background: rgba(8,8,18,0.9);
+            border: 1px solid rgba(232,184,75,0.18);
+            border-left: 3px solid var(--gold);
+            border-radius: 4px;
+            margin: 14px 0;
+            overflow: hidden;
+        }
+        .theory-toggle {
+            width: 100%;
+            background: none;
+            border: none;
+            color: rgba(232,184,75,0.8);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.72rem;
+            padding: 11px 14px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            letter-spacing: 0.06em;
+        }
+        .theory-toggle:hover { background: rgba(232,184,75,0.04); }
+        .theory-body {
+            padding: 12px 14px;
+            font-size: 0.75rem;
+            line-height: 1.7;
+            color: var(--dim);
+            border-top: 1px solid rgba(232,184,75,0.1);
+        }
+        .theory-body strong { color: var(--white); }
+        .theory-ableton {
+            margin-top: 10px;
+            padding: 8px 11px;
+            background: rgba(232,184,75,0.06);
+            border-radius: 3px;
+            font-size: 0.68rem;
+            color: var(--gold);
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Genre templates ─────────────────── */
+        .genre-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            margin-bottom: 14px;
+        }
+        .genre-btn {
+            background: var(--deep);
+            border: 1px solid var(--mid);
+            color: var(--dim);
+            padding: 7px 13px;
+            border-radius: 4px;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.68rem;
+            cursor: pointer;
+            transition: border-color 0.15s, color 0.15s;
+            letter-spacing: 0.04em;
+        }
+        .genre-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+        /* ── Swing slider ────────────────────── */
+        .swing-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+            font-size: 0.72rem;
+            color: var(--dim);
+        }
+        .swing-row label { white-space: nowrap; min-width: 80px; }
+        .swing-row input[type=range] { flex: 1; }
+        .swing-val { min-width: 36px; color: var(--gold); font-weight: bold; }
+
         .waveform-selector {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -688,6 +837,12 @@
             
             const oscillatorRef = useRef(null);
             const gainNodeRef = useRef(null);
+            // Synth filter + analyser — persistent across note plays
+            const [synthFilter, setSynthFilter] = useState({ cutoff: 8000, resonance: 1 });
+            const [activePreset, setActivePreset] = useState(null);
+            const synthFilterRef = useRef(null);
+            const synthAnalyserRef = useRef(null);
+            const synthCtxRef = useRef(null);
 
             // ── Shared Beat State ──────────────────────────────────────────
             const beatTracks = [
@@ -802,10 +957,29 @@
             };
 
             const playNote = (freq, duration = 0.5) => {
-                let ctx = audioContext;
+                let ctx = synthCtxRef.current || audioContext;
                 if (!ctx) {
                     ctx = new (window.AudioContext || window.webkitAudioContext)();
                     setAudioContext(ctx);
+                    synthCtxRef.current = ctx;
+                }
+                if (ctx.state === 'suspended') ctx.resume();
+
+                // Lazy-init persistent filter + analyser (created once, reused per note)
+                if (!synthFilterRef.current) {
+                    const filt = ctx.createBiquadFilter();
+                    filt.type = 'lowpass';
+                    filt.frequency.value = synthFilter.cutoff;
+                    filt.Q.value = synthFilter.resonance;
+                    synthFilterRef.current = filt;
+
+                    const analyser = ctx.createAnalyser();
+                    analyser.fftSize = 2048;
+                    synthAnalyserRef.current = analyser;
+
+                    // Chain: note → filter → analyser → speakers
+                    filt.connect(analyser);
+                    analyser.connect(ctx.destination);
                 }
 
                 const osc = ctx.createOscillator();
@@ -822,13 +996,21 @@
                 gainNode.gain.linearRampToValueAtTime(0, now + duration);
 
                 osc.connect(gainNode);
-                gainNode.connect(ctx.destination);
+                gainNode.connect(synthFilterRef.current); // route through filter
 
                 osc.start(now);
                 osc.stop(now + duration);
 
                 return osc;
             };
+
+            // Keep filter node in sync with state
+            useEffect(() => {
+                if (synthFilterRef.current) {
+                    synthFilterRef.current.frequency.value = synthFilter.cutoff;
+                    synthFilterRef.current.Q.value = synthFilter.resonance;
+                }
+            }, [synthFilter]);
 
             const handleDragStart = (e, sound) => {
                 e.dataTransfer.setData('sound', JSON.stringify(sound));
@@ -855,6 +1037,54 @@
                     [key]: !prev[key]
                 }));
             };
+
+            // ── Synth Presets ──────────────────────────────────────────────
+            const synthPresets = [
+                { id:'pad',   name:'🌊 Pad',   wave:'sawtooth', adsr:{attack:0.8,  decay:0.3,  sustain:0.7, release:1.5}, filter:{cutoff:1200,  resonance:2} },
+                { id:'lead',  name:'⚡ Lead',  wave:'sawtooth', adsr:{attack:0.01, decay:0.1,  sustain:0.8, release:0.2}, filter:{cutoff:8000,  resonance:1} },
+                { id:'bass',  name:'🔊 Bass',  wave:'square',   adsr:{attack:0.01, decay:0.15, sustain:0.6, release:0.1}, filter:{cutoff:500,   resonance:3} },
+                { id:'pluck', name:'🎸 Pluck', wave:'triangle', adsr:{attack:0.01, decay:0.3,  sustain:0.0, release:0.4}, filter:{cutoff:4000,  resonance:5} },
+                { id:'bell',  name:'🔔 Bell',  wave:'sine',     adsr:{attack:0.01, decay:0.8,  sustain:0.3, release:1.2}, filter:{cutoff:12000, resonance:1} },
+                { id:'organ', name:'🎹 Organ', wave:'square',   adsr:{attack:0.05, decay:0.0,  sustain:1.0, release:0.05},filter:{cutoff:3000,  resonance:1} },
+            ];
+            const applyPreset = (p) => {
+                setWaveform(p.wave);
+                setAdsr(p.adsr);
+                setSynthFilter(p.filter);
+                setActivePreset(p.id);
+            };
+
+            // ── Genre Templates ────────────────────────────────────────────
+            const genreTemplates = [
+                { name:'🎤 Boom Bap', bpm:90,  patterns:[
+                    [100,0,0,0, 0,0,0,0, 100,0,0,0, 0,0,0,0],
+                    [0,0,0,0, 100,0,0,0, 0,0,0,0, 100,0,0,0],
+                    [70,0,70,0, 70,0,70,0, 70,0,70,0, 70,0,70,0],
+                    [0,0,0,0, 0,0,0,80, 0,0,0,0, 0,0,80,0],
+                    [100,0,0,0, 0,0,0,0, 60,0,0,0, 0,0,0,0],
+                ]},
+                { name:'🏠 House', bpm:125, patterns:[
+                    [100,0,0,0, 100,0,0,0, 100,0,0,0, 100,0,0,0],
+                    [0,0,0,0, 100,0,0,0, 0,0,0,0, 100,0,0,0],
+                    [65,0,65,0, 65,0,65,0, 65,0,65,0, 65,0,65,0],
+                    [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,90],
+                    [100,0,0,60, 0,0,100,0, 0,0,60,0, 0,0,0,0],
+                ]},
+                { name:'🔺 Trap', bpm:140, patterns:[
+                    [100,0,0,0, 0,0,0,0, 100,0,0,0, 0,0,80,0],
+                    [0,0,0,0, 100,0,0,0, 0,0,0,0, 100,0,0,0],
+                    [55,55,55,55, 55,55,55,55, 55,55,55,55, 55,55,55,55],
+                    [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,90],
+                    [100,0,0,0, 60,0,0,0, 100,0,0,70, 0,0,0,0],
+                ]},
+                { name:'🎸 Rock', bpm:120, patterns:[
+                    [100,0,0,0, 0,0,100,0, 0,0,0,0, 100,0,0,0],
+                    [0,0,0,0, 100,0,0,0, 0,0,0,0, 100,0,0,0],
+                    [80,0,80,0, 80,0,80,0, 80,0,80,0, 80,0,80,0],
+                    [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+                    [100,0,0,0, 0,0,100,0, 0,0,0,0, 0,0,0,0],
+                ]},
+            ];
 
             const getModuleProgress = (moduleId) => {
                 const tasks = getTasksForModule(moduleId);
@@ -1004,178 +1234,290 @@
                 );
             };
 
+            const TheoryCard = ({ title, children, abletonPath }) => {
+                const [open, setOpen] = useState(false);
+                return (
+                    <div className="theory-card">
+                        <button className="theory-toggle" onClick={() => setOpen(o => !o)}>
+                            <span>💡 Ableton'da Nasıl?</span>
+                            <span>{open ? '▲' : '▼'}</span>
+                        </button>
+                        {open && (
+                            <div className="theory-body">
+                                <strong>{title}</strong>
+                                <p style={{marginTop:'8px'}}>{children}</p>
+                                {abletonPath && <div className="theory-ableton">📍 {abletonPath}</div>}
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
             const Module1Synth = () => {
                 const notes = [
-                    { freq: 261.63, label: 'C', key: 'A' },
-                    { freq: 293.66, label: 'D', key: 'S' },
-                    { freq: 329.63, label: 'E', key: 'D' },
-                    { freq: 349.23, label: 'F', key: 'F' },
-                    { freq: 392.00, label: 'G', key: 'G' },
-                    { freq: 440.00, label: 'A', key: 'H' },
-                    { freq: 493.88, label: 'B', key: 'J' },
-                    { freq: 523.25, label: 'C', key: 'K' }
+                    { freq: 261.63, label: 'C4', key: 'A' },
+                    { freq: 293.66, label: 'D4', key: 'S' },
+                    { freq: 329.63, label: 'E4', key: 'D' },
+                    { freq: 349.23, label: 'F4', key: 'F' },
+                    { freq: 392.00, label: 'G4', key: 'G' },
+                    { freq: 440.00, label: 'A4', key: 'H' },
+                    { freq: 493.88, label: 'B4', key: 'J' },
+                    { freq: 523.25, label: 'C5', key: 'K' }
                 ];
 
                 const [playingKey, setPlayingKey] = useState(null);
+                const oscCanvasRef = useRef(null);
+                const oscAnimRef = useRef(null);
+
+                // Oscilloscope draw loop — starts flat, shows waveform once first note played
+                useEffect(() => {
+                    const canvas = oscCanvasRef.current;
+                    if (!canvas) return;
+                    const ctx2d = canvas.getContext('2d');
+                    const W = canvas.width, H = canvas.height;
+
+                    const draw = () => {
+                        oscAnimRef.current = requestAnimationFrame(draw);
+                        const analyser = synthAnalyserRef.current;
+                        ctx2d.fillStyle = '#060609';
+                        ctx2d.fillRect(0, 0, W, H);
+                        if (!analyser) {
+                            // Flatline before first note
+                            ctx2d.strokeStyle = 'rgba(42,42,69,0.8)';
+                            ctx2d.lineWidth = 1;
+                            ctx2d.beginPath();
+                            ctx2d.moveTo(0, H / 2); ctx2d.lineTo(W, H / 2);
+                            ctx2d.stroke();
+                            return;
+                        }
+                        const bufLen = analyser.frequencyBinCount;
+                        const data = new Uint8Array(bufLen);
+                        analyser.getByteTimeDomainData(data);
+                        ctx2d.strokeStyle = '#e8b84b';
+                        ctx2d.lineWidth = 2;
+                        ctx2d.shadowColor = '#e8b84b';
+                        ctx2d.shadowBlur = 4;
+                        ctx2d.beginPath();
+                        const sw = W / bufLen;
+                        for (let i = 0; i < bufLen; i++) {
+                            const x = i * sw;
+                            const y = (data[i] / 128.0) * (H / 2);
+                            i === 0 ? ctx2d.moveTo(x, y) : ctx2d.lineTo(x, y);
+                        }
+                        ctx2d.stroke();
+                        ctx2d.shadowBlur = 0;
+                    };
+                    draw();
+                    return () => { if (oscAnimRef.current) cancelAnimationFrame(oscAnimRef.current); };
+                }, []);
 
                 const playKey = (freq, label) => {
-                    playNote(freq, 0.5);
+                    playNote(freq, 0.8);
                     setPlayingKey(label);
-                    setTimeout(() => setPlayingKey(null), 500);
+                    setTimeout(() => setPlayingKey(null), 800);
                 };
 
                 useEffect(() => {
                     const handleKeyPress = (e) => {
+                        if (e.repeat) return;
                         const note = notes.find(n => n.key === e.key.toUpperCase());
                         if (note) playKey(note.freq, note.label);
                     };
                     window.addEventListener('keydown', handleKeyPress);
                     return () => window.removeEventListener('keydown', handleKeyPress);
-                }, [adsr, waveform, volume]);
+                }, [adsr, waveform, volume, synthFilter]);
 
                 return (
                     <div className="container">
                         <div className="accent-bar"></div>
-                        <button className="back-btn" onClick={() => setCurrentModule(null)}>
-                            ← Ana Menü
-                        </button>
+                        <button className="back-btn" onClick={() => setCurrentModule(null)}>← Ana Menü</button>
 
                         <div className="synth-container">
                             <div className="synth-header">
                                 <h2>🎹 Analog Synthesizer</h2>
-                                <button 
-                                    className={`power-button ${isPlaying ? 'active' : ''}`}
-                                    onClick={() => {
-                                        if (!audioContext) initAudio();
-                                        setIsPlaying(!isPlaying);
-                                    }}
-                                >
+                                <button className={`power-button ${isPlaying ? 'active' : ''}`}
+                                    onClick={() => { if (!audioContext) initAudio(); setIsPlaying(!isPlaying); }}>
                                     {isPlaying ? '⚡ AÇIK' : '🔌 KAPAT'}
                                 </button>
                             </div>
 
+                            {/* Oscilloscope */}
+                            <div className="oscilloscope-wrap">
+                                <span className="oscilloscope-label">OSCILLOSCOPE</span>
+                                <canvas ref={oscCanvasRef} className="oscilloscope" width={800} height={80} />
+                            </div>
+
+                            {/* Preset Sounds */}
+                            <div style={{marginBottom:'4px'}}>
+                                <h3 style={{fontSize:'0.78rem',color:'var(--dim)',letterSpacing:'0.1em',marginBottom:'8px'}}>⚡ HIZLI PRESET</h3>
+                                <div className="preset-row">
+                                    {synthPresets.map(p => (
+                                        <button key={p.id}
+                                            className={`preset-btn ${activePreset === p.id ? 'active' : ''}`}
+                                            onClick={() => { applyPreset(p); playNote(440, 0.8); }}>
+                                            {p.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ADSR Envelope */}
                             <div className="adsr-explanation">
-                                <h3 style={{color: '#e8b84b', marginBottom: '15px', fontFamily: "'Bebas Neue', sans-serif", letterSpacing:'0.06em'}}>📊 ADSR Nedir?</h3>
-                                <p style={{marginBottom: '15px', lineHeight: '1.6'}}>
-                                    <strong>ADSR</strong> (Attack, Decay, Sustain, Release) - Sesin zaman içinde nasıl değiştiğini kontrol eden envelope sistemidir.
+                                <h3 style={{color:'#e8b84b',marginBottom:'12px',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:'0.06em'}}>
+                                    📊 ADSR Zarfı — Ses Nasıl Şekillenir?
+                                </h3>
+                                <p style={{marginBottom:'12px',lineHeight:'1.6',fontSize:'0.82rem'}}>
+                                    <strong>ADSR</strong> — her sesin doğuşunu, yükselişini, tutunma seviyesini ve sönüşünü belirleyen zarf (envelope) sistemi.
+                                    Sliderları sürükle, ADSR eğrisinin nasıl değiştiğini gör ve klavyeden çalarak sesin nasıl değiştiğini duyumsa.
                                 </p>
                                 <ADSRCurve />
                             </div>
 
                             <div className="controls-grid">
+                                {/* Waveform */}
                                 <div className="control-group">
-                                    <h3>🌊 Waveform Seçimi</h3>
+                                    <h3>🌊 Waveform — Dalga Tipi</h3>
+                                    <p style={{fontSize:'0.72rem',color:'var(--dim)',marginBottom:'10px',lineHeight:'1.5'}}>
+                                        Her dalga farklı tını üretir. Sine en saf, Sawtooth en zengin harmonikli.
+                                    </p>
                                     <div className="waveform-selector">
-                                        {['sine', 'square', 'sawtooth', 'triangle'].map(wave => (
-                                            <button
-                                                key={wave}
-                                                className={`wave-btn ${waveform === wave ? 'active' : ''}`}
-                                                onClick={() => setWaveform(wave)}
-                                            >
-                                                {wave === 'sine' ? '〜' : wave === 'square' ? '⊓' : wave === 'sawtooth' ? '⟋' : '△'}
-                                                <br/>{wave}
+                                        {[
+                                            {w:'sine',      icon:'〜', desc:'Saf, yuvarlak'},
+                                            {w:'square',    icon:'⊓', desc:'Keskin, elektro'},
+                                            {w:'sawtooth',  icon:'⟋', desc:'Zengin, parlak'},
+                                            {w:'triangle',  icon:'△', desc:'Yumuşak, hollow'},
+                                        ].map(({w,icon,desc}) => (
+                                            <button key={w}
+                                                className={`wave-btn ${waveform === w ? 'active' : ''}`}
+                                                onClick={() => { setWaveform(w); setActivePreset(null); }}>
+                                                {icon}<br/>{w}<br/>
+                                                <small style={{fontSize:'0.55rem',opacity:0.6}}>{desc}</small>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
+                                {/* Attack */}
                                 <div className="control-group">
-                                    <h3>⚡ Attack</h3>
-                                    <div className="slider-container">
-                                        <div className="slider-label">
-                                            <span>Hızlı</span>
-                                            <span>{adsr.attack.toFixed(2)}s</span>
-                                            <span>Yavaş</span>
-                                        </div>
-                                        <AdsrSlider
-                                            min={0.01} max={2} step={0.01}
-                                            value={adsr.attack}
-                                            onChange={v => setAdsr(a => ({...a, attack: v}))}
-                                        />
+                                    <h3>⚡ Attack — Yükseliş Süresi</h3>
+                                    <p style={{fontSize:'0.72rem',color:'var(--dim)',marginBottom:'8px'}}>
+                                        Sesin 0'dan tam seviyeye çıkma süresi. Kısa = anlık, Uzun = fade-in efekti.
+                                    </p>
+                                    <div className="slider-label">
+                                        <span>Anlık</span>
+                                        <span style={{color:'var(--gold)'}}>{adsr.attack.toFixed(2)}s</span>
+                                        <span>Yavaş</span>
                                     </div>
+                                    <AdsrSlider min={0.01} max={2} step={0.01} value={adsr.attack}
+                                        onChange={v => { setAdsr(a => ({...a, attack: v})); setActivePreset(null); }} />
                                 </div>
 
+                                {/* Decay */}
                                 <div className="control-group">
-                                    <h3>📉 Decay</h3>
-                                    <div className="slider-container">
-                                        <div className="slider-label">
-                                            <span>Kısa</span>
-                                            <span>{adsr.decay.toFixed(2)}s</span>
-                                            <span>Uzun</span>
-                                        </div>
-                                        <AdsrSlider
-                                            min={0.01} max={2} step={0.01}
-                                            value={adsr.decay}
-                                            onChange={v => setAdsr(a => ({...a, decay: v}))}
-                                        />
+                                    <h3>📉 Decay — Düşüş Süresi</h3>
+                                    <p style={{fontSize:'0.72rem',color:'var(--dim)',marginBottom:'8px'}}>
+                                        Zirveden sustain seviyesine iniş süresi. Pluck seslerinde kısa decay kritiktir.
+                                    </p>
+                                    <div className="slider-label">
+                                        <span>Ani</span>
+                                        <span style={{color:'var(--amber)'}}>{adsr.decay.toFixed(2)}s</span>
+                                        <span>Yavaş</span>
                                     </div>
+                                    <AdsrSlider min={0.01} max={2} step={0.01} value={adsr.decay}
+                                        onChange={v => { setAdsr(a => ({...a, decay: v})); setActivePreset(null); }} />
                                 </div>
 
+                                {/* Sustain */}
                                 <div className="control-group">
-                                    <h3>🎚️ Sustain</h3>
-                                    <div className="slider-container">
-                                        <div className="slider-label">
-                                            <span>Düşük</span>
-                                            <span>{(adsr.sustain * 100).toFixed(0)}%</span>
-                                            <span>Yüksek</span>
-                                        </div>
-                                        <AdsrSlider
-                                            min={0} max={1} step={0.01}
-                                            value={adsr.sustain}
-                                            onChange={v => setAdsr(a => ({...a, sustain: v}))}
-                                        />
+                                    <h3>🎚️ Sustain — Tutunma Seviyesi</h3>
+                                    <p style={{fontSize:'0.72rem',color:'var(--dim)',marginBottom:'8px'}}>
+                                        Tuşa basılı tutulduğunda sesin kaldığı seviye. %0 = staccato, %100 = legato.
+                                    </p>
+                                    <div className="slider-label">
+                                        <span>Sessiz</span>
+                                        <span style={{color:'var(--gold)'}}>{(adsr.sustain*100).toFixed(0)}%</span>
+                                        <span>Tam</span>
                                     </div>
+                                    <AdsrSlider min={0} max={1} step={0.01} value={adsr.sustain}
+                                        onChange={v => { setAdsr(a => ({...a, sustain: v})); setActivePreset(null); }} />
                                 </div>
 
+                                {/* Release */}
                                 <div className="control-group">
-                                    <h3>🔚 Release</h3>
-                                    <div className="slider-container">
-                                        <div className="slider-label">
-                                            <span>Keskin</span>
-                                            <span>{adsr.release.toFixed(2)}s</span>
-                                            <span>Uzun</span>
-                                        </div>
-                                        <AdsrSlider
-                                            min={0.01} max={3} step={0.01}
-                                            value={adsr.release}
-                                            onChange={v => setAdsr(a => ({...a, release: v}))}
-                                        />
+                                    <h3>🔚 Release — Sönüş Süresi</h3>
+                                    <p style={{fontSize:'0.72rem',color:'var(--dim)',marginBottom:'8px'}}>
+                                        Tuşu bıraktıktan sonra sesin 0'a ineceği süre. Reverb etkisi için uzun Release kullan.
+                                    </p>
+                                    <div className="slider-label">
+                                        <span>Keskin</span>
+                                        <span style={{color:'var(--ice)'}}>{adsr.release.toFixed(2)}s</span>
+                                        <span>Uzun</span>
                                     </div>
+                                    <AdsrSlider min={0.01} max={3} step={0.01} value={adsr.release}
+                                        onChange={v => { setAdsr(a => ({...a, release: v})); setActivePreset(null); }} />
                                 </div>
 
+                                {/* Volume */}
                                 <div className="control-group">
                                     <h3>🔊 Volume</h3>
-                                    <div className="slider-container">
-                                        <div className="slider-label">
-                                            <span>Sessiz</span>
-                                            <span>{(volume * 100).toFixed(0)}%</span>
-                                            <span>Yüksek</span>
+                                    <div className="slider-label">
+                                        <span>Sessiz</span>
+                                        <span>{(volume*100).toFixed(0)}%</span>
+                                        <span>Yüksek</span>
+                                    </div>
+                                    <input type="range" className="slider" min="0" max="1" step="0.01"
+                                        value={volume} onChange={e => setVolume(parseFloat(e.target.value))} />
+                                </div>
+
+                                {/* Filter */}
+                                <div className="filter-section">
+                                    <h3>🎛 Filter — Frekans Filtresi</h3>
+                                    <p style={{fontSize:'0.72rem',color:'var(--dim)',marginBottom:'12px',lineHeight:'1.5'}}>
+                                        <strong>Cutoff</strong>: Hangi frekansın üzerini kestiğini belirler. Düşür → koyu, karanlık ses. Yükselt → parlak, açık ses.<br/>
+                                        <strong>Resonance</strong>: Cutoff frekansını vurgular. Yüksek değer keskin "wah" efekti verir.
+                                    </p>
+                                    <div className="filter-grid">
+                                        <div>
+                                            <div className="slider-label">
+                                                <span>Cutoff</span>
+                                                <span style={{color:'var(--crimson)'}}>{synthFilter.cutoff >= 1000 ? (synthFilter.cutoff/1000).toFixed(1)+'kHz' : synthFilter.cutoff+'Hz'}</span>
+                                            </div>
+                                            <AdsrSlider min={80} max={18000} step={10}
+                                                value={synthFilter.cutoff}
+                                                onChange={v => { setSynthFilter(f => ({...f, cutoff:v})); setActivePreset(null); }} />
                                         </div>
-                                        <input
-                                            type="range"
-                                            className="slider"
-                                            min="0"
-                                            max="1"
-                                            step="0.01"
-                                            value={volume}
-                                            onChange={(e) => setVolume(parseFloat(e.target.value))}
-                                        />
+                                        <div>
+                                            <div className="slider-label">
+                                                <span>Resonance</span>
+                                                <span style={{color:'var(--crimson)'}}>{synthFilter.resonance.toFixed(1)} Q</span>
+                                            </div>
+                                            <AdsrSlider min={0.1} max={20} step={0.1}
+                                                value={synthFilter.resonance}
+                                                onChange={v => { setSynthFilter(f => ({...f, resonance:v})); setActivePreset(null); }} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
+                            <TheoryCard
+                                title="Synthesizer — Ableton'da Nerede?"
+                                abletonPath="Instruments → Analog / Operator / Wavetable → İnstrument sürükle → ADSR + Filter paneli">
+                                Ableton'da her MIDI trackine bir <strong>instrument</strong> (Analog, Operator, Wavetable veya 3rd-party VST) yüklenir.
+                                Bu instrumentlerin hepsinde ADSR zarfı ve filter bulunur — aynen burada gördüğün kontroller.
+                                <strong>Analog</strong> bu basit subtractive synthesizer'ın birebir Ableton karşılığıdır.
+                                Cutoff ve Resonance Ableton'da <strong>EQ Eight</strong> veya instrumentin kendi filter sekmesinde bulunur.
+                            </TheoryCard>
+
                             <div className="hint-box">
-                                <strong>💡 İpucu:</strong> Klavye tuşlarını kullanarak da çalabilirsiniz! (A, S, D, F, G, H, J, K)
+                                <strong>💡 Klavye:</strong> A S D F G H J K tuşları = C4 D4 E4 F4 G4 A4 B4 C5
                             </div>
 
                             <div className="keyboard">
                                 {notes.map((note, i) => (
-                                    <div
-                                        key={i}
+                                    <div key={i}
                                         className={`key ${playingKey === note.label ? 'playing' : ''}`}
                                         onClick={() => playKey(note.freq, note.label)}
-                                        style={{marginRight: i < notes.length - 1 ? '4px' : '0'}}
-                                    >
+                                        style={{marginRight: i < notes.length-1 ? '4px' : '0'}}>
                                         <div className="key-label">{note.label}<br/><small>{note.key}</small></div>
                                     </div>
                                 ))}
@@ -1490,14 +1832,17 @@
                 const [barClipboard, setBarClipboard] = useState(null);
                 const [patternName, setPatternName] = useState('');
                 const [saveMsg, setSaveMsg] = useState('');
+                const [swing, setSwing] = useState(0); // 0-50 %
                 const intervalRef = useRef(null);
                 const dragRef = useRef(null);
                 const patternsRef = useRef(null);
                 const volumesRef = useRef(null);
+                const swingRef = useRef(0);
                 const rafRef = useRef(null);
 
                 useEffect(() => { patternsRef.current = patterns; }, [patterns]);
                 useEffect(() => { volumesRef.current = volumes; }, [volumes]);
+                useEffect(() => { swingRef.current = swing; }, [swing]);
 
                 // Mouse basma: drag takibini başlat — DOM element'i sakla, React state GÜNCELLEME
                 const handleBeatMouseDown = (e, ti, bi) => {
@@ -1584,16 +1929,18 @@
                     const interval = Math.round(60000 / bpm / 4);
                     intervalRef.current = setInterval(() => {
                         const b = beat;
-                        setCurrentBeat(b);
-                        setPatterns(prev => {
-                            prev.forEach((p, ti) => {
-                                if (p[b] > 0) {
-                                    const track = tracks[ti];
-                                    playSample(track.file, p[b], volumesRef.current[ti]);
-                                }
+                        // Swing: odd 16ths are delayed by swing% of one 16th duration
+                        const swingDelay = b % 2 === 1 ? Math.round((swingRef.current / 100) * interval * 0.66) : 0;
+                        const playBeat = () => {
+                            setCurrentBeat(b);
+                            setPatterns(prev => {
+                                prev.forEach((p, ti) => {
+                                    if (p[b] > 0) playSample(tracks[ti].file, p[b], volumesRef.current[ti]);
+                                });
+                                return prev;
                             });
-                            return prev;
-                        });
+                        };
+                        if (swingDelay > 0) setTimeout(playBeat, swingDelay); else playBeat();
                         beat = (beat + 1) % 16;
                     }, interval);
                 };
@@ -1653,27 +2000,60 @@
 
                         <div className="synth-container">
                             <div className="synth-header">
-                                <h2>🥁 Beat Maker - Step Sequencer</h2>
-                                <button
-                                    className={`power-button ${isPlaying ? 'active' : ''}`}
-                                    onClick={isPlaying ? stopPattern : startPattern}
-                                >
+                                <h2>🥁 Beat Maker — Step Sequencer</h2>
+                                <button className={`power-button ${isPlaying ? 'active' : ''}`}
+                                    onClick={isPlaying ? stopPattern : startPattern}>
                                     {isPlaying ? '⏸️ DURDUR' : '▶️ ÇAL'}
                                 </button>
                             </div>
 
-                            <div className="hint-box">
-                                <strong>💡 Nasıl Kullanılır:</strong> Tıkla = aç/kapat &nbsp;|&nbsp; Basılı tut + sürükle = velocity &nbsp;|&nbsp; <strong>📋 Kopyala → 📌 Yapıştır</strong> ile bar kopyala &nbsp;|&nbsp; Satır ismine tıkla = önizle
+                            {/* Genre Templates */}
+                            <div style={{marginBottom:'6px'}}>
+                                <h3 style={{fontSize:'0.78rem',color:'var(--dim)',letterSpacing:'0.1em',marginBottom:'8px'}}>🎵 TARZ ŞABLONU — tek tıkla yükle ve değiştir</h3>
+                                <p style={{fontSize:'0.72rem',color:'var(--dim)',marginBottom:'10px',lineHeight:'1.5',opacity:0.7}}>
+                                    Her tarzın kendine özgü kick/snare/hat paterni ve BPM'i vardır. Yükle, dinle, sonra değiştirmeye başla.
+                                </p>
+                                <div className="genre-row">
+                                    {genreTemplates.map((g, gi) => (
+                                        <button key={gi} className="genre-btn"
+                                            onClick={() => {
+                                                setPatterns(g.patterns.map(p => [...p]));
+                                                setBpm(g.bpm);
+                                                if (isPlaying) { stopPattern(); setTimeout(startPattern, 50); }
+                                            }}>
+                                            {g.name} <span style={{opacity:0.5,fontSize:'0.6rem'}}>{g.bpm} BPM</span>
+                                        </button>
+                                    ))}
+                                    <button className="genre-btn"
+                                        onClick={() => setPatterns(beatTracks.map(() => Array(16).fill(0)))}>
+                                        🗑 Temizle
+                                    </button>
+                                </div>
                             </div>
 
-                            <div style={{display:'flex', alignItems:'center', gap:'12px', margin:'16px 0'}}>
-                                <span style={{color:'rgba(238,235,230,0.45)', fontSize:'0.9rem'}}>BPM:</span>
-                                <input
-                                    type="range" min="60" max="180" value={bpm}
-                                    onChange={e => setBpm(Number(e.target.value))}
-                                    style={{width:'160px', accentColor:'#e8b84b'}}
-                                />
-                                <span style={{color:'#e8b84b', fontWeight:'bold', minWidth:'36px'}}>{bpm}</span>
+                            {/* BPM + Swing */}
+                            <div style={{display:'flex', alignItems:'center', gap:'16px', flexWrap:'wrap', margin:'12px 0 8px'}}>
+                                <div style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                                    <span style={{color:'var(--dim)',fontSize:'0.82rem'}}>BPM:</span>
+                                    <input type="range" min="60" max="200" value={bpm}
+                                        onChange={e => setBpm(Number(e.target.value))}
+                                        style={{width:'120px', accentColor:'#e8b84b'}} />
+                                    <span style={{color:'#e8b84b',fontWeight:'bold',minWidth:'32px'}}>{bpm}</span>
+                                </div>
+                                <div className="swing-row">
+                                    <label>Swing:</label>
+                                    <input type="range" min="0" max="50" value={swing}
+                                        onChange={e => setSwing(Number(e.target.value))}
+                                        style={{accentColor:'#d4722a'}} />
+                                    <span className="swing-val">{swing}%</span>
+                                    <span style={{fontSize:'0.62rem',color:'var(--dim)',opacity:0.6}}>
+                                        {swing === 0 ? 'Düz' : swing < 20 ? 'Hafif Groove' : swing < 35 ? 'Belirgin Swing' : 'Ağır Groove'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="hint-box">
+                                <strong>💡 Nasıl Kullanılır:</strong> Tıkla = aç/kapat &nbsp;|&nbsp; Yukarı sürükle = velocity &nbsp;|&nbsp; <strong>📋 Kopyala → 📌 Yapıştır</strong> ile bar kopyala &nbsp;|&nbsp; Satır ismine tıkla = önizle
                             </div>
 
                             {/* Bar kopyalama kontrolleri */}
@@ -1857,6 +2237,15 @@
                                 )}
                             </div>
                         </div>
+
+                        <TheoryCard
+                            title="Beat Maker — Ableton'da Nerede?"
+                            abletonPath="Instruments → Drum Rack → Step Sequencer (MIDI clip'e çift tıkla → Launch görünümü)">
+                            Ableton'da ritim genellikle <strong>Drum Rack</strong> ile oluşturulur. Her pad bir sample çalar — buradaki Kick/Snare/Hat/Bass tracklerinin karşılığı.
+                            <strong>Step Sequencer</strong> ise MIDI clip'in "Draw" modunda notalar yerleştirilerek yapılır. <br/><br/>
+                            <strong>Swing</strong>, Ableton'da <em>Groove Pool</em> veya clip'in Quantize ayarından uygulanır.
+                            <strong>BPM</strong> ise Ableton'un sağ üst köşesindeki tempo kutusundan ayarlanır.
+                        </TheoryCard>
 
                         <TaskPanel moduleId={2} />
                     </div>
