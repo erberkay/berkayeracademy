@@ -1736,10 +1736,15 @@ function buildMixerSection() {
     function startEqLoop(){
         getBeatCtx(); // ensure context + beatMasterGain exist
         if(!_analyser && beatMasterGain){
-            _analyser=beatMasterGain.context.createAnalyser(); _analyser.fftSize=2048; _analyser.smoothingTimeConstant=0.82;
+            _analyser=beatMasterGain.context.createAnalyser();
+            _analyser.fftSize=4096;
+            _analyser.minDecibels=-80;
+            _analyser.maxDecibels=0;
+            _analyser.smoothingTimeConstant=0.82;
             _freqData=new Uint8Array(_analyser.frequencyBinCount);
             beatMasterGain.connect(_analyser);
         }
+        const _minDb=-80, _maxDb=0;
         function drawEq(){
             if(!mixPlaying){ eqCanvases.forEach(({cv})=>{ const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height); }); return; }
             if(!_analyser){ _eqRaf=requestAnimationFrame(drawEq); return; }
@@ -1751,23 +1756,34 @@ function buildMixerSection() {
                 if(cv.width!==w){cv.width=w; cv.height=h;}
                 c.clearRect(0,0,w,h);
                 const vol=chState[idx].muted?0:chState[idx].vol;
-                if(vol<0.01){ _eqRaf=requestAnimationFrame(drawEq); return; }
                 const [hzLo,hzHi]=CH_HZ[idx];
                 const logLo=Math.log10(hzLo), logHi=Math.log10(hzHi);
                 const BAR_W=Math.max(2,Math.floor(w/60));
                 const NUM=Math.floor(w/BAR_W);
+                // dB grid lines: -48, -24, -12, -6 dBFS
+                [-48,-24,-12,-6].forEach(dbMark=>{
+                    const yg=h-((dbMark-_minDb)/(_maxDb-_minDb))*h;
+                    c.strokeStyle='rgba(255,255,255,0.08)'; c.lineWidth=1;
+                    c.beginPath(); c.moveTo(0,yg); c.lineTo(w,yg); c.stroke();
+                });
                 for(let i=0;i<NUM;i++){
                     const freq=Math.pow(10, logLo+(i/NUM)*(logHi-logLo));
                     const bin=Math.min(bins-1, Math.round(freq/nyq*bins));
                     let sum=0,cnt=0;
                     for(let k=Math.max(0,bin-1);k<=Math.min(bins-1,bin+1);k++){sum+=_freqData[k];cnt++;}
-                    const v=(sum/cnt)/255*vol;
-                    if(v<0.018) continue;
-                    const bh=Math.pow(v,0.72)*h;
+                    const byteVal=sum/cnt;
+                    const db=_minDb+(byteVal/255)*(_maxDb-_minDb); // dBFS from analyser
+                    if(db<-65) continue; // silence threshold
+                    // apply channel volume as dB offset
+                    const volDb=vol>0?20*Math.log10(vol):_minDb;
+                    const dbScaled=Math.min(_maxDb, db+volDb);
+                    if(dbScaled<-65) continue;
+                    const pct=Math.max(0,(dbScaled-_minDb)/(_maxDb-_minDb));
+                    const bh=Math.pow(pct,0.7)*h;
                     const grd=c.createLinearGradient(0,h-bh,0,h);
                     grd.addColorStop(0,ch.color+'ee'); grd.addColorStop(0.55,ch.color+'88'); grd.addColorStop(1,ch.color+'11');
                     c.fillStyle=grd; c.fillRect(i*BAR_W,h-bh,BAR_W-1,bh);
-                    // peak
+                    // peak dot
                     c.fillStyle=ch.color+'dd'; c.fillRect(i*BAR_W,h-bh-2,BAR_W-1,2);
                 }
             });
@@ -2234,45 +2250,184 @@ function buildInteractiveConcepts() {
         },
         // ── 6. Sidechain ─────────────────────────────────────────────
         { title:'Sidechain Compression', color:'var(--crimson)',
-          body:"Bass'i kick'e sidechain'le — kick vurduğunda bass kısılır. Dance müziğinin temel pump efekti.",
+          body:"Bass'i kick'e sidechain'le — kick vurduğunda bass kısılır. Dance müziğinin temel pump efekti. AudioWorklet ile sample-accurate gain reduction.",
           demo(card){
-            const viz=mk('div'); viz.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 6px;';
+            const viz=mk('div'); viz.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:8px 0 5px;';
             function meterCol(label,color){
                 const col=mk('div');
-                col.innerHTML=`<div style="font-size:.58rem;color:${color};margin-bottom:3px;text-align:center">${label}</div>`;
-                const wrap=mk('div'); wrap.style.cssText=`height:10px;background:var(--mid);border-radius:5px;overflow:hidden;`;
-                const bar=mk('div'); bar.style.cssText=`height:100%;background:${color};border-radius:5px;transition:width 60ms;`;
+                col.innerHTML=`<div style="font-size:.56rem;color:${color};margin-bottom:3px;text-align:center;letter-spacing:.03em">${label}</div>`;
+                const wrap=mk('div'); wrap.style.cssText=`height:8px;background:var(--mid);border-radius:4px;overflow:hidden;`;
+                const bar=mk('div'); bar.style.cssText=`height:100%;width:0%;background:${color};border-radius:4px;transition:width 40ms;`;
                 wrap.append(bar); col.append(wrap); return {col,bar};
             }
-            const kick=meterCol('KICK','#e8b84b'); kick.bar.style.width='0%';
-            const bass=meterCol('BASS ↓','#a855f7'); bass.bar.style.width='85%';
-            viz.append(kick.col,bass.col);
-            let running=false, iv=null;
-            const btn=mk('button','wave-btn','▶ Kick + Bass.wav — Pump'); btn.style.cssText+='width:100%;font-size:.62rem;padding:5px;';
-            btn.onclick=()=>{
-                if(running){ running=false; clearInterval(iv); kick.bar.style.width='0%'; bass.bar.style.width='85%'; btn.textContent='▶ Kick + Bass.wav — Pump'; btn.classList.remove('active'); return; }
+            const kickM=meterCol('KICK','#e8b84b');
+            const bassM=meterCol('BASS','#a855f7');
+            const grM=meterCol('GAIN RED.','#ff6b6b');
+            viz.append(kickM.col,bassM.col,grM.col);
+
+            const depthLbl=mk('div','slider-label'); const depthVal=mk('span','','88%'); depthVal.style.color='var(--crimson)';
+            depthLbl.append(mk('span','','Depth'),depthVal);
+            let _scWorklet=null;
+            const depthSl=makeSlider({min:0,max:1,step:.01,value:.88,onChange:v=>{
+                depthVal.textContent=Math.round(v*100)+'%';
+                if(_scWorklet) _scWorklet.parameters.get('depth').value=v;
+            }});
+            const relLbl=mk('div','slider-label'); const relVal=mk('span','','180ms'); relVal.style.color='var(--crimson)';
+            relLbl.append(mk('span','','Release'),relVal);
+            const relSl=makeSlider({min:0.04,max:0.5,step:.01,value:.18,onChange:v=>{
+                relVal.textContent=Math.round(v*1000)+'ms';
+                if(_scWorklet) _scWorklet.parameters.get('release').value=v;
+            }});
+
+            let running=false, meterRaf=null, stopTimer=null;
+            let scKickNodes=[], scBassNode=null, scKickHub=null, scKickAna=null, scBassAna=null;
+            let _lastGR=0;
+
+            // AudioWorklet processor — sample-accurate sidechain via envelope follower on kick input
+            const WORKLET_SRC=`class SidechainProcessor extends AudioWorkletProcessor{
+  constructor(){super();this._env=0;}
+  static get parameterDescriptors(){return[
+    {name:'depth',defaultValue:.88,minValue:0,maxValue:1,automationRate:'k-rate'},
+    {name:'attack',defaultValue:.003,minValue:.001,maxValue:.05,automationRate:'k-rate'},
+    {name:'release',defaultValue:.18,minValue:.02,maxValue:.6,automationRate:'k-rate'}
+  ];}
+  process(inputs,outputs,params){
+    const bL=inputs[0]?.[0],bR=inputs[0]?.[1],kL=inputs[1]?.[0];
+    const oL=outputs[0]?.[0],oR=outputs[0]?.[1];
+    if(!oL)return true;
+    const depth=params.depth[0];
+    const atk=Math.exp(-1/(params.attack[0]*sampleRate));
+    const rel=Math.exp(-1/(params.release[0]*sampleRate));
+    let sumGR=0;
+    for(let i=0;i<oL.length;i++){
+      const k=kL?Math.abs(kL[i]):0;
+      this._env=k>this._env?atk*this._env+(1-atk)*k:rel*this._env;
+      const g=1-depth*Math.min(1,this._env*5);
+      oL[i]=(bL?bL[i]:0)*g;
+      if(oR)oR[i]=(bR?bR[i]:0)*g;
+      sumGR+=(1-g);
+    }
+    this.port.postMessage(sumGR/oL.length);
+    return true;
+  }
+}
+registerProcessor('sidechain-processor',SidechainProcessor);`;
+
+            function stopSidechain(){
+                running=false;
+                if(meterRaf){cancelAnimationFrame(meterRaf);meterRaf=null;}
+                if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}
+                scKickNodes.forEach(n=>{try{n.stop();}catch{}});scKickNodes=[];
+                if(scBassNode){try{scBassNode.stop();}catch{};scBassNode=null;}
+                if(_scWorklet){try{_scWorklet.disconnect();}catch{};_scWorklet=null;}
+                if(scKickHub){try{scKickHub.disconnect();}catch{};scKickHub=null;}
+                if(scBassAna){try{scBassAna.disconnect();}catch{};scBassAna=null;}
+                if(scKickAna){try{scKickAna.disconnect();}catch{};scKickAna=null;}
+                _lastGR=0;
+                kickM.bar.style.width='0%'; bassM.bar.style.width='0%'; grM.bar.style.width='0%';
+                btn.textContent='▶ Kick + Bass — Sidechain Pump'; btn.classList.remove('active');
+            }
+
+            const btn=mk('button','wave-btn','▶ Kick + Bass — Sidechain Pump');
+            btn.style.cssText+='width:100%;font-size:.62rem;padding:5px;margin-top:4px;';
+            btn.onclick=async()=>{
+                if(running){stopSidechain();return;}
                 running=true; btn.textContent='⏹ Durdur'; btn.classList.add('active');
-                const c=getBeatCtx(); let beat=0;
-                iv=setInterval(()=>{
-                    if(!running){ clearInterval(iv); return; }
-                    // Kick.wav
-                    const kickBuf=beatBuffers[BEAT_TRACKS[0].file];
-                    if(kickBuf){ const src=c.createBufferSource(); src.buffer=kickBuf; const g=c.createGain(); g.gain.value=.85; src.connect(g); g.connect(c.destination); src.start(); }
-                    else { const o=c.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(100,c.currentTime); o.frequency.exponentialRampToValueAtTime(.001,c.currentTime+.3); const g=c.createGain(); g.gain.setValueAtTime(.5,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.3); o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+.35); }
-                    // bass.wav ducked (sidechain sim)
+                const c=getBeatCtx();
+
+                // Try loading AudioWorklet once per AudioContext
+                let useWorklet=false;
+                try{
+                    if(!c._scWorkletReady){
+                        const blob=new Blob([WORKLET_SRC],{type:'application/javascript'});
+                        const url=URL.createObjectURL(blob);
+                        await c.audioWorklet.addModule(url);
+                        URL.revokeObjectURL(url);
+                        c._scWorkletReady=true;
+                    }
+                    useWorklet=true;
+                }catch(e){useWorklet=false;}
+                if(!running)return;
+
+                const BPM=128, spb=60/BPM, BEATS=16, t0=c.currentTime+0.05;
+                const depth=parseFloat(depthSl.value)||.88, rel=parseFloat(relSl.value)||.18;
+
+                if(useWorklet){
+                    _scWorklet=new AudioWorkletNode(c,'sidechain-processor',{numberOfInputs:2,numberOfOutputs:1,outputChannelCount:[2]});
+                    _scWorklet.parameters.get('depth').value=depth;
+                    _scWorklet.parameters.get('release').value=rel;
+                    _scWorklet.port.onmessage=e=>{_lastGR=e.data;};
+
+                    scBassAna=c.createAnalyser(); scBassAna.fftSize=256; scBassAna.smoothingTimeConstant=0.5;
+                    scKickAna=c.createAnalyser(); scKickAna.fftSize=256; scKickAna.smoothingTimeConstant=0.3;
+                    _scWorklet.connect(scBassAna); scBassAna.connect(c.destination);
+
+                    // Bass → worklet input 0
                     const bassBuf=beatBuffers[BEAT_TRACKS[4].file];
-                    const t0=c.currentTime;
-                    if(bassBuf){ const src=c.createBufferSource(); src.buffer=bassBuf; src.loop=true; const g=c.createGain(); g.gain.setValueAtTime(.12,t0); g.gain.linearRampToValueAtTime(.55,t0+.22); src.connect(g); g.connect(c.destination); src.start(t0); src.stop(t0+.46); }
-                    else { const ob=c.createOscillator(); ob.type='sawtooth'; ob.frequency.value=55; const fb=c.createBiquadFilter(); fb.type='lowpass'; fb.frequency.value=220; const gb=c.createGain(); gb.gain.setValueAtTime(.15,t0); gb.gain.linearRampToValueAtTime(.45,t0+.22); ob.connect(fb); fb.connect(gb); gb.connect(c.destination); ob.start(t0); ob.stop(t0+.46); }
-                    // visual
-                    kick.bar.style.width='100%'; bass.bar.style.width='8%';
-                    setTimeout(()=>{ kick.bar.style.width='0%'; },70);
-                    setTimeout(()=>{ bass.bar.style.width='85%'; },220);
-                    if(++beat>=8){ clearInterval(iv); running=false; kick.bar.style.width='0%'; bass.bar.style.width='85%'; btn.textContent='▶ Kick + Bass.wav — Pump'; btn.classList.remove('active'); }
-                },480);
+                    const bg=c.createGain(); bg.gain.value=0.82;
+                    if(bassBuf){
+                        scBassNode=c.createBufferSource(); scBassNode.buffer=bassBuf; scBassNode.loop=true;
+                        scBassNode.connect(bg);
+                    } else {
+                        const ob=c.createOscillator(); ob.type='sawtooth'; ob.frequency.value=55;
+                        const flt=c.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=180;
+                        ob.connect(flt); flt.connect(bg);
+                        ob.start(t0); ob.stop(t0+BEATS*spb+0.5); scBassNode=ob;
+                    }
+                    bg.connect(_scWorklet,0,0);
+                    if(scBassNode.start) scBassNode.start(t0);
+
+                    // Kick hub → analyser + worklet input 1 (sidechain trigger)
+                    scKickHub=c.createGain(); scKickHub.gain.value=1;
+                    scKickHub.connect(scKickAna); scKickAna.connect(c.destination);
+                    scKickHub.connect(_scWorklet,0,1);
+                    const kickBuf=beatBuffers[BEAT_TRACKS[0].file];
+                    for(let i=0;i<BEATS;i++){
+                        const when=t0+i*spb;
+                        if(kickBuf){
+                            const src=c.createBufferSource(); src.buffer=kickBuf;
+                            src.connect(scKickHub); src.start(when); scKickNodes.push(src);
+                        } else {
+                            const o=c.createOscillator(); o.type='sine';
+                            o.frequency.setValueAtTime(90,when); o.frequency.exponentialRampToValueAtTime(0.001,when+.28);
+                            const og=c.createGain(); og.gain.setValueAtTime(.7,when); og.gain.exponentialRampToValueAtTime(.001,when+.28);
+                            o.connect(og); og.connect(scKickHub); o.start(when); o.stop(when+.32); scKickNodes.push(o);
+                        }
+                    }
+                    // Meter loop
+                    const fbuf=new Float32Array(128);
+                    function meterLoop(){
+                        if(!running)return;
+                        scKickAna.getFloatTimeDomainData(fbuf);
+                        const rmsK=Math.sqrt(fbuf.reduce((s,v)=>s+v*v,0)/fbuf.length);
+                        kickM.bar.style.width=Math.min(100,rmsK*380)+'%';
+                        scBassAna.getFloatTimeDomainData(fbuf);
+                        const rmsB=Math.sqrt(fbuf.reduce((s,v)=>s+v*v,0)/fbuf.length);
+                        bassM.bar.style.width=Math.min(100,rmsB*220)+'%';
+                        grM.bar.style.width=Math.min(100,_lastGR*100)+'%';
+                        meterRaf=requestAnimationFrame(meterLoop);
+                    }
+                    meterLoop();
+                } else {
+                    // Fallback: simulated pump via scheduled gain ramps
+                    for(let i=0;i<BEATS;i++){
+                        const when=t0+i*spb;
+                        const kb=beatBuffers[BEAT_TRACKS[0].file];
+                        if(kb){const src=c.createBufferSource();src.buffer=kb;const g=c.createGain();g.gain.value=.85;src.connect(g);g.connect(c.destination);src.start(when);scKickNodes.push(src);}
+                        else{const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(90,when);o.frequency.exponentialRampToValueAtTime(.001,when+.28);const og=c.createGain();og.gain.setValueAtTime(.7,when);og.gain.exponentialRampToValueAtTime(.001,when+.28);o.connect(og);og.connect(c.destination);o.start(when);o.stop(when+.32);scKickNodes.push(o);}
+                        // bass grain with duck ramp
+                        const bb=beatBuffers[BEAT_TRACKS[4].file];
+                        if(bb){const src=c.createBufferSource();src.buffer=bb;const g=c.createGain();g.gain.setValueAtTime(.1,when);g.gain.linearRampToValueAtTime(1-depth,when+.02);g.gain.linearRampToValueAtTime(.78,when+rel);src.connect(g);g.connect(c.destination);src.start(when);src.stop(when+spb+.05);scBassNode=src;}
+                        // visual pulse
+                        const delay=i*spb*1000;
+                        setTimeout(()=>{if(!running)return;kickM.bar.style.width='100%';bassM.bar.style.width=Math.round((1-depth)*100)+'%';grM.bar.style.width=Math.round(depth*100)+'%';},delay);
+                        setTimeout(()=>{if(!running)return;kickM.bar.style.width='10%';bassM.bar.style.width='80%';grM.bar.style.width='5%';},delay+rel*1000);
+                    }
+                }
+                stopTimer=setTimeout(()=>{if(running)stopSidechain();},(BEATS*spb+0.6)*1000);
             };
-            conceptCleanups.push(()=>{ if(running){ running=false; clearInterval(iv); } });
-            card.append(viz,btn);
+            conceptCleanups.push(stopSidechain);
+            card.append(viz,depthLbl,depthSl,relLbl,relSl,btn);
           }
         },
         // ── 7. Stereo Field ──────────────────────────────────────────
@@ -2369,10 +2524,10 @@ function buildInteractiveConcepts() {
         },
         // ── 9. Delay ─────────────────────────────────────────────────
         { title:'Delay', color:'var(--ice)',
-          body:'Sesin gecikmeli kopyaları. Ping-Pong delay stereo genişlik katar. BPM-sync delay (1/4, 1/8) ritimle uyum sağlar.',
+          body:'Sesin gecikmeli kopyaları. Feedback döngüsünde HPF+LPF ile her echo\'da tiz kaybolur — doğal oda aksi. BPM-sync (1/4, 1/8) ile ritim uyumu.',
           demo(card){
-            let delayMs=250, feedback=0.45, wet=0.5;
-            let dlySrc=null, dlyCtx=null, dlyNode=null, dlyFbGain=null, dlyWetGain=null, dlyDryGain=null;
+            let delayMs=250, feedback=0.45, wet=0.5, toneHz=4500;
+            let dlySrc=null, dlyCtx=null, dlyNode=null, dlyFbGain=null, dlyWetGain=null, dlyDryGain=null, dlyHpf=null, dlyLpf=null;
             let dlyLeadBuf=null, dlyRaf=null;
 
             // sliders
@@ -2386,6 +2541,7 @@ function buildInteractiveConcepts() {
             card.append(slRow('Delay Time','var(--ice)',20,600,1,delayMs,v=>Math.round(v)+'ms',v=>{delayMs=v;if(dlyNode)dlyNode.delayTime.setTargetAtTime(v/1000,dlyCtx.currentTime,.01);}));
             card.append(slRow('Feedback','var(--ice)',0,.92,.01,feedback,v=>Math.round(v*100)+'%',v=>{feedback=v;if(dlyFbGain)dlyFbGain.gain.setTargetAtTime(v,dlyCtx.currentTime,.01);}));
             card.append(slRow('Wet','var(--ice)',0,1,.01,wet,v=>Math.round(v*100)+'%',v=>{wet=v;if(dlyWetGain){dlyWetGain.gain.setTargetAtTime(v*.7,dlyCtx.currentTime,.01);dlyDryGain.gain.setTargetAtTime((1-v)*.7,dlyCtx.currentTime,.01);}}));
+            card.append(slRow('Tone (feedback LPF)','var(--ice)',500,18000,100,toneHz,v=>v>=1000?(Math.round(v/100)/10)+'kHz':Math.round(v)+'Hz',v=>{toneHz=v;if(dlyLpf)dlyLpf.frequency.setTargetAtTime(v,dlyCtx.currentTime,.02);}));
 
             // echo visualiser canvas
             const ecCv=document.createElement('canvas'); ecCv.height=36;
@@ -2427,10 +2583,13 @@ function buildInteractiveConcepts() {
                     dlyWetGain=dlyCtx.createGain(); dlyWetGain.gain.value=wet*.7;
                     dlyNode=dlyCtx.createDelay(2); dlyNode.delayTime.value=delayMs/1000;
                     dlyFbGain=dlyCtx.createGain(); dlyFbGain.gain.value=feedback;
+                    // HPF+LPF in feedback: each echo gets darker (high freqs bleed, low freqs cut)
+                    dlyHpf=dlyCtx.createBiquadFilter(); dlyHpf.type='highpass'; dlyHpf.frequency.value=100; dlyHpf.Q.value=0.5;
+                    dlyLpf=dlyCtx.createBiquadFilter(); dlyLpf.type='lowpass'; dlyLpf.frequency.value=toneHz; dlyLpf.Q.value=0.5;
                     // Signal path: src → dryGain → out
-                    //                   → dlyNode → fbGain → dlyNode (loop)
+                    //                   → dlyNode → fbGain → hpf → lpf → dlyNode (loop)
                     //                   dlyNode → wetGain → out
-                    dlyNode.connect(dlyFbGain); dlyFbGain.connect(dlyNode);
+                    dlyNode.connect(dlyFbGain); dlyFbGain.connect(dlyHpf); dlyHpf.connect(dlyLpf); dlyLpf.connect(dlyNode);
                     dlyNode.connect(dlyWetGain);
                     dlyDryGain.connect(dlyCtx.destination); dlyWetGain.connect(dlyCtx.destination);
                     dlySrc=dlyCtx.createBufferSource(); dlySrc.buffer=dlyLeadBuf; dlySrc.loop=true;
@@ -2441,7 +2600,7 @@ function buildInteractiveConcepts() {
                 }catch(e){ btn.disabled=false; btn.textContent='▶ Lead Loop + Delay'; }
             };
             card.append(btn);
-            conceptCleanups.push(()=>{ if(dlySrc){try{dlySrc.stop();}catch{} dlySrc=null;} cancelAnimationFrame(dlyRaf); if(dlyCtx){try{dlyCtx.suspend();}catch{}} });
+            conceptCleanups.push(()=>{ if(dlySrc){try{dlySrc.stop();}catch{} dlySrc=null;} cancelAnimationFrame(dlyRaf); dlyHpf=null; dlyLpf=null; if(dlyCtx){try{dlyCtx.suspend();}catch{}} });
           }
         },
         // ── 10. Limiter ───────────────────────────────────────────────
