@@ -359,7 +359,7 @@ const state = {
     activePreset: null,
     beatPatterns: Array.from({length:5}, () => new Array(16).fill(0)),
     beatVolumes: [80,80,80,80,80],
-    bpm: 120,
+    bpm: 125,
     swing: 0,
     completedTasks: {},
 };
@@ -1671,6 +1671,7 @@ function buildArrangementBuilder() {
         }
     }
 
+    // ── Audio buffer cache ──
     const arrBufs={};
     async function loadArrBuf(file){
         if(file in arrBufs) return arrBufs[file];
@@ -1682,49 +1683,91 @@ function buildArrangementBuilder() {
             return arrBufs[file];
         }catch(e){ arrBufs[file]=null; return null; }
     }
-    function playColSound(col){
-        if(!arrACtx){ arrACtx=new(window.AudioContext||window.webkitAudioContext)(); }
-        if(arrACtx.state==='suspended') arrACtx.resume();
-        tracks.forEach(async (track,r)=>{
+
+    // Active sources list — used to stop all audio cleanly
+    let activeSrcs=[];
+
+    // Bass pattern: 16 steps per bar (1=play, 0=rest)
+    const BASS_PAT=[1,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0];
+
+    function playColAudio(col){
+        // Timing constants
+        const bpm   = state.bpm;
+        const beat  = 60/bpm;          // 1 quarter note (seconds)
+        const s16   = beat/4;           // 1 sixteenth note
+        const oneBar= beat*4;           // 1 bar
+        const colDur= oneBar*4;         // 4 bars per column
+        const t0    = arrACtx.currentTime + 0.04; // tiny lookahead
+
+        tracks.forEach((track,r)=>{
             if(!cells[r][col]) return;
-            const isLoop=track.note==='loop';
-            const g=arrACtx.createGain(); g.gain.value=isLoop?0.45:0.7;
-            g.connect(arrACtx.destination);
-            const buf=await loadArrBuf(track.file);
-            if(buf){
+            const buf=arrBufs[track.file];
+
+            function spawnSrc(when,vol,buf){
+                if(!buf) return;
+                const g=arrACtx.createGain(); g.gain.value=vol; g.connect(arrACtx.destination);
                 const src=arrACtx.createBufferSource(); src.buffer=buf;
-                src.connect(g); src.start();
-                if(isLoop){ setTimeout(()=>{ try{src.stop();}catch(_){} },820); }
-                else{ g.gain.exponentialRampToValueAtTime(0.001,arrACtx.currentTime+0.55); }
-            } else {
-                const freq=track.freqs[col%track.freqs.length];
-                g.gain.setValueAtTime(0.12,arrACtx.currentTime);
-                g.gain.exponentialRampToValueAtTime(0.001,arrACtx.currentTime+0.4);
-                const o=arrACtx.createOscillator();
-                o.type=r<2?'square':r===2?'sawtooth':'sine';
-                o.frequency.value=freq; o.connect(g); o.start(); o.stop(arrACtx.currentTime+0.4);
+                src.connect(g); src.start(when);
+                activeSrcs.push(src);
+                return src;
+            }
+
+            if(track.note==='loop'){
+                // Loop for the full column duration
+                if(buf){
+                    const g=arrACtx.createGain(); g.gain.value=0.42; g.connect(arrACtx.destination);
+                    const src=arrACtx.createBufferSource(); src.buffer=buf;
+                    src.loop=true; src.connect(g);
+                    src.start(t0); src.stop(t0+colDur);
+                    activeSrcs.push(src);
+                }
+            } else if(track.note==='1/4'){
+                // Quarter note: 4 hits per bar × 4 bars = 16 hits
+                for(let i=0;i<16;i++) spawnSrc(t0+i*beat, 0.7, buf);
+            } else if(track.note==='1/16'){
+                // 16th note: 16 hits per bar × 4 bars = 64 hits
+                // Accent on downbeats (i%4===0) and off-beats lighter
+                for(let i=0;i<64;i++) spawnSrc(t0+i*s16, i%4===0?0.5:0.28, buf);
+            } else if(track.note==='E1→A1'){
+                // Bass: repeat BASS_PAT across 4 bars
+                for(let bar=0;bar<4;bar++){
+                    BASS_PAT.forEach((v,step)=>{
+                        if(v) spawnSrc(t0+bar*oneBar+step*s16, 0.65, buf);
+                    });
+                }
             }
         });
     }
 
-    function advanceCol(){
+    async function startColAsync(col){
+        // Preload all active track buffers for this column
+        const loads=[];
+        tracks.forEach((track,r)=>{ if(cells[r][col] && !(track.file in arrBufs)) loads.push(loadArrBuf(track.file)); });
+        if(loads.length) await Promise.all(loads);
         if(!arrPlaying) return;
-        arrCol=(arrCol+1)%COLS;
-        highlightCol(arrCol);
-        playColSound(arrCol);
-        arrTimeout=setTimeout(advanceCol,900);
+        highlightCol(col);
+        playColAudio(col);
+        const colMs=(60/state.bpm)*4*4*1000; // 4 bars in ms
+        arrTimeout=setTimeout(()=>{
+            if(!arrPlaying) return;
+            arrCol=(arrCol+1)%COLS;
+            startColAsync(arrCol);
+        }, colMs);
     }
 
     const playBtn=mk('button','power-button','▶ PLAY ARRANGEMENT');
     playBtn.style.marginTop='12px';
-    playBtn.onclick=()=>{
+    playBtn.onclick=async ()=>{
         if(arrPlaying){
             arrPlaying=false; clearTimeout(arrTimeout); arrCol=-1; highlightCol(-1);
+            activeSrcs.forEach(s=>{ try{s.stop();}catch(_){} }); activeSrcs=[];
             playBtn.textContent='▶ PLAY ARRANGEMENT'; playBtn.classList.remove('active');
         } else {
-            arrPlaying=true; arrCol=-1;
+            if(!arrACtx){ arrACtx=new(window.AudioContext||window.webkitAudioContext)(); }
+            if(arrACtx.state==='suspended') arrACtx.resume();
+            arrPlaying=true; arrCol=0;
             playBtn.textContent='⏹ DURDUR'; playBtn.classList.add('active');
-            advanceCol();
+            startColAsync(0);
         }
     };
 
