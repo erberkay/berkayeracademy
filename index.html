@@ -591,6 +591,7 @@
     const _auth = firebase.auth();
     _db = firebase.firestore();
     loadTestimonials();
+    renderForumPreview();
     // ── Auth bar ──────────────────────────────────────────────────
     function updateAuthBar(user) {
       const bar = document.getElementById('authBar');
@@ -629,12 +630,14 @@
     async function renderForumPreview(user) {
       const c = document.getElementById('forumPreview');
       if (!c) return;
-      if (!user) {
-        c.innerHTML = '<div class="forum-preview-login">Soruları görmek için sağ üstten giriş yap →</div>';
+      c.innerHTML = '<div class="forum-preview-empty">Yükleniyor...</div>';
+      let snap;
+      try {
+        snap = await _db.collection('forum').orderBy('createdAt','desc').limit(3).get();
+      } catch(e) {
+        c.innerHTML = '<div class="forum-preview-login">Soruları görmek için <a href="forum.html" style="color:#e8b84b;">foruma git</a> →</div>';
         return;
       }
-      c.innerHTML = '<div class="forum-preview-empty">Yükleniyor...</div>';
-      const snap = await _db.collection('forum').orderBy('createdAt','desc').limit(3).get();
       if (snap.empty) {
         c.innerHTML = '<div class="forum-preview-empty">Henüz soru yok. İlk soruyu sor!</div>';
         return;
@@ -662,7 +665,6 @@
     // ── Auth state ────────────────────────────────────────────────
     _auth.onAuthStateChanged(user => {
       updateAuthBar(user);
-      renderForumPreview(user);
     });
 
   } catch(e) { console.warn('Firebase init:', e.message); }

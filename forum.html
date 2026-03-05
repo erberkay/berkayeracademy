@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Topluluk Forumu — Berkay Er</title>
-<meta name="description" content="Berkay Er öğrenci topluluğu. Ableton, ses tasarımı, mix ve prodüksiyon hakkında sor, yanıtla, paylaş.">
+<title>Topluluk Forumu — Elektronik Müzik</title>
+<meta name="description" content="Elektronik Müzik topluluğu. Ableton, ses tasarımı, mix ve prodüksiyon hakkında sor, yanıtla, paylaş.">
 <meta name="theme-color" content="#060609">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Topluluk Forumu — Berkay Er">
+<meta property="og:title" content="Elektronik Müzik topluluğu">
 <meta property="og:description" content="Ableton, ses tasarımı, mix ve prodüksiyon hakkında soru sor ve yanıtla.">
 <meta property="og:image" content="https://erberkay.github.io/Producer.School/assets/img/DSC00141.jpg">
 <meta property="og:url" content="https://erberkay.github.io/Producer.School/forum.html">
@@ -131,6 +131,18 @@ body::before {
 .reply-send:hover { background:rgba(232,184,75,.22); }
 .reply-send:disabled { opacity:.4; cursor:default; }
 .loading-replies { padding:12px 20px; font-size:.65rem; color:var(--dim); }
+
+/* ── Search ── */
+.search-wrap { position:relative; margin-bottom:12px; }
+.search-icon { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:rgba(238,235,230,.22); font-size:.75rem; pointer-events:none; }
+.search-input { width:100%; background:var(--card); border:1px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.72rem; padding:9px 12px 9px 32px; outline:none; transition:border-color .15s; }
+.search-input:focus { border-color:var(--gold); }
+.search-input::placeholder { color:rgba(238,235,230,.22); }
+.search-clear { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(238,235,230,.3); cursor:pointer; font-size:.8rem; line-height:1; padding:2px; display:none; }
+.search-clear.visible { display:block; }
+
+/* ── Category badge ── */
+.cat-badge { font-size:.5rem; padding:2px 8px; border-radius:10px; background:rgba(143,200,232,.08); border:1px solid rgba(143,200,232,.22); color:var(--ice); font-family:'Space Mono',monospace; white-space:nowrap; }
 
 /* ── Login wall ── */
 .login-wall { background:var(--card); border:1px solid var(--mid); border-radius:8px; padding:48px 24px; text-align:center; }
@@ -283,9 +295,13 @@ function updateStats(posts, totalReplies) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────
-let _filter = 'all'; // 'all' | 'open' | 'solved'
+let _filter    = 'all';
+let _catFilter = 'all';
+let _search    = '';
+let _allPosts  = [];
+const CAT_LIST = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
 
-async function renderFeed() {
+async function renderFeed(forceReload) {
   const feed = document.getElementById('feed');
   feed.innerHTML = '';
   if (!_user) {
@@ -293,45 +309,79 @@ async function renderFeed() {
     return;
   }
 
-  // New post button → separate page
   const npBtn = document.createElement('a'); npBtn.className = 'new-post-btn';
   npBtn.textContent = '+ Konu Aç'; npBtn.href = 'new-post.html';
   feed.append(npBtn);
 
-  // Load posts
-  const snap = await db.collection('forum').orderBy('createdAt','desc').limit(60).get();
-  const posts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-  const totalReplies = posts.reduce((s,p) => s + (p.replyCount||0), 0);
-  updateStats(posts.length, totalReplies);
+  if (forceReload || !_allPosts.length) {
+    const snap = await db.collection('forum').orderBy('createdAt','desc').limit(60).get();
+    _allPosts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  }
+  updateStats(_allPosts.length, _allPosts.reduce((s,p) => s + (p.replyCount||0), 0));
 
-  // Filter bar
-  const solved = posts.filter(p => p.solved).length;
-  const open   = posts.length - solved;
-  const fbar   = document.createElement('div'); fbar.className = 'filter-bar';
-  [
-    {key:'all',   label:`Tümü (${posts.length})`},
-    {key:'open',  label:`Açık (${open})`},
-    {key:'solved',label:`✓ Çözüldü (${solved})`},
-  ].forEach(f => {
-    const b = document.createElement('button');
-    b.className = 'fbtn' + (_filter===f.key?' active':'');
-    b.textContent = f.label;
-    b.onclick = async () => { _filter=f.key; await renderFeed(); };
-    fbar.append(b);
-  });
+  // Search input
+  const sw = document.createElement('div'); sw.className = 'search-wrap';
+  const si = document.createElement('span'); si.className = 'search-icon'; si.textContent = '⌕';
+  const sinp = document.createElement('input'); sinp.className = 'search-input'; sinp.type = 'text';
+  sinp.placeholder = 'Konularda ara...'; sinp.value = _search;
+  const scl = document.createElement('button'); scl.className = 'search-clear' + (_search?' visible':''); scl.textContent = '✕'; scl.type = 'button';
+  sinp.oninput = () => { _search = sinp.value.trim().toLowerCase(); scl.classList.toggle('visible', !!_search); renderPosts(); };
+  scl.onclick = () => { _search=''; sinp.value=''; scl.classList.remove('visible'); renderPosts(); };
+  sw.append(si, sinp, scl); feed.append(sw);
+
+  // Solved/open filter
+  const solved = _allPosts.filter(p => p.solved).length;
+  const open   = _allPosts.length - solved;
+  const fbar = document.createElement('div'); fbar.className = 'filter-bar';
+  [{key:'all',label:`Tümü (${_allPosts.length})`},{key:'open',label:`Açık (${open})`},{key:'solved',label:`✓ Çözüldü (${solved})`}]
+    .forEach(f => {
+      const b = document.createElement('button');
+      b.className = 'fbtn' + (_filter===f.key?' active':'');
+      b.textContent = f.label;
+      b.onclick = () => { _filter=f.key; renderPosts(); };
+      fbar.append(b);
+    });
   feed.append(fbar);
 
-  let visible = posts;
-  if (_filter === 'open')   visible = posts.filter(p => !p.solved);
-  if (_filter === 'solved') visible = posts.filter(p =>  p.solved);
+  // Category filter
+  const cfbar = document.createElement('div'); cfbar.className = 'filter-bar'; cfbar.style.marginTop='-4px';
+  ['Tümü', ...CAT_LIST].forEach(c => {
+    const key = c === 'Tümü' ? 'all' : c;
+    const b = document.createElement('button');
+    b.className = 'fbtn' + (_catFilter===key?' active':'');
+    b.textContent = c === 'Tümü' ? '# Tümü' : c;
+    b.style.fontSize = '.55rem';
+    b.onclick = () => { _catFilter=key; renderPosts(); };
+    cfbar.append(b);
+  });
+  feed.append(cfbar);
+
+  const postList = document.createElement('div'); postList.id = 'postList';
+  feed.append(postList);
+  renderPosts(postList);
+}
+
+function renderPosts(postList) {
+  if (!postList) postList = document.getElementById('postList');
+  if (!postList) return;
+  postList.innerHTML = '';
+
+  let visible = _allPosts;
+  if (_filter === 'open')   visible = visible.filter(p => !p.solved);
+  if (_filter === 'solved') visible = visible.filter(p =>  p.solved);
+  if (_catFilter !== 'all') visible = visible.filter(p => (p.category||'Genel') === _catFilter);
+  if (_search) visible = visible.filter(p =>
+    (p.title||'').toLowerCase().includes(_search) ||
+    (p.text||'').toLowerCase().includes(_search) ||
+    (p.authorName||'').toLowerCase().includes(_search)
+  );
 
   if (!visible.length) {
     const e = document.createElement('div'); e.className = 'empty-state';
-    e.textContent = 'Henüz konu yok. İlk konuyu sen aç!';
-    feed.append(e); return;
+    e.textContent = _search ? `"${_search}" için sonuç bulunamadı.` : 'Henüz konu yok. İlk konuyu sen aç!';
+    postList.append(e); return;
   }
-
-  visible.forEach(post => renderPost(post, feed));
+  visible.forEach(post => renderPost(post, postList));
 }
 
 function renderPost(post, container) {
@@ -366,6 +416,10 @@ function renderPost(post, container) {
   if (post.solved) {
     const sb = document.createElement('span'); sb.className = 'solved-badge'; sb.textContent = '✓ Çözüldü';
     meta.append(sb);
+  }
+  if (post.category && post.category !== 'Genel') {
+    const cb = document.createElement('span'); cb.className = 'cat-badge'; cb.textContent = post.category;
+    meta.append(cb);
   }
   content.append(meta);
   if (post.title) {
@@ -405,7 +459,7 @@ function renderPost(post, container) {
     solveBtn.textContent = post.solved ? '✓ Çözüldü' : '⬡ Çözüldü işaretle';
     solveBtn.onclick = async () => {
       await db.collection('forum').doc(post.id).update({ solved: !post.solved });
-      await renderFeed();
+      _allPosts = []; await renderFeed(true);
     };
     actions.append(solveBtn);
 
@@ -418,7 +472,7 @@ function renderPost(post, container) {
       rSnap.docs.forEach(d => batch.delete(d.ref));
       batch.delete(db.collection('forum').doc(post.id));
       await batch.commit();
-      await renderFeed();
+      _allPosts = []; await renderFeed(true);
     };
     actions.append(del);
   }
@@ -455,6 +509,7 @@ async function loadReplies(postId, wrap, solved) {
     const ta   = document.createElement('textarea'); ta.className = 'reply-ta'; ta.rows = 2;
     ta.placeholder = 'Yanıtını yaz...';
     const btn  = document.createElement('button'); btn.className = 'reply-send'; btn.textContent = 'Yanıtla';
+    ta.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') btn.click(); });
     btn.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) return;
       btn.disabled = true; btn.textContent = '⏳';

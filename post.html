@@ -57,6 +57,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .badge { font-size:.52rem; padding:3px 9px; border-radius:10px; font-family:'Space Mono',monospace; }
 .badge-solved { background:rgba(100,200,100,.12); border:1px solid rgba(100,200,100,.3); color:#6fc; }
 .badge-open   { background:rgba(232,184,75,.08); border:1px solid rgba(232,184,75,.2); color:var(--gold); }
+.badge-cat    { background:rgba(143,200,232,.08); border:1px solid rgba(143,200,232,.22); color:var(--ice); }
 .post-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.3rem,3vw,1.8rem); color:var(--white); letter-spacing:.03em; line-height:1.2; margin-bottom:12px; }
 .post-body { font-size:.85rem; line-height:1.85; color:var(--white); white-space:pre-wrap; word-break:break-word; }
 .post-body b { color:var(--gold); }
@@ -231,6 +232,10 @@ async function renderPost() {
   b.className = 'badge ' + (post.solved ? 'badge-solved' : 'badge-open');
   b.textContent = post.solved ? '✓ Çözüldü' : '● Açık';
   badges.append(b);
+  if (post.category && post.category !== 'Genel') {
+    const cb = document.createElement('span'); cb.className = 'badge badge-cat'; cb.textContent = post.category;
+    badges.append(cb);
+  }
   authorRow.append(avEl, authorInfo, badges);
   header.append(authorRow);
 
@@ -331,8 +336,9 @@ async function renderReplies(layout, post) {
     const myPhoto = profile?.photoURL || _user.photoURL || null;
     row.append(makeAvatar(myPhoto, 30, _user.uid));
     const ta = document.createElement('textarea'); ta.className = 'reply-ta';
-    ta.placeholder = 'Yanıtını buraya yaz...';
+    ta.placeholder = 'Yanıtını buraya yaz... (Ctrl+Enter ile gönder)';
     const sub = document.createElement('button'); sub.className = 'reply-submit'; sub.textContent = 'Yanıtla';
+    ta.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') sub.click(); });
     sub.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) return;
       sub.disabled = true; sub.textContent = '⏳';

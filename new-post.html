@@ -62,6 +62,12 @@ body::before {
 .tb-btn b { font-weight:bold; }
 .tb-sep { width:1px; background:var(--mid); margin:2px 4px; }
 
+/* ── Category chips ── */
+.cat-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.cat-chip { background:var(--mid2); border:1px solid var(--mid); color:var(--dim); font-family:'Space Mono',monospace; font-size:.63rem; padding:5px 14px; border-radius:20px; cursor:pointer; transition:all .15s; }
+.cat-chip.active { background:rgba(232,184,75,.1); border-color:var(--gold); color:var(--gold); }
+.cat-chip:hover:not(.active) { border-color:rgba(238,235,230,.2); color:var(--white); }
+
 .body-input { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.82rem; padding:14px 16px; resize:vertical; min-height:220px; outline:none; line-height:1.8; transition:border-color .15s; }
 .body-input:focus { border-color:var(--gold); }
 .body-input::placeholder { color:rgba(238,235,230,.2); }
@@ -184,6 +190,22 @@ function renderForm(user) {
 
   const card = document.createElement('div'); card.className = 'form-card';
 
+  // ── Category section ──
+  const CATS = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
+  let selectedCat = 'Genel';
+  const secCat = document.createElement('div'); secCat.className = 'form-section';
+  const lblCat = document.createElement('div'); lblCat.className = 'form-label';
+  lblCat.innerHTML = '<span>Kategori</span>';
+  const catWrap = document.createElement('div'); catWrap.className = 'cat-chips';
+  CATS.forEach(c => {
+    const chip = document.createElement('button'); chip.type = 'button';
+    chip.className = 'cat-chip' + (c === selectedCat ? ' active' : '');
+    chip.textContent = c;
+    chip.onclick = () => { selectedCat = c; catWrap.querySelectorAll('.cat-chip').forEach(ch => ch.classList.remove('active')); chip.classList.add('active'); };
+    catWrap.append(chip);
+  });
+  secCat.append(lblCat, catWrap); card.append(secCat);
+
   // ── Title section ──
   const sec1 = document.createElement('div'); sec1.className = 'form-section';
   const lbl1 = document.createElement('div'); lbl1.className = 'form-label';
@@ -255,6 +277,7 @@ function renderForm(user) {
       await db.collection('forum').add({
         title,
         text:           body,
+        category:       selectedCat,
         authorName:     user.displayName?.split(' ')[0] || 'Üye',
         authorEmail:    user.email,
         authorId:       user.uid,
