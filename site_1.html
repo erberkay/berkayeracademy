@@ -3042,16 +3042,47 @@ function buildMasteringSection() {
         if(grNode){ const gr=Math.abs(grNode.reduction); grBar.style.width=Math.min(100,gr*8)+'%'; grVal.textContent=gr>0.1?'-'+gr.toFixed(1)+' dB':'0 dB'; }
     }
 
-    const wrap=mk('div');
+    // ── Playback ───────────────────────────────────────────────────
+    let mastPlaying=false, mastLeadSrc=null, mastPadSrc=null;
+    function stopMastPlay(){
+        mastPlaying=false;
+        if(mastLeadSrc){try{mastLeadSrc.stop();}catch{} mastLeadSrc=null;}
+        if(mastPadSrc){try{mastPadSrc.stop();}catch{} mastPadSrc=null;}
+        stopBeat(false);
+    }
 
-    // Status bar
-    const statusBar=mk('div'); statusBar.style.cssText='font-size:.64rem;padding:8px 12px;border-radius:4px;margin-bottom:10px;background:rgba(143,200,232,.07);border:1px solid rgba(143,200,232,.2);color:#8fc8e8;';
-    statusBar.textContent='💡 Beat Maker\'da bir pattern çal — mastering zinciri canlı olarak uygulanır';
-    wrap.append(statusBar);
+    const wrap=mk('div');
 
     const topDesc=mk('div'); topDesc.style.cssText='font-size:.65rem;color:var(--dim);line-height:1.6;margin-bottom:10px;';
     topDesc.innerHTML='Zincir: <span style="color:#ff9f43">Saturator</span> → <span style="color:#a855f7">Mono Bass</span> → <span style="color:#d4722a">Glue Comp</span> → <span style="color:#8fc8e8">5-Band EQ</span> → <span style="color:#6fc">Limiter</span>';
     wrap.append(topDesc);
+
+    const mastPlayBtn=mk('button','power-button','▶ PATTERN ÇAL');
+    mastPlayBtn.style.cssText='width:100%;margin-bottom:10px;';
+    mastPlayBtn.onclick=()=>{
+        if(mastPlaying){ stopMastPlay(); mastPlayBtn.textContent='▶ PATTERN ÇAL'; mastPlayBtn.classList.remove('active'); return; }
+        const hasPattern=state.beatPatterns.some(r=>r.some(v=>v>0));
+        if(!hasPattern){
+            alert('Önce Beat Maker\'da bir pattern kur!'); return;
+        }
+        // Build chain first (ensures beatCtx + beatMasterGain exist)
+        buildChain();
+        // Start drum beat
+        if(!beatPlaying) startBeat();
+        // Lead Loop → beatMasterGain (goes through mastering chain)
+        const bc=getBeatCtx();
+        function loadAndPlay(file, cb){
+            fetch(file).then(r=>r.arrayBuffer()).then(ab=>bc.decodeAudioData(ab)).then(buf=>{
+                if(!mastPlaying) return;
+                const src=bc.createBufferSource(); src.buffer=buf; src.loop=true;
+                src.connect(beatMasterGain); src.start(); cb(src);
+            }).catch(()=>{});
+        }
+        loadAndPlay('assets/audio/Lead Loop.wav', s=>{ mastLeadSrc=s; });
+        loadAndPlay('assets/audio/Pad Loop.wav',  s=>{ mastPadSrc=s; });
+        mastPlaying=true; mastPlayBtn.textContent='⏹ DURDUR'; mastPlayBtn.classList.add('active');
+    };
+    wrap.append(mastPlayBtn);
 
     wrap.append(cv, grWrap);
 
@@ -3126,7 +3157,7 @@ function buildMasteringSection() {
     buildChain();
     drawSpectrum();
 
-    wrap._stopPlayback=()=>{ cancelAnimationFrame(mastRaf); teardownChain(); };
+    wrap._stopPlayback=()=>{ cancelAnimationFrame(mastRaf); stopMastPlay(); teardownChain(); };
     return wrap;
 }
 
