@@ -51,6 +51,12 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .profile-about { font-size:.72rem; color:var(--dim); line-height:1.7; margin-bottom:12px; min-height:20px; }
 .profile-genres { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
 .genre-tag { font-size:.58rem; padding:3px 10px; border-radius:12px; background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.25); color:var(--gold); }
+.profile-socials { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.profile-social-link { display:inline-flex; align-items:center; gap:5px; font-size:.6rem; padding:4px 10px; border-radius:4px; text-decoration:none; transition:all .15s; }
+.profile-social-ig { background:rgba(232,184,75,.08); border:1px solid rgba(232,184,75,.25); color:#e8b84b; }
+.profile-social-ig:hover { background:rgba(232,184,75,.18); }
+.profile-social-sp { background:rgba(30,215,96,.08); border:1px solid rgba(30,215,96,.25); color:#1ed760; }
+.profile-social-sp:hover { background:rgba(30,215,96,.18); }
 .profile-stats { display:flex; gap:16px; border-top:1px solid rgba(255,255,255,.05); padding-top:12px; }
 .pstat { text-align:center; }
 .pstat-val { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); }
@@ -270,7 +276,27 @@ async function renderProfile() {
   rst.innerHTML = `<div class="pstat-val">${prof.replyCount||0}</div><div class="pstat-lbl">Yanıt</div>`;
   statsDiv.append(pst, rst);
 
-  info.append(nameDiv, joined, aboutDiv, genresDiv, statsDiv);
+  info.append(nameDiv, joined, aboutDiv, genresDiv);
+
+  // Social links
+  if (prof.instagram || prof.spotify) {
+    const socialsDiv = document.createElement('div'); socialsDiv.className = 'profile-socials';
+    if (prof.instagram) {
+      const igLink = document.createElement('a'); igLink.className = 'profile-social-link profile-social-ig';
+      igLink.href = prof.instagram; igLink.target = '_blank'; igLink.rel = 'noopener';
+      igLink.textContent = '📷 Instagram';
+      socialsDiv.append(igLink);
+    }
+    if (prof.spotify) {
+      const spLink = document.createElement('a'); spLink.className = 'profile-social-link profile-social-sp';
+      spLink.href = prof.spotify; spLink.target = '_blank'; spLink.rel = 'noopener';
+      spLink.textContent = '🎵 Spotify';
+      socialsDiv.append(spLink);
+    }
+    info.append(socialsDiv);
+  }
+
+  info.append(statsDiv);
 
   // Edit button (own profile only)
   if (isOwn) {
@@ -312,6 +338,18 @@ async function renderProfile() {
     gInput.onkeydown = e => { if (e.key==='Enter') { e.preventDefault(); addBtn.click(); } };
     addRow.append(gInput, addBtn); editForm.append(addRow);
 
+    const igLabel = document.createElement('div'); igLabel.className = 'ef-label'; igLabel.textContent = 'Instagram URL';
+    editForm.append(igLabel);
+    const igInput = document.createElement('input'); igInput.className = 'ef-input'; igInput.type = 'url';
+    igInput.placeholder = 'https://instagram.com/kullaniciadi'; igInput.value = prof.instagram || '';
+    editForm.append(igInput);
+
+    const spLabel = document.createElement('div'); spLabel.className = 'ef-label'; spLabel.textContent = 'Spotify URL';
+    editForm.append(spLabel);
+    const spInput = document.createElement('input'); spInput.className = 'ef-input'; spInput.type = 'url';
+    spInput.placeholder = 'https://open.spotify.com/artist/...'; spInput.value = prof.spotify || '';
+    editForm.append(spInput);
+
     const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = '💾 Kaydet';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
@@ -321,6 +359,8 @@ async function renderProfile() {
         about:   aboutInput.value.trim(),
         genres:  editGenres,
         email:   _user.email,
+        instagram: igInput.value.trim(),
+        spotify:   spInput.value.trim(),
       };
       if (!prof.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('users').doc(uid).set(update, { merge: true });
