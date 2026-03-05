@@ -86,7 +86,8 @@ body::before {
 .pcard-author.is-admin::after { content:'⚡'; margin-left:3px; font-size:.55rem; }
 .pcard-date { font-size:.55rem; color:rgba(238,235,230,.22); }
 .solved-badge { font-size:.5rem; padding:2px 8px; border-radius:10px; background:rgba(100,200,100,.12); border:1px solid rgba(100,200,100,.3); color:#6fc; font-family:'Space Mono',monospace; }
-.pcard-text { font-size:.83rem; color:var(--white); line-height:1.75; word-break:break-word; }
+.pcard-title { font-size:1rem; font-weight:bold; color:var(--white); margin-bottom:6px; line-height:1.4; letter-spacing:.01em; }
+.pcard-text { font-size:.78rem; color:var(--dim); line-height:1.75; word-break:break-word; }
 .pcard-actions { padding:8px 20px 12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .pcard-reply-toggle { background:none; border:none; color:var(--dim); font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; padding:3px 0; transition:color .15s; }
 .pcard-reply-toggle:hover { color:var(--gold); }
@@ -272,39 +273,10 @@ async function renderFeed() {
     return;
   }
 
-  // New post button
-  const npBtn = document.createElement('button'); npBtn.className = 'new-post-btn';
-  npBtn.textContent = '+ Konu Aç';
-  let npScreenVisible = false;
-  const npScreen = document.createElement('div'); npScreen.className = 'new-post-screen'; npScreen.style.display='none';
-  npScreen.innerHTML = '<h3>Yeni Konu</h3>';
-  const ta  = document.createElement('textarea'); ta.className = 'post-ta';
-  ta.placeholder = 'Sorunuzu veya konunuzu buraya yazın...';
-  const npfoot = document.createElement('div'); npfoot.className = 'post-ta-footer';
-  const cancel = document.createElement('button'); cancel.className = 'post-cancel'; cancel.textContent = 'İptal';
-  const sub = document.createElement('button'); sub.className = 'post-submit'; sub.textContent = 'Yayınla';
-  cancel.onclick = () => { npScreenVisible=false; npScreen.style.display='none'; ta.value=''; };
-  npBtn.onclick = () => {
-    npScreenVisible = !npScreenVisible;
-    npScreen.style.display = npScreenVisible ? 'block' : 'none';
-    if (npScreenVisible) ta.focus();
-  };
-  sub.onclick = async () => {
-    const txt = ta.value.trim(); if (!txt) return;
-    sub.disabled = true; sub.textContent = '⏳';
-    await db.collection('forum').add({
-      text:       txt,
-      authorName: _user.displayName?.split(' ')[0] || 'Üye',
-      authorEmail:_user.email,
-      authorId:   _user.uid,
-      createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
-      replyCount: 0,
-      solved:     false,
-    });
-    ta.value = ''; await renderFeed();
-  };
-  npfoot.append(cancel, sub); npScreen.append(ta, npfoot);
-  feed.append(npBtn, npScreen);
+  // New post button → separate page
+  const npBtn = document.createElement('a'); npBtn.className = 'new-post-btn';
+  npBtn.textContent = '+ Konu Aç'; npBtn.href = 'new-post.html';
+  feed.append(npBtn);
 
   // Load posts
   const snap = await db.collection('forum').orderBy('createdAt','desc').limit(60).get();
@@ -358,8 +330,16 @@ function renderPost(post, container) {
     const sb = document.createElement('span'); sb.className = 'solved-badge'; sb.textContent = '✓ Çözüldü';
     meta.append(sb);
   }
-  const txt = document.createElement('div'); txt.className = 'pcard-text'; txt.textContent = post.text;
-  body.append(meta, txt); card.append(body);
+  body.append(meta);
+  if (post.title) {
+    const ttl = document.createElement('div'); ttl.className = 'pcard-title'; ttl.textContent = post.title;
+    body.append(ttl);
+  }
+  if (post.text) {
+    const txt = document.createElement('div'); txt.className = 'pcard-text'; txt.textContent = post.text.length > 200 ? post.text.slice(0,200)+'…' : post.text;
+    body.append(txt);
+  }
+  card.append(body);
 
   // Actions bar
   const actions = document.createElement('div'); actions.className = 'pcard-actions';
