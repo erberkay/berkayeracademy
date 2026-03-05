@@ -6,9 +6,23 @@
 <title>Berkay Er — Producer</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css?v=18">
+<style>
+  #authBar { position:fixed; top:12px; right:16px; z-index:300; display:flex; align-items:center; gap:8px; }
+  .auth-sign-btn { background:rgba(42,42,69,.9); border:1px solid #e8b84b; color:#e8b84b; font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.06em; padding:6px 14px; border-radius:4px; cursor:pointer; backdrop-filter:blur(6px); transition:background .18s,color .18s; }
+  .auth-sign-btn:hover { background:#e8b84b; color:#060609; }
+  .auth-user-wrap { display:flex; align-items:center; gap:8px; background:rgba(42,42,69,.85); border:1px solid rgba(232,184,75,.3); padding:4px 10px 4px 4px; border-radius:20px; backdrop-filter:blur(6px); }
+  .auth-avatar { width:26px; height:26px; border-radius:50%; border:2px solid #e8b84b; object-fit:cover; }
+  .auth-name { font-size:.62rem; color:#eeebe6; font-family:'Space Mono',monospace; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .auth-out-btn { background:transparent; border:none; color:rgba(238,235,230,.4); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; padding:0 2px; }
+  .auth-out-btn:hover { color:#b82d45; }
+</style>
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
 <div id="scrollProgress"></div>
+<div id="authBar"></div>
 <button id="backToTop" aria-label="Yukarı çık">↑</button>
 <div class="card">
   <div class="accent-bar"></div>
@@ -505,6 +519,47 @@
     btt.classList.toggle('visible', window.scrollY > 400);
   }, { passive: true });
   btt.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  // ── Firebase Auth ──
+  const _fbCfg = {
+    apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
+    authDomain:        "ableton-tutorial.firebaseapp.com",
+    projectId:         "ableton-tutorial",
+    storageBucket:     "ableton-tutorial.firebasestorage.app",
+    messagingSenderId: "677640687230",
+    appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
+  };
+  try {
+    firebase.initializeApp(_fbCfg);
+    const _auth = firebase.auth();
+
+    function updateAuthBar(user) {
+      const bar = document.getElementById('authBar');
+      if (!bar) return;
+      bar.innerHTML = '';
+      if (user) {
+        const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
+        const img  = document.createElement('img');  img.className = 'auth-avatar';
+        img.src = user.photoURL || ''; img.alt = '';
+        const name = document.createElement('span'); name.className = 'auth-name';
+        name.textContent = user.displayName?.split(' ')[0] || 'Kullanıcı';
+        const out = document.createElement('button'); out.className = 'auth-out-btn';
+        out.textContent = '✕'; out.title = 'Çıkış yap';
+        out.onclick = () => _auth.signOut();
+        wrap.append(img, name, out); bar.append(wrap);
+        // Auto-fill comment name
+        const nameInput = document.getElementById('commentName');
+        if (nameInput && !nameInput.value) nameInput.value = user.displayName?.split(' ')[0] || '';
+      } else {
+        const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
+        btn.textContent = '⬡ Google ile Giriş';
+        btn.onclick = () => _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+        bar.append(btn);
+      }
+    }
+
+    _auth.onAuthStateChanged(updateAuthBar);
+  } catch(e) { console.warn('Firebase init:', e.message); }
 </script>
 </body>
 </html>
