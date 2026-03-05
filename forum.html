@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Öğrenci Forumu — Berkay Er</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --black:#060609; --deep:#0c0c16; --panel:#111120;
+    --gold:#e8b84b; --amber:#d4722a; --crimson:#b82d45;
+    --ice:#8fc8e8; --white:#eeebe6; --mid:#2a2a45;
+    --dim:rgba(238,235,230,0.45);
+  }
+  body { font-family:'Space Mono',monospace; background:var(--black); color:var(--white); min-height:100vh; }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:0;
+  }
+
+  /* ── Auth bar ── */
+  #authBar { position:fixed; top:12px; right:16px; z-index:300; display:flex; align-items:center; gap:8px; }
+  .auth-sign-btn { background:rgba(42,42,69,.9); border:1px solid var(--gold); color:var(--gold); font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.06em; padding:6px 14px; border-radius:4px; cursor:pointer; backdrop-filter:blur(6px); transition:background .18s,color .18s; }
+  .auth-sign-btn:hover { background:var(--gold); color:var(--black); }
+  .auth-user-wrap { display:flex; align-items:center; gap:8px; background:rgba(42,42,69,.85); border:1px solid rgba(232,184,75,.3); padding:4px 10px 4px 4px; border-radius:20px; backdrop-filter:blur(6px); }
+  .auth-avatar { width:26px; height:26px; border-radius:50%; border:2px solid var(--gold); object-fit:cover; }
+  .auth-name { font-size:.62rem; color:var(--white); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .auth-out-btn { background:transparent; border:none; color:rgba(238,235,230,.4); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; padding:0 2px; }
+  .auth-out-btn:hover { color:var(--crimson); }
+
+  /* ── Layout ── */
+  .page { max-width:760px; margin:0 auto; padding:32px 20px 60px; position:relative; z-index:1; }
+  .accent-bar { height:4px; background:linear-gradient(90deg,var(--crimson),var(--amber),var(--gold)); margin-bottom:28px; border-radius:2px; }
+  .back-btn { display:inline-flex; align-items:center; gap:6px; color:var(--dim); font-size:.68rem; text-decoration:none; border:1px solid var(--mid); padding:5px 12px; border-radius:4px; margin-bottom:24px; transition:color .15s,border-color .15s; }
+  .back-btn:hover { color:var(--gold); border-color:var(--gold); }
+  .page-title { font-family:'Bebas Neue',sans-serif; font-size:2.2rem; letter-spacing:.08em; color:var(--white); margin-bottom:4px; }
+  .page-sub { font-size:.68rem; color:var(--dim); margin-bottom:28px; }
+
+  /* ── Forum ── */
+  .forum-ask-form { background:rgba(255,255,255,.03); border:1px solid var(--mid); border-radius:8px; padding:16px 18px; margin-bottom:20px; }
+  .forum-ask-label { font-size:.65rem; color:var(--gold); letter-spacing:.08em; margin-bottom:10px; }
+  .forum-textarea { width:100%; background:rgba(0,0,0,.3); border:1px solid var(--mid); border-radius:4px; color:var(--white); font-family:'Space Mono',monospace; font-size:.75rem; padding:10px 12px; resize:vertical; min-height:90px; outline:none; }
+  .forum-textarea:focus { border-color:var(--gold); }
+  .forum-submit-btn { margin-top:10px; padding:8px 20px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.7rem; font-weight:bold; cursor:pointer; }
+  .forum-submit-btn:hover { filter:brightness(1.15); }
+  .forum-submit-btn:disabled { opacity:.5; cursor:default; }
+
+  .forum-filters { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .filter-btn { padding:4px 12px; border-radius:12px; border:1px solid var(--mid); background:transparent; color:var(--dim); font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; transition:all .15s; }
+  .filter-btn.active { border-color:var(--gold); color:var(--gold); background:rgba(232,184,75,.08); }
+
+  .forum-question { background:rgba(255,255,255,.04); border:1px solid var(--mid); border-radius:8px; padding:16px 18px; margin-bottom:12px; transition:border-color .15s; }
+  .forum-question:hover { border-color:rgba(232,184,75,.25); }
+  .forum-q-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:8px; }
+  .forum-q-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .forum-q-author { font-size:.62rem; color:var(--gold); }
+  .forum-q-date { font-size:.55rem; color:rgba(238,235,230,.28); }
+  .forum-pending-badge { font-size:.52rem; padding:2px 8px; border-radius:10px; background:rgba(212,114,42,.12); border:1px solid rgba(212,114,42,.35); color:var(--amber); font-family:'Space Mono',monospace; }
+  .forum-answered-badge { font-size:.52rem; padding:2px 8px; border-radius:10px; background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.3); color:var(--gold); font-family:'Space Mono',monospace; }
+  .forum-q-text { font-size:.8rem; color:var(--white); line-height:1.7; }
+
+  .forum-answer { margin-top:12px; padding:12px 14px; background:rgba(232,184,75,.06); border-left:3px solid var(--gold); border-radius:0 6px 6px 0; }
+  .forum-answer-label { font-size:.55rem; color:var(--gold); letter-spacing:.12em; margin-bottom:6px; }
+  .forum-answer-text { font-size:.78rem; color:var(--white); line-height:1.7; }
+
+  .forum-answer-btn { margin-top:10px; padding:5px 14px; background:transparent; border:1px solid var(--gold); color:var(--gold); border-radius:4px; font-family:'Space Mono',monospace; font-size:.62rem; cursor:pointer; }
+  .forum-answer-btn:hover { background:var(--gold); color:var(--black); }
+  .forum-delete-btn { margin-top:10px; margin-left:8px; padding:5px 10px; background:transparent; border:1px solid var(--crimson); color:var(--crimson); border-radius:4px; font-family:'Space Mono',monospace; font-size:.58rem; cursor:pointer; }
+  .forum-delete-btn:hover { background:var(--crimson); color:var(--white); }
+
+  .forum-login-hint { text-align:center; padding:48px 20px; color:var(--dim); font-size:.78rem; line-height:2; }
+  .forum-login-btn { display:inline-block; margin-top:12px; padding:9px 22px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.72rem; font-weight:bold; cursor:pointer; }
+  .forum-empty { text-align:center; padding:40px 20px; color:var(--dim); font-size:.72rem; }
+
+  .forum-count { font-size:.62rem; color:var(--dim); margin-bottom:14px; }
+  .forum-count span { color:var(--gold); }
+</style>
+</head>
+<body>
+<div id="authBar"></div>
+<div class="page">
+  <div class="accent-bar"></div>
+  <a href="index.html" class="back-btn">← Ana Sayfa</a>
+  <div class="page-title">Öğrenci Soruları</div>
+  <div class="page-sub">Ableton, prodüksiyon veya müzik teorisi hakkında her şeyi sorabilirsin.</div>
+  <div id="forumContent">
+    <div class="forum-login-hint">
+      Soru sormak ve cevapları görmek için giriş yap.<br>
+      <button class="forum-login-btn" onclick="doSignIn()">Google ile Giriş Yap</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const ADMIN_EMAIL = 'berkayer032@gmail.com';
+
+firebase.initializeApp({
+  apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
+  authDomain:        "ableton-tutorial.firebaseapp.com",
+  projectId:         "ableton-tutorial",
+  storageBucket:     "ableton-tutorial.firebasestorage.app",
+  messagingSenderId: "677640687230",
+  appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+function doSignIn() {
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error);
+}
+
+// ── Auth bar ─────────────────────────────────────────────────────────
+function updateAuthBar(user) {
+  const bar = document.getElementById('authBar');
+  bar.innerHTML = '';
+  if (user) {
+    const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
+    const img  = document.createElement('img');  img.className = 'auth-avatar';
+    img.src = user.photoURL || ''; img.alt = '';
+    const name = document.createElement('span'); name.className = 'auth-name';
+    name.textContent = user.email === ADMIN_EMAIL ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Öğrenci');
+    const out = document.createElement('button'); out.className = 'auth-out-btn';
+    out.textContent = '✕'; out.onclick = () => auth.signOut();
+    wrap.append(img, name, out); bar.append(wrap);
+  } else {
+    const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
+    btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
+    bar.append(btn);
+  }
+}
+
+// ── Firestore helpers ────────────────────────────────────────────────
+async function loadForum(filter = 'all') {
+  let q = db.collection('forum').orderBy('createdAt', 'desc').limit(50);
+  const snap = await q.get();
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  if (filter === 'unanswered') return docs.filter(d => !d.answer);
+  if (filter === 'answered')   return docs.filter(d => !!d.answer);
+  return docs;
+}
+
+async function postQuestion(text, user) {
+  await db.collection('forum').add({
+    question:   text,
+    authorName: user.displayName?.split(' ')[0] || 'Öğrenci',
+    authorId:   user.uid,
+    createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    answer:     null,
+  });
+}
+
+async function postAnswer(id, text) {
+  await db.collection('forum').doc(id).update({
+    answer:     text,
+    answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
+async function deleteQuestion(id) {
+  await db.collection('forum').doc(id).delete();
+}
+
+// ── Render ────────────────────────────────────────────────────────────
+let _currentUser = null;
+let _activeFilter = 'all';
+
+async function renderForum() {
+  const c = document.getElementById('forumContent');
+  c.innerHTML = '';
+  const user  = _currentUser;
+  const admin = user?.email === ADMIN_EMAIL;
+
+  if (!user) {
+    c.innerHTML = `<div class="forum-login-hint">
+      Soru sormak ve cevapları görmek için giriş yap.<br>
+      <button class="forum-login-btn" onclick="doSignIn()">Google ile Giriş Yap</button>
+    </div>`;
+    return;
+  }
+
+  // Ask form (students only)
+  if (!admin) {
+    const form = document.createElement('div'); form.className = 'forum-ask-form';
+    const lbl  = document.createElement('div'); lbl.className = 'forum-ask-label';
+    lbl.textContent = 'SORU SOR';
+    const ta  = document.createElement('textarea'); ta.className = 'forum-textarea';
+    ta.placeholder = 'Ableton veya prodüksiyon hakkında sorun...';
+    const btn = document.createElement('button'); btn.className = 'forum-submit-btn';
+    btn.textContent = 'Gönder';
+    btn.onclick = async () => {
+      const q = ta.value.trim(); if (!q) return;
+      btn.disabled = true; btn.textContent = '⏳';
+      await postQuestion(q, user);
+      ta.value = '';
+      await renderForum();
+    };
+    form.append(lbl, ta, btn); c.append(form);
+  }
+
+  // Filter buttons
+  const questions = await loadForum(_activeFilter);
+  const all       = await loadForum('all');
+  const answered  = all.filter(q => q.answer).length;
+  const pending   = all.length - answered;
+
+  const filters = document.createElement('div'); filters.className = 'forum-filters';
+  [
+    { key:'all',        label:`Tümü (${all.length})` },
+    { key:'unanswered', label:`Yanıt Bekliyor (${pending})` },
+    { key:'answered',   label:`Yanıtlandı (${answered})` },
+  ].forEach(f => {
+    const b = document.createElement('button'); b.className = 'filter-btn' + (f.key === _activeFilter ? ' active' : '');
+    b.textContent = f.label;
+    b.onclick = async () => { _activeFilter = f.key; await renderForum(); };
+    filters.append(b);
+  });
+  c.append(filters);
+
+  if (!questions.length) {
+    const e = document.createElement('div'); e.className = 'forum-empty';
+    e.textContent = _activeFilter === 'unanswered' ? 'Yanıt bekleyen soru yok.' :
+                    _activeFilter === 'answered'   ? 'Henüz yanıtlanmış soru yok.' :
+                    admin ? 'Henüz soru yok.' : 'İlk soruyu sen sor!';
+    c.append(e); return;
+  }
+
+  questions.forEach(q => {
+    const card = document.createElement('div'); card.className = 'forum-question';
+
+    const hdr  = document.createElement('div'); hdr.className = 'forum-q-header';
+    const meta = document.createElement('div'); meta.className = 'forum-q-meta';
+    const au   = document.createElement('span'); au.className = 'forum-q-author';
+    au.textContent = q.authorName;
+    const dt   = document.createElement('span'); dt.className = 'forum-q-date';
+    dt.textContent = q.createdAt?.toDate?.()?.toLocaleDateString('tr-TR') || '';
+    const badge = document.createElement('span');
+    badge.className = q.answer ? 'forum-answered-badge' : 'forum-pending-badge';
+    badge.textContent = q.answer ? '✓ Yanıtlandı' : 'Yanıt bekleniyor';
+    meta.append(au, dt, badge);
+    hdr.append(meta);
+    card.append(hdr);
+
+    const txt = document.createElement('div'); txt.className = 'forum-q-text';
+    txt.textContent = q.question;
+    card.append(txt);
+
+    if (q.answer) {
+      const ans  = document.createElement('div'); ans.className = 'forum-answer';
+      const albl = document.createElement('div'); albl.className = 'forum-answer-label';
+      albl.textContent = '⚡ BERKAY ER';
+      const atxt = document.createElement('div'); atxt.className = 'forum-answer-text';
+      atxt.textContent = q.answer;
+      ans.append(albl, atxt); card.append(ans);
+    } else if (admin) {
+      const ab = document.createElement('button'); ab.className = 'forum-answer-btn';
+      ab.textContent = '↩ Cevapla';
+      ab.onclick = () => {
+        ab.remove();
+        const ta = document.createElement('textarea'); ta.className = 'forum-textarea';
+        ta.placeholder = 'Cevabını yaz...'; ta.style.cssText = 'min-height:70px;margin-top:10px';
+        const sb = document.createElement('button'); sb.className = 'forum-submit-btn';
+        sb.textContent = 'Cevabı Gönder'; sb.style.marginTop = '8px';
+        sb.onclick = async () => {
+          const a = ta.value.trim(); if (!a) return;
+          sb.disabled = true; sb.textContent = '⏳';
+          await postAnswer(q.id, a);
+          await renderForum();
+        };
+        card.append(ta, sb);
+      };
+      card.append(ab);
+    }
+
+    // Admin delete button
+    if (admin) {
+      const db2 = document.createElement('button'); db2.className = 'forum-delete-btn';
+      db2.textContent = '🗑 Sil';
+      db2.onclick = async () => {
+        if (!confirm('Bu soruyu silmek istediğine emin misin?')) return;
+        await deleteQuestion(q.id);
+        await renderForum();
+      };
+      card.append(db2);
+    }
+
+    c.append(card);
+  });
+}
+
+// ── Auth state ────────────────────────────────────────────────────────
+auth.onAuthStateChanged(async user => {
+  _currentUser = user;
+  updateAuthBar(user);
+  await renderForum();
+});
+</script>
+</body>
+</html>

@@ -46,6 +46,9 @@
         .synth-header h2 { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.5rem,3vw,2rem); color:var(--gold); letter-spacing:.05em; }
         .back-btn { background:none; border:1px solid var(--mid); color:var(--dim); padding:8px 16px; font-family:'Space Mono',monospace; font-size:.75rem; cursor:pointer; letter-spacing:.08em; margin:8px 0; transition:border-color .2s,color .2s; }
         .back-btn:hover { border-color:var(--gold); color:var(--gold); }
+        .home-back { display:inline-flex; align-items:center; gap:6px; color:var(--dim); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; text-decoration:none; padding:6px 0; margin:12px 0 4px; transition:color .2s; }
+        .home-back:hover { color:var(--gold); }
+        .home-back::before { content:'←'; font-size:.85rem; }
         .power-button { background:var(--mid); border:none; color:var(--white); padding:10px 20px; font-family:'Space Mono',monospace; font-size:.78rem; cursor:pointer; letter-spacing:.1em; transition:background .2s; }
         .power-button.active { background:var(--crimson); }
         .power-button:hover { filter:brightness(1.2); }
@@ -1085,10 +1088,10 @@ function renderModule2() {
     // BPM + Swing
     const tempo = mk('div'); tempo.style.cssText='display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:12px 0 8px';
     const bpmDiv = mk('div'); bpmDiv.style.cssText='display:flex;align-items:center;gap:10px';
-    bpmSpan = mk('span','',state.bpm); bpmSpan.style.cssText='color:#e8b84b;font-weight:bold;min-width:32px';
+    bpmSpan = mk('span','',state.bpm); bpmSpan.style.cssText='color:#e8b84b;font-weight:bold;min-width:32px'; bpmSpan.id='beat-bpm-span';
     bpmInput = document.createElement('input');
     bpmInput.type='range'; bpmInput.min=60; bpmInput.max=200; bpmInput.value=state.bpm;
-    bpmInput.style.cssText='width:120px;accent-color:#e8b84b';
+    bpmInput.style.cssText='width:120px;accent-color:#e8b84b'; bpmInput.id='beat-bpm-input';
     bpmInput.oninput = () => { state.bpm=+bpmInput.value; bpmSpan.textContent=state.bpm; if(beatPlaying){stopBeat();startBeat();} };
     bpmDiv.append(mk('span','','BPM: '), bpmInput, bpmSpan);
 
@@ -1494,7 +1497,7 @@ function buildMixerSection() {
     });
     wrap.append(grid);
 
-    let mixPlaying=false, mixRaf=null;
+    let mixPlaying=false, mixRaf=null, _prevBpm=null;
     const phases=channels.map(()=>Math.random()*Math.PI*2);
 
     function vuLoop(){
@@ -1512,6 +1515,11 @@ function buildMixerSection() {
         if(beatPlaying) stopBeat();
         if(leadSrc){ try{leadSrc.stop();}catch{} leadSrc=null; }
         leadGain=null; leadPan=null;
+        // BPM'i geri yükle
+        if(_prevBpm!==null){ state.bpm=_prevBpm; _prevBpm=null;
+            const bi=document.querySelector('#beat-bpm-input'); if(bi) bi.value=state.bpm;
+            const bs=document.querySelector('#beat-bpm-span'); if(bs) bs.textContent=state.bpm;
+        }
         vuBars.forEach(v=>v.style.height='0%');
         playBtn.textContent='▶ MIX ÇAL'; playBtn.classList.remove('active');
     }
@@ -1520,6 +1528,11 @@ function buildMixerSection() {
     playBtn.style.marginTop='12px';
     playBtn.onclick=()=>{
         if(mixPlaying){ stopMix(); return; }
+
+        // BPM'i 125'e kilitle (Lead Loop 125 BPM'de kaydedildi)
+        _prevBpm=state.bpm; state.bpm=125;
+        const bi=document.querySelector('#beat-bpm-input'); if(bi) bi.value=125;
+        const bs=document.querySelector('#beat-bpm-span'); if(bs) bs.textContent=125;
 
         // Drum kanalları: beat engine başlat (mevcut pattern + gerçek wav dosyaları)
         if(!beatPlaying) startBeat();
@@ -2021,7 +2034,7 @@ function renderModule4() {
 // ═══════════════════════════════════════════════════════════════════
 function renderHome() {
     const root=mk('div','container'); root.append(mk('div','accent-bar'));
-    const bk=mk('a','back-btn','← Ana Sayfa'); bk.href='index.html'; root.append(bk);
+    const bk=mk('a','home-back','Ana Sayfa'); bk.href='index.html'; root.append(bk);
     const hdr=mk('div','header','<h1>Ableton Lab</h1><p>Berkay Er — İnteraktif Öğrenme Platformu</p>');
     root.append(hdr);
 
