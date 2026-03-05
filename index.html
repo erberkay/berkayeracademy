@@ -3,7 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Berkay Er — Producer</title>
+<title>Berkay Er — Producer & Ableton Eğitmeni</title>
+<meta name="description" content="Berkay Er — Elektronik müzik prodüktörü, Ableton Live eğitmeni. Melodic Techno, Peaktime ve indie tarzlarını harmanlayan live set sanatçısı.">
+<meta name="theme-color" content="#060609">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Berkay Er — Producer & Ableton Eğitmeni">
+<meta property="og:description" content="Elektronik müzik prodüksiyonu, Ableton Live eğitimi ve topluluk forumu. 100+ öğrenci, 14+ yıl müzikal birikim.">
+<meta property="og:image" content="https://erberkay.github.io/Producer.School/assets/img/DSC00141.jpg">
+<meta property="og:url" content="https://erberkay.github.io/Producer.School/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Berkay Er — Producer & Ableton Eğitmeni">
+<meta name="twitter:description" content="Elektronik müzik prodüksiyonu, Ableton Live eğitimi ve topluluk forumu.">
+<meta name="twitter:image" content="https://erberkay.github.io/Producer.School/assets/img/DSC00141.jpg">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css?v=18">
 <style>
@@ -475,7 +487,8 @@
     document.getElementById('spotifyStreams').textContent = streams.toLocaleString('tr-TR');
   })();
 
-  // ── Yorum formu (XSS-safe) ──
+  // ── Yorum formu (Firestore) ──
+  let _db = null;
   function makeCommentEl(name, text) {
     const div = document.createElement('div');
     div.className = 'testimonial testimonial-user';
@@ -489,24 +502,33 @@
     div.appendChild(a);
     return div;
   }
-  function renderComments() {
+  async function loadTestimonials() {
+    if (!_db) return;
     const list = document.getElementById('testimonialList');
-    JSON.parse(localStorage.getItem('berkay_comments') || '[]').forEach(c => {
+    if (!list) return;
+    const snap = await _db.collection('testimonials').orderBy('createdAt','asc').limit(30).get();
+    snap.docs.forEach(d => {
+      const c = d.data();
       list.appendChild(makeCommentEl(c.name, c.text));
     });
   }
-  function submitComment() {
+  async function submitComment() {
     const name = document.getElementById('commentName').value.trim();
     const text = document.getElementById('commentText').value.trim();
-    if (!name || !text) return;
-    const saved = JSON.parse(localStorage.getItem('berkay_comments') || '[]');
-    saved.push({ name, text });
-    localStorage.setItem('berkay_comments', JSON.stringify(saved));
-    document.getElementById('testimonialList').appendChild(makeCommentEl(name, text));
-    document.getElementById('commentName').value = '';
-    document.getElementById('commentText').value = '';
+    if (!name || !text || !_db) return;
+    const btn = document.querySelector('.comment-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    try {
+      await _db.collection('testimonials').add({
+        name, text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      document.getElementById('testimonialList').appendChild(makeCommentEl(name, text));
+      document.getElementById('commentName').value = '';
+      document.getElementById('commentText').value = '';
+    } catch(e) { console.error(e); alert('Gönderilemedi, tekrar dene.'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Gönder'; }
   }
-  renderComments();
 
   // ── Scroll progress bar ──
   const progressBar = document.getElementById('scrollProgress');
@@ -582,7 +604,8 @@
   try {
     firebase.initializeApp(_fbCfg);
     const _auth = firebase.auth();
-    const _db   = firebase.firestore();
+    _db = firebase.firestore();
+    loadTestimonials();
     // ── Auth bar ──────────────────────────────────────────────────
     function updateAuthBar(user) {
       const bar = document.getElementById('authBar');
