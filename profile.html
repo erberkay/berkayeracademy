@@ -582,6 +582,7 @@ async function renderProfile() {
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
       try {
+        console.log('[save] uid:', uid, '| _user:', _user?.uid, '| photoLen:', _customPhotoData?.length || 0);
         const update = {
           displayName: _user?.displayName || displayName,
           photoURL:    _user?.photoURL    || photoURL,
@@ -596,11 +597,13 @@ async function renderProfile() {
           collabStatus:  selCollab,
         };
         if (!prof.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
+        console.log('[save] writing to Firestore...');
         await db.collection('users').doc(uid).set(update, { merge: true });
+        console.log('[save] success');
         saveBtn.textContent = '✓ Kaydedildi';
         setTimeout(() => renderProfile(), 800);
       } catch(e) {
-        console.error('Profile save error:', e);
+        console.error('[save] error:', e.code, e.message, e);
         saveBtn.disabled = false; saveBtn.textContent = '⚠️ ' + (e.code || e.message || 'Kayıt başarısız');
       }
     };
