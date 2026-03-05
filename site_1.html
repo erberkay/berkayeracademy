@@ -167,7 +167,7 @@
         .eq-axis { display:flex; justify-content:space-between; padding:2px 6px; font-size:.55rem; color:rgba(255,255,255,.22); margin-top:2px; }
 
         /* ── Mixer strips ── */
-        .mixer-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:4px; }
+        .mixer-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:4px; }
         .mixer-strip { border-radius:6px; padding:14px 10px; display:flex; flex-direction:column; align-items:center; gap:10px; }
         .vu-wrap { width:100%; height:44px; border-radius:3px; overflow:hidden; position:relative; background:rgba(0,0,0,.4); }
         .vu-bar { position:absolute; bottom:0; left:0; right:0; height:0%; border-radius:2px; transition:height 70ms; }
@@ -1527,10 +1527,10 @@ function buildEQSection() {
 // ═══════════════════════════════════════════════════════════════════
 function buildMixerSection() {
     const wrap=mk('div','adsr-explanation'); wrap.style.marginTop='20px';
-    wrap.innerHTML=`<h3 style="color:#8fc8e8;margin-bottom:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎚️ İnteraktif Mixer — 4 Kanal</h3>`;
+    wrap.innerHTML=`<h3 style="color:#8fc8e8;margin-bottom:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎚️ İnteraktif Mixer — 6 Kanal</h3>`;
     const hint=mk('div','hint-box');
     hint.innerHTML=`
-        <strong>4 Kanal:</strong> KICK &nbsp;·&nbsp; SNARE &nbsp;·&nbsp; BASS &nbsp;·&nbsp; LEAD LOOP<br>
+        <strong>6 Kanal:</strong> KICK &nbsp;·&nbsp; SNARE &nbsp;·&nbsp; CL.HAT &nbsp;·&nbsp; OP.HAT &nbsp;·&nbsp; BASS &nbsp;·&nbsp; LEAD LOOP<br>
         <span style="opacity:.8"><strong>VOL</strong> = ses seviyesi &nbsp;|&nbsp;
         <strong>PAN</strong> = stereo konum (L ← C → R) &nbsp;|&nbsp;
         <strong>MUTE</strong> = kanalı sustur</span><br>
@@ -1559,6 +1559,8 @@ function buildMixerSection() {
     const channels=[
         {name:'KICK',      color:'#e8b84b', beatIdx:0},
         {name:'SNARE',     color:'#00aaff', beatIdx:1},
+        {name:'CL.HAT',    color:'#ffd700', beatIdx:2},
+        {name:'OP.HAT',    color:'#00ff88', beatIdx:3},
         {name:'BASS',      color:'#a855f7', beatIdx:4},
         {name:'LEAD LOOP', color:'#8fc8e8', beatIdx:-1},
     ];
@@ -1718,14 +1720,14 @@ function buildMixerSection() {
             .then(buf=>{
                 if(!mixPlaying) return;
                 leadGain=bc.createGain();
-                leadGain.gain.value=chState[3].muted?0:chState[3].vol*0.45;
+                leadGain.gain.value=chState[5].muted?0:chState[5].vol*0.45;
                 leadPan=bc.createStereoPanner?bc.createStereoPanner():null;
                 leadSrc=bc.createBufferSource();
                 leadSrc.buffer=buf; leadSrc.loop=true;
                 leadSrc.connect(leadGain);
-                if(leadPan){ leadPan.pan.value=chState[3].pan; leadGain.connect(leadPan); leadPan.connect(bc.destination); }
+                if(leadPan){ leadPan.pan.value=chState[5].pan; leadGain.connect(leadPan); leadPan.connect(bc.destination); }
                 else { leadGain.connect(bc.destination); }
-                if(!chState[3].muted) leadSrc.start();
+                if(!chState[5].muted) leadSrc.start();
             })
             .catch(()=>{});
 
