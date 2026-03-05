@@ -301,7 +301,7 @@ function renderForm(user) {
     if (!title) { titleInput.focus(); titleInput.style.borderColor='var(--crimson)'; return; }
     submitBtn.disabled = true; submitBtn.textContent = '⏳ Gönderiliyor...';
     try {
-      await db.collection('forum').add({
+      const ref = await db.collection('forum').add({
         title,
         text:           body,
         category:       selectedCat,
@@ -313,6 +313,15 @@ function renderForm(user) {
         replyCount:     0,
         solved:         false,
       });
+      if (user.email === ADMIN_EMAIL) {
+        db.collection('announcements').add({
+          text: `📌 Yeni Admin konusu: "${title}"`,
+          postId: ref.id,
+          fromName: user.displayName?.split(' ')[0] || 'Admin',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          type: 'forum',
+        }).catch(() => {});
+      }
       window.location.href = 'forum.html';
     } catch(e) {
       submitBtn.disabled = false;

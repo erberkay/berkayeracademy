@@ -1439,23 +1439,38 @@ function buildEQSection() {
 
     function drawSpectrum(){
         const sw=specCv.clientWidth||800, sh=specCv.clientHeight||60;
-        if(specCv.width!==sw) specCv.width=sw; if(specCv.height!==sh) specCv.height=sh;
+        if(specCv.width!==sw){specCv.width=sw; specCv.height=sh;}
         specCtx.clearRect(0,0,sw,sh);
         if(!eqAnalyser||!eqFreqData){ eqSpecRaf=requestAnimationFrame(drawSpectrum); return; }
         eqAnalyser.getByteFrequencyData(eqFreqData);
-        const bins=eqFreqData.length, bw=sw/bins;
-        for(let b=0;b<bins;b++){
-            const v=eqFreqData[b]/255;
-            if(v<0.01) continue;
-            const bh=v*sh;
-            // color by frequency range
-            const freq=eqACtx.sampleRate/2*(b/bins);
-            let col= freq<500?'#e8b84b': freq<4000?'#d4722a':'#8fc8e8';
-            specCtx.fillStyle=col;
-            specCtx.globalAlpha=0.85;
-            specCtx.fillRect(b*bw, sh-bh, Math.max(1,bw-0.5), bh);
+        const nyq=eqACtx.sampleRate/2, bins=eqFreqData.length;
+        const logMin=Math.log10(20), logMax=Math.log10(20000);
+        const BAR_W=Math.max(2,Math.floor(sw/160));
+        const NUM=Math.floor(sw/BAR_W);
+        let hasSignal=false;
+        for(let i=0;i<NUM;i++){
+            const freq=Math.pow(10, logMin+(i/NUM)*(logMax-logMin));
+            const bin=Math.min(bins-1,Math.round(freq/nyq*bins));
+            let sum=0,cnt=0;
+            for(let k=Math.max(0,bin-1);k<=Math.min(bins-1,bin+1);k++){sum+=eqFreqData[k];cnt++;}
+            const v=(sum/cnt)/255;
+            if(v<0.018) continue;
+            hasSignal=true;
+            const bh=Math.pow(v,0.7)*sh;
+            const col=freq<300?'#e8b84b':freq<3000?'#d4722a':'#8fc8e8';
+            const grd=specCtx.createLinearGradient(0,sh-bh,0,sh);
+            grd.addColorStop(0,col+'ee'); grd.addColorStop(0.6,col+'99'); grd.addColorStop(1,col+'22');
+            specCtx.fillStyle=grd; specCtx.fillRect(i*BAR_W,sh-bh,BAR_W-1,bh);
+            specCtx.fillStyle=col+'ff'; specCtx.fillRect(i*BAR_W,sh-bh-2,BAR_W-1,2);
         }
-        specCtx.globalAlpha=1;
+        // frequency labels overlay
+        if(hasSignal){
+            specCtx.fillStyle='rgba(255,255,255,.2)'; specCtx.font='8px monospace'; specCtx.textBaseline='bottom';
+            [{f:100,l:'100'},{f:1000,l:'1k'},{f:5000,l:'5k'},{f:10000,l:'10k'}].forEach(({f,l})=>{
+                const x=((Math.log10(f)-logMin)/(logMax-logMin))*sw;
+                specCtx.fillText(l,x+2,sh-2);
+            });
+        }
         eqSpecRaf=requestAnimationFrame(drawSpectrum);
     }
 
@@ -1470,7 +1485,7 @@ function buildEQSection() {
         });
         eqFilts.forEach((f,i)=>{ if(i<eqFilts.length-1) f.connect(eqFilts[i+1]); });
         const outG=eqACtx.createGain(); outG.gain.value=0.28;
-        eqAnalyser=eqACtx.createAnalyser(); eqAnalyser.fftSize=512; eqAnalyser.smoothingTimeConstant=0.82;
+        eqAnalyser=eqACtx.createAnalyser(); eqAnalyser.fftSize=4096; eqAnalyser.smoothingTimeConstant=0.85;
         eqFreqData=new Uint8Array(eqAnalyser.frequencyBinCount);
         eqFilts[eqFilts.length-1].connect(outG);
         outG.connect(eqAnalyser); eqAnalyser.connect(eqACtx.destination);
@@ -1654,14 +1669,14 @@ function buildMixerSection() {
     let leadGain=null, leadPan=null, leadSrc=null;
     let _analyser=null, _freqData=null, _eqRaf=null;
 
-    // frequency bin ranges per channel (out of 128 bins, 0=sub-bass → 127=high)
-    const CH_BINS=[
-        [0,8],    // KICK: sub-bass
-        [10,28],  // SNARE: low-mid
-        [30,55],  // CL.HAT: mid
-        [55,90],  // OP.HAT: upper-mid
-        [3,22],   // BASS: bass-mid
-        [8,80],   // LEAD LOOP: full mid
+    // frequency Hz ranges per channel (will be mapped to fft bins dynamically)
+    const CH_HZ=[
+        [20,  200],   // KICK: sub-bass
+        [150, 900],   // SNARE: low-mid
+        [800, 6000],  // CL.HAT: mid
+        [2000,14000], // OP.HAT: upper-mid / air
+        [30,  400],   // BASS: bass
+        [80,  12000], // LEAD LOOP: full spectrum
     ];
 
     const grid=mk('div','mixer-grid');
@@ -1721,33 +1736,39 @@ function buildMixerSection() {
     function startEqLoop(){
         getBeatCtx(); // ensure context + beatMasterGain exist
         if(!_analyser && beatMasterGain){
-            _analyser=beatMasterGain.context.createAnalyser(); _analyser.fftSize=256; _analyser.smoothingTimeConstant=0.8;
+            _analyser=beatMasterGain.context.createAnalyser(); _analyser.fftSize=2048; _analyser.smoothingTimeConstant=0.82;
             _freqData=new Uint8Array(_analyser.frequencyBinCount);
             beatMasterGain.connect(_analyser);
         }
         function drawEq(){
             if(!mixPlaying){ eqCanvases.forEach(({cv})=>{ const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height); }); return; }
+            if(!_analyser){ _eqRaf=requestAnimationFrame(drawEq); return; }
             _analyser.getByteFrequencyData(_freqData);
+            const nyq=beatMasterGain.context.sampleRate/2, bins=_freqData.length;
             eqCanvases.forEach(({cv,ch,idx})=>{
                 const c=cv.getContext('2d');
                 const w=cv.clientWidth||cv.offsetWidth||120, h=cv.clientHeight||cv.offsetHeight||54;
-                if(cv.width!==w) cv.width=w; if(cv.height!==h) cv.height=h;
+                if(cv.width!==w){cv.width=w; cv.height=h;}
                 c.clearRect(0,0,w,h);
                 const vol=chState[idx].muted?0:chState[idx].vol;
-                if(vol===0){ _eqRaf=requestAnimationFrame(drawEq); return; }
-                const [lo,hi]=CH_BINS[idx];
-                const count=hi-lo;
-                const barW=w/count;
-                for(let b=0;b<count;b++){
-                    const bin=lo+b;
-                    const v=(_freqData[bin]??0)/255*vol;
-                    const bh=Math.max(1,v*h);
+                if(vol<0.01){ _eqRaf=requestAnimationFrame(drawEq); return; }
+                const [hzLo,hzHi]=CH_HZ[idx];
+                const logLo=Math.log10(hzLo), logHi=Math.log10(hzHi);
+                const BAR_W=Math.max(2,Math.floor(w/60));
+                const NUM=Math.floor(w/BAR_W);
+                for(let i=0;i<NUM;i++){
+                    const freq=Math.pow(10, logLo+(i/NUM)*(logHi-logLo));
+                    const bin=Math.min(bins-1, Math.round(freq/nyq*bins));
+                    let sum=0,cnt=0;
+                    for(let k=Math.max(0,bin-1);k<=Math.min(bins-1,bin+1);k++){sum+=_freqData[k];cnt++;}
+                    const v=(sum/cnt)/255*vol;
+                    if(v<0.018) continue;
+                    const bh=Math.pow(v,0.72)*h;
                     const grd=c.createLinearGradient(0,h-bh,0,h);
-                    grd.addColorStop(0,ch.color+'ff');
-                    grd.addColorStop(0.6,ch.color+'99');
-                    grd.addColorStop(1,ch.color+'22');
-                    c.fillStyle=grd;
-                    c.fillRect(b*barW+.5,h-bh,Math.max(1,barW-1.5),bh);
+                    grd.addColorStop(0,ch.color+'ee'); grd.addColorStop(0.55,ch.color+'88'); grd.addColorStop(1,ch.color+'11');
+                    c.fillStyle=grd; c.fillRect(i*BAR_W,h-bh,BAR_W-1,bh);
+                    // peak
+                    c.fillStyle=ch.color+'dd'; c.fillRect(i*BAR_W,h-bh-2,BAR_W-1,2);
                 }
             });
             _eqRaf=requestAnimationFrame(drawEq);

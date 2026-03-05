@@ -96,6 +96,12 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .profile-title-badge { display:inline-flex; align-items:center; gap:5px; font-size:.6rem; padding:3px 11px; border-radius:12px; margin-bottom:8px; font-weight:bold; letter-spacing:.05em; }
 
 /* ── Admin title panel ── */
+.admin-announce-panel { padding:16px 20px 18px; border-top:1px solid rgba(232,184,75,.18); background:rgba(232,184,75,.03); }
+.admin-announce-ta { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.72rem; padding:10px 12px; resize:vertical; min-height:72px; outline:none; line-height:1.7; transition:border-color .15s; margin-top:8px; }
+.admin-announce-ta:focus { border-color:var(--gold); }
+.admin-announce-send { margin-top:8px; padding:6px 18px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.62rem; font-weight:bold; cursor:pointer; transition:filter .15s; }
+.admin-announce-send:hover { filter:brightness(1.1); }
+.admin-announce-send:disabled { opacity:.5; cursor:default; }
 .admin-title-panel { padding:14px 20px 16px; border-top:1px solid rgba(255,255,255,.06); }
 .admin-title-label { font-size:.52rem; color:var(--gold); letter-spacing:.12em; text-transform:uppercase; margin-bottom:8px; }
 .title-grid { display:flex; flex-wrap:wrap; gap:6px; }
@@ -215,8 +221,9 @@ function fmtDate(ts) {
   return d.toLocaleDateString('tr-TR', {month:'long', year:'numeric'});
 }
 
-let _notifUnsub = null;
+let _notifUnsub = null, _annUnsub = null;
 let _notifPanelEl = null;
+let _personalNotifs = [], _announcements = [], _annSeenAt = null;
 
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar'); bar.innerHTML = '';
@@ -257,38 +264,56 @@ function toggleNotifPanel(user) {
   markAllNotifRead(user.uid);
 }
 
+function _mergeNotifs(uid) {
+  const all = [
+    ..._personalNotifs.map(n => ({...n, _t:'p'})),
+    ..._announcements.map(n => ({...n, _t:'a'}))
+  ].sort((a,b) => ((b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)));
+  const annSec = _annSeenAt?.seconds || 0;
+  const unread = _personalNotifs.filter(n => !n.read).length
+    + _announcements.filter(n => (n.createdAt?.seconds||0) > annSec).length;
+  const badge = document.querySelector('.notif-badge');
+  if (badge) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.style.display = unread > 0 ? 'block' : 'none'; }
+  if (_notifPanelEl) {
+    const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
+    list.innerHTML = '';
+    if (!all.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
+    all.forEach(n => {
+      const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
+      const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
+      const icon = n._t==='a' ? '📢 ' : '';
+      const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      item.innerHTML = `<div class="notif-item-text">${icon}${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
+      if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
+      list.append(item);
+    });
+  }
+}
+
 function markAllNotifRead(uid) {
   db.collection('notifications').doc(uid).collection('items')
     .where('read', '==', false).get().then(snap => {
-      const batch = db.batch();
-      snap.docs.forEach(d => batch.update(d.ref, { read: true }));
-      batch.commit();
+      const batch = db.batch(); snap.docs.forEach(d => batch.update(d.ref, { read: true })); batch.commit();
     }).catch(() => {});
+  db.collection('users').doc(uid).set({ announcementsSeenAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }).catch(() => {});
+  _annSeenAt = { seconds: Date.now() / 1000 };
+  _personalNotifs = _personalNotifs.map(n => ({...n, read: true}));
+  _mergeNotifs(uid);
 }
 
 function initNotifications(user) {
   if (_notifUnsub) { _notifUnsub(); _notifUnsub = null; }
+  if (_annUnsub) { _annUnsub(); _annUnsub = null; }
+  _personalNotifs = []; _announcements = []; _annSeenAt = null;
   if (!user) return;
+  db.collection('users').doc(user.uid).get().then(d => {
+    _annSeenAt = d.data()?.announcementsSeenAt || null; _mergeNotifs(user.uid);
+  }).catch(() => {});
   _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
     .orderBy('createdAt', 'desc').limit(20)
-    .onSnapshot(snap => {
-      const unread = snap.docs.filter(d => !d.data().read).length;
-      const badge = document.querySelector('.notif-badge');
-      if (badge) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.style.display = unread > 0 ? 'block' : 'none'; }
-      if (_notifPanelEl) {
-        const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
-        list.innerHTML = '';
-        if (!snap.docs.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
-        snap.docs.forEach(d => {
-          const n = d.data();
-          const item = document.createElement('div'); item.className = 'notif-item' + (n.read ? '' : ' unread');
-          const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-          item.innerHTML = `<div class="notif-item-text">${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
-          if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
-          list.append(item);
-        });
-      }
-    }, () => {});
+    .onSnapshot(snap => { _personalNotifs = snap.docs.map(d => d.data()); _mergeNotifs(user.uid); }, () => {});
+  _annUnsub = db.collection('announcements').orderBy('createdAt', 'desc').limit(15)
+    .onSnapshot(snap => { _announcements = snap.docs.map(d => d.data()); _mergeNotifs(user.uid); }, () => {});
 }
 
 async function renderProfile() {
@@ -574,6 +599,39 @@ async function renderProfile() {
     };
     panel.append(lbl, grid, saveBtn);
     pCard.append(panel);
+  }
+
+  // Admin announcement panel (own profile only)
+  if (isAdmin(_user) && isOwn) {
+    const annPanel = document.createElement('div'); annPanel.className = 'admin-announce-panel';
+    const annLbl = document.createElement('div'); annLbl.className = 'admin-title-label'; annLbl.textContent = '📢 Tüm Üyelere Duyuru Gönder';
+    const annTa = document.createElement('textarea'); annTa.className = 'admin-announce-ta';
+    annTa.placeholder = 'Yeni özellik, güncelleme veya duyuru metni...';
+    const annRow = document.createElement('div'); annRow.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px;';
+    const annSend = document.createElement('button'); annSend.className = 'admin-announce-send'; annSend.textContent = '📢 Gönder';
+    const annStatus = document.createElement('span'); annStatus.style.cssText = 'font-size:.58rem;color:var(--dim);';
+    annSend.onclick = async () => {
+      const txt = annTa.value.trim();
+      if (!txt) { annTa.focus(); return; }
+      annSend.disabled = true; annSend.textContent = '⏳';
+      try {
+        await db.collection('announcements').add({
+          text: txt,
+          fromName: _user.displayName?.split(' ')[0] || 'Admin',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          type: 'update',
+        });
+        annTa.value = '';
+        annStatus.style.color = '#6fc'; annStatus.textContent = '✓ Duyuru gönderildi';
+        setTimeout(() => { annStatus.textContent = ''; }, 3000);
+      } catch(e) {
+        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+      }
+      annSend.disabled = false; annSend.textContent = '📢 Gönder';
+    };
+    annRow.append(annSend, annStatus);
+    annPanel.append(annLbl, annTa, annRow);
+    pCard.append(annPanel);
   }
 
   layout.append(pCard);
