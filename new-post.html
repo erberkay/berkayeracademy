@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Konu Aç — Berkay Er Topluluğu</title>
+<title>Konu Aç — Elektronik Müzik Topluluğu</title>
 <meta name="theme-color" content="#060609">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -96,6 +96,13 @@ body::before {
 .login-wall h2 { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:10px; }
 .login-wall p { font-size:.72rem; color:var(--dim); margin-bottom:20px; }
 .btn-signin { padding:10px 28px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.75rem; font-weight:bold; cursor:pointer; }
+
+/* ── Toast ── */
+.toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
+.toast { background:var(--card); border:1px solid var(--mid); border-left:3px solid var(--gold); border-radius:6px; padding:10px 16px; font-family:'Space Mono',monospace; font-size:.68rem; color:var(--white); box-shadow:0 4px 24px rgba(0,0,0,.6); animation:toastIn .2s ease; pointer-events:all; max-width:280px; line-height:1.5; }
+.toast.error { border-left-color:var(--crimson); }
+.toast.info  { border-left-color:#8fc8e8; }
+@keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 </style>
 </head>
 <body>
@@ -138,6 +145,14 @@ function doSignIn() {
   _signingIn = true;
   auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
     .catch(console.error).finally(() => { _signingIn = false; });
+}
+
+function showToast(msg, type='success', ms=3000) {
+  let c = document.getElementById('toastCt');
+  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
+  const t = document.createElement('div'); t.className='toast'+(type!=='success'?' '+type:''); t.textContent=msg;
+  c.append(t);
+  setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
 }
 
 function updateAuthBar(user) {
@@ -222,9 +237,10 @@ function renderForm(user) {
   const sec2 = document.createElement('div'); sec2.className = 'form-section';
   const lbl2 = document.createElement('div'); lbl2.className = 'form-label';
   const bodyLeft = document.createElement('span'); bodyLeft.textContent = 'İçerik';
+  const bodyCount = document.createElement('span'); bodyCount.textContent = '0 karakter';
   const prevToggle = document.createElement('button'); prevToggle.className = 'preview-toggle';
   prevToggle.innerHTML = '👁 Önizleme'; prevToggle.type = 'button';
-  lbl2.append(bodyLeft, prevToggle);
+  lbl2.append(bodyLeft, bodyCount, prevToggle);
 
   // Toolbar
   const toolbar = document.createElement('div'); toolbar.className = 'toolbar';
@@ -237,7 +253,7 @@ function renderForm(user) {
   ];
   const bodyInput = document.createElement('textarea'); bodyInput.className = 'body-input';
   bodyInput.placeholder = 'Detayları buraya yaz...\n\nİpuçları:\n  **kalın**  *italik*  `kod`';
-  bodyInput.oninput = () => updatePreview(bodyInput);
+  bodyInput.oninput = () => { bodyCount.textContent = `${bodyInput.value.length} karakter`; updatePreview(bodyInput); };
 
   tools.forEach(t => {
     if (t.sep) { const s = document.createElement('div'); s.className = 'tb-sep'; toolbar.append(s); return; }
@@ -290,7 +306,7 @@ function renderForm(user) {
     } catch(e) {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Yayınla';
-      alert('Gönderilemedi: ' + e.message);
+      showToast('Gönderilemedi: ' + e.message, 'error', 5000);
       console.error(e);
     }
   };

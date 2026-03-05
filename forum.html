@@ -144,6 +144,19 @@ body::before {
 /* ── Category badge ── */
 .cat-badge { font-size:.5rem; padding:2px 8px; border-radius:10px; background:rgba(143,200,232,.08); border:1px solid rgba(143,200,232,.22); color:var(--ice); font-family:'Space Mono',monospace; white-space:nowrap; }
 
+/* ── Pin ── */
+.pcard.is-pinned { border-color:rgba(232,184,75,.45); background:rgba(232,184,75,.012); }
+.pin-badge { font-size:.5rem; padding:2px 8px; border-radius:10px; background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.3); color:var(--gold); font-family:'Space Mono',monospace; white-space:nowrap; }
+.pcard-pin-btn { background:none; border:1px solid rgba(232,184,75,.25); color:rgba(232,184,75,.5); font-family:'Space Mono',monospace; font-size:.58rem; cursor:pointer; padding:3px 10px; border-radius:10px; transition:all .15s; }
+.pcard-pin-btn:hover,.pcard-pin-btn.active { background:rgba(232,184,75,.1); color:var(--gold); border-color:rgba(232,184,75,.5); }
+
+/* ── Toast ── */
+.toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
+.toast { background:var(--card); border:1px solid var(--mid); border-left:3px solid var(--gold); border-radius:6px; padding:10px 16px; font-family:'Space Mono',monospace; font-size:.68rem; color:var(--white); box-shadow:0 4px 24px rgba(0,0,0,.6); animation:toastIn .2s ease; pointer-events:all; max-width:280px; line-height:1.5; }
+.toast.error { border-left-color:var(--crimson); }
+.toast.info  { border-left-color:var(--ice); }
+@keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
 /* ── Login wall ── */
 .login-wall { background:var(--card); border:1px solid var(--mid); border-radius:8px; padding:48px 24px; text-align:center; }
 .login-wall p { font-size:.78rem; color:var(--dim); line-height:2; margin-bottom:16px; }
@@ -188,7 +201,7 @@ body::before {
   <div class="banner-inner">
     <div class="banner-icon">🎛️</div>
     <div class="banner-info">
-      <h1>Berkay Er Topluluğu</h1>
+      <h1>Elektronik Müzik Topluluğu</h1>
       <p>Ableton · Ses Tasarımı · Mix · Prodüksiyon</p>
     </div>
     <div class="banner-stats">
@@ -211,7 +224,7 @@ body::before {
     <div class="sc">
       <div class="sc-head sc-head-gold"><div class="sc-title gold">Topluluk</div></div>
       <div class="sc-body">
-        <p>Berkay Er'in öğrenci topluluğu. Ableton ve prodüksiyon hakkında sor, yanıtla, paylaş.</p>
+        <p>Elektronik müzik üretimi, Ableton ve prodüksiyon hakkında sor, yanıtla, paylaş.</p>
         <div class="sc-stat"><span class="sc-stat-lbl">Toplam Konu</span><span class="sc-stat-val" id="sStatPosts">—</span></div>
         <div class="sc-stat"><span class="sc-stat-lbl">Toplam Yanıt</span><span class="sc-stat-val" id="sStatReplies">—</span></div>
         <a href="index.html" class="sc-back-btn">← Ana Sayfaya Dön</a>
@@ -260,6 +273,14 @@ function doSignIn() {
 
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 
+function showToast(msg, type='success', ms=3000) {
+  let c = document.getElementById('toastCt');
+  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
+  const t = document.createElement('div'); t.className='toast'+(type!=='success'?' '+type:''); t.textContent=msg;
+  c.append(t);
+  setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
+}
+
 function fmtDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -299,9 +320,10 @@ let _filter    = 'all';
 let _catFilter = 'all';
 let _search    = '';
 let _allPosts  = [];
+let _unsubscribe = null;
 const CAT_LIST = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
 
-async function renderFeed(forceReload) {
+async function renderFeed() {
   const feed = document.getElementById('feed');
   feed.innerHTML = '';
   if (!_user) {
@@ -313,11 +335,7 @@ async function renderFeed(forceReload) {
   npBtn.textContent = '+ Konu Aç'; npBtn.href = 'new-post.html';
   feed.append(npBtn);
 
-  if (forceReload || !_allPosts.length) {
-    const snap = await db.collection('forum').orderBy('createdAt','desc').limit(60).get();
-    _allPosts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-  }
-  updateStats(_allPosts.length, _allPosts.reduce((s,p) => s + (p.replyCount||0), 0));
+  // (data loaded via onSnapshot below)
 
   // Search input
   const sw = document.createElement('div'); sw.className = 'search-wrap';
@@ -358,7 +376,15 @@ async function renderFeed(forceReload) {
 
   const postList = document.createElement('div'); postList.id = 'postList';
   feed.append(postList);
-  renderPosts(postList);
+
+  // Realtime listener
+  if (_unsubscribe) { _unsubscribe(); }
+  _unsubscribe = db.collection('forum').orderBy('createdAt','desc').limit(60)
+    .onSnapshot(snap => {
+      _allPosts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      updateStats(_allPosts.length, _allPosts.reduce((s,p) => s + (p.replyCount||0), 0));
+      renderPosts();
+    });
 }
 
 function renderPosts(postList) {
@@ -381,6 +407,7 @@ function renderPosts(postList) {
     e.textContent = _search ? `"${_search}" için sonuç bulunamadı.` : 'Henüz konu yok. İlk konuyu sen aç!';
     postList.append(e); return;
   }
+  visible.sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0));
   visible.forEach(post => renderPost(post, postList));
 }
 
@@ -421,6 +448,10 @@ function renderPost(post, container) {
     const cb = document.createElement('span'); cb.className = 'cat-badge'; cb.textContent = post.category;
     meta.append(cb);
   }
+  if (post.pinned) {
+    const pb = document.createElement('span'); pb.className = 'pin-badge'; pb.textContent = '📌 Sabitlendi';
+    meta.append(pb);
+  }
   content.append(meta);
   if (post.title) {
     const ttl = document.createElement('div'); ttl.className = 'pcard-title'; ttl.textContent = post.title;
@@ -453,13 +484,23 @@ function renderPost(post, container) {
   actions.append(toggleBtn, gotoBtn);
 
   if (isAdmin(_user)) {
+    // Pin toggle
+    const pinBtn = document.createElement('button');
+    pinBtn.className = 'pcard-pin-btn' + (post.pinned ? ' active' : '');
+    pinBtn.textContent = post.pinned ? '📌 Sabitti' : '📌 Sabitle';
+    pinBtn.onclick = async () => {
+      await db.collection('forum').doc(post.id).update({ pinned: !post.pinned });
+      showToast(post.pinned ? 'Sabitleme kaldırıldı' : '📌 Konu sabitlendi');
+    };
+    actions.append(pinBtn);
+
     // Solve toggle
     const solveBtn = document.createElement('button');
     solveBtn.className = 'pcard-solve-btn' + (post.solved ? ' active' : '');
     solveBtn.textContent = post.solved ? '✓ Çözüldü' : '⬡ Çözüldü işaretle';
     solveBtn.onclick = async () => {
       await db.collection('forum').doc(post.id).update({ solved: !post.solved });
-      _allPosts = []; await renderFeed(true);
+      showToast(post.solved ? 'Konu yeniden açıldı' : '✓ Konu çözüldü olarak işaretlendi');
     };
     actions.append(solveBtn);
 
@@ -472,7 +513,7 @@ function renderPost(post, container) {
       rSnap.docs.forEach(d => batch.delete(d.ref));
       batch.delete(db.collection('forum').doc(post.id));
       await batch.commit();
-      _allPosts = []; await renderFeed(true);
+      showToast('Konu silindi', 'info');
     };
     actions.append(del);
   }
@@ -559,6 +600,7 @@ function buildReplyEl(postId, r, list) {
 auth.onAuthStateChanged(async user => {
   _user = user;
   updateAuthBar(user);
+  if (!user && _unsubscribe) { _unsubscribe(); _unsubscribe = null; }
   await renderFeed();
 });
 </script>
