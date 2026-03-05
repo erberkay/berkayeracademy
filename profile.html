@@ -434,10 +434,14 @@ async function renderProfile() {
     saveBtn.textContent = '💾 Ünvanı Kaydet';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
-      await db.collection('users').doc(uid).set({ title: selKey }, { merge: true });
-      showToast('✓ Ünvan güncellendi');
+      try {
+        await db.collection('users').doc(uid).set({ title: selKey }, { merge: true });
+        showToast('✓ Ünvan güncellendi');
+        renderProfile();
+      } catch(e) {
+        showToast('⚠️ Kayıt başarısız: ' + (e.code || e.message || 'Bilinmeyen hata'), 'error');
+      }
       saveBtn.disabled = false; saveBtn.textContent = '💾 Ünvanı Kaydet';
-      renderProfile();
     };
     panel.append(lbl, grid, saveBtn);
     pCard.append(panel);

@@ -1609,6 +1609,29 @@ function buildMixerSection() {
         playBtn.textContent='▶ MIX ÇAL'; playBtn.classList.remove('active');
     }
 
+    // Live pattern status banner
+    const patBanner=mk('div');
+    patBanner.style.cssText='font-size:.68rem;padding:8px 12px;border-radius:4px;margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;';
+    function updatePatBanner(){
+        const has=state.beatPatterns.some(r=>r.some(v=>v>0));
+        if(has){
+            patBanner.style.cssText+='background:rgba(100,200,100,.08);border:1px solid rgba(100,200,100,.2);color:#6fc;';
+            patBanner.innerHTML='<span>✓ Beat Maker\'da pattern mevcut — MIX ÇAL\'a basabilirsin</span>';
+        } else {
+            patBanner.style.cssText='font-size:.68rem;padding:8px 12px;border-radius:4px;margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);color:#e8b84b;';
+            const txt=mk('span','','⚠️ Henüz Beat Maker\'da pattern yok — önce bir ritim kur');
+            const goBtnSmall=mk('button','genre-btn','Kur →');
+            goBtnSmall.style.cssText='font-size:.6rem;padding:3px 10px;flex-shrink:0;';
+            goBtnSmall.onclick=()=>navigate(2);
+            patBanner.innerHTML=''; patBanner.append(txt, goBtnSmall);
+        }
+    }
+    updatePatBanner();
+    // refresh banner every time module 3 is visible
+    const _bannerInterval=setInterval(updatePatBanner,1500);
+    if(!_cleanup) _cleanup=()=>clearInterval(_bannerInterval);
+    else { const prev=_cleanup; _cleanup=()=>{prev();clearInterval(_bannerInterval);}; }
+
     const playBtn=mk('button','power-button','▶ MIX ÇAL');
     playBtn.style.marginTop='12px';
     playBtn.onclick=()=>{
@@ -1618,13 +1641,14 @@ function buildMixerSection() {
         const hasPattern=state.beatPatterns.some(row=>row.some(v=>v>0));
         if(!hasPattern){
             showModal(
-                '🥁 Önce Beat Maker\'da Pattern Kur',
-                `<p>Mixer'ı çalıştırmak için Beat Maker'da en az bir adım aktif olmalı.</p>
-                <ul>
-                    <li>Beat Maker'a git → KICK, SNARE, HI-HAT adımlarını tıkla</li>
-                    <li>Geri dön → <strong>▶ MIX ÇAL</strong>'a bas</li>
-                    <li>LEAD LOOP her zaman çalar — sadece ritim kanalları pattern'e bakıyor</li>
-                </ul>`,
+                '🥁 Beat Maker\'da Pattern Yok',
+                `<p><strong>MIX ÇAL çalışmıyor çünkü henüz bir ritim pattern\'i yok.</strong></p>
+                <ul style="margin-top:8px">
+                    <li><strong>Modül 2 — Beat Maker\'a git</strong></li>
+                    <li>KICK, SNARE veya HI-HAT satırındaki kutulara tıkla (aktif = renkli)</li>
+                    <li>Buraya geri dön → <strong>▶ MIX ÇAL</strong> artık çalışır</li>
+                </ul>
+                <p style="margin-top:10px;font-size:.7rem;opacity:.6">Not: LEAD LOOP her zaman çalar. Sadece ritim için Beat Maker gerekli.</p>`,
                 [{label:'🥁 Beat Maker\'a Git', fn:()=>navigate(2)}]
             );
             return;
@@ -1660,7 +1684,7 @@ function buildMixerSection() {
         mixPlaying=true; playBtn.textContent='⏹ DURDUR'; playBtn.classList.add('active');
         vuLoop();
     };
-    wrap.append(playBtn);
+    wrap.append(patBanner, playBtn);
     return wrap;
 }
 

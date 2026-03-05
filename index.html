@@ -760,6 +760,21 @@
     _auth.onAuthStateChanged(user => {
       updateAuthBar(user);
       if (user) {
+        // Ensure Firestore user doc exists with joinedAt on first login
+        const userRef = _db.collection('users').doc(user.uid);
+        userRef.get().then(doc => {
+          const update = {
+            displayName: user.displayName || '',
+            photoURL: user.photoURL || '',
+            email: user.email || '',
+          };
+          if (!doc.exists || !doc.data().joinedAt) {
+            update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
+          }
+          userRef.set(update, { merge: true });
+        }).catch(() => {});
+
+        // Welcome modal — only once per user
         const key = 'ps_welcomed_' + user.uid;
         if (!localStorage.getItem(key)) {
           localStorage.setItem(key, '1');
