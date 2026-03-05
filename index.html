@@ -15,10 +15,32 @@
   .auth-name { font-size:.62rem; color:#eeebe6; font-family:'Space Mono',monospace; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .auth-out-btn { background:transparent; border:none; color:rgba(238,235,230,.4); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; padding:0 2px; }
   .auth-out-btn:hover { color:#b82d45; }
+  /* ── Forum ── */
+  .forum-section { margin:24px 0 0; }
+  .forum-ask-form { background:rgba(255,255,255,.03); border:1px solid #2a2a45; border-radius:8px; padding:14px 16px; margin-bottom:16px; }
+  .forum-textarea { width:100%; background:rgba(0,0,0,.3); border:1px solid #2a2a45; border-radius:4px; color:#eeebe6; font-family:'Space Mono',monospace; font-size:.72rem; padding:10px; resize:vertical; min-height:80px; outline:none; box-sizing:border-box; }
+  .forum-textarea:focus { border-color:#e8b84b; }
+  .forum-submit-btn { margin-top:8px; padding:7px 18px; background:#e8b84b; color:#060609; border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.68rem; font-weight:bold; cursor:pointer; }
+  .forum-submit-btn:hover { filter:brightness(1.15); }
+  .forum-submit-btn:disabled { opacity:.5; cursor:default; }
+  .forum-question { background:rgba(255,255,255,.04); border:1px solid #2a2a45; border-radius:8px; padding:14px 16px; margin-bottom:10px; }
+  .forum-q-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .forum-q-author { font-size:.62rem; color:#e8b84b; font-family:'Space Mono',monospace; }
+  .forum-q-date { font-size:.55rem; color:rgba(238,235,230,.28); font-family:'Space Mono',monospace; }
+  .forum-q-text { font-size:.78rem; color:#eeebe6; line-height:1.65; }
+  .forum-answer { margin-top:10px; padding:10px 14px; background:rgba(232,184,75,.07); border-left:3px solid #e8b84b; border-radius:0 4px 4px 0; }
+  .forum-answer-label { font-size:.55rem; color:#e8b84b; letter-spacing:.12em; margin-bottom:5px; font-family:'Space Mono',monospace; }
+  .forum-answer-text { font-size:.75rem; color:#eeebe6; line-height:1.65; }
+  .forum-answer-btn { margin-top:8px; padding:5px 12px; background:transparent; border:1px solid #e8b84b; color:#e8b84b; border-radius:4px; font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; }
+  .forum-answer-btn:hover { background:#e8b84b; color:#060609; }
+  .forum-pending-badge { display:inline-block; font-size:.52rem; padding:2px 7px; border-radius:10px; background:rgba(212,114,42,.15); border:1px solid rgba(212,114,42,.4); color:#d4722a; margin-left:8px; vertical-align:middle; font-family:'Space Mono',monospace; }
+  .forum-login-hint { font-size:.72rem; color:rgba(238,235,230,.35); text-align:center; padding:24px; font-family:'Space Mono',monospace; }
+  .forum-empty { font-size:.7rem; color:rgba(238,235,230,.3); text-align:center; padding:20px; font-family:'Space Mono',monospace; }
 </style>
 <!-- Firebase compat SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div id="scrollProgress"></div>
@@ -375,6 +397,14 @@
     </div>
   </div>
 
+  <!-- FORUM -->
+  <div class="forum-section animate-section">
+    <div class="section-title">// Öğrenci Soruları</div>
+    <div id="forumContent">
+      <div class="forum-login-hint">Soru sormak veya soruları görmek için sağ üstten giriş yap →</div>
+    </div>
+  </div>
+
   <!-- QUOTE -->
   <div class="quote animate-section">
     <p>
@@ -520,7 +550,9 @@
   }, { passive: true });
   btt.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-  // ── Firebase Auth ──
+  // ── Firebase Auth + Firestore + Forum ──
+  const ADMIN_EMAIL = 'berkayer032@gmail.com';
+
   const _fbCfg = {
     apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
     authDomain:        "ableton-tutorial.firebaseapp.com",
@@ -532,7 +564,9 @@
   try {
     firebase.initializeApp(_fbCfg);
     const _auth = firebase.auth();
+    const _db   = firebase.firestore();
 
+    // ── Auth bar ──────────────────────────────────────────────────
     function updateAuthBar(user) {
       const bar = document.getElementById('authBar');
       if (!bar) return;
@@ -542,12 +576,12 @@
         const img  = document.createElement('img');  img.className = 'auth-avatar';
         img.src = user.photoURL || ''; img.alt = '';
         const name = document.createElement('span'); name.className = 'auth-name';
-        name.textContent = user.displayName?.split(' ')[0] || 'Kullanıcı';
+        const label = user.email === ADMIN_EMAIL ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Öğrenci');
+        name.textContent = label;
         const out = document.createElement('button'); out.className = 'auth-out-btn';
         out.textContent = '✕'; out.title = 'Çıkış yap';
         out.onclick = () => _auth.signOut();
         wrap.append(img, name, out); bar.append(wrap);
-        // Auto-fill comment name
         const nameInput = document.getElementById('commentName');
         if (nameInput && !nameInput.value) nameInput.value = user.displayName?.split(' ')[0] || '';
       } else {
@@ -558,7 +592,124 @@
       }
     }
 
-    _auth.onAuthStateChanged(updateAuthBar);
+    // ── Forum helpers ─────────────────────────────────────────────
+    async function loadForum() {
+      const snap = await _db.collection('forum').orderBy('createdAt','desc').limit(40).get();
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+
+    async function postQuestion(text, user) {
+      await _db.collection('forum').add({
+        question:   text,
+        authorName: user.displayName?.split(' ')[0] || 'Öğrenci',
+        authorId:   user.uid,
+        createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+        answer:     null,
+      });
+    }
+
+    async function postAnswer(id, text) {
+      await _db.collection('forum').doc(id).update({
+        answer:     text,
+        answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    // ── Forum render ──────────────────────────────────────────────
+    function renderForum(questions, user) {
+      const c = document.getElementById('forumContent');
+      if (!c) return;
+      c.innerHTML = '';
+      const admin = user?.email === ADMIN_EMAIL;
+
+      if (!user) {
+        const h = document.createElement('div'); h.className = 'forum-login-hint';
+        h.textContent = 'Soru sormak veya soruları görmek için sağ üstten giriş yap →';
+        c.append(h); return;
+      }
+
+      // Ask form (students only)
+      if (!admin) {
+        const form = document.createElement('div'); form.className = 'forum-ask-form';
+        const lbl = document.createElement('div');
+        lbl.style.cssText = 'font-size:.65rem;color:#e8b84b;letter-spacing:.08em;margin-bottom:8px;font-family:"Space Mono",monospace';
+        lbl.textContent = 'SORU SOR';
+        const ta = document.createElement('textarea'); ta.className = 'forum-textarea';
+        ta.placeholder = 'Ableton veya prodüksiyon hakkında sorun...';
+        const btn = document.createElement('button'); btn.className = 'forum-submit-btn';
+        btn.textContent = 'Gönder';
+        btn.onclick = async () => {
+          const q = ta.value.trim(); if (!q) return;
+          btn.disabled = true; btn.textContent = '⏳';
+          await postQuestion(q, user);
+          ta.value = '';
+          const qs = await loadForum(); renderForum(qs, user);
+        };
+        form.append(lbl, ta, btn); c.append(form);
+      }
+
+      if (!questions.length) {
+        const e = document.createElement('div'); e.className = 'forum-empty';
+        e.textContent = admin ? 'Henüz soru yok.' : 'İlk soruyu sormak ister misin?';
+        c.append(e); return;
+      }
+
+      questions.forEach(q => {
+        const card = document.createElement('div'); card.className = 'forum-question';
+
+        const hdr = document.createElement('div'); hdr.className = 'forum-q-header';
+        const au  = document.createElement('span'); au.className = 'forum-q-author';
+        au.textContent = q.authorName;
+        if (!q.answer) {
+          const badge = document.createElement('span'); badge.className = 'forum-pending-badge';
+          badge.textContent = 'Yanıt bekleniyor'; au.append(badge);
+        }
+        const dt = document.createElement('span'); dt.className = 'forum-q-date';
+        dt.textContent = q.createdAt?.toDate?.()?.toLocaleDateString('tr-TR') || '';
+        hdr.append(au, dt);
+
+        const txt = document.createElement('div'); txt.className = 'forum-q-text';
+        txt.textContent = q.question;
+        card.append(hdr, txt);
+
+        if (q.answer) {
+          const ans = document.createElement('div'); ans.className = 'forum-answer';
+          const albl = document.createElement('div'); albl.className = 'forum-answer-label';
+          albl.textContent = '⚡ BERKAY ER';
+          const atxt = document.createElement('div'); atxt.className = 'forum-answer-text';
+          atxt.textContent = q.answer;
+          ans.append(albl, atxt); card.append(ans);
+        } else if (admin) {
+          const ab = document.createElement('button'); ab.className = 'forum-answer-btn';
+          ab.textContent = '↩ Cevapla';
+          ab.onclick = () => {
+            ab.remove();
+            const ta = document.createElement('textarea'); ta.className = 'forum-textarea';
+            ta.placeholder = 'Cevabını yaz...'; ta.style.minHeight = '60px'; ta.style.marginTop = '8px';
+            const sb = document.createElement('button'); sb.className = 'forum-submit-btn';
+            sb.textContent = 'Cevabı Gönder'; sb.style.marginTop = '6px';
+            sb.onclick = async () => {
+              const a = ta.value.trim(); if (!a) return;
+              sb.disabled = true; sb.textContent = '⏳';
+              await postAnswer(q.id, a);
+              const qs = await loadForum(); renderForum(qs, user);
+            };
+            card.append(ta, sb);
+          };
+          card.append(ab);
+        }
+
+        c.append(card);
+      });
+    }
+
+    // ── Auth state ────────────────────────────────────────────────
+    _auth.onAuthStateChanged(async user => {
+      updateAuthBar(user);
+      const questions = user ? await loadForum() : [];
+      renderForum(questions, user);
+    });
+
   } catch(e) { console.warn('Firebase init:', e.message); }
 </script>
 </body>
