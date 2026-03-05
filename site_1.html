@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Berkay Er — Ableton Tutorial</title>
+    <title>Ableton Live - İnteraktif Öğrenme Platformu </title>
     
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -297,6 +297,42 @@
             cursor: pointer;
             box-shadow: 0 0 8px rgba(232,184,75,0.5);
             border: none;
+        }
+
+        /* Custom ADSR slider — pointer capture, no React re-render lag */
+        .adsr-track {
+            position: relative;
+            height: 4px;
+            background: var(--mid);
+            border-radius: 2px;
+            cursor: pointer;
+            touch-action: none;
+            user-select: none;
+            margin: 8px 0 4px;
+        }
+        .adsr-track:hover .adsr-thumb {
+            box-shadow: 0 0 14px rgba(232,184,75,0.8);
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+        .adsr-fill {
+            position: absolute;
+            left: 0; top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--amber), var(--gold));
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .adsr-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--gold);
+            box-shadow: 0 0 8px rgba(232,184,75,0.5);
+            pointer-events: none;
+            transition: box-shadow 0.15s, transform 0.15s;
         }
 
         .waveform-selector {
@@ -817,28 +853,78 @@
             const getTasksForModule = (moduleId) => {
                 const tasksByModule = {
                     1: [
-                        { id: 1, text: 'Synthesizer\'ı aç ve bir nota çal' },
-                        { id: 2, text: 'Attack süresini değiştir ve farkı dinle' },
-                        { id: 3, text: 'Her 4 waveform\'u dene (sine, square, saw, triangle)' },
-                        { id: 4, text: 'ADSR değerlerini ayarlayarak uzun bir pad sesi yarat' }
+                        { id: 1, text: '4 waveform\'u sırayla dene: Sine → Square → Sawtooth → Triangle, her birini klavyeden çal' },
+                        { id: 2, text: 'Attack\'ı sürükleyerek sıfıra çek, sonra 1.5s\'ye getir — başlangıç farkını duyumsa' },
+                        { id: 3, text: 'Sustain\'i %0\'a indir, Decay\'i 0.3s\'ye ayarla — nota tutunca sesin nasıl kesildiğini dinle' },
+                        { id: 4, text: 'Release\'i 2s\'nin üzerine çıkar, bir nota bas ve bırak — sesin yavaşça söndüğünü duymalısın' },
+                        { id: 5, text: 'Sawtooth dalgası + Attack 0.8s + Sustain %60 + Release 1.5s ayarıyla pad sesi yarat ve çal' }
                     ],
                     2: [
-                        { id: 1, text: 'Kick kanalına 2 farklı kick sesi ekle' },
-                        { id: 2, text: 'Snare kanalına bir ses sürükle' },
-                        { id: 3, text: 'Bir ritim paterni oluştur (kick-snare-kick-snare)' }
+                        { id: 1, text: '4/4 kick paterni: Kick satırında 1., 5., 9. ve 13. kutulara tıkla' },
+                        { id: 2, text: 'Backbeat snare: Snare satırında yalnızca 5. ve 13. kutulara bas' },
+                        { id: 3, text: 'Hi-Hat\'e 16 kutunun tamamını doldur (düz sekizlikler)' },
+                        { id: 4, text: 'Bir kick kutusunu yukarı sürükleyerek velocity\'sini 80\'in üzerine çıkar' },
+                        { id: 5, text: 'Play\'e bas, paterni 4 bar dinle, sonra Snare velocity\'lerini farklılaştır' }
                     ],
                     3: [
-                        { id: 1, text: 'Her kanala en az 1 ses ekle' },
-                        { id: 2, text: 'Bass ve lead seslerini dene' },
-                        { id: 3, text: 'Volume kontrolü ile mix dengesi kur' }
+                        { id: 1, text: 'Kick fader\'ını %75-80\'e getir, geri kalanı daha düşük tut — alçak frekanslar baskın olmamalı' },
+                        { id: 2, text: 'Snare fader\'ını solo\'ya al (diğerlerini kapat), sesi izole dinle' },
+                        { id: 3, text: 'Hi-Hat\'i %50\'nin altına indir — mix\'in üstünü temizle' },
+                        { id: 4, text: 'Bass\'i %70\'e ayarla ve Kick ile çakışmadığını kontrol et' },
+                        { id: 5, text: 'Tüm kanalları aç, play\'e bas — sesin dengeli ve dolu geldiğini doğrula' }
                     ],
                     4: [
-                        { id: 1, text: 'Tüm kanalları doldur' },
-                        { id: 2, text: 'Kendi sound design\'ını yap' },
-                        { id: 3, text: 'Kısa bir loop oluştur' }
+                        { id: 1, text: 'Synthesizer\'da Sawtooth + Attack 0s + Decay 0.1s + Sustain %0 ile lead sesi ayarla' },
+                        { id: 2, text: 'Beat Maker\'da 2 bar\'lık orijinal bir ritim paterni oluştur' },
+                        { id: 3, text: 'Kick velocity\'lerini sürükleyerek groove yarat (bazı vuruşlar daha sert, bazıları hafif)' },
+                        { id: 4, text: 'Mixer\'da kick, snare, hat ve bass dengeli bir mix kur' },
+                        { id: 5, text: 'Play\'e bas — hem beat hem synthesizer sesi aynı anda duyulmalı' }
                     ]
                 };
                 return tasksByModule[moduleId] || [];
+            };
+
+            // Custom slider — setPointerCapture ile smooth drag, re-render takılması yok
+            const AdsrSlider = ({ min, max, step, value, onChange }) => {
+                const trackRef = React.useRef(null);
+                const dragging = React.useRef(false);
+
+                const getVal = (clientX) => {
+                    const rect = trackRef.current.getBoundingClientRect();
+                    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                    const raw = min + pct * (max - min);
+                    const stepped = Math.round(raw / step) * step;
+                    return parseFloat(Math.max(min, Math.min(max, stepped)).toFixed(4));
+                };
+
+                const onPointerDown = (e) => {
+                    e.preventDefault();
+                    trackRef.current.setPointerCapture(e.pointerId);
+                    dragging.current = true;
+                    onChange(getVal(e.clientX));
+                };
+                const onPointerMove = (e) => {
+                    if (!dragging.current) return;
+                    onChange(getVal(e.clientX));
+                };
+                const onPointerUp = (e) => {
+                    dragging.current = false;
+                };
+
+                const pct = ((value - min) / (max - min)) * 100;
+                return (
+                    <div
+                        ref={trackRef}
+                        className="adsr-track"
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerUp}
+                    >
+                        <div className="adsr-fill" style={{ width: pct + '%' }} />
+                        <div className="adsr-thumb" style={{ left: pct + '%' }} />
+                    </div>
+                );
             };
 
             const ADSRCurve = () => {
@@ -974,14 +1060,10 @@
                                             <span>{adsr.attack.toFixed(2)}s</span>
                                             <span>Yavaş</span>
                                         </div>
-                                        <input
-                                            type="range"
-                                            className="slider"
-                                            min="0.01"
-                                            max="2"
-                                            step="0.01"
+                                        <AdsrSlider
+                                            min={0.01} max={2} step={0.01}
                                             value={adsr.attack}
-                                            onChange={(e) => setAdsr({...adsr, attack: parseFloat(e.target.value)})}
+                                            onChange={v => setAdsr(a => ({...a, attack: v}))}
                                         />
                                     </div>
                                 </div>
@@ -994,14 +1076,10 @@
                                             <span>{adsr.decay.toFixed(2)}s</span>
                                             <span>Uzun</span>
                                         </div>
-                                        <input
-                                            type="range"
-                                            className="slider"
-                                            min="0.01"
-                                            max="2"
-                                            step="0.01"
+                                        <AdsrSlider
+                                            min={0.01} max={2} step={0.01}
                                             value={adsr.decay}
-                                            onChange={(e) => setAdsr({...adsr, decay: parseFloat(e.target.value)})}
+                                            onChange={v => setAdsr(a => ({...a, decay: v}))}
                                         />
                                     </div>
                                 </div>
@@ -1014,14 +1092,10 @@
                                             <span>{(adsr.sustain * 100).toFixed(0)}%</span>
                                             <span>Yüksek</span>
                                         </div>
-                                        <input
-                                            type="range"
-                                            className="slider"
-                                            min="0"
-                                            max="1"
-                                            step="0.01"
+                                        <AdsrSlider
+                                            min={0} max={1} step={0.01}
                                             value={adsr.sustain}
-                                            onChange={(e) => setAdsr({...adsr, sustain: parseFloat(e.target.value)})}
+                                            onChange={v => setAdsr(a => ({...a, sustain: v}))}
                                         />
                                     </div>
                                 </div>
@@ -1034,14 +1108,10 @@
                                             <span>{adsr.release.toFixed(2)}s</span>
                                             <span>Uzun</span>
                                         </div>
-                                        <input
-                                            type="range"
-                                            className="slider"
-                                            min="0.01"
-                                            max="3"
-                                            step="0.01"
+                                        <AdsrSlider
+                                            min={0.01} max={3} step={0.01}
                                             value={adsr.release}
-                                            onChange={(e) => setAdsr({...adsr, release: parseFloat(e.target.value)})}
+                                            onChange={v => setAdsr(a => ({...a, release: v}))}
                                         />
                                     </div>
                                 </div>
