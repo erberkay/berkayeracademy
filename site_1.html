@@ -2449,7 +2449,7 @@ function buildInteractiveConcepts() {
             }});
 
             let running=false, meterRaf=null, stopTimer=null;
-            let scKickNodes=[], scBassNode=null, scKickHub=null, scKickAna=null, scBassAna=null;
+            let scKickNodes=[], scBassNodes=[], scKickHub=null, scKickAna=null, scBassAna=null;
             let _lastGR=0;
 
             // AudioWorklet processor — sample-accurate sidechain via envelope follower on kick input
@@ -2471,7 +2471,7 @@ function buildInteractiveConcepts() {
     for(let i=0;i<oL.length;i++){
       const k=kL?Math.abs(kL[i]):0;
       this._env=k>this._env?atk*this._env+(1-atk)*k:rel*this._env;
-      const g=1-depth*Math.min(1,this._env*5);
+      const g=1-depth*Math.min(1,this._env*8);
       oL[i]=(bL?bL[i]:0)*g;
       if(oR)oR[i]=(bR?bR[i]:0)*g;
       sumGR+=(1-g);
@@ -2487,7 +2487,7 @@ registerProcessor('sidechain-processor',SidechainProcessor);`;
                 if(meterRaf){cancelAnimationFrame(meterRaf);meterRaf=null;}
                 if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}
                 scKickNodes.forEach(n=>{try{n.stop();}catch{}});scKickNodes=[];
-                if(scBassNode){try{scBassNode.stop();}catch{};scBassNode=null;}
+                scBassNodes.forEach(n=>{try{n.stop();}catch{}});scBassNodes=[];
                 if(_scWorklet){try{_scWorklet.disconnect();}catch{};_scWorklet=null;}
                 if(scKickHub){try{scKickHub.disconnect();}catch{};scKickHub=null;}
                 if(scBassAna){try{scBassAna.disconnect();}catch{};scBassAna=null;}
@@ -2518,7 +2518,7 @@ registerProcessor('sidechain-processor',SidechainProcessor);`;
                 }catch(e){useWorklet=false;}
                 if(!running)return;
 
-                const BPM=128, spb=60/BPM, BEATS=16, t0=c.currentTime+0.05;
+                const BPM=128, spb=60/BPM, BEATS=16;
                 const depth=parseFloat(depthSl.value)||.88, rel=parseFloat(relSl.value)||.18;
 
                 if(useWorklet){
@@ -2531,28 +2531,24 @@ registerProcessor('sidechain-processor',SidechainProcessor);`;
                     scKickAna=c.createAnalyser(); scKickAna.fftSize=256; scKickAna.smoothingTimeConstant=0.3;
                     _scWorklet.connect(scBassAna); scBassAna.connect(c.destination);
 
-                    // Bass → worklet input 0
-                    const bassBuf=beatBuffers[BEAT_TRACKS[4].file];
-                    const bg=c.createGain(); bg.gain.value=0.82;
-                    if(bassBuf){
-                        scBassNode=c.createBufferSource(); scBassNode.buffer=bassBuf; scBassNode.loop=true;
-                        scBassNode.connect(bg);
-                    } else {
-                        const ob=c.createOscillator(); ob.type='sawtooth'; ob.frequency.value=55;
-                        const flt=c.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=180;
-                        ob.connect(flt); flt.connect(bg);
-                        ob.start(t0); ob.stop(t0+BEATS*spb+0.5); scBassNode=ob;
-                    }
+                    // Shared gain for bass → worklet input 0
+                    const bg=c.createGain(); bg.gain.value=0.95;
                     bg.connect(_scWorklet,0,0);
-                    if(scBassNode.start) scBassNode.start(t0);
 
                     // Kick hub → analyser + worklet input 1 (sidechain trigger)
                     scKickHub=c.createGain(); scKickHub.gain.value=1;
                     scKickHub.connect(scKickAna); scKickAna.connect(c.destination);
                     scKickHub.connect(_scWorklet,0,1);
+
+                    // Calculate t0 AFTER graph setup so lookahead is accurate
+                    const t0=c.currentTime+0.12;
+                    const bassBuf=beatBuffers[BEAT_TRACKS[4].file];
                     const kickBuf=beatBuffers[BEAT_TRACKS[0].file];
+
+                    // Schedule kick + bass per beat — perfectly aligned
                     for(let i=0;i<BEATS;i++){
                         const when=t0+i*spb;
+                        // Kick
                         if(kickBuf){
                             const src=c.createBufferSource(); src.buffer=kickBuf;
                             src.connect(scKickHub); src.start(when); scKickNodes.push(src);
@@ -2561,6 +2557,17 @@ registerProcessor('sidechain-processor',SidechainProcessor);`;
                             o.frequency.setValueAtTime(90,when); o.frequency.exponentialRampToValueAtTime(0.001,when+.28);
                             const og=c.createGain(); og.gain.setValueAtTime(.7,when); og.gain.exponentialRampToValueAtTime(.001,when+.28);
                             o.connect(og); og.connect(scKickHub); o.start(when); o.stop(when+.32); scKickNodes.push(o);
+                        }
+                        // Bass — one note per beat, same when → always in sync with kick
+                        if(bassBuf){
+                            const src=c.createBufferSource(); src.buffer=bassBuf;
+                            src.connect(bg); src.start(when); scBassNodes.push(src);
+                        } else {
+                            const ob=c.createOscillator(); ob.type='sawtooth'; ob.frequency.value=55;
+                            const flt=c.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=200;
+                            const gb=c.createGain(); gb.gain.value=0.7;
+                            ob.connect(flt); flt.connect(gb); gb.connect(bg);
+                            ob.start(when); ob.stop(when+spb*0.9); scBassNodes.push(ob);
                         }
                     }
                     // Meter loop
@@ -2579,14 +2586,16 @@ registerProcessor('sidechain-processor',SidechainProcessor);`;
                     meterLoop();
                 } else {
                     // Fallback: simulated pump via scheduled gain ramps
+                    const t0=c.currentTime+0.12;
+                    const kb=beatBuffers[BEAT_TRACKS[0].file];
+                    const bb=beatBuffers[BEAT_TRACKS[4].file];
                     for(let i=0;i<BEATS;i++){
                         const when=t0+i*spb;
-                        const kb=beatBuffers[BEAT_TRACKS[0].file];
+                        // Kick
                         if(kb){const src=c.createBufferSource();src.buffer=kb;const g=c.createGain();g.gain.value=.85;src.connect(g);g.connect(c.destination);src.start(when);scKickNodes.push(src);}
                         else{const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(90,when);o.frequency.exponentialRampToValueAtTime(.001,when+.28);const og=c.createGain();og.gain.setValueAtTime(.7,when);og.gain.exponentialRampToValueAtTime(.001,when+.28);o.connect(og);og.connect(c.destination);o.start(when);o.stop(when+.32);scKickNodes.push(o);}
-                        // bass grain with duck ramp
-                        const bb=beatBuffers[BEAT_TRACKS[4].file];
-                        if(bb){const src=c.createBufferSource();src.buffer=bb;const g=c.createGain();g.gain.setValueAtTime(.1,when);g.gain.linearRampToValueAtTime(1-depth,when+.02);g.gain.linearRampToValueAtTime(.78,when+rel);src.connect(g);g.connect(c.destination);src.start(when);src.stop(when+spb+.05);scBassNode=src;}
+                        // Bass — same when as kick, gain ramp simulates duck+recover
+                        if(bb){const src=c.createBufferSource();src.buffer=bb;const g=c.createGain();g.gain.setValueAtTime(1-depth,when);g.gain.linearRampToValueAtTime(.9,when+rel);src.connect(g);g.connect(c.destination);src.start(when);scBassNodes.push(src);}
                         // visual pulse
                         const delay=i*spb*1000;
                         setTimeout(()=>{if(!running)return;kickM.bar.style.width='100%';bassM.bar.style.width=Math.round((1-depth)*100)+'%';grM.bar.style.width=Math.round(depth*100)+'%';},delay);
