@@ -391,7 +391,7 @@ function renderPost(post, container) {
     repliesVisible = !repliesVisible;
     if (!repliesVisible) { repliesWrap.style.display='none'; return; }
     repliesWrap.style.display='block';
-    if (!repliesLoaded) { repliesLoaded = true; await loadReplies(post.id, repliesWrap); }
+    if (!repliesLoaded) { repliesLoaded = true; await loadReplies(post.id, repliesWrap, post.solved); }
   };
   const gotoBtn = document.createElement('button'); gotoBtn.className = 'pcard-goto-btn';
   gotoBtn.textContent = '→ Konuya Git';
@@ -429,7 +429,7 @@ function renderPost(post, container) {
   container.append(card);
 }
 
-async function loadReplies(postId, wrap) {
+async function loadReplies(postId, wrap, solved) {
   wrap.innerHTML = `<div class="loading-replies">Yanıtlar yükleniyor...</div>`;
   const snap = await db.collection('forum').doc(postId).collection('replies')
     .orderBy('createdAt','asc').limit(100).get();
@@ -444,31 +444,37 @@ async function loadReplies(postId, wrap) {
 
   if (!snap.empty) wrap.append(list);
 
-  // Reply form (all logged-in users)
-  const form = document.createElement('div'); form.className = 'reply-form';
-  const ta   = document.createElement('textarea'); ta.className = 'reply-ta'; ta.rows = 2;
-  ta.placeholder = 'Yanıtını yaz...';
-  const btn  = document.createElement('button'); btn.className = 'reply-send'; btn.textContent = 'Yanıtla';
-  btn.onclick = async () => {
-    const txt = ta.value.trim(); if (!txt) return;
-    btn.disabled = true; btn.textContent = '⏳';
-    const admin = isAdmin(_user);
-    await db.collection('forum').doc(postId).collection('replies').add({
-      text:       txt,
-      authorName: _user.displayName?.split(' ')[0] || 'Üye',
-      authorEmail:_user.email,
-      authorId:   _user.uid,
-      isAdmin:    admin,
-      createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
-    });
-    // increment replyCount
-    await db.collection('forum').doc(postId).update({
-      replyCount: firebase.firestore.FieldValue.increment(1),
-    });
-    ta.value = '';
-    await loadReplies(postId, wrap);
-  };
-  form.append(ta, btn); wrap.append(form);
+  // Reply form
+  if (solved) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'padding:10px 20px 14px;font-size:.62rem;color:rgba(100,200,100,.7);letter-spacing:.06em;';
+    notice.textContent = '✓ Bu konu çözüldü — yanıt kapalı';
+    wrap.append(notice);
+  } else {
+    const form = document.createElement('div'); form.className = 'reply-form';
+    const ta   = document.createElement('textarea'); ta.className = 'reply-ta'; ta.rows = 2;
+    ta.placeholder = 'Yanıtını yaz...';
+    const btn  = document.createElement('button'); btn.className = 'reply-send'; btn.textContent = 'Yanıtla';
+    btn.onclick = async () => {
+      const txt = ta.value.trim(); if (!txt) return;
+      btn.disabled = true; btn.textContent = '⏳';
+      const admin = isAdmin(_user);
+      await db.collection('forum').doc(postId).collection('replies').add({
+        text:       txt,
+        authorName: _user.displayName?.split(' ')[0] || 'Üye',
+        authorEmail:_user.email,
+        authorId:   _user.uid,
+        isAdmin:    admin,
+        createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      await db.collection('forum').doc(postId).update({
+        replyCount: firebase.firestore.FieldValue.increment(1),
+      });
+      ta.value = '';
+      await loadReplies(postId, wrap, solved);
+    };
+    form.append(ta, btn); wrap.append(form);
+  }
 }
 
 function buildReplyEl(postId, r, list) {
