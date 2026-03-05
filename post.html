@@ -130,12 +130,14 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .notif-read-all { background:none; border:none; color:rgba(238,235,230,.35); font-size:.55rem; cursor:pointer; font-family:'Space Mono',monospace; padding:0; }
 .notif-read-all:hover { color:var(--dim); }
 .notif-list { max-height:320px; overflow-y:auto; }
-.notif-item { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; transition:background .1s; }
+.notif-item { padding:10px 32px 10px 14px; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; transition:background .1s; position:relative; }
 .notif-item:hover { background:rgba(255,255,255,.03); }
 .notif-item.unread { background:rgba(232,184,75,.04); border-left:2px solid rgba(232,184,75,.4); padding-left:12px; }
 .notif-item-text { font-size:.63rem; color:var(--white); line-height:1.5; margin-bottom:3px; }
 .notif-item-time { font-size:.5rem; color:rgba(238,235,230,.25); }
 .notif-empty { padding:20px 14px; text-align:center; font-size:.62rem; color:var(--dim); }
+.notif-del-btn { position:absolute; top:50%; right:8px; transform:translateY(-50%); background:none; border:none; color:rgba(238,235,230,.2); font-size:.8rem; cursor:pointer; padding:2px 5px; line-height:1; border-radius:3px; transition:color .12s,background .12s; }
+.notif-del-btn:hover { color:var(--crimson); background:rgba(184,45,69,.12); }
 
 /* ── Bottom Nav ── */
 .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:500; background:rgba(6,6,9,.96); border-top:1px solid var(--mid); backdrop-filter:blur(16px); display:flex; height:58px; }
@@ -279,6 +281,11 @@ function _mergeNotifs(uid) {
       const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       item.innerHTML = `<div class="notif-item-text">${icon}${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
       if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
+      if (n._t === 'p' && n._id) {
+        const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
+        del.onclick = e => { e.stopPropagation(); db.collection('notifications').doc(uid).collection('items').doc(n._id).delete(); };
+        item.append(del);
+      }
       list.append(item);
     });
   }
@@ -305,7 +312,11 @@ function initNotifications(user) {
   }).catch(() => {});
   _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
     .orderBy('createdAt', 'desc').limit(20)
-    .onSnapshot(snap => { _personalNotifs = snap.docs.map(d => d.data()); _mergeNotifs(user.uid); }, () => {});
+    .onSnapshot(snap => {
+      _personalNotifs = snap.docs.map(d => ({...d.data(), _id: d.id}));
+      if (snap.docs.length > 4) snap.docs.slice(4).forEach(d => d.ref.delete());
+      _mergeNotifs(user.uid);
+    }, () => {});
   _annUnsub = db.collection('announcements').orderBy('createdAt', 'desc').limit(15)
     .onSnapshot(snap => { _announcements = snap.docs.map(d => d.data()); _mergeNotifs(user.uid); }, () => {});
 }

@@ -1391,6 +1391,175 @@ function renderModule2() {
         "Instruments → Drum Rack → MIDI clip (çift tıkla) → Draw modu"
     ));
 
+    // ── Mastering Tool ─────────────────────────────────────────────────
+    (function buildMasteringTool(){
+        const wrap = mk('div','adsr-explanation'); wrap.style.cssText='margin-top:22px;';
+        wrap.innerHTML=`<h3 style="color:#e8b84b;margin-bottom:4px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎚 Mastering Önizleme</h3>`;
+        const desc=mk('div'); desc.style.cssText='font-size:.66rem;color:var(--dim);line-height:1.6;margin-bottom:10px;';
+        desc.innerHTML='Mevcut pattern\'ı <strong>4 bar offline</strong> render eder, mastering zincirinden geçirir: <span style="color:#8fc8e8">HPF → High Shelf → Compressor → Limiter</span>. Önce pattern kur, sonra Render\'a bas.';
+        wrap.append(desc);
+
+        // Sliders
+        let mHshelfGain=2, mCompThresh=-14, mCompRatio=3, mLimCeil=-0.5;
+        function mSlRow(label,col,min,max,step,val,fmt,cb){
+            const row=mk('div'); row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:5px;';
+            const lb=mk('span',''); lb.style.cssText=`font-size:.58rem;color:${col};min-width:110px;`; lb.textContent=label;
+            const vsp=mk('span',''); vsp.style.cssText=`font-size:.58rem;color:${col};min-width:44px;text-align:right;`; vsp.textContent=fmt(val);
+            const sl=document.createElement('input'); sl.type='range'; sl.min=min; sl.max=max; sl.step=step; sl.value=val;
+            sl.style.cssText=`flex:1;accent-color:${col}`;
+            sl.oninput=()=>{ const v=+sl.value; vsp.textContent=fmt(v); cb(v); };
+            row.append(lb,sl,vsp); return row;
+        }
+        wrap.append(mSlRow('High Shelf (+kHz air)','#8fc8e8',-4,8,.5,mHshelfGain,v=>(v>0?'+':'')+v+' dB',v=>{mHshelfGain=v;}));
+        wrap.append(mSlRow('Comp Threshold','#d4722a',-30,-4,1,mCompThresh,v=>v+' dBFS',v=>{mCompThresh=v;}));
+        wrap.append(mSlRow('Comp Ratio','#d4722a',1.5,8,.5,mCompRatio,v=>v+':1',v=>{mCompRatio=v;}));
+        wrap.append(mSlRow('Limiter Ceiling','#e8b84b',-6,-.1,.1,mLimCeil,v=>v+' dBFS',v=>{mLimCeil=v;}));
+
+        // Meters row
+        const mtrRow=mk('div'); mtrRow.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0 6px;';
+        function mkMtr(label,color){
+            const col=mk('div');
+            const lbl=mk('div'); lbl.style.cssText=`font-size:.54rem;color:${color};margin-bottom:3px;letter-spacing:.04em;`; lbl.textContent=label;
+            const bg=mk('div'); bg.style.cssText='height:7px;background:var(--mid);border-radius:3px;overflow:hidden;';
+            const bar=mk('div'); bar.style.cssText=`height:100%;width:0%;background:${color};border-radius:3px;transition:width .2s;`;
+            const val=mk('div'); val.style.cssText=`font-size:.5rem;color:${color};margin-top:2px;text-align:right;`;
+            bg.append(bar); col.append(lbl,bg,val); return {col,bar,val};
+        }
+        const mIn=mkMtr('IN','#888'), mOut=mkMtr('OUT','#6fc'), mGR=mkMtr('GR','#ff6b6b');
+        mtrRow.append(mIn.col, mOut.col, mGR.col);
+        wrap.append(mtrRow);
+
+        // Status line
+        const statusDiv=mk('div'); statusDiv.style.cssText='font-size:.6rem;color:var(--dim);min-height:16px;margin-bottom:6px;';
+        wrap.append(statusDiv);
+
+        // Render + Play buttons
+        const btnRow=mk('div'); btnRow.style.cssText='display:flex;gap:8px;';
+        const renderBtn=mk('button','wave-btn','🎚 Render & Master');
+        renderBtn.style.cssText+='flex:1;font-size:.66rem;padding:6px;';
+        const playBtn2=mk('button','wave-btn','▶ Dinle');
+        playBtn2.style.cssText+='flex:0 0 80px;font-size:.66rem;padding:6px;';
+        playBtn2.disabled=true;
+        btnRow.append(renderBtn,playBtn2); wrap.append(btnRow);
+
+        let masteredBuf=null, masterPlaySrc=null, masterPlayCtx=null;
+
+        function stopMasterPlay(){
+            if(masterPlaySrc){try{masterPlaySrc.stop();}catch{} masterPlaySrc=null;}
+            playBtn2.textContent='▶ Dinle'; playBtn2.classList.remove('active');
+        }
+
+        playBtn2.onclick=()=>{
+            if(masterPlaySrc){ stopMasterPlay(); return; }
+            if(!masteredBuf) return;
+            if(!masterPlayCtx) masterPlayCtx=new(window.AudioContext||window.webkitAudioContext)();
+            if(masterPlayCtx.state==='suspended') masterPlayCtx.resume();
+            masterPlaySrc=masterPlayCtx.createBufferSource();
+            masterPlaySrc.buffer=masteredBuf;
+            masterPlaySrc.connect(masterPlayCtx.destination);
+            masterPlaySrc.start();
+            masterPlaySrc.onended=()=>{ masterPlaySrc=null; playBtn2.textContent='▶ Dinle'; playBtn2.classList.remove('active'); };
+            playBtn2.textContent='⏹ Durdur'; playBtn2.classList.add('active');
+        };
+
+        renderBtn.onclick=async()=>{
+            stopMasterPlay();
+            const hasAny=state.beatPatterns.some(r=>r.some(v=>v>0));
+            if(!hasAny){ statusDiv.textContent='⚠ Önce Beat Maker\'da bir pattern kur!'; return; }
+
+            // Ensure samples are loaded
+            getBeatCtx();
+            const loaded=BEAT_TRACKS.filter(t=>beatBuffers[t.file]);
+            if(!loaded.length){ statusDiv.textContent='⚠ Örnekler yükleniyor, biraz bekle…'; return; }
+
+            renderBtn.disabled=true; renderBtn.textContent='⏳ Render…';
+            statusDiv.textContent='Offline render başlıyor…';
+            mIn.bar.style.width='0%'; mOut.bar.style.width='0%'; mGR.bar.style.width='0%';
+
+            try{
+                const BARS=4, spb=60/state.bpm/4; // 16th-note step duration
+                const totalSec=BARS*16*spb+0.5; // +0.5s tail
+                const SR=beatCtx?.sampleRate||44100;
+                const offCtx=new OfflineAudioContext(2,Math.ceil(totalSec*SR),SR);
+
+                // Mastering chain
+                const hpf=offCtx.createBiquadFilter(); hpf.type='highpass'; hpf.frequency.value=30; hpf.Q.value=0.7;
+                const hshelf=offCtx.createBiquadFilter(); hshelf.type='highshelf'; hshelf.frequency.value=10000; hshelf.gain.value=mHshelfGain;
+                const comp=offCtx.createDynamicsCompressor();
+                comp.threshold.value=mCompThresh; comp.knee.value=8; comp.ratio.value=mCompRatio; comp.attack.value=0.025; comp.release.value=0.25;
+                const lim=offCtx.createDynamicsCompressor();
+                lim.threshold.value=mLimCeil; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=0.001; lim.release.value=0.06;
+                hpf.connect(hshelf); hshelf.connect(comp); comp.connect(lim); lim.connect(offCtx.destination);
+
+                // Schedule all steps across BARS bars
+                for(let bar=0;bar<BARS;bar++){
+                    for(let step=0;step<16;step++){
+                        const when=(bar*16+step)*spb;
+                        BEAT_TRACKS.forEach((track,ti)=>{
+                            const vel=state.beatPatterns[ti][step]; if(vel<=0) return;
+                            const buf=beatBuffers[track.file]; if(!buf) return;
+                            const g=offCtx.createGain(); g.gain.value=(vel/100)*(state.beatVolumes[ti]/100)*0.8;
+                            const src=offCtx.createBufferSource(); src.buffer=buf;
+                            src.connect(g); g.connect(hpf); src.start(when);
+                        });
+                    }
+                }
+
+                statusDiv.textContent='Render ediliyor…';
+                const rendered=await offCtx.startRendering();
+                masteredBuf=rendered;
+
+                // Analyze levels
+                const L=rendered.getChannelData(0), R=rendered.length>1?rendered.getChannelData(1):L;
+                let peakIn=0, peakOut=0, rmsSum=0;
+                // Also render a dry version (hpf only, no comp/lim) to get input level estimate
+                const dryCtx=new OfflineAudioContext(2,Math.ceil(totalSec*SR),SR);
+                const dryHpf=dryCtx.createBiquadFilter(); dryHpf.type='highpass'; dryHpf.frequency.value=30;
+                dryHpf.connect(dryCtx.destination);
+                for(let bar=0;bar<BARS;bar++){
+                    for(let step=0;step<16;step++){
+                        const when=(bar*16+step)*spb;
+                        BEAT_TRACKS.forEach((track,ti)=>{
+                            const vel=state.beatPatterns[ti][step]; if(vel<=0) return;
+                            const buf=beatBuffers[track.file]; if(!buf) return;
+                            const g=dryCtx.createGain(); g.gain.value=(vel/100)*(state.beatVolumes[ti]/100)*0.8;
+                            const src=dryCtx.createBufferSource(); src.buffer=buf;
+                            src.connect(g); g.connect(dryHpf); src.start(when);
+                        });
+                    }
+                }
+                const dryRender=await dryCtx.startRendering();
+                const dryL=dryRender.getChannelData(0);
+                for(let i=0;i<dryL.length;i++) peakIn=Math.max(peakIn,Math.abs(dryL[i]));
+                for(let i=0;i<L.length;i++){ peakOut=Math.max(peakOut,Math.abs(L[i])); rmsSum+=L[i]*L[i]; }
+
+                const rms=Math.sqrt(rmsSum/L.length);
+                const inDb=peakIn>0?20*Math.log10(peakIn):-Infinity;
+                const outDb=peakOut>0?20*Math.log10(peakOut):-Infinity;
+                const grDb=Math.max(0,inDb-outDb);
+                const lufsEst=rms>0?20*Math.log10(rms)-3:-Infinity; // rough LUFS estimate
+
+                mIn.bar.style.width=Math.min(100,Math.max(0,(inDb+20)/20*100))+'%';
+                mIn.val.textContent=isFinite(inDb)?inDb.toFixed(1)+' dBFS':'—';
+                mOut.bar.style.width=Math.min(100,Math.max(0,(outDb+20)/20*100))+'%';
+                mOut.val.textContent=isFinite(outDb)?outDb.toFixed(1)+' dBFS':'—';
+                mGR.bar.style.width=Math.min(100,grDb*6)+'%';
+                mGR.val.textContent=grDb>0?'-'+grDb.toFixed(1)+' dB':'0 dB';
+
+                statusDiv.innerHTML=`✓ Mastered — OUT: <span style="color:#6fc">${isFinite(outDb)?outDb.toFixed(1)+' dBFS':'—'}</span> &nbsp;·&nbsp; LUFS ≈ <span style="color:#e8b84b">${isFinite(lufsEst)?lufsEst.toFixed(1):'—'}</span>`;
+                playBtn2.disabled=false;
+            }catch(e){
+                statusDiv.textContent='Hata: '+e.message;
+            }
+            renderBtn.disabled=false; renderBtn.textContent='🎚 Render & Master';
+        };
+
+        shell.append(wrap);
+        // cleanup: stop playback when leaving module
+        const origCleanup = _cleanup;
+        _cleanup = () => { origCleanup?.(); stopMasterPlay(); };
+    })();
+
     root.append(shell);
     root.append(makeTaskPanel(2));
     _cleanup = () => { window.removeEventListener('mousemove',onMove); window.removeEventListener('mouseup',onUp); };
