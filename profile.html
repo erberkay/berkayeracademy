@@ -75,6 +75,27 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .ef-save-btn { width:100%; margin-top:14px; padding:9px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.7rem; font-weight:bold; cursor:pointer; }
 .ef-save-btn:hover { filter:brightness(1.1); }
 
+/* ── Title badge ── */
+.profile-title-badge { display:inline-flex; align-items:center; gap:5px; font-size:.6rem; padding:3px 11px; border-radius:12px; margin-bottom:8px; font-weight:bold; letter-spacing:.05em; }
+
+/* ── Admin title panel ── */
+.admin-title-panel { padding:14px 20px 16px; border-top:1px solid rgba(255,255,255,.06); }
+.admin-title-label { font-size:.52rem; color:var(--gold); letter-spacing:.12em; text-transform:uppercase; margin-bottom:8px; }
+.title-grid { display:flex; flex-wrap:wrap; gap:6px; }
+.title-opt { padding:4px 11px; border-radius:12px; border:1px solid var(--mid); background:var(--mid2); color:var(--dim); font-family:'Space Mono',monospace; font-size:.58rem; cursor:pointer; transition:all .15s; }
+.title-opt.sel { border-color:var(--gold); color:var(--gold); background:rgba(232,184,75,.1); }
+.title-opt:hover:not(.sel) { border-color:rgba(238,235,230,.2); color:var(--white); }
+.title-save-btn { margin-top:10px; padding:5px 16px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.6rem; font-weight:bold; cursor:pointer; transition:filter .15s; }
+.title-save-btn:hover { filter:brightness(1.1); }
+.title-save-btn:disabled { opacity:.5; cursor:default; }
+
+/* ── Toast ── */
+.toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
+.toast { background:var(--card); border:1px solid var(--mid); border-left:3px solid var(--gold); border-radius:6px; padding:10px 16px; font-family:'Space Mono',monospace; font-size:.68rem; color:var(--white); box-shadow:0 4px 24px rgba(0,0,0,.6); animation:toastIn .2s ease; pointer-events:all; max-width:280px; line-height:1.5; }
+.toast.error { border-left-color:var(--crimson); }
+.toast.info  { border-left-color:var(--ice); }
+@keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
 /* ── Activity ── */
 .activity-col {}
 .activity-section { margin-bottom:20px; }
@@ -126,6 +147,24 @@ function doSignIn() {
     .catch(console.error).finally(() => { _signingIn = false; });
 }
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
+
+const TITLES = [
+  { key:'none',    label:'Ünvan Yok',             icon:'',   color:'rgba(238,235,230,.45)' },
+  { key:'acemi',   label:'Acemi',                 icon:'🌱', color:'#6fc' },
+  { key:'merakli', label:'Prodüksiyon Meraklısı', icon:'🎧', color:'#8fc8e8' },
+  { key:'uretici', label:'Üretici',               icon:'🎛️', color:'#e8b84b' },
+  { key:'veteran', label:'Veteran',               icon:'🔥', color:'#d4722a' },
+  { key:'usta',    label:'Usta',                  icon:'⚡', color:'#b82d45' },
+  { key:'efsane',  label:'Efsane',                icon:'👑', color:'#ffd700' },
+];
+
+function showToast(msg, type='success', ms=3000) {
+  let c = document.getElementById('toastCt');
+  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
+  const t = document.createElement('div'); t.className='toast'+(type!=='success'?' '+type:''); t.textContent=msg;
+  c.append(t);
+  setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
+}
 function fmtDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -193,6 +232,18 @@ async function renderProfile() {
   nameDiv.textContent = displayName;
   const joined = document.createElement('div'); joined.className = 'profile-joined';
   joined.textContent = prof.joinedAt ? 'Katılım: ' + fmtDate(prof.joinedAt) : '';
+
+  // Title badge
+  const titleKey = prof.title && prof.title !== 'none' ? prof.title : null;
+  if (titleKey) {
+    const td = TITLES.find(t => t.key === titleKey);
+    if (td) {
+      const tb = document.createElement('div'); tb.className = 'profile-title-badge';
+      tb.style.cssText = `color:${td.color};background:${td.color}1a;border:1px solid ${td.color}44;`;
+      tb.textContent = (td.icon ? td.icon + ' ' : '') + td.label;
+      info.append(tb);
+    }
+  }
 
   const aboutDiv = document.createElement('div'); aboutDiv.className = 'profile-about';
   aboutDiv.textContent = prof.about || (isOwn ? 'Kendinden bahset...' : '');
@@ -276,6 +327,36 @@ async function renderProfile() {
     pCard.append(info, editForm);
   } else {
     pCard.append(info);
+  }
+
+  // Admin title assignment panel (visible when admin views other profiles)
+  if (isAdmin(_user) && !isOwn) {
+    const panel = document.createElement('div'); panel.className = 'admin-title-panel';
+    const lbl = document.createElement('div'); lbl.className = 'admin-title-label'; lbl.textContent = '⚡ Ünvan Ata';
+    const grid = document.createElement('div'); grid.className = 'title-grid';
+    let selKey = prof.title || 'none';
+    TITLES.forEach(t => {
+      const btn = document.createElement('button');
+      btn.className = 'title-opt' + (selKey === t.key ? ' sel' : '');
+      btn.textContent = (t.icon ? t.icon + ' ' : '') + t.label;
+      btn.onclick = () => {
+        selKey = t.key;
+        grid.querySelectorAll('.title-opt').forEach(b => b.classList.remove('sel'));
+        btn.classList.add('sel');
+      };
+      grid.append(btn);
+    });
+    const saveBtn = document.createElement('button'); saveBtn.className = 'title-save-btn';
+    saveBtn.textContent = '💾 Ünvanı Kaydet';
+    saveBtn.onclick = async () => {
+      saveBtn.disabled = true; saveBtn.textContent = '⏳';
+      await db.collection('users').doc(uid).set({ title: selKey }, { merge: true });
+      showToast('✓ Ünvan güncellendi');
+      saveBtn.disabled = false; saveBtn.textContent = '💾 Ünvanı Kaydet';
+      renderProfile();
+    };
+    panel.append(lbl, grid, saveBtn);
+    pCard.append(panel);
   }
 
   layout.append(pCard);

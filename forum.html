@@ -184,6 +184,18 @@ body::before {
 .sc-rules li::before { content:'›'; color:var(--gold); flex-shrink:0; }
 .sc-back-btn { display:block; margin-top:14px; padding:9px; text-align:center; background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.35); color:var(--gold); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; text-decoration:none; transition:background .15s; }
 .sc-back-btn:hover { background:rgba(232,184,75,.2); }
+
+/* ── Member row (sidebar) ── */
+.member-row { display:flex; align-items:center; gap:9px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; text-decoration:none; }
+.member-row:last-of-type { border:none; }
+.member-row:hover .member-name { color:var(--gold); }
+.member-av { width:28px; height:28px; border-radius:50%; object-fit:cover; border:1.5px solid rgba(232,184,75,.3); flex-shrink:0; }
+.member-av-ph { width:28px; height:28px; border-radius:50%; background:var(--mid2); border:1.5px solid rgba(232,184,75,.2); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.65rem; font-weight:bold; color:var(--gold); }
+.member-info { min-width:0; }
+.member-name { font-size:.63rem; color:var(--white); font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .15s; }
+.member-title-sm { font-size:.52rem; color:var(--dim); margin-top:1px; }
+.sc-all-btn { display:block; margin-top:10px; text-align:center; font-size:.58rem; color:rgba(232,184,75,.6); text-decoration:none; letter-spacing:.06em; transition:color .15s; }
+.sc-all-btn:hover { color:var(--gold); }
 </style>
 </head>
 <body>
@@ -229,6 +241,10 @@ body::before {
         <div class="sc-stat"><span class="sc-stat-lbl">Toplam Yanıt</span><span class="sc-stat-val" id="sStatReplies">—</span></div>
         <a href="index.html" class="sc-back-btn">← Ana Sayfaya Dön</a>
       </div>
+    </div>
+    <div class="sc">
+      <div class="sc-head sc-head-dark"><div class="sc-title white">Son Üyeler</div></div>
+      <div class="sc-body" id="membersSidebar"><div style="font-size:.6rem;color:var(--dim)">Yükleniyor...</div></div>
     </div>
     <div class="sc">
       <div class="sc-head sc-head-dark"><div class="sc-title white">Kurallar</div></div>
@@ -322,6 +338,14 @@ let _search    = '';
 let _allPosts  = [];
 let _unsubscribe = null;
 const CAT_LIST = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
+const TITLES = {
+  acemi:   { label:'Acemi',                 icon:'🌱', color:'#6fc' },
+  merakli: { label:'Prodüksiyon Meraklısı', icon:'🎧', color:'#8fc8e8' },
+  uretici: { label:'Üretici',               icon:'🎛️', color:'#e8b84b' },
+  veteran: { label:'Veteran',               icon:'🔥', color:'#d4722a' },
+  usta:    { label:'Usta',                  icon:'⚡', color:'#b82d45' },
+  efsane:  { label:'Efsane',               icon:'👑', color:'#ffd700' },
+};
 
 async function renderFeed() {
   const feed = document.getElementById('feed');
@@ -597,11 +621,48 @@ function buildReplyEl(postId, r, list) {
   return item;
 }
 
+async function loadMembersSidebar() {
+  const c = document.getElementById('membersSidebar');
+  if (!c) return;
+  try {
+    const snap = await db.collection('users').orderBy('joinedAt','desc').limit(6).get();
+    if (snap.empty) { c.innerHTML = '<div style="font-size:.6rem;color:var(--dim)">Henüz üye yok.</div>'; return; }
+    c.innerHTML = '';
+    snap.docs.forEach(d => {
+      const m = d.data();
+      const a = document.createElement('a'); a.className = 'member-row'; a.href = `profile.html?uid=${d.id}`;
+      if (m.photoURL) {
+        const img = document.createElement('img'); img.className = 'member-av'; img.src = m.photoURL; img.alt = '';
+        a.append(img);
+      } else {
+        const ph = document.createElement('div'); ph.className = 'member-av-ph';
+        ph.textContent = (m.displayName||'?')[0].toUpperCase();
+        a.append(ph);
+      }
+      const inf = document.createElement('div'); inf.className = 'member-info';
+      const nm = document.createElement('div'); nm.className = 'member-name'; nm.textContent = m.displayName?.split(' ')[0] || 'Üye';
+      inf.append(nm);
+      if (m.title && TITLES[m.title]) {
+        const td = TITLES[m.title];
+        const ts = document.createElement('div'); ts.className = 'member-title-sm';
+        ts.style.color = td.color;
+        ts.textContent = td.icon + ' ' + td.label;
+        inf.append(ts);
+      }
+      a.append(inf); c.append(a);
+    });
+    const all = document.createElement('a'); all.className = 'sc-all-btn'; all.href = 'members.html';
+    all.textContent = 'Tüm Üyeleri Gör →';
+    c.append(all);
+  } catch(e) { c.innerHTML = ''; }
+}
+
 auth.onAuthStateChanged(async user => {
   _user = user;
   updateAuthBar(user);
   if (!user && _unsubscribe) { _unsubscribe(); _unsubscribe = null; }
   await renderFeed();
+  loadMembersSidebar();
 });
 </script>
 </body>
