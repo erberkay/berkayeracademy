@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Berkay Er — Producer</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=17">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 <div id="scrollProgress"></div>
+<div id="cursor"></div>
+<div id="cursorRing"></div>
+<button id="backToTop" aria-label="Yukarı çık">↑</button>
 <div class="card">
   <div class="accent-bar"></div>
 
@@ -376,6 +379,22 @@
   </div>
 </div>
 
+<!-- MOBİL STICKY NAV -->
+<div id="mobileBar">
+  <a href="https://www.instagram.com/berkael.ofc/" target="_blank">
+    <span class="mb-icon">📸</span>Instagram
+  </a>
+  <a href="https://open.spotify.com/intl-tr/artist/1nKRMPT4vVYiFLHoB9483s?si=5XaoiV3CRfa8keZvXPwIxA" target="_blank">
+    <span class="mb-icon">🎵</span>Spotify
+  </a>
+  <a href="ders-ableton.html">
+    <span class="mb-icon">▶</span>Ücretsiz Ders
+  </a>
+  <a href="site_1.html">
+    <span class="mb-icon">🎛</span>Tutorial
+  </a>
+</div>
+
 <script>
   // ── Wave row ──
   const row = document.getElementById('waveRow');
@@ -481,6 +500,36 @@
     label.textContent = labelText.slice(0, ++ti);
     if (ti < labelText.length) setTimeout(type, 38);
   }, 700);
+
+  // ── Back to top ──
+  const btt = document.getElementById('backToTop');
+  window.addEventListener('scroll', () => {
+    btt.classList.toggle('visible', window.scrollY > 400);
+  }, { passive: true });
+  btt.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+  // ── Custom cursor ──
+  (function() {
+    const cur = document.getElementById('cursor');
+    const ring = document.getElementById('cursorRing');
+    if (!cur || !ring) return;
+    // Sadece mouse cihazlarda aktif et
+    if (window.matchMedia('(pointer: fine)').matches) {
+      let mx = -100, my = -100;
+      document.addEventListener('mousemove', e => {
+        mx = e.clientX; my = e.clientY;
+        cur.style.left = mx + 'px'; cur.style.top = my + 'px';
+        ring.style.left = mx + 'px'; ring.style.top = my + 'px';
+      }, { passive: true });
+      const hoverEls = document.querySelectorAll('a, button, .tag, .module, .avatar');
+      hoverEls.forEach(el => {
+        el.addEventListener('mouseenter', () => { cur.classList.add('hovering'); ring.classList.add('hovering'); });
+        el.addEventListener('mouseleave', () => { cur.classList.remove('hovering'); ring.classList.remove('hovering'); });
+      });
+      document.addEventListener('mouseleave', () => { cur.style.opacity = '0'; ring.style.opacity = '0'; });
+      document.addEventListener('mouseenter', () => { cur.style.opacity = '1'; ring.style.opacity = '1'; });
+    }
+  })();
 </script>
 </body>
 </html>
