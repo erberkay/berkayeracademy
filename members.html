@@ -228,7 +228,7 @@ function fmtJoined(ts) {
 
 let _notifUnsub = null, _annUnsub = null;
 let _notifPanelEl = null;
-let _personalNotifs = [], _announcements = [], _annSeenAt = null;
+let _personalNotifs = [], _announcements = [], _annSeenAt = null, _dismissedAnns = [];
 
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar'); bar.innerHTML = '';
@@ -270,10 +270,9 @@ function toggleNotifPanel(user) {
 }
 
 function _mergeNotifs(uid) {
-  const dismissed = JSON.parse(localStorage.getItem('dismissed_anns')||'[]');
   const all = [
     ..._personalNotifs.map(n => ({...n, _t:'p'})),
-    ..._announcements.filter(n => !dismissed.includes(n._id)).map(n => ({...n, _t:'a'}))
+    ..._announcements.filter(n => !_dismissedAnns.includes(n._id)).map(n => ({...n, _t:'a'}))
   ].sort((a,b) => ((b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)));
   const annSec = _annSeenAt?.seconds || 0;
   const unread = _personalNotifs.filter(n => !n.read).length
@@ -298,8 +297,8 @@ function _mergeNotifs(uid) {
           if (n._t === 'p') {
             db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();
           } else {
-            const key = 'dismissed_anns'; const list = JSON.parse(localStorage.getItem(key)||'[]');
-            if (!list.includes(n._id)) { list.push(n._id); localStorage.setItem(key, JSON.stringify(list)); }
+            if (!_dismissedAnns.includes(n._id)) { _dismissedAnns.push(n._id); }
+            db.collection('users').doc(uid).update({ dismissedAnns: firebase.firestore.FieldValue.arrayUnion(n._id) }).catch(() => {});
             _announcements = _announcements.filter(a => a._id !== n._id);
             _mergeNotifs(uid);
           }
@@ -325,10 +324,12 @@ function markAllNotifRead(uid) {
 function initNotifications(user) {
   if (_notifUnsub) { _notifUnsub(); _notifUnsub = null; }
   if (_annUnsub) { _annUnsub(); _annUnsub = null; }
-  _personalNotifs = []; _announcements = []; _annSeenAt = null;
+  _personalNotifs = []; _announcements = []; _annSeenAt = null; _dismissedAnns = [];
   if (!user) return;
   db.collection('users').doc(user.uid).get().then(d => {
-    _annSeenAt = d.data()?.announcementsSeenAt || null; _mergeNotifs(user.uid);
+    _annSeenAt = d.data()?.announcementsSeenAt || null;
+    _dismissedAnns = d.data()?.dismissedAnns || [];
+    _mergeNotifs(user.uid);
   }).catch(() => {});
   _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
     .orderBy('createdAt', 'desc').limit(20)
