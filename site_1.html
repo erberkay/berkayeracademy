@@ -300,15 +300,26 @@
         }
 
         /* Custom ADSR slider — pointer capture, no React re-render lag */
+        /* Hit alanı 24px — görsel çizgi 4px, tıklama kolay */
         .adsr-track {
             position: relative;
-            height: 4px;
-            background: var(--mid);
-            border-radius: 2px;
+            height: 24px;
+            display: flex;
+            align-items: center;
             cursor: pointer;
             touch-action: none;
             user-select: none;
-            margin: 8px 0 4px;
+            margin: 4px 0;
+        }
+        /* Görsel çizgi pseudo element ile */
+        .adsr-track::before {
+            content: '';
+            position: absolute;
+            left: 0; right: 0;
+            height: 4px;
+            background: var(--mid);
+            border-radius: 2px;
+            pointer-events: none;
         }
         .adsr-track:hover .adsr-thumb {
             box-shadow: 0 0 14px rgba(232,184,75,0.8);
@@ -316,8 +327,10 @@
         }
         .adsr-fill {
             position: absolute;
-            left: 0; top: 0;
-            height: 100%;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 4px;
             background: linear-gradient(90deg, var(--amber), var(--gold));
             border-radius: 2px;
             pointer-events: none;
@@ -887,17 +900,20 @@
             // Custom slider — setPointerCapture ile smooth drag, re-render takılması yok
             const AdsrSlider = ({ min, max, step, value, onChange }) => {
                 const trackRef = React.useRef(null);
-                // onChange'i ref'te tut — stale closure sorunu olmadan her render'daki güncel fonksiyonu alır
                 const onChangeRef = React.useRef(onChange);
                 React.useEffect(() => { onChangeRef.current = onChange; });
-                const stateRef = React.useRef({ dragging: false });
+                const dragRef = React.useRef({ active: false, min, max, step });
+                // min/max/step her render'da güncellenir — getVal'da stale olmaz
+                dragRef.current.min = min;
+                dragRef.current.max = max;
+                dragRef.current.step = step;
 
-                // Bir kez attach et — React synthetic event değil, direkt DOM listener
                 React.useEffect(() => {
                     const track = trackRef.current;
                     if (!track) return;
 
                     const getVal = (clientX) => {
+                        const { min, max, step } = dragRef.current;
                         const rect = track.getBoundingClientRect();
                         const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
                         const raw = min + pct * (max - min);
@@ -907,27 +923,27 @@
 
                     const onDown = (e) => {
                         e.preventDefault();
-                        track.setPointerCapture(e.pointerId);
-                        stateRef.current.dragging = true;
+                        dragRef.current.active = true;
                         onChangeRef.current(getVal(e.clientX));
                     };
+                    // move + up window'da — React re-render track listener'larını etkilemez
                     const onMove = (e) => {
-                        if (!stateRef.current.dragging) return;
+                        if (!dragRef.current.active) return;
                         onChangeRef.current(getVal(e.clientX));
                     };
-                    const onUp = () => { stateRef.current.dragging = false; };
+                    const onUp = () => { dragRef.current.active = false; };
 
                     track.addEventListener('pointerdown', onDown);
-                    track.addEventListener('pointermove', onMove);
-                    track.addEventListener('pointerup', onUp);
-                    track.addEventListener('pointercancel', onUp);
+                    window.addEventListener('pointermove', onMove);
+                    window.addEventListener('pointerup', onUp);
+                    window.addEventListener('pointercancel', onUp);
                     return () => {
                         track.removeEventListener('pointerdown', onDown);
-                        track.removeEventListener('pointermove', onMove);
-                        track.removeEventListener('pointerup', onUp);
-                        track.removeEventListener('pointercancel', onUp);
+                        window.removeEventListener('pointermove', onMove);
+                        window.removeEventListener('pointerup', onUp);
+                        window.removeEventListener('pointercancel', onUp);
                     };
-                }, [min, max, step]); // min/max/step değişirse yeniden attach et
+                }, []); // sadece mount/unmount
 
                 const pct = ((value - min) / (max - min)) * 100;
                 return (
