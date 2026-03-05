@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ableton Live - İnteraktif Öğrenme Platform</title>
+    <title>Berkay Er — Ableton Tutorial</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -576,9 +576,49 @@
         .hint-box strong {
             color: var(--gold);
         }
+
+        html { scroll-behavior: smooth; }
+        #scrollProgress {
+            position: fixed;
+            top: 0; left: 0;
+            height: 3px; width: 0%;
+            background: linear-gradient(90deg, var(--crimson) 0%, var(--amber) 50%, var(--gold) 100%);
+            z-index: 9999;
+            pointer-events: none;
+            transition: width 0.08s linear;
+        }
+        .module-card {
+            position: relative;
+            overflow: hidden;
+        }
+        .module-card-num {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 5rem;
+            line-height: 1;
+            color: rgba(232,184,75,0.07);
+            position: absolute;
+            right: 14px;
+            bottom: 10px;
+            letter-spacing: 0.02em;
+            pointer-events: none;
+            user-select: none;
+        }
+        .module-card-status {
+            display: inline-block;
+            font-size: 0.55rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            padding: 3px 9px;
+            border: 1px solid;
+            margin-bottom: 10px;
+        }
+        .status-done   { border-color: rgba(100,220,100,0.4); color: #6dc86d; }
+        .status-active { border-color: rgba(232,184,75,0.4);  color: var(--gold); }
+        .status-idle   { border-color: rgba(42,42,69,0.8);    color: var(--dim); }
     </style>
 </head>
 <body>
+    <div id="scrollProgress"></div>
     <div id="root"></div>
 
     <script type="text/babel">
@@ -593,7 +633,9 @@
             const [frequency, setFrequency] = useState(440);
             const [volume, setVolume] = useState(0.3);
             const [channels, setChannels] = useState({ kick: [], snare: [], bass: [], lead: [] });
-            const [completedTasks, setCompletedTasks] = useState({});
+            const [completedTasks, setCompletedTasks] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('berkay_tasks') || '{}'); } catch { return {}; }
+            });
             
             const oscillatorRef = useRef(null);
             const gainNodeRef = useRef(null);
@@ -613,6 +655,10 @@
             const beatBuffersRef  = useRef({});
 
             useEffect(() => {
+                localStorage.setItem('berkay_tasks', JSON.stringify(completedTasks));
+            }, [completedTasks]);
+
+            useEffect(() => {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 beatAudioCtxRef.current = ctx;
                 beatTracks.forEach(track => {
@@ -625,25 +671,59 @@
                 return () => ctx.close();
             }, []);
 
+            // Synthesized drum fallback (wav yoksa)
+            const synthDrum = (ctx, file, v) => {
+                const g = ctx.createGain();
+                g.connect(ctx.destination);
+                const t = ctx.currentTime;
+                const lc = file.toLowerCase();
+                if (lc.includes('kick')) {
+                    const o = ctx.createOscillator(); o.type = 'sine';
+                    o.frequency.setValueAtTime(150, t);
+                    o.frequency.exponentialRampToValueAtTime(0.001, t + 0.4);
+                    g.gain.setValueAtTime(v, t);
+                    g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+                    o.connect(g); o.start(t); o.stop(t + 0.4);
+                } else if (lc.includes('snare')) {
+                    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1)*(1-i/d.length);
+                    const src = ctx.createBufferSource(); src.buffer = buf;
+                    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 500;
+                    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.12);
+                    src.connect(f); f.connect(g); src.start(t); src.stop(t+0.12);
+                } else if (lc.includes('hat')) {
+                    const buf = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1)*(1-i/d.length);
+                    const src = ctx.createBufferSource(); src.buffer = buf;
+                    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 8000;
+                    g.gain.setValueAtTime(v*0.45, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.06);
+                    src.connect(f); f.connect(g); src.start(t); src.stop(t+0.06);
+                } else if (lc.includes('bass')) {
+                    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 80;
+                    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 280;
+                    g.gain.setValueAtTime(v*0.6, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.25);
+                    o.connect(f); f.connect(g); o.start(t); o.stop(t+0.25);
+                }
+            };
+
             const beatPlaySample = (file, velocity, vol, rate = 1) => {
                 const ctx = beatAudioCtxRef.current;
+                if (!ctx) return;
                 const buf = beatBuffersRef.current[file];
-                if (!ctx || !buf) return;
+                const v   = (vol / 100) * (velocity / 100);
                 const play = () => {
-                    const src = ctx.createBufferSource();
-                    src.buffer = buf;
-                    src.playbackRate.value = rate;
-                    const gain = ctx.createGain();
-                    gain.gain.value = (vol / 100) * (velocity / 100);
-                    src.connect(gain);
-                    gain.connect(ctx.destination);
-                    src.start();
+                    if (buf) {
+                        const src = ctx.createBufferSource();
+                        src.buffer = buf; src.playbackRate.value = rate;
+                        const gain = ctx.createGain(); gain.gain.value = v;
+                        src.connect(gain); gain.connect(ctx.destination); src.start();
+                    } else {
+                        synthDrum(ctx, file, v);
+                    }
                 };
-                if (ctx.state === 'suspended') {
-                    ctx.resume().then(play);
-                } else {
-                    play();
-                }
+                if (ctx.state === 'suspended') ctx.resume().then(play); else play();
             };
             // ──────────────────────────────────────────────────────────────
 
@@ -761,6 +841,56 @@
                 return tasksByModule[moduleId] || [];
             };
 
+            const ADSRCurve = () => {
+                const W = 400, H = 100, P = 10;
+                const total = adsr.attack + adsr.decay + 0.5 + adsr.release;
+                const tx = t => P + (t / total) * (W - P*2);
+                const ty = l => H - P - l * (H - P*2);
+                const pts = [
+                    [tx(0), ty(0)],
+                    [tx(adsr.attack), ty(1)],
+                    [tx(adsr.attack + adsr.decay), ty(adsr.sustain)],
+                    [tx(adsr.attack + adsr.decay + 0.5), ty(adsr.sustain)],
+                    [tx(total), ty(0)]
+                ];
+                const line = pts.map((p,i) => (i===0?'M':'L')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+                const attPct = (adsr.attack/total*100).toFixed(0)+'%';
+                const decPct = ((adsr.attack+adsr.decay)/total*100).toFixed(0)+'%';
+                const relPct = ((adsr.attack+adsr.decay+0.5)/total*100).toFixed(0)+'%';
+                const labels = [
+                    {x:(tx(0)+tx(adsr.attack))/2, label:'A', val:adsr.attack.toFixed(2)+'s', col:'#e8b84b'},
+                    {x:(tx(adsr.attack)+tx(adsr.attack+adsr.decay))/2, label:'D', val:adsr.decay.toFixed(2)+'s', col:'#d4722a'},
+                    {x:(tx(adsr.attack+adsr.decay)+tx(adsr.attack+adsr.decay+0.5))/2, label:'S', val:(adsr.sustain*100).toFixed(0)+'%', col:'#8fc8e8'},
+                    {x:(tx(adsr.attack+adsr.decay+0.5)+tx(total))/2, label:'R', val:adsr.release.toFixed(2)+'s', col:'#b82d45'},
+                ];
+                return (
+                    <svg viewBox={`0 0 ${W} ${H+20}`} style={{width:'100%', height:'110px', background:'#060609', display:'block'}}>
+                        <defs>
+                            <linearGradient id="ag" x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#b82d45"/>
+                                <stop offset={attPct} stopColor="#e8b84b"/>
+                                <stop offset={decPct} stopColor="#d4722a"/>
+                                <stop offset={relPct} stopColor="#8fc8e8"/>
+                                <stop offset="100%" stopColor="#b82d45"/>
+                            </linearGradient>
+                        </defs>
+                        {[0.25,0.5,0.75].map(l=>(
+                            <line key={l} x1={P} y1={ty(l)} x2={W-P} y2={ty(l)} stroke="rgba(255,255,255,0.05)" strokeWidth="1"/>
+                        ))}
+                        <path d={`${line} L${pts[4][0].toFixed(1)} ${H} L${pts[0][0].toFixed(1)} ${H} Z`} fill="rgba(232,184,75,0.07)"/>
+                        <path d={line} fill="none" stroke="url(#ag)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+                        {pts.slice(1,-1).map(([cx,cy],i)=>(
+                            <circle key={i} cx={cx} cy={cy} r="3.5" fill="#e8b84b" opacity="0.85"/>
+                        ))}
+                        {labels.map(({x,label,val,col})=>(
+                            <g key={label}>
+                                <text x={x} y={H+12} fill={col} fontSize="9" textAnchor="middle" fontFamily="Space Mono,monospace" opacity="0.8">{label}: {val}</text>
+                            </g>
+                        ))}
+                    </svg>
+                );
+            };
+
             const Module1Synth = () => {
                 const notes = [
                     { freq: 261.63, label: 'C', key: 'A' },
@@ -816,28 +946,7 @@
                                 <p style={{marginBottom: '15px', lineHeight: '1.6'}}>
                                     <strong>ADSR</strong> (Attack, Decay, Sustain, Release) - Sesin zaman içinde nasıl değiştiğini kontrol eden envelope sistemidir.
                                 </p>
-                                <div className="adsr-diagram">
-                                    {[
-                                        {key:'attack',  h: Math.min(adsr.attack * 50, 100)},
-                                        {key:'decay',   h: Math.min(adsr.decay * 50, 100)},
-                                        {key:'sustain', h: adsr.sustain * 100},
-                                        {key:'release', h: Math.min(adsr.release * 33, 100)},
-                                    ].map(({key, h}) => (
-                                        <div key={key} className="adsr-stage">
-                                            <div className="adsr-bar" style={{height: `${h}px`}}></div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div style={{display:'flex', justifyContent:'space-around', padding:'4px 20px 0'}}>
-                                    {[
-                                        {key:'attack',  label:'Attack',  disp: adsr.attack.toFixed(2)+'s'},
-                                        {key:'decay',   label:'Decay',   disp: adsr.decay.toFixed(2)+'s'},
-                                        {key:'sustain', label:'Sustain', disp: (adsr.sustain*100).toFixed(0)+'%'},
-                                        {key:'release', label:'Release', disp: adsr.release.toFixed(2)+'s'},
-                                    ].map(({key, label, disp}) => (
-                                        <div key={key} className="stage-label" style={{flex:1}}>{label}<br/>{disp}</div>
-                                    ))}
-                                </div>
+                                <ADSRCurve />
                             </div>
 
                             <div className="controls-grid">
@@ -1957,27 +2066,31 @@
                         </div>
 
                         <div className="module-grid">
-                            {modules.map(module => (
-                                <div
-                                    key={module.id}
-                                    className="module-card"
-                                    onClick={() => setCurrentModule(module.id)}
-                                >
-                                    <h3>{module.title}</h3>
-                                    <p style={{color: 'rgba(238,235,230,0.45)', marginBottom: '15px'}}>{module.desc}</p>
-                                    <div className="progress-indicator">
-                                        <div style={{fontSize: '0.9em', marginBottom: '8px'}}>
-                                            İlerleme: {getModuleProgress(module.id)}%
-                                        </div>
-                                        <div className="progress-bar">
-                                            <div 
-                                                className="progress-fill" 
-                                                style={{width: `${getModuleProgress(module.id)}%`}}
-                                            ></div>
+                            {modules.map(module => {
+                                const pct = getModuleProgress(module.id);
+                                const tasks = getTasksForModule(module.id);
+                                const done = tasks.filter(t => completedTasks[`${module.id}-${t.id}`]).length;
+                                const statusClass = done === tasks.length && tasks.length > 0 ? 'status-done' : done > 0 ? 'status-active' : 'status-idle';
+                                const statusLabel = done === tasks.length && tasks.length > 0 ? '✓ Tamamlandı' : done > 0 ? `${done}/${tasks.length} Görev` : 'Başlanmadı';
+                                return (
+                                    <div
+                                        key={module.id}
+                                        className="module-card"
+                                        onClick={() => setCurrentModule(module.id)}
+                                    >
+                                        <div className="module-card-num">{String(module.id).padStart(2,'0')}</div>
+                                        <div className={`module-card-status ${statusClass}`}>{statusLabel}</div>
+                                        <h3>{module.title}</h3>
+                                        <p style={{color:'rgba(238,235,230,0.45)', marginBottom:'14px', fontSize:'0.75rem'}}>{module.desc}</p>
+                                        <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                                            <div className="progress-bar" style={{flex:1, height:'3px'}}>
+                                                <div className="progress-fill" style={{width:`${pct}%`}}></div>
+                                            </div>
+                                            <span style={{color:'#e8b84b', fontSize:'0.65rem', minWidth:'32px', textAlign:'right'}}>{pct}%</span>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div className="hint-box">
@@ -2021,6 +2134,13 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<AbletonTutorial />);
+    </script>
+    <script>
+        const pb = document.getElementById('scrollProgress');
+        window.addEventListener('scroll', () => {
+            const total = document.body.scrollHeight - window.innerHeight;
+            pb.style.width = (total > 0 ? window.scrollY / total * 100 : 0) + '%';
+        }, { passive: true });
     </script>
 </body>
 </html>
