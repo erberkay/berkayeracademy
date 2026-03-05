@@ -2869,24 +2869,16 @@ function buildMasteringSection() {
         ]},
         lim:  { on:true, ceiling:-0.3 },
     };
+    // LIVE CHAIN — replaces OfflineAudioContext approach
 
-    // ── Saturation curve (tanh / hard-clip / tape) ─────────────────
+    // ── Saturation curve ───────────────────────────────────────────
     function makeSatCurve(drive, type) {
         const n=1024; const curve=new Float32Array(n);
         for(let i=0;i<n;i++){
             const x=(2*i)/(n-1)-1;
-            if(type==='soft'){
-                // (π+k)x / (π+k|x|) — smooth asymptote to ±1
-                const k=drive; curve[i]=(Math.PI+k)*x/(Math.PI+k*Math.abs(x));
-            } else if(type==='hard'){
-                const thr=1/Math.max(1,0.15*drive+0.85);
-                curve[i]=Math.max(-1,Math.min(1,x/thr))*thr;
-            } else { // tape — tanh with even-order bias
-                const k=drive*0.6;
-                const t=Math.tanh(x*k);
-                const maxT=Math.tanh(k)||1;
-                curve[i]=t/maxT;
-            }
+            if(type==='soft'){ const k=drive; curve[i]=(Math.PI+k)*x/(Math.PI+k*Math.abs(x)); }
+            else if(type==='hard'){ const thr=1/Math.max(1,0.15*drive+0.85); curve[i]=Math.max(-1,Math.min(1,x/thr))*thr; }
+            else { const k=drive*0.6; const t=Math.tanh(x*k); curve[i]=t/(Math.tanh(k)||1); }
         }
         return curve;
     }
@@ -2900,7 +2892,7 @@ function buildMasteringSection() {
         const tog=document.createElement('input'); tog.type='checkbox'; tog.checked=obj.on; tog.style.cssText='accent-color:'+color+';width:14px;height:14px;cursor:pointer;';
         const togLbl=mk('span'); togLbl.style.cssText=`font-size:.52rem;letter-spacing:.06em;color:${obj.on?'#6fc':'#666'};`;
         togLbl.textContent=obj.on?'ON':'BYPASS';
-        tog.onchange=()=>{ obj.on=tog.checked; togLbl.textContent=tog.checked?'ON':'BYPASS'; togLbl.style.color=tog.checked?'#6fc':'#666'; };
+        tog.onchange=()=>{ obj.on=tog.checked; togLbl.textContent=tog.checked?'ON':'BYPASS'; togLbl.style.color=tog.checked?'#6fc':'#666'; buildChain(); };
         hdr.append(lbl,tog,togLbl); card.append(hdr);
         buildFn(card); return card;
     }
@@ -2915,14 +2907,161 @@ function buildMasteringSection() {
     }
     function db(v){ return (v>0?'+':'')+v.toFixed(1)+' dB'; }
 
+    // ── Live chain nodes ───────────────────────────────────────────
+    let chainCtx=null, liveNodes=[], liveGlueNode=null, liveLimNode=null, liveEqFilters=[];
+    let masterAnalyser=null, masterFreqData=null, mastRaf=null;
+
+    function buildChain(){
+        // Disconnect existing chain without reconnecting direct yet
+        if(masterAnalyser){ try{masterAnalyser.disconnect();}catch{} masterAnalyser=null; masterFreqData=null; }
+        liveNodes.forEach(n=>{try{n.disconnect();}catch{}});
+        liveNodes=[]; liveGlueNode=null; liveLimNode=null; liveEqFilters=[];
+        getBeatCtx();
+        if(!beatCtx||!beatMasterGain) return;
+        chainCtx=beatCtx;
+        try{beatMasterGain.disconnect();}catch{}
+        let node=beatMasterGain;
+
+        // 1. Saturator
+        if(chain.sat.on){
+            const ws=chainCtx.createWaveShaper();
+            ws.curve=makeSatCurve(chain.sat.drive, chain.sat.type); ws.oversample='4x';
+            const sg=chainCtx.createGain(); sg.gain.value=0.85;
+            node.connect(ws); ws.connect(sg); liveNodes.push(ws,sg); node=sg;
+        }
+        // 2. Mono Bass
+        if(chain.mono.on){
+            const c=chain.mono.cutoff;
+            const spl=chainCtx.createChannelSplitter(2), mrg=chainCtx.createChannelMerger(2);
+            const lpL=chainCtx.createBiquadFilter(); lpL.type='lowpass'; lpL.frequency.value=c; lpL.Q.value=0.5;
+            const lpR=chainCtx.createBiquadFilter(); lpR.type='lowpass'; lpR.frequency.value=c; lpR.Q.value=0.5;
+            const gL=chainCtx.createGain(); gL.gain.value=0.5;
+            const gR=chainCtx.createGain(); gR.gain.value=0.5;
+            const ms=chainCtx.createGain(); ms.gain.value=1;
+            const hpL=chainCtx.createBiquadFilter(); hpL.type='highpass'; hpL.frequency.value=c; hpL.Q.value=0.5;
+            const hpR=chainCtx.createBiquadFilter(); hpR.type='highpass'; hpR.frequency.value=c; hpR.Q.value=0.5;
+            node.connect(spl);
+            spl.connect(lpL,0); spl.connect(lpR,1);
+            lpL.connect(gL); lpR.connect(gR); gL.connect(ms); gR.connect(ms);
+            ms.connect(mrg,0,0); ms.connect(mrg,0,1);
+            spl.connect(hpL,0); spl.connect(hpR,1);
+            hpL.connect(mrg,0,0); hpR.connect(mrg,0,1);
+            liveNodes.push(spl,mrg,lpL,lpR,gL,gR,ms,hpL,hpR); node=mrg;
+        }
+        // 3. Glue Compressor
+        if(chain.glue.on){
+            const comp=chainCtx.createDynamicsCompressor();
+            comp.threshold.value=chain.glue.threshold; comp.ratio.value=chain.glue.ratio;
+            comp.knee.value=chain.glue.knee; comp.attack.value=chain.glue.attack/1000; comp.release.value=chain.glue.release/1000;
+            node.connect(comp); liveNodes.push(comp); liveGlueNode=comp; node=comp;
+        }
+        // 4. 5-Band EQ
+        if(chain.eq.on){
+            liveEqFilters=[];
+            chain.eq.bands.forEach(band=>{
+                const f=chainCtx.createBiquadFilter();
+                f.type=band.type; f.frequency.value=band.hz; f.gain.value=band.gain; f.Q.value=band.q;
+                node.connect(f); liveNodes.push(f); liveEqFilters.push(f); node=f;
+            });
+        }
+        // 5. Limiter
+        if(chain.lim.on){
+            const lim=chainCtx.createDynamicsCompressor();
+            lim.threshold.value=chain.lim.ceiling; lim.knee.value=0; lim.ratio.value=20;
+            lim.attack.value=0.001; lim.release.value=0.06;
+            node.connect(lim); liveNodes.push(lim); liveLimNode=lim; node=lim;
+        }
+        // Analyser tap → destination
+        masterAnalyser=chainCtx.createAnalyser();
+        masterAnalyser.fftSize=4096; masterAnalyser.minDecibels=-80; masterAnalyser.maxDecibels=0;
+        masterAnalyser.smoothingTimeConstant=0.82;
+        masterFreqData=new Uint8Array(masterAnalyser.frequencyBinCount);
+        node.connect(masterAnalyser); masterAnalyser.connect(chainCtx.destination);
+        liveNodes.push(masterAnalyser);
+    }
+    function teardownChain(){
+        if(masterAnalyser){try{masterAnalyser.disconnect();}catch{} masterAnalyser=null; masterFreqData=null;}
+        liveNodes.forEach(n=>{try{n.disconnect();}catch{}});
+        liveNodes=[]; liveGlueNode=null; liveLimNode=null; liveEqFilters=[];
+        if(beatCtx&&beatMasterGain){try{beatMasterGain.disconnect();}catch{} beatMasterGain.connect(beatCtx.destination);}
+        chainCtx=null;
+    }
+
+    // ── Spectrum canvas (like Mixer EQ) ────────────────────────────
+    const cv=document.createElement('canvas');
+    cv.style.cssText='width:100%;height:80px;border-radius:4px;background:rgba(0,0,0,.35);margin-bottom:8px;display:block;';
+
+    // ── GR meter ───────────────────────────────────────────────────
+    const grWrap=mk('div'); grWrap.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:12px;';
+    const grLbl=mk('span'); grLbl.style.cssText='font-size:.56rem;color:#ff6b6b;min-width:18px;'; grLbl.textContent='GR';
+    const grBg=mk('div'); grBg.style.cssText='flex:1;height:5px;background:var(--mid);border-radius:3px;overflow:hidden;';
+    const grBar=mk('div'); grBar.style.cssText='height:100%;width:0%;background:#ff6b6b;border-radius:3px;transition:width .08s;';
+    const grVal=mk('span'); grVal.style.cssText='font-size:.54rem;color:#ff6b6b;min-width:44px;text-align:right;'; grVal.textContent='0 dB';
+    grBg.append(grBar); grWrap.append(grLbl,grBg,grVal);
+
+    function drawSpectrum(){
+        mastRaf=requestAnimationFrame(drawSpectrum);
+        // Auto-rebuild if beatCtx was recreated (BPM change)
+        if(beatCtx && beatCtx!==chainCtx) buildChain();
+        const c2=cv.getContext('2d');
+        const w=cv.clientWidth||cv.offsetWidth||300, h=cv.clientHeight||cv.offsetHeight||80;
+        if(cv.width!==w){cv.width=w; cv.height=h;}
+        c2.clearRect(0,0,w,h);
+        if(!masterAnalyser||!masterFreqData||!chainCtx){
+            c2.fillStyle='rgba(255,255,255,.1)'; c2.font='11px Space Mono,monospace'; c2.textAlign='center';
+            c2.fillText("Beat Maker'da çal → mastering canlı uygulanır", w/2, h/2+4);
+            return;
+        }
+        masterAnalyser.getByteFrequencyData(masterFreqData);
+        const nyq=chainCtx.sampleRate/2, bins=masterFreqData.length;
+        const logLo=Math.log10(20), logHi=Math.log10(20000);
+        const _minDb=-80, _maxDb=0;
+        const BAR_W=Math.max(2,Math.floor(w/80)), NUM=Math.floor(w/BAR_W);
+        [-48,-24,-12,-6].forEach(dbMark=>{
+            const yg=h-((dbMark-_minDb)/(_maxDb-_minDb))*h;
+            c2.strokeStyle='rgba(255,255,255,0.07)'; c2.lineWidth=1;
+            c2.beginPath(); c2.moveTo(0,yg); c2.lineTo(w,yg); c2.stroke();
+        });
+        for(let i=0;i<NUM;i++){
+            const freq=Math.pow(10,logLo+(i/NUM)*(logHi-logLo));
+            const bin=Math.min(bins-1,Math.round(freq/nyq*bins));
+            let sum=0,cnt=0;
+            for(let k=Math.max(0,bin-1);k<=Math.min(bins-1,bin+1);k++){sum+=masterFreqData[k];cnt++;}
+            const byteVal=sum/cnt;
+            const dbv=_minDb+(byteVal/255)*(_maxDb-_minDb);
+            if(dbv<-65) continue;
+            const pct=Math.max(0,(dbv-_minDb)/(_maxDb-_minDb));
+            const bh=Math.pow(pct,0.7)*h;
+            const grd=c2.createLinearGradient(0,h-bh,0,h);
+            grd.addColorStop(0,'#8fc8e8ee'); grd.addColorStop(0.55,'#8fc8e866'); grd.addColorStop(1,'#8fc8e811');
+            c2.fillStyle=grd; c2.fillRect(i*BAR_W,h-bh,BAR_W-1,bh);
+            c2.fillStyle='#8fc8e8cc'; c2.fillRect(i*BAR_W,h-bh-2,BAR_W-1,2);
+        }
+        // GR meter
+        const grNode=liveLimNode||liveGlueNode;
+        if(grNode){ const gr=Math.abs(grNode.reduction); grBar.style.width=Math.min(100,gr*8)+'%'; grVal.textContent=gr>0.1?'-'+gr.toFixed(1)+' dB':'0 dB'; }
+    }
+
     const wrap=mk('div');
-    const topDesc=mk('div'); topDesc.style.cssText='font-size:.65rem;color:var(--dim);line-height:1.6;margin-bottom:12px;';
-    topDesc.innerHTML='Zincir: <span style="color:#ff9f43">Saturator</span> → <span style="color:#a855f7">Mono Bass</span> → <span style="color:#d4722a">Glue Comp</span> → <span style="color:#8fc8e8">5-Band EQ</span> → <span style="color:#6fc">Limiter</span><br>Her aşamayı ON/BYPASS yapabilirsin. Render\'a bas, dinle.';
+
+    // Status bar
+    const statusBar=mk('div'); statusBar.style.cssText='font-size:.64rem;padding:8px 12px;border-radius:4px;margin-bottom:10px;background:rgba(143,200,232,.07);border:1px solid rgba(143,200,232,.2);color:#8fc8e8;';
+    statusBar.textContent='💡 Beat Maker\'da bir pattern çal — mastering zinciri canlı olarak uygulanır';
+    wrap.append(statusBar);
+
+    const topDesc=mk('div'); topDesc.style.cssText='font-size:.65rem;color:var(--dim);line-height:1.6;margin-bottom:10px;';
+    topDesc.innerHTML='Zincir: <span style="color:#ff9f43">Saturator</span> → <span style="color:#a855f7">Mono Bass</span> → <span style="color:#d4722a">Glue Comp</span> → <span style="color:#8fc8e8">5-Band EQ</span> → <span style="color:#6fc">Limiter</span>';
     wrap.append(topDesc);
+
+    wrap.append(cv, grWrap);
 
     // ── 1. SATURATOR ───────────────────────────────────────────────
     wrap.append(stageCard('⚡ SATURATOR','#ff9f43', chain.sat, card=>{
-        card.append(pRow('Drive','#ff9f43',1,20,0.5,chain.sat.drive,v=>v.toFixed(1)+'x',v=>{chain.sat.drive=v;}));
+        card.append(pRow('Drive','#ff9f43',1,20,0.5,chain.sat.drive,v=>v.toFixed(1)+'x',v=>{
+            chain.sat.drive=v;
+            const ws=liveNodes.find(n=>n instanceof WaveShaperNode);
+            if(ws) ws.curve=makeSatCurve(chain.sat.drive,chain.sat.type);
+        }));
         const tRow=mk('div'); tRow.style.cssText='display:flex;gap:6px;margin-top:2px;';
         ['soft','hard','tape'].forEach(t=>{
             const b=mk('button'); b.textContent=t[0].toUpperCase()+t.slice(1);
@@ -2931,6 +3070,8 @@ function buildMasteringSection() {
                 chain.sat.type=t;
                 tRow.querySelectorAll('button').forEach(x=>{x.style.background='transparent';x.style.color='var(--dim)';});
                 b.style.background='rgba(255,159,67,.18)'; b.style.color='#ff9f43';
+                const ws=liveNodes.find(n=>n instanceof WaveShaperNode);
+                if(ws) ws.curve=makeSatCurve(chain.sat.drive,chain.sat.type);
             };
             tRow.append(b);
         });
@@ -2939,7 +3080,9 @@ function buildMasteringSection() {
 
     // ── 2. MONO BASS ───────────────────────────────────────────────
     wrap.append(stageCard('🔊 MONO BASS (stereo → mono below cutoff)','#a855f7', chain.mono, card=>{
-        card.append(pRow('Mono cutoff','#a855f7',30,400,5,chain.mono.cutoff,v=>v+'Hz',v=>{chain.mono.cutoff=v;}));
+        card.append(pRow('Mono cutoff','#a855f7',30,400,5,chain.mono.cutoff,v=>v+'Hz',v=>{
+            chain.mono.cutoff=v; buildChain();
+        }));
         const note=mk('div'); note.style.cssText='font-size:.56rem;color:rgba(168,85,247,.55);margin-top:4px;';
         note.textContent='Alt bandı mono toplar, üst band stereo kalır — kick/bass phase sorununu engeller';
         card.append(note);
@@ -2947,10 +3090,10 @@ function buildMasteringSection() {
 
     // ── 3. GLUE COMPRESSOR ────────────────────────────────────────
     wrap.append(stageCard('🔧 GLUE COMPRESSOR','#d4722a', chain.glue, card=>{
-        card.append(pRow('Threshold','#d4722a',-30,-2,1,chain.glue.threshold,v=>v+' dBFS',v=>{chain.glue.threshold=v;}));
-        card.append(pRow('Ratio','#d4722a',1.5,8,0.5,chain.glue.ratio,v=>v+':1',v=>{chain.glue.ratio=v;}));
-        card.append(pRow('Attack','#d4722a',5,100,5,chain.glue.attack,v=>v+'ms',v=>{chain.glue.attack=v;}));
-        card.append(pRow('Release','#d4722a',50,500,10,chain.glue.release,v=>v+'ms',v=>{chain.glue.release=v;}));
+        card.append(pRow('Threshold','#d4722a',-30,-2,1,chain.glue.threshold,v=>v+' dBFS',v=>{chain.glue.threshold=v; if(liveGlueNode) liveGlueNode.threshold.value=v;}));
+        card.append(pRow('Ratio','#d4722a',1.5,8,0.5,chain.glue.ratio,v=>v+':1',v=>{chain.glue.ratio=v; if(liveGlueNode) liveGlueNode.ratio.value=v;}));
+        card.append(pRow('Attack','#d4722a',5,100,5,chain.glue.attack,v=>v+'ms',v=>{chain.glue.attack=v; if(liveGlueNode) liveGlueNode.attack.value=v/1000;}));
+        card.append(pRow('Release','#d4722a',50,500,10,chain.glue.release,v=>v+'ms',v=>{chain.glue.release=v; if(liveGlueNode) liveGlueNode.release.value=v/1000;}));
     }));
 
     // ── 4. 5-BAND EQ ──────────────────────────────────────────────
@@ -2963,197 +3106,27 @@ function buildMasteringSection() {
     ];
     wrap.append(stageCard('🎛 5-BAND EQ','#8fc8e8', chain.eq, card=>{
         chain.eq.bands.forEach((band,i)=>{
-            card.append(pRow(EQ_META[i].label, EQ_META[i].color, -18, 18, 0.5, band.gain, db, v=>{band.gain=v;}));
+            card.append(pRow(EQ_META[i].label, EQ_META[i].color, -18, 18, 0.5, band.gain, db, v=>{
+                band.gain=v; if(liveEqFilters[i]) liveEqFilters[i].gain.value=v;
+            }));
         });
     }));
 
     // ── 5. LIMITER ────────────────────────────────────────────────
     wrap.append(stageCard('🚦 LIMITER (brick wall)','#6fc', chain.lim, card=>{
-        card.append(pRow('Ceiling','#6fc',-6,-0.1,0.1,chain.lim.ceiling,v=>v.toFixed(1)+' dBFS',v=>{chain.lim.ceiling=v;}));
+        card.append(pRow('Ceiling','#6fc',-6,-0.1,0.1,chain.lim.ceiling,v=>v.toFixed(1)+' dBFS',v=>{
+            chain.lim.ceiling=v; if(liveLimNode) liveLimNode.threshold.value=v;
+        }));
         const note=mk('div'); note.style.cssText='font-size:.56rem;color:rgba(102,255,102,.45);margin-top:4px;';
         note.textContent='Ratio 20:1 · Attack 1ms · Knee 0 — gerçek brick wall sınır';
         card.append(note);
     }));
 
-    // ── Meters ────────────────────────────────────────────────────
-    const mtrRow=mk('div'); mtrRow.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0 8px;';
-    function mkMtr(label,color){
-        const col=mk('div');
-        const lbl=mk('div'); lbl.style.cssText=`font-size:.54rem;color:${color};margin-bottom:3px;letter-spacing:.05em;`; lbl.textContent=label;
-        const bg=mk('div'); bg.style.cssText='height:8px;background:var(--mid);border-radius:4px;overflow:hidden;';
-        const bar=mk('div'); bar.style.cssText=`height:100%;width:0%;background:${color};border-radius:4px;transition:width .3s;`;
-        const val=mk('div'); val.style.cssText=`font-size:.52rem;color:${color};margin-top:2px;text-align:right;`;
-        bg.append(bar); col.append(lbl,bg,val); return {col,bar,val};
-    }
-    const mIn=mkMtr('IN (dry)','#888'), mOut=mkMtr('OUT (mastered)','#6fc'), mGR=mkMtr('GAIN REDUCTION','#ff6b6b');
-    mtrRow.append(mIn.col, mOut.col, mGR.col);
-    wrap.append(mtrRow);
+    // Build chain + start spectrum loop
+    buildChain();
+    drawSpectrum();
 
-    const statusDiv=mk('div'); statusDiv.style.cssText='font-size:.62rem;color:var(--dim);min-height:18px;margin-bottom:8px;';
-    wrap.append(statusDiv);
-
-    const btnRow=mk('div'); btnRow.style.cssText='display:flex;gap:8px;';
-    const renderBtn=mk('button','wave-btn','🎚 Render & Master');
-    renderBtn.style.cssText+='flex:1;font-size:.7rem;padding:9px;';
-    const playBtn2=mk('button','wave-btn','▶ Dinle');
-    playBtn2.style.cssText+='flex:0 0 90px;font-size:.7rem;padding:9px;';
-    playBtn2.disabled=true;
-    btnRow.append(renderBtn,playBtn2); wrap.append(btnRow);
-
-    let masteredBuf=null, masterPlaySrc=null, masterPlayCtx=null;
-    function stopMasterPlay(){
-        if(masterPlaySrc){try{masterPlaySrc.stop();}catch{} masterPlaySrc=null;}
-        playBtn2.textContent='▶ Dinle'; playBtn2.classList.remove('active');
-    }
-    playBtn2.onclick=()=>{
-        if(masterPlaySrc){ stopMasterPlay(); return; }
-        if(!masteredBuf) return;
-        if(!masterPlayCtx) masterPlayCtx=new(window.AudioContext||window.webkitAudioContext)();
-        if(masterPlayCtx.state==='suspended') masterPlayCtx.resume();
-        masterPlaySrc=masterPlayCtx.createBufferSource();
-        masterPlaySrc.buffer=masteredBuf;
-        masterPlaySrc.connect(masterPlayCtx.destination);
-        masterPlaySrc.start();
-        masterPlaySrc.onended=()=>{ masterPlaySrc=null; playBtn2.textContent='▶ Dinle'; playBtn2.classList.remove('active'); };
-        playBtn2.textContent='⏹ Durdur'; playBtn2.classList.add('active');
-    };
-
-    // ── Render ────────────────────────────────────────────────────
-    renderBtn.onclick=async()=>{
-        stopMasterPlay();
-        const hasAny=state.beatPatterns.some(r=>r.some(v=>v>0));
-        if(!hasAny){ statusDiv.innerHTML='⚠ Önce <strong>Beat Maker</strong>\'da bir pattern kur!'; return; }
-        getBeatCtx();
-        if(!BEAT_TRACKS.some(t=>beatBuffers[t.file])){ statusDiv.textContent='⚠ Örnekler yükleniyor, bekle…'; return; }
-
-        renderBtn.disabled=true; renderBtn.textContent='⏳ Render…';
-        statusDiv.textContent='Zincir hazırlanıyor…';
-        [mIn,mOut,mGR].forEach(m=>{m.bar.style.width='0%';m.val.textContent='';});
-
-        try{
-            const BARS=4, spb=60/state.bpm/4;
-            const totalSec=BARS*16*spb+0.5;
-            const SR=beatCtx?.sampleRate||44100;
-
-            function schedulePattern(ctx, dest){
-                for(let bar=0;bar<BARS;bar++) for(let step=0;step<16;step++){
-                    const when=(bar*16+step)*spb;
-                    BEAT_TRACKS.forEach((track,ti)=>{
-                        const vel=state.beatPatterns[ti][step]; if(vel<=0) return;
-                        const buf=beatBuffers[track.file]; if(!buf) return;
-                        const g=ctx.createGain(); g.gain.value=(vel/100)*(state.beatVolumes[ti]/100)*0.78;
-                        const src=ctx.createBufferSource(); src.buffer=buf;
-                        src.connect(g); g.connect(dest); src.start(when);
-                    });
-                }
-            }
-
-            // ── Dry render for IN level reference ─────────────────
-            const dryCtx=new OfflineAudioContext(2,Math.ceil(totalSec*SR),SR);
-            schedulePattern(dryCtx, dryCtx.destination);
-            const dryBuf=await dryCtx.startRendering();
-
-            // ── Mastered render ────────────────────────────────────
-            statusDiv.textContent='Mastering zinciri işleniyor…';
-            const offCtx=new OfflineAudioContext(2,Math.ceil(totalSec*SR),SR);
-
-            // Beat source bus
-            const beatBus=offCtx.createGain(); beatBus.gain.value=1;
-            schedulePattern(offCtx, beatBus);
-            let node=beatBus;
-
-            // 1. Saturator
-            if(chain.sat.on){
-                const ws=offCtx.createWaveShaper();
-                ws.curve=makeSatCurve(chain.sat.drive, chain.sat.type);
-                ws.oversample='4x';
-                const satOut=offCtx.createGain(); satOut.gain.value=0.85; // compensate loudness
-                node.connect(ws); ws.connect(satOut); node=satOut;
-            }
-
-            // 2. Mono Bass — splitter/merger with complementary LPF+HPF
-            if(chain.mono.on){
-                const cutoff=chain.mono.cutoff;
-                const splitter=offCtx.createChannelSplitter(2);
-                const merger=offCtx.createChannelMerger(2);
-                // Low (mono sum)
-                const lpfL=offCtx.createBiquadFilter(); lpfL.type='lowpass'; lpfL.frequency.value=cutoff; lpfL.Q.value=0.5;
-                const lpfR=offCtx.createBiquadFilter(); lpfR.type='lowpass'; lpfR.frequency.value=cutoff; lpfR.Q.value=0.5;
-                const gL=offCtx.createGain(); gL.gain.value=0.5;
-                const gR=offCtx.createGain(); gR.gain.value=0.5;
-                const monoSum=offCtx.createGain(); monoSum.gain.value=1;
-                // High (stereo kept)
-                const hpfL=offCtx.createBiquadFilter(); hpfL.type='highpass'; hpfL.frequency.value=cutoff; hpfL.Q.value=0.5;
-                const hpfR=offCtx.createBiquadFilter(); hpfR.type='highpass'; hpfR.frequency.value=cutoff; hpfR.Q.value=0.5;
-                node.connect(splitter);
-                splitter.connect(lpfL,0); splitter.connect(lpfR,1);
-                lpfL.connect(gL); lpfR.connect(gR); gL.connect(monoSum); gR.connect(monoSum);
-                monoSum.connect(merger,0,0); monoSum.connect(merger,0,1);
-                splitter.connect(hpfL,0); splitter.connect(hpfR,1);
-                hpfL.connect(merger,0,0); hpfR.connect(merger,0,1);
-                node=merger;
-            }
-
-            // 3. Glue Compressor
-            if(chain.glue.on){
-                const comp=offCtx.createDynamicsCompressor();
-                comp.threshold.value=chain.glue.threshold;
-                comp.ratio.value=chain.glue.ratio;
-                comp.knee.value=chain.glue.knee;
-                comp.attack.value=chain.glue.attack/1000;
-                comp.release.value=chain.glue.release/1000;
-                node.connect(comp); node=comp;
-            }
-
-            // 4. 5-Band EQ (chained BiquadFilters)
-            if(chain.eq.on){
-                chain.eq.bands.forEach(band=>{
-                    const f=offCtx.createBiquadFilter();
-                    f.type=band.type; f.frequency.value=band.hz; f.gain.value=band.gain; f.Q.value=band.q;
-                    node.connect(f); node=f;
-                });
-            }
-
-            // 5. Limiter (brick wall)
-            if(chain.lim.on){
-                const lim=offCtx.createDynamicsCompressor();
-                lim.threshold.value=chain.lim.ceiling;
-                lim.knee.value=0; lim.ratio.value=20;
-                lim.attack.value=0.001; lim.release.value=0.06;
-                node.connect(lim); node=lim;
-            }
-
-            node.connect(offCtx.destination);
-            const rendered=await offCtx.startRendering();
-            masteredBuf=rendered;
-
-            // ── Level analysis ─────────────────────────────────────
-            const dryL=dryBuf.getChannelData(0), L=rendered.getChannelData(0);
-            let peakIn=0, peakOut=0, rmsSum=0;
-            for(let i=0;i<dryL.length;i++) peakIn=Math.max(peakIn,Math.abs(dryL[i]));
-            for(let i=0;i<L.length;i++){ peakOut=Math.max(peakOut,Math.abs(L[i])); rmsSum+=L[i]*L[i]; }
-            const rms=Math.sqrt(rmsSum/L.length);
-            const inDb=peakIn>0?20*Math.log10(peakIn):-Infinity;
-            const outDb=peakOut>0?20*Math.log10(peakOut):-Infinity;
-            const grDb=Math.max(0,inDb-outDb);
-            const lufsEst=rms>0?20*Math.log10(rms)-3:-Infinity;
-
-            mIn.bar.style.width=Math.min(100,Math.max(0,(inDb+20)/20*100))+'%';
-            mIn.val.textContent=isFinite(inDb)?inDb.toFixed(1)+' dBFS':'—';
-            mOut.bar.style.width=Math.min(100,Math.max(0,(outDb+20)/20*100))+'%';
-            mOut.val.textContent=isFinite(outDb)?outDb.toFixed(1)+' dBFS':'—';
-            mGR.bar.style.width=Math.min(100,grDb*5)+'%';
-            mGR.val.textContent=grDb>0?'-'+grDb.toFixed(1)+' dB':'0 dB';
-
-            statusDiv.innerHTML=`✓ Mastered — OUT: <span style="color:#6fc">${isFinite(outDb)?outDb.toFixed(1)+' dBFS':'—'}</span> &nbsp;·&nbsp; LUFS ≈ <span style="color:#e8b84b">${isFinite(lufsEst)?lufsEst.toFixed(1):'—'}</span>`;
-            playBtn2.disabled=false;
-        }catch(e){
-            statusDiv.textContent='Hata: '+e.message;
-        }
-        renderBtn.disabled=false; renderBtn.textContent='🎚 Render & Master';
-    };
-
-    wrap._stopPlayback=stopMasterPlay;
+    wrap._stopPlayback=()=>{ cancelAnimationFrame(mastRaf); teardownChain(); };
     return wrap;
 }
 
