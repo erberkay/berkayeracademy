@@ -94,7 +94,7 @@ body::before {
 .bnav-item.active { color:var(--gold); }
 .bnav-item.active::after { content:''; position:absolute; top:0; left:28%; right:28%; height:2px; background:var(--gold); border-radius:0 0 3px 3px; }
 .bnav-icon { font-size:1.15rem; line-height:1; }
-.bnav-label { font-family:'Space Mono',monospace; font-size:.42rem; letter-spacing:.07em; text-transform:uppercase; }
+.bnav-label { font-family:'Space Mono',monospace; font-size:.52rem; letter-spacing:.05em; text-transform:uppercase; }
 </style>
 </head>
 <body>
@@ -276,9 +276,15 @@ function renderGrid() {
 }
 
 async function loadMembers() {
-  const snap = await db.collection('users').orderBy('joinedAt','desc').limit(100).get();
+  const snap = await db.collection('users').limit(200).get();
   document.getElementById('memberCount').textContent = snap.size;
   _allMembers = snap.docs.map(d => [d.id, d.data()]);
+  // Sort: users with joinedAt first (newest), then the rest
+  _allMembers.sort((a, b) => {
+    const ta = a[1].joinedAt?.toMillis?.() ?? 0;
+    const tb = b[1].joinedAt?.toMillis?.() ?? 0;
+    return tb - ta;
+  });
   buildFilters();
   renderGrid();
 }
