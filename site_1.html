@@ -1390,30 +1390,27 @@ function buildEQSection() {
         });
     }
 
-    // Test tone: pink noise through filters
-    const playBtn=mk('button','power-button','▶ TEST SESİ ÇAL (Pink Noise)');
+    // Test tone: Lead 1.wav through EQ filters
+    const playBtn=mk('button','power-button','▶ LEAD 1 ÇAL — EQ Uygula');
     playBtn.style.marginTop='4px';
     playBtn.onclick=()=>{
-        if(eqTestSrc){ eqTestSrc.stop(); eqTestSrc=null; playBtn.textContent='▶ TEST SESİ ÇAL (Pink Noise)'; playBtn.classList.remove('active'); return; }
+        if(eqTestSrc){ eqTestSrc.stop(); eqTestSrc=null; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; playBtn.classList.remove('active'); return; }
         initEQAudio();
         if(eqACtx.state==='suspended') eqACtx.resume();
         bands.forEach((b,i)=>{ if(eqFilts[i]) eqFilts[i].gain.value=b.gain; });
-        // Pink noise buffer (Johnson–Nyquist pink noise algorithm)
-        const sr=eqACtx.sampleRate;
-        const buf=eqACtx.createBuffer(1,sr*4,sr);
-        const d=buf.getChannelData(0);
-        let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
-        for(let i=0;i<d.length;i++){
-            const w=Math.random()*2-1;
-            b0=.99886*b0+w*.0555179; b1=.99332*b1+w*.0750759;
-            b2=.96900*b2+w*.1538520; b3=.86650*b3+w*.3104856;
-            b4=.55000*b4+w*.5329522; b5=-.7616*b5-w*.0168980;
-            d[i]=(b0+b1+b2+b3+b4+b5+b6+w*.5362)*0.11; b6=w*.115926;
-        }
-        eqTestSrc=eqACtx.createBufferSource();
-        eqTestSrc.buffer=buf; eqTestSrc.connect(eqFilts[0]); eqTestSrc.start();
-        eqTestSrc.onended=()=>{ eqTestSrc=null; playBtn.textContent='▶ TEST SESİ ÇAL (Pink Noise)'; playBtn.classList.remove('active'); };
-        playBtn.textContent='⏹ DURDUR'; playBtn.classList.add('active');
+        playBtn.textContent='⏙ Yükleniyor...'; playBtn.disabled=true;
+        fetch('Lead 1.wav')
+            .then(r=>r.arrayBuffer())
+            .then(ab=>eqACtx.decodeAudioData(ab))
+            .then(buf=>{
+                playBtn.disabled=false;
+                eqTestSrc=eqACtx.createBufferSource();
+                eqTestSrc.buffer=buf; eqTestSrc.loop=true;
+                eqTestSrc.connect(eqFilts[0]); eqTestSrc.start();
+                eqTestSrc.onended=()=>{ eqTestSrc=null; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; playBtn.classList.remove('active'); };
+                playBtn.textContent='⏹ DURDUR'; playBtn.classList.add('active');
+            })
+            .catch(()=>{ playBtn.disabled=false; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; });
     };
     wrap.append(playBtn);
     return wrap;
@@ -1426,42 +1423,47 @@ function buildMixerSection() {
     const wrap=mk('div','adsr-explanation'); wrap.style.marginTop='20px';
     wrap.innerHTML=`<h3 style="color:#8fc8e8;margin-bottom:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎚️ İnteraktif Mixer — 4 Kanal</h3>`;
     const hint=mk('div','hint-box');
-    hint.innerHTML='<strong>VOL</strong> fader\'ını ayarla, <strong>PAN</strong> ile stereo konumlandır, <strong>MUTE</strong> ile kanalı kes. "MIX ÇAL" ile dene.';
+    hint.innerHTML='<strong>VOL</strong> + <strong>PAN</strong> + <strong>MUTE</strong> ayarla. "MIX ÇAL" → Beat Maker\'daki pattern + Lead Loop gerçek seslerle çalar.';
     wrap.append(hint);
 
+    // beatIdx: state.beatVolumes dizisindeki index (-1 = Lead Loop dosyası)
     const channels=[
-        {name:'KICK',  color:'#e8b84b', wave:'kick'},
-        {name:'SNARE', color:'#00aaff', wave:'snare'},
-        {name:'BASS',  color:'#a855f7', wave:'bass'},
-        {name:'LEAD',  color:'#8fc8e8', wave:'lead'},
+        {name:'KICK',      color:'#e8b84b', beatIdx:0},
+        {name:'SNARE',     color:'#00aaff', beatIdx:1},
+        {name:'BASS',      color:'#a855f7', beatIdx:4},
+        {name:'LEAD LOOP', color:'#8fc8e8', beatIdx:-1},
     ];
-    const chState=channels.map(()=>({vol:0.75, pan:0, muted:false}));
+    const chState=channels.map((ch)=>({
+        vol: ch.beatIdx>=0 ? state.beatVolumes[ch.beatIdx]/100 : 0.75,
+        pan:0, muted:false
+    }));
     const vuBars=[];
+    // live audio refs for Lead Loop (assigned after play starts)
+    let leadGain=null, leadPan=null, leadSrc=null;
 
     const grid=mk('div','mixer-grid');
     channels.forEach((ch,i)=>{
         const strip=mk('div','mixer-strip');
         strip.style.cssText+=`background:${ch.color}0c;border:1px solid ${ch.color}28;`;
-
         const nameEl=mk('div','',ch.name);
         nameEl.style.cssText=`color:${ch.color};font-size:.72rem;font-weight:bold;letter-spacing:.12em;`;
-
-        // VU meter
         const vu=mk('div','vu-wrap'); vu.style.cssText+=`border:1px solid ${ch.color}22;`;
         const vuB=mk('div','vu-bar');
         vuB.style.cssText+=`background:linear-gradient(to top,${ch.color},${ch.color}66,#ff444488);`;
         vu.append(vuB); vuBars.push(vuB);
 
-        // Volume slider
+        // VOL
         const volW=mk('div'); volW.style.width='100%';
         const volLbl=mk('div','slider-label');
         const volVal=mk('span','',Math.round(chState[i].vol*100)+'%'); volVal.style.color=ch.color;
         volLbl.append(mk('span','','VOL'),volVal); volW.append(volLbl);
         volW.append(makeSlider({min:0,max:1,step:.01,value:chState[i].vol,onChange:v=>{
             chState[i].vol=v; volVal.textContent=Math.round(v*100)+'%';
+            if(ch.beatIdx>=0) state.beatVolumes[ch.beatIdx]=Math.round(v*100);
+            if(ch.beatIdx===-1 && leadGain) leadGain.gain.value=v*0.45;
         }}));
 
-        // Pan slider
+        // PAN
         const panW=mk('div'); panW.style.width='100%';
         const panLbl=mk('div','slider-label');
         const panVal=mk('span','','C'); panVal.style.color=ch.color;
@@ -1469,9 +1471,10 @@ function buildMixerSection() {
         panW.append(makeSlider({min:-1,max:1,step:.05,value:0,onChange:v=>{
             chState[i].pan=v;
             panVal.textContent=Math.abs(v)<.05?'C':v<0?'L'+Math.round(-v*50):'R'+Math.round(v*50);
+            if(ch.beatIdx===-1 && leadPan) leadPan.pan.value=v;
         }}));
 
-        // Mute
+        // MUTE
         const muteBtn=mk('button','wave-btn','MUTE');
         muteBtn.style.cssText+='width:100%;font-size:.62rem;padding:5px;';
         muteBtn.onclick=()=>{
@@ -1479,6 +1482,11 @@ function buildMixerSection() {
             muteBtn.classList.toggle('active',chState[i].muted);
             muteBtn.textContent=chState[i].muted?'🔇 MUTED':'MUTE';
             strip.style.opacity=chState[i].muted?'0.4':'1';
+            if(ch.beatIdx>=0){
+                state.beatVolumes[ch.beatIdx]=chState[i].muted?0:Math.round(chState[i].vol*100);
+            } else if(leadGain){
+                leadGain.gain.value=chState[i].muted?0:chState[i].vol*0.45;
+            }
         };
 
         strip.append(nameEl,vu,volW,panW,muteBtn);
@@ -1486,16 +1494,8 @@ function buildMixerSection() {
     });
     wrap.append(grid);
 
-    // Mix play / stop
-    let mixACtx=null, mixNodes=[], mixPlaying=false, mixRaf=null;
+    let mixPlaying=false, mixRaf=null;
     const phases=channels.map(()=>Math.random()*Math.PI*2);
-
-    function stopMix(){
-        mixPlaying=false; cancelAnimationFrame(mixRaf);
-        mixNodes.forEach(n=>{ try{n.stop();}catch{} }); mixNodes=[];
-        vuBars.forEach(v=>v.style.height='0%');
-        playBtn.textContent='▶ MIX ÇAL'; playBtn.classList.remove('active');
-    }
 
     function vuLoop(){
         if(!mixPlaying) return;
@@ -1507,50 +1507,44 @@ function buildMixerSection() {
         mixRaf=requestAnimationFrame(vuLoop);
     }
 
+    function stopMix(){
+        mixPlaying=false; cancelAnimationFrame(mixRaf);
+        if(beatPlaying) stopBeat();
+        if(leadSrc){ try{leadSrc.stop();}catch{} leadSrc=null; }
+        leadGain=null; leadPan=null;
+        vuBars.forEach(v=>v.style.height='0%');
+        playBtn.textContent='▶ MIX ÇAL'; playBtn.classList.remove('active');
+    }
+
     const playBtn=mk('button','power-button','▶ MIX ÇAL');
     playBtn.style.marginTop='12px';
     playBtn.onclick=()=>{
         if(mixPlaying){ stopMix(); return; }
-        if(!mixACtx) mixACtx=new(window.AudioContext||window.webkitAudioContext)();
-        if(mixACtx.state==='suspended') mixACtx.resume();
 
-        channels.forEach((ch,i)=>{
-            if(chState[i].muted) return;
-            const gainN=mixACtx.createGain(); gainN.gain.value=chState[i].vol*0.16;
-            let src;
-            if(ch.wave==='kick'){
-                const o=mixACtx.createOscillator(); o.type='sine';
-                o.frequency.setValueAtTime(80,mixACtx.currentTime);
-                o.frequency.exponentialRampToValueAtTime(0.001,mixACtx.currentTime+0.5);
-                src=o; o.connect(gainN);
-            } else if(ch.wave==='snare'){
-                const buf=mixACtx.createBuffer(1,mixACtx.sampleRate*0.15,mixACtx.sampleRate);
-                const d=buf.getChannelData(0);
-                for(let j=0;j<d.length;j++) d[j]=(Math.random()*2-1)*(1-j/d.length);
-                src=mixACtx.createBufferSource(); src.buffer=buf; src.loop=true;
-                const f=mixACtx.createBiquadFilter(); f.type='highpass'; f.frequency.value=1800;
-                src.connect(f); f.connect(gainN);
-            } else if(ch.wave==='bass'){
-                const o=mixACtx.createOscillator(); o.type='sawtooth'; o.frequency.value=80;
-                const f=mixACtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=300;
-                o.connect(f); f.connect(gainN); src=o;
-            } else {
-                const o=mixACtx.createOscillator(); o.type='square'; o.frequency.value=440;
-                const f=mixACtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1200;
-                o.connect(f); f.connect(gainN); src=o;
-            }
-            if(mixACtx.createStereoPanner){
-                const pan=mixACtx.createStereoPanner(); pan.pan.value=chState[i].pan;
-                gainN.connect(pan); pan.connect(mixACtx.destination);
-            } else {
-                gainN.connect(mixACtx.destination);
-            }
-            src.start(); mixNodes.push(src);
-        });
+        // Drum kanalları: beat engine başlat (mevcut pattern + gerçek wav dosyaları)
+        if(!beatPlaying) startBeat();
+
+        // Lead Loop: beatCtx üzerinden yükle ve çal
+        const bc=getBeatCtx();
+        fetch('Lead Loop.wav')
+            .then(r=>r.arrayBuffer())
+            .then(ab=>bc.decodeAudioData(ab))
+            .then(buf=>{
+                if(!mixPlaying) return;
+                leadGain=bc.createGain();
+                leadGain.gain.value=chState[3].muted?0:chState[3].vol*0.45;
+                leadPan=bc.createStereoPanner?bc.createStereoPanner():null;
+                leadSrc=bc.createBufferSource();
+                leadSrc.buffer=buf; leadSrc.loop=true;
+                leadSrc.connect(leadGain);
+                if(leadPan){ leadPan.pan.value=chState[3].pan; leadGain.connect(leadPan); leadPan.connect(bc.destination); }
+                else { leadGain.connect(bc.destination); }
+                if(!chState[3].muted) leadSrc.start();
+            })
+            .catch(()=>{});
 
         mixPlaying=true; playBtn.textContent='⏹ DURDUR'; playBtn.classList.add('active');
         vuLoop();
-        setTimeout(stopMix,5000);
     };
     wrap.append(playBtn);
     return wrap;
@@ -2027,6 +2021,7 @@ function renderModule4() {
 // ═══════════════════════════════════════════════════════════════════
 function renderHome() {
     const root=mk('div','container'); root.append(mk('div','accent-bar'));
+    const bk=mk('a','back-btn','← Ana Sayfa'); bk.href='index.html'; root.append(bk);
     const hdr=mk('div','header','<h1>Ableton Lab</h1><p>Berkay Er — İnteraktif Öğrenme Platformu</p>');
     root.append(hdr);
 
