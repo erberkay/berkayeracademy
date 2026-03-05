@@ -44,6 +44,22 @@
   .forum-preview-empty { font-size:.72rem; color:rgba(238,235,230,.3); text-align:center; padding:20px; font-family:'Space Mono',monospace; }
   .forum-preview-login { font-size:.7rem; color:rgba(238,235,230,.3); text-align:center; padding:16px; font-family:'Space Mono',monospace; line-height:1.7; }
 
+  /* ── Welcome modal ── */
+  .ps-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; animation:psIn .18s ease; }
+  @keyframes psIn { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+  .ps-modal { background:#111120; border:1px solid #2a2a45; border-radius:8px; max-width:500px; width:100%; padding:28px 24px 22px; position:relative; }
+  .ps-modal-close { position:absolute; top:12px; right:16px; background:transparent; border:none; color:rgba(238,235,230,.4); font-size:1.1rem; cursor:pointer; }
+  .ps-modal-close:hover { color:#eeebe6; }
+  .ps-modal h3 { font-family:'Bebas Neue',sans-serif; letter-spacing:.08em; font-size:1.4rem; color:#e8b84b; margin-bottom:6px; }
+  .ps-modal-sub { font-size:.7rem; color:rgba(238,235,230,.5); margin-bottom:20px; }
+  .ps-features { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .ps-feat { background:rgba(255,255,255,.03); border:1px solid #2a2a45; border-radius:6px; padding:12px 14px; }
+  .ps-feat-icon { font-size:1.3rem; margin-bottom:6px; }
+  .ps-feat-title { font-family:'Space Mono',monospace; font-size:.68rem; color:#e8b84b; font-weight:bold; margin-bottom:4px; }
+  .ps-feat-desc { font-size:.65rem; color:rgba(238,235,230,.55); line-height:1.6; }
+  .ps-modal-btn { width:100%; background:linear-gradient(135deg,#b82d45,#e8b84b); border:none; color:#060609; font-family:'Space Mono',monospace; font-size:.75rem; font-weight:bold; letter-spacing:.08em; padding:12px; border-radius:6px; cursor:pointer; transition:opacity .15s; }
+  .ps-modal-btn:hover { opacity:.88; }
+  @media(max-width:440px){ .ps-features{grid-template-columns:1fr;} }
   /* ── Bottom Nav ── */
   .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:500; background:rgba(6,6,9,.96); border-top:1px solid #2a2a45; backdrop-filter:blur(16px); display:flex; height:58px; }
   .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; text-decoration:none; color:rgba(238,235,230,.3); transition:color .15s; position:relative; }
@@ -702,9 +718,54 @@
       });
     }
 
+    // ── Welcome modal ─────────────────────────────────────────────
+    function showWelcomeModal(user) {
+      const name = user.displayName?.split(' ')[0] || 'Üye';
+      const overlay = document.createElement('div'); overlay.className='ps-modal-overlay';
+      overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+      const box = document.createElement('div'); box.className='ps-modal';
+      box.innerHTML = `
+        <button class="ps-modal-close" onclick="this.closest('.ps-modal-overlay').remove()">✕</button>
+        <h3>Hoş geldin, ${name}! 🎛️</h3>
+        <div class="ps-modal-sub">Platforma üye oldun. Seni neler bekliyor?</div>
+        <div class="ps-features">
+          <div class="ps-feat">
+            <div class="ps-feat-icon">💬</div>
+            <div class="ps-feat-title">Forum</div>
+            <div class="ps-feat-desc">Sorularını sor, deneyimlerini paylaş, diğer prodüktörlerle etkileşime geç.</div>
+          </div>
+          <div class="ps-feat">
+            <div class="ps-feat-icon">🎛️</div>
+            <div class="ps-feat-title">Ableton Lab</div>
+            <div class="ps-feat-desc">Synthesizer, Beat Maker, Mixer ve Arrangement Builder ile interaktif prodüksiyon öğren.</div>
+          </div>
+          <div class="ps-feat">
+            <div class="ps-feat-icon">👥</div>
+            <div class="ps-feat-title">Üyeler</div>
+            <div class="ps-feat-desc">Projeye açık prodüktörleri keşfet, collab bul, sosyal profillere bak.</div>
+          </div>
+          <div class="ps-feat">
+            <div class="ps-feat-icon">👤</div>
+            <div class="ps-feat-title">Profil</div>
+            <div class="ps-feat-desc">Genre etiketleri ekle, hakkında yaz, collab durumunu belirt.</div>
+          </div>
+        </div>
+        <button class="ps-modal-btn" onclick="this.closest('.ps-modal-overlay').remove()">Harika, başlayalım →</button>
+      `;
+      overlay.append(box);
+      document.body.append(overlay);
+    }
+
     // ── Auth state ────────────────────────────────────────────────
     _auth.onAuthStateChanged(user => {
       updateAuthBar(user);
+      if (user) {
+        const key = 'ps_welcomed_' + user.uid;
+        if (!localStorage.getItem(key)) {
+          localStorage.setItem(key, '1');
+          setTimeout(() => showWelcomeModal(user), 600);
+        }
+      }
     });
 
   } catch(e) { console.warn('Firebase init:', e.message); }

@@ -1614,6 +1614,22 @@ function buildMixerSection() {
     playBtn.onclick=()=>{
         if(mixPlaying){ stopMix(); return; }
 
+        // Pattern kontrolü — en az 1 aktif adım olmalı
+        const hasPattern=state.beatPatterns.some(row=>row.some(v=>v>0));
+        if(!hasPattern){
+            showModal(
+                '🥁 Önce Beat Maker\'da Pattern Kur',
+                `<p>Mixer'ı çalıştırmak için Beat Maker'da en az bir adım aktif olmalı.</p>
+                <ul>
+                    <li>Beat Maker'a git → KICK, SNARE, HI-HAT adımlarını tıkla</li>
+                    <li>Geri dön → <strong>▶ MIX ÇAL</strong>'a bas</li>
+                    <li>LEAD LOOP her zaman çalar — sadece ritim kanalları pattern'e bakıyor</li>
+                </ul>`,
+                [{label:'🥁 Beat Maker\'a Git', fn:()=>navigate(2)}]
+            );
+            return;
+        }
+
         // BPM'i 125'e kilitle (Lead Loop 125 BPM'de kaydedildi)
         _prevBpm=state.bpm; state.bpm=125;
         const bi=document.querySelector('#beat-bpm-input'); if(bi) bi.value=125;
