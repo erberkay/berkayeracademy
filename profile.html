@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil — Berkay Er Topluluğu</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --black:#060609; --deep:#0c0c16; --card:#13131f;
+  --gold:#e8b84b; --amber:#d4722a; --crimson:#b82d45;
+  --ice:#8fc8e8; --white:#eeebe6; --mid:#2a2a45; --mid2:#1e1e34;
+  --dim:rgba(238,235,230,0.45);
+}
+body { font-family:'Space Mono',monospace; background:var(--black); color:var(--white); min-height:100vh; }
+body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+
+.topnav { position:fixed; top:0; left:0; right:0; z-index:300; background:rgba(6,6,9,.92); border-bottom:1px solid var(--mid); backdrop-filter:blur(8px); height:52px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; }
+.topnav-left { display:flex; align-items:center; gap:14px; }
+.topnav-back { color:var(--dim); font-size:.65rem; text-decoration:none; transition:color .15s; }
+.topnav-back:hover { color:var(--gold); }
+.topnav-sep { color:var(--mid); }
+.topnav-brand { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); letter-spacing:.08em; }
+#authBar { display:flex; align-items:center; gap:8px; }
+.auth-sign-btn { background:rgba(42,42,69,.9); border:1px solid var(--gold); color:var(--gold); font-family:'Space Mono',monospace; font-size:.65rem; padding:6px 14px; border-radius:4px; cursor:pointer; transition:background .18s,color .18s; }
+.auth-sign-btn:hover { background:var(--gold); color:var(--black); }
+.auth-user-wrap { display:flex; align-items:center; gap:8px; background:rgba(42,42,69,.85); border:1px solid rgba(232,184,75,.3); padding:4px 10px 4px 4px; border-radius:20px; }
+.auth-avatar { width:26px; height:26px; border-radius:50%; border:2px solid var(--gold); object-fit:cover; }
+.auth-name { font-size:.62rem; color:var(--white); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.auth-out-btn { background:transparent; border:none; color:rgba(238,235,230,.4); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; }
+
+.layout { max-width:900px; margin:0 auto; padding:72px 20px 80px; display:grid; grid-template-columns:260px 1fr; gap:24px; position:relative; z-index:1; }
+@media(max-width:700px) { .layout { grid-template-columns:1fr; } }
+
+/* ── Profile card ── */
+.profile-card { background:var(--card); border:1px solid var(--mid); border-radius:10px; overflow:hidden; position:sticky; top:70px; align-self:start; }
+.profile-cover { height:80px; background:linear-gradient(135deg,var(--crimson),var(--amber)); position:relative; }
+.profile-avatar-wrap { position:absolute; bottom:-28px; left:20px; }
+.profile-avatar { width:56px; height:56px; border-radius:50%; object-fit:cover; border:3px solid var(--card); }
+.profile-avatar-ph { width:56px; height:56px; border-radius:50%; background:var(--mid2); border:3px solid var(--card); display:flex; align-items:center; justify-content:center; font-size:1.4rem; }
+.profile-info { padding:36px 20px 16px; }
+.profile-name { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; color:var(--white); letter-spacing:.04em; margin-bottom:2px; }
+.profile-name.is-admin::after { content:' ⚡'; color:var(--gold); font-size:1rem; }
+.profile-joined { font-size:.55rem; color:rgba(238,235,230,.25); margin-bottom:10px; letter-spacing:.06em; }
+.profile-about { font-size:.72rem; color:var(--dim); line-height:1.7; margin-bottom:12px; min-height:20px; }
+.profile-genres { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.genre-tag { font-size:.58rem; padding:3px 10px; border-radius:12px; background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.25); color:var(--gold); }
+.profile-stats { display:flex; gap:16px; border-top:1px solid rgba(255,255,255,.05); padding-top:12px; }
+.pstat { text-align:center; }
+.pstat-val { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); }
+.pstat-lbl { font-size:.5rem; color:var(--dim); letter-spacing:.08em; }
+.edit-btn { display:block; width:100%; margin-top:14px; padding:8px; text-align:center; background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.35); color:var(--gold); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; cursor:pointer; transition:background .15s; }
+.edit-btn:hover { background:rgba(232,184,75,.2); }
+
+/* ── Edit form ── */
+.edit-form { display:none; padding:0 20px 20px; border-top:1px solid rgba(255,255,255,.06); margin-top:10px; }
+.edit-form.open { display:block; }
+.ef-label { font-size:.55rem; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; margin:12px 0 5px; }
+.ef-input, .ef-ta { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:5px; color:var(--white); font-family:'Space Mono',monospace; font-size:.72rem; padding:8px 10px; outline:none; transition:border-color .15s; }
+.ef-input:focus, .ef-ta:focus { border-color:var(--gold); }
+.ef-ta { resize:vertical; min-height:70px; line-height:1.6; }
+.ef-genres-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.ef-genre-chip { display:flex; align-items:center; gap:4px; font-size:.58rem; padding:3px 8px; border-radius:12px; background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.25); color:var(--gold); }
+.ef-genre-chip button { background:none; border:none; color:rgba(232,184,75,.5); cursor:pointer; font-size:.65rem; padding:0 2px; }
+.ef-genre-chip button:hover { color:var(--crimson); }
+.ef-genre-add { display:flex; gap:6px; margin-top:6px; }
+.ef-genre-input { flex:1; background:var(--mid2); border:1px solid var(--mid); border-radius:5px; color:var(--white); font-family:'Space Mono',monospace; font-size:.68rem; padding:6px 9px; outline:none; }
+.ef-genre-add-btn { padding:6px 12px; background:rgba(232,184,75,.12); border:1px solid rgba(232,184,75,.35); color:var(--gold); border-radius:5px; font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; }
+.ef-save-btn { width:100%; margin-top:14px; padding:9px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.7rem; font-weight:bold; cursor:pointer; }
+.ef-save-btn:hover { filter:brightness(1.1); }
+
+/* ── Activity ── */
+.activity-col {}
+.activity-section { margin-bottom:20px; }
+.activity-title { font-size:.6rem; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; margin-bottom:12px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,.05); }
+.activity-item { background:var(--card); border:1px solid var(--mid); border-radius:6px; padding:12px 16px; margin-bottom:8px; cursor:pointer; transition:border-color .15s; }
+.activity-item:hover { border-color:rgba(232,184,75,.25); }
+.activity-item-title { font-size:.78rem; color:var(--white); font-weight:bold; margin-bottom:4px; }
+.activity-item-meta { font-size:.55rem; color:rgba(238,235,230,.25); display:flex; gap:10px; }
+.activity-empty { font-size:.68rem; color:var(--dim); padding:12px 0; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-left">
+    <a href="forum.html" class="topnav-back">← Forum</a>
+    <span class="topnav-sep">|</span>
+    <span class="topnav-brand">Profil</span>
+  </div>
+  <div id="authBar"></div>
+</nav>
+
+<div class="layout" id="layout">
+  <div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--dim);font-size:.75rem">Yükleniyor...</div>
+</div>
+
+<script>
+'use strict';
+const ADMIN_EMAIL = 'berkayer032@gmail.com';
+const profileUid  = new URLSearchParams(location.search).get('uid');
+
+firebase.initializeApp({
+  apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
+  authDomain:        "ableton-tutorial.firebaseapp.com",
+  projectId:         "ableton-tutorial",
+  storageBucket:     "ableton-tutorial.firebasestorage.app",
+  messagingSenderId: "677640687230",
+  appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+let _user = null;
+
+function doSignIn() { auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); }
+function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
+function fmtDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('tr-TR', {month:'long', year:'numeric'});
+}
+
+function updateAuthBar(user) {
+  const bar = document.getElementById('authBar'); bar.innerHTML = '';
+  if (user) {
+    const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
+    const img  = document.createElement('img');  img.className = 'auth-avatar';
+    img.src = user.photoURL || ''; img.alt = '';
+    const name = document.createElement('span'); name.className = 'auth-name';
+    name.textContent = isAdmin(user) ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Üye');
+    const out = document.createElement('button'); out.className = 'auth-out-btn';
+    out.textContent = '✕'; out.onclick = () => auth.signOut();
+    wrap.append(img, name, out); bar.append(wrap);
+  } else {
+    const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
+    btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
+    bar.append(btn);
+  }
+}
+
+async function renderProfile() {
+  const uid = profileUid || _user?.uid;
+  if (!uid) {
+    document.getElementById('layout').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--dim)">Profil bulunamadı.</div>';
+    return;
+  }
+
+  // Load profile doc
+  const profDoc = await db.collection('users').doc(uid).get();
+  const prof = profDoc.exists ? profDoc.data() : {};
+  const isOwn = _user?.uid === uid;
+
+  // Load auth display name/photo if own profile
+  const displayName = prof.displayName || (_user?.uid===uid ? _user.displayName : null) || 'Üye';
+  const photoURL    = prof.photoURL    || (_user?.uid===uid ? _user.photoURL    : null) || '';
+
+  // Load posts & replies count
+  const postsSnap = await db.collection('forum').where('authorId','==',uid).limit(20).get();
+  const posts = postsSnap.docs.map(d => ({id:d.id,...d.data()}));
+  const replyCount = prof.replyCount || 0;
+
+  const layout = document.getElementById('layout'); layout.innerHTML = '';
+
+  // ── Profile card ──
+  const pCard = document.createElement('div'); pCard.className = 'profile-card';
+
+  const cover = document.createElement('div'); cover.className = 'profile-cover';
+  const avWrap = document.createElement('div'); avWrap.className = 'profile-avatar-wrap';
+  if (photoURL) {
+    const img = document.createElement('img'); img.className = 'profile-avatar'; img.src = photoURL; img.alt = '';
+    avWrap.append(img);
+  } else {
+    const ph = document.createElement('div'); ph.className = 'profile-avatar-ph'; ph.textContent = '👤';
+    avWrap.append(ph);
+  }
+  cover.append(avWrap); pCard.append(cover);
+
+  const info = document.createElement('div'); info.className = 'profile-info';
+  const nameDiv = document.createElement('div');
+  nameDiv.className = 'profile-name' + (prof.email === ADMIN_EMAIL || (_user?.uid===uid && isAdmin(_user)) ? ' is-admin' : '');
+  nameDiv.textContent = displayName;
+  const joined = document.createElement('div'); joined.className = 'profile-joined';
+  joined.textContent = prof.joinedAt ? 'Katılım: ' + fmtDate(prof.joinedAt) : '';
+
+  const aboutDiv = document.createElement('div'); aboutDiv.className = 'profile-about';
+  aboutDiv.textContent = prof.about || (isOwn ? 'Kendinden bahset...' : '');
+
+  const genresDiv = document.createElement('div'); genresDiv.className = 'profile-genres';
+  (prof.genres || []).forEach(g => {
+    const tag = document.createElement('span'); tag.className = 'genre-tag'; tag.textContent = g;
+    genresDiv.append(tag);
+  });
+
+  const statsDiv = document.createElement('div'); statsDiv.className = 'profile-stats';
+  const pst = document.createElement('div'); pst.className = 'pstat';
+  pst.innerHTML = `<div class="pstat-val">${posts.length}</div><div class="pstat-lbl">Konu</div>`;
+  const rst = document.createElement('div'); rst.className = 'pstat';
+  rst.innerHTML = `<div class="pstat-val">${prof.replyCount||0}</div><div class="pstat-lbl">Yanıt</div>`;
+  statsDiv.append(pst, rst);
+
+  info.append(nameDiv, joined, aboutDiv, genresDiv, statsDiv);
+
+  // Edit button (own profile only)
+  if (isOwn) {
+    const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = '✏️ Profili Düzenle';
+    info.append(editBtn);
+
+    // Edit form
+    const editForm = document.createElement('div'); editForm.className = 'edit-form';
+    let editGenres = [...(prof.genres || [])];
+
+    editForm.innerHTML = `<div class="ef-label">Hakkında</div>`;
+    const aboutInput = document.createElement('textarea'); aboutInput.className = 'ef-ta'; aboutInput.maxLength = 300;
+    aboutInput.placeholder = 'Kendinden, müzik tarzından bahset...'; aboutInput.value = prof.about || '';
+    editForm.append(aboutInput);
+
+    editForm.innerHTML += '';
+    const genresLabel = document.createElement('div'); genresLabel.className = 'ef-label'; genresLabel.textContent = 'Genreler';
+    editForm.append(genresLabel);
+    const genresWrap = document.createElement('div'); genresWrap.className = 'ef-genres-wrap';
+    function rebuildGenreChips() {
+      genresWrap.innerHTML = '';
+      editGenres.forEach((g, i) => {
+        const chip = document.createElement('div'); chip.className = 'ef-genre-chip';
+        const span = document.createElement('span'); span.textContent = g;
+        const del = document.createElement('button'); del.textContent = '✕';
+        del.onclick = () => { editGenres.splice(i,1); rebuildGenreChips(); };
+        chip.append(span, del); genresWrap.append(chip);
+      });
+    }
+    rebuildGenreChips(); editForm.append(genresWrap);
+
+    const addRow = document.createElement('div'); addRow.className = 'ef-genre-add';
+    const gInput = document.createElement('input'); gInput.className = 'ef-genre-input'; gInput.placeholder = 'Techno, House, Ambient...'; gInput.maxLength = 30;
+    const addBtn = document.createElement('button'); addBtn.className = 'ef-genre-add-btn'; addBtn.textContent = '+ Ekle';
+    addBtn.onclick = () => {
+      const v = gInput.value.trim(); if (!v || editGenres.length >= 8) return;
+      editGenres.push(v); gInput.value = ''; rebuildGenreChips();
+    };
+    gInput.onkeydown = e => { if (e.key==='Enter') { e.preventDefault(); addBtn.click(); } };
+    addRow.append(gInput, addBtn); editForm.append(addRow);
+
+    const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = '💾 Kaydet';
+    saveBtn.onclick = async () => {
+      saveBtn.disabled = true; saveBtn.textContent = '⏳';
+      const update = {
+        displayName: _user.displayName || displayName,
+        photoURL:    _user.photoURL    || photoURL,
+        about:   aboutInput.value.trim(),
+        genres:  editGenres,
+        email:   _user.email,
+      };
+      if (!prof.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection('users').doc(uid).set(update, { merge: true });
+      saveBtn.textContent = '✓ Kaydedildi';
+      setTimeout(() => renderProfile(), 800);
+    };
+    editForm.append(saveBtn);
+
+    editBtn.onclick = () => {
+      editForm.classList.toggle('open');
+      editBtn.textContent = editForm.classList.contains('open') ? '✕ Kapat' : '✏️ Profili Düzenle';
+    };
+    pCard.append(info, editForm);
+  } else {
+    pCard.append(info);
+  }
+
+  layout.append(pCard);
+
+  // ── Activity column ──
+  const actCol = document.createElement('div'); actCol.className = 'activity-col';
+
+  // Recent posts
+  const postsSec = document.createElement('div'); postsSec.className = 'activity-section';
+  const postTitle = document.createElement('div'); postTitle.className = 'activity-title';
+  postTitle.textContent = 'Son Konular';
+  postsSec.append(postTitle);
+  if (posts.length === 0) {
+    const e = document.createElement('div'); e.className = 'activity-empty'; e.textContent = 'Henüz konu açılmamış.';
+    postsSec.append(e);
+  } else {
+    posts.slice(0,10).forEach(p => {
+      const item = document.createElement('div'); item.className = 'activity-item';
+      item.onclick = () => location.href = `post.html?id=${p.id}`;
+      const t = document.createElement('div'); t.className = 'activity-item-title';
+      t.textContent = p.title || (p.text?.slice(0,60)+'…') || '';
+      const m = document.createElement('div'); m.className = 'activity-item-meta';
+      const dateEl = document.createElement('span'); dateEl.textContent = fmtDate(p.createdAt);
+      const rcEl   = document.createElement('span'); rcEl.textContent = `💬 ${p.replyCount||0}`;
+      m.append(dateEl, rcEl);
+      item.append(t, m); postsSec.append(item);
+    });
+  }
+  actCol.append(postsSec);
+  layout.append(actCol);
+}
+
+auth.onAuthStateChanged(async user => {
+  _user = user;
+  updateAuthBar(user);
+  // Save/update profile photoURL on login
+  if (user) {
+    db.collection('users').doc(user.uid).set({
+      displayName: user.displayName || '',
+      photoURL:    user.photoURL    || '',
+      email:       user.email,
+    }, { merge: true });
+  }
+  await renderProfile();
+});
+</script>
+</body>
+</html>

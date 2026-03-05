@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Konu — Berkay Er Topluluğu</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --black:#060609; --deep:#0c0c16; --card:#13131f;
+  --gold:#e8b84b; --amber:#d4722a; --crimson:#b82d45;
+  --ice:#8fc8e8; --white:#eeebe6; --mid:#2a2a45; --mid2:#1e1e34;
+  --dim:rgba(238,235,230,0.45);
+}
+body { font-family:'Space Mono',monospace; background:var(--black); color:var(--white); min-height:100vh; }
+body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+
+.topnav { position:fixed; top:0; left:0; right:0; z-index:300; background:rgba(6,6,9,.92); border-bottom:1px solid var(--mid); backdrop-filter:blur(8px); height:52px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; }
+.topnav-left { display:flex; align-items:center; gap:14px; }
+.topnav-back { color:var(--dim); font-size:.65rem; text-decoration:none; transition:color .15s; }
+.topnav-back:hover { color:var(--gold); }
+.topnav-sep { color:var(--mid); }
+.topnav-brand { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); letter-spacing:.08em; }
+#authBar { display:flex; align-items:center; gap:8px; }
+.auth-sign-btn { background:rgba(42,42,69,.9); border:1px solid var(--gold); color:var(--gold); font-family:'Space Mono',monospace; font-size:.65rem; padding:6px 14px; border-radius:4px; cursor:pointer; transition:background .18s,color .18s; }
+.auth-sign-btn:hover { background:var(--gold); color:var(--black); }
+.auth-user-wrap { display:flex; align-items:center; gap:8px; background:rgba(42,42,69,.85); border:1px solid rgba(232,184,75,.3); padding:4px 10px 4px 4px; border-radius:20px; }
+.auth-avatar { width:26px; height:26px; border-radius:50%; border:2px solid var(--gold); object-fit:cover; cursor:pointer; }
+.auth-name { font-size:.62rem; color:var(--white); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.auth-name:hover { color:var(--gold); }
+.auth-out-btn { background:transparent; border:none; color:rgba(238,235,230,.4); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; }
+.auth-out-btn:hover { color:var(--crimson); }
+
+.layout { max-width:860px; margin:0 auto; padding:72px 20px 80px; position:relative; z-index:1; }
+
+/* ── Post ── */
+.post-card { background:var(--card); border:1px solid var(--mid); border-radius:10px; overflow:hidden; margin-bottom:24px; }
+.post-header { padding:20px 24px 16px; border-bottom:1px solid rgba(255,255,255,.05); }
+.post-author-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.avatar { width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid var(--mid); cursor:pointer; transition:border-color .15s; flex-shrink:0; }
+.avatar:hover { border-color:var(--gold); }
+.avatar-placeholder { width:40px; height:40px; border-radius:50%; background:var(--mid2); border:2px solid var(--mid); display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+.author-info { display:flex; flex-direction:column; gap:2px; }
+.author-name { font-size:.72rem; color:var(--gold); font-weight:bold; cursor:pointer; }
+.author-name:hover { text-decoration:underline; }
+.author-name.is-admin::after { content:' ⚡'; font-size:.6rem; }
+.author-meta { font-size:.55rem; color:rgba(238,235,230,.25); }
+.post-badges { display:flex; gap:6px; margin-left:auto; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
+.badge { font-size:.52rem; padding:3px 9px; border-radius:10px; font-family:'Space Mono',monospace; }
+.badge-solved { background:rgba(100,200,100,.12); border:1px solid rgba(100,200,100,.3); color:#6fc; }
+.badge-open   { background:rgba(232,184,75,.08); border:1px solid rgba(232,184,75,.2); color:var(--gold); }
+.post-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.3rem,3vw,1.8rem); color:var(--white); letter-spacing:.03em; line-height:1.2; margin-bottom:12px; }
+.post-body { font-size:.85rem; line-height:1.85; color:var(--white); white-space:pre-wrap; word-break:break-word; }
+.post-body b { color:var(--gold); }
+.post-body i { color:var(--ice); }
+.post-body code { background:rgba(255,255,255,.08); border-radius:3px; padding:1px 5px; font-size:.78rem; color:#b5e8a0; }
+.post-actions { padding:10px 24px 14px; display:flex; gap:10px; align-items:center; }
+.action-btn { background:none; border:none; color:var(--dim); font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; padding:3px 0; transition:color .15s; }
+.action-btn:hover { color:var(--gold); }
+.solve-btn { border:1px solid rgba(100,200,100,.35); color:rgba(100,200,100,.7); padding:3px 12px; border-radius:10px; transition:all .15s; }
+.solve-btn:hover,.solve-btn.active { background:rgba(100,200,100,.12); color:#6fc; border-color:rgba(100,200,100,.5); }
+.delete-btn { color:rgba(184,45,69,.55); margin-left:auto; }
+.delete-btn:hover { color:var(--crimson); }
+
+/* ── Replies ── */
+.replies-section { margin-bottom:24px; }
+.replies-header { font-size:.62rem; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.05); }
+.reply-card { display:flex; gap:14px; margin-bottom:16px; }
+.reply-body { flex:1; background:var(--card); border:1px solid var(--mid); border-radius:8px; padding:14px 18px; min-width:0; }
+.reply-author-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.reply-avatar { width:30px; height:30px; border-radius:50%; object-fit:cover; border:1.5px solid var(--mid); cursor:pointer; flex-shrink:0; }
+.reply-avatar:hover { border-color:var(--gold); }
+.reply-avatar-ph { width:30px; height:30px; border-radius:50%; background:var(--mid2); border:1.5px solid var(--mid); display:flex; align-items:center; justify-content:center; font-size:.8rem; flex-shrink:0; }
+.reply-author { font-size:.65rem; color:var(--ice); font-weight:bold; cursor:pointer; }
+.reply-author:hover { text-decoration:underline; }
+.reply-author.is-admin { color:var(--gold); }
+.reply-author.is-admin::after { content:' ⚡'; font-size:.55rem; }
+.reply-date { font-size:.52rem; color:rgba(238,235,230,.2); margin-left:auto; }
+.reply-del { background:none; border:none; color:rgba(184,45,69,.4); font-size:.55rem; cursor:pointer; font-family:'Space Mono',monospace; }
+.reply-del:hover { color:var(--crimson); }
+.reply-text { font-size:.8rem; line-height:1.75; color:var(--white); white-space:pre-wrap; word-break:break-word; }
+
+/* ── Reply form ── */
+.reply-form-card { background:var(--card); border:1px solid var(--mid); border-radius:10px; padding:20px 24px; }
+.reply-form-title { font-size:.6rem; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; margin-bottom:14px; }
+.reply-form-row { display:flex; gap:14px; align-items:flex-start; }
+.reply-ta { flex:1; background:var(--mid2); border:1px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.8rem; padding:12px 14px; resize:vertical; min-height:80px; outline:none; line-height:1.7; transition:border-color .15s; }
+.reply-ta:focus { border-color:var(--gold); }
+.reply-submit { padding:10px 20px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.7rem; font-weight:bold; cursor:pointer; transition:filter .15s; align-self:flex-end; white-space:nowrap; }
+.reply-submit:hover { filter:brightness(1.1); }
+.reply-submit:disabled { opacity:.5; cursor:default; filter:none; }
+.login-hint { text-align:center; padding:24px; color:var(--dim); font-size:.72rem; }
+.login-hint button { margin-top:10px; display:inline-block; padding:8px 20px; background:var(--gold); color:var(--black); border:none; border-radius:4px; font-family:'Space Mono',monospace; font-size:.7rem; font-weight:bold; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-left">
+    <a href="forum.html" class="topnav-back">← Forum</a>
+    <span class="topnav-sep">|</span>
+    <span class="topnav-brand" id="navTitle">Konu</span>
+  </div>
+  <div id="authBar"></div>
+</nav>
+
+<div class="layout" id="layout">
+  <div style="text-align:center;padding:60px;color:var(--dim);font-size:.75rem">Yükleniyor...</div>
+</div>
+
+<script>
+'use strict';
+const ADMIN_EMAIL = 'berkayer032@gmail.com';
+const postId = new URLSearchParams(location.search).get('id');
+
+firebase.initializeApp({
+  apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
+  authDomain:        "ableton-tutorial.firebaseapp.com",
+  projectId:         "ableton-tutorial",
+  storageBucket:     "ableton-tutorial.firebasestorage.app",
+  messagingSenderId: "677640687230",
+  appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+let _user = null;
+
+function doSignIn() { auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); }
+function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
+function fmtDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric'});
+}
+function renderMd(txt) {
+  return (txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>')
+    .replace(/`(.+?)`/g,'<code>$1</code>').replace(/\n/g,'<br>');
+}
+function goProfile(uid) { location.href = `profile.html?uid=${uid}`; }
+
+function updateAuthBar(user) {
+  const bar = document.getElementById('authBar'); bar.innerHTML = '';
+  if (user) {
+    const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
+    const img  = document.createElement('img');  img.className = 'auth-avatar';
+    img.src = user.photoURL || ''; img.alt = '';
+    img.onclick = () => goProfile(user.uid);
+    const name = document.createElement('span'); name.className = 'auth-name';
+    name.textContent = isAdmin(user) ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Üye');
+    name.onclick = () => goProfile(user.uid);
+    const out = document.createElement('button'); out.className = 'auth-out-btn';
+    out.textContent = '✕'; out.onclick = () => auth.signOut();
+    wrap.append(img, name, out); bar.append(wrap);
+  } else {
+    const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
+    btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
+    bar.append(btn);
+  }
+}
+
+async function getProfile(uid) {
+  try {
+    const d = await db.collection('users').doc(uid).get();
+    return d.exists ? d.data() : null;
+  } catch { return null; }
+}
+
+function makeAvatar(photoURL, size, uid) {
+  if (photoURL) {
+    const img = document.createElement('img');
+    img.className = size === 40 ? 'avatar' : 'reply-avatar';
+    img.src = photoURL; img.alt = ''; img.width = size; img.height = size;
+    img.onerror = () => { img.style.display='none'; };
+    if (uid) img.onclick = () => goProfile(uid);
+    return img;
+  }
+  const ph = document.createElement('div');
+  ph.className = size === 40 ? 'avatar-placeholder' : 'reply-avatar-ph';
+  ph.textContent = '👤';
+  return ph;
+}
+
+async function renderPost() {
+  if (!postId) { location.href = 'forum.html'; return; }
+  const layout = document.getElementById('layout');
+
+  const doc = await db.collection('forum').doc(postId).get();
+  if (!doc.exists) { layout.innerHTML = '<div style="text-align:center;padding:60px;color:var(--dim)">Konu bulunamadı.</div>'; return; }
+  const post = { id: doc.id, ...doc.data() };
+
+  document.title = (post.title || 'Konu') + ' — Berkay Er Topluluğu';
+  const navTitle = document.getElementById('navTitle');
+  if (navTitle) navTitle.textContent = post.title || 'Konu';
+
+  layout.innerHTML = '';
+
+  // ── Post card ──
+  const card = document.createElement('div'); card.className = 'post-card';
+  const header = document.createElement('div'); header.className = 'post-header';
+
+  // Author row
+  const authorRow = document.createElement('div'); authorRow.className = 'post-author-row';
+  const profile = await getProfile(post.authorId);
+  const photo = profile?.photoURL || post.authorPhotoURL || null;
+  const avEl = makeAvatar(photo, 40, post.authorId);
+  const authorInfo = document.createElement('div'); authorInfo.className = 'author-info';
+  const nameEl = document.createElement('span');
+  nameEl.className = 'author-name' + (post.authorEmail === ADMIN_EMAIL ? ' is-admin' : '');
+  nameEl.textContent = post.authorName;
+  nameEl.onclick = () => goProfile(post.authorId);
+  const metaEl = document.createElement('span'); metaEl.className = 'author-meta';
+  metaEl.textContent = fmtDate(post.createdAt);
+  authorInfo.append(nameEl, metaEl);
+  const badges = document.createElement('div'); badges.className = 'post-badges';
+  const b = document.createElement('span');
+  b.className = 'badge ' + (post.solved ? 'badge-solved' : 'badge-open');
+  b.textContent = post.solved ? '✓ Çözüldü' : '● Açık';
+  badges.append(b);
+  authorRow.append(avEl, authorInfo, badges);
+  header.append(authorRow);
+
+  if (post.title) {
+    const ttl = document.createElement('div'); ttl.className = 'post-title'; ttl.textContent = post.title;
+    header.append(ttl);
+  }
+  if (post.text) {
+    const body = document.createElement('div'); body.className = 'post-body';
+    body.innerHTML = renderMd(post.text);
+    header.append(body);
+  }
+  card.append(header);
+
+  // Post actions
+  const actions = document.createElement('div'); actions.className = 'post-actions';
+  const replyCount = document.createElement('span'); replyCount.className = 'action-btn';
+  replyCount.style.cursor = 'default';
+  replyCount.textContent = `💬 ${post.replyCount||0} Yanıt`;
+  actions.append(replyCount);
+
+  if (_user && isAdmin(_user)) {
+    const solveBtn = document.createElement('button');
+    solveBtn.className = 'action-btn solve-btn' + (post.solved ? ' active' : '');
+    solveBtn.textContent = post.solved ? '✓ Çözüldü' : '⬡ Çözüldü işaretle';
+    solveBtn.onclick = async () => {
+      await db.collection('forum').doc(postId).update({ solved: !post.solved });
+      renderPost();
+    };
+    actions.append(solveBtn);
+
+    const del = document.createElement('button'); del.className = 'action-btn delete-btn'; del.textContent = '🗑 Sil';
+    del.onclick = async () => {
+      if (!confirm('Konuyu ve yanıtlarını sil?')) return;
+      const rSnap = await db.collection('forum').doc(postId).collection('replies').get();
+      const batch = db.batch();
+      rSnap.docs.forEach(d => batch.delete(d.ref));
+      batch.delete(db.collection('forum').doc(postId));
+      await batch.commit();
+      location.href = 'forum.html';
+    };
+    actions.append(del);
+  }
+  card.append(actions);
+  layout.append(card);
+
+  // ── Replies ──
+  await renderReplies(layout, post);
+}
+
+async function renderReplies(layout, post) {
+  const sec = document.createElement('div'); sec.className = 'replies-section'; sec.id = 'repliesSec';
+  const snap = await db.collection('forum').doc(postId).collection('replies')
+    .orderBy('createdAt','asc').limit(200).get();
+
+  const hdr = document.createElement('div'); hdr.className = 'replies-header';
+  hdr.textContent = `${snap.size} Yanıt`;
+  sec.append(hdr);
+
+  for (const d of snap.docs) {
+    const r = { id: d.id, ...d.data() };
+    const rCard = document.createElement('div'); rCard.className = 'reply-card';
+    const rProfile = await getProfile(r.authorId);
+    const rPhoto = rProfile?.photoURL || r.authorPhotoURL || null;
+    const rAv = makeAvatar(rPhoto, 30, r.authorId);
+    const rBody = document.createElement('div'); rBody.className = 'reply-body';
+    const rAuthorRow = document.createElement('div'); rAuthorRow.className = 'reply-author-row';
+    const rName = document.createElement('span');
+    rName.className = 'reply-author' + (r.isAdmin ? ' is-admin' : '');
+    rName.textContent = r.authorName;
+    rName.onclick = () => goProfile(r.authorId);
+    const rDate = document.createElement('span'); rDate.className = 'reply-date'; rDate.textContent = fmtDate(r.createdAt);
+    rAuthorRow.append(rName, rDate);
+    if (_user && isAdmin(_user)) {
+      const rdel = document.createElement('button'); rdel.className = 'reply-del'; rdel.textContent = '🗑';
+      rdel.onclick = async () => {
+        await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
+        await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(-1) });
+        rCard.remove();
+      };
+      rAuthorRow.append(rdel);
+    }
+    const rTxt = document.createElement('div'); rTxt.className = 'reply-text'; rTxt.textContent = r.text;
+    rBody.append(rAuthorRow, rTxt);
+    rCard.append(rAv, rBody);
+    sec.append(rCard);
+  }
+  layout.append(sec);
+
+  // ── Reply form ──
+  const formCard = document.createElement('div'); formCard.className = 'reply-form-card';
+  if (_user) {
+    const ft = document.createElement('div'); ft.className = 'reply-form-title'; ft.textContent = 'Yanıt Yaz';
+    const row = document.createElement('div'); row.className = 'reply-form-row';
+    const profile = await getProfile(_user.uid);
+    const myPhoto = profile?.photoURL || _user.photoURL || null;
+    row.append(makeAvatar(myPhoto, 30, _user.uid));
+    const ta = document.createElement('textarea'); ta.className = 'reply-ta';
+    ta.placeholder = 'Yanıtını buraya yaz...';
+    const sub = document.createElement('button'); sub.className = 'reply-submit'; sub.textContent = 'Yanıtla';
+    sub.onclick = async () => {
+      const txt = ta.value.trim(); if (!txt) return;
+      sub.disabled = true; sub.textContent = '⏳';
+      await db.collection('forum').doc(postId).collection('replies').add({
+        text:          txt,
+        authorName:    _user.displayName?.split(' ')[0] || 'Üye',
+        authorEmail:   _user.email,
+        authorId:      _user.uid,
+        authorPhotoURL:_user.photoURL || '',
+        isAdmin:       isAdmin(_user),
+        createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(1) });
+      ta.value = '';
+      await renderPost();
+    };
+    row.append(ta, sub); formCard.append(ft, row);
+  } else {
+    formCard.innerHTML = `<div class="login-hint">Yanıt yazmak için giriş yap.<br><button onclick="doSignIn()">Google ile Giriş Yap</button></div>`;
+  }
+  layout.append(formCard);
+}
+
+auth.onAuthStateChanged(async user => {
+  _user = user;
+  updateAuthBar(user);
+  await renderPost();
+});
+</script>
+</body>
+</html>
