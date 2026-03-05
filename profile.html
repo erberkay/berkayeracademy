@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profil — Berkay Er Topluluğu</title>
 <meta name="theme-color" content="#060609">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Profil — Elektronik Müzik Topluluğu">
+<meta property="og:description" content="Elektronik Müzik Topluluğu üye profili.">
+<meta property="og:image" content="https://erberkay.github.io/Producer.School/assets/img/og-logo.png">
+<meta property="og:url" content="https://erberkay.github.io/Producer.School/profile.html">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -296,6 +301,14 @@ async function renderProfile() {
     info.append(socialsDiv);
   }
 
+  // Collab status
+  if (prof.collabStatus && prof.collabStatus !== 'none') {
+    const csDiv = document.createElement('div');
+    csDiv.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:.58rem;color:var(--dim);margin-bottom:10px;';
+    csDiv.textContent = prof.collabStatus === 'open' ? '🟢 Projeye Açık' : '🔴 Meşgul';
+    info.append(csDiv);
+  }
+
   info.append(statsDiv);
 
   // Edit button (own profile only)
@@ -350,6 +363,27 @@ async function renderProfile() {
     spInput.placeholder = 'https://open.spotify.com/artist/...'; spInput.value = prof.spotify || '';
     editForm.append(spInput);
 
+    const collabLabel = document.createElement('div'); collabLabel.className = 'ef-label'; collabLabel.textContent = 'İşbirliği Durumu';
+    editForm.append(collabLabel);
+    const collabWrap = document.createElement('div'); collabWrap.style.cssText = 'display:flex;gap:8px;margin-top:4px;';
+    const collabOpts = [
+      { val:'open',  icon:'🟢', text:'Projeye Açık' },
+      { val:'busy',  icon:'🔴', text:'Meşgul' },
+      { val:'none',  icon:'⚪', text:'Belirtme' },
+    ];
+    let selCollab = prof.collabStatus || 'none';
+    function rebuildCollabBtns() {
+      collabWrap.innerHTML = '';
+      collabOpts.forEach(o => {
+        const b = document.createElement('button');
+        b.style.cssText = `flex:1;padding:6px 4px;border-radius:5px;border:1px solid ${selCollab===o.val?'var(--gold)':'var(--mid)'};background:${selCollab===o.val?'rgba(232,184,75,.1)':'transparent'};color:${selCollab===o.val?'var(--gold)':'var(--dim)'};font-family:'Space Mono',monospace;font-size:.55rem;cursor:pointer;transition:all .15s;`;
+        b.textContent = o.icon + ' ' + o.text;
+        b.onclick = () => { selCollab = o.val; rebuildCollabBtns(); };
+        collabWrap.append(b);
+      });
+    }
+    rebuildCollabBtns(); editForm.append(collabWrap);
+
     const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = '💾 Kaydet';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
@@ -359,8 +393,9 @@ async function renderProfile() {
         about:   aboutInput.value.trim(),
         genres:  editGenres,
         email:   _user.email,
-        instagram: igInput.value.trim(),
-        spotify:   spInput.value.trim(),
+        instagram:     igInput.value.trim(),
+        spotify:       spInput.value.trim(),
+        collabStatus:  selCollab,
       };
       if (!prof.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection('users').doc(uid).set(update, { merge: true });
