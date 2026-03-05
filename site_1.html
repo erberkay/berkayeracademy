@@ -1407,10 +1407,10 @@ function buildEQSection() {
     hint.innerHTML='<strong>Noktaları sürükle</strong> → Sol/Sağ: frekans değiştir · Yukarı/Aşağı: boost/cut uygula. <span style="color:#e8b84b">●</span> LOW &nbsp;<span style="color:#d4722a">●</span> MID &nbsp;<span style="color:#8fc8e8">●</span> HIGH';
     wrap.append(hint);
 
-    const W=800, H=200;
+    const W=800, H=240;
     const canvas=document.createElement('canvas');
     canvas.width=W; canvas.height=H;
-    canvas.style.cssText='width:100%;height:160px;display:block;background:#060609;border:1px solid var(--mid);border-radius:4px;cursor:grab;touch-action:none;';
+    canvas.style.cssText='width:100%;height:190px;display:block;background:#060609;border:1px solid var(--mid);border-radius:4px;cursor:grab;touch-action:none;';
     wrap.append(canvas);
 
     const ax=mk('div','eq-axis');
@@ -1425,54 +1425,15 @@ function buildEQSection() {
 
     const c2=canvas.getContext('2d');
     const fToX=f=>Math.log10(f/20)/Math.log10(1000)*W;
-    const gToY=g=>H/2-(g/18)*(H/2-20);
-    const yToG=y=>Math.max(-18,Math.min(18,(H/2-y)/(H/2-20)*18));
+    const gToY=g=>H/2-(g/18)*(H/2-24);
+    const yToG=y=>Math.max(-18,Math.min(18,(H/2-y)/(H/2-24)*18));
 
-    // Spectrum canvas (placed right after main EQ canvas via insert below)
-    const specCv=document.createElement('canvas'); specCv.width=800; specCv.height=60;
-    specCv.style.cssText='width:100%;height:48px;display:block;background:#06060a;border:1px solid rgba(255,255,255,.06);border-top:none;border-radius:0 0 4px 4px;margin-bottom:2px;';
-    canvas.insertAdjacentElement('afterend', specCv);
-    const specCtx=specCv.getContext('2d');
+    // Shared EQ audio context
+    let eqACtx=null, eqFilts=[], eqTestSrc=null, eqAnalyser=null, eqFreqData=null;
+    let eqRafId=null, eqRafRunning=false;
 
-    // Shared EQ audio context for test tone
-    let eqACtx=null, eqFilts=[], eqTestSrc=null, eqAnalyser=null, eqFreqData=null, eqSpecRaf=null;
-
-    function drawSpectrum(){
-        const sw=specCv.clientWidth||800, sh=specCv.clientHeight||60;
-        if(specCv.width!==sw){specCv.width=sw; specCv.height=sh;}
-        specCtx.clearRect(0,0,sw,sh);
-        if(!eqAnalyser||!eqFreqData){ eqSpecRaf=requestAnimationFrame(drawSpectrum); return; }
-        eqAnalyser.getByteFrequencyData(eqFreqData);
-        const nyq=eqACtx.sampleRate/2, bins=eqFreqData.length;
-        const logMin=Math.log10(20), logMax=Math.log10(20000);
-        const BAR_W=Math.max(2,Math.floor(sw/160));
-        const NUM=Math.floor(sw/BAR_W);
-        let hasSignal=false;
-        for(let i=0;i<NUM;i++){
-            const freq=Math.pow(10, logMin+(i/NUM)*(logMax-logMin));
-            const bin=Math.min(bins-1,Math.round(freq/nyq*bins));
-            let sum=0,cnt=0;
-            for(let k=Math.max(0,bin-1);k<=Math.min(bins-1,bin+1);k++){sum+=eqFreqData[k];cnt++;}
-            const v=(sum/cnt)/255;
-            if(v<0.018) continue;
-            hasSignal=true;
-            const bh=Math.pow(v,0.7)*sh;
-            const col=freq<300?'#e8b84b':freq<3000?'#d4722a':'#8fc8e8';
-            const grd=specCtx.createLinearGradient(0,sh-bh,0,sh);
-            grd.addColorStop(0,col+'ee'); grd.addColorStop(0.6,col+'99'); grd.addColorStop(1,col+'22');
-            specCtx.fillStyle=grd; specCtx.fillRect(i*BAR_W,sh-bh,BAR_W-1,bh);
-            specCtx.fillStyle=col+'ff'; specCtx.fillRect(i*BAR_W,sh-bh-2,BAR_W-1,2);
-        }
-        // frequency labels overlay
-        if(hasSignal){
-            specCtx.fillStyle='rgba(255,255,255,.2)'; specCtx.font='8px monospace'; specCtx.textBaseline='bottom';
-            [{f:100,l:'100'},{f:1000,l:'1k'},{f:5000,l:'5k'},{f:10000,l:'10k'}].forEach(({f,l})=>{
-                const x=((Math.log10(f)-logMin)/(logMax-logMin))*sw;
-                specCtx.fillText(l,x+2,sh-2);
-            });
-        }
-        eqSpecRaf=requestAnimationFrame(drawSpectrum);
-    }
+    function startEqDraw(){ if(eqRafRunning) return; eqRafRunning=true; (function loop(){ drawEQ(); if(eqRafRunning) eqRafId=requestAnimationFrame(loop); })(); }
+    function stopEqDraw(){ eqRafRunning=false; cancelAnimationFrame(eqRafId); drawEQ(); }
 
     function initEQAudio() {
         if(eqACtx) return;
@@ -1485,32 +1446,64 @@ function buildEQSection() {
         });
         eqFilts.forEach((f,i)=>{ if(i<eqFilts.length-1) f.connect(eqFilts[i+1]); });
         const outG=eqACtx.createGain(); outG.gain.value=0.28;
-        eqAnalyser=eqACtx.createAnalyser(); eqAnalyser.fftSize=4096; eqAnalyser.smoothingTimeConstant=0.85;
+        eqAnalyser=eqACtx.createAnalyser();
+        eqAnalyser.fftSize=4096;
+        eqAnalyser.smoothingTimeConstant=0.82;
+        eqAnalyser.minDecibels=-80;
+        eqAnalyser.maxDecibels=0;
         eqFreqData=new Uint8Array(eqAnalyser.frequencyBinCount);
         eqFilts[eqFilts.length-1].connect(outG);
         outG.connect(eqAnalyser); eqAnalyser.connect(eqACtx.destination);
-        drawSpectrum();
     }
 
     function drawEQ() {
         c2.clearRect(0,0,W,H);
-        // Grid
+
+        // ── Layer 0: Real-time spectrum (dB-aligned) ──────────────────
+        if(eqAnalyser && eqFreqData && eqRafRunning){
+            eqAnalyser.getByteFrequencyData(eqFreqData);
+            const nyq=eqACtx.sampleRate/2, bins=eqFreqData.length;
+            const minDb=eqAnalyser.minDecibels, maxDb=eqAnalyser.maxDecibels;
+            const BAR_PX=4;
+            for(let px=0;px<W;px+=BAR_PX){
+                const freq=20*Math.pow(1000,px/W);
+                const bin=Math.min(bins-1,Math.round(freq/nyq*bins));
+                // average neighbouring bins for stability
+                let sum=0,cnt=0;
+                for(let k=Math.max(0,bin-2);k<=Math.min(bins-1,bin+2);k++){sum+=eqFreqData[k];cnt++;}
+                const byteVal=sum/cnt;
+                if(byteVal<4) continue; // silence floor
+                const db=minDb+(byteVal/255)*(maxDb-minDb); // dBFS
+                // Map dBFS → display dB: 0 dBFS = +12dB display, -60 dBFS = -18dB display
+                const dispDb=((db-minDb)/(maxDb-minDb))*36-18;
+                const y=gToY(Math.max(-18,Math.min(18,dispDb)));
+                const col=freq<300?'#e8b84b':freq<3000?'#d4722a':'#8fc8e8';
+                const grd=c2.createLinearGradient(0,y,0,H);
+                grd.addColorStop(0,col+'cc'); grd.addColorStop(0.5,col+'55'); grd.addColorStop(1,col+'08');
+                c2.fillStyle=grd; c2.fillRect(px,y,BAR_PX-1,H-y);
+                // peak line
+                c2.fillStyle=col+'ee'; c2.fillRect(px,y-1,BAR_PX-1,2);
+            }
+        }
+
+        // ── Layer 1: Grid ─────────────────────────────────────────────
         [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
-            c2.strokeStyle='rgba(255,255,255,.06)'; c2.lineWidth=1;
+            c2.strokeStyle='rgba(255,255,255,.07)'; c2.lineWidth=1;
             c2.beginPath(); c2.moveTo(fToX(f),0); c2.lineTo(fToX(f),H); c2.stroke();
         });
-        [-12,-6,0,6,12].forEach(g=>{
+        [-18,-12,-6,0,6,12,18].forEach(g=>{
             const y=gToY(g);
-            c2.strokeStyle=g===0?'rgba(255,255,255,.2)':'rgba(255,255,255,.06)';
+            c2.strokeStyle=g===0?'rgba(255,255,255,.25)':'rgba(255,255,255,.07)';
             c2.lineWidth=g===0?1.5:1;
             c2.beginPath(); c2.moveTo(0,y); c2.lineTo(W,y); c2.stroke();
-            c2.fillStyle='rgba(255,255,255,.22)'; c2.font='9px monospace';
+            c2.fillStyle='rgba(255,255,255,.28)'; c2.font='9px monospace';
             c2.textAlign='left'; c2.textBaseline='bottom';
-            c2.fillText((g>0?'+':'')+g+'dB',4,y-1);
+            c2.fillText((g>0?'+':'')+g+'dB',4,y-2);
         });
-        // EQ curve (Gaussian approximation per band)
+
+        // ── Layer 2: EQ curve ─────────────────────────────────────────
         c2.beginPath(); c2.strokeStyle='#e8b84b'; c2.lineWidth=2.5;
-        c2.shadowColor='#e8b84b'; c2.shadowBlur=6;
+        c2.shadowColor='#e8b84b'; c2.shadowBlur=8;
         for(let px=0;px<W;px++){
             const freq=20*Math.pow(1000,px/W);
             let db=0;
@@ -1525,11 +1518,12 @@ function buildEQSection() {
         // Fill under curve
         c2.lineTo(W,gToY(0)); c2.lineTo(0,gToY(0)); c2.closePath();
         c2.fillStyle='rgba(232,184,75,.07)'; c2.fill();
-        // Band nodes
+
+        // ── Layer 3: Band nodes ───────────────────────────────────────
         bands.forEach(b=>{
             const x=fToX(b.freq), y=gToY(b.gain);
             c2.beginPath(); c2.arc(x,y,11,0,Math.PI*2);
-            c2.fillStyle=b.color; c2.shadowColor=b.color; c2.shadowBlur=12;
+            c2.fillStyle=b.color; c2.shadowColor=b.color; c2.shadowBlur=14;
             c2.fill(); c2.shadowBlur=0;
             c2.strokeStyle='rgba(255,255,255,.75)'; c2.lineWidth=1.5; c2.stroke();
             c2.fillStyle='#000'; c2.font='bold 8px monospace';
@@ -1584,34 +1578,40 @@ function buildEQSection() {
     }
 
     // Test tone: Lead 1.wav through EQ filters
+    let eqLeadBuf=null;
     const playBtn=mk('button','power-button','▶ LEAD 1 ÇAL — EQ Uygula');
     playBtn.style.marginTop='4px';
-    playBtn.onclick=()=>{
-        if(eqTestSrc){ eqTestSrc.stop(); eqTestSrc=null; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; playBtn.classList.remove('active'); return; }
+    playBtn.onclick=async()=>{
+        if(eqTestSrc){
+            eqTestSrc.stop(); eqTestSrc=null;
+            stopEqDraw();
+            playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; playBtn.classList.remove('active'); return;
+        }
         initEQAudio();
         if(eqACtx.state==='suspended') eqACtx.resume();
         bands.forEach((b,i)=>{ if(eqFilts[i]) eqFilts[i].gain.value=b.gain; });
         playBtn.textContent='⏙ Yükleniyor...'; playBtn.disabled=true;
-        fetch('assets/audio/Lead 1.wav')
-            .then(r=>r.arrayBuffer())
-            .then(ab=>eqACtx.decodeAudioData(ab))
-            .then(buf=>{
-                playBtn.disabled=false;
-                eqTestSrc=eqACtx.createBufferSource();
-                eqTestSrc.buffer=buf; eqTestSrc.loop=true;
-                eqTestSrc.connect(eqFilts[0]); eqTestSrc.start();
-                eqTestSrc.onended=()=>{ eqTestSrc=null; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; playBtn.classList.remove('active'); };
-                playBtn.textContent='⏹ DURDUR'; playBtn.classList.add('active');
-            })
-            .catch(()=>{ playBtn.disabled=false; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; });
+        try {
+            if(!eqLeadBuf){
+                const r=await fetch('assets/audio/Lead 1.wav');
+                eqLeadBuf=await eqACtx.decodeAudioData(await r.arrayBuffer());
+            }
+            playBtn.disabled=false;
+            eqTestSrc=eqACtx.createBufferSource();
+            eqTestSrc.buffer=eqLeadBuf; eqTestSrc.loop=true;
+            eqTestSrc.connect(eqFilts[0]); eqTestSrc.start();
+            eqTestSrc.onended=()=>{ eqTestSrc=null; stopEqDraw(); playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; playBtn.classList.remove('active'); };
+            playBtn.textContent='⏹ DURDUR'; playBtn.classList.add('active');
+            startEqDraw();
+        } catch(_){ playBtn.disabled=false; playBtn.textContent='▶ LEAD 1 ÇAL — EQ Uygula'; }
     };
     // Register EQ audio cleanup
     const _prevM3 = _m3StopAudio;
     _m3StopAudio = () => {
         if (_prevM3) _prevM3();
+        stopEqDraw();
         if (eqTestSrc) { try { eqTestSrc.stop(); } catch(_) {} eqTestSrc = null; }
         if (eqACtx) { try { eqACtx.suspend(); } catch(_) {} }
-        cancelAnimationFrame(eqSpecRaf);
     };
 
     wrap.append(playBtn);
@@ -2365,6 +2365,201 @@ function buildInteractiveConcepts() {
             };
             conceptCleanups.push(()=>{ if(hrPlaying){ hrPlaying=false; clearInterval(hrIv); } });
             card.append(lbl,sl,meter,status,beatBtn);
+          }
+        },
+        // ── 9. Delay ─────────────────────────────────────────────────
+        { title:'Delay', color:'var(--ice)',
+          body:'Sesin gecikmeli kopyaları. Ping-Pong delay stereo genişlik katar. BPM-sync delay (1/4, 1/8) ritimle uyum sağlar.',
+          demo(card){
+            let delayMs=250, feedback=0.45, wet=0.5;
+            let dlySrc=null, dlyCtx=null, dlyNode=null, dlyFbGain=null, dlyWetGain=null, dlyDryGain=null;
+            let dlyLeadBuf=null, dlyRaf=null;
+
+            // sliders
+            function slRow(label,color,min,max,step,val,fmt,cb){
+                const w=mk('div'); w.style.width='100%';
+                const lb=mk('div','slider-label'); const v=mk('span','',fmt(val)); v.style.color=color;
+                lb.append(mk('span','',label),v); w.append(lb);
+                w.append(makeSlider({min,max,step,value:val,onChange:x=>{v.textContent=fmt(x);cb(x);}}));
+                return w;
+            }
+            card.append(slRow('Delay Time','var(--ice)',20,600,1,delayMs,v=>Math.round(v)+'ms',v=>{delayMs=v;if(dlyNode)dlyNode.delayTime.setTargetAtTime(v/1000,dlyCtx.currentTime,.01);}));
+            card.append(slRow('Feedback','var(--ice)',0,.92,.01,feedback,v=>Math.round(v*100)+'%',v=>{feedback=v;if(dlyFbGain)dlyFbGain.gain.setTargetAtTime(v,dlyCtx.currentTime,.01);}));
+            card.append(slRow('Wet','var(--ice)',0,1,.01,wet,v=>Math.round(v*100)+'%',v=>{wet=v;if(dlyWetGain){dlyWetGain.gain.setTargetAtTime(v*.7,dlyCtx.currentTime,.01);dlyDryGain.gain.setTargetAtTime((1-v)*.7,dlyCtx.currentTime,.01);}}));
+
+            // echo visualiser canvas
+            const ecCv=document.createElement('canvas'); ecCv.height=36;
+            ecCv.style.cssText='width:100%;height:36px;display:block;background:rgba(0,0,0,.4);border-radius:3px;margin:6px 0 4px;';
+            card.append(ecCv);
+            function drawEchoes(){
+                const cw=ecCv.clientWidth||200; if(ecCv.width!==cw) ecCv.width=cw;
+                const cx=ecCv.getContext('2d'); cx.clearRect(0,0,cw,36);
+                const taps=7; const maxX=cw-8;
+                for(let i=0;i<taps;i++){
+                    const amp=Math.pow(feedback,i)*(dlySrc?1:0.25);
+                    const x=8+i*(maxX/(taps-1));
+                    const h=Math.max(2,amp*28);
+                    const alpha=Math.max(.08,amp*.9);
+                    cx.fillStyle=`rgba(143,200,232,${alpha})`;
+                    cx.fillRect(x-3,18-h/2,6,h);
+                }
+            }
+            drawEchoes();
+
+            const btn=mk('button','wave-btn','▶ Lead Loop + Delay'); btn.style.cssText+='width:100%;font-size:.62rem;padding:5px;';
+            btn.onclick=async()=>{
+                if(dlySrc){
+                    try{dlySrc.stop();}catch{}
+                    dlySrc=null; cancelAnimationFrame(dlyRaf);
+                    drawEchoes();
+                    btn.textContent='▶ Lead Loop + Delay'; btn.classList.remove('active'); return;
+                }
+                if(!dlyCtx) dlyCtx=new(window.AudioContext||window.webkitAudioContext)();
+                if(dlyCtx.state==='suspended') dlyCtx.resume();
+                btn.textContent='⏙ Yükleniyor...'; btn.disabled=true;
+                try{
+                    if(!dlyLeadBuf){
+                        const r=await fetch('assets/audio/Lead Loop.wav');
+                        dlyLeadBuf=await dlyCtx.decodeAudioData(await r.arrayBuffer());
+                    }
+                    // Build delay chain
+                    dlyDryGain=dlyCtx.createGain(); dlyDryGain.gain.value=(1-wet)*.7;
+                    dlyWetGain=dlyCtx.createGain(); dlyWetGain.gain.value=wet*.7;
+                    dlyNode=dlyCtx.createDelay(2); dlyNode.delayTime.value=delayMs/1000;
+                    dlyFbGain=dlyCtx.createGain(); dlyFbGain.gain.value=feedback;
+                    // Signal path: src → dryGain → out
+                    //                   → dlyNode → fbGain → dlyNode (loop)
+                    //                   dlyNode → wetGain → out
+                    dlyNode.connect(dlyFbGain); dlyFbGain.connect(dlyNode);
+                    dlyNode.connect(dlyWetGain);
+                    dlyDryGain.connect(dlyCtx.destination); dlyWetGain.connect(dlyCtx.destination);
+                    dlySrc=dlyCtx.createBufferSource(); dlySrc.buffer=dlyLeadBuf; dlySrc.loop=true;
+                    dlySrc.connect(dlyDryGain); dlySrc.connect(dlyNode); dlySrc.start();
+                    btn.disabled=false; btn.textContent='⏹ Durdur'; btn.classList.add('active');
+                    // animate echoes
+                    (function anim(){ if(!dlySrc) return; drawEchoes(); dlyRaf=requestAnimationFrame(anim); })();
+                }catch(e){ btn.disabled=false; btn.textContent='▶ Lead Loop + Delay'; }
+            };
+            card.append(btn);
+            conceptCleanups.push(()=>{ if(dlySrc){try{dlySrc.stop();}catch{} dlySrc=null;} cancelAnimationFrame(dlyRaf); if(dlyCtx){try{dlyCtx.suspend();}catch{}} });
+          }
+        },
+        // ── 10. Limiter ───────────────────────────────────────────────
+        { title:'Limiter', color:'var(--crimson)',
+          body:'Sinyalin bir dB seviyesini aşmasını önler. Mastering zincirinin son halkası. Ratio=∞:1, knee=0, attack<1ms.',
+          demo(card){
+            let limThresh=-3, limOn=true;
+            let limSrc=null, limCtx=null, limComp=null, limBypass=null, limInGain=null, limRaf=null;
+            let limLeadBuf=null;
+            let inPeak=0, outPeak=0;
+
+            // IN/OUT meters
+            const mRow=mk('div'); mRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 4px;';
+            function makeMeter(label,color){
+                const col=mk('div');
+                col.innerHTML=`<div style="font-size:.55rem;color:${color};text-align:center;margin-bottom:3px;">${label}</div>`;
+                const track=mk('div'); track.style.cssText='height:10px;background:var(--mid);border-radius:5px;overflow:hidden;';
+                const bar=mk('div'); bar.style.cssText=`height:100%;width:0%;border-radius:5px;background:${color};transition:width 40ms;`;
+                track.append(bar); col.append(track);
+                const dbLbl=mk('div'); dbLbl.style.cssText=`font-size:.55rem;color:${color};text-align:center;margin-top:2px;`;
+                dbLbl.textContent='—'; col.append(dbLbl);
+                return {col,bar,dbLbl};
+            }
+            const inM=makeMeter('INPUT','#e8b84b'), outM=makeMeter('OUTPUT','#8fc8e8');
+            mRow.append(inM.col, outM.col);
+
+            // Reduction meter
+            const grTrack=mk('div'); grTrack.style.cssText='height:7px;background:var(--mid);border-radius:4px;margin-bottom:6px;overflow:hidden;';
+            const grBar=mk('div'); grBar.style.cssText='height:100%;width:0%;background:linear-gradient(90deg,#6fc,#ff4,#f44);border-radius:4px;transition:width 60ms;';
+            grTrack.append(grBar);
+            const grLbl=mk('div'); grLbl.style.cssText='font-size:.55rem;color:var(--dim);text-align:right;margin-bottom:8px;';
+            grLbl.textContent='Gain Reduction: 0 dB';
+
+            // Threshold slider
+            const thrRow=mk('div'); thrRow.style.width='100%';
+            const thrLbl=mk('div','slider-label'); const thrVal=mk('span','',limThresh+' dBFS'); thrVal.style.color='var(--crimson)';
+            thrLbl.append(mk('span','','Threshold'),thrVal); thrRow.append(thrLbl);
+            thrRow.append(makeSlider({min:-24,max:0,step:1,value:limThresh,onChange:v=>{limThresh=v;thrVal.textContent=v+' dBFS';if(limComp)limComp.threshold.setTargetAtTime(v,limCtx.currentTime,.01);}}));
+
+            // Limiter toggle
+            const togRow=mk('div'); togRow.style.cssText='display:flex;gap:8px;margin:6px 0 4px;';
+            const togBtn=mk('button','wave-btn','⚡ Limiter: AÇIK'); togBtn.style.cssText+='flex:1;font-size:.6rem;padding:5px;';
+            togBtn.classList.add('active');
+            togBtn.onclick=()=>{
+                limOn=!limOn;
+                togBtn.textContent='⚡ Limiter: '+(limOn?'AÇIK':'KAPALI');
+                togBtn.classList.toggle('active',limOn);
+                if(limCtx && limInGain && limComp && limBypass){
+                    if(limOn){
+                        // reconnect through limiter
+                        try{limInGain.disconnect(limCtx.destination);}catch{}
+                        limInGain.connect(limComp);
+                    } else {
+                        // bypass: direct to destination
+                        try{limInGain.disconnect(limComp);}catch{}
+                        limInGain.connect(limCtx.destination);
+                    }
+                }
+            };
+            togRow.append(togBtn);
+
+            // play button
+            const btn=mk('button','wave-btn','▶ Lead Loop'); btn.style.cssText+='flex:1;font-size:.62rem;padding:5px;';
+            btn.onclick=async()=>{
+                if(limSrc){
+                    try{limSrc.stop();}catch{} limSrc=null;
+                    cancelAnimationFrame(limRaf);
+                    btn.textContent='▶ Lead Loop'; btn.classList.remove('active');
+                    inM.bar.style.width='0%'; outM.bar.style.width='0%';
+                    inM.dbLbl.textContent='—'; outM.dbLbl.textContent='—';
+                    grBar.style.width='0%'; grLbl.textContent='Gain Reduction: 0 dB';
+                    return;
+                }
+                if(!limCtx) limCtx=new(window.AudioContext||window.webkitAudioContext)();
+                if(limCtx.state==='suspended') limCtx.resume();
+                btn.textContent='⏙ Yükleniyor...'; btn.disabled=true;
+                try{
+                    if(!limLeadBuf){
+                        const r=await fetch('assets/audio/Lead Loop.wav');
+                        limLeadBuf=await limCtx.decodeAudioData(await r.arrayBuffer());
+                    }
+                    // signal chain: src → inGain(boost) → analyserIn → limComp → analyserOut → destination
+                    limInGain=limCtx.createGain(); limInGain.gain.value=1.8; // push into limiter
+                    limComp=limCtx.createDynamicsCompressor();
+                    limComp.threshold.value=limThresh; limComp.knee.value=0;
+                    limComp.ratio.value=20; limComp.attack.value=0.001; limComp.release.value=0.06;
+                    const aIn=limCtx.createAnalyser(); aIn.fftSize=512; aIn.smoothingTimeConstant=0.6;
+                    const aOut=limCtx.createAnalyser(); aOut.fftSize=512; aOut.smoothingTimeConstant=0.6;
+                    const fdIn=new Float32Array(aIn.fftSize); const fdOut=new Float32Array(aOut.fftSize);
+                    limInGain.connect(aIn); aIn.connect(limOn?limComp:limCtx.destination);
+                    limComp.connect(aOut); aOut.connect(limCtx.destination);
+                    limSrc=limCtx.createBufferSource(); limSrc.buffer=limLeadBuf; limSrc.loop=true;
+                    limSrc.connect(limInGain); limSrc.start();
+                    btn.disabled=false; btn.textContent='⏹ Durdur'; btn.classList.add('active');
+                    // meter animation
+                    (function animLim(){
+                        if(!limSrc) return;
+                        aIn.getFloatTimeDomainData(fdIn); aOut.getFloatTimeDomainData(fdOut);
+                        let rmsIn=0,rmsOut=0;
+                        for(let i=0;i<fdIn.length;i++){rmsIn+=fdIn[i]*fdIn[i];rmsOut+=fdOut[i]*fdOut[i];}
+                        rmsIn=Math.sqrt(rmsIn/fdIn.length); rmsOut=Math.sqrt(rmsOut/fdOut.length);
+                        const dbIn=rmsIn<1e-6?-80:20*Math.log10(rmsIn);
+                        const dbOut=rmsOut<1e-6?-80:20*Math.log10(rmsOut);
+                        const pctIn=Math.max(0,Math.min(100,(dbIn+60)/60*100));
+                        const pctOut=Math.max(0,Math.min(100,(dbOut+60)/60*100));
+                        inM.bar.style.width=pctIn+'%'; outM.bar.style.width=pctOut+'%';
+                        inM.dbLbl.textContent=dbIn>-79?dbIn.toFixed(1)+' dB':'—';
+                        outM.dbLbl.textContent=dbOut>-79?dbOut.toFixed(1)+' dB':'—';
+                        const gr=limOn?Math.max(0,dbIn-dbOut):0;
+                        grBar.style.width=Math.min(100,gr/18*100)+'%';
+                        grLbl.textContent='Gain Reduction: -'+gr.toFixed(1)+' dB';
+                        limRaf=requestAnimationFrame(animLim);
+                    })();
+                }catch(e){ btn.disabled=false; btn.textContent='▶ Lead Loop'; }
+            };
+            togRow.append(btn);
+            card.append(mRow, grTrack, grLbl, thrRow, togRow);
+            conceptCleanups.push(()=>{ if(limSrc){try{limSrc.stop();}catch{} limSrc=null;} cancelAnimationFrame(limRaf); if(limCtx){try{limCtx.suspend();}catch{}} });
           }
         },
     ];
