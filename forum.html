@@ -388,9 +388,10 @@ function toggleNotifPanel(user) {
 }
 
 function _mergeNotifs(uid) {
+  const dismissed = JSON.parse(localStorage.getItem('dismissed_anns')||'[]');
   const all = [
     ..._personalNotifs.map(n => ({...n, _t:'p'})),
-    ..._announcements.map(n => ({...n, _t:'a'}))
+    ..._announcements.filter(n => !dismissed.includes(n._id)).map(n => ({...n, _t:'a'}))
   ].sort((a,b) => ((b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)));
   const annSec = _annSeenAt?.seconds || 0;
   const unread = _personalNotifs.filter(n => !n.read).length
@@ -408,9 +409,19 @@ function _mergeNotifs(uid) {
       const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       item.innerHTML = `<div class="notif-item-text">${icon}${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
       if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
-      if (n._t === 'p' && n._id) {
+      if (n._id) {
         const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
-        del.onclick = e => { e.stopPropagation(); db.collection('notifications').doc(uid).collection('items').doc(n._id).delete(); };
+        del.onclick = e => {
+          e.stopPropagation();
+          if (n._t === 'p') {
+            db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();
+          } else {
+            const key = 'dismissed_anns'; const list = JSON.parse(localStorage.getItem(key)||'[]');
+            if (!list.includes(n._id)) { list.push(n._id); localStorage.setItem(key, JSON.stringify(list)); }
+            _announcements = _announcements.filter(a => a._id !== n._id);
+            _mergeNotifs(uid);
+          }
+        };
         item.append(del);
       }
       list.append(item);
@@ -445,7 +456,7 @@ function initNotifications(user) {
       _mergeNotifs(user.uid);
     }, () => {});
   _annUnsub = db.collection('announcements').orderBy('createdAt', 'desc').limit(15)
-    .onSnapshot(snap => { _announcements = snap.docs.map(d => d.data()); _mergeNotifs(user.uid); }, () => {});
+    .onSnapshot(snap => { _announcements = snap.docs.map(d => ({...d.data(), _id: d.id})); _mergeNotifs(user.uid); }, () => {});
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────
