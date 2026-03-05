@@ -169,7 +169,7 @@
         .arr-build-scroll { overflow-x:auto; margin:14px 0; }
         .arr-build-grid { display:flex; flex-direction:column; gap:3px; min-width:620px; }
         .arr-build-row { display:grid; grid-template-columns:80px repeat(8,1fr); gap:3px; align-items:center; }
-        .arr-build-cell { height:34px; border-radius:4px; cursor:pointer; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); transition:background .12s,border-color .12s,filter .12s; }
+        .arr-build-cell { height:34px; border-radius:4px; cursor:pointer; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); transition:background .12s,border-color .12s,filter .12s; display:flex; align-items:center; justify-content:center; }
 
         @media(max-width:600px) {
             .controls-grid { grid-template-columns:1fr; }
@@ -1291,7 +1291,7 @@ function buildEQSection() {
     const wrap = mk('div','adsr-explanation'); wrap.style.marginTop='20px';
     wrap.innerHTML=`<h3 style="color:#d4722a;margin-bottom:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎛️ İnteraktif 3-Band EQ</h3>`;
     const hint=mk('div','hint-box');
-    hint.innerHTML='<strong>Renkli noktaları yukarı/aşağı sürükle</strong> → boost (+dB) veya cut (-dB) uygula. <span style="color:#e8b84b">●</span> LOW 100Hz &nbsp;<span style="color:#d4722a">●</span> MID 1kHz &nbsp;<span style="color:#8fc8e8">●</span> HIGH 8kHz';
+    hint.innerHTML='<strong>Noktaları sürükle</strong> → Sol/Sağ: frekans değiştir · Yukarı/Aşağı: boost/cut uygula. <span style="color:#e8b84b">●</span> LOW &nbsp;<span style="color:#d4722a">●</span> MID &nbsp;<span style="color:#8fc8e8">●</span> HIGH';
     wrap.append(hint);
 
     const W=800, H=200;
@@ -1379,21 +1379,28 @@ function buildEQSection() {
     }
     drawEQ();
 
-    // Drag handling (pointer capture on canvas)
+    const xToF=x=>Math.max(20,Math.min(20000,20*Math.pow(1000,x/W)));
+    const freqLimits=[{min:20,max:500},{min:200,max:8000},{min:2000,max:20000}];
+
+    // Drag handling — X moves frequency, Y moves gain
     let eqDrag=null;
     canvas.addEventListener('pointerdown',e=>{
         canvas.setPointerCapture(e.pointerId);
         const r=canvas.getBoundingClientRect();
         const cx=(e.clientX-r.left)*(W/r.width), cy=(e.clientY-r.top)*(H/r.height);
-        bands.forEach((b,i)=>{ if(Math.hypot(cx-fToX(b.freq),cy-gToY(b.gain))<18){ eqDrag=i; initEQAudio(); } });
+        eqDrag=null;
+        bands.forEach((b,i)=>{ if(Math.hypot(cx-fToX(b.freq),cy-gToY(b.gain))<26){ eqDrag=i; initEQAudio(); } });
         canvas.style.cursor=eqDrag!==null?'grabbing':'grab';
     });
     canvas.addEventListener('pointermove',e=>{
         if(eqDrag===null) return;
         const r=canvas.getBoundingClientRect();
+        const cx=(e.clientX-r.left)*(W/r.width);
         const cy=(e.clientY-r.top)*(H/r.height);
-        bands[eqDrag].gain=Math.round(yToG(cy));
-        if(eqFilts[eqDrag]) eqFilts[eqDrag].gain.value=bands[eqDrag].gain;
+        const lim=freqLimits[eqDrag];
+        bands[eqDrag].freq=Math.round(Math.max(lim.min,Math.min(lim.max,xToF(cx))));
+        bands[eqDrag].gain=Math.max(-18,Math.min(18,Math.round(yToG(cy))));
+        if(eqFilts[eqDrag]){ eqFilts[eqDrag].frequency.value=bands[eqDrag].freq; eqFilts[eqDrag].gain.value=bands[eqDrag].gain; }
         drawEQ(); updateEQLabels();
     });
     canvas.addEventListener('pointerup',()=>{ eqDrag=null; canvas.style.cursor='grab'; });
@@ -1403,14 +1410,16 @@ function buildEQSection() {
     bands.forEach((b,i)=>{
         const pill=mk('div');
         pill.style.cssText=`flex:1;text-align:center;background:${b.color}12;border:1px solid ${b.color}35;border-radius:4px;padding:8px 4px;`;
-        pill.innerHTML=`<span style="color:${b.color};font-size:.6rem;letter-spacing:.06em;display:block">${b.label} · ${b.freq>=1000?b.freq/1000+'kHz':b.freq+'Hz'}</span><span class="eq-db-${i}" style="color:var(--white);font-size:.9rem;font-weight:bold">0 dB</span>`;
+        pill.innerHTML=`<span class="eq-freq-${i}" style="color:${b.color};font-size:.6rem;letter-spacing:.06em;display:block">${b.label} · ${b.freq>=1000?b.freq/1000+'kHz':b.freq+'Hz'}</span><span class="eq-db-${i}" style="color:var(--white);font-size:.9rem;font-weight:bold">0 dB</span>`;
         gainRow.append(pill);
     });
     wrap.append(gainRow);
     function updateEQLabels(){
         bands.forEach((b,i)=>{
-            const el=wrap.querySelector(`.eq-db-${i}`);
-            if(el) el.textContent=(b.gain>0?'+':'')+b.gain+' dB';
+            const dbEl=wrap.querySelector(`.eq-db-${i}`);
+            if(dbEl) dbEl.textContent=(b.gain>0?'+':'')+b.gain+' dB';
+            const fEl=wrap.querySelector(`.eq-freq-${i}`);
+            if(fEl) fEl.textContent=`${b.label} · ${b.freq>=1000?(b.freq/1000).toFixed(1)+'kHz':b.freq+'Hz'}`;
         });
     }
 
@@ -1598,17 +1607,14 @@ function buildArrangementBuilder() {
     const sectionNames=['Intro','Verse 1','Pre-Ch','Chorus 1','Bridge','Chorus 2','B-Down','Outro'];
     const sectionColors=['#8fc8e8','#e8b84b','#d4722a','#b82d45','#a855f7','#b82d45','#00aaff','#8fc8e8'];
     const tracks=[
-        {name:'🥁 DRUMS',  color:'#e8b84b', freqs:[60,120,200]},
-        {name:'🎸 BASS',   color:'#b82d45', freqs:[80,110]},
-        {name:'🎹 CHORDS', color:'#d4722a', freqs:[261,330,392]},
-        {name:'🎵 LEAD',   color:'#8fc8e8', freqs:[440,523,659]},
-        {name:'🌊 PAD',    color:'#a855f7', freqs:[220,277,330,415]},
+        {name:'🥁 KICK',   note:'1/4',   color:'#e8b84b', file:'Kick.wav',       freqs:[55,60,65]},
+        {name:'🎩 HI-HAT', note:'1/16',  color:'#6fc',    file:'Close Hat.wav',  freqs:[8000,10000]},
+        {name:'🎸 BASS',   note:'E1→A1', color:'#b82d45', file:'bass.wav',       freqs:[41,55,65,49]},
+        {name:'🎵 LEAD',   note:'loop',  color:'#8fc8e8', file:'Lead Loop.wav',  freqs:[440,523,659,587]},
+        {name:'🌊 PAD',    note:'loop',  color:'#a855f7', file:'Pad Loop.wav',   freqs:[220,277,330,415]},
     ];
 
-    const cells=Array.from({length:ROWS},()=>new Array(COLS).fill(false));
-    // Default pop pattern
-    [[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,0,0],[0,1,0,1,0,1,0,0],[0,0,1,1,0,1,0,0],[1,0,0,1,0,0,1,1]]
-        .forEach((row,r)=>row.forEach((v,c)=>cells[r][c]=!!v));
+    const cells=Array.from({length:ROWS},()=>new Array(COLS).fill(true));
 
     const cellEls=Array.from({length:ROWS},()=>[]);
 
@@ -1628,17 +1634,18 @@ function buildArrangementBuilder() {
 
     tracks.forEach((track,r)=>{
         const row=mk('div','arr-build-row');
-        const lbl=mk('div','',track.name);
-        lbl.style.cssText=`color:${track.color};font-size:.62rem;white-space:nowrap;`;
+        const lbl=mk('div');
+        lbl.innerHTML=`<span style="color:${track.color};font-size:.62rem;display:block;white-space:nowrap;">${track.name}</span><span style="color:rgba(255,255,255,.28);font-size:.46rem;">${track.note}</span>`;
         row.append(lbl);
         for(let c=0;c<COLS;c++){
             const cell=mk('div','arr-build-cell');
             const on=cells[r][c];
-            if(on){ cell.style.background=track.color+'55'; cell.style.borderColor=track.color+'88'; }
+            if(on){ cell.style.background=track.color+'55'; cell.style.borderColor=track.color+'88'; cell.innerHTML=`<span style="font-size:.38rem;color:${track.color};opacity:.85;pointer-events:none;letter-spacing:.02em;">${track.note}</span>`; }
             cell.onclick=()=>{
                 cells[r][c]=!cells[r][c];
                 cell.style.background=cells[r][c]?track.color+'55':'rgba(255,255,255,.03)';
                 cell.style.borderColor=cells[r][c]?track.color+'88':'rgba(255,255,255,.1)';
+                cell.innerHTML=cells[r][c]?`<span style="font-size:.38rem;color:${track.color};opacity:.85;pointer-events:none;letter-spacing:.02em;">${track.note}</span>`:'';
                 cell.style.filter='';
             };
             cellEls[r].push(cell); row.append(cell);
@@ -1664,19 +1671,39 @@ function buildArrangementBuilder() {
         }
     }
 
+    const arrBufs={};
+    async function loadArrBuf(file){
+        if(file in arrBufs) return arrBufs[file];
+        try{
+            const resp=await fetch('assets/audio/'+encodeURIComponent(file));
+            if(!resp.ok){ arrBufs[file]=null; return null; }
+            const ab=await resp.arrayBuffer();
+            arrBufs[file]=await arrACtx.decodeAudioData(ab);
+            return arrBufs[file];
+        }catch(e){ arrBufs[file]=null; return null; }
+    }
     function playColSound(col){
         if(!arrACtx){ arrACtx=new(window.AudioContext||window.webkitAudioContext)(); }
         if(arrACtx.state==='suspended') arrACtx.resume();
-        tracks.forEach((track,r)=>{
+        tracks.forEach(async (track,r)=>{
             if(!cells[r][col]) return;
-            const g=arrACtx.createGain(); g.gain.setValueAtTime(0.12,arrACtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.001,arrACtx.currentTime+0.4);
+            const isLoop=track.note==='loop';
+            const g=arrACtx.createGain(); g.gain.value=isLoop?0.45:0.7;
             g.connect(arrACtx.destination);
-            const freq=track.freqs[col%track.freqs.length];
-            const o=arrACtx.createOscillator();
-            o.type=r===0?'square':r===1?'sawtooth':r===2?'triangle':'sine';
-            o.frequency.value=freq;
-            o.connect(g); o.start(); o.stop(arrACtx.currentTime+0.4);
+            const buf=await loadArrBuf(track.file);
+            if(buf){
+                const src=arrACtx.createBufferSource(); src.buffer=buf;
+                src.connect(g); src.start();
+                if(isLoop){ setTimeout(()=>{ try{src.stop();}catch(_){} },820); }
+                else{ g.gain.exponentialRampToValueAtTime(0.001,arrACtx.currentTime+0.55); }
+            } else {
+                const freq=track.freqs[col%track.freqs.length];
+                g.gain.setValueAtTime(0.12,arrACtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001,arrACtx.currentTime+0.4);
+                const o=arrACtx.createOscillator();
+                o.type=r<2?'square':r===2?'sawtooth':'sine';
+                o.frequency.value=freq; o.connect(g); o.start(); o.stop(arrACtx.currentTime+0.4);
+            }
         });
     }
 
@@ -1705,10 +1732,10 @@ function buildArrangementBuilder() {
     const tplRow=mk('div'); tplRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center;';
     tplRow.append(Object.assign(mk('span','','Şablon:'),{style:{cssText:'color:var(--dim);font-size:.7rem;'}}));
     [
-        {name:'🎵 Pop',   p:[[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,0,0],[0,1,0,1,0,1,0,0],[0,0,1,1,0,1,0,0],[1,0,0,1,0,0,1,1]]},
-        {name:'🏠 House', p:[[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,0,1],[0,0,1,1,0,0,1,1],[1,0,1,0,1,1,0,1]]},
-        {name:'🔺 Trap',  p:[[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,1,1,0,1,1,0],[0,0,0,1,0,0,1,0],[1,0,1,0,1,0,1,1]]},
-        {name:'🎤 Hip-Hop',p:[[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,0,0],[0,0,1,0,0,1,0,0],[0,0,0,1,0,0,1,0],[1,1,0,0,1,1,0,0]]},
+        {name:'🎵 Pop',    p:[[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,0,0],[0,0,1,1,0,1,0,0],[1,0,0,1,0,0,1,1]]},
+        {name:'🏠 House',  p:[[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,0,1],[1,0,1,0,1,1,0,1]]},
+        {name:'🔺 Trap',   p:[[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,1,1,1,1,1,0],[0,0,0,1,0,0,1,0],[1,0,1,0,1,0,1,1]]},
+        {name:'🎤 Hip-Hop', p:[[1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1],[0,1,0,1,0,1,0,0],[0,0,0,1,0,0,1,0],[1,1,0,0,1,1,0,0]]},
     ].forEach(tpl=>{
         const btn=mk('button','genre-btn',tpl.name);
         btn.onclick=()=>{
@@ -1717,6 +1744,7 @@ function buildArrangementBuilder() {
                 cellEls[r][c].style.background=v?tracks[r].color+'55':'rgba(255,255,255,.03)';
                 cellEls[r][c].style.borderColor=v?tracks[r].color+'88':'rgba(255,255,255,.1)';
                 cellEls[r][c].style.filter=''; cellEls[r][c].style.outline='none';
+                cellEls[r][c].innerHTML=v?`<span style="font-size:.38rem;color:${tracks[r].color};opacity:.85;pointer-events:none;">${tracks[r].note}</span>`:'';
             }));
         };
         tplRow.append(btn);
@@ -1726,7 +1754,7 @@ function buildArrangementBuilder() {
     resetBtn.style.marginLeft='4px';
     resetBtn.onclick=()=>{
         cells.forEach(row=>row.fill(false));
-        cellEls.forEach((row,r)=>row.forEach(cell=>{ cell.style.background='rgba(255,255,255,.03)'; cell.style.borderColor='rgba(255,255,255,.1)'; cell.style.filter=''; cell.style.outline='none'; }));
+        cellEls.forEach(row=>row.forEach(cell=>{ cell.style.background='rgba(255,255,255,.03)'; cell.style.borderColor='rgba(255,255,255,.1)'; cell.style.filter=''; cell.style.outline='none'; cell.innerHTML=''; }));
     };
     wrap.append(tplRow, playBtn, resetBtn);
     return wrap;
