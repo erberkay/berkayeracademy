@@ -20,6 +20,10 @@
             --gold:#e8b84b;  --amber:#d4722a; --crimson:#b82d45;
             --ice:#8fc8e8;   --white:#eeebe6; --mid:#2a2a45;
             --dim:rgba(238,235,230,0.45);
+            --cell-off:    rgba(255,255,255,.03);
+            --cell-off-4:  rgba(255,255,255,.07);
+            --cell-off-bd: rgba(255,255,255,.1);
+            --sect-bg:     rgba(255,255,255,.03);
         }
         body { font-family:'Space Mono',monospace; background:var(--black); color:var(--white); min-height:100vh; overflow-x:hidden; }
         body::before {
@@ -179,7 +183,7 @@
         .arr-build-scroll { overflow-x:auto; margin:14px 0; }
         .arr-build-grid { display:flex; flex-direction:column; gap:3px; min-width:620px; }
         .arr-build-row { display:grid; grid-template-columns:80px repeat(8,1fr); gap:3px; align-items:center; }
-        .arr-build-cell { height:34px; border-radius:4px; cursor:pointer; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); transition:background .12s,border-color .12s,filter .12s; display:flex; align-items:center; justify-content:center; }
+        .arr-build-cell { height:34px; border-radius:4px; cursor:pointer; border:1px solid var(--cell-off-bd); background:var(--cell-off); transition:background .12s,border-color .12s,filter .12s; display:flex; align-items:center; justify-content:center; }
 
         @media(max-width:600px) {
             .controls-grid { grid-template-columns:1fr; }
@@ -1310,7 +1314,7 @@ function renderModule2() {
         hrow.append(mk('div'));
         for (let i=0;i<16;i++) {
             const n = mk('div','',i%4===0?String(i/4+1):'');
-            n.style.cssText=`text-align:center;font-size:.55rem;color:${i%4===0?'rgba(232,184,75,.6)':'rgba(255,255,255,.2)'}`;
+            n.style.cssText=`text-align:center;font-size:.55rem;color:${i%4===0?'var(--gold)':'var(--dim)'}`;
             hrow.append(n);
         }
         table.append(hrow);
@@ -1327,7 +1331,7 @@ function renderModule2() {
                 cell.dataset.ti=ti; cell.dataset.step=bi;
                 const opacity = vel>0 ? .3+(vel/100)*.7 : 0;
                 const hex     = vel>0 ? Math.round(opacity*255).toString(16).padStart(2,'0') : '';
-                cell.style.cssText=`background:${vel>0?track.color+hex:bi%4===0?'rgba(255,255,255,.07)':'rgba(255,255,255,.03)'};border:1px solid ${vel>0?track.color+'66':'rgba(255,255,255,.1)'}`;
+                cell.style.cssText=`background:${vel>0?track.color+hex:bi%4===0?'var(--cell-off-4)':'var(--cell-off)'};border:1px solid ${vel>0?track.color+'66':'var(--cell-off-bd)'}`;
                 const vbar = mk('div'); vbar.dataset.vbar='';
                 vbar.style.cssText=`position:absolute;bottom:0;left:0;width:${vel}%;height:3px;background:#fff;border-radius:0 2px 0 0;opacity:${vel>.0?.8:0};pointer-events:none`;
                 const vnum = mk('span'); vnum.dataset.vnum='';
@@ -1938,7 +1942,7 @@ function buildArrangementBuilder() {
     tracks.forEach((track,r)=>{
         const row=mk('div','arr-build-row');
         const lbl=mk('div');
-        lbl.innerHTML=`<span style="color:${track.color};font-size:.62rem;display:block;white-space:nowrap;">${track.name}</span><span style="color:rgba(255,255,255,.28);font-size:.46rem;">${track.note}</span>`;
+        lbl.innerHTML=`<span style="color:${track.color};font-size:.62rem;display:block;white-space:nowrap;">${track.name}</span><span style="color:var(--dim);font-size:.46rem;">${track.note}</span>`;
         row.append(lbl);
         for(let c=0;c<COLS;c++){
             const cell=mk('div','arr-build-cell');
@@ -1946,8 +1950,8 @@ function buildArrangementBuilder() {
             if(on){ cell.style.background=track.color+'55'; cell.style.borderColor=track.color+'88'; cell.innerHTML=`<span style="font-size:.38rem;color:${track.color};opacity:.85;pointer-events:none;letter-spacing:.02em;">${track.note}</span>`; }
             cell.onclick=()=>{
                 cells[r][c]=!cells[r][c];
-                cell.style.background=cells[r][c]?track.color+'55':'rgba(255,255,255,.03)';
-                cell.style.borderColor=cells[r][c]?track.color+'88':'rgba(255,255,255,.1)';
+                cell.style.background=cells[r][c]?track.color+'55':'var(--cell-off)';
+                cell.style.borderColor=cells[r][c]?track.color+'88':'var(--cell-off-bd)';
                 cell.innerHTML=cells[r][c]?`<span style="font-size:.38rem;color:${track.color};opacity:.85;pointer-events:none;letter-spacing:.02em;">${track.note}</span>`:'';
                 cell.style.filter='';
             };
@@ -2094,8 +2098,8 @@ function buildArrangementBuilder() {
         btn.onclick=()=>{
             tpl.p.forEach((row,r)=>row.forEach((v,c)=>{
                 cells[r][c]=!!v;
-                cellEls[r][c].style.background=v?tracks[r].color+'55':'rgba(255,255,255,.03)';
-                cellEls[r][c].style.borderColor=v?tracks[r].color+'88':'rgba(255,255,255,.1)';
+                cellEls[r][c].style.background=v?tracks[r].color+'55':'var(--cell-off)';
+                cellEls[r][c].style.borderColor=v?tracks[r].color+'88':'var(--cell-off-bd)';
                 cellEls[r][c].style.filter=''; cellEls[r][c].style.outline='none';
                 cellEls[r][c].innerHTML=v?`<span style="font-size:.38rem;color:${tracks[r].color};opacity:.85;pointer-events:none;">${tracks[r].note}</span>`:'';
             }));
@@ -2107,7 +2111,7 @@ function buildArrangementBuilder() {
     resetBtn.style.marginLeft='4px';
     resetBtn.onclick=()=>{
         cells.forEach(row=>row.fill(false));
-        cellEls.forEach(row=>row.forEach(cell=>{ cell.style.background='rgba(255,255,255,.03)'; cell.style.borderColor='rgba(255,255,255,.1)'; cell.style.filter=''; cell.style.outline='none'; cell.innerHTML=''; }));
+        cellEls.forEach(row=>row.forEach(cell=>{ cell.style.background='var(--cell-off)'; cell.style.borderColor='var(--cell-off-bd)'; cell.style.filter=''; cell.style.outline='none'; cell.innerHTML=''; }));
     };
     wrap.append(tplRow, playBtn, resetBtn);
     return wrap;
@@ -2836,7 +2840,7 @@ function renderModule4() {
     ];
     const flist=mk('div'); flist.style.cssText='display:flex;flex-direction:column;gap:8px;font-size:.78rem';
     steps.forEach(s=>{
-        const row=mk('div'); row.style.cssText='display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid var(--mid);border-radius:4px';
+        const row=mk('div'); row.style.cssText='display:flex;gap:12px;align-items:flex-start;padding:10px 14px;background:var(--sect-bg);border:1px solid var(--mid);border-radius:4px';
         row.innerHTML=`<div style="min-width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--black);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:.75rem;flex-shrink:0">${s.n}</div><div><strong style="color:var(--white)">${s.title}</strong><br><span style="color:var(--dim)">${s.desc}</span></div>`;
         flist.append(row);
     });
@@ -2879,7 +2883,7 @@ function buildMasteringSection_UNUSED() { // kept for reference
     }
 
     // ── Helpers ────────────────────────────────────────────────────
-    const CARD_S='background:rgba(255,255,255,.03);border:1px solid var(--mid);border-radius:6px;padding:12px 14px;margin-bottom:10px;';
+    const CARD_S='background:var(--sect-bg);border:1px solid var(--mid);border-radius:6px;padding:12px 14px;margin-bottom:10px;';
     function stageCard(title, color, obj, buildFn){
         const card=mk('div'); card.style.cssText=CARD_S;
         const hdr=mk('div'); hdr.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px;';
@@ -3155,7 +3159,7 @@ function renderModule5() {
     const shell=mk('div','synth-container');
     shell.innerHTML=`<div class="synth-header"><h2>🎚 Mastering</h2><p style="font-size:.82rem;color:var(--dim);margin-top:4px">Miksinin son hali — profesyonel ses zinciri</p></div>`;
 
-    const S = 'background:rgba(255,255,255,.03);border:1px solid var(--mid);border-radius:8px;padding:16px 18px;margin-bottom:14px;';
+    const S = 'background:var(--sect-bg);border:1px solid var(--mid);border-radius:8px;padding:16px 18px;margin-bottom:14px;';
 
     // ── What is mastering ─────────────────────────────────────────
     const intro = mk('div'); intro.style.cssText = S;
@@ -3179,7 +3183,7 @@ function renderModule5() {
     ];
     const chainFlow = mk('div'); chainFlow.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
     CHAIN_TOOLS.forEach((t, i) => {
-        const card = mk('div'); card.style.cssText = `background:rgba(255,255,255,.02);border:1px solid ${t.color}33;border-radius:6px;padding:12px 14px;position:relative;`;
+        const card = mk('div'); card.style.cssText = `background:var(--sect-bg);border:1px solid ${t.color}33;border-radius:6px;padding:12px 14px;position:relative;`;
         const arrow = i < CHAIN_TOOLS.length-1 ? `<div style="text-align:center;color:var(--mid);font-size:.9rem;margin-top:10px">↓</div>` : '';
         card.innerHTML = `
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
@@ -3189,7 +3193,7 @@ function renderModule5() {
               <div style="font-size:.7rem;color:var(--dim)">${t.sub}</div>
             </div>
           </div>
-          <div style="font-size:.72rem;color:rgba(238,235,230,.6);line-height:1.65;font-family:'Space Mono',monospace;background:rgba(0,0,0,.25);padding:8px 10px;border-radius:4px;margin-bottom:7px">${t.desc}</div>
+          <div style="font-size:.72rem;color:var(--dim);line-height:1.65;font-family:'Space Mono',monospace;background:rgba(0,0,0,.12);padding:8px 10px;border-radius:4px;margin-bottom:7px">${t.desc}</div>
           <div style="font-size:.74rem;color:var(--dim);line-height:1.65">${t.detail}</div>
         `;
         chainFlow.append(card);
@@ -3209,12 +3213,12 @@ function renderModule5() {
         { name:'Spectrum', path:'Audio Effects → Spectrum', color:'#8fc8e8', tip:'Her aracın çıkışına yerleştir. Frekans problemlerini görsel olarak tespit et. Tizler 10 kHz üstünde çok düşükse EQ ile artır.' },
     ];
     TOOLS_DETAIL.forEach(t => {
-        const row = mk('div'); row.style.cssText = 'display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);align-items:flex-start;';
+        const row = mk('div'); row.style.cssText = 'display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--mid);align-items:flex-start;';
         row.innerHTML = `
           <div style="min-width:9px;height:9px;border-radius:50%;background:${t.color};margin-top:6px;flex-shrink:0"></div>
           <div>
             <div style="font-size:.82rem;color:${t.color};font-weight:700">${t.name}</div>
-            <div style="font-size:.68rem;color:rgba(238,235,230,.4);margin:2px 0 5px;font-family:'Space Mono',monospace">${t.path}</div>
+            <div style="font-size:.68rem;color:var(--dim);margin:2px 0 5px;font-family:'Space Mono',monospace">${t.path}</div>
             <div style="font-size:.75rem;color:var(--dim);line-height:1.65">${t.tip}</div>
           </div>`;
         toolsWrap.append(row);
