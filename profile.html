@@ -349,10 +349,10 @@ let _chatListUnsub = null, _msgUnsub = null;
 let _activeChatId = null, _activeChatOther = null;
 let _chatPanelEl = null, _chatThreadsEl = null, _chatMsgsEl = null, _chatMainEl = null;
 
-async function _sendMsg(fromUid, fromName, toUid, toName, text) {
+async function _sendMsg(fromUid, fromName, fromPhoto, toUid, toName, toPhoto, text) {
   const cid = _chatId(fromUid, toUid);
   const ref = db.collection('chats').doc(cid);
-  await ref.set({ participants:[fromUid,toUid], names:{[fromUid]:fromName,[toUid]:toName}, lastMessage:text.slice(0,100), lastAt:firebase.firestore.FieldValue.serverTimestamp(), unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid) }, { merge:true });
+  await ref.set({ participants:[fromUid,toUid], names:{[fromUid]:fromName,[toUid]:toName}, photos:{[fromUid]:fromPhoto||'', [toUid]:toPhoto||''}, lastMessage:text.slice(0,100), lastAt:firebase.firestore.FieldValue.serverTimestamp(), unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid) }, { merge:true });
   await ref.collection('messages').add({ fromUid, text, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
   // Notify recipient
   db.collection('notifications').doc(toUid).collection('items').add({
@@ -371,7 +371,7 @@ function _mkAvEl(photo, name, cls) {
 
 function _openThread(cid, otherId, otherName, otherPhoto) {
   if (!_chatMainEl || !_chatMsgsEl) return;
-  _activeChatId = cid; _activeChatOther = { uid:otherId, name:otherName };
+  _activeChatId = cid; _activeChatOther = { uid:otherId, name:otherName, photo:otherPhoto||null };
   // Mark sidebar active
   _chatThreadsEl?.querySelectorAll('.chat-thread').forEach(t => t.classList.toggle('active', t.dataset.cid===cid));
   // Header
@@ -397,7 +397,10 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         wrap.append(txt, time); _chatMsgsEl.append(wrap);
       });
       _chatMsgsEl.scrollTop = _chatMsgsEl.scrollHeight;
-    }, () => {});
+    }, err => {
+      console.error('messages snapshot:', err);
+      if (_chatMsgsEl) _chatMsgsEl.innerHTML = '<div style="color:var(--dim);font-size:.8rem;text-align:center;padding:20px">Mesajlar yüklenemedi.</div>';
+    });
 }
 
 function _buildChatThread(chatDoc, myUid) {
@@ -411,7 +414,7 @@ function _buildChatThread(chatDoc, myUid) {
     otherId = chat.participants?.find(p => p !== myUid) || '';
     otherName = chat.names?.[otherId] || 'Üye';
   }
-  const otherPhoto = null;
+  const otherPhoto = chat.photos?.[otherId] || null;
   const isUnread = chat.unreadBy?.includes(myUid);
   const el = document.createElement('div');
   el.className = 'chat-thread' + (isUnread ? ' unread' : '');
@@ -456,7 +459,8 @@ function initChatPanel(user) {
     const txt = chatInput.value.trim(); if (!txt || !_activeChatOther) return;
     chatInput.value = ''; sendBtn.disabled = true;
     const myName = _user?.displayName?.split(' ')[0] || 'Üye';
-    await _sendMsg(user.uid, myName, _activeChatOther.uid, _activeChatOther.name, txt).catch(console.error);
+    const myPhoto = _user?.photoURL || '';
+    await _sendMsg(user.uid, myName, myPhoto, _activeChatOther.uid, _activeChatOther.name, _activeChatOther.photo||'', txt).catch(console.error);
     sendBtn.disabled = false;
   };
   sendBtn.onclick = doSend;
@@ -522,7 +526,7 @@ function initChatPanel(user) {
   _chatListUnsub = chatQuery.onSnapshot(snap => {
     _chatThreadsEl.innerHTML = '';
     snap.docs.forEach(chatDoc => _chatThreadsEl.append(_buildChatThread(chatDoc, user.uid)));
-  }, () => {});
+  }, err => { console.error('chat list snapshot:', err); });
 }
 
 function openChatWith(toUid, toName, toPhoto) {
