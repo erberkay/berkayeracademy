@@ -25,7 +25,7 @@
   --ice:#8fc8e8; --white:#eeebe6; --mid:#2a2a45; --mid2:#1e1e34;
   --dim:rgba(238,235,230,0.45);
 }
-body { font-family:'Space Mono',monospace; background:var(--black); color:var(--white); min-height:100vh; }
+body { font-family:'Space Mono',monospace; background:var(--black); color:var(--white); min-height:100vh; overflow-x:clip; }
 body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
 
 .topnav { position:fixed; top:0; left:0; right:0; z-index:300; background:rgba(6,6,9,.92); border-bottom:1px solid var(--mid); backdrop-filter:blur(8px); height:52px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; }
@@ -42,7 +42,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .auth-name { font-size:.62rem; color:var(--white); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .auth-out-btn { background:transparent; border:none; color:var(--dim); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; }
 
-.layout { max-width:1400px; margin:0 auto; padding:72px 28px 80px; display:grid; grid-template-columns:300px 1fr minmax(360px,auto); gap:28px; position:relative; z-index:1; }
+.layout { max-width:1400px; margin:0 auto; padding:72px 28px 80px; display:grid; grid-template-columns:300px 1fr 360px; gap:28px; position:relative; z-index:1; }
 @media(max-width:1200px) { .layout { grid-template-columns:280px 1fr; } }
 @media(max-width:700px) { .layout { grid-template-columns:1fr; } }
 
@@ -84,7 +84,9 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .msg-btn:hover { background:linear-gradient(135deg,rgba(143,200,232,.25),rgba(143,200,232,.15)); border-color:rgba(143,200,232,.75); }
 
 /* ── Chat Panel ── */
-.chat-panel { background:var(--card); border:1px solid var(--mid); border-radius:14px; overflow:hidden; position:sticky; top:70px; align-self:start; width:360px; height:580px; min-height:300px; max-height:calc(100vh - 90px); resize:vertical; display:flex; flex-direction:column; box-shadow:0 4px 32px rgba(0,0,0,.35); }
+.chat-panel { background:var(--card); border:1px solid var(--mid); border-radius:14px; overflow:hidden; position:sticky; top:70px; align-self:start; width:360px; height:580px; min-height:300px; min-width:360px; max-width:640px; resize:none; display:flex; flex-direction:column; box-shadow:0 4px 32px rgba(0,0,0,.35); }
+.chat-resize-grip { position:absolute; bottom:2px; right:2px; width:16px; height:16px; cursor:se-resize; z-index:10; background:repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(238,235,230,.22) 2px, rgba(238,235,230,.22) 3px); border-radius:0 0 12px 0; transition:opacity .15s; }
+.chat-resize-grip:hover { background:repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(238,235,230,.5) 2px, rgba(238,235,230,.5) 3px); }
 .chat-panel-hdr { padding:13px 16px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:rgba(255,255,255,.02); }
 .chat-panel-title { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); letter-spacing:.08em; }
 .chat-body { display:flex; flex:1; overflow:hidden; }
@@ -472,6 +474,21 @@ function initChatPanel(user) {
     }, 300);
   };
   document.addEventListener('click', e => { if (!searchWrap.contains(e.target)) searchResults.classList.remove('open'); });
+  // Resize grip — grows RIGHT and DOWN
+  const grip = document.createElement('div'); grip.className = 'chat-resize-grip'; panel.append(grip);
+  grip.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY, sw = panel.offsetWidth, sh = panel.offsetHeight;
+    const onMove = ev => {
+      const profileCard = document.querySelector('.profile-card');
+      const maxH = profileCard ? Math.floor(profileCard.getBoundingClientRect().height) : (window.innerHeight - 90);
+      panel.style.width  = Math.max(360, Math.min(sw + (ev.clientX - sx), 640)) + 'px';
+      panel.style.height = Math.max(300, Math.min(sh + (ev.clientY - sy), maxH)) + 'px';
+    };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
   // Insert panel into layout
   const layout = document.getElementById('layout');
   if (layout) layout.append(panel);
@@ -635,11 +652,13 @@ async function renderProfile() {
 
   // Load posts & replies
   const [postsSnap, repliesSnap] = await Promise.all([
-    db.collection('forum').where('authorId','==',uid).orderBy('createdAt','desc').limit(10).get().catch(()=>null),
-    db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(8).get().catch(()=>null),
+    db.collection('forum').where('authorId','==',uid).limit(20).get().catch(e=>{console.error('posts query:',e);return null;}),
+    db.collectionGroup('replies').where('authorId','==',uid).limit(20).get().catch(e=>{console.error('replies query:',e);return null;}),
   ]);
-  const posts = postsSnap ? postsSnap.docs.map(d => ({id:d.id,...d.data()})) : [];
-  const replies = repliesSnap ? repliesSnap.docs.map(d => ({id:d.id,...d.data(), postId:d.ref.parent.parent.id})) : [];
+  const posts = (postsSnap ? postsSnap.docs.map(d => ({id:d.id,...d.data()})) : [])
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0,10);
+  const replies = (repliesSnap ? repliesSnap.docs.map(d => ({id:d.id,...d.data(), postId:d.ref.parent.parent.id})) : [])
+    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0,8);
 
   const layout = document.getElementById('layout');
   // Remove all children except chat panel (which persists across renders)
