@@ -11,6 +11,8 @@
 <meta property="og:image" content="https://erberkay.github.io/Producer.School/assets/img/og-logo.png">
 <meta property="og:url" content="https://erberkay.github.io/Producer.School/profile.html">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<script src="assets/js/theme-init.js"></script>
+<link rel="stylesheet" href="assets/css/themes.css">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -172,6 +174,30 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .admin-announce-send:disabled { opacity:.5; cursor:default; }
 .admin-title-panel { padding:16px 22px 18px; border-top:1px solid rgba(255,255,255,.06); }
 .admin-title-label { font-size:.7rem; color:var(--gold); letter-spacing:.12em; text-transform:uppercase; margin-bottom:10px; }
+
+/* ── Settings Panel ── */
+.settings-btn { display:block; width:100%; margin-top:10px; padding:10px; text-align:center; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:var(--dim); border-radius:8px; font-family:'Space Mono',monospace; font-size:.72rem; cursor:pointer; transition:all .15s; }
+.settings-btn:hover { background:rgba(255,255,255,.08); color:var(--white); border-color:rgba(255,255,255,.15); }
+.settings-panel { display:none; border-top:1px solid rgba(255,255,255,.06); padding:18px 22px 20px; }
+.settings-panel.open { display:block; }
+.settings-label { font-size:.65rem; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; margin-bottom:14px; }
+.settings-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.settings-row:last-child { margin-bottom:0; }
+.settings-row-info { flex:1; }
+.settings-row-label { font-size:.78rem; color:var(--white); }
+.settings-row-sub { font-size:.62rem; color:var(--dim); margin-top:2px; }
+.theme-btns { display:flex; gap:7px; }
+.theme-btn { padding:7px 14px; border-radius:20px; border:1px solid var(--mid); background:transparent; font-family:'Space Mono',monospace; font-size:.68rem; cursor:pointer; transition:all .15s; color:var(--dim); }
+.theme-btn:hover { color:var(--white); border-color:rgba(255,255,255,.2); }
+.theme-btn.active { border-color:var(--gold); color:var(--gold); background:rgba(232,184,75,.08); }
+.theme-btn.light-btn.active { border-color:#a07010; color:#a07010; background:rgba(160,112,16,.1); }
+.toggle { position:relative; width:42px; height:24px; cursor:pointer; flex-shrink:0; }
+.toggle input { opacity:0; width:0; height:0; position:absolute; }
+.toggle-track { position:absolute; inset:0; background:var(--mid); border-radius:12px; transition:background .2s; }
+.toggle input:checked + .toggle-track { background:var(--gold); }
+.toggle-thumb { position:absolute; top:4px; left:4px; width:16px; height:16px; background:#fff; border-radius:50%; transition:transform .2s; pointer-events:none; }
+.toggle input:checked ~ .toggle-thumb { transform:translateX(18px); }
+
 .title-grid { display:flex; flex-wrap:wrap; gap:7px; }
 .title-opt { padding:5px 13px; border-radius:12px; border:1px solid var(--mid); background:var(--mid2); color:var(--dim); font-family:'Space Mono',monospace; font-size:.72rem; cursor:pointer; transition:all .15s; }
 .title-opt.sel { border-color:var(--gold); color:var(--gold); background:rgba(232,184,75,.1); }
@@ -861,7 +887,41 @@ async function renderProfile() {
       editForm.classList.toggle('open');
       editBtn.textContent = editForm.classList.contains('open') ? '✕ Kapat' : '✏️ Profili Düzenle';
     };
-    pCard.append(info, editForm);
+
+    // Settings button (own profile)
+    const settingsBtn = document.createElement('button'); settingsBtn.className = 'settings-btn'; settingsBtn.textContent = '⚙ Görünüm Ayarları';
+    info.append(settingsBtn);
+    const settingsPanel = document.createElement('div'); settingsPanel.className = 'settings-panel';
+    // Theme row
+    const themeLabel = document.createElement('div'); themeLabel.className = 'settings-label'; themeLabel.textContent = 'Tema';
+    const themeRow = document.createElement('div'); themeRow.className = 'settings-row';
+    const themeInfo = document.createElement('div'); themeInfo.className = 'settings-row-info';
+    themeInfo.innerHTML = '<div class="settings-row-label">Renk Teması</div><div class="settings-row-sub">Koyu veya açık arka plan</div>';
+    const themeBtns = document.createElement('div'); themeBtns.className = 'theme-btns';
+    const darkBtn = document.createElement('button'); darkBtn.className = 'theme-btn dark-btn'; darkBtn.textContent = '🌑 Koyu';
+    const lightBtn = document.createElement('button'); lightBtn.className = 'theme-btn light-btn'; lightBtn.textContent = '☀️ Açık';
+    const curTheme = localStorage.getItem('site-theme') || 'dark';
+    if (curTheme === 'dark') darkBtn.classList.add('active'); else lightBtn.classList.add('active');
+    darkBtn.onclick = () => { localStorage.setItem('site-theme','dark'); document.documentElement.classList.remove('theme-light'); darkBtn.classList.add('active'); lightBtn.classList.remove('active'); };
+    lightBtn.onclick = () => { localStorage.setItem('site-theme','light'); document.documentElement.classList.add('theme-light'); lightBtn.classList.add('active'); darkBtn.classList.remove('active'); };
+    themeBtns.append(darkBtn, lightBtn); themeRow.append(themeInfo, themeBtns);
+    // Font clear row
+    const fontRow = document.createElement('div'); fontRow.className = 'settings-row';
+    const fontInfo = document.createElement('div'); fontInfo.className = 'settings-row-info';
+    fontInfo.innerHTML = '<div class="settings-row-label">Font Netleştir</div><div class="settings-row-sub">Yazıları daha büyük ve okunaklı gösterir</div>';
+    const toggleWrap = document.createElement('label'); toggleWrap.className = 'toggle';
+    const toggleInput = document.createElement('input'); toggleInput.type = 'checkbox';
+    toggleInput.checked = localStorage.getItem('site-font-clear') === '1';
+    const toggleTrack = document.createElement('div'); toggleTrack.className = 'toggle-track';
+    const toggleThumb = document.createElement('div'); toggleThumb.className = 'toggle-thumb';
+    toggleInput.onchange = () => {
+      if (toggleInput.checked) { localStorage.setItem('site-font-clear','1'); document.documentElement.classList.add('font-clear'); }
+      else { localStorage.setItem('site-font-clear','0'); document.documentElement.classList.remove('font-clear'); }
+    };
+    toggleWrap.append(toggleInput, toggleTrack, toggleThumb); fontRow.append(fontInfo, toggleWrap);
+    settingsPanel.append(themeLabel, themeRow, fontRow);
+    settingsBtn.onclick = () => { settingsPanel.classList.toggle('open'); settingsBtn.textContent = settingsPanel.classList.contains('open') ? '✕ Kapat' : '⚙ Görünüm Ayarları'; };
+    pCard.append(info, settingsPanel, editForm);
   } else {
     pCard.append(info);
   }
