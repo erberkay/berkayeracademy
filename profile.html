@@ -84,7 +84,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .msg-btn:hover { background:linear-gradient(135deg,rgba(143,200,232,.25),rgba(143,200,232,.15)); border-color:rgba(143,200,232,.75); }
 
 /* ── Chat Panel ── */
-.chat-panel { background:var(--card); border:1px solid var(--mid); border-radius:14px; overflow:hidden; position:sticky; top:70px; align-self:start; width:360px; min-width:300px; max-width:600px; height:580px; min-height:300px; max-height:calc(100vh - 110px); resize:both; display:flex; flex-direction:column; box-shadow:0 4px 32px rgba(0,0,0,.35); }
+.chat-panel { background:var(--card); border:1px solid var(--mid); border-radius:14px; overflow:hidden; position:sticky; top:70px; align-self:start; width:360px; height:580px; min-height:300px; max-height:calc(100vh - 90px); resize:vertical; display:flex; flex-direction:column; box-shadow:0 4px 32px rgba(0,0,0,.35); }
 .chat-panel-hdr { padding:13px 16px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; background:rgba(255,255,255,.02); }
 .chat-panel-title { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); letter-spacing:.08em; }
 .chat-body { display:flex; flex:1; overflow:hidden; }
@@ -209,8 +209,10 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 
 /* ── Notification Bell ── */
 .notif-bell-wrap { position:relative; }
-.notif-bell { background:none; border:none; color:rgba(238,235,230,.45); font-size:1.2rem; cursor:pointer; padding:4px; line-height:1; transition:color .15s; }
+.notif-bell { background:none; border:none; color:rgba(238,235,230,.45); font-size:1.2rem; cursor:pointer; padding:4px; line-height:1; transition:color .15s; transform-origin:top center; }
 .notif-bell:hover { color:var(--gold); }
+.notif-bell.ringing { animation:bellRing 0.55s ease-in-out 3; }
+@keyframes bellRing { 0%{transform:rotate(0)} 15%{transform:rotate(18deg)} 35%{transform:rotate(-15deg)} 55%{transform:rotate(10deg)} 75%{transform:rotate(-6deg)} 90%{transform:rotate(3deg)} 100%{transform:rotate(0)} }
 .notif-badge { position:absolute; top:0; right:0; background:var(--crimson); color:#fff; font-size:.55rem; font-family:'Space Mono',monospace; border-radius:6px; padding:1px 5px; min-width:14px; text-align:center; pointer-events:none; }
 .notif-panel { position:absolute; top:40px; right:0; width:320px; background:var(--card); border:1px solid var(--mid); border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
 .notif-panel.open { display:block; }
@@ -496,6 +498,7 @@ function openChatWith(toUid, toName, toPhoto) {
 let _notifUnsub = null, _annUnsub = null;
 let _notifPanelEl = null;
 let _personalNotifs = [], _announcements = [], _annSeenAt = null, _dismissedAnns = [];
+let _prevUnreadCount = 0;
 
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar'); bar.innerHTML = '';
@@ -546,6 +549,11 @@ function _mergeNotifs(uid) {
     + _announcements.filter(n => (n.createdAt?.seconds||0) > annSec).length;
   const badge = document.querySelector('.notif-badge');
   if (badge) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.style.display = unread > 0 ? 'block' : 'none'; }
+  if (unread > _prevUnreadCount) {
+    const bell = document.querySelector('.notif-bell');
+    if (bell) { bell.classList.remove('ringing'); void bell.offsetWidth; bell.classList.add('ringing'); setTimeout(() => bell.classList.remove('ringing'), 1800); }
+  }
+  _prevUnreadCount = unread;
   if (_notifPanelEl) {
     const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
     list.innerHTML = '';
