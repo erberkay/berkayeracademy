@@ -400,6 +400,24 @@ function renderForm(user) {
           type: 'forum',
         }).catch(() => {});
       }
+      // Notify followers
+      db.collection('follows').where('followeeId','==',user.uid).limit(100).get().then(followSnap => {
+        if (!followSnap || followSnap.empty) return;
+        const batch = db.batch();
+        const authorName = user.displayName?.split(' ')[0] || 'Biri';
+        followSnap.docs.forEach(d => {
+          const notifRef = db.collection('notifications').doc(d.data().followerId).collection('items').doc();
+          batch.set(notifRef, {
+            text: `${authorName} yeni bir konu açtı: "${title.slice(0,50)}"`,
+            postId: ref.id,
+            fromId: user.uid,
+            fromName: authorName,
+            read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+        });
+        batch.commit().catch(() => {});
+      }).catch(() => {});
       window.location.href = 'forum.html';
     } catch(e) {
       submitBtn.disabled = false;
