@@ -345,6 +345,18 @@ function fmtDateTime(ts) {
 // ── Chat Panel ─────────────────────────────────────────────────────
 function _chatId(a, b) { return [a, b].sort().join('_'); }
 
+function _playMsgSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; o.type = 'sine';
+    g.gain.setValueAtTime(0.18, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.25);
+  } catch(e) {}
+}
+
 let _chatListUnsub = null, _msgUnsub = null;
 let _activeChatId = null, _activeChatOther = null;
 let _chatPanelEl = null, _chatThreadsEl = null, _chatMsgsEl = null, _chatMainEl = null;
@@ -385,10 +397,12 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
   if (_user) db.collection('chats').doc(cid).update({ unreadBy:firebase.firestore.FieldValue.arrayRemove(_user.uid) }).catch(()=>{});
   // Subscribe real-time
   if (_msgUnsub) { _msgUnsub(); _msgUnsub = null; }
+  let _msgInitialized = false;
   _msgUnsub = db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limit(60)
     .onSnapshot(snap => {
+      const prevCount = _chatMsgsEl.querySelectorAll('.chat-msg').length;
       _chatMsgsEl.innerHTML = '';
-      if (snap.empty) { _chatMsgsEl.innerHTML = '<div class="chat-empty-state"><div class="chat-empty-state-icon">💬</div><div>Henüz mesaj yok.<br>İlk mesajı sen gönder.</div></div>'; return; }
+      if (snap.empty) { _chatMsgsEl.innerHTML = '<div class="chat-empty-state"><div class="chat-empty-state-icon">💬</div><div>Henüz mesaj yok.<br>İlk mesajı sen gönder.</div></div>'; _msgInitialized = true; return; }
       snap.docs.forEach(d => {
         const m = d.data(); const myMsg = m.fromUid === _user?.uid;
         const wrap = document.createElement('div'); wrap.className = 'chat-msg' + (myMsg ? ' mine' : '');
@@ -397,6 +411,12 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         wrap.append(txt, time); _chatMsgsEl.append(wrap);
       });
       _chatMsgsEl.scrollTop = _chatMsgsEl.scrollHeight;
+      // Play sound on new incoming message (not on initial load)
+      if (_msgInitialized && snap.docs.length > prevCount) {
+        const last = snap.docs[snap.docs.length - 1].data();
+        if (last.fromUid !== _user?.uid) _playMsgSound();
+      }
+      _msgInitialized = true;
     }, err => {
       console.error('messages snapshot:', err);
       if (_chatMsgsEl) _chatMsgsEl.innerHTML = '<div style="color:var(--dim);font-size:.8rem;text-align:center;padding:20px">Mesajlar yüklenemedi.</div>';
@@ -497,7 +517,14 @@ function initChatPanel(user) {
       searchResults.classList.add('open');
     }, 300);
   };
-  document.addEventListener('click', e => { if (!searchWrap.contains(e.target)) searchResults.classList.remove('open'); });
+  document.addEventListener('click', e => {
+    if (!searchWrap.contains(e.target)) searchResults.classList.remove('open');
+    // Re-show mobile btn if panel closed from outside tap
+    if (!panel.contains(e.target) && panel.classList.contains('mobile-open')) {
+      panel.classList.remove('mobile-open');
+      mobileBtn.style.display = 'flex';
+    }
+  });
   // Resize grip — grows RIGHT and DOWN
   const grip = document.createElement('div'); grip.className = 'chat-resize-grip'; panel.append(grip);
   grip.addEventListener('mousedown', e => {
@@ -518,7 +545,14 @@ function initChatPanel(user) {
   if (layout) layout.append(panel);
   // Mobile toggle button
   const mobileBtn = document.createElement('button'); mobileBtn.className = 'chat-mobile-btn'; mobileBtn.textContent = '💬'; document.body.append(mobileBtn);
-  mobileBtn.onclick = () => panel.classList.toggle('mobile-open');
+  mobileBtn.onclick = () => {
+    panel.classList.toggle('mobile-open');
+    mobileBtn.style.display = panel.classList.contains('mobile-open') ? 'none' : 'flex';
+  };
+  // Hide mobileBtn when panel closes via back-tap
+  panel.addEventListener('click', e => {
+    if (e.target === panel && !panel.classList.contains('mobile-open')) mobileBtn.style.display = 'flex';
+  });
   // Load chat list real-time — admin sees all, others see own
   const chatQuery = isAdmin(user)
     ? db.collection('chats').orderBy('lastAt','desc').limit(100)
