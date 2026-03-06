@@ -68,6 +68,36 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .profile-social-mc:hover { background:rgba(82,158,214,.18); }
 .contact-btn { display:block; width:100%; margin-top:10px; padding:8px; text-align:center; background:rgba(143,200,232,.1); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; cursor:pointer; text-decoration:none; transition:background .15s; }
 .contact-btn:hover { background:rgba(143,200,232,.2); }
+/* ── Messaging ── */
+.msg-btn { display:block; width:100%; margin-top:10px; padding:8px; text-align:center; background:rgba(143,200,232,.1); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; cursor:pointer; transition:background .15s; }
+.msg-btn:hover { background:rgba(143,200,232,.2); }
+.msg-compose { margin-top:8px; display:none; }
+.msg-compose.open { display:block; }
+.msg-compose-ta { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:4px; color:var(--white); font-size:.62rem; padding:7px 9px; font-family:'Space Mono',monospace; resize:none; min-height:60px; outline:none; transition:border-color .15s; }
+.msg-compose-ta:focus { border-color:var(--ice); }
+.msg-compose-send { margin-top:5px; display:block; width:100%; padding:7px; text-align:center; background:rgba(143,200,232,.15); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-size:.62rem; cursor:pointer; transition:background .15s; }
+.msg-compose-send:hover { background:rgba(143,200,232,.25); }
+.inbox-thread { border:1px solid var(--mid); border-radius:6px; margin-bottom:8px; cursor:pointer; overflow:hidden; transition:border-color .15s; }
+.inbox-thread:hover { border-color:var(--mid2); }
+.inbox-thread.unread { border-color:rgba(232,184,75,.4); }
+.inbox-thread-hdr { padding:10px 12px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.inbox-thread-left { flex:1; min-width:0; }
+.inbox-thread-name { font-size:.63rem; font-weight:700; color:var(--white); }
+.inbox-thread.unread .inbox-thread-name { color:var(--gold); }
+.inbox-thread-preview { font-size:.56rem; color:var(--dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.inbox-thread-time { font-size:.50rem; color:var(--dim); white-space:nowrap; flex-shrink:0; }
+.inbox-msgs { display:none; padding:8px 12px; border-top:1px solid var(--mid); }
+.inbox-thread.open .inbox-msgs { display:block; }
+.msg-bubble { margin-bottom:8px; }
+.msg-bubble.mine { text-align:right; }
+.msg-bubble-text { display:inline-block; font-size:.62rem; color:var(--white); background:var(--mid); padding:6px 10px; border-radius:6px; line-height:1.5; max-width:85%; text-align:left; }
+.msg-bubble.mine .msg-bubble-text { background:rgba(143,200,232,.15); border:1px solid rgba(143,200,232,.2); }
+.msg-bubble-meta { font-size:.48rem; color:var(--dim); margin-top:2px; }
+.msg-reply-row { display:flex; gap:5px; margin-top:8px; padding-top:6px; border-top:1px solid var(--mid); }
+.msg-reply-ta { flex:1; background:var(--mid2); border:1px solid var(--mid); border-radius:4px; color:var(--white); font-size:.60rem; padding:5px 8px; font-family:'Space Mono',monospace; resize:none; outline:none; }
+.msg-reply-ta:focus { border-color:var(--ice); }
+.msg-reply-btn { background:rgba(143,200,232,.1); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-size:.58rem; padding:5px 10px; cursor:pointer; white-space:nowrap; transition:background .15s; }
+.msg-reply-btn:hover { background:rgba(143,200,232,.2); }
 .profile-stats { display:flex; gap:16px; border-top:1px solid rgba(255,255,255,.05); padding-top:12px; }
 .pstat { text-align:center; }
 .pstat-val { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); }
@@ -216,6 +246,82 @@ function fmtDate(ts) {
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return d.toLocaleDateString('tr-TR', {month:'long', year:'numeric'});
 }
+function fmtDateTime(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('tr-TR', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+}
+
+// ── Messaging ──────────────────────────────────────────────────────
+function _chatId(a, b) { return [a, b].sort().join('_'); }
+
+async function sendMessage(fromUid, fromName, toUid, toName, text) {
+  const cid = _chatId(fromUid, toUid);
+  const chatRef = db.collection('chats').doc(cid);
+  await chatRef.set({ participants:[fromUid,toUid], names:{[fromUid]:fromName,[toUid]:toName}, lastMessage:text.slice(0,100), lastAt:firebase.firestore.FieldValue.serverTimestamp(), unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid) }, { merge:true });
+  await chatRef.collection('messages').add({ fromUid, text, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+}
+
+async function loadThreadMessages(cid, container, myUid) {
+  const replyRow = container.querySelector('.msg-reply-row');
+  container.innerHTML = '';
+  if (replyRow) container.append(replyRow);
+  const snap = await db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limit(40).get().catch(()=>null);
+  if (!snap) return;
+  const frag = document.createDocumentFragment();
+  snap.docs.forEach(d => {
+    const m = d.data();
+    const bub = document.createElement('div'); bub.className = 'msg-bubble' + (m.fromUid===myUid ? ' mine' : '');
+    const txt = document.createElement('div'); txt.className = 'msg-bubble-text'; txt.textContent = m.text;
+    const meta = document.createElement('div'); meta.className = 'msg-bubble-meta'; meta.textContent = fmtDateTime(m.createdAt);
+    bub.append(txt, meta); frag.append(bub);
+  });
+  container.insertBefore(frag, replyRow || null);
+}
+
+async function renderInbox(container, uid) {
+  container.innerHTML = '<div class="activity-empty">Yükleniyor…</div>';
+  const snap = await db.collection('chats').where('participants','array-contains',uid).orderBy('lastAt','desc').limit(30).get().catch(()=>null);
+  container.innerHTML = '';
+  if (!snap || snap.empty) { container.innerHTML = '<div class="activity-empty">Gelen kutusu boş.</div>'; return; }
+  snap.docs.forEach(chatDoc => {
+    const chat = chatDoc.data();
+    const otherId = chat.participants.find(p => p !== uid) || '';
+    const otherName = chat.names?.[otherId] || 'Üye';
+    const isUnread = chat.unreadBy?.includes(uid);
+    const thread = document.createElement('div'); thread.className = 'inbox-thread' + (isUnread ? ' unread' : '');
+    const hdr = document.createElement('div'); hdr.className = 'inbox-thread-hdr';
+    const left = document.createElement('div'); left.className = 'inbox-thread-left';
+    const nm = document.createElement('div'); nm.className = 'inbox-thread-name'; nm.textContent = otherName;
+    const prev = document.createElement('div'); prev.className = 'inbox-thread-preview'; prev.textContent = chat.lastMessage || '';
+    const timed = document.createElement('div'); timed.className = 'inbox-thread-time'; timed.textContent = fmtDateTime(chat.lastAt);
+    left.append(nm, prev); hdr.append(left, timed); thread.append(hdr);
+    const msgs = document.createElement('div'); msgs.className = 'inbox-msgs'; thread.append(msgs);
+    const replyRow = document.createElement('div'); replyRow.className = 'msg-reply-row';
+    const rTa = document.createElement('textarea'); rTa.className = 'msg-reply-ta'; rTa.placeholder = 'Yanıtla…'; rTa.rows = 2;
+    const rBtn = document.createElement('button'); rBtn.className = 'msg-reply-btn'; rBtn.textContent = 'Gönder';
+    replyRow.append(rTa, rBtn); msgs.append(replyRow);
+    rBtn.onclick = async e => {
+      e.stopPropagation(); const txt = rTa.value.trim(); if (!txt) return;
+      rBtn.disabled = true;
+      const myName = _user?.displayName?.split(' ')[0] || 'Üye';
+      await sendMessage(uid, myName, otherId, otherName, txt).catch(console.error);
+      rTa.value = ''; rBtn.disabled = false;
+      loadThreadMessages(chatDoc.id, msgs, uid);
+      prev.textContent = txt; thread.classList.remove('unread');
+    };
+    thread.onclick = e => {
+      if (e.target===rTa || e.target===rBtn) return;
+      const wasOpen = thread.classList.contains('open');
+      thread.classList.toggle('open');
+      if (!wasOpen) {
+        loadThreadMessages(chatDoc.id, msgs, uid);
+        if (isUnread) { db.collection('chats').doc(chatDoc.id).update({ unreadBy:firebase.firestore.FieldValue.arrayRemove(uid) }).catch(()=>{}); thread.classList.remove('unread'); }
+      }
+    };
+    container.append(thread);
+  });
+}
 
 let _notifUnsub = null, _annUnsub = null;
 let _notifPanelEl = null;
@@ -340,20 +446,22 @@ async function renderProfile() {
     return;
   }
 
-  // Load profile doc
-  const profDoc = await db.collection('users').doc(uid).get();
+  // Load profile doc — force server to get latest (bypasses offline cache)
+  const profDoc = await db.collection('users').doc(uid).get({ source: 'server' }).catch(() => db.collection('users').doc(uid).get());
   const prof = profDoc.exists ? profDoc.data() : {};
   const isOwn = _user?.uid === uid;
 
   // Load auth display name/photo if own profile
   const displayName = prof.displayName || (_user?.uid===uid ? _user.displayName : null) || 'Üye';
   const photoURL    = prof.customPhotoURL || prof.photoURL || (_user?.uid===uid ? _user.photoURL : null) || '';
-  console.log('[render] customPhotoURL len:', prof.customPhotoURL?.length || 0, '| photoURL starts:', photoURL?.slice(0,30));
 
-  // Load posts & replies count
-  const postsSnap = await db.collection('forum').where('authorId','==',uid).limit(20).get();
-  const posts = postsSnap.docs.map(d => ({id:d.id,...d.data()}));
-  const replyCount = prof.replyCount || 0;
+  // Load posts & replies
+  const [postsSnap, repliesSnap] = await Promise.all([
+    db.collection('forum').where('authorId','==',uid).orderBy('createdAt','desc').limit(10).get().catch(()=>null),
+    db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(8).get().catch(()=>null),
+  ]);
+  const posts = postsSnap ? postsSnap.docs.map(d => ({id:d.id,...d.data()})) : [];
+  const replies = repliesSnap ? repliesSnap.docs.map(d => ({id:d.id,...d.data(), postId:d.ref.parent.parent.id})) : [];
 
   const layout = document.getElementById('layout'); layout.innerHTML = '';
 
@@ -448,13 +556,27 @@ async function renderProfile() {
 
   info.append(statsDiv);
 
-  // Contact button (other people's profiles)
+  // Message button (other people's profiles)
   if (!isOwn && _user) {
-    const contactHref = prof.instagram ? prof.instagram : `mailto:${prof.email || ''}`;
-    const contactBtn = document.createElement('a'); contactBtn.className = 'contact-btn';
-    contactBtn.href = contactHref; contactBtn.target = '_blank'; contactBtn.rel = 'noopener';
-    contactBtn.textContent = prof.instagram ? '📩 Instagram\'dan Ulaş' : '📩 İletişim';
-    info.append(contactBtn);
+    const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = '💬 Mesaj Gönder';
+    const compose = document.createElement('div'); compose.className = 'msg-compose';
+    const ta = document.createElement('textarea'); ta.className = 'msg-compose-ta'; ta.placeholder = 'Mesajını yaz…';
+    const sendBtn = document.createElement('button'); sendBtn.className = 'msg-compose-send'; sendBtn.textContent = 'Gönder';
+    compose.append(ta, sendBtn);
+    msgBtn.onclick = () => { compose.classList.toggle('open'); if (compose.classList.contains('open')) ta.focus(); };
+    sendBtn.onclick = async () => {
+      const txt = ta.value.trim(); if (!txt) { ta.focus(); return; }
+      sendBtn.disabled = true; sendBtn.textContent = '⏳';
+      const myName = _user.displayName?.split(' ')[0] || 'Üye';
+      const toName = displayName.split(' ')[0] || 'Üye';
+      try {
+        await sendMessage(_user.uid, myName, uid, toName, txt);
+        ta.value = ''; compose.classList.remove('open'); msgBtn.textContent = '✓ Mesaj Gönderildi';
+        setTimeout(() => { msgBtn.textContent = '💬 Mesaj Gönder'; }, 2500);
+      } catch(e) { console.error(e); }
+      sendBtn.disabled = false; sendBtn.textContent = 'Gönder';
+    };
+    info.append(msgBtn, compose);
   }
 
   // Edit button (own profile only)
@@ -583,7 +705,6 @@ async function renderProfile() {
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
       try {
-        console.log('[save] uid:', uid, '| _user:', _user?.uid, '| photoLen:', _customPhotoData?.length || 0);
         const update = {
           displayName: _user?.displayName || displayName,
           photoURL:    _user?.photoURL    || photoURL,
@@ -598,13 +719,16 @@ async function renderProfile() {
           collabStatus:  selCollab,
         };
         if (!prof.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
-        console.log('[save] writing to Firestore...');
         await db.collection('users').doc(uid).set(update, { merge: true });
-        console.log('[save] success');
+        // Immediately update avatar in DOM without waiting for re-render
+        if (_customPhotoData) {
+          const avWrap = document.querySelector('.profile-avatar-wrap');
+          if (avWrap) { const ex = avWrap.querySelector('img'); if (ex) { ex.src = _customPhotoData; } else { avWrap.innerHTML = ''; const ni = document.createElement('img'); ni.className = 'profile-avatar'; ni.src = _customPhotoData; avWrap.append(ni); } }
+        }
         saveBtn.textContent = '✓ Kaydedildi';
-        setTimeout(() => renderProfile(), 800);
+        setTimeout(() => renderProfile(), 1000);
       } catch(e) {
-        console.error('[save] error:', e.code, e.message, e);
+        console.error('[save] error:', e);
         saveBtn.disabled = false; saveBtn.textContent = '⚠️ ' + (e.code || e.message || 'Kayıt başarısız');
       }
     };
@@ -700,7 +824,7 @@ async function renderProfile() {
     const e = document.createElement('div'); e.className = 'activity-empty'; e.textContent = 'Henüz konu açılmamış.';
     postsSec.append(e);
   } else {
-    posts.slice(0,10).forEach(p => {
+    posts.forEach(p => {
       const item = document.createElement('div'); item.className = 'activity-item';
       item.onclick = () => location.href = `post.html?id=${p.id}`;
       const t = document.createElement('div'); t.className = 'activity-item-title';
@@ -713,6 +837,64 @@ async function renderProfile() {
     });
   }
   actCol.append(postsSec);
+
+  // Recent replies
+  const repliesSec = document.createElement('div'); repliesSec.className = 'activity-section';
+  const repliesTitle = document.createElement('div'); repliesTitle.className = 'activity-title';
+  repliesTitle.textContent = 'Son Yorumlar';
+  repliesSec.append(repliesTitle);
+  if (replies.length === 0) {
+    const e = document.createElement('div'); e.className = 'activity-empty'; e.textContent = 'Henüz yorum yapılmamış.';
+    repliesSec.append(e);
+  } else {
+    replies.forEach(r => {
+      const item = document.createElement('div'); item.className = 'activity-item';
+      item.onclick = () => location.href = `post.html?id=${r.postId}`;
+      const t = document.createElement('div'); t.className = 'activity-item-title';
+      t.textContent = r.text?.slice(0,80) + (r.text?.length > 80 ? '…' : '') || '';
+      const m = document.createElement('div'); m.className = 'activity-item-meta';
+      const dateEl = document.createElement('span'); dateEl.textContent = fmtDate(r.createdAt);
+      m.append(dateEl); item.append(t, m); repliesSec.append(item);
+    });
+  }
+  actCol.append(repliesSec);
+
+  // Inbox (own profile only)
+  if (isOwn && _user) {
+    const inboxSec = document.createElement('div'); inboxSec.className = 'activity-section';
+    const inboxTitle = document.createElement('div'); inboxTitle.className = 'activity-title'; inboxTitle.textContent = '📬 Gelen Kutusu';
+    const inboxList = document.createElement('div');
+    inboxSec.append(inboxTitle, inboxList);
+    actCol.append(inboxSec);
+    renderInbox(inboxList, _user.uid);
+  }
+
+  // Admin: all conversations
+  if (isAdmin(_user) && isOwn) {
+    const adminMsgSec = document.createElement('div'); adminMsgSec.className = 'activity-section';
+    const adminMsgTitle = document.createElement('div'); adminMsgTitle.className = 'activity-title'; adminMsgTitle.textContent = '🛡 Tüm Mesajlar';
+    const adminMsgList = document.createElement('div');
+    adminMsgSec.append(adminMsgTitle, adminMsgList);
+    actCol.append(adminMsgSec);
+    db.collection('chats').orderBy('lastAt','desc').limit(50).get().then(snap => {
+      if (snap.empty) { adminMsgList.innerHTML = '<div class="activity-empty">Mesaj yok.</div>'; return; }
+      snap.docs.forEach(chatDoc => {
+        const chat = chatDoc.data();
+        const names = Object.values(chat.names||{}).join(' ↔ ');
+        const thread = document.createElement('div'); thread.className = 'inbox-thread';
+        const hdr = document.createElement('div'); hdr.className = 'inbox-thread-hdr';
+        const left = document.createElement('div'); left.className = 'inbox-thread-left';
+        const nm = document.createElement('div'); nm.className = 'inbox-thread-name'; nm.textContent = names;
+        const prev = document.createElement('div'); prev.className = 'inbox-thread-preview'; prev.textContent = chat.lastMessage || '';
+        const timed = document.createElement('div'); timed.className = 'inbox-thread-time'; timed.textContent = fmtDateTime(chat.lastAt);
+        left.append(nm, prev); hdr.append(left, timed); thread.append(hdr);
+        const msgs = document.createElement('div'); msgs.className = 'inbox-msgs'; thread.append(msgs);
+        thread.onclick = () => { thread.classList.toggle('open'); if (thread.classList.contains('open')) loadThreadMessages(chatDoc.id, msgs, _user.uid); };
+        adminMsgList.append(thread);
+      });
+    }).catch(console.error);
+  }
+
   layout.append(actCol);
 }
 
