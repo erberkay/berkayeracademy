@@ -86,6 +86,9 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .follow-btn { display:block; width:100%; margin-top:8px; padding:9px; text-align:center; background:rgba(232,184,75,.08); border:1.5px solid rgba(232,184,75,.4); color:var(--gold); border-radius:8px; font-family:'Space Mono',monospace; font-size:.76rem; cursor:pointer; transition:all .15s; letter-spacing:.03em; }
 .follow-btn:hover { background:rgba(232,184,75,.16); border-color:rgba(232,184,75,.75); }
 .follow-btn.following { background:rgba(232,184,75,.12); border-color:var(--gold); }
+.collab-req-btn { display:block; width:100%; margin-top:8px; padding:9px; text-align:center; background:rgba(180,120,255,.08); border:1.5px solid rgba(180,120,255,.4); color:#b478ff; border-radius:8px; font-family:'Space Mono',monospace; font-size:.76rem; cursor:pointer; transition:all .15s; letter-spacing:.03em; }
+.collab-req-btn:hover { background:rgba(180,120,255,.16); border-color:rgba(180,120,255,.75); }
+.collab-req-btn:disabled { opacity:.6; cursor:default; }
 
 /* ── Chat Panel ── */
 .chat-panel { background:var(--card); border:1px solid var(--mid); border-radius:14px; overflow:hidden; position:sticky; top:70px; align-self:start; width:360px; height:580px; min-height:300px; min-width:360px; max-width:640px; resize:none; display:flex; flex-direction:column; box-shadow:0 4px 32px rgba(0,0,0,.35); }
@@ -671,7 +674,8 @@ function _mergeNotifs(uid) {
       const icon = n._t==='a' ? '📢 ' : '';
       const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       item.innerHTML = `<div class="notif-item-text">${icon}${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
-      if (n.fromUid) item.onclick = () => { _closePanels(); openChatWith(n.fromUid); };
+      if (n.type === 'collab' && n.fromUid) item.onclick = () => { location.href = `profile.html?uid=${n.fromUid}`; };
+      else if (n.fromUid) item.onclick = () => { _closePanels(); openChatWith(n.fromUid); };
       else if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
       if (n._id) {
         const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
@@ -893,6 +897,27 @@ async function renderProfile() {
       followBtn.disabled = false;
     };
     info.append(followBtn);
+
+    if (prof.collabStatus === 'open') {
+      const collabReqBtn = document.createElement('button');
+      collabReqBtn.className = 'collab-req-btn';
+      collabReqBtn.textContent = '🤝 Collab İsteği Gönder';
+      collabReqBtn.onclick = async () => {
+        collabReqBtn.disabled = true;
+        collabReqBtn.textContent = 'Gönderiliyor…';
+        const fromName = _user.displayName?.split(' ')[0] || 'Biri';
+        await db.collection('notifications').doc(uid).collection('items').add({
+          text: `${fromName} sana collab isteği gönderdi`,
+          fromUid: _user.uid,
+          type: 'collab',
+          read: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        }).catch(console.error);
+        collabReqBtn.textContent = '✓ İstek Gönderildi';
+        setTimeout(() => { collabReqBtn.disabled = false; collabReqBtn.textContent = '🤝 Collab İsteği Gönder'; }, 5000);
+      };
+      info.append(collabReqBtn);
+    }
   }
 
   // Edit button (own profile only)
