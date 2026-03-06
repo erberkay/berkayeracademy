@@ -329,9 +329,16 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
 
 function _buildChatThread(chatDoc, myUid) {
   const chat = chatDoc.data();
-  const otherId = chat.participants.find(p => p !== myUid) || '';
-  const otherName = chat.names?.[otherId] || 'Üye';
-  const otherPhoto = null; // we don't have photos in chat doc
+  const adminViewing = chat.participants && !chat.participants.includes(myUid);
+  let otherId, otherName;
+  if (adminViewing) {
+    otherId = chat.participants?.[0] || '';
+    otherName = (chat.participants || []).map(p => chat.names?.[p] || 'Üye').join(' ↔ ');
+  } else {
+    otherId = chat.participants?.find(p => p !== myUid) || '';
+    otherName = chat.names?.[otherId] || 'Üye';
+  }
+  const otherPhoto = null;
   const isUnread = chat.unreadBy?.includes(myUid);
   const el = document.createElement('div');
   el.className = 'chat-thread' + (isUnread ? ' unread' : '');
@@ -418,12 +425,14 @@ function initChatPanel(user) {
   // Mobile toggle button
   const mobileBtn = document.createElement('button'); mobileBtn.className = 'chat-mobile-btn'; mobileBtn.textContent = '💬'; document.body.append(mobileBtn);
   mobileBtn.onclick = () => panel.classList.toggle('mobile-open');
-  // Load chat list real-time
-  _chatListUnsub = db.collection('chats').where('participants','array-contains',user.uid).orderBy('lastAt','desc').limit(30)
-    .onSnapshot(snap => {
-      _chatThreadsEl.innerHTML = '';
-      snap.docs.forEach(chatDoc => _chatThreadsEl.append(_buildChatThread(chatDoc, user.uid)));
-    }, () => {});
+  // Load chat list real-time — admin sees all, others see own
+  const chatQuery = isAdmin(user)
+    ? db.collection('chats').orderBy('lastAt','desc').limit(100)
+    : db.collection('chats').where('participants','array-contains',user.uid).orderBy('lastAt','desc').limit(30);
+  _chatListUnsub = chatQuery.onSnapshot(snap => {
+    _chatThreadsEl.innerHTML = '';
+    snap.docs.forEach(chatDoc => _chatThreadsEl.append(_buildChatThread(chatDoc, user.uid)));
+  }, () => {});
 }
 
 function openChatWith(toUid, toName, toPhoto) {
