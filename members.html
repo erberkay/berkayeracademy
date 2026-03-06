@@ -547,12 +547,12 @@ async function loadMembers() {
   showSkeletons();
   const [snap, postsSnap, repliesSnap] = await Promise.all([
     db.collection('users').limit(200).get(),
-    db.collection('forum').get(),
-    db.collectionGroup('replies').get(),
+    db.collection('forum').get().catch(() => null),
+    db.collectionGroup('replies').get().catch(() => null),
   ]);
   const postCounts = {}, replyCounts = {};
-  postsSnap.docs.forEach(d => { const a = d.data().authorId; if (a) postCounts[a] = (postCounts[a]||0)+1; });
-  repliesSnap.docs.forEach(d => { const a = d.data().authorId; if (a) replyCounts[a] = (replyCounts[a]||0)+1; });
+  postsSnap?.docs.forEach(d => { const a = d.data().authorId; if (a) postCounts[a] = (postCounts[a]||0)+1; });
+  repliesSnap?.docs.forEach(d => { const a = d.data().authorId; if (a) replyCounts[a] = (replyCounts[a]||0)+1; });
   _allMembers = snap.docs.map(d => { const obj = d.data(); obj._uid = d.id; obj.postCount = postCounts[d.id]||0; obj.replyCount = replyCounts[d.id]||0; return obj; });
   _allMembers.sort((a,b) => (b.joinedAt?.toMillis?.()??0) - (a.joinedAt?.toMillis?.()??0));
 
