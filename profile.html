@@ -373,6 +373,7 @@ async function _sendMsg(fromUid, fromName, fromPhoto, toUid, toName, toPhoto, te
   db.collection('notifications').doc(toUid).collection('items').add({
     text: `💬 ${fromName}: ${text.slice(0,60)}${text.length>60?'…':''}`,
     read: false,
+    fromUid,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
   }).catch(() => {});
 }
@@ -665,7 +666,8 @@ function _mergeNotifs(uid) {
       const icon = n._t==='a' ? '📢 ' : '';
       const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       item.innerHTML = `<div class="notif-item-text">${icon}${n.text || 'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
-      if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
+      if (n.fromUid) item.onclick = () => { _closePanels(); openChatWith(n.fromUid); };
+      else if (n.postId) item.onclick = () => { location.href = `post.html?id=${n.postId}`; };
       if (n._id) {
         const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
         del.onclick = e => {
