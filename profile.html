@@ -749,7 +749,7 @@ async function renderProfile() {
   // If userReplies is empty, fallback to collectionGroup (requires authorId collection-group index)
   let replyDocs = repliesSnap?.docs || [];
   if (replyDocs.length === 0) {
-    const cgSnap = await db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(20).get().catch(()=>null);
+    const cgSnap = await db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(20).get().catch(e=>{console.error('collectionGroup replies error:',e);return null;});
     if (cgSnap && !cgSnap.empty) {
       replyDocs = cgSnap.docs.map(d => ({ id: d.id, ...d.data(), postId: d.ref.parent.parent.id }));
     }
