@@ -750,8 +750,10 @@ async function renderProfile() {
     .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0,10);
   // If userReplies is empty, fallback to collectionGroup (requires authorId collection-group index)
   let replyDocs = repliesSnap?.docs || [];
+  console.log('[replies] userReplies count:', replyDocs.length, 'uid:', uid);
   if (replyDocs.length === 0) {
-    const cgSnap = await db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(20).get().catch(e=>{console.error('collectionGroup replies error:',e);return null;});
+    const cgSnap = await db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(20).get().catch(e=>{console.error('[replies] collectionGroup error:',e);return null;});
+    console.log('[replies] cgSnap:', cgSnap ? (cgSnap.empty ? 'empty' : cgSnap.size + ' docs') : 'null');
     if (cgSnap && !cgSnap.empty) {
       replyDocs = cgSnap.docs.map(d => ({ id: d.id, ...d.data(), postId: d.ref.parent.parent.id }));
     }
@@ -759,6 +761,7 @@ async function renderProfile() {
     replyDocs = replyDocs.map(d => ({id:d.id,...d.data()}));
   }
   const replies = replyDocs.slice(0, 8);
+  console.log('[replies] final count:', replies.length);
 
   const layout = document.getElementById('layout');
   // Remove all children except chat panel (which persists across renders)
