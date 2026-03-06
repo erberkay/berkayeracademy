@@ -699,9 +699,9 @@ async function renderProfile() {
     return;
   }
 
-  // Load profile doc — force server to get latest (bypasses offline cache)
-  const profDoc = await db.collection('users').doc(uid).get({ source: 'server' }).catch(() => db.collection('users').doc(uid).get());
-  const prof = profDoc.exists ? profDoc.data() : {};
+  // Load profile doc
+  const profDoc = await db.collection('users').doc(uid).get().catch(() => null);
+  const prof = profDoc?.exists ? profDoc.data() : {};
   const isOwn = _user?.uid === uid;
 
   // Load auth display name/photo if own profile
@@ -968,10 +968,12 @@ async function renderProfile() {
         saveBtn.textContent = '✓ Kaydedildi';
         showToast('✓ Profil güncellendi!');
         setTimeout(async () => {
+          // Force server read after save to reflect latest data
+          await db.collection('users').doc(uid).get({ source: 'server' }).catch(() => {});
           await renderProfile().catch(console.error);
           // Re-open edit form so user can see saved values
           document.querySelector('.edit-btn')?.click();
-        }, 2000);
+        }, 1000);
       } catch(e) {
         console.error('[save] error:', e);
         saveBtn.disabled = false; saveBtn.textContent = '⚠️ Kayıt başarısız';
@@ -1154,10 +1156,10 @@ auth.onAuthStateChanged(async user => {
   initChatPanel(user);
   if (user) {
     const uref = db.collection('users').doc(user.uid);
-    const snap = await uref.get().catch(() => null);
+    const snap = await uref.get({ source: 'server' }).catch(() => uref.get().catch(() => null));
     const update = { displayName: user.displayName || '', photoURL: user.photoURL || '', email: user.email };
     if (!snap?.data()?.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
-    uref.set(update, { merge: true }).catch(() => {});
+    await uref.set(update, { merge: true }).catch(console.error);
   }
   await renderProfile();
 });
