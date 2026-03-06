@@ -597,6 +597,15 @@ async function renderReplies(layout, post) {
         createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
       });
       await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(1) });
+      // Track in user's reply subcollection (for profile display) + increment user replyCount
+      db.collection('users').doc(_user.uid).collection('userReplies').add({
+        postId,
+        text: txt.slice(0, 200),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }).catch(() => {});
+      db.collection('users').doc(_user.uid).update({
+        replyCount: firebase.firestore.FieldValue.increment(1),
+      }).catch(() => {});
       // Notify post author
       if (post.authorId && post.authorId !== _user.uid) {
         db.collection('notifications').doc(post.authorId).collection('items').add({

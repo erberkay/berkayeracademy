@@ -677,12 +677,11 @@ async function renderProfile() {
   // Load posts & replies
   const [postsSnap, repliesSnap] = await Promise.all([
     db.collection('forum').where('authorId','==',uid).limit(20).get().catch(e=>{console.error('posts query:',e);return null;}),
-    db.collectionGroup('replies').where('authorId','==',uid).limit(20).get().catch(e=>{console.error('replies query:',e);return null;}),
+    db.collection('users').doc(uid).collection('userReplies').orderBy('createdAt','desc').limit(20).get().catch(e=>{console.error('replies query:',e);return null;}),
   ]);
   const posts = (postsSnap ? postsSnap.docs.map(d => ({id:d.id,...d.data()})) : [])
     .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0,10);
-  const replies = (repliesSnap ? repliesSnap.docs.map(d => ({id:d.id,...d.data(), postId:d.ref.parent.parent.id})) : [])
-    .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0,8);
+  const replies = (repliesSnap ? repliesSnap.docs.map(d => ({id:d.id,...d.data()})) : []).slice(0,8);
 
   const layout = document.getElementById('layout');
   // Remove all children except chat panel (which persists across renders)
@@ -936,7 +935,8 @@ async function renderProfile() {
         setTimeout(() => renderProfile(), 1000);
       } catch(e) {
         console.error('[save] error:', e);
-        saveBtn.disabled = false; saveBtn.textContent = '⚠️ ' + (e.code || e.message || 'Kayıt başarısız');
+        saveBtn.disabled = false; saveBtn.textContent = '⚠️ Kayıt başarısız';
+        showToast('⚠️ Kayıt hatası: ' + (e.code || e.message || 'Bilinmeyen hata'), 'error');
       }
     };
     editForm.append(saveBtn);
