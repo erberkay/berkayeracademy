@@ -89,6 +89,16 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .collab-req-btn { display:block; width:100%; margin-top:8px; padding:9px; text-align:center; background:rgba(180,120,255,.08); border:1.5px solid rgba(180,120,255,.4); color:#b478ff; border-radius:8px; font-family:'Space Mono',monospace; font-size:.76rem; cursor:pointer; transition:all .15s; letter-spacing:.03em; }
 .collab-req-btn:hover { background:rgba(180,120,255,.16); border-color:rgba(180,120,255,.75); }
 .collab-req-btn:disabled { opacity:.6; cursor:default; }
+.collab-req-card { background:rgba(180,120,255,.08); border:1px solid rgba(180,120,255,.3); border-radius:12px; padding:12px 14px; min-width:180px; }
+.collab-req-card-label { font-size:.78rem; color:#b478ff; margin-bottom:10px; font-weight:700; }
+.collab-req-card-btns { display:flex; gap:8px; }
+.collab-req-accept { flex:1; padding:7px; background:rgba(80,200,120,.15); border:1px solid rgba(80,200,120,.4); color:#50c878; border-radius:6px; font-family:'Space Mono',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+.collab-req-accept:hover { background:rgba(80,200,120,.25); }
+.collab-req-reject { flex:1; padding:7px; background:rgba(184,45,69,.12); border:1px solid rgba(184,45,69,.35); color:var(--crimson); border-radius:6px; font-family:'Space Mono',monospace; font-size:.7rem; cursor:pointer; transition:all .15s; }
+.collab-req-reject:hover { background:rgba(184,45,69,.22); }
+.collab-req-card-status { font-size:.75rem; margin-top:4px; }
+.collab-req-card-status.accepted { color:#50c878; }
+.collab-req-card-status.rejected { color:var(--crimson); }
 
 /* ── Chat Panel ── */
 .chat-panel { background:var(--card); border:1px solid var(--mid); border-radius:14px; overflow:hidden; position:sticky; top:70px; align-self:start; width:360px; height:580px; min-height:300px; min-width:360px; max-width:640px; resize:none; display:flex; flex-direction:column; box-shadow:0 4px 32px rgba(0,0,0,.35); }
@@ -418,9 +428,38 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
       snap.docs.forEach(d => {
         const m = d.data(); const myMsg = m.fromUid === _user?.uid;
         const wrap = document.createElement('div'); wrap.className = 'chat-msg' + (myMsg ? ' mine' : '');
-        const txt = document.createElement('div'); txt.className = 'chat-msg-text'; txt.textContent = m.text;
-        const time = document.createElement('div'); time.className = 'chat-msg-time'; time.textContent = fmtDateTime(m.createdAt);
-        wrap.append(txt, time); _chatMsgsEl.append(wrap);
+        if (m.type === 'collab_request') {
+          const card = document.createElement('div'); card.className = 'collab-req-card';
+          const label = document.createElement('div'); label.className = 'collab-req-card-label';
+          label.textContent = myMsg ? '🤝 Collab isteği gönderdin' : '🤝 Collab isteği aldın';
+          card.append(label);
+          if (m.status === 'pending' && !myMsg) {
+            const btns = document.createElement('div'); btns.className = 'collab-req-card-btns';
+            const acceptBtn = document.createElement('button'); acceptBtn.className = 'collab-req-accept'; acceptBtn.textContent = 'Kabul Et';
+            const rejectBtn = document.createElement('button'); rejectBtn.className = 'collab-req-reject'; rejectBtn.textContent = 'Reddet';
+            acceptBtn.onclick = async () => {
+              await d.ref.update({ status: 'accepted' });
+              await db.collection('notifications').doc(m.fromUid).collection('items').add({
+                text: `${_user.displayName?.split(' ')[0]||'Biri'} collab isteğini kabul etti!`,
+                fromUid: _user.uid, type: 'collab_accepted', read: false,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              }).catch(()=>{});
+            };
+            rejectBtn.onclick = async () => { await d.ref.update({ status: 'rejected' }); };
+            btns.append(acceptBtn, rejectBtn); card.append(btns);
+          } else if (m.status === 'accepted') {
+            const s = document.createElement('div'); s.className = 'collab-req-card-status accepted'; s.textContent = '✓ Kabul edildi'; card.append(s);
+          } else if (m.status === 'rejected') {
+            const s = document.createElement('div'); s.className = 'collab-req-card-status rejected'; s.textContent = '✕ Reddedildi'; card.append(s);
+          }
+          const time2 = document.createElement('div'); time2.className = 'chat-msg-time'; time2.textContent = fmtDateTime(m.createdAt);
+          wrap.append(card, time2);
+        } else {
+          const txt = document.createElement('div'); txt.className = 'chat-msg-text'; txt.textContent = m.text;
+          const time = document.createElement('div'); time.className = 'chat-msg-time'; time.textContent = fmtDateTime(m.createdAt);
+          wrap.append(txt, time);
+        }
+        _chatMsgsEl.append(wrap);
       });
       _chatMsgsEl.scrollTop = _chatMsgsEl.scrollHeight;
       // Play sound on new incoming message (not on initial load)
@@ -906,6 +945,25 @@ async function renderProfile() {
         collabReqBtn.disabled = true;
         collabReqBtn.textContent = 'Gönderiliyor…';
         const fromName = _user.displayName?.split(' ')[0] || 'Biri';
+        const fromPhoto = _user.photoURL || '';
+        // Open/create chat and send collab request message
+        const chatId = [_user.uid, uid].sort().join('_');
+        const chatRef = db.collection('chats').doc(chatId);
+        await chatRef.set({
+          participants: [_user.uid, uid],
+          names: { [_user.uid]: fromName, [uid]: displayName.split(' ')[0]||'Üye' },
+          photos: { [_user.uid]: fromPhoto, [uid]: photoURL||'' },
+          lastMessage: '🤝 Collab isteği',
+          lastAt: firebase.firestore.FieldValue.serverTimestamp(),
+          unreadBy: firebase.firestore.FieldValue.arrayUnion(uid),
+        }, { merge: true });
+        await chatRef.collection('messages').add({
+          fromUid: _user.uid,
+          type: 'collab_request',
+          status: 'pending',
+          text: '🤝 Collab isteği gönderdi',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        }).catch(console.error);
         await db.collection('notifications').doc(uid).collection('items').add({
           text: `${fromName} sana collab isteği gönderdi`,
           fromUid: _user.uid,
