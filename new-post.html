@@ -108,6 +108,28 @@ body::before {
 .toast.info  { border-left-color:#8fc8e8; }
 @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 
+/* ── Notification Bell ── */
+.notif-bell-wrap { position:relative; }
+.notif-bell { background:none; border:none; color:rgba(238,235,230,.45); font-size:1.2rem; cursor:pointer; padding:4px; line-height:1; transition:color .15s; transform-origin:top center; }
+.notif-bell:hover { color:var(--gold); }
+.notif-bell.ringing { animation:bellRing 0.55s ease-in-out 3; }
+@keyframes bellRing { 0%{transform:rotate(0)} 15%{transform:rotate(18deg)} 35%{transform:rotate(-15deg)} 55%{transform:rotate(10deg)} 75%{transform:rotate(-6deg)} 90%{transform:rotate(3deg)} 100%{transform:rotate(0)} }
+.notif-badge { position:absolute; top:0; right:0; background:var(--crimson); color:#fff; font-size:.55rem; font-family:'Space Mono',monospace; border-radius:6px; padding:1px 5px; min-width:14px; text-align:center; pointer-events:none; }
+.notif-panel { position:absolute; top:44px; right:0; width:300px; background:var(--card); border:1px solid var(--mid); border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
+.notif-panel.open { display:block; }
+.notif-panel-head { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; }
+.notif-panel-title { font-size:.72rem; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
+.notif-read-all { background:none; border:none; color:rgba(238,235,230,.35); font-size:.65rem; cursor:pointer; font-family:'Space Mono',monospace; }
+.notif-read-all:hover { color:var(--dim); }
+.notif-list { max-height:340px; overflow-y:auto; }
+.notif-item { padding:11px 32px 11px 14px; border-bottom:1px solid rgba(255,255,255,.04); cursor:pointer; transition:background .1s; position:relative; }
+.notif-item:hover { background:rgba(255,255,255,.03); }
+.notif-item.unread { background:rgba(232,184,75,.04); border-left:2px solid rgba(232,184,75,.4); padding-left:12px; }
+.notif-item-text { font-size:.75rem; color:var(--white); line-height:1.5; margin-bottom:3px; }
+.notif-item-time { font-size:.62rem; color:rgba(238,235,230,.25); }
+.notif-empty { padding:22px 16px; text-align:center; font-size:.75rem; color:var(--dim); }
+.notif-del-btn { position:absolute; top:50%; right:7px; transform:translateY(-50%); background:none; border:none; color:rgba(238,235,230,.3); font-size:.95rem; cursor:pointer; padding:2px 5px; line-height:1; border-radius:3px; transition:color .12s; }
+.notif-del-btn:hover { color:var(--crimson); }
 /* ── Bottom Nav ── */
 .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:500; background:rgba(6,6,9,.96); border-top:1px solid var(--mid); backdrop-filter:blur(16px); display:flex; height:58px; }
 .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; text-decoration:none; color:rgba(238,235,230,.3); transition:color .15s; position:relative; }
@@ -168,9 +190,53 @@ function showToast(msg, type='success', ms=3000) {
   setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
 }
 
+let _notifUnsub = null, _annUnsub = null, _notifPanelEl = null;
+let _personalNotifs = [], _announcements = [], _annSeenAt = null, _dismissedAnns = [], _prevUnreadCount = 0;
+function _mergeNotifs(uid) {
+  const all=[..._personalNotifs.map(n=>({...n,_t:'p'})),..._announcements.filter(n=>!_dismissedAnns.includes(n._id)).map(n=>({...n,_t:'a'}))].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  const annSec=_annSeenAt?.seconds||0;
+  const unread=_personalNotifs.filter(n=>!n.read).length+_announcements.filter(n=>(n.createdAt?.seconds||0)>annSec).length;
+  const badge=document.querySelector('.notif-badge');
+  if(badge){badge.textContent=unread>9?'9+':String(unread);badge.style.display=unread>0?'block':'none';}
+  if(unread>_prevUnreadCount){const bell=document.querySelector('.notif-bell');if(bell){bell.classList.remove('ringing');void bell.offsetWidth;bell.classList.add('ringing');setTimeout(()=>bell.classList.remove('ringing'),1800);}}
+  _prevUnreadCount=unread;
+  if(!_notifPanelEl)return;
+  const list=_notifPanelEl.querySelector('.notif-list');if(!list)return;
+  list.innerHTML='';
+  if(!all.length){list.innerHTML='<div class="notif-empty">Bildirim yok</div>';return;}
+  all.forEach(n=>{
+    const isUnread=n._t==='p'?!n.read:(n.createdAt?.seconds||0)>annSec;
+    const item=document.createElement('div');item.className='notif-item'+(isUnread?' unread':'');
+    const timeStr=n.createdAt?n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    item.innerHTML=`<div class="notif-item-text">${n._t==='a'?'📢 ':''}${n.text||'Yeni bildirim'}</div><div class="notif-item-time">${timeStr}</div>`;
+    if(n.postId)item.onclick=()=>{location.href=`post.html?id=${n.postId}`;};
+    if(n._id){const del=document.createElement('button');del.className='notif-del-btn';del.textContent='×';del.onclick=e=>{e.stopPropagation();if(n._t==='p'){db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();}else{_dismissedAnns.push(n._id);db.collection('users').doc(uid).update({dismissedAnns:firebase.firestore.FieldValue.arrayUnion(n._id)}).catch(()=>{});_announcements=_announcements.filter(a=>a._id!==n._id);_mergeNotifs(uid);}};item.append(del);}
+    list.append(item);
+  });
+}
+function markAllNotifRead(uid){
+  db.collection('notifications').doc(uid).collection('items').where('read','==',false).get().then(snap=>{const b=db.batch();snap.docs.forEach(d=>b.update(d.ref,{read:true}));b.commit();}).catch(()=>{});
+  db.collection('users').doc(uid).set({announcementsSeenAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true}).catch(()=>{});
+  _annSeenAt={seconds:Date.now()/1000};_personalNotifs=_personalNotifs.map(n=>({...n,read:true}));_mergeNotifs(uid);
+}
+function toggleNotifPanel(user){
+  if(!_notifPanelEl)return;
+  if(_notifPanelEl.classList.contains('open')){_notifPanelEl.classList.remove('open');return;}
+  _notifPanelEl.classList.add('open');
+  setTimeout(()=>document.addEventListener('click',()=>{if(_notifPanelEl)_notifPanelEl.classList.remove('open');},{once:true}),0);
+  markAllNotifRead(user.uid);
+}
+function initNotifications(user){
+  if(_notifUnsub){_notifUnsub();_notifUnsub=null;}if(_annUnsub){_annUnsub();_annUnsub=null;}
+  _personalNotifs=[];_announcements=[];_annSeenAt=null;_dismissedAnns=[];
+  if(!user)return;
+  db.collection('users').doc(user.uid).get().then(d=>{_annSeenAt=d.data()?.announcementsSeenAt||null;_dismissedAnns=d.data()?.dismissedAnns||[];_mergeNotifs(user.uid);}).catch(()=>{});
+  _notifUnsub=db.collection('notifications').doc(user.uid).collection('items').orderBy('createdAt','desc').limit(20).onSnapshot(snap=>{_personalNotifs=snap.docs.map(d=>({...d.data(),_id:d.id}));_mergeNotifs(user.uid);},()=>{});
+  _annUnsub=db.collection('announcements').orderBy('createdAt','desc').limit(15).onSnapshot(snap=>{_announcements=snap.docs.map(d=>({...d.data(),_id:d.id}));_mergeNotifs(user.uid);},()=>{});
+}
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar');
-  bar.innerHTML = '';
+  bar.innerHTML = ''; _notifPanelEl = null;
   if (!user) return;
   const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
   const img  = document.createElement('img');  img.className = 'auth-avatar';
@@ -179,7 +245,17 @@ function updateAuthBar(user) {
   name.textContent = user.email === ADMIN_EMAIL ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Üye');
   const out = document.createElement('button'); out.className = 'auth-out-btn';
   out.textContent = '✕'; out.onclick = () => auth.signOut();
-  wrap.append(img, name, out); bar.append(wrap);
+  wrap.append(img, name, out);
+  const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
+  const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = 'Bildirimler';
+  const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
+  _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
+  _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all">Tümünü Oku</button></div><div class="notif-list"></div>';
+  _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
+  bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
+  bellWrap.append(bell, badge, _notifPanelEl);
+  bar.append(bellWrap, wrap);
+  document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
 }
 
 // ── Toolbar insert helper ─────────────────────────────────────────────
@@ -342,6 +418,7 @@ function renderForm(user) {
 
 auth.onAuthStateChanged(user => {
   updateAuthBar(user);
+  initNotifications(user);
   if (user) renderForm(user);
   // else: keep login wall
 });

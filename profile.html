@@ -263,6 +263,12 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .activity-item-title { font-size:.9rem; color:var(--white); font-weight:bold; margin-bottom:7px; line-height:1.4; }
 .activity-item-meta { font-size:.7rem; color:rgba(238,235,230,.2); display:flex; gap:14px; }
 .activity-empty { font-size:.82rem; color:rgba(238,235,230,.25); padding:20px 0; text-align:center; }
+/* ── Toast ── */
+.toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
+.toast { background:var(--card); border:1px solid var(--mid); border-left:3px solid var(--gold); border-radius:6px; padding:10px 16px; font-family:'Space Mono',monospace; font-size:.68rem; color:var(--white); box-shadow:0 4px 24px rgba(0,0,0,.6); animation:toastIn .2s ease; pointer-events:all; max-width:280px; line-height:1.5; }
+.toast.error { border-left-color:var(--crimson); }
+.toast.info  { border-left-color:var(--ice); }
+@keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
 </style>
 </head>
 <body>
@@ -316,7 +322,13 @@ const TITLES = [
   { key:'efsane',  label:'Efsane',                icon:'👑', color:'#ffd700' },
 ];
 
-function showToast() {}
+function showToast(msg, type='success', ms=3000) {
+  let c = document.getElementById('toastCt');
+  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
+  const t = document.createElement('div'); t.className='toast'+(type!=='success'?' '+type:''); t.textContent=msg;
+  c.append(t);
+  setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
+}
 function fmtDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
@@ -340,6 +352,12 @@ async function _sendMsg(fromUid, fromName, toUid, toName, text) {
   const ref = db.collection('chats').doc(cid);
   await ref.set({ participants:[fromUid,toUid], names:{[fromUid]:fromName,[toUid]:toName}, lastMessage:text.slice(0,100), lastAt:firebase.firestore.FieldValue.serverTimestamp(), unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid) }, { merge:true });
   await ref.collection('messages').add({ fromUid, text, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+  // Notify recipient
+  db.collection('notifications').doc(toUid).collection('items').add({
+    text: `💬 ${fromName}: ${text.slice(0,60)}${text.length>60?'…':''}`,
+    read: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  }).catch(() => {});
 }
 
 function _mkAvEl(photo, name, cls) {
