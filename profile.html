@@ -40,7 +40,8 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .auth-name { font-size:.62rem; color:var(--white); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .auth-out-btn { background:transparent; border:none; color:rgba(238,235,230,.4); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; }
 
-.layout { max-width:900px; margin:0 auto; padding:72px 20px 80px; display:grid; grid-template-columns:260px 1fr; gap:24px; position:relative; z-index:1; }
+.layout { max-width:1280px; margin:0 auto; padding:72px 20px 80px; display:grid; grid-template-columns:260px 1fr 320px; gap:20px; position:relative; z-index:1; }
+@media(max-width:1000px) { .layout { grid-template-columns:260px 1fr; } }
 @media(max-width:700px) { .layout { grid-template-columns:1fr; } }
 
 /* ── Profile card ── */
@@ -68,36 +69,58 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .profile-social-mc:hover { background:rgba(82,158,214,.18); }
 .contact-btn { display:block; width:100%; margin-top:10px; padding:8px; text-align:center; background:rgba(143,200,232,.1); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; cursor:pointer; text-decoration:none; transition:background .15s; }
 .contact-btn:hover { background:rgba(143,200,232,.2); }
-/* ── Messaging ── */
+/* ── Chat Panel ── */
+.chat-panel { background:var(--card); border:1px solid var(--mid); border-radius:10px; overflow:hidden; position:sticky; top:70px; align-self:start; height:calc(100vh - 150px); min-height:420px; display:flex; flex-direction:column; }
+.chat-panel-hdr { padding:10px 14px; border-bottom:1px solid var(--mid); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.chat-panel-title { font-family:'Bebas Neue',sans-serif; font-size:1rem; color:var(--gold); letter-spacing:.06em; }
+.chat-body { display:flex; flex:1; overflow:hidden; }
+.chat-sidebar { width:115px; border-right:1px solid var(--mid); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; }
+.chat-search-wrap { padding:7px; border-bottom:1px solid var(--mid); flex-shrink:0; position:relative; }
+.chat-search { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:4px; color:var(--white); font-size:.56rem; padding:5px 7px; font-family:inherit; outline:none; }
+.chat-search:focus { border-color:var(--ice); }
+.chat-search-results { position:absolute; top:100%; left:0; right:0; background:var(--card); border:1px solid var(--mid); border-top:none; z-index:20; max-height:180px; overflow-y:auto; display:none; }
+.chat-search-results.open { display:block; }
+.chat-search-result { padding:7px 9px; cursor:pointer; font-size:.56rem; color:var(--white); border-bottom:1px solid rgba(42,42,69,.5); display:flex; align-items:center; gap:5px; transition:background .12s; }
+.chat-search-result:hover { background:var(--mid2); }
+.chat-search-result-av { width:20px; height:20px; border-radius:50%; background:var(--mid2); overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.55rem; }
+.chat-search-result-av img { width:100%; height:100%; object-fit:cover; }
+.chat-threads { flex:1; overflow-y:auto; }
+.chat-thread { padding:8px 9px; cursor:pointer; border-bottom:1px solid rgba(42,42,69,.5); transition:background .12s; display:flex; gap:7px; align-items:center; }
+.chat-thread:hover,.chat-thread.active { background:var(--mid2); }
+.chat-thread.unread { background:rgba(232,184,75,.04); }
+.chat-thread-av { width:30px; height:30px; border-radius:50%; background:var(--mid); overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.7rem; }
+.chat-thread-av img { width:100%; height:100%; object-fit:cover; }
+.chat-thread-info { flex:1; min-width:0; }
+.chat-thread-name { font-size:.58rem; color:var(--white); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-thread.unread .chat-thread-name { color:var(--gold); }
+.chat-thread-prev { font-size:.50rem; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px; }
+.chat-thread-dot { width:7px; height:7px; border-radius:50%; background:var(--gold); flex-shrink:0; display:none; }
+.chat-thread.unread .chat-thread-dot { display:block; }
+.chat-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.chat-main-hdr { padding:8px 11px; border-bottom:1px solid var(--mid); display:flex; align-items:center; gap:7px; flex-shrink:0; }
+.chat-main-av { width:26px; height:26px; border-radius:50%; background:var(--mid); overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.65rem; }
+.chat-main-av img { width:100%; height:100%; object-fit:cover; }
+.chat-main-name { font-size:.65rem; font-weight:700; color:var(--white); }
+.chat-msgs { flex:1; overflow-y:auto; padding:10px 11px; display:flex; flex-direction:column; gap:5px; }
+.chat-msg { max-width:82%; display:flex; flex-direction:column; }
+.chat-msg.mine { align-self:flex-end; align-items:flex-end; }
+.chat-msg:not(.mine) { align-self:flex-start; }
+.chat-msg-text { font-size:.61rem; line-height:1.55; padding:6px 10px; color:var(--white); background:var(--mid); word-break:break-word; }
+.chat-msg.mine .chat-msg-text { background:rgba(143,200,232,.18); border:1px solid rgba(143,200,232,.22); border-radius:10px 10px 2px 10px; }
+.chat-msg:not(.mine) .chat-msg-text { border-radius:2px 10px 10px 10px; }
+.chat-msg-time { font-size:.45rem; color:var(--dim); margin-top:2px; }
+.chat-empty-state { flex:1; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:.6rem; text-align:center; padding:20px; line-height:1.7; }
+.chat-input-wrap { padding:8px 10px; border-top:1px solid var(--mid); display:flex; gap:6px; align-items:flex-end; flex-shrink:0; }
+.chat-input { flex:1; background:var(--mid2); border:1px solid var(--mid); border-radius:6px; color:var(--white); font-size:.62rem; padding:7px 10px; font-family:inherit; resize:none; outline:none; max-height:80px; line-height:1.5; }
+.chat-input:focus { border-color:var(--ice); }
+.chat-send-btn { background:rgba(143,200,232,.15); border:1px solid rgba(143,200,232,.3); color:var(--ice); border-radius:6px; font-size:.9rem; padding:7px 10px; cursor:pointer; transition:background .12s; flex-shrink:0; }
+.chat-send-btn:hover { background:rgba(143,200,232,.3); }
+/* Mobile toggle */
+.chat-mobile-btn { display:none; position:fixed; bottom:70px; right:16px; width:46px; height:46px; border-radius:50%; background:var(--ice); color:var(--black); border:none; font-size:1.2rem; cursor:pointer; z-index:400; box-shadow:0 3px 14px rgba(0,0,0,.5); align-items:center; justify-content:center; }
+@media(max-width:1000px) { .chat-mobile-btn { display:flex; } .chat-panel { position:fixed; top:52px; right:0; bottom:58px; width:320px; border-radius:0; border:none; border-left:1px solid var(--mid); transform:translateX(100%); transition:transform .25s; z-index:350; } .chat-panel.mobile-open { transform:translateX(0); } }
+/* Msg btn on profile */
 .msg-btn { display:block; width:100%; margin-top:10px; padding:8px; text-align:center; background:rgba(143,200,232,.1); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-family:'Space Mono',monospace; font-size:.65rem; cursor:pointer; transition:background .15s; }
 .msg-btn:hover { background:rgba(143,200,232,.2); }
-.msg-compose { margin-top:8px; display:none; }
-.msg-compose.open { display:block; }
-.msg-compose-ta { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:4px; color:var(--white); font-size:.62rem; padding:7px 9px; font-family:'Space Mono',monospace; resize:none; min-height:60px; outline:none; transition:border-color .15s; }
-.msg-compose-ta:focus { border-color:var(--ice); }
-.msg-compose-send { margin-top:5px; display:block; width:100%; padding:7px; text-align:center; background:rgba(143,200,232,.15); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-size:.62rem; cursor:pointer; transition:background .15s; }
-.msg-compose-send:hover { background:rgba(143,200,232,.25); }
-.inbox-thread { border:1px solid var(--mid); border-radius:6px; margin-bottom:8px; cursor:pointer; overflow:hidden; transition:border-color .15s; }
-.inbox-thread:hover { border-color:var(--mid2); }
-.inbox-thread.unread { border-color:rgba(232,184,75,.4); }
-.inbox-thread-hdr { padding:10px 12px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
-.inbox-thread-left { flex:1; min-width:0; }
-.inbox-thread-name { font-size:.63rem; font-weight:700; color:var(--white); }
-.inbox-thread.unread .inbox-thread-name { color:var(--gold); }
-.inbox-thread-preview { font-size:.56rem; color:var(--dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.inbox-thread-time { font-size:.50rem; color:var(--dim); white-space:nowrap; flex-shrink:0; }
-.inbox-msgs { display:none; padding:8px 12px; border-top:1px solid var(--mid); }
-.inbox-thread.open .inbox-msgs { display:block; }
-.msg-bubble { margin-bottom:8px; }
-.msg-bubble.mine { text-align:right; }
-.msg-bubble-text { display:inline-block; font-size:.62rem; color:var(--white); background:var(--mid); padding:6px 10px; border-radius:6px; line-height:1.5; max-width:85%; text-align:left; }
-.msg-bubble.mine .msg-bubble-text { background:rgba(143,200,232,.15); border:1px solid rgba(143,200,232,.2); }
-.msg-bubble-meta { font-size:.48rem; color:var(--dim); margin-top:2px; }
-.msg-reply-row { display:flex; gap:5px; margin-top:8px; padding-top:6px; border-top:1px solid var(--mid); }
-.msg-reply-ta { flex:1; background:var(--mid2); border:1px solid var(--mid); border-radius:4px; color:var(--white); font-size:.60rem; padding:5px 8px; font-family:'Space Mono',monospace; resize:none; outline:none; }
-.msg-reply-ta:focus { border-color:var(--ice); }
-.msg-reply-btn { background:rgba(143,200,232,.1); border:1px solid rgba(143,200,232,.35); color:var(--ice); border-radius:4px; font-size:.58rem; padding:5px 10px; cursor:pointer; white-space:nowrap; transition:background .15s; }
-.msg-reply-btn:hover { background:rgba(143,200,232,.2); }
 .profile-stats { display:flex; gap:16px; border-top:1px solid rgba(255,255,255,.05); padding-top:12px; }
 .pstat { text-align:center; }
 .pstat-val { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--gold); }
@@ -252,75 +275,162 @@ function fmtDateTime(ts) {
   return d.toLocaleDateString('tr-TR', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
 }
 
-// ── Messaging ──────────────────────────────────────────────────────
+// ── Chat Panel ─────────────────────────────────────────────────────
 function _chatId(a, b) { return [a, b].sort().join('_'); }
 
-async function sendMessage(fromUid, fromName, toUid, toName, text) {
+let _chatListUnsub = null, _msgUnsub = null;
+let _activeChatId = null, _activeChatOther = null;
+let _chatPanelEl = null, _chatThreadsEl = null, _chatMsgsEl = null, _chatMainEl = null;
+
+async function _sendMsg(fromUid, fromName, toUid, toName, text) {
   const cid = _chatId(fromUid, toUid);
-  const chatRef = db.collection('chats').doc(cid);
-  await chatRef.set({ participants:[fromUid,toUid], names:{[fromUid]:fromName,[toUid]:toName}, lastMessage:text.slice(0,100), lastAt:firebase.firestore.FieldValue.serverTimestamp(), unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid) }, { merge:true });
-  await chatRef.collection('messages').add({ fromUid, text, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+  const ref = db.collection('chats').doc(cid);
+  await ref.set({ participants:[fromUid,toUid], names:{[fromUid]:fromName,[toUid]:toName}, lastMessage:text.slice(0,100), lastAt:firebase.firestore.FieldValue.serverTimestamp(), unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid) }, { merge:true });
+  await ref.collection('messages').add({ fromUid, text, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
 }
 
-async function loadThreadMessages(cid, container, myUid) {
-  const replyRow = container.querySelector('.msg-reply-row');
-  container.innerHTML = '';
-  if (replyRow) container.append(replyRow);
-  const snap = await db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limit(40).get().catch(()=>null);
-  if (!snap) return;
-  const frag = document.createDocumentFragment();
-  snap.docs.forEach(d => {
-    const m = d.data();
-    const bub = document.createElement('div'); bub.className = 'msg-bubble' + (m.fromUid===myUid ? ' mine' : '');
-    const txt = document.createElement('div'); txt.className = 'msg-bubble-text'; txt.textContent = m.text;
-    const meta = document.createElement('div'); meta.className = 'msg-bubble-meta'; meta.textContent = fmtDateTime(m.createdAt);
-    bub.append(txt, meta); frag.append(bub);
-  });
-  container.insertBefore(frag, replyRow || null);
+function _mkAvEl(photo, name, cls) {
+  const av = document.createElement('div'); av.className = cls;
+  if (photo) { const i = document.createElement('img'); i.src = photo; av.append(i); }
+  else av.textContent = (name||'?')[0].toUpperCase();
+  return av;
 }
 
-async function renderInbox(container, uid) {
-  container.innerHTML = '<div class="activity-empty">Yükleniyor…</div>';
-  const snap = await db.collection('chats').where('participants','array-contains',uid).orderBy('lastAt','desc').limit(30).get().catch(()=>null);
-  container.innerHTML = '';
-  if (!snap || snap.empty) { container.innerHTML = '<div class="activity-empty">Gelen kutusu boş.</div>'; return; }
-  snap.docs.forEach(chatDoc => {
-    const chat = chatDoc.data();
-    const otherId = chat.participants.find(p => p !== uid) || '';
-    const otherName = chat.names?.[otherId] || 'Üye';
-    const isUnread = chat.unreadBy?.includes(uid);
-    const thread = document.createElement('div'); thread.className = 'inbox-thread' + (isUnread ? ' unread' : '');
-    const hdr = document.createElement('div'); hdr.className = 'inbox-thread-hdr';
-    const left = document.createElement('div'); left.className = 'inbox-thread-left';
-    const nm = document.createElement('div'); nm.className = 'inbox-thread-name'; nm.textContent = otherName;
-    const prev = document.createElement('div'); prev.className = 'inbox-thread-preview'; prev.textContent = chat.lastMessage || '';
-    const timed = document.createElement('div'); timed.className = 'inbox-thread-time'; timed.textContent = fmtDateTime(chat.lastAt);
-    left.append(nm, prev); hdr.append(left, timed); thread.append(hdr);
-    const msgs = document.createElement('div'); msgs.className = 'inbox-msgs'; thread.append(msgs);
-    const replyRow = document.createElement('div'); replyRow.className = 'msg-reply-row';
-    const rTa = document.createElement('textarea'); rTa.className = 'msg-reply-ta'; rTa.placeholder = 'Yanıtla…'; rTa.rows = 2;
-    const rBtn = document.createElement('button'); rBtn.className = 'msg-reply-btn'; rBtn.textContent = 'Gönder';
-    replyRow.append(rTa, rBtn); msgs.append(replyRow);
-    rBtn.onclick = async e => {
-      e.stopPropagation(); const txt = rTa.value.trim(); if (!txt) return;
-      rBtn.disabled = true;
-      const myName = _user?.displayName?.split(' ')[0] || 'Üye';
-      await sendMessage(uid, myName, otherId, otherName, txt).catch(console.error);
-      rTa.value = ''; rBtn.disabled = false;
-      loadThreadMessages(chatDoc.id, msgs, uid);
-      prev.textContent = txt; thread.classList.remove('unread');
-    };
-    thread.onclick = e => {
-      if (e.target===rTa || e.target===rBtn) return;
-      const wasOpen = thread.classList.contains('open');
-      thread.classList.toggle('open');
-      if (!wasOpen) {
-        loadThreadMessages(chatDoc.id, msgs, uid);
-        if (isUnread) { db.collection('chats').doc(chatDoc.id).update({ unreadBy:firebase.firestore.FieldValue.arrayRemove(uid) }).catch(()=>{}); thread.classList.remove('unread'); }
-      }
-    };
-    container.append(thread);
-  });
+function _openThread(cid, otherId, otherName, otherPhoto) {
+  if (!_chatMainEl || !_chatMsgsEl) return;
+  _activeChatId = cid; _activeChatOther = { uid:otherId, name:otherName };
+  // Mark sidebar active
+  _chatThreadsEl?.querySelectorAll('.chat-thread').forEach(t => t.classList.toggle('active', t.dataset.cid===cid));
+  // Header
+  _chatMainEl.querySelector('.chat-main-hdr').innerHTML = '';
+  const hdr = _chatMainEl.querySelector('.chat-main-hdr');
+  hdr.append(_mkAvEl(otherPhoto, otherName, 'chat-main-av'));
+  const nm = document.createElement('div'); nm.className = 'chat-main-name'; nm.textContent = otherName; hdr.append(nm);
+  // Messages area
+  _chatMsgsEl.innerHTML = '<div style="color:var(--dim);font-size:.58rem;text-align:center;padding:20px">Yükleniyor…</div>';
+  // Mark as read
+  if (_user) db.collection('chats').doc(cid).update({ unreadBy:firebase.firestore.FieldValue.arrayRemove(_user.uid) }).catch(()=>{});
+  // Subscribe real-time
+  if (_msgUnsub) { _msgUnsub(); _msgUnsub = null; }
+  _msgUnsub = db.collection('chats').doc(cid).collection('messages').orderBy('createdAt','asc').limit(60)
+    .onSnapshot(snap => {
+      _chatMsgsEl.innerHTML = '';
+      if (snap.empty) { _chatMsgsEl.innerHTML = '<div style="color:var(--dim);font-size:.58rem;text-align:center;padding:20px">Henüz mesaj yok.</div>'; return; }
+      snap.docs.forEach(d => {
+        const m = d.data(); const myMsg = m.fromUid === _user?.uid;
+        const wrap = document.createElement('div'); wrap.className = 'chat-msg' + (myMsg ? ' mine' : '');
+        const txt = document.createElement('div'); txt.className = 'chat-msg-text'; txt.textContent = m.text;
+        const time = document.createElement('div'); time.className = 'chat-msg-time'; time.textContent = fmtDateTime(m.createdAt);
+        wrap.append(txt, time); _chatMsgsEl.append(wrap);
+      });
+      _chatMsgsEl.scrollTop = _chatMsgsEl.scrollHeight;
+    }, () => {});
+}
+
+function _buildChatThread(chatDoc, myUid) {
+  const chat = chatDoc.data();
+  const otherId = chat.participants.find(p => p !== myUid) || '';
+  const otherName = chat.names?.[otherId] || 'Üye';
+  const otherPhoto = null; // we don't have photos in chat doc
+  const isUnread = chat.unreadBy?.includes(myUid);
+  const el = document.createElement('div');
+  el.className = 'chat-thread' + (isUnread ? ' unread' : '');
+  el.dataset.cid = chatDoc.id;
+  el.append(_mkAvEl(otherPhoto, otherName, 'chat-thread-av'));
+  const info = document.createElement('div'); info.className = 'chat-thread-info';
+  const nm = document.createElement('div'); nm.className = 'chat-thread-name'; nm.textContent = otherName;
+  const prev = document.createElement('div'); prev.className = 'chat-thread-prev'; prev.textContent = chat.lastMessage || '';
+  info.append(nm, prev); el.append(info);
+  const dot = document.createElement('div'); dot.className = 'chat-thread-dot'; el.append(dot);
+  el.onclick = () => { _openThread(chatDoc.id, otherId, otherName, otherPhoto); if (window.innerWidth<=1000) _chatPanelEl?.classList.add('mobile-open'); };
+  return el;
+}
+
+function initChatPanel(user) {
+  if (!user) { document.querySelector('.chat-panel')?.remove(); document.querySelector('.chat-mobile-btn')?.remove(); _chatPanelEl=null; if(_chatListUnsub){_chatListUnsub();_chatListUnsub=null;} if(_msgUnsub){_msgUnsub();_msgUnsub=null;} return; }
+  if (_chatPanelEl) return; // already initialized
+  // Build panel
+  const panel = document.createElement('div'); panel.className = 'chat-panel'; _chatPanelEl = panel;
+  // Header
+  const hdr = document.createElement('div'); hdr.className = 'chat-panel-hdr';
+  const title = document.createElement('div'); title.className = 'chat-panel-title'; title.textContent = 'Mesajlar';
+  hdr.append(title); panel.append(hdr);
+  const body = document.createElement('div'); body.className = 'chat-body'; panel.append(body);
+  // Sidebar
+  const sidebar = document.createElement('div'); sidebar.className = 'chat-sidebar'; body.append(sidebar);
+  const searchWrap = document.createElement('div'); searchWrap.className = 'chat-search-wrap'; sidebar.append(searchWrap);
+  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = 'Üye ara…'; searchWrap.append(searchInput);
+  const searchResults = document.createElement('div'); searchResults.className = 'chat-search-results'; searchWrap.append(searchResults);
+  _chatThreadsEl = document.createElement('div'); _chatThreadsEl.className = 'chat-threads'; sidebar.append(_chatThreadsEl);
+  // Main area
+  const main = document.createElement('div'); main.className = 'chat-main'; body.append(main); _chatMainEl = main;
+  const mainHdr = document.createElement('div'); mainHdr.className = 'chat-main-hdr'; main.append(mainHdr);
+  const emptyState = document.createElement('div'); emptyState.className = 'chat-empty-state'; emptyState.textContent = 'Bir sohbet seç\nveya üye ara'; main.append(emptyState);
+  _chatMsgsEl = document.createElement('div'); _chatMsgsEl.className = 'chat-msgs'; _chatMsgsEl.style.display='none'; main.append(_chatMsgsEl);
+  const inputWrap = document.createElement('div'); inputWrap.className = 'chat-input-wrap'; main.append(inputWrap);
+  const chatInput = document.createElement('textarea'); chatInput.className = 'chat-input'; chatInput.placeholder = 'Mesaj yaz…'; chatInput.rows = 1; inputWrap.append(chatInput);
+  const sendBtn = document.createElement('button'); sendBtn.className = 'chat-send-btn'; sendBtn.textContent = '↩'; inputWrap.append(sendBtn);
+  const doSend = async () => {
+    const txt = chatInput.value.trim(); if (!txt || !_activeChatOther) return;
+    chatInput.value = ''; sendBtn.disabled = true;
+    const myName = _user?.displayName?.split(' ')[0] || 'Üye';
+    await _sendMsg(user.uid, myName, _activeChatOther.uid, _activeChatOther.name, txt).catch(console.error);
+    sendBtn.disabled = false;
+  };
+  sendBtn.onclick = doSend;
+  chatInput.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } });
+  // Show msgs area when a thread is opened
+  const origOpenThread = _openThread;
+  // Patch: show/hide empty state
+  const _patchOpenThread = (cid, otherId, otherName, otherPhoto) => {
+    emptyState.style.display = 'none'; _chatMsgsEl.style.display = '';
+    _openThread(cid, otherId, otherName, otherPhoto);
+  };
+  // Re-assign open with patch
+  panel._openThread = _patchOpenThread;
+  // Search
+  let _searchTimer = null;
+  searchInput.oninput = () => {
+    clearTimeout(_searchTimer);
+    const term = searchInput.value.trim();
+    if (!term) { searchResults.classList.remove('open'); return; }
+    _searchTimer = setTimeout(async () => {
+      const snap = await db.collection('users').orderBy('displayName').startAt(term).endAt(term+'\uf8ff').limit(8).get().catch(()=>null);
+      searchResults.innerHTML = '';
+      if (!snap || snap.empty) { searchResults.classList.remove('open'); return; }
+      snap.docs.forEach(d => {
+        if (d.id === user.uid) return;
+        const u = d.data(); const name = u.displayName?.split(' ')[0] || 'Üye';
+        const photo = u.customPhotoURL || u.photoURL || '';
+        const item = document.createElement('div'); item.className = 'chat-search-result';
+        item.append(_mkAvEl(photo, name, 'chat-search-result-av'));
+        const nm = document.createElement('span'); nm.textContent = name; item.append(nm);
+        item.onclick = () => { searchResults.classList.remove('open'); searchInput.value = ''; const cid = _chatId(user.uid, d.id); panel._openThread(cid, d.id, name, photo); };
+        searchResults.append(item);
+      });
+      searchResults.classList.add('open');
+    }, 300);
+  };
+  document.addEventListener('click', e => { if (!searchWrap.contains(e.target)) searchResults.classList.remove('open'); });
+  // Insert panel into layout
+  const layout = document.getElementById('layout');
+  if (layout) layout.append(panel);
+  // Mobile toggle button
+  const mobileBtn = document.createElement('button'); mobileBtn.className = 'chat-mobile-btn'; mobileBtn.textContent = '💬'; document.body.append(mobileBtn);
+  mobileBtn.onclick = () => panel.classList.toggle('mobile-open');
+  // Load chat list real-time
+  _chatListUnsub = db.collection('chats').where('participants','array-contains',user.uid).orderBy('lastAt','desc').limit(30)
+    .onSnapshot(snap => {
+      _chatThreadsEl.innerHTML = '';
+      snap.docs.forEach(chatDoc => _chatThreadsEl.append(_buildChatThread(chatDoc, user.uid)));
+    }, () => {});
+}
+
+function openChatWith(toUid, toName, toPhoto) {
+  if (!_chatPanelEl || !_user) return;
+  const cid = _chatId(_user.uid, toUid);
+  _chatPanelEl._openThread(cid, toUid, toName, toPhoto||null);
+  if (window.innerWidth <= 1000) _chatPanelEl.classList.add('mobile-open');
 }
 
 let _notifUnsub = null, _annUnsub = null;
@@ -559,24 +669,8 @@ async function renderProfile() {
   // Message button (other people's profiles)
   if (!isOwn && _user) {
     const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = '💬 Mesaj Gönder';
-    const compose = document.createElement('div'); compose.className = 'msg-compose';
-    const ta = document.createElement('textarea'); ta.className = 'msg-compose-ta'; ta.placeholder = 'Mesajını yaz…';
-    const sendBtn = document.createElement('button'); sendBtn.className = 'msg-compose-send'; sendBtn.textContent = 'Gönder';
-    compose.append(ta, sendBtn);
-    msgBtn.onclick = () => { compose.classList.toggle('open'); if (compose.classList.contains('open')) ta.focus(); };
-    sendBtn.onclick = async () => {
-      const txt = ta.value.trim(); if (!txt) { ta.focus(); return; }
-      sendBtn.disabled = true; sendBtn.textContent = '⏳';
-      const myName = _user.displayName?.split(' ')[0] || 'Üye';
-      const toName = displayName.split(' ')[0] || 'Üye';
-      try {
-        await sendMessage(_user.uid, myName, uid, toName, txt);
-        ta.value = ''; compose.classList.remove('open'); msgBtn.textContent = '✓ Mesaj Gönderildi';
-        setTimeout(() => { msgBtn.textContent = '💬 Mesaj Gönder'; }, 2500);
-      } catch(e) { console.error(e); }
-      sendBtn.disabled = false; sendBtn.textContent = 'Gönder';
-    };
-    info.append(msgBtn, compose);
+    msgBtn.onclick = () => openChatWith(uid, displayName.split(' ')[0]||'Üye', photoURL);
+    info.append(msgBtn);
   }
 
   // Edit button (own profile only)
@@ -859,42 +953,6 @@ async function renderProfile() {
   }
   actCol.append(repliesSec);
 
-  // Inbox (own profile only)
-  if (isOwn && _user) {
-    const inboxSec = document.createElement('div'); inboxSec.className = 'activity-section';
-    const inboxTitle = document.createElement('div'); inboxTitle.className = 'activity-title'; inboxTitle.textContent = '📬 Gelen Kutusu';
-    const inboxList = document.createElement('div');
-    inboxSec.append(inboxTitle, inboxList);
-    actCol.append(inboxSec);
-    renderInbox(inboxList, _user.uid);
-  }
-
-  // Admin: all conversations
-  if (isAdmin(_user) && isOwn) {
-    const adminMsgSec = document.createElement('div'); adminMsgSec.className = 'activity-section';
-    const adminMsgTitle = document.createElement('div'); adminMsgTitle.className = 'activity-title'; adminMsgTitle.textContent = '🛡 Tüm Mesajlar';
-    const adminMsgList = document.createElement('div');
-    adminMsgSec.append(adminMsgTitle, adminMsgList);
-    actCol.append(adminMsgSec);
-    db.collection('chats').orderBy('lastAt','desc').limit(50).get().then(snap => {
-      if (snap.empty) { adminMsgList.innerHTML = '<div class="activity-empty">Mesaj yok.</div>'; return; }
-      snap.docs.forEach(chatDoc => {
-        const chat = chatDoc.data();
-        const names = Object.values(chat.names||{}).join(' ↔ ');
-        const thread = document.createElement('div'); thread.className = 'inbox-thread';
-        const hdr = document.createElement('div'); hdr.className = 'inbox-thread-hdr';
-        const left = document.createElement('div'); left.className = 'inbox-thread-left';
-        const nm = document.createElement('div'); nm.className = 'inbox-thread-name'; nm.textContent = names;
-        const prev = document.createElement('div'); prev.className = 'inbox-thread-preview'; prev.textContent = chat.lastMessage || '';
-        const timed = document.createElement('div'); timed.className = 'inbox-thread-time'; timed.textContent = fmtDateTime(chat.lastAt);
-        left.append(nm, prev); hdr.append(left, timed); thread.append(hdr);
-        const msgs = document.createElement('div'); msgs.className = 'inbox-msgs'; thread.append(msgs);
-        thread.onclick = () => { thread.classList.toggle('open'); if (thread.classList.contains('open')) loadThreadMessages(chatDoc.id, msgs, _user.uid); };
-        adminMsgList.append(thread);
-      });
-    }).catch(console.error);
-  }
-
   layout.append(actCol);
 }
 
@@ -902,6 +960,7 @@ auth.onAuthStateChanged(async user => {
   _user = user;
   updateAuthBar(user);
   initNotifications(user);
+  initChatPanel(user);
   if (user) {
     const uref = db.collection('users').doc(user.uid);
     const snap = await uref.get().catch(() => null);
