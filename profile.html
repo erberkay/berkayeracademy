@@ -145,9 +145,13 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .chat-msgs::-webkit-scrollbar { width:3px; }
 .chat-msgs::-webkit-scrollbar-track { background:transparent; }
 .chat-msgs::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:3px; }
-.chat-msg { max-width:80%; display:flex; flex-direction:column; }
-.chat-msg.mine { align-self:flex-end; align-items:flex-end; }
-.chat-msg:not(.mine) { align-self:flex-start; }
+.chat-msg { max-width:80%; display:flex; }
+.chat-msg.mine { align-self:flex-end; flex-direction:column; align-items:flex-end; }
+.chat-msg:not(.mine) { align-self:flex-start; flex-direction:row; align-items:flex-end; gap:7px; }
+.chat-msg-content { display:flex; flex-direction:column; }
+.chat-msg-sender-av { width:26px; height:26px; border-radius:50%; background:var(--mid2); font-size:.65rem; font-family:'Space Mono',monospace; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; cursor:pointer; border:1px solid rgba(255,255,255,.1); transition:border-color .15s; text-decoration:none; }
+.chat-msg-sender-av:hover { border-color:rgba(143,200,232,.5); }
+.chat-msg-sender-av img { width:100%; height:100%; object-fit:cover; }
 .chat-msg-text { font-size:.78rem; line-height:1.6; padding:8px 12px; color:var(--white); word-break:break-word; }
 .chat-msg.mine .chat-msg-text { background:linear-gradient(135deg,rgba(143,200,232,.25),rgba(143,200,232,.15)); border:1px solid rgba(143,200,232,.25); border-radius:16px 16px 4px 16px; }
 .chat-msg:not(.mine) .chat-msg-text { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.07); border-radius:4px 16px 16px 16px; }
@@ -427,6 +431,15 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
       const prevCount = _chatMsgsEl.querySelectorAll('.chat-msg').length;
       _chatMsgsEl.innerHTML = '';
       if (snap.empty) { _chatMsgsEl.innerHTML = '<div class="chat-empty-state"><div class="chat-empty-state-icon">💬</div><div>Henüz mesaj yok.<br>İlk mesajı sen gönder.</div></div>'; _msgInitialized = true; return; }
+      const _mkSenderAv = (fromUid) => {
+        const av = document.createElement('a'); av.className = 'chat-msg-sender-av';
+        av.href = `profile.html?uid=${fromUid}`;
+        av.onclick = e => { e.stopPropagation(); };
+        const p = _activeChatOther?.photo;
+        if (p) { const i = document.createElement('img'); i.src = p; i.alt = ''; av.append(i); }
+        else av.textContent = (_activeChatOther?.name||'?')[0].toUpperCase();
+        return av;
+      };
       snap.docs.forEach(d => {
         const m = d.data(); const myMsg = m.fromUid === _user?.uid;
         const wrap = document.createElement('div'); wrap.className = 'chat-msg' + (myMsg ? ' mine' : '');
@@ -455,11 +468,21 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
             const s = document.createElement('div'); s.className = 'collab-req-card-status rejected'; s.textContent = '✕ Reddedildi'; card.append(s);
           }
           const time2 = document.createElement('div'); time2.className = 'chat-msg-time'; time2.textContent = fmtDateTime(m.createdAt);
-          wrap.append(card, time2);
+          if (!myMsg) {
+            const cnt = document.createElement('div'); cnt.className = 'chat-msg-content';
+            cnt.append(card, time2); wrap.append(_mkSenderAv(m.fromUid), cnt);
+          } else {
+            wrap.append(card, time2);
+          }
         } else {
           const txt = document.createElement('div'); txt.className = 'chat-msg-text'; txt.textContent = m.text;
           const time = document.createElement('div'); time.className = 'chat-msg-time'; time.textContent = fmtDateTime(m.createdAt);
-          wrap.append(txt, time);
+          if (!myMsg) {
+            const cnt = document.createElement('div'); cnt.className = 'chat-msg-content';
+            cnt.append(txt, time); wrap.append(_mkSenderAv(m.fromUid), cnt);
+          } else {
+            wrap.append(txt, time);
+          }
         }
         _chatMsgsEl.append(wrap);
       });
@@ -771,7 +794,9 @@ function initNotifications(user) {
     .onSnapshot(snap => { _announcements = snap.docs.map(d => ({...d.data(), _id: d.id})); _mergeNotifs(user.uid); }, () => {});
 }
 
+let _renderSeq = 0;
 async function renderProfile() {
+  const seq = ++_renderSeq;
   const uid = profileUid || _user?.uid;
   if (!uid) {
     document.getElementById('layout').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--dim)">Profil bulunamadı.</div>';
@@ -814,6 +839,7 @@ async function renderProfile() {
   const replies = replyDocs.slice(0, 8);
   console.log('[replies] final count:', replies.length);
 
+  if (seq !== _renderSeq) return; // a newer render started, bail
   const layout = document.getElementById('layout');
   // Remove all children except chat panel (which persists across renders)
   Array.from(layout.children).forEach(c => { if (c !== _chatPanelEl) c.remove(); });
