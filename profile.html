@@ -461,10 +461,50 @@ function initChatPanel(user) {
   const body = document.createElement('div'); body.className = 'chat-body'; panel.append(body);
   // Sidebar
   const sidebar = document.createElement('div'); sidebar.className = 'chat-sidebar'; body.append(sidebar);
-  const searchWrap = document.createElement('div'); searchWrap.className = 'chat-search-wrap'; sidebar.append(searchWrap);
-  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = 'Üye ara…'; searchWrap.append(searchInput);
-  const searchResults = document.createElement('div'); searchResults.className = 'chat-search-results'; searchWrap.append(searchResults);
+  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = 'Üye ara…'; sidebar.append(searchInput);
   _chatThreadsEl = document.createElement('div'); _chatThreadsEl.className = 'chat-threads'; sidebar.append(_chatThreadsEl);
+  // All users cache for combined list
+  let _allUsers = {}, _chatDocs = [], _searchTerm = '';
+  db.collection('users').orderBy('displayName').limit(150).get().then(snap => {
+    snap.docs.forEach(d => {
+      if (d.id === user.uid) return;
+      const u = d.data();
+      _allUsers[d.id] = { name: u.displayName?.split(' ')[0] || 'Üye', photo: u.customPhotoURL || u.photoURL || '' };
+    });
+    _renderMemberList();
+  }).catch(() => {});
+  function _renderMemberList() {
+    _chatThreadsEl.innerHTML = '';
+    const q = _searchTerm.toLowerCase();
+    const chattedUids = new Set();
+    // Chatted users first (sorted by lastAt from snapshot)
+    _chatDocs.forEach(chatDoc => {
+      const chat = chatDoc.data();
+      const adminViewing = chat.participants && !chat.participants.includes(user.uid);
+      let otherId, otherName, otherPhoto;
+      if (adminViewing) { otherId = chat.participants?.[0] || ''; otherName = (chat.participants||[]).map(p => chat.names?.[p]||'Üye').join(' ↔ '); }
+      else { otherId = chat.participants?.find(p => p !== user.uid) || ''; otherName = chat.names?.[otherId] || _allUsers[otherId]?.name || 'Üye'; }
+      otherPhoto = chat.photos?.[otherId] || _allUsers[otherId]?.photo || null;
+      if (q && !otherName.toLowerCase().includes(q)) return;
+      chattedUids.add(otherId);
+      _chatThreadsEl.append(_buildChatThread(chatDoc, user.uid));
+    });
+    // Non-chatted users alphabetically
+    Object.entries(_allUsers)
+      .filter(([uid]) => !chattedUids.has(uid))
+      .filter(([, u]) => !q || u.name.toLowerCase().includes(q))
+      .sort(([, a], [, b]) => a.name.localeCompare(b.name, 'tr'))
+      .forEach(([uid, u]) => {
+        const item = document.createElement('div'); item.className = 'chat-thread';
+        item.append(_mkAvEl(u.photo, u.name, 'chat-thread-av'));
+        const info = document.createElement('div'); info.className = 'chat-thread-info';
+        const nm = document.createElement('div'); nm.className = 'chat-thread-name'; nm.textContent = u.name;
+        const sub = document.createElement('div'); sub.className = 'chat-thread-prev'; sub.textContent = '💬 Mesaj gönder';
+        info.append(nm, sub); item.append(info);
+        item.onclick = () => { const cid = _chatId(user.uid, uid); panel._openThread(cid, uid, u.name, u.photo); if (window.innerWidth<=1000) { panel.classList.add('mobile-open'); mobileBtn.style.display='none'; } };
+        _chatThreadsEl.append(item);
+      });
+  }
   // Main area
   const main = document.createElement('div'); main.className = 'chat-main'; body.append(main); _chatMainEl = main;
   const mainHdr = document.createElement('div'); mainHdr.className = 'chat-main-hdr'; main.append(mainHdr);
@@ -494,33 +534,11 @@ function initChatPanel(user) {
   };
   // Re-assign open with patch
   panel._openThread = _patchOpenThread;
-  // Search
-  let _searchTimer = null;
-  searchInput.oninput = () => {
-    clearTimeout(_searchTimer);
-    const term = searchInput.value.trim();
-    if (!term) { searchResults.classList.remove('open'); return; }
-    _searchTimer = setTimeout(async () => {
-      const snap = await db.collection('users').orderBy('displayName').startAt(term).endAt(term+'\uf8ff').limit(8).get().catch(()=>null);
-      searchResults.innerHTML = '';
-      if (!snap || snap.empty) { searchResults.classList.remove('open'); return; }
-      snap.docs.forEach(d => {
-        if (d.id === user.uid) return;
-        const u = d.data(); const name = u.displayName?.split(' ')[0] || 'Üye';
-        const photo = u.customPhotoURL || u.photoURL || '';
-        const item = document.createElement('div'); item.className = 'chat-search-result';
-        item.append(_mkAvEl(photo, name, 'chat-search-result-av'));
-        const nm = document.createElement('span'); nm.textContent = name; item.append(nm);
-        item.onclick = () => { searchResults.classList.remove('open'); searchInput.value = ''; const cid = _chatId(user.uid, d.id); panel._openThread(cid, d.id, name, photo); };
-        searchResults.append(item);
-      });
-      searchResults.classList.add('open');
-    }, 300);
-  };
+  // Search filters combined list
+  searchInput.oninput = () => { _searchTerm = searchInput.value.trim(); _renderMemberList(); };
   document.addEventListener('click', e => {
-    if (!searchWrap.contains(e.target)) searchResults.classList.remove('open');
     // Re-show mobile btn if panel closed from outside tap
-    if (!panel.contains(e.target) && panel.classList.contains('mobile-open')) {
+    if (!panel.contains(e.target) && !e.target.closest('.msg-btn') && panel.classList.contains('mobile-open')) {
       panel.classList.remove('mobile-open');
       mobileBtn.style.display = 'flex';
     }
@@ -545,7 +563,8 @@ function initChatPanel(user) {
   if (layout) layout.append(panel);
   // Mobile toggle button
   const mobileBtn = document.createElement('button'); mobileBtn.className = 'chat-mobile-btn'; mobileBtn.textContent = '💬'; document.body.append(mobileBtn);
-  mobileBtn.onclick = () => {
+  mobileBtn.onclick = e => {
+    e.stopPropagation();
     panel.classList.toggle('mobile-open');
     mobileBtn.style.display = panel.classList.contains('mobile-open') ? 'none' : 'flex';
   };
@@ -558,8 +577,8 @@ function initChatPanel(user) {
     ? db.collection('chats').orderBy('lastAt','desc').limit(100)
     : db.collection('chats').where('participants','array-contains',user.uid).orderBy('lastAt','desc').limit(30);
   _chatListUnsub = chatQuery.onSnapshot(snap => {
-    _chatThreadsEl.innerHTML = '';
-    snap.docs.forEach(chatDoc => _chatThreadsEl.append(_buildChatThread(chatDoc, user.uid)));
+    _chatDocs = snap.docs;
+    _renderMemberList();
   }, err => { console.error('chat list snapshot:', err); });
 }
 
@@ -567,7 +586,10 @@ function openChatWith(toUid, toName, toPhoto) {
   if (!_chatPanelEl || !_user) return;
   const cid = _chatId(_user.uid, toUid);
   _chatPanelEl._openThread(cid, toUid, toName, toPhoto||null);
-  if (window.innerWidth <= 1000) _chatPanelEl.classList.add('mobile-open');
+  if (window.innerWidth <= 1000) {
+    _chatPanelEl.classList.add('mobile-open');
+    document.querySelector('.chat-mobile-btn')?.style && (document.querySelector('.chat-mobile-btn').style.display = 'none');
+  }
 }
 
 let _notifUnsub = null, _annUnsub = null;
@@ -815,7 +837,7 @@ async function renderProfile() {
   // Message button (other people's profiles)
   if (!isOwn && _user) {
     const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = '💬 Mesaj Gönder';
-    msgBtn.onclick = () => openChatWith(uid, displayName.split(' ')[0]||'Üye', photoURL);
+    msgBtn.onclick = e => { e.stopPropagation(); openChatWith(uid, displayName.split(' ')[0]||'Üye', photoURL); };
     info.append(msgBtn);
   }
 
