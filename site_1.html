@@ -461,12 +461,13 @@ let beatCtx = null, beatBuffers = {}, beatMasterGain = null;
 let beatTimerID = null, beatStep = 0, beatNextTime = 0, beatPlaying = false, beatGeneration = 0;
 
 const BEAT_TRACKS = [
-    { name:'Kick',      emoji:'🟠', file:'assets/audio/Kick.wav',         color:'#e8b84b' },
-    { name:'Snare',     emoji:'⚪', file:'assets/audio/Snare.wav',        color:'#00aaff' },
-    { name:'Close Hat', emoji:'🟡', file:'assets/audio/Close Hat.wav',    color:'#ffd700' },
-    { name:'Open Hat',  emoji:'🟢', file:'assets/audio/Open Hat (1).wav', color:'#00ff88' },
-    { name:'Bass',      emoji:'🔵', file:'assets/audio/bass.wav',         color:'#a855f7' },
+    { name:'Kick',      emoji:'🟠', file:'assets/audio/Kick.wav',         color:'#e8b84b', lightColor:'#8c6200' },
+    { name:'Snare',     emoji:'⚪', file:'assets/audio/Snare.wav',        color:'#00aaff', lightColor:'#1a5a88' },
+    { name:'Close Hat', emoji:'🟡', file:'assets/audio/Close Hat.wav',    color:'#ffd700', lightColor:'#a04a08' },
+    { name:'Open Hat',  emoji:'🟢', file:'assets/audio/Open Hat (1).wav', color:'#00ff88', lightColor:'#1a7a40' },
+    { name:'Bass',      emoji:'🔵', file:'assets/audio/bass.wav',         color:'#a855f7', lightColor:'#7030c0' },
 ];
+function _btc(t) { return document.documentElement.classList.contains('theme-light') ? t.lightColor : t.color; }
 
 function getBeatCtx() {
     if (!beatCtx) {
@@ -584,7 +585,7 @@ function highlightStep(active) {
         c.style.transform = step === active ? 'scale(1.12)' : 'scale(1)';
         c.style.boxShadow = step === active ? '0 0 0 1px var(--white)' : '';
         c.style.borderColor = step === active ? 'var(--white)'
-            : vel > 0 ? BEAT_TRACKS[ti].color+'66' : 'var(--cell-off-bd)';
+            : vel > 0 ? _btc(BEAT_TRACKS[ti])+'66' : 'var(--cell-off-bd)';
     });
 }
 
@@ -1327,7 +1328,8 @@ function renderModule2() {
         BEAT_TRACKS.forEach((track,ti) => {
             const row = mk('div','beat-row');
             const lbl = mk('div','',`${track.emoji} ${track.name}`);
-            lbl.style.cssText=`display:flex;align-items:center;gap:4px;font-size:.65rem;color:${track.color};cursor:pointer;padding-right:4px;white-space:nowrap`;
+            const tc = _btc(track);
+            lbl.style.cssText=`display:flex;align-items:center;gap:4px;font-size:.65rem;color:${tc};cursor:pointer;padding-right:4px;white-space:nowrap`;
             lbl.title='Önizle';
             lbl.onclick=()=>{ const ctx=getBeatCtx(); synthDrum(ctx,track.file,.7,ctx.currentTime); };
             row.append(lbl);
@@ -1337,7 +1339,7 @@ function renderModule2() {
                 cell.dataset.ti=ti; cell.dataset.step=bi;
                 const opacity = vel>0 ? .3+(vel/100)*.7 : 0;
                 const hex     = vel>0 ? Math.round(opacity*255).toString(16).padStart(2,'0') : '';
-                cell.style.cssText=`background:${vel>0?track.color+hex:bi%4===0?'var(--cell-off-4)':'var(--cell-off)'};border:1px solid ${vel>0?track.color+'66':'var(--cell-off-bd)'}`;
+                cell.style.cssText=`background:${vel>0?tc+hex:bi%4===0?'var(--cell-off-4)':'var(--cell-off)'};border:1px solid ${vel>0?tc+'66':'var(--cell-off-bd)'}`;
                 const vbar = mk('div'); vbar.dataset.vbar='';
                 vbar.style.cssText=`position:absolute;bottom:0;left:0;width:${vel}%;height:3px;background:#fff;border-radius:0 2px 0 0;opacity:${vel>.0?.8:0};pointer-events:none`;
                 const vnum = mk('span'); vnum.dataset.vnum='';
@@ -1364,7 +1366,7 @@ function renderModule2() {
             d.pendingVel=v;
             if(!rafDrag) rafDrag=requestAnimationFrame(()=>{
                 rafDrag=null; const dd=dragState; if(!dd) return;
-                const vel=dd.pendingVel, color=BEAT_TRACKS[dd.ti].color;
+                const vel=dd.pendingVel, color=_btc(BEAT_TRACKS[dd.ti]);
                 const op=.3+(vel/100)*.7, hex=Math.round(op*255).toString(16).padStart(2,'0');
                 dd.el.style.background=`${color}${hex}`;
                 const bar=dd.el.querySelector('[data-vbar]'), num=dd.el.querySelector('[data-vnum]');
@@ -1390,11 +1392,12 @@ function renderModule2() {
     const volG = mk('div'); volG.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:10px';
     BEAT_TRACKS.forEach((track,ti)=>{
         const col=mk('div'); col.style.cssText='display:flex;flex-direction:column;align-items:center;gap:6px';
-        const sp=mk('span','',state.beatVolumes[ti]+'%'); sp.style.cssText=`color:${track.color};font-size:.65rem`;
-        col.append(mk('span','',`${track.emoji} ${track.name}`)); col.children[0].style.cssText=`font-size:.65rem;color:${track.color}`;
+        const vtc = _btc(track);
+        const sp=mk('span','',state.beatVolumes[ti]+'%'); sp.style.cssText=`color:${vtc};font-size:.65rem`;
+        col.append(mk('span','',`${track.emoji} ${track.name}`)); col.children[0].style.cssText=`font-size:.65rem;color:${vtc}`;
         col.append(sp);
         const si=document.createElement('input'); si.type='range'; si.min=0; si.max=100; si.value=state.beatVolumes[ti];
-        si.style.cssText=`width:100%;accent-color:${track.color}`;
+        si.style.cssText=`width:100%;accent-color:${vtc}`;
         si.oninput=()=>{ state.beatVolumes[ti]=+si.value; sp.textContent=si.value+'%'; };
         col.append(si); volG.append(col);
     });

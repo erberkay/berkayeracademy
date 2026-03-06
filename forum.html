@@ -784,6 +784,9 @@ async function loadReplies(postId, wrap, solved) {
       await db.collection('forum').doc(postId).update({
         replyCount: firebase.firestore.FieldValue.increment(1),
       });
+      db.collection('users').doc(_user.uid).update({
+        replyCount: firebase.firestore.FieldValue.increment(1),
+      }).catch(() => {});
       ta.value = '';
       await loadReplies(postId, wrap, solved);
     };
@@ -806,6 +809,11 @@ function buildReplyEl(postId, r, list) {
       await db.collection('forum').doc(postId).update({
         replyCount: firebase.firestore.FieldValue.increment(-1),
       });
+      if (r.authorId) {
+        db.collection('users').doc(r.authorId).update({
+          replyCount: firebase.firestore.FieldValue.increment(-1),
+        }).catch(() => {});
+      }
       item.remove();
     };
     meta.append(del);
