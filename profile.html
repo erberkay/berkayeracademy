@@ -932,7 +932,12 @@ async function renderProfile() {
           if (avWrap) { const ex = avWrap.querySelector('img'); if (ex) { ex.src = _customPhotoData; } else { avWrap.innerHTML = ''; const ni = document.createElement('img'); ni.className = 'profile-avatar'; ni.src = _customPhotoData; avWrap.append(ni); } }
         }
         saveBtn.textContent = '✓ Kaydedildi';
-        setTimeout(() => renderProfile(), 1000);
+        showToast('✓ Profil güncellendi!');
+        setTimeout(async () => {
+          await renderProfile().catch(console.error);
+          // Re-open edit form so user can see saved values
+          document.querySelector('.edit-btn')?.click();
+        }, 800);
       } catch(e) {
         console.error('[save] error:', e);
         saveBtn.disabled = false; saveBtn.textContent = '⚠️ Kayıt başarısız';
@@ -1085,7 +1090,8 @@ async function renderProfile() {
   repliesTitle.textContent = 'Son Yorumlar';
   repliesSec.append(repliesTitle);
   if (replies.length === 0) {
-    const e = document.createElement('div'); e.className = 'activity-empty'; e.textContent = 'Henüz yorum yapılmamış.';
+    const e = document.createElement('div'); e.className = 'activity-empty';
+    e.textContent = isOwn ? 'Henüz yorum yapılmamış. Forum\'da ilk yorumunu yaptıktan sonra burada görünür.' : 'Henüz yorum yapılmamış.';
     repliesSec.append(e);
   } else {
     replies.forEach(r => {
