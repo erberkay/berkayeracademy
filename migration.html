@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Eski Mesajları Düzeltme</title>
+    <style>
+        body { font-family: monospace; background: #0c0c16; color: #eeebe6; padding: 20px; }
+        h1 { color: #e8b84b; }
+        #log { border: 1px solid #2a2a45; padding: 10px; height: 400px; overflow-y: scroll; background: #13131f; font-size: 0.8rem; line-height: 1.6; }
+        .log-item { margin-bottom: 5px; }
+        .log-item.error { color: #b82d45; }
+        .log-item.success { color: #6fc; }
+        .log-item.info { color: #8fc8e8; }
+    </style>
+</head>
+<body>
+    <h1>Eski Sohbet Mesajlarını Güncelleme Aracı</h1>
+    <p>Bu sayfa, veritabanınızdaki eski sohbet mesajlarına eksik olan `chatId` alanını ekleyecektir.</p>
+    <p><strong>Önemli:</strong> Bu işlemi çalıştırmak için lütfen siteye giriş yapmış olduğunuzdan emin olun.</p>
+    <button id="startButton">Güncellemeyi Başlat</button>
+    <hr>
+    <h3>İşlem Günlüğü:</h3>
+    <div id="log"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script type="module">
+        // Copy Firebase config from profile.html
+        firebase.initializeApp({
+            apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
+            authDomain:        "ableton-tutorial.firebaseapp.com",
+            projectId:         "ableton-tutorial",
+            storageBucket:     "ableton-tutorial.firebasestorage.app",
+            messagingSenderId: "677640687230",
+            appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
+        });
+
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const logContainer = document.getElementById('log');
+        const startButton = document.getElementById('startButton');
+
+        function log(message, type = 'log') {
+            const item = document.createElement('div');
+            item.className = 'log-item ' + type;
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(item);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console[type] || console.log(message);
+        }
+
+        async function startMigration() {
+            startButton.disabled = true;
+            startButton.textContent = 'Çalışıyor...';
+            log('Güncelleme işlemi başlatılıyor...', 'info');
+
+            const user = auth.currentUser;
+            if (!user) {
+                log('Hata: Lütfen önce siteye giriş yapın.', 'error');
+                startButton.disabled = false;
+                startButton.textContent = 'Güncellemeyi Başlat';
+                return;
+            }
+            log(`Giriş yapan kullanıcı: ${user.displayName} (${user.uid})`, 'info');
+
+            try {
+                // We need to check all chats, not just the user's.
+                // This requires admin privileges or changing rules, but for a one-off script,
+                // we can just query all chats. We assume the user running this has sufficient permissions
+                // or the rules are temporarily relaxed. For this project, the admin is the user.
+                const chatsSnapshot = await db.collection('chats').get();
+                log(`Veritabanında toplam ${chatsSnapshot.size} adet sohbet bulundu.`, 'info');
+
+                if (chatsSnapshot.empty) {
+                    log('İşlem tamamlandı, güncellenecek sohbet bulunamadı.', 'success');
+                    startButton.textContent = 'Tamamlandı';
+                    return;
+                }
+
+                let updatedMessagesCount = 0;
+                let processedChatsCount = 0;
+
+                const chatPromises = chatsSnapshot.docs.map(async (chatDoc) => {
+                    const chatId = chatDoc.id;
+                    log(`Sohbet işleniyor: ${chatId}`);
+
+                    const messagesSnapshot = await db.collection('chats').doc(chatId).collection('messages').get();
+                    if (messagesSnapshot.empty) {
+                        log(`  -> Bu sohbette mesaj yok, geçiliyor.`);
+                        processedChatsCount++;
+                        return;
+                    }
+
+                    const batch = db.batch();
+                    let messagesToUpdateInChat = 0;
+                    messagesSnapshot.docs.forEach(msgDoc => {
+                        const msgData = msgDoc.data();
+                        if (!msgData.chatId) {
+                            batch.update(msgDoc.ref, { chatId: chatId });
+                            messagesToUpdateInChat++;
+                        }
+                    });
+
+                    if (messagesToUpdateInChat > 0) {
+                        log(`  -> ${messagesToUpdateInChat} adet eski mesaj bulundu. Güncelleniyor...`);
+                        await batch.commit();
+                        updatedMessagesCount += messagesToUpdateInChat;
+                        log(`  -> ${messagesToUpdateInChat} mesaj başarıyla güncellendi.`, 'success');
+                    } else {
+                        log(`  -> Bu sohbetteki tüm mesajlar zaten güncel.`);
+                    }
+                    processedChatsCount++;
+                    log(`İşlenen sohbet: ${processedChatsCount} / ${chatsSnapshot.size}`);
+                });
+
+                await Promise.all(chatPromises);
+
+                log('------------------------------------', 'info');
+                log(`Tüm işlemler tamamlandı!`, 'success');
+                log(`Toplam ${updatedMessagesCount} mesaj güncellendi.`, 'success');
+                startButton.textContent = 'Tamamlandı';
+
+            } catch (error) {
+                log(`Kritik bir hata oluştu: ${error.message}`, 'error');
+                console.error(error);
+                startButton.disabled = false;
+                startButton.textContent = 'Tekrar Dene';
+            }
+        }
+
+        startButton.addEventListener('click', startMigration);
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                log('Firebase ile bağlantı kuruldu ve kullanıcı giriş yapmış durumda. Hazır.', 'info');
+                startButton.disabled = false;
+            } else {
+                log('Lütfen ana sayfadan giriş yapın ve bu sayfayı yenileyin.', 'warn');
+                startButton.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
