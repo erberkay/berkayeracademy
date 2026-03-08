@@ -61,21 +61,24 @@
     .btn:disabled { opacity:.45; cursor:not-allowed; }
     .btn-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:20px; }
 
-    /* ── Day selector ── */
-    .days-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:16px; }
-    @media(max-width:500px) { .days-grid { grid-template-columns:repeat(4,1fr); } }
-    .day-btn { padding:10px 4px; background:rgba(255,255,255,.04); border:1.5px solid var(--mid); border-radius:8px; color:var(--dim); font-family:'Space Mono',monospace; font-size:.6rem; cursor:pointer; text-align:center; transition:all .15s; user-select:none; }
-    .day-btn:hover { border-color:rgba(232,184,75,.4); color:var(--white); }
-    .day-btn.selected { background:rgba(232,184,75,.12); border-color:var(--gold); color:var(--gold); }
-    .day-name { font-size:.7rem; font-weight:700; display:block; margin-bottom:4px; }
-    .day-short { font-size:.52rem; color:inherit; }
-
-    /* ── Time selector ── */
-    .time-slots-wrap { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
-    .time-slot-row { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.03); border:1px solid var(--mid); border-radius:8px; padding:10px 14px; }
-    .time-slot-day { font-size:.7rem; color:var(--gold); font-weight:700; min-width:90px; }
-    .time-select { background:rgba(255,255,255,.06); border:1.5px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.75rem; padding:6px 10px; outline:none; cursor:pointer; }
-    .time-select:focus { border-color:rgba(232,184,75,.5); }
+    /* ── Availability grid ── */
+    .avail-wrap { overflow-x:auto; margin-bottom:8px; -webkit-overflow-scrolling:touch; }
+    .avail-table { border-collapse:separate; border-spacing:3px; width:100%; min-width:320px; }
+    .avail-table th { font-size:.55rem; color:var(--dim); text-align:center; padding:4px 2px; letter-spacing:.04em; font-weight:700; }
+    .avail-table td { padding:0; }
+    .avail-time { font-size:.52rem; color:var(--dim); padding:2px 5px; white-space:nowrap; text-align:right; }
+    .av-cell { display:block; width:100%; padding:7px 2px; text-align:center; font-size:.5rem; font-family:'Space Mono',monospace; border-radius:5px; cursor:pointer; transition:all .12s; border:1.5px solid transparent; user-select:none; }
+    .av-cell.free { background:rgba(74,222,128,.07); color:rgba(74,222,128,.6); border-color:rgba(74,222,128,.18); }
+    .av-cell.free:hover { background:rgba(74,222,128,.18); color:var(--green); border-color:rgba(74,222,128,.4); }
+    .av-cell.busy { background:rgba(184,45,69,.1); color:rgba(184,45,69,.5); border-color:rgba(184,45,69,.2); cursor:not-allowed; }
+    .av-cell.selected { background:rgba(232,184,75,.18); color:var(--gold); border-color:var(--gold); font-weight:700; }
+    .avail-legend { display:flex; gap:14px; font-size:.6rem; color:var(--dim); margin-bottom:14px; flex-wrap:wrap; }
+    .avail-legend span { display:flex; align-items:center; gap:5px; }
+    .avail-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; }
+    .avail-legend .lg-free { background:rgba(74,222,128,.2); border:1px solid rgba(74,222,128,.4); }
+    .avail-legend .lg-busy { background:rgba(184,45,69,.2); border:1px solid rgba(184,45,69,.3); }
+    .avail-legend .lg-sel  { background:rgba(232,184,75,.25); border:1px solid var(--gold); }
+    .avail-selected-summary { font-size:.68rem; color:var(--gold); min-height:1.2em; margin-bottom:12px; }
 
     /* ── Dashboard ── */
     .dash-header { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
@@ -203,15 +206,17 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label">Ders Günleri <span style="color:var(--dim);font-size:.6rem;">(istediğin kadar seçebilirsin)</span></label>
-        <div class="days-grid" id="reqDaysGrid"></div>
-      </div>
-
-      <div id="reqTimeSlotsSection" style="display:none;">
-        <div class="field-group">
-          <label class="field-label">Ders Saatleri</label>
-          <div class="time-slots-wrap" id="reqTimeSlotsWrap"></div>
+        <label class="field-label">Gün & Saat Seç <span style="color:var(--dim);font-size:.6rem;">(birden fazla seçebilirsin)</span></label>
+        <div class="avail-legend">
+          <span><i class="lg-free"></i> Müsait</span>
+          <span><i class="lg-busy"></i> Dolu</span>
+          <span><i class="lg-sel"></i> Seçili</span>
         </div>
+        <div class="avail-wrap">
+          <div id="availGridLoading" style="font-size:.7rem;color:var(--dim);padding:12px 0;">Müsaitlik yükleniyor…</div>
+          <table class="avail-table" id="availGrid" style="display:none;"></table>
+        </div>
+        <div class="avail-selected-summary" id="availSummary"></div>
       </div>
 
       <div class="field-group">
@@ -323,8 +328,8 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 
 let _user = null;
-let _activeDays = new Set();
-let _dayTimes   = {};
+let _selectedSlots = new Set(); // "dayIndex_time" e.g. "1_14:00"
+let _busySlots     = new Set(); // same format, loaded from booked_slots
 
 // ─── Helpers ─────────────────────────────────────────────
 function showView(id) {
@@ -389,54 +394,99 @@ function updateAuthBar(user) {
   }
 }
 
-// ─── Day selector (request form) ─────────────────────────
-function buildReqDaySelector() {
-  const grid = document.getElementById('reqDaysGrid');
-  grid.innerHTML = '';
-  [1,2,3,4,5,6,0].forEach(dayIdx => {
-    const btn = document.createElement('div');
-    btn.className = 'day-btn';
-    btn.dataset.day = dayIdx;
-    btn.innerHTML = `<span class="day-name">${DAYS_TR_SHORT[dayIdx]}</span><span class="day-short">${DAYS_TR[dayIdx].slice(0,3)}</span>`;
-    btn.onclick = () => {
-      if (btn.classList.contains('selected')) {
-        btn.classList.remove('selected');
-        _activeDays.delete(dayIdx);
-        delete _dayTimes[dayIdx];
-      } else {
-        btn.classList.add('selected');
-        _activeDays.add(dayIdx);
-        _dayTimes[dayIdx] = '14:00';
-      }
-      renderReqTimeSlots();
-      checkReqReady();
-    };
-    grid.append(btn);
-  });
-}
+// ─── Availability grid ────────────────────────────────────
+const GRID_DAYS = [1,2,3,4,5,6,0]; // Mon→Sun
 
-function renderReqTimeSlots() {
-  const section = document.getElementById('reqTimeSlotsSection');
-  const wrap = document.getElementById('reqTimeSlotsWrap');
-  if (_activeDays.size === 0) { section.style.display = 'none'; return; }
-  section.style.display = '';
-  wrap.innerHTML = '';
-  [..._activeDays].sort((a,b) => [1,2,3,4,5,6,0].indexOf(a) - [1,2,3,4,5,6,0].indexOf(b)).forEach(dayIdx => {
-    const row = document.createElement('div'); row.className = 'time-slot-row';
-    const label = document.createElement('div'); label.className='time-slot-day'; label.textContent=DAYS_TR[dayIdx];
-    const sel = document.createElement('select'); sel.className='time-select';
-    AVAILABLE_TIMES.forEach(t => {
-      const o = document.createElement('option'); o.value=t; o.textContent=t;
-      if (t === (_dayTimes[dayIdx]||'14:00')) o.selected=true;
-      sel.append(o);
+async function loadAndRenderAvailGrid() {
+  const loading = document.getElementById('availGridLoading');
+  const table   = document.getElementById('availGrid');
+  loading.style.display = ''; table.style.display = 'none';
+
+  // Fetch booked_slots for next 90 days
+  const today = new Date(); today.setHours(0,0,0,0);
+  const end90 = new Date(today); end90.setDate(end90.getDate() + 90);
+  const todayStr = toDateStr(today);
+  const endStr   = toDateStr(end90);
+
+  _busySlots.clear();
+  try {
+    const snap = await db.collection('booked_slots')
+      .where('date','>=', todayStr)
+      .where('date','<=', endStr)
+      .get();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const dow = dateStrToObj(d.date).getDay();
+      _busySlots.add(`${dow}_${d.time}`);
     });
-    sel.onchange = () => { _dayTimes[dayIdx] = sel.value; };
-    row.append(label, sel); wrap.append(row);
-  });
+  } catch(e) { /* no booked_slots yet, that's fine */ }
+
+  renderAvailGrid();
+  loading.style.display = 'none'; table.style.display = '';
 }
 
-function checkReqReady() {
-  document.getElementById('submitRequestBtn').disabled = _activeDays.size === 0;
+function renderAvailGrid() {
+  const table = document.getElementById('availGrid');
+  table.innerHTML = '';
+
+  // Header row
+  const thead = table.createTHead();
+  const hr = thead.insertRow();
+  const th0 = document.createElement('th'); hr.append(th0); // empty corner
+  GRID_DAYS.forEach(d => {
+    const th = document.createElement('th');
+    th.textContent = DAYS_TR_SHORT[d];
+    hr.append(th);
+  });
+
+  // Body: one row per time
+  const tbody = table.createTBody();
+  AVAILABLE_TIMES.forEach(time => {
+    const tr = tbody.insertRow();
+    const timeTd = document.createElement('td');
+    timeTd.className = 'avail-time';
+    timeTd.textContent = time;
+    tr.append(timeTd);
+
+    GRID_DAYS.forEach(dow => {
+      const key = `${dow}_${time}`;
+      const td = document.createElement('td');
+      const cell = document.createElement('div');
+      cell.className = 'av-cell ' + (_busySlots.has(key) ? 'busy' : _selectedSlots.has(key) ? 'selected' : 'free');
+      cell.textContent = _busySlots.has(key) ? '✕' : _selectedSlots.has(key) ? '✓' : '·';
+      cell.dataset.key = key;
+      if (!_busySlots.has(key)) {
+        cell.onclick = () => toggleSlot(key, cell);
+      }
+      td.append(cell); tr.append(td);
+    });
+  });
+
+  updateSlotSummary();
+}
+
+function toggleSlot(key, cell) {
+  if (_selectedSlots.has(key)) {
+    _selectedSlots.delete(key);
+    cell.className = 'av-cell free';
+    cell.textContent = '·';
+  } else {
+    _selectedSlots.add(key);
+    cell.className = 'av-cell selected';
+    cell.textContent = '✓';
+  }
+  updateSlotSummary();
+  document.getElementById('submitRequestBtn').disabled = _selectedSlots.size === 0;
+}
+
+function updateSlotSummary() {
+  const el = document.getElementById('availSummary');
+  if (_selectedSlots.size === 0) { el.textContent = ''; return; }
+  const parts = [..._selectedSlots].map(k => {
+    const [dow, time] = k.split('_');
+    return DAYS_TR[parseInt(dow)] + ' ' + time;
+  });
+  el.textContent = 'Seçili: ' + parts.join(', ');
 }
 
 // ─── Submit Request ───────────────────────────────────────
@@ -445,13 +495,16 @@ async function submitRequest() {
   const errEl = document.getElementById('reqError');
   errEl.style.display = 'none';
 
-  if (_activeDays.size === 0) {
-    errEl.textContent = 'En az bir ders günü seçmelisin.';
+  if (_selectedSlots.size === 0) {
+    errEl.textContent = 'En az bir ders saati seçmelisin.';
     errEl.style.display = ''; return;
   }
 
   const duration = parseInt(document.getElementById('reqDuration').value);
-  const schedule = [..._activeDays].map(d => ({ dayIndex: d, time: _dayTimes[d] }));
+  const schedule = [..._selectedSlots].map(k => {
+    const [dow, time] = k.split('_');
+    return { dayIndex: parseInt(dow), time };
+  });
   const note = document.getElementById('reqNote').value.trim();
 
   btn.disabled = true; btn.textContent = 'Gönderiliyor…';
@@ -527,11 +580,10 @@ function renderPendingView(reqData) {
 }
 
 function initRequestForm() {
-  _activeDays.clear(); _dayTimes = {};
-  buildReqDaySelector();
-  renderReqTimeSlots();
-  checkReqReady();
+  _selectedSlots.clear();
+  document.getElementById('submitRequestBtn').disabled = true;
   showView('view-request');
+  loadAndRenderAvailGrid();
 }
 
 // ─── Student Dashboard ────────────────────────────────────
