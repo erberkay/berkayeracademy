@@ -1058,7 +1058,8 @@ async function renderDashboard() {
 
   // Payment box
   const activeLessons = lessons.filter(l => l.status !== 'cancelled');
-  const totalPrice = activeLessons.length * LESSON_PRICE;
+  const lessonUnitPrice = res.custom_lesson_price || LESSON_PRICE;
+  const totalPrice = res.custom_total_price ?? (activeLessons.length * lessonUnitPrice);
   const isPaid = !!res.payment_confirmed;
   const isPending = !!res.payment_pending;
   const pboxEl = document.getElementById('paymentBox');
@@ -1391,7 +1392,10 @@ async function renderAdminPanel() {
   if (studSnap && !studSnap.empty) {
     studSnap.docs.forEach(doc => {
       const d = doc.data();
-      const price = d.custom_lesson_price || LESSON_PRICE;
+      const totalNonCancelled = (d.lessons||[]).filter(l => l.status !== 'cancelled').length;
+      const price = d.custom_total_price && totalNonCancelled > 0
+        ? Math.round(d.custom_total_price / totalNonCancelled)
+        : (d.custom_lesson_price || LESSON_PRICE);
       let studentMonthLessons = 0;
       (d.lessons||[]).forEach(l => {
         if (l.status === 'scheduled' || l.status === 'rescheduled')
@@ -1447,7 +1451,7 @@ async function renderAdminPanel() {
       const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
       const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
       const lessonPrice = s.custom_lesson_price || LESSON_PRICE;
-      const totalPrice = totalLessons * lessonPrice;
+      const totalPrice = s.custom_total_price ?? (totalLessons * lessonPrice);
       const isResPaid = !!s.payment_confirmed;
       const isPending = !isResPaid && !!s.payment_pending;
       const row = document.createElement('div'); row.className = 'student-row';
@@ -1560,7 +1564,7 @@ async function renderAdminPanel() {
             const priceBtn = document.createElement('button');
             priceBtn.style.cssText = 'background:none;border:none;color:rgba(232,184,75,.5);font-size:.65rem;cursor:pointer;padding:2px 6px;font-family:"Space Mono",monospace;';
             priceBtn.textContent = '₺ Fiyat Düzenle';
-            priceBtn.onclick = () => adminEditStudentPrice(studentUid, lessonPrice);
+            priceBtn.onclick = () => adminEditStudentPrice(studentUid, lessonPrice, totalLessons, s.custom_total_price ?? null);
             lRow.querySelector('.admin-lesson-actions').append(priceBtn);
           }
           optBtn.onclick = (e) => { e.stopPropagation();
@@ -1690,28 +1694,54 @@ async function adminDeletePlan(studentUid, allLessons) {
 }
 
 // ─── Admin: Edit Student Price ────────────────────────────
-async function adminEditStudentPrice(studentUid, currentPrice) {
+async function adminEditStudentPrice(studentUid, currentLessonPrice, totalLessons, currentTotalPrice) {
+  const initTotal = currentTotalPrice ?? (currentLessonPrice * totalLessons);
+  const initPer   = currentLessonPrice;
+
   const modal = Object.assign(document.createElement('div'), { innerHTML: `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;">
-      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:28px 26px;min-width:280px;font-family:'Space Mono',monospace;">
-        <div style="font-size:.85rem;color:#fff;margin-bottom:4px;">Ders ücreti (TL/ders):</div>
-        <div style="font-size:.7rem;color:#888;margin-bottom:10px;">Mevcut: ${currentPrice.toLocaleString('tr-TR')} TL</div>
-        <input id="adminPriceInput" type="number" min="0" value="${currentPrice}" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.9rem;padding:8px 10px;border-radius:6px;width:100%;box-sizing:border-box;outline:none;">
-        <div style="display:flex;gap:10px;margin-top:18px;">
-          <button id="adminPriceSave" style="flex:1;background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.4);color:#e8b84b;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">✓ Kaydet</button>
-          <button id="adminPriceCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">İptal</button>
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:28px 26px;width:100%;max-width:320px;font-family:'Space Mono',monospace;">
+        <div style="font-size:.9rem;color:#e8b84b;font-weight:700;margin-bottom:18px;">₺ Fiyat Düzenle</div>
+        <div style="font-size:.62rem;color:#888;letter-spacing:.08em;margin-bottom:5px;">DERS BAŞI (TL)</div>
+        <input id="adminPerInput" type="number" min="0" value="${initPer}"
+          style="background:#111;border:1px solid rgba(255,255,255,.18);color:#fff;font-size:.9rem;padding:9px 11px;border-radius:6px;width:100%;box-sizing:border-box;outline:none;margin-bottom:14px;">
+        <div style="font-size:.62rem;color:#888;letter-spacing:.08em;margin-bottom:5px;">TOPLAM (TL) — ${totalLessons} ders</div>
+        <input id="adminTotalInput" type="number" min="0" value="${initTotal}"
+          style="background:#111;border:1px solid rgba(232,184,75,.35);color:#e8b84b;font-size:.9rem;padding:9px 11px;border-radius:6px;width:100%;box-sizing:border-box;outline:none;margin-bottom:20px;">
+        <div style="display:flex;gap:10px;">
+          <button id="adminPriceSave" style="flex:1;background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.4);color:#e8b84b;font-family:'Space Mono',monospace;font-size:.72rem;padding:10px;border-radius:6px;cursor:pointer;font-weight:700;">✓ Kaydet</button>
+          <button id="adminPriceCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.72rem;padding:10px;border-radius:6px;cursor:pointer;">İptal</button>
         </div>
       </div>
     </div>` });
   document.body.append(modal);
+
+  const perInput   = modal.querySelector('#adminPerInput');
+  const totalInput = modal.querySelector('#adminTotalInput');
+
+  // Sync: changing per-lesson → update total
+  perInput.oninput = () => {
+    const p = parseFloat(perInput.value) || 0;
+    totalInput.value = Math.round(p * totalLessons);
+  };
+  // Sync: changing total → update per-lesson
+  totalInput.oninput = () => {
+    const t = parseFloat(totalInput.value) || 0;
+    perInput.value = totalLessons > 0 ? Math.round(t / totalLessons) : 0;
+  };
+
   modal.querySelector('#adminPriceCancel').onclick = () => modal.remove();
   modal.querySelector('#adminPriceSave').onclick = async () => {
-    const val = parseInt(modal.querySelector('#adminPriceInput').value, 10);
-    if (isNaN(val) || val < 0) return;
+    const perVal   = parseInt(perInput.value, 10);
+    const totalVal = parseInt(totalInput.value, 10);
+    if (isNaN(perVal) || perVal < 0 || isNaN(totalVal) || totalVal < 0) return;
     modal.remove();
     try {
-      await db.collection('reservations').doc(studentUid).update({ custom_lesson_price: val });
-      toast(`✓ Ders ücreti güncellendi — ${val.toLocaleString('tr-TR')} TL/ders`);
+      await db.collection('reservations').doc(studentUid).update({
+        custom_lesson_price: perVal,
+        custom_total_price:  totalVal,
+      });
+      toast(`✓ Fiyat güncellendi — ${totalVal.toLocaleString('tr-TR')} TL toplam`);
       renderAdminPanel();
     } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
   };
