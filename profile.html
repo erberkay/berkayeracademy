@@ -279,6 +279,8 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
     .bnav-profile-av { width:24px; height:24px; border-radius:50%; border:1.5px solid rgba(232,184,75,.35); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:.85rem; background:rgba(255,255,255,.04); transition:border-color .15s; }
     .bnav-profile.active .bnav-profile-av, .bnav-profile:hover .bnav-profile-av { border-color:var(--gold); }
     .bnav-profile-av img { width:100%; height:100%; object-fit:cover; }
+    #homeLogo { position:fixed; top:10px; left:14px; z-index:400; font-family:'Bebas Neue',sans-serif; font-size:1.05rem; color:#e8b84b; text-decoration:none; letter-spacing:.06em; background:rgba(6,6,9,.7); padding:4px 9px 3px; border-radius:5px; border:1px solid rgba(232,184,75,.2); backdrop-filter:blur(8px); transition:all .15s; }
+    #homeLogo:hover { border-color:rgba(232,184,75,.5); background:rgba(232,184,75,.08); }
 
 /* ── Activity ── */
 .activity-col {}
@@ -299,7 +301,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 </style>
 </head>
 <body>
-<a id="homeLogo" href="index.html" title="Anasayfa">BEA</a>
+<a id="homeLogo" href="index.html" title="Anasayfa">⌂ Ana</a>
 
 <nav class="topnav">
   <div class="topnav-left">
@@ -1278,9 +1280,12 @@ async function renderProfile() {
     const annLbl = document.createElement('div'); annLbl.className = 'admin-title-label'; annLbl.textContent = '📢 Tüm Üyelere Duyuru Gönder';
     const annTa = document.createElement('textarea'); annTa.className = 'admin-announce-ta';
     annTa.placeholder = 'Yeni özellik, güncelleme veya duyuru metni...';
-    const annRow = document.createElement('div'); annRow.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px;';
+    const annRow = document.createElement('div'); annRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;';
     const annSend = document.createElement('button'); annSend.className = 'admin-announce-send'; annSend.textContent = '📢 Gönder';
-    const annStatus = document.createElement('span'); annStatus.style.cssText = 'font-size:.58rem;color:var(--dim);';
+    const annDelAll = document.createElement('button'); annDelAll.className = 'admin-announce-send';
+    annDelAll.style.cssText = 'background:rgba(184,45,69,.15);border:1px solid rgba(184,45,69,.35);color:var(--crimson);';
+    annDelAll.textContent = '🗑 Tümünü Sil';
+    const annStatus = document.createElement('span'); annStatus.style.cssText = 'font-size:.58rem;color:var(--dim);width:100%;';
     annSend.onclick = async () => {
       const txt = annTa.value.trim();
       if (!txt) { annTa.focus(); return; }
@@ -1300,7 +1305,22 @@ async function renderProfile() {
       }
       annSend.disabled = false; annSend.textContent = '📢 Gönder';
     };
-    annRow.append(annSend, annStatus);
+    annDelAll.onclick = async () => {
+      if (!confirm('Tüm duyuruları silmek istediğine emin misin?')) return;
+      annDelAll.disabled = true; annDelAll.textContent = '⏳';
+      try {
+        const snap = await db.collection('announcements').get();
+        const batch = db.batch();
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        annStatus.style.color = 'var(--green)'; annStatus.textContent = '✓ Tüm duyurular silindi';
+        setTimeout(() => { annStatus.textContent = ''; }, 3000);
+      } catch(e) {
+        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+      }
+      annDelAll.disabled = false; annDelAll.textContent = '🗑 Tümünü Sil';
+    };
+    annRow.append(annSend, annDelAll, annStatus);
     annPanel.append(annLbl, annTa, annRow);
     pCard.append(annPanel);
   }
