@@ -309,6 +309,11 @@
     </div>
   </div>
 
+  <!-- ── View: Booking Access ── -->
+  <div class="view" id="view-access">
+    <div class="card" style="text-align:center;padding:44px 24px;max-width:480px;margin:0 auto;" id="accessCard"></div>
+  </div>
+
   <!-- ── View: Request Form ── -->
   <div class="view" id="view-request">
     <div class="card">
@@ -463,6 +468,12 @@
   <!-- ── View: Admin Panel ── -->
   <div class="view" id="view-admin">
     <div class="admin-badge">🔐 Admin Paneli</div>
+
+    <!-- Access Requests -->
+    <div class="card" id="adminAccessCard" style="display:none;">
+      <div class="section-title">🔑 Erişim Talepleri</div>
+      <div id="adminAccessList"></div>
+    </div>
 
     <!-- Monthly Stats -->
     <div class="card" id="adminStatsCard">
@@ -1179,6 +1190,7 @@ async function renderAdminPanel() {
   if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
   _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
   showView('view-admin');
+  loadAdminAccessRequests();
   initLessonAnnouncements(true);
   initAdminQA();
 
@@ -1941,6 +1953,25 @@ async function loadUserState(user) {
   if (user.email === ADMIN_EMAIL) { renderAdminPanel(); return; }
 
   // Check active reservation first
+  // ── Step 1: Check booking access ──────────────────────
+  let accessSnap = null;
+  try { accessSnap = await db.collection('booking_access_requests').doc(user.uid).get(); }
+  catch(e) {
+    const c = errId();
+    showView('view-signin');
+    document.getElementById('view-signin').innerHTML += `<div style="margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;">Bağlantı hatası (${c}): ${e.message||e.code}<br>Sayfayı yenileyin.</div>`;
+    return;
+  }
+
+  if (!accessSnap || !accessSnap.exists) {
+    renderAccessView(user, 'none'); return;
+  }
+  const accessStatus = accessSnap.data().status;
+  if (accessStatus === 'pending') { renderAccessView(user, 'pending'); return; }
+  if (accessStatus === 'rejected') { renderAccessView(user, 'rejected', accessSnap.data().reject_reason || ''); return; }
+  // accessStatus === 'approved' → fall through to normal flow
+
+  // ── Step 2: Normal reservation/request flow ────────────
   let resSnap = null;
   try { resSnap = await db.collection('reservations').doc(user.uid).get(); }
   catch(e) {
@@ -1951,7 +1982,6 @@ async function loadUserState(user) {
   }
   if (resSnap && resSnap.exists) { renderDashboard(); return; }
 
-  // Check existing request
   let reqSnap = null;
   try {
     reqSnap = await db.collection('lesson_requests').where('from_uid','==', user.uid).get();
@@ -1965,16 +1995,137 @@ async function loadUserState(user) {
   if (reqSnap && !reqSnap.empty) {
     const latestDoc = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
     const req = latestDoc.data();
-    if (req.status === 'pending' || req.status === 'rejected') {
-      renderPendingView(req); return;
-    }
-    if (req.status === 'accepted') {
-      renderDashboard(); return;
-    }
+    if (req.status === 'pending' || req.status === 'rejected') { renderPendingView(req); return; }
+    if (req.status === 'accepted') { renderDashboard(); return; }
   }
 
-  // No request yet → show form
   initRequestForm();
+}
+
+// ─── Booking Access View ───────────────────────────────────
+function renderAccessView(user, state, rejectReason) {
+  showView('view-access');
+  const card = document.getElementById('accessCard');
+
+  if (state === 'none') {
+    card.innerHTML = `
+      <div style="font-size:2.2rem;margin-bottom:14px;">🔑</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold);letter-spacing:.06em;margin-bottom:8px;">Erişim Talebi</div>
+      <div style="font-size:.78rem;color:var(--dim);margin-bottom:28px;line-height:1.8;">Ders rezervasyon sistemine erişim için Berkay Er'den onay almanız gerekiyor.<br>Talebiniz incelendikten sonra bilgilendirileceksiniz.</div>
+      <div class="field-group" style="text-align:left;">
+        <label class="field-label">Mesajınız <span style="color:var(--dim);font-size:.6rem;">(isteğe bağlı)</span></label>
+        <textarea class="field-input" id="accessMsg" rows="3" placeholder="Kendinizden kısaca bahsedin, ne öğrenmek istiyorsunuz…"></textarea>
+      </div>
+      <div id="accessErr" style="font-size:.7rem;color:var(--crimson);margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-gold" id="accessSendBtn" style="width:100%;">Erişim İste →</button>`;
+
+    card.querySelector('#accessSendBtn').onclick = async () => {
+      const btn = card.querySelector('#accessSendBtn');
+      const msg = card.querySelector('#accessMsg').value.trim();
+      btn.disabled = true; btn.textContent = 'Gönderiliyor…';
+      try {
+        await db.collection('booking_access_requests').doc(user.uid).set({
+          uid: user.uid,
+          name: user.displayName || '',
+          email: user.email || '',
+          photo: user.photoURL || '',
+          message: msg,
+          status: 'pending',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        renderAccessView(user, 'pending');
+      } catch(e) {
+        const c = errId();
+        const errEl = card.querySelector('#accessErr');
+        errEl.textContent = `Hata (${c}): ` + (e.message || e.code);
+        errEl.style.display = '';
+        btn.disabled = false; btn.textContent = 'Erişim İste →';
+      }
+    };
+    return;
+  }
+
+  if (state === 'pending') {
+    card.innerHTML = `
+      <div style="font-size:2.2rem;margin-bottom:14px;">⏳</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold);letter-spacing:.06em;margin-bottom:8px;">Talep İnceleniyor</div>
+      <div style="font-size:.78rem;color:var(--dim);line-height:1.8;">Erişim talebiniz alındı. Berkay Er inceledikten sonra bu sayfa otomatik olarak güncellenecek.</div>`;
+    return;
+  }
+
+  if (state === 'rejected') {
+    card.innerHTML = `
+      <div style="font-size:2.2rem;margin-bottom:14px;">✕</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--crimson);letter-spacing:.06em;margin-bottom:8px;">Talep Reddedildi</div>
+      <div style="font-size:.78rem;color:var(--dim);line-height:1.8;margin-bottom:20px;">${rejectReason || 'Şu an için uygun görülmedi.'}</div>
+      <button class="btn btn-ghost" id="accessRetryBtn">Tekrar Talep Gönder</button>`;
+    card.querySelector('#accessRetryBtn').onclick = async () => {
+      // Delete old rejected request so they can send a new one
+      try { await db.collection('booking_access_requests').doc(user.uid).delete(); } catch(e) {}
+      renderAccessView(user, 'none');
+    };
+  }
+}
+
+// ─── Admin: Load Access Requests ──────────────────────────
+async function loadAdminAccessRequests() {
+  const card = document.getElementById('adminAccessCard');
+  const list = document.getElementById('adminAccessList');
+  if (!card || !list) return;
+
+  const snap = await db.collection('booking_access_requests')
+    .where('status', '==', 'pending')
+    .orderBy('createdAt', 'asc')
+    .get()
+    .catch(e => { const c=errId(); list.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Hata (${c})</div>`; return null; });
+
+  if (!snap || snap.empty) { card.style.display = 'none'; return; }
+
+  card.style.display = '';
+  list.innerHTML = '';
+  snap.docs.forEach(doc => {
+    const r = doc.data();
+    const row = document.createElement('div');
+    row.style.cssText = 'background:rgba(232,184,75,.04);border:1px solid rgba(232,184,75,.18);border-radius:10px;margin-bottom:10px;overflow:hidden;';
+    row.innerHTML = `
+      <div style="padding:14px 16px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(232,184,75,.35);flex-shrink:0;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:.8rem;">
+            ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;" alt="">` : (r.name?.[0]||'?')}
+          </div>
+          <div>
+            <div style="font-size:.88rem;color:var(--white);font-weight:700;">${r.name || '—'}</div>
+            <div style="font-size:.65rem;color:var(--dim);">${r.email || ''}</div>
+          </div>
+        </div>
+        ${r.message ? `<div style="font-size:.75rem;color:var(--dim);font-style:italic;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:6px;border-left:2px solid rgba(232,184,75,.25);margin-bottom:2px;">"${r.message}"</div>` : ''}
+      </div>
+      <div style="display:flex;border-top:1px solid rgba(255,255,255,.06);">
+        <button class="accessApproveBtn" style="flex:1;background:rgba(74,222,128,.07);border:none;border-right:1px solid rgba(255,255,255,.06);color:var(--green);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;transition:background .15s;letter-spacing:.04em;">✓ Onayla</button>
+        <button class="accessRejectBtn"  style="flex:1;background:rgba(184,45,69,.07);border:none;color:var(--crimson);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;transition:background .15s;letter-spacing:.04em;">✕ Reddet</button>
+      </div>`;
+
+    row.querySelector('.accessApproveBtn').onclick = async (e) => {
+      e.target.disabled = true;
+      try {
+        await db.collection('booking_access_requests').doc(r.uid).update({ status: 'approved' });
+        toast(`✓ ${r.name || r.email} erişimi onaylandı.`);
+        row.remove();
+        if (!list.children.length) card.style.display = 'none';
+      } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
+    };
+    row.querySelector('.accessRejectBtn').onclick = async (e) => {
+      const reason = prompt('Reddetme sebebi (isteğe bağlı):') ?? '';
+      e.target.disabled = true;
+      try {
+        await db.collection('booking_access_requests').doc(r.uid).update({ status: 'rejected', reject_reason: reason });
+        toast(`${r.name || r.email} erişimi reddedildi.`);
+        row.remove();
+        if (!list.children.length) card.style.display = 'none';
+      } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
+    };
+    list.append(row);
+  });
 }
 
 // ─── Lesson Panel Announcements ───────────────────────────
