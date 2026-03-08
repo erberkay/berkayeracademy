@@ -317,7 +317,7 @@
 <script>
 'use strict';
 const ADMIN_EMAIL = 'berkayer032@gmail.com';
-const AVAILABLE_TIMES = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+const AVAILABLE_TIMES = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30'];
 const DAYS_TR = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
 const DAYS_TR_SHORT = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS_TR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
@@ -423,7 +423,13 @@ async function loadAndRenderAvailGrid() {
     snap.forEach(doc => {
       const d = doc.data();
       const dow = dateStrToObj(d.date).getDay();
-      _busySlots.add(`${dow}_${d.time}`);
+      // Mark booked slot + mid-lesson (+30min) + lesson-end (+60min, need 30min buffer before next)
+      const [h, m] = d.time.split(':').map(Number);
+      const base = h * 60 + m;
+      [base, base + 30, base + 60].forEach(min => {
+        const t = `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
+        if (AVAILABLE_TIMES.includes(t)) _busySlots.add(`${dow}_${t}`);
+      });
     });
   } catch(e) { /* no booked_slots yet, that's fine */ }
 
