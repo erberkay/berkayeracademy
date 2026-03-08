@@ -79,15 +79,11 @@ service cloud.firestore {
       match /messages/{msgId} {
         allow read: if request.auth != null && (
           request.auth.token.email == "berkayer032@gmail.com" ||
-          (exists(/databases/$(database)/documents/chats/$(chatId)) &&
-           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants)
+          chatId.matches('.*' + request.auth.uid + '.*')
         );
         allow create: if request.auth != null &&
-          request.auth.uid == request.resource.data.fromUid && (
-            request.auth.token.email == "berkayer032@gmail.com" ||
-            (exists(/databases/$(database)/documents/chats/$(chatId)) &&
-             request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants)
-          );
+          request.auth.uid == request.resource.data.fromUid &&
+          chatId.matches('.*' + request.auth.uid + '.*');
       }
     }
 
