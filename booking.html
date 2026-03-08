@@ -485,13 +485,37 @@ function toggleSlot(key, cell) {
   document.getElementById('submitRequestBtn').disabled = _selectedSlots.size === 0;
 }
 
+// Adjust consecutive same-day slots: if a slot starts < 30 min after previous ends, push it 30 min after
+function adjustSchedule(rawSlots) {
+  const byDay = {};
+  rawSlots.forEach(s => { (byDay[s.dayIndex] = byDay[s.dayIndex]||[]).push({...s}); });
+  const result = [];
+  Object.values(byDay).forEach(slots => {
+    slots.sort((a, b) => a.time.localeCompare(b.time));
+    let prevEndMin = null;
+    slots.forEach(s => {
+      const [h, m] = s.time.split(':').map(Number);
+      let startMin = h * 60 + m;
+      if (prevEndMin !== null && startMin < prevEndMin + 30) {
+        startMin = prevEndMin + 30;
+        s.time = `${String(Math.floor(startMin/60)).padStart(2,'0')}:${String(startMin%60).padStart(2,'0')}`;
+      }
+      prevEndMin = startMin + 60;
+      result.push(s);
+    });
+  });
+  return result;
+}
+
 function updateSlotSummary() {
   const el = document.getElementById('availSummary');
   if (_selectedSlots.size === 0) { el.textContent = ''; return; }
-  const parts = [..._selectedSlots].map(k => {
+  const raw = [..._selectedSlots].map(k => {
     const [dow, time] = k.split('_');
-    return DAYS_TR[parseInt(dow)] + ' ' + time;
+    return { dayIndex: parseInt(dow), time };
   });
+  const adjusted = adjustSchedule(raw);
+  const parts = adjusted.map(s => DAYS_TR[s.dayIndex] + ' ' + s.time);
   el.textContent = 'Seçili: ' + parts.join(', ');
 }
 
@@ -507,10 +531,11 @@ async function submitRequest() {
   }
 
   const duration = parseInt(document.getElementById('reqDuration').value);
-  const schedule = [..._selectedSlots].map(k => {
+  const rawSlots = [..._selectedSlots].map(k => {
     const [dow, time] = k.split('_');
     return { dayIndex: parseInt(dow), time };
   });
+  const schedule = adjustSchedule(rawSlots);
   const note = document.getElementById('reqNote').value.trim();
 
   btn.disabled = true; btn.textContent = 'Gönderiliyor…';
