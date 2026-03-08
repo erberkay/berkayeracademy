@@ -666,7 +666,11 @@ async function loadAndRenderAvailGrid() {
         if (AVAILABLE_TIMES.includes(t)) _busySlots.add(`${dow}_${t}`);
       });
     });
-  } catch(e) { /* no booked_slots yet, that's fine */ }
+  } catch(e) {
+    if (e.code !== 'permission-denied') {
+      const c=errId(); toast(`Müsaitlik yüklenemedi (${c}): `+(e.message||e.code), true);
+    }
+  }
 
   renderAvailGrid();
   loading.style.display = 'none'; table.style.display = '';
@@ -769,7 +773,7 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
     toast(`✓ Ders ertelendi → ${formatDateStr(newDateStr)} ${lesson.time}`);
     renderDashboard();
   } catch(e) {
-    toast('Hata: ' + (e.message || e.code), true);
+    const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true);
   }
 }
 
@@ -972,7 +976,9 @@ async function renderDashboard() {
   _adminQAAnswerUnsubs.forEach(u => u()); _adminQAAnswerUnsubs = [];
   showView('view-dashboard');
   initLessonAnnouncements(false);
-  const snap = await db.collection('reservations').doc(_user.uid).get().catch(() => null);
+  let snap;
+  try { snap = await db.collection('reservations').doc(_user.uid).get(); }
+  catch(e) { const c=errId(); toast(`Rezervasyon yüklenemedi (${c}): `+(e.message||e.code), true); return; }
   if (!snap || !snap.exists) { initRequestForm(); return; }
   const res = snap.data();
 
@@ -993,7 +999,8 @@ async function renderDashboard() {
     lessons = lessons.map(l =>
       l.date < today && (l.status === 'scheduled' || l.status === 'rescheduled') ? { ...l, status: 'completed' } : l
     );
-    db.collection('reservations').doc(_user.uid).update({ lessons }).catch(console.error);
+    db.collection('reservations').doc(_user.uid).update({ lessons })
+      .catch(e => { const c=errId(); toast(`Ders durumu güncellenemedi (${c}): `+(e.message||e.code), true); });
   }
 
   // Plan ended: show summary only
@@ -1081,7 +1088,7 @@ async function renderDashboard() {
         await batch.commit();
         toast('Ödeme talebiniz gönderildi, onay bekleniyor.');
         renderDashboard();
-      } catch(e) { toast('Hata: ' + (e.message||e.code), true); payBtn.disabled = false; }
+      } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); payBtn.disabled = false; }
     };
     pbox.append(payBtn);
   }
@@ -1212,20 +1219,24 @@ async function renderAdminPanel() {
         const approveBtn = document.createElement('button'); approveBtn.className = 'req-approve'; approveBtn.textContent = '✓ Ödendi Onayla';
         approveBtn.onclick = async () => {
           approveBtn.disabled = true;
-          const batch = db.batch();
-          batch.update(db.collection('reservations').doc(r.from_uid), { payment_confirmed: true, payment_pending: false });
-          batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-          await batch.commit();
-          toast('✓ Ödeme onaylandı.'); row.remove();
+          try {
+            const batch = db.batch();
+            batch.update(db.collection('reservations').doc(r.from_uid), { payment_confirmed: true, payment_pending: false });
+            batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            await batch.commit();
+            toast('✓ Ödeme onaylandı.'); row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); approveBtn.disabled = false; }
         };
         const rejectBtn = document.createElement('button'); rejectBtn.className = 'req-reject'; rejectBtn.textContent = '✕ Reddet';
         rejectBtn.onclick = async () => {
           rejectBtn.disabled = true;
-          const batch = db.batch();
-          batch.update(db.collection('reservations').doc(r.from_uid), { payment_pending: false });
-          batch.update(doc.ref, { status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-          await batch.commit();
-          toast('Ödeme talebi reddedildi.'); row.remove();
+          try {
+            const batch = db.batch();
+            batch.update(db.collection('reservations').doc(r.from_uid), { payment_pending: false });
+            batch.update(doc.ref, { status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            await batch.commit();
+            toast('Ödeme talebi reddedildi.'); row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); rejectBtn.disabled = false; }
         };
         actions.append(approveBtn, rejectBtn);
         row.append(actions);
@@ -1244,27 +1255,31 @@ async function renderAdminPanel() {
         const approveBtn = document.createElement('button'); approveBtn.className='req-reject'; approveBtn.textContent='✓ İptal Onayla';
         approveBtn.onclick = async () => {
           approveBtn.disabled = true;
-          await adminCancelLesson(r.from_uid, r.lesson_idx, r.all_lessons, { date: r.lesson_date, time: r.lesson_time });
-          await doc.ref.update({ status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-          toast('Ders iptal edildi.');
-          row.remove();
+          try {
+            await adminCancelLesson(r.from_uid, r.lesson_idx, r.all_lessons, { date: r.lesson_date, time: r.lesson_time });
+            await doc.ref.update({ status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            toast('Ders iptal edildi.');
+            row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); approveBtn.disabled = false; }
         };
         const rejectBtn = document.createElement('button'); rejectBtn.className='req-approve'; rejectBtn.textContent='✗ Reddet';
         rejectBtn.onclick = async () => {
           rejectBtn.disabled = true;
-          await doc.ref.update({ status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-          // Revert lesson status back to scheduled
-          const resSnap = await db.collection('reservations').doc(r.from_uid).get().catch(()=>null);
-          if (resSnap && resSnap.exists) {
-            const lessArr = resSnap.data().lessons || [];
-            const li = lessArr.findIndex(l => l.date === r.lesson_date && l.time === r.lesson_time && l.status === 'cancel_requested');
-            if (li >= 0) {
-              lessArr[li] = { ...lessArr[li], status: 'scheduled' };
-              await db.collection('reservations').doc(r.from_uid).update({ lessons: lessArr });
+          try {
+            await doc.ref.update({ status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            // Revert lesson status back to scheduled
+            const resSnap = await db.collection('reservations').doc(r.from_uid).get().catch(()=>null);
+            if (resSnap && resSnap.exists) {
+              const lessArr = resSnap.data().lessons || [];
+              const li = lessArr.findIndex(l => l.date === r.lesson_date && l.time === r.lesson_time && l.status === 'cancel_requested');
+              if (li >= 0) {
+                lessArr[li] = { ...lessArr[li], status: 'scheduled' };
+                await db.collection('reservations').doc(r.from_uid).update({ lessons: lessArr });
+              }
             }
-          }
-          toast('İptal talebi reddedildi.');
-          row.remove();
+            toast('İptal talebi reddedildi.');
+            row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); rejectBtn.disabled = false; }
         };
         actions.append(approveBtn, rejectBtn);
         row.append(actions);
@@ -1331,9 +1346,11 @@ async function renderAdminPanel() {
       rejectBtn.onclick = async () => {
         const reason = prompt('Reddetme sebebi (isteğe bağlı):') ?? '';
         rejectBtn.disabled = true;
-        await doc.ref.update({ status:'rejected', reject_reason: reason, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-        toast('Talep reddedildi.');
-        row.remove();
+        try {
+          await doc.ref.update({ status:'rejected', reject_reason: reason, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+          toast('Talep reddedildi.');
+          row.remove();
+        } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); rejectBtn.disabled = false; }
       };
 
       actions.append(approveBtn, rejectBtn);
@@ -1343,9 +1360,10 @@ async function renderAdminPanel() {
   }
 
   // Load active students
-  const studSnap = await db.collection('reservations').orderBy('created_at','desc').limit(200).get().catch(() => null);
   const studList = document.getElementById('adminStudentsList');
   studList.innerHTML = '';
+  const studSnap = await db.collection('reservations').orderBy('created_at','desc').limit(200).get()
+    .catch(e => { const c=errId(); studList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Öğrenciler yüklenemedi (${c}): ${e.message||e.code}</div>`; return null; });
 
   // Build calendar data + monthly stats
   const calAllLessons = [];
@@ -1435,8 +1453,10 @@ async function renderAdminPanel() {
         undoLink.textContent = 'geri al';
         undoLink.onclick = async () => {
           if (!confirm('Ödemeyi geri almak istediğine emin misin?')) return;
-          await db.collection('reservations').doc(studentUid).update({ payment_confirmed: false });
-          toast('Ödeme geri alındı.'); renderAdminPanel();
+          try {
+            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: false });
+            toast('Ödeme geri alındı.'); renderAdminPanel();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
         };
         payWrap.append(badge, undoLink);
       } else if (isPending) {
@@ -1446,13 +1466,19 @@ async function renderAdminPanel() {
         const btns = document.createElement('div'); btns.style.cssText = 'display:flex;gap:5px;';
         const okBtn = document.createElement('button'); okBtn.className = 'req-approve'; okBtn.style.cssText = 'font-size:.6rem;padding:4px 9px;'; okBtn.textContent = '✓ Onayla';
         okBtn.onclick = async () => {
-          await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true, payment_pending: false });
-          toast('✓ Ödeme onaylandı.'); renderAdminPanel();
+          okBtn.disabled = true;
+          try {
+            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true, payment_pending: false });
+            toast('✓ Ödeme onaylandı.'); renderAdminPanel();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); okBtn.disabled = false; }
         };
         const noBtn = document.createElement('button'); noBtn.className = 'req-reject'; noBtn.style.cssText = 'font-size:.6rem;padding:4px 9px;'; noBtn.textContent = '✕ Reddet';
         noBtn.onclick = async () => {
-          await db.collection('reservations').doc(studentUid).update({ payment_pending: false });
-          toast('Talep reddedildi.'); renderAdminPanel();
+          noBtn.disabled = true;
+          try {
+            await db.collection('reservations').doc(studentUid).update({ payment_pending: false });
+            toast('Talep reddedildi.'); renderAdminPanel();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); noBtn.disabled = false; }
         };
         btns.append(okBtn, noBtn);
         payWrap.append(label, btns);
@@ -1462,8 +1488,11 @@ async function renderAdminPanel() {
         btn.textContent = '✗ Ödenmedi';
         btn.title = 'Tıkla: ödendi olarak işaretle';
         btn.onclick = async () => {
-          await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true });
-          toast('✓ Ödeme işaretlendi.'); renderAdminPanel();
+          btn.disabled = true;
+          try {
+            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true });
+            toast('✓ Ödeme işaretlendi.'); renderAdminPanel();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); btn.disabled = false; }
         };
         payWrap.append(btn);
       }
@@ -1621,7 +1650,7 @@ async function cancelEntirePlan(lessons, res) {
     await batch.commit();
     toast('Plan iptal edildi.');
     renderDashboard();
-  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
 // ─── Admin: Delete Entire Plan ────────────────────────────
@@ -1636,7 +1665,7 @@ async function adminDeletePlan(studentUid, allLessons) {
     });
     await batch.commit();
     toast('Plan tamamen silindi.');
-  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
 // ─── Admin: Edit Student Price ────────────────────────────
@@ -1678,7 +1707,7 @@ async function adminCancelLesson(studentUid, lessonIdx, allLessons, lesson) {
     batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
     await batch.commit();
     toast(`✓ Ders iptal edildi — ${formatDateStr(lesson.date)} ${lesson.time}`);
-  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
 // ─── Admin: Reschedule Lesson ─────────────────────────────
@@ -1714,7 +1743,7 @@ async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) 
       await batch.commit();
       toast(`✓ Saat değiştirildi → ${newTime}`);
       renderAdminPanel();
-    } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+    } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
   };
 }
 
@@ -1748,7 +1777,7 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
       await batch.commit();
       toast(`✓ Gün değiştirildi → ${formatDateStr(newDate)}`);
       renderAdminPanel();
-    } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+    } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
   };
 }
 
@@ -1762,7 +1791,7 @@ async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson
     await batch.commit();
     toast(`✓ Ders iptal edildi.`);
     renderAdminPanel();
-  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
 async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
@@ -1786,7 +1815,7 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
     }
     await batch.commit();
     toast(`✓ Ders ertelendi → ${formatDateStr(newDateStr)} ${lesson.time}`);
-  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
 // ─── Conflict Check ───────────────────────────────────────
@@ -1861,13 +1890,26 @@ async function loadUserState(user) {
   if (user.email === ADMIN_EMAIL) { renderAdminPanel(); return; }
 
   // Check active reservation first
-  const resSnap = await db.collection('reservations').doc(user.uid).get().catch(() => null);
+  let resSnap = null;
+  try { resSnap = await db.collection('reservations').doc(user.uid).get(); }
+  catch(e) {
+    const c = errId();
+    showView('view-signin');
+    document.getElementById('view-signin').innerHTML += `<div style="margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;">Bağlantı hatası (${c}): ${e.message||e.code}<br>Sayfayı yenileyin.</div>`;
+    return;
+  }
   if (resSnap && resSnap.exists) { renderDashboard(); return; }
 
   // Check existing request
-  const reqSnap = await db.collection('lesson_requests')
-    .where('from_uid','==', user.uid)
-    .get().catch(() => null);
+  let reqSnap = null;
+  try {
+    reqSnap = await db.collection('lesson_requests').where('from_uid','==', user.uid).get();
+  } catch(e) {
+    const c = errId();
+    showView('view-signin');
+    document.getElementById('view-signin').innerHTML += `<div style="margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;">Bağlantı hatası (${c}): ${e.message||e.code}<br>Sayfayı yenileyin.</div>`;
+    return;
+  }
 
   if (reqSnap && !reqSnap.empty) {
     const latestDoc = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
@@ -1875,7 +1917,6 @@ async function loadUserState(user) {
     if (req.status === 'pending' || req.status === 'rejected') {
       renderPendingView(req); return;
     }
-    // If accepted but reservation not created yet, wait
     if (req.status === 'accepted') {
       renderDashboard(); return;
     }
@@ -1914,11 +1955,15 @@ function initLessonAnnouncements(isAdmin) {
         item.innerHTML = `<div><div style="font-size:.75rem;color:var(--white);line-height:1.55;margin-bottom:3px;">${ann.text}</div><div style="font-size:.58rem;color:var(--dim);">${timeStr}</div></div>`;
         const del = document.createElement('button');
         del.textContent = '×'; del.style.cssText = 'background:none;border:none;color:rgba(238,235,230,.3);font-size:1rem;cursor:pointer;padding:0 3px;flex-shrink:0;';
-        del.onclick = () => { if(confirm('Bu duyuruyu silmek istediğine emin misin?')) d.ref.delete().catch(() => {}); };
+        del.onclick = async () => {
+          if (!confirm('Bu duyuruyu silmek istediğine emin misin?')) return;
+          try { await d.ref.delete(); }
+          catch(e) { const c=errId(); toast(`Duyuru silinemedi (${c}): `+(e.message||e.code), true); }
+        };
         item.append(del);
         list.append(item);
       });
-    }, () => {});
+    }, (e) => { const c=errId(); list.innerHTML = `<div style="font-size:.65rem;color:var(--crimson);">Duyurular yüklenemedi (${c})</div>`; });
 
     if (sendBtn) sendBtn.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) { ta.focus(); return; }
@@ -1928,17 +1973,19 @@ function initLessonAnnouncements(isAdmin) {
         ta.value = '';
         status.style.color = 'var(--green)'; status.textContent = '✓ Gönderildi';
         setTimeout(() => status.textContent = '', 3000);
-      } catch(e) { status.style.color = 'var(--crimson)'; status.textContent = '⚠ ' + (e.code || e.message); }
+      } catch(e) { const c=errId(); status.style.color = 'var(--crimson)'; status.textContent = `⚠ (${c}) ` + (e.code || e.message); }
       sendBtn.disabled = false; sendBtn.textContent = '📢 Gönder';
     };
 
     if (delBtn) delBtn.onclick = async () => {
       if (!confirm('Tüm ders paneli duyurularını silmek istediğine emin misin?')) return;
       delBtn.disabled = true; delBtn.textContent = '⏳';
-      const snap2 = await db.collection('announcements').where('lessonPanel','==',true).get().catch(() => null);
-      if (snap2) { const b = db.batch(); snap2.docs.forEach(d => b.delete(d.ref)); await b.commit(); }
-      status.style.color = 'var(--green)'; status.textContent = '✓ Tüm duyurular silindi';
-      setTimeout(() => status.textContent = '', 3000);
+      try {
+        const snap2 = await db.collection('announcements').where('lessonPanel','==',true).get();
+        if (snap2 && !snap2.empty) { const b = db.batch(); snap2.docs.forEach(d => b.delete(d.ref)); await b.commit(); }
+        status.style.color = 'var(--green)'; status.textContent = '✓ Tüm duyurular silindi';
+        setTimeout(() => status.textContent = '', 3000);
+      } catch(e) { const c=errId(); status.style.color = 'var(--crimson)'; status.textContent = `⚠ (${c}) ` + (e.code || e.message); }
       delBtn.disabled = false; delBtn.textContent = '🗑 Tümünü Sil';
     };
 
