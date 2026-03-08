@@ -112,6 +112,14 @@
     .lesson-item.past { opacity:.5; }
     .lesson-reschedule { background:transparent; border:1px solid rgba(232,184,75,.3); color:var(--gold); font-family:'Space Mono',monospace; font-size:.55rem; padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; flex-shrink:0; }
     .lesson-reschedule:hover { background:rgba(232,184,75,.1); border-color:var(--gold); }
+    .lesson-actions { display:flex; align-items:center; gap:5px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
+    .lesson-pay-btn { background:rgba(74,222,128,.08); border:1px solid rgba(74,222,128,.3); color:var(--green); font-family:'Space Mono',monospace; font-size:.55rem; padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .lesson-pay-btn:hover { background:rgba(74,222,128,.18); }
+    .lesson-paid-badge { font-size:.55rem; color:var(--green); background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.25); padding:3px 9px; border-radius:4px; white-space:nowrap; }
+    .lesson-cancel-req-btn { background:rgba(184,45,69,.07); border:1px solid rgba(184,45,69,.25); color:var(--crimson); font-family:'Space Mono',monospace; font-size:.55rem; padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; }
+    .lesson-cancel-req-btn:hover { background:rgba(184,45,69,.18); }
+    .lesson-cancel-pending { font-size:.55rem; color:rgba(184,45,69,.6); font-style:italic; white-space:nowrap; }
+    .admin-lesson-paid { font-size:.58rem; margin-left:4px; }
 
     /* ── Credit badge ── */
     .credit-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(180,120,255,.1); border:1px solid rgba(180,120,255,.3); border-radius:20px; padding:5px 12px; font-size:.68rem; color:var(--purple); margin-bottom:16px; }
@@ -743,7 +751,8 @@ async function renderDashboard() {
       const isPast = l.date < today;
       const item = document.createElement('div');
       item.className = 'lesson-item' + (isPast ? ' past' : '');
-      const sc = {scheduled:'ls-scheduled',completed:'ls-completed',rescheduled:'ls-rescheduled',cancelled:'ls-cancelled'}[l.status]||'ls-scheduled';
+      const sc = {scheduled:'ls-scheduled',completed:'ls-completed',rescheduled:'ls-rescheduled',cancelled:'ls-cancelled',cancel_requested:'ls-cancelled'}[l.status]||'ls-scheduled';
+      const statusLabel = {scheduled:'Planlandı',completed:'Tamamlandı',rescheduled:'Ertelendi',cancelled:'İptal',cancel_requested:'İptal Talep Edildi'}[l.status]||l.status;
       item.innerHTML = `
         <div class="lesson-date-col">
           <div class="lesson-day-num">${d.getDate()}</div>
@@ -753,15 +762,37 @@ async function renderDashboard() {
           <div class="lesson-dow">${DAYS_TR[d.getDay()]}</div>
           <div class="lesson-time">${l.time} – ${getEndTime(l.time)}</div>
         </div>
-        <div class="lesson-status ${sc}">${
-          {scheduled:'Planlandı',completed:'Tamamlandı',rescheduled:'Ertelendi',cancelled:'İptal'}[l.status]||l.status
-        }</div>`;
-      if (!isPast && l.status === 'scheduled') {
-        const rBtn = document.createElement('button');
-        rBtn.className = 'lesson-reschedule';
-        rBtn.textContent = '↺ Ertele';
-        rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
-        item.append(rBtn);
+        <div class="lesson-status ${sc}">${statusLabel}</div>`;
+
+      if (!isPast && (l.status === 'scheduled' || l.status === 'rescheduled')) {
+        const actDiv = document.createElement('div'); actDiv.className = 'lesson-actions';
+
+        // Payment badge/button
+        if (l.payment_confirmed) {
+          const pb = document.createElement('span'); pb.className = 'lesson-paid-badge'; pb.textContent = '✓ Ödendi';
+          actDiv.append(pb);
+        } else {
+          const payBtn = document.createElement('button'); payBtn.className = 'lesson-pay-btn'; payBtn.textContent = '₺ Ödeme Yaptım';
+          payBtn.onclick = () => confirmPayment(idx, lessons, res);
+          actDiv.append(payBtn);
+        }
+
+        // Reschedule button
+        if (l.status === 'scheduled') {
+          const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = '↺ Ertele';
+          rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
+          actDiv.append(rBtn);
+
+          // Cancel request button
+          const crBtn = document.createElement('button'); crBtn.className = 'lesson-cancel-req-btn'; crBtn.textContent = '✕ İptal Talebi';
+          crBtn.onclick = () => sendCancelRequest(l, idx, lessons, res);
+          actDiv.append(crBtn);
+        }
+
+        item.append(actDiv);
+      } else if (!isPast && l.status === 'cancel_requested') {
+        const pendingSpan = document.createElement('span'); pendingSpan.className = 'lesson-cancel-pending'; pendingSpan.textContent = 'İptal bekleniyor…';
+        item.append(pendingSpan);
       }
       list.append(item);
     });
@@ -788,8 +819,49 @@ async function renderAdminPanel() {
     const sortedDocs = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0));
     sortedDocs.forEach(doc => {
       const r = doc.data();
-      const daysText = (r.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
+      const isCancelReq = r.type === 'cancel_request';
       const row = document.createElement('div'); row.className = 'req-row';
+
+      if (isCancelReq) {
+        row.style.borderColor = 'rgba(184,45,69,.35)';
+        row.innerHTML = `
+          <div class="req-row-name" style="color:var(--crimson)">✕ İptal Talebi — ${r.from_name || r.from_email}</div>
+          <div class="req-row-detail">${formatDateStr(r.lesson_date)} ${r.lesson_time}–${getEndTime(r.lesson_time)}</div>
+          ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
+        `;
+        const actions = document.createElement('div'); actions.className = 'req-actions';
+        const approveBtn = document.createElement('button'); approveBtn.className='req-reject'; approveBtn.textContent='✓ İptal Onayla';
+        approveBtn.onclick = async () => {
+          approveBtn.disabled = true;
+          await adminCancelLesson(r.from_uid, r.lesson_idx, r.all_lessons, { date: r.lesson_date, time: r.lesson_time });
+          await doc.ref.update({ status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+          toast('Ders iptal edildi.');
+          row.remove();
+        };
+        const rejectBtn = document.createElement('button'); rejectBtn.className='req-approve'; rejectBtn.textContent='✗ Reddet';
+        rejectBtn.onclick = async () => {
+          rejectBtn.disabled = true;
+          await doc.ref.update({ status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+          // Revert lesson status back to scheduled
+          const resSnap = await db.collection('reservations').doc(r.from_uid).get().catch(()=>null);
+          if (resSnap && resSnap.exists) {
+            const lessArr = resSnap.data().lessons || [];
+            const li = lessArr.findIndex(l => l.date === r.lesson_date && l.time === r.lesson_time && l.status === 'cancel_requested');
+            if (li >= 0) {
+              lessArr[li] = { ...lessArr[li], status: 'scheduled' };
+              await db.collection('reservations').doc(r.from_uid).update({ lessons: lessArr });
+            }
+          }
+          toast('İptal talebi reddedildi.');
+          row.remove();
+        };
+        actions.append(approveBtn, rejectBtn);
+        row.append(actions);
+        reqList.append(row);
+        return;
+      }
+
+      const daysText = (r.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
       row.innerHTML = `
         <div class="req-row-name">${r.from_name || r.from_email}</div>
         <div class="req-row-detail">
@@ -857,15 +929,19 @@ async function renderAdminPanel() {
     studSnap.docs.forEach(doc => {
       const s = doc.data(); const studentUid = doc.id;
       const today = toDateStr(new Date());
-      const upcomingLessons = (s.lessons||[]).filter(l => l.date >= today && l.status === 'scheduled');
-      const daysStr = (s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ');
+      const allLessonsArr = s.lessons || [];
+      const upcomingLessons = allLessonsArr.filter(l => l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'cancel_requested'));
+      const totalLessons = allLessonsArr.length;
+      const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
+      const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
+      const paidCount = allLessonsArr.filter(l => l.payment_confirmed).length;
       const row = document.createElement('div'); row.className = 'student-row';
       row.innerHTML = `
         <div class="student-row-name">${s.student_name || s.student_email}</div>
         <div class="student-row-meta">
-          ${s.duration_months} Ay · ${daysStr}<br>
-          Yaklaşan: ${upcomingLessons.length} · Toplam: ${(s.lessons||[]).length}<br>
-          Bitiş: ${s.end_date ? formatDateStr(s.end_date) : '—'}
+          ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong><br>
+          ${startDateStr} → ${endDateStr}<br>
+          Yaklaşan: ${upcomingLessons.length} · Ödeme: <span style="color:var(--green)">${paidCount}</span>/<span>${totalLessons}</span>
         </div>`;
 
       // Per-lesson admin controls
@@ -874,9 +950,11 @@ async function renderAdminPanel() {
         upcomingLessons.slice(0,5).forEach(lesson => {
           const allLessons = s.lessons || [];
           const lessonIdx = allLessons.findIndex(l => l.date === lesson.date && l.time === lesson.time && l.status === lesson.status);
+          const cancelTag = lesson.status === 'cancel_requested' ? ' <span style="color:var(--crimson);font-size:.55rem;">⚠ İptal Talep</span>' : '';
+          const paidTag = lesson.payment_confirmed ? ' <span class="admin-lesson-paid">✓ Ödendi</span>' : '';
           const lRow = document.createElement('div'); lRow.className = 'admin-lesson-row';
           lRow.innerHTML = `
-            <div class="admin-lesson-info"><strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}</div>
+            <div class="admin-lesson-info"><strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}${cancelTag}${paidTag}</div>
             <div class="admin-lesson-actions"></div>`;
           const actDiv = lRow.querySelector('.admin-lesson-actions');
 
@@ -904,6 +982,45 @@ async function renderAdminPanel() {
       studList.append(row);
     });
   }
+}
+
+// ─── Student: Confirm Payment ─────────────────────────────
+async function confirmPayment(idx, lessons, res) {
+  if (!confirm('Ödeme yaptığını onaylıyor musun?')) return;
+  const updated = lessons.map((l, i) => i === idx ? { ...l, payment_confirmed: true } : l);
+  try {
+    await db.collection('reservations').doc(_user.uid).update({ lessons: updated });
+    toast('✓ Ödeme onaylandı.');
+    renderDashboard();
+  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+}
+
+// ─── Student: Send Cancel Request ─────────────────────────
+async function sendCancelRequest(lesson, idx, lessons, res) {
+  const note = prompt('İptal sebebini belirtebilirsin (isteğe bağlı):') ?? '';
+  if (note === null) return; // user pressed cancel on prompt
+  try {
+    // Mark lesson as cancel_requested
+    const updated = lessons.map((l, i) => i === idx ? { ...l, status: 'cancel_requested' } : l);
+    const batch = db.batch();
+    batch.update(db.collection('reservations').doc(_user.uid), { lessons: updated });
+    batch.set(db.collection('lesson_requests').doc(), {
+      type: 'cancel_request',
+      from_uid: _user.uid,
+      from_name: _user.displayName || '',
+      from_email: _user.email || '',
+      lesson_date: lesson.date,
+      lesson_time: lesson.time,
+      lesson_idx: idx,
+      all_lessons: lessons,
+      note,
+      status: 'pending',
+      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+    toast('İptal talebi gönderildi.');
+    renderDashboard();
+  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
 }
 
 // ─── Admin: Cancel Lesson ─────────────────────────────────
