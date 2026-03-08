@@ -761,6 +761,26 @@ async function renderDashboard() {
     db.collection('reservations').doc(_user.uid).update({ lessons }).catch(console.error);
   }
 
+  // Plan ended: show summary only
+  const planEnded = res.end_date && res.end_date < today;
+  if (planEnded) {
+    const completed = lessons.filter(l => l.status === 'completed').length;
+    document.getElementById('dashAv').innerHTML = _user.photoURL ? `<img src="${_user.photoURL}" alt="">` : '👤';
+    document.getElementById('dashName').textContent = _user.displayName || 'Öğrenci';
+    document.getElementById('dashSub').textContent = 'Ders planı tamamlandı';
+    document.getElementById('dashStats').innerHTML = `
+      <div class="stat-card"><div class="stat-val">${completed}</div><div class="stat-lbl">Tamamlanan Ders</div></div>
+      <div class="stat-card"><div class="stat-val">${lessons.length}</div><div class="stat-lbl">Toplam Ders</div></div>
+    `;
+    document.getElementById('paymentBox').innerHTML = '';
+    document.getElementById('cancelPlanBtn').style.display = 'none';
+    document.getElementById('creditBadge').style.display = 'none';
+    document.querySelector('.dash-layout').style.display = 'none';
+    return;
+  }
+  document.getElementById('creditBadge').style.display = '';
+  document.querySelector('.dash-layout').style.display = '';
+
   const upcoming = lessons.filter(l => l.date >= today && l.status === 'scheduled');
   const done = lessons.filter(l => l.status === 'completed');
 
@@ -1005,43 +1025,17 @@ async function renderAdminPanel() {
         toast(newVal ? '✓ Ödeme işaretlendi.' : 'Ödeme geri alındı.');
         renderAdminPanel();
       };
+      const cancelPlanBtn = document.createElement('button');
+      cancelPlanBtn.className = 'admin-cancel-btn'; cancelPlanBtn.style.cssText = 'margin-top:10px;width:100%;padding:8px;';
+      cancelPlanBtn.textContent = '✕ Planı İptal Et';
+      cancelPlanBtn.onclick = async () => {
+        if (!confirm(`${s.student_name || s.student_email} — tüm planı tamamen sil?`)) return;
+        cancelPlanBtn.disabled = true;
+        await adminDeletePlan(studentUid, allLessonsArr);
+        renderAdminPanel();
+      };
       headerDiv.append(payToggle);
-      row.append(headerDiv);
-
-      // Per-lesson admin controls
-      if (upcomingLessons.length > 0) {
-        const lessonsDiv = document.createElement('div'); lessonsDiv.className = 'student-lessons';
-        upcomingLessons.slice(0,5).forEach(lesson => {
-          const allLessons = s.lessons || [];
-          const lessonIdx = allLessons.findIndex(l => l.date === lesson.date && l.time === lesson.time && l.status === lesson.status);
-          const cancelTag = lesson.status === 'cancel_requested' ? ' <span style="color:var(--crimson);font-size:.55rem;">⚠ İptal Talep</span>' : '';
-          const paidTag = lesson.payment_confirmed ? ' <span class="admin-lesson-paid">✓ Ödendi</span>' : '';
-          const lRow = document.createElement('div'); lRow.className = 'admin-lesson-row';
-          lRow.innerHTML = `
-            <div class="admin-lesson-info"><strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}${cancelTag}${paidTag}</div>
-            <div class="admin-lesson-actions"></div>`;
-          const actDiv = lRow.querySelector('.admin-lesson-actions');
-
-          const rescBtn = document.createElement('button'); rescBtn.className='admin-reschedule-btn'; rescBtn.textContent='↺ Ertele';
-          rescBtn.onclick = async () => {
-            rescBtn.disabled = true;
-            await adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson);
-            renderAdminPanel();
-          };
-
-          const cancelBtn = document.createElement('button'); cancelBtn.className='admin-cancel-btn'; cancelBtn.textContent='✕ İptal';
-          cancelBtn.onclick = async () => {
-            if (!confirm(`${s.student_name || s.student_email} — ${formatDateStr(lesson.date)} ${lesson.time} dersini iptal et?`)) return;
-            cancelBtn.disabled = true;
-            await adminCancelLesson(studentUid, lessonIdx, allLessons, lesson);
-            renderAdminPanel();
-          };
-
-          actDiv.append(rescBtn, cancelBtn);
-          lessonsDiv.append(lRow);
-        });
-        row.append(lessonsDiv);
-      }
+      row.append(headerDiv, cancelPlanBtn);
 
       studList.append(row);
     });
@@ -1064,6 +1058,21 @@ async function cancelEntirePlan(lessons, res) {
     await batch.commit();
     toast('Plan iptal edildi.');
     renderDashboard();
+  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+}
+
+// ─── Admin: Delete Entire Plan ────────────────────────────
+async function adminDeletePlan(studentUid, allLessons) {
+  try {
+    const batch = db.batch();
+    batch.delete(db.collection('reservations').doc(studentUid));
+    (allLessons || []).forEach(l => {
+      if (l.status === 'scheduled' || l.status === 'rescheduled') {
+        batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
+      }
+    });
+    await batch.commit();
+    toast('Plan tamamen silindi.');
   } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
 }
 
