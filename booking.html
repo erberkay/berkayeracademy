@@ -545,15 +545,19 @@ function getEndTime(time) {
 // ─── Date Calculation ─────────────────────────────────────
 function calculateLessonDates(schedule, durationMonths) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const end = new Date(today); end.setMonth(end.getMonth() + durationMonths);
-  const cur = new Date(today); cur.setDate(cur.getDate() + 1);
-  const map = {}; schedule.forEach(s => { map[s.dayIndex] = s.time; });
   const dates = [];
-  while (cur <= end) {
-    if (map[cur.getDay()] !== undefined)
-      dates.push({ date: toDateStr(cur), time: map[cur.getDay()], status: 'scheduled' });
-    cur.setDate(cur.getDate() + 1);
-  }
+  const totalPerDay = durationMonths * 4; // exactly 4 lessons per month per weekday
+  schedule.forEach(s => {
+    // Find the first occurrence of this weekday after today
+    const first = new Date(today); first.setDate(first.getDate() + 1);
+    while (first.getDay() !== s.dayIndex) first.setDate(first.getDate() + 1);
+    // Generate exactly totalPerDay lessons, each 7 days apart
+    for (let i = 0; i < totalPerDay; i++) {
+      const d = new Date(first); d.setDate(d.getDate() + i * 7);
+      dates.push({ date: toDateStr(d), time: s.time, status: 'scheduled' });
+    }
+  });
+  dates.sort((a, b) => a.date.localeCompare(b.date));
   return dates;
 }
 
