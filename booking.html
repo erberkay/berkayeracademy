@@ -1207,41 +1207,49 @@ async function renderAdminPanel() {
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
           </div>
         </div>`;
-      const payToggle = document.createElement('button');
+      const payWrap = document.createElement('div'); payWrap.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
       if (isResPaid) {
-        payToggle.className = 'admin-pay-toggle paid';
-        payToggle.textContent = '✓ Ödendi';
-        payToggle.title = 'Tıkla: ödemeyi geri al';
-        payToggle.onclick = async () => {
+        const badge = document.createElement('span');
+        badge.className = 'admin-pay-toggle paid'; badge.style.cursor = 'default';
+        badge.textContent = '✓ Ödendi';
+        const undoLink = document.createElement('button');
+        undoLink.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.25);font-size:.6rem;cursor:pointer;padding:0;font-family:Space Mono,monospace;';
+        undoLink.textContent = 'geri al';
+        undoLink.onclick = async () => {
+          if (!confirm('Ödemeyi geri almak istediğine emin misin?')) return;
           await db.collection('reservations').doc(studentUid).update({ payment_confirmed: false });
-          toast('Ödeme geri alındı.');
-          renderAdminPanel();
+          toast('Ödeme geri alındı.'); renderAdminPanel();
         };
+        payWrap.append(badge, undoLink);
       } else if (isPending) {
-        payToggle.className = 'admin-pay-toggle pending';
-        payToggle.textContent = '⏳ Onay Bekliyor';
-        payToggle.title = 'Öğrenci ödeme yaptığını bildirdi — onayla veya reddet';
-        payToggle.onclick = async () => {
-          const ok = confirm('Ödemeyi onaylıyor musun?');
-          if (ok) {
-            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true, payment_pending: false });
-            toast('✓ Ödeme onaylandı.');
-          } else {
-            await db.collection('reservations').doc(studentUid).update({ payment_pending: false });
-            toast('Ödeme talebi reddedildi.');
-          }
-          renderAdminPanel();
+        const label = document.createElement('span');
+        label.className = 'admin-pay-toggle pending'; label.style.cursor = 'default';
+        label.textContent = '⏳ Onay Bekliyor';
+        const btns = document.createElement('div'); btns.style.cssText = 'display:flex;gap:5px;';
+        const okBtn = document.createElement('button'); okBtn.className = 'req-approve'; okBtn.style.cssText = 'font-size:.6rem;padding:4px 9px;'; okBtn.textContent = '✓ Onayla';
+        okBtn.onclick = async () => {
+          await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true, payment_pending: false });
+          toast('✓ Ödeme onaylandı.'); renderAdminPanel();
         };
+        const noBtn = document.createElement('button'); noBtn.className = 'req-reject'; noBtn.style.cssText = 'font-size:.6rem;padding:4px 9px;'; noBtn.textContent = '✕ Reddet';
+        noBtn.onclick = async () => {
+          await db.collection('reservations').doc(studentUid).update({ payment_pending: false });
+          toast('Talep reddedildi.'); renderAdminPanel();
+        };
+        btns.append(okBtn, noBtn);
+        payWrap.append(label, btns);
       } else {
-        payToggle.className = 'admin-pay-toggle unpaid';
-        payToggle.textContent = '✗ Ödenmedi';
-        payToggle.title = 'Tıkla: ödendi olarak işaretle';
-        payToggle.onclick = async () => {
+        const btn = document.createElement('button');
+        btn.className = 'admin-pay-toggle unpaid';
+        btn.textContent = '✗ Ödenmedi';
+        btn.title = 'Tıkla: ödendi olarak işaretle';
+        btn.onclick = async () => {
           await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true });
-          toast('✓ Ödeme işaretlendi.');
-          renderAdminPanel();
+          toast('✓ Ödeme işaretlendi.'); renderAdminPanel();
         };
+        payWrap.append(btn);
       }
+      const payToggle = payWrap; // alias for append below
       const cancelPlanBtn = document.createElement('button');
       cancelPlanBtn.className = 'admin-cancel-btn'; cancelPlanBtn.style.cssText = 'margin-top:10px;width:100%;padding:8px;';
       cancelPlanBtn.textContent = '✕ Planı İptal Et';
