@@ -122,7 +122,21 @@
     .admin-lesson-paid { font-size:.65rem; margin-left:4px; }
 
     /* ── Credit badge ── */
-    .credit-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(180,120,255,.1); border:1px solid rgba(180,120,255,.3); border-radius:20px; padding:7px 16px; font-size:.78rem; color:var(--purple); margin-bottom:18px; }
+    .credit-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(180,120,255,.1); border:1px solid rgba(180,120,255,.3); border-radius:20px; padding:7px 16px; font-size:.78rem; color:var(--purple); margin-bottom:14px; }
+    /* ── Payment box (student) ── */
+    .payment-box { display:flex; align-items:center; justify-content:space-between; gap:12px; background:rgba(232,184,75,.06); border:1px solid rgba(232,184,75,.18); border-radius:10px; padding:14px 18px; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
+    .payment-box-label { font-size:.72rem; color:var(--dim); line-height:1.6; }
+    .payment-box-price { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; color:var(--gold); line-height:1; }
+    .payment-box-paid { font-size:.75rem; color:var(--green); background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); padding:8px 16px; border-radius:6px; white-space:nowrap; }
+    .payment-box-btn { font-family:'Space Mono',monospace; font-size:.72rem; padding:9px 18px; border-radius:6px; cursor:pointer; transition:all .15s; white-space:nowrap; background:rgba(74,222,128,.09); border:1px solid rgba(74,222,128,.35); color:var(--green); }
+    .payment-box-btn:hover { background:rgba(74,222,128,.2); }
+    /* ── Cancel plan button ── */
+    .cancel-plan-btn { display:block; width:100%; margin-top:14px; padding:10px; text-align:center; background:rgba(184,45,69,.07); border:1px solid rgba(184,45,69,.25); color:rgba(184,45,69,.75); border-radius:8px; font-family:'Space Mono',monospace; font-size:.72rem; cursor:pointer; transition:all .15s; }
+    .cancel-plan-btn:hover { background:rgba(184,45,69,.18); border-color:var(--crimson); color:var(--crimson); }
+    /* ── Admin payment toggle ── */
+    .admin-pay-toggle { font-family:'Space Mono',monospace; font-size:.65rem; padding:5px 12px; border-radius:5px; cursor:pointer; transition:all .15s; }
+    .admin-pay-toggle.unpaid { background:rgba(184,45,69,.08); border:1px solid rgba(184,45,69,.3); color:var(--crimson); }
+    .admin-pay-toggle.paid { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:var(--green); }
 
     /* ── Rules card ── */
     .rules-card { background:rgba(232,184,75,.04); border:1px solid rgba(232,184,75,.18); border-radius:10px; padding:18px 20px; }
@@ -274,7 +288,9 @@
         </div>
       </div>
       <div class="stats-row" id="dashStats"></div>
+      <div id="paymentBox"></div>
       <div class="credit-badge" id="creditBadge"></div>
+      <button class="cancel-plan-btn" id="cancelPlanBtn" style="display:none;">✕ Planı İptal Et</button>
     </div>
 
     <div class="dash-layout">
@@ -754,6 +770,36 @@ async function renderDashboard() {
     <div class="stat-card"><div class="stat-val">${lessons.length}</div><div class="stat-lbl">Toplam</div></div>
   `;
 
+  // Payment box
+  const totalPrice = lessons.length * LESSON_PRICE;
+  const isPaid = !!res.payment_confirmed;
+  const pboxEl = document.getElementById('paymentBox');
+  pboxEl.innerHTML = '';
+  const pbox = document.createElement('div'); pbox.className = 'payment-box';
+  pbox.innerHTML = `<div><div class="payment-box-label">${lessons.length} ders · Toplam Ücret</div><div class="payment-box-price">${totalPrice.toLocaleString('tr-TR')} TL</div></div>`;
+  if (isPaid) {
+    const badge = document.createElement('span'); badge.className = 'payment-box-paid'; badge.textContent = '✓ Ödendi';
+    pbox.append(badge);
+  } else {
+    const payBtn = document.createElement('button'); payBtn.className = 'payment-box-btn'; payBtn.textContent = '₺ Ödeme Yaptım';
+    payBtn.onclick = async () => {
+      if (!confirm('Ödeme yaptığını onaylıyor musun?')) return;
+      await db.collection('reservations').doc(_user.uid).update({ payment_confirmed: true });
+      toast('✓ Ödeme onaylandı.'); renderDashboard();
+    };
+    pbox.append(payBtn);
+  }
+  pboxEl.append(pbox);
+
+  // Cancel plan button (only if upcoming lessons exist)
+  const cpBtn = document.getElementById('cancelPlanBtn');
+  if (upcoming.length > 0) {
+    cpBtn.style.display = '';
+    cpBtn.onclick = () => cancelEntirePlan(lessons, res);
+  } else {
+    cpBtn.style.display = 'none';
+  }
+
   const curMonthKey = yearMonthKey(today);
   const credits = res.reschedule_credits?.[curMonthKey] ?? 0;
   document.getElementById('creditBadge').innerHTML = `🔄 Bu ay erteleme hakkı: <strong>${credits}</strong>/1`;
@@ -792,47 +838,10 @@ async function renderDashboard() {
         </div>
         <div class="lesson-status ${sc}">${statusLabel}</div>`;
 
-      if (l.status === 'completed' || l.status === 'cancelled') {
-        // Show payment status on past/done lessons
-        const actDiv = document.createElement('div'); actDiv.className = 'lesson-actions';
-        if (l.payment_confirmed) {
-          const pb = document.createElement('span'); pb.className = 'lesson-paid-badge'; pb.textContent = '✓ Ödendi';
-          actDiv.append(pb);
-        } else if (l.status !== 'cancelled') {
-          const unpaid = document.createElement('span'); unpaid.style.cssText = 'font-size:.65rem;color:rgba(184,45,69,.7);white-space:nowrap;';
-          unpaid.textContent = '✗ Ödenmedi';
-          actDiv.append(unpaid);
-        }
-        if (actDiv.children.length) item.append(actDiv);
-      } else if (!isPast && (l.status === 'scheduled' || l.status === 'rescheduled')) {
-        const actDiv = document.createElement('div'); actDiv.className = 'lesson-actions';
-
-        // Payment badge/button
-        if (l.payment_confirmed) {
-          const pb = document.createElement('span'); pb.className = 'lesson-paid-badge'; pb.textContent = '✓ Ödendi';
-          actDiv.append(pb);
-        } else {
-          const payBtn = document.createElement('button'); payBtn.className = 'lesson-pay-btn'; payBtn.textContent = '₺ Ödeme Yaptım';
-          payBtn.onclick = () => confirmPayment(idx, lessons, res);
-          actDiv.append(payBtn);
-        }
-
-        // Reschedule button
-        if (l.status === 'scheduled') {
-          const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = '↺ Ertele';
-          rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
-          actDiv.append(rBtn);
-
-          // Cancel request button
-          const crBtn = document.createElement('button'); crBtn.className = 'lesson-cancel-req-btn'; crBtn.textContent = '✕ İptal Talebi';
-          crBtn.onclick = () => sendCancelRequest(l, idx, lessons, res);
-          actDiv.append(crBtn);
-        }
-
-        item.append(actDiv);
-      } else if (!isPast && l.status === 'cancel_requested') {
-        const pendingSpan = document.createElement('span'); pendingSpan.className = 'lesson-cancel-pending'; pendingSpan.textContent = 'İptal bekleniyor…';
-        item.append(pendingSpan);
+      if (!isPast && l.status === 'scheduled') {
+        const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = '↺ Ertele';
+        rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
+        item.append(rBtn);
       }
       list.append(item);
     });
@@ -974,15 +983,30 @@ async function renderAdminPanel() {
       const totalLessons = allLessonsArr.length;
       const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
       const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
-      const paidCount = allLessonsArr.filter(l => l.payment_confirmed).length;
+      const totalPrice = totalLessons * LESSON_PRICE;
+      const isResPaid = !!s.payment_confirmed;
       const row = document.createElement('div'); row.className = 'student-row';
-      row.innerHTML = `
-        <div class="student-row-name">${s.student_name || s.student_email}</div>
-        <div class="student-row-meta">
-          ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong><br>
-          ${startDateStr} → ${endDateStr}<br>
-          Yaklaşan: ${upcomingLessons.length} · Ödeme: ${paidCount === 0 ? `<span style="color:rgba(184,45,69,.7)">Yapılmadı</span>` : paidCount >= totalLessons ? `<span style="color:var(--green)">Tamamlandı ✓</span>` : `<span style="color:var(--gold)">${paidCount} ders ödendi</span>`}
+      const headerDiv = document.createElement('div'); headerDiv.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;';
+      headerDiv.innerHTML = `
+        <div>
+          <div class="student-row-name">${s.student_name || s.student_email}</div>
+          <div class="student-row-meta">
+            ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong> · <strong style="color:var(--gold)">${totalPrice.toLocaleString('tr-TR')} TL</strong><br>
+            ${startDateStr} → ${endDateStr}<br>
+            Yaklaşan: ${upcomingLessons.length}
+          </div>
         </div>`;
+      const payToggle = document.createElement('button');
+      payToggle.className = 'admin-pay-toggle ' + (isResPaid ? 'paid' : 'unpaid');
+      payToggle.textContent = isResPaid ? '✓ Ödendi' : '✗ Ödenmedi';
+      payToggle.onclick = async () => {
+        const newVal = !isResPaid;
+        await db.collection('reservations').doc(studentUid).update({ payment_confirmed: newVal });
+        toast(newVal ? '✓ Ödeme işaretlendi.' : 'Ödeme geri alındı.');
+        renderAdminPanel();
+      };
+      headerDiv.append(payToggle);
+      row.append(headerDiv);
 
       // Per-lesson admin controls
       if (upcomingLessons.length > 0) {
@@ -1024,41 +1048,21 @@ async function renderAdminPanel() {
   }
 }
 
-// ─── Student: Confirm Payment ─────────────────────────────
-async function confirmPayment(idx, lessons, res) {
-  if (!confirm('Ödeme yaptığını onaylıyor musun?')) return;
-  const updated = lessons.map((l, i) => i === idx ? { ...l, payment_confirmed: true } : l);
+// ─── Student: Cancel Entire Plan ──────────────────────────
+async function cancelEntirePlan(lessons, res) {
+  if (!confirm('Tüm planını iptal etmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
   try {
-    await db.collection('reservations').doc(_user.uid).update({ lessons: updated });
-    toast('✓ Ödeme onaylandı.');
-    renderDashboard();
-  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
-}
-
-// ─── Student: Send Cancel Request ─────────────────────────
-async function sendCancelRequest(lesson, idx, lessons, res) {
-  const note = prompt('İptal sebebini belirtebilirsin (isteğe bağlı):') ?? '';
-  if (note === null) return; // user pressed cancel on prompt
-  try {
-    // Mark lesson as cancel_requested
-    const updated = lessons.map((l, i) => i === idx ? { ...l, status: 'cancel_requested' } : l);
+    const today = toDateStr(new Date());
+    const updated = lessons.map(l =>
+      l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled') ? { ...l, status: 'cancelled' } : l
+    );
     const batch = db.batch();
     batch.update(db.collection('reservations').doc(_user.uid), { lessons: updated });
-    batch.set(db.collection('lesson_requests').doc(), {
-      type: 'cancel_request',
-      from_uid: _user.uid,
-      from_name: _user.displayName || '',
-      from_email: _user.email || '',
-      lesson_date: lesson.date,
-      lesson_time: lesson.time,
-      lesson_idx: idx,
-      all_lessons: lessons,
-      note,
-      status: 'pending',
-      created_at: firebase.firestore.FieldValue.serverTimestamp(),
+    lessons.filter(l => l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled')).forEach(l => {
+      batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
     });
     await batch.commit();
-    toast('İptal talebi gönderildi.');
+    toast('Plan iptal edildi.');
     renderDashboard();
   } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
 }
