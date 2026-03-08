@@ -235,6 +235,18 @@
     .req-reject:hover { background:rgba(184,45,69,.16); }
     .select-sm { background:rgba(255,255,255,.06); border:1.5px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.72rem; padding:8px 10px; outline:none; }
 
+    /* ── Input Modal ── */
+    .input-modal-overlay { position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .15s ease; }
+    .input-modal { background:var(--card);border:1px solid var(--mid);border-radius:14px;padding:24px 22px;width:100%;max-width:380px;box-shadow:0 8px 40px rgba(0,0,0,.7);animation:slideUp .18s ease; }
+    .input-modal-title { font-size:.82rem;color:var(--white);font-weight:700;margin-bottom:14px; }
+    .input-modal textarea, .input-modal input { width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--white);font-family:'Space Mono',monospace;font-size:.75rem;padding:10px 12px;resize:vertical;outline:none;box-sizing:border-box; }
+    .input-modal textarea:focus, .input-modal input:focus { border-color:rgba(232,184,75,.4); }
+    .input-modal-actions { display:flex;gap:8px;margin-top:14px;justify-content:flex-end; }
+    .input-modal-cancel { background:none;border:1px solid rgba(255,255,255,.12);color:var(--dim);font-family:'Space Mono',monospace;font-size:.68rem;padding:8px 16px;border-radius:7px;cursor:pointer; }
+    .input-modal-ok { background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+
     /* ── Toast ── */
     .toast-wrap { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
     .toast { background:var(--card); border:1px solid var(--mid); border-left:3px solid var(--gold); border-radius:6px; padding:10px 16px; font-size:.68rem; color:var(--white); box-shadow:0 4px 24px rgba(0,0,0,.6); pointer-events:all; max-width:280px; animation:toastIn .2s ease; }
@@ -584,6 +596,35 @@ function toast(msg, isErr = false) {
   const t = document.createElement('div'); t.className = 'toast' + (isErr ? ' err' : '');
   t.textContent = msg; w.append(t);
   setTimeout(() => t.remove(), 3500);
+}
+
+// Site içi prompt — native Chrome dialog yerine
+function showInputModal({ title, placeholder = '', defaultVal = '', multiline = false }) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'input-modal-overlay';
+    overlay.innerHTML = `
+      <div class="input-modal">
+        <div class="input-modal-title">${title}</div>
+        ${multiline
+          ? `<textarea rows="3" placeholder="${placeholder}">${defaultVal}</textarea>`
+          : `<input type="text" placeholder="${placeholder}" value="${defaultVal}">`}
+        <div class="input-modal-actions">
+          <button class="input-modal-cancel">İptal</button>
+          <button class="input-modal-ok">Tamam</button>
+        </div>
+      </div>`;
+    const input = overlay.querySelector('textarea, input');
+    overlay.querySelector('.input-modal-cancel').onclick = () => { overlay.remove(); resolve(null); };
+    overlay.querySelector('.input-modal-ok').onclick = () => { overlay.remove(); resolve(input.value); };
+    overlay.onclick = (e) => { if (e.target === overlay) { overlay.remove(); resolve(null); } };
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter' && !multiline) { overlay.remove(); resolve(input.value); }
+      if (e.key === 'Escape') { overlay.remove(); resolve(null); }
+    };
+    document.body.append(overlay);
+    setTimeout(() => input.focus(), 50);
+  });
 }
 function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 
@@ -1424,7 +1465,8 @@ async function renderAdminPanel() {
       // Reject button
       const rejectBtn = document.createElement('button'); rejectBtn.className='req-reject'; rejectBtn.textContent='✕ Reddet';
       rejectBtn.onclick = async () => {
-        const reason = prompt('Reddetme sebebi (isteğe bağlı):') ?? '';
+        const reason = await showInputModal({ title: 'Reddetme sebebi', placeholder: 'İsteğe bağlı…', multiline: true });
+        if (reason === null) return;
         rejectBtn.disabled = true;
         try {
           await doc.ref.update({ status:'rejected', reject_reason: reason, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
@@ -1929,7 +1971,7 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
 async function adminAddRescheduleCredit(studentUid) {
   const today = toDateStr(new Date());
   const curMonthKey = today.slice(0, 7);
-  const monthInput = prompt('Hangi ay? (YYYY-MM formatında)', curMonthKey);
+  const monthInput = await showInputModal({ title: 'Hangi ay için kredi eklensin?', placeholder: 'YYYY-MM', defaultVal: curMonthKey });
   if (!monthInput) return;
   if (!/^\d{4}-\d{2}$/.test(monthInput)) { toast('Geçersiz format. YYYY-MM olmalı.', true); return; }
   const monthLabel = new Date(monthInput + '-01').toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
@@ -1948,8 +1990,8 @@ async function adminAddRescheduleCredit(studentUid) {
 
 async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
   const existing = lesson.note || '';
-  const note = prompt(`${formatDateStr(lesson.date)} ${lesson.time} için not:`, existing);
-  if (note === null) return; // cancelled
+  const note = await showInputModal({ title: `${formatDateStr(lesson.date)} ${lesson.time} — Not`, placeholder: 'Ders notu…', defaultVal: existing, multiline: true });
+  if (note === null) return;
   try {
     const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, note: note.trim() || null } : l);
     await db.collection('reservations').doc(studentUid).update({ lessons: updated });
@@ -2267,7 +2309,8 @@ function loadAdminAccessRequests() {
           } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
         };
         row.querySelector('.accessRejectBtn').onclick = async (e) => {
-          const reason = prompt('Reddetme sebebi (isteğe bağlı):') ?? '';
+          const reason = await showInputModal({ title: 'Reddetme sebebi', placeholder: 'İsteğe bağlı…', multiline: true });
+          if (reason === null) return;
           e.target.disabled = true;
           try {
             await db.collection('booking_access_requests').doc(doc.id).update({ status: 'rejected', reject_reason: reason });
