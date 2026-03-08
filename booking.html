@@ -148,19 +148,22 @@
     /* ── Admin calendar ── */
     .cal-nav-btn { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); color:var(--white); font-size:.9rem; width:28px; height:28px; border-radius:5px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; }
     .cal-nav-btn:hover { background:rgba(255,255,255,.12); }
-    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:12px; }
-    .cal-day-header { text-align:center; font-size:.6rem; color:var(--dim); letter-spacing:.06em; padding-bottom:6px; text-transform:uppercase; }
-    .cal-day-header.today { color:var(--gold); }
-    .cal-day-col { display:flex; flex-direction:column; gap:4px; min-height:60px; }
-    .cal-day-num { text-align:center; font-family:'Bebas Neue',sans-serif; font-size:1.1rem; color:var(--dim); line-height:1.2; margin-bottom:3px; }
-    .cal-day-num.today { color:var(--gold); }
-    .cal-slot { background:rgba(232,184,75,.08); border:1px solid rgba(232,184,75,.2); border-radius:6px; padding:5px 6px; display:flex; align-items:center; gap:5px; cursor:default; }
-    .cal-slot-photo { width:22px; height:22px; border-radius:50%; object-fit:cover; background:var(--mid); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.6rem; border:1px solid rgba(232,184,75,.3); overflow:hidden; }
+    .cal-week { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+    .cal-day-row { display:flex; align-items:flex-start; gap:12px; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); }
+    .cal-day-row.has-lessons { border-color:rgba(232,184,75,.15); background:rgba(232,184,75,.04); }
+    .cal-day-row.is-today { border-color:rgba(232,184,75,.35); background:rgba(232,184,75,.08); }
+    .cal-day-label { min-width:80px; flex-shrink:0; }
+    .cal-day-name { font-size:.78rem; color:var(--dim); font-weight:700; }
+    .cal-day-row.has-lessons .cal-day-name, .cal-day-row.is-today .cal-day-name { color:var(--white); }
+    .cal-day-date { font-size:.65rem; color:rgba(255,255,255,.2); margin-top:1px; }
+    .cal-day-row.is-today .cal-day-date { color:var(--gold); }
+    .cal-slots-list { display:flex; flex-direction:column; gap:5px; flex:1; }
+    .cal-slot { display:flex; align-items:center; gap:8px; }
+    .cal-slot-photo { width:28px; height:28px; border-radius:50%; background:var(--mid); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.7rem; border:1.5px solid rgba(232,184,75,.3); overflow:hidden; }
     .cal-slot-photo img { width:100%; height:100%; object-fit:cover; }
-    .cal-slot-info { min-width:0; }
-    .cal-slot-time { font-size:.55rem; color:var(--gold); font-family:'Space Mono',monospace; white-space:nowrap; }
-    .cal-slot-name { font-size:.58rem; color:var(--white); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .cal-empty { text-align:center; font-size:.6rem; color:rgba(255,255,255,.1); padding:8px 0; }
+    .cal-slot-time { font-family:'Space Mono',monospace; font-size:.72rem; color:var(--gold); min-width:52px; flex-shrink:0; }
+    .cal-slot-name { font-size:.75rem; color:var(--white); }
+    .cal-no-lesson { font-size:.68rem; color:rgba(255,255,255,.15); align-self:center; }
     /* ── Admin payment toggle ── */
     .admin-pay-toggle { font-family:'Space Mono',monospace; font-size:.65rem; padding:5px 12px; border-radius:5px; cursor:pointer; transition:all .15s; }
     .admin-pay-toggle.unpaid { background:rgba(184,45,69,.08); border:1px solid rgba(184,45,69,.3); color:var(--crimson); }
@@ -1152,61 +1155,66 @@ async function renderAdminPanel() {
 
 // ─── Admin Calendar ───────────────────────────────────────
 let _calWeekOffset = 0;
+const DAY_NAMES = ['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+
 function renderAdminCalendar(lessons, weekOffset) {
   _calWeekOffset = weekOffset;
   const calEl = document.getElementById('adminCalendar');
   if (!calEl) return;
 
-  // Week start (Monday)
   const now = new Date();
-  const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mon=0
-  const weekStart = new Date(now); weekStart.setDate(now.getDate() - dayOfWeek + weekOffset * 7);
+  const dow = now.getDay() === 0 ? 6 : now.getDay() - 1; // Mon=0
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - dow + weekOffset * 7);
   weekStart.setHours(0,0,0,0);
 
-  const days = Array.from({length:7}, (_,i) => { const d = new Date(weekStart); d.setDate(weekStart.getDate()+i); return d; });
+  const days = Array.from({length:7}, (_,i) => {
+    const d = new Date(weekStart); d.setDate(weekStart.getDate() + i); return d;
+  });
   const todayStr = toDateStr(new Date());
 
   document.getElementById('calWeekLabel').textContent =
     `${days[0].getDate()} ${MONTHS_TR[days[0].getMonth()]} – ${days[6].getDate()} ${MONTHS_TR[days[6].getMonth()]}`;
 
-  // Index lessons by date_time
   const byDate = {};
-  lessons.forEach(l => { (byDate[l.date] = byDate[l.date]||[]).push(l); });
+  lessons.forEach(l => { (byDate[l.date] = byDate[l.date] || []).push(l); });
 
-  const grid = document.createElement('div'); grid.className = 'cal-grid';
+  const week = document.createElement('div'); week.className = 'cal-week';
 
-  // Headers
-  ['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'].forEach((label, i) => {
-    const dStr = toDateStr(days[i]);
-    const h = document.createElement('div'); h.className = 'cal-day-header' + (dStr === todayStr ? ' today' : '');
-    h.textContent = label; grid.append(h);
-  });
-
-  // Day columns
-  days.forEach(day => {
+  days.forEach((day, i) => {
     const dStr = toDateStr(day);
-    const col = document.createElement('div'); col.className = 'cal-day-col';
-    const numEl = document.createElement('div'); numEl.className = 'cal-day-num' + (dStr === todayStr ? ' today' : '');
-    numEl.textContent = day.getDate(); col.append(numEl);
+    const slots = (byDate[dStr] || []).sort((a,b) => a.time.localeCompare(b.time));
+    const isToday = dStr === todayStr;
 
-    const slots = (byDate[dStr]||[]).sort((a,b) => a.time.localeCompare(b.time));
+    const row = document.createElement('div');
+    row.className = 'cal-day-row' + (slots.length > 0 ? ' has-lessons' : '') + (isToday ? ' is-today' : '');
+
+    const label = document.createElement('div'); label.className = 'cal-day-label';
+    label.innerHTML = `<div class="cal-day-name">${DAY_NAMES[i]}</div><div class="cal-day-date">${day.getDate()} ${MONTHS_TR[day.getMonth()]}</div>`;
+
+    const slotsList = document.createElement('div'); slotsList.className = 'cal-slots-list';
+
     if (slots.length === 0) {
-      const emp = document.createElement('div'); emp.className = 'cal-empty'; emp.textContent = '—'; col.append(emp);
+      const empty = document.createElement('span'); empty.className = 'cal-no-lesson'; empty.textContent = 'Ders yok';
+      slotsList.append(empty);
     } else {
       slots.forEach(s => {
         const slot = document.createElement('div'); slot.className = 'cal-slot';
         const photoEl = document.createElement('div'); photoEl.className = 'cal-slot-photo';
         if (s.photo) { const img = document.createElement('img'); img.src = s.photo; photoEl.append(img); }
-        else { photoEl.textContent = s.name?.[0]||'?'; }
-        const info = document.createElement('div'); info.className = 'cal-slot-info';
-        info.innerHTML = `<div class="cal-slot-time">${s.time}</div><div class="cal-slot-name">${s.name}</div>`;
-        slot.append(photoEl, info); col.append(slot);
+        else { photoEl.textContent = s.name?.[0] || '?'; }
+        const timeEl = document.createElement('span'); timeEl.className = 'cal-slot-time'; timeEl.textContent = s.time;
+        const nameEl = document.createElement('span'); nameEl.className = 'cal-slot-name'; nameEl.textContent = s.name;
+        slot.append(photoEl, timeEl, nameEl);
+        slotsList.append(slot);
       });
     }
-    grid.append(col);
+
+    row.append(label, slotsList);
+    week.append(row);
   });
 
-  calEl.innerHTML = ''; calEl.append(grid);
+  calEl.innerHTML = ''; calEl.append(week);
 
   document.getElementById('calPrev').onclick = () => renderAdminCalendar(lessons, weekOffset - 1);
   document.getElementById('calNext').onclick = () => renderAdminCalendar(lessons, weekOffset + 1);
