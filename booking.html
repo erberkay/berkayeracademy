@@ -219,15 +219,20 @@
     .lesson-options-item.danger { color:var(--crimson); }
     .lesson-options-item.danger:hover { background:rgba(184,45,69,.12); }
     .lesson-options-separator { height:1px; background:rgba(255,255,255,.07); margin:2px 0; }
-    .req-row { background:rgba(180,120,255,.05); border:1px solid rgba(180,120,255,.2); border-radius:10px; padding:16px 18px; margin-bottom:12px; }
-    .req-row-name { font-size:.88rem; color:var(--purple); font-weight:700; margin-bottom:8px; }
-    .req-row-detail { font-size:.78rem; color:var(--white); line-height:1.8; margin-bottom:8px; }
-    .req-row-note { font-size:.75rem; color:var(--dim); font-style:italic; margin-bottom:12px; padding:10px 14px; background:rgba(255,255,255,.03); border-radius:6px; border-left:2px solid rgba(180,120,255,.3); }
-    .req-actions { display:flex; gap:10px; flex-wrap:wrap; }
-    .req-approve { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:var(--green); font-family:'Space Mono',monospace; font-size:.72rem; padding:8px 18px; border-radius:6px; cursor:pointer; transition:all .15s; }
-    .req-approve:hover { background:rgba(74,222,128,.2); }
-    .req-reject { background:rgba(184,45,69,.1); border:1px solid rgba(184,45,69,.3); color:var(--crimson); font-family:'Space Mono',monospace; font-size:.72rem; padding:8px 18px; border-radius:6px; cursor:pointer; transition:all .15s; }
-    .req-reject:hover { background:rgba(184,45,69,.2); }
+    .req-row { background:rgba(180,120,255,.04); border:1px solid rgba(180,120,255,.18); border-radius:12px; margin-bottom:14px; overflow:hidden; }
+    .req-row-body { padding:18px 20px 14px; }
+    .req-row-name { font-size:.92rem; color:var(--purple); font-weight:700; margin-bottom:10px; }
+    .req-row-detail { font-size:.78rem; color:var(--white); line-height:1.9; margin-bottom:10px; }
+    .req-row-pills { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+    .req-row-pill { font-size:.7rem; font-family:'Space Mono',monospace; padding:4px 12px; border-radius:20px; }
+    .req-row-pill.gold { color:var(--gold); background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.25); }
+    .req-row-pill.dim  { color:rgba(238,235,230,.55); background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1); }
+    .req-row-note { font-size:.73rem; color:var(--dim); font-style:italic; padding:10px 14px; background:rgba(255,255,255,.03); border-radius:6px; border-left:2px solid rgba(180,120,255,.3); }
+    .req-actions { display:flex; gap:0; border-top:1px solid rgba(255,255,255,.06); }
+    .req-approve { flex:1; background:rgba(74,222,128,.07); border:none; border-right:1px solid rgba(255,255,255,.06); color:var(--green); font-family:'Space Mono',monospace; font-size:.73rem; font-weight:700; padding:13px 10px; cursor:pointer; transition:background .15s; letter-spacing:.04em; }
+    .req-approve:hover { background:rgba(74,222,128,.16); }
+    .req-reject { flex:1; background:rgba(184,45,69,.07); border:none; color:var(--crimson); font-family:'Space Mono',monospace; font-size:.73rem; font-weight:700; padding:13px 10px; cursor:pointer; transition:background .15s; letter-spacing:.04em; }
+    .req-reject:hover { background:rgba(184,45,69,.16); }
     .select-sm { background:rgba(255,255,255,.06); border:1.5px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.72rem; padding:8px 10px; outline:none; }
 
     /* ── Toast ── */
@@ -1210,11 +1215,15 @@ async function renderAdminPanel() {
 
       if (isPaymentReq) {
         row.style.borderColor = 'rgba(74,222,128,.3)';
-        row.style.background = 'rgba(74,222,128,.04)';
+        row.style.background = 'rgba(74,222,128,.03)';
         row.innerHTML = `
-          <div class="req-row-name" style="color:var(--green)">₺ Ödeme Talebi — ${r.from_name || r.from_email}</div>
-          <div class="req-row-detail">Toplam: <strong>${(r.total_price||0).toLocaleString('tr-TR')} TL</strong></div>
-        `;
+          <div class="req-row-body">
+            <div class="req-row-name" style="color:var(--green)">₺ Ödeme Talebi</div>
+            <div class="req-row-detail">${r.from_name || r.from_email}</div>
+            <div class="req-row-pills">
+              <span class="req-row-pill gold">${(r.total_price||0).toLocaleString('tr-TR')} TL</span>
+            </div>
+          </div>`;
         const actions = document.createElement('div'); actions.className = 'req-actions';
         const approveBtn = document.createElement('button'); approveBtn.className = 'req-approve'; approveBtn.textContent = '✓ Ödendi Onayla';
         approveBtn.onclick = async () => {
@@ -1247,10 +1256,14 @@ async function renderAdminPanel() {
       if (isCancelReq) {
         row.style.borderColor = 'rgba(184,45,69,.35)';
         row.innerHTML = `
-          <div class="req-row-name" style="color:var(--crimson)">✕ İptal Talebi — ${r.from_name || r.from_email}</div>
-          <div class="req-row-detail">${formatDateStr(r.lesson_date)} ${r.lesson_time}–${getEndTime(r.lesson_time)}</div>
-          ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
-        `;
+          <div class="req-row-body">
+            <div class="req-row-name" style="color:var(--crimson)">✕ İptal Talebi</div>
+            <div class="req-row-detail">${r.from_name || r.from_email}</div>
+            <div class="req-row-pills">
+              <span class="req-row-pill dim">${formatDateStr(r.lesson_date)} · ${r.lesson_time}–${getEndTime(r.lesson_time)}</span>
+            </div>
+            ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
+          </div>`;
         const actions = document.createElement('div'); actions.className = 'req-actions';
         const approveBtn = document.createElement('button'); approveBtn.className='req-reject'; approveBtn.textContent='✓ İptal Onayla';
         approveBtn.onclick = async () => {
@@ -1292,16 +1305,20 @@ async function renderAdminPanel() {
       const reqLessonCount = isSingleReq ? 1 : calculateLessonDates(r.schedule, r.duration_months).length;
       const reqTotalPrice = reqLessonCount * LESSON_PRICE;
       row.innerHTML = `
-        <div class="req-row-name">${r.from_name || r.from_email} ${isSingleReq ? '<span style="font-size:.62rem;color:rgba(143,200,232,.8);background:rgba(143,200,232,.1);border:1px solid rgba(143,200,232,.25);padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;">Tek Ders</span>' : ''}</div>
-        <div class="req-row-detail">
-          ${isSingleReq ? '🎯 <strong>Tek Ders</strong>' : `📅 <strong>${r.duration_months} Ay</strong>`} · ${daysText}
-        </div>
-        <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
-          <span style="font-size:.7rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);padding:3px 10px;border-radius:10px;font-family:'Space Mono',monospace;">₺ ${reqTotalPrice.toLocaleString('tr-TR')} TL</span>
-          <span style="font-size:.7rem;color:rgba(238,235,230,.6);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:3px 10px;border-radius:10px;font-family:'Space Mono',monospace;">${reqLessonCount} ders saati</span>
-        </div>
-        ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
-      `;
+        <div class="req-row-body">
+          <div class="req-row-name">
+            ${r.from_name || r.from_email}
+            ${isSingleReq ? '<span style="font-size:.6rem;color:rgba(143,200,232,.8);background:rgba(143,200,232,.1);border:1px solid rgba(143,200,232,.25);padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;font-weight:400;">Tek Ders</span>' : ''}
+          </div>
+          <div class="req-row-detail">
+            ${isSingleReq ? '🎯 Tek Ders' : `📅 ${r.duration_months} Ay`} &nbsp;·&nbsp; ${daysText}
+          </div>
+          <div class="req-row-pills">
+            <span class="req-row-pill gold">₺ ${reqTotalPrice.toLocaleString('tr-TR')} TL</span>
+            <span class="req-row-pill dim">${reqLessonCount} ders</span>
+          </div>
+          ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
+        </div>`;
 
       const actions = document.createElement('div'); actions.className = 'req-actions';
 
