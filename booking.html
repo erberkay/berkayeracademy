@@ -890,13 +890,14 @@ async function renderDashboard() {
   `;
 
   // Payment box
-  const totalPrice = lessons.length * LESSON_PRICE;
+  const activeLessons = lessons.filter(l => l.status !== 'cancelled');
+  const totalPrice = activeLessons.length * LESSON_PRICE;
   const isPaid = !!res.payment_confirmed;
   const isPending = !!res.payment_pending;
   const pboxEl = document.getElementById('paymentBox');
   pboxEl.innerHTML = '';
   const pbox = document.createElement('div'); pbox.className = 'payment-box';
-  pbox.innerHTML = `<div><div class="payment-box-label">${lessons.length} ders · Toplam Ücret</div><div class="payment-box-price">${totalPrice.toLocaleString('tr-TR')} TL</div></div>`;
+  pbox.innerHTML = `<div><div class="payment-box-label">${activeLessons.length} ders · Toplam Ücret</div><div class="payment-box-price">${totalPrice.toLocaleString('tr-TR')} TL</div></div>`;
   if (isPaid) {
     const badge = document.createElement('span'); badge.className = 'payment-box-paid'; badge.textContent = '✓ Ödendi';
     pbox.append(badge);
@@ -960,7 +961,7 @@ async function renderDashboard() {
 
   const curMonthKey = yearMonthKey(today);
   const credits = res.reschedule_credits?.[curMonthKey] ?? 0;
-  const totalLessonsCount = lessons.length;
+  const totalLessonsCount = lessons.filter(l => l.status !== 'cancelled').length;
   document.getElementById('creditBadge').innerHTML = `🔄 Bu ay erteleme hakkı: <strong>${credits}</strong>/1 &nbsp;·&nbsp; Toplam: <strong>${totalLessonsCount} ders</strong>`;
 
   const list = document.getElementById('lessonList');
@@ -1187,7 +1188,7 @@ async function renderAdminPanel() {
       const today = toDateStr(new Date());
       const allLessonsArr = s.lessons || [];
       const upcomingLessons = allLessonsArr.filter(l => l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'cancel_requested'));
-      const totalLessons = allLessonsArr.length;
+      const totalLessons = allLessonsArr.filter(l => l.status !== 'cancelled').length;
       const curMonthAdmin = today.slice(0, 7);
       const thisMonthCount = allLessonsArr.filter(l => l.date.startsWith(curMonthAdmin) && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'completed')).length;
       const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
