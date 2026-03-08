@@ -169,6 +169,8 @@
     .admin-pay-toggle { font-family:'Space Mono',monospace; font-size:.65rem; padding:5px 12px; border-radius:5px; cursor:pointer; transition:all .15s; }
     .admin-pay-toggle.unpaid { background:rgba(184,45,69,.08); border:1px solid rgba(184,45,69,.3); color:var(--crimson); }
     .admin-pay-toggle.paid { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:var(--green); }
+    .admin-pay-toggle.pending { background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.5); color:var(--gold); animation:pulse-gold .9s ease-in-out infinite alternate; }
+    @keyframes pulse-gold { from { box-shadow:0 0 0 0 rgba(232,184,75,.0); } to { box-shadow:0 0 0 4px rgba(232,184,75,.2); } }
 
     /* ── Rules card ── */
     .rules-card { background:rgba(232,184,75,.04); border:1px solid rgba(232,184,75,.18); border-radius:10px; padding:18px 20px; }
@@ -1192,6 +1194,7 @@ async function renderAdminPanel() {
       const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
       const totalPrice = totalLessons * LESSON_PRICE;
       const isResPaid = !!s.payment_confirmed;
+      const isPending = !isResPaid && !!s.payment_pending;
       const row = document.createElement('div'); row.className = 'student-row';
       const headerDiv = document.createElement('div'); headerDiv.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;';
       headerDiv.innerHTML = `
@@ -1205,14 +1208,40 @@ async function renderAdminPanel() {
           </div>
         </div>`;
       const payToggle = document.createElement('button');
-      payToggle.className = 'admin-pay-toggle ' + (isResPaid ? 'paid' : 'unpaid');
-      payToggle.textContent = isResPaid ? '✓ Ödendi' : '✗ Ödenmedi';
-      payToggle.onclick = async () => {
-        const newVal = !isResPaid;
-        await db.collection('reservations').doc(studentUid).update({ payment_confirmed: newVal });
-        toast(newVal ? '✓ Ödeme işaretlendi.' : 'Ödeme geri alındı.');
-        renderAdminPanel();
-      };
+      if (isResPaid) {
+        payToggle.className = 'admin-pay-toggle paid';
+        payToggle.textContent = '✓ Ödendi';
+        payToggle.title = 'Tıkla: ödemeyi geri al';
+        payToggle.onclick = async () => {
+          await db.collection('reservations').doc(studentUid).update({ payment_confirmed: false });
+          toast('Ödeme geri alındı.');
+          renderAdminPanel();
+        };
+      } else if (isPending) {
+        payToggle.className = 'admin-pay-toggle pending';
+        payToggle.textContent = '⏳ Onay Bekliyor';
+        payToggle.title = 'Öğrenci ödeme yaptığını bildirdi — onayla veya reddet';
+        payToggle.onclick = async () => {
+          const ok = confirm('Ödemeyi onaylıyor musun?');
+          if (ok) {
+            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true, payment_pending: false });
+            toast('✓ Ödeme onaylandı.');
+          } else {
+            await db.collection('reservations').doc(studentUid).update({ payment_pending: false });
+            toast('Ödeme talebi reddedildi.');
+          }
+          renderAdminPanel();
+        };
+      } else {
+        payToggle.className = 'admin-pay-toggle unpaid';
+        payToggle.textContent = '✗ Ödenmedi';
+        payToggle.title = 'Tıkla: ödendi olarak işaretle';
+        payToggle.onclick = async () => {
+          await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true });
+          toast('✓ Ödeme işaretlendi.');
+          renderAdminPanel();
+        };
+      }
       const cancelPlanBtn = document.createElement('button');
       cancelPlanBtn.className = 'admin-cancel-btn'; cancelPlanBtn.style.cssText = 'margin-top:10px;width:100%;padding:8px;';
       cancelPlanBtn.textContent = '✕ Planı İptal Et';
