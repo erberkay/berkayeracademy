@@ -228,16 +228,18 @@
   <div class="live-video-section animate-section">
     <div class="live-video-label"></div>
     <div class="live-video-wrapper">
-      <video autoplay muted loop playsinline id="liveVideo" style="background:#0c0c16;">
+      <video autoplay muted loop playsinline webkit-playsinline id="liveVideo" style="background:#0c0c16;">
         <source src="assets/video/live.mp4" type="video/mp4">
         <source src="assets/video/live.mov" type="video/quicktime">
       </video>
       <script>
         (function(){
           const v = document.getElementById('liveVideo');
-          v.addEventListener('error', function() {
-            v.style.display = 'none';
-          }, true);
+          v.addEventListener('error', function() { v.style.display = 'none'; }, true);
+          // Force play on mobile (some browsers block autoplay until interaction)
+          v.play().catch(() => {
+            document.addEventListener('touchstart', () => v.play().catch(()=>{}), { once: true });
+          });
         })();
       </script>
       <div class="live-video-overlay">
@@ -543,6 +545,8 @@
         const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
         const img  = document.createElement('img');  img.className = 'auth-avatar';
       const _bnavAv = document.getElementById('bnavProfileAv');
+      const _bnavAdmin = document.getElementById('bnavAdminItem');
+      if (_bnavAdmin && user.email === 'berkayer032@gmail.com') _bnavAdmin.style.display = 'flex';
       if (_bnavAv) { _bnavAv.innerHTML = user.photoURL ? '<img src="' + user.photoURL + '" alt="">' : '👤'; }
         img.src = user.photoURL || ''; img.alt = '';
         img.style.cursor = 'pointer'; img.onclick = () => location.href = `profile.html?uid=${user.uid}`;
@@ -702,6 +706,7 @@ _auth.onAuthStateChanged(user => {
   <a class="bnav-item" href="forum.html" data-page="forum"><span class="bnav-icon">💬</span><span class="bnav-label">Forum</span></a>
   <a class="bnav-item" href="members.html" data-page="members"><span class="bnav-icon">👥</span><span class="bnav-label">Üyeler</span></a>
   <a class="bnav-item" href="site_1.html" data-page="site_1"><span class="bnav-icon">🎛️</span><span class="bnav-label">Lab</span></a>
+  <a class="bnav-item" id="bnavAdminItem" href="booking.html" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label">Ders</span></a>
   <a class="bnav-item bnav-profile" href="profile.html" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label">Profil</span></a>
 </nav>
 <script type="module">(function(){const a=document.querySelector('.bottom-nav')?.dataset.active;document.querySelectorAll('.bnav-item[data-page]').forEach(e=>{if(a===e.dataset.page)e.classList.add('active');});})();</script>
