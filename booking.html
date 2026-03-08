@@ -1210,10 +1210,16 @@ async function renderAdminPanel() {
 
       const daysText = (r.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
       const isSingleReq = r.lesson_type === 'single';
+      const reqLessonCount = isSingleReq ? 1 : calculateLessonDates(r.schedule, r.duration_months).length;
+      const reqTotalPrice = reqLessonCount * LESSON_PRICE;
       row.innerHTML = `
         <div class="req-row-name">${r.from_name || r.from_email} ${isSingleReq ? '<span style="font-size:.62rem;color:rgba(143,200,232,.8);background:rgba(143,200,232,.1);border:1px solid rgba(143,200,232,.25);padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;">Tek Ders</span>' : ''}</div>
         <div class="req-row-detail">
           ${isSingleReq ? '🎯 <strong>Tek Ders</strong>' : `📅 <strong>${r.duration_months} Ay</strong>`} · ${daysText}
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
+          <span style="font-size:.7rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);padding:3px 10px;border-radius:10px;font-family:'Space Mono',monospace;">₺ ${reqTotalPrice.toLocaleString('tr-TR')} TL</span>
+          <span style="font-size:.7rem;color:rgba(238,235,230,.6);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:3px 10px;border-radius:10px;font-family:'Space Mono',monospace;">${reqLessonCount} ders saati</span>
         </div>
         ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
       `;
