@@ -239,6 +239,7 @@
           <table class="avail-table" id="availGrid" style="display:none;"></table>
         </div>
         <div class="avail-selected-summary" id="availSummary"></div>
+        <div id="priceEstimate" style="display:none;margin-top:10px;padding:12px 16px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;font-size:.78rem;color:var(--dim);line-height:1.7;"></div>
       </div>
 
       <div class="field-group">
@@ -588,9 +589,11 @@ function adjustSchedule(rawSlots) {
   return result;
 }
 
+const LESSON_PRICE = 2000; // TL per lesson hour
+
 function updateSlotSummary() {
   const el = document.getElementById('availSummary');
-  if (_selectedSlots.size === 0) { el.textContent = ''; return; }
+  if (_selectedSlots.size === 0) { el.textContent = ''; updatePriceEstimate(); return; }
   const raw = [..._selectedSlots].map(k => {
     const [dow, time] = k.split('_');
     return { dayIndex: parseInt(dow), time };
@@ -598,6 +601,20 @@ function updateSlotSummary() {
   const adjusted = adjustSchedule(raw);
   const parts = adjusted.map(s => DAYS_TR[s.dayIndex] + ' ' + s.time);
   el.textContent = 'Seçili: ' + parts.join(', ');
+  updatePriceEstimate();
+}
+
+function updatePriceEstimate() {
+  const el = document.getElementById('priceEstimate');
+  if (!el) return;
+  if (_selectedSlots.size === 0) { el.style.display = 'none'; return; }
+  const duration = parseInt(document.getElementById('reqDuration')?.value || '1');
+  const raw = [..._selectedSlots].map(k => { const [dow, time] = k.split('_'); return { dayIndex: parseInt(dow), time }; });
+  const schedule = adjustSchedule(raw);
+  const totalLessons = calculateLessonDates(schedule, duration).length;
+  const total = totalLessons * LESSON_PRICE;
+  el.style.display = '';
+  el.innerHTML = `Tahmini toplam: <strong style="color:var(--gold)">${total.toLocaleString('tr-TR')} TL</strong><br><span style="font-size:.7rem;">${totalLessons} ders × ${LESSON_PRICE.toLocaleString('tr-TR')} TL/ders saat</span>`;
 }
 
 // ─── Submit Request ───────────────────────────────────────
@@ -694,8 +711,11 @@ function renderPendingView(reqData) {
 function initRequestForm() {
   _selectedSlots.clear();
   document.getElementById('submitRequestBtn').disabled = true;
+  const priceEl = document.getElementById('priceEstimate');
+  if (priceEl) priceEl.style.display = 'none';
   showView('view-request');
   loadAndRenderAvailGrid();
+  document.getElementById('reqDuration').onchange = updatePriceEstimate;
 }
 
 // ─── Student Dashboard ────────────────────────────────────
@@ -713,8 +733,18 @@ async function renderDashboard() {
   const daysStr = (res.schedule||[]).map(s => DAYS_TR[s.dayIndex]).join(' & ');
   document.getElementById('dashSub').textContent = `${res.duration_months} Aylık · ${daysStr}`;
 
-  const lessons = res.lessons || [];
+  let lessons = res.lessons || [];
   const today = toDateStr(new Date());
+
+  // Auto-complete past scheduled/rescheduled lessons
+  const needsComplete = lessons.some(l => l.date < today && (l.status === 'scheduled' || l.status === 'rescheduled'));
+  if (needsComplete) {
+    lessons = lessons.map(l =>
+      l.date < today && (l.status === 'scheduled' || l.status === 'rescheduled') ? { ...l, status: 'completed' } : l
+    );
+    db.collection('reservations').doc(_user.uid).update({ lessons }).catch(console.error);
+  }
+
   const upcoming = lessons.filter(l => l.date >= today && l.status === 'scheduled');
   const done = lessons.filter(l => l.status === 'completed');
 
@@ -762,7 +792,19 @@ async function renderDashboard() {
         </div>
         <div class="lesson-status ${sc}">${statusLabel}</div>`;
 
-      if (!isPast && (l.status === 'scheduled' || l.status === 'rescheduled')) {
+      if (l.status === 'completed' || l.status === 'cancelled') {
+        // Show payment status on past/done lessons
+        const actDiv = document.createElement('div'); actDiv.className = 'lesson-actions';
+        if (l.payment_confirmed) {
+          const pb = document.createElement('span'); pb.className = 'lesson-paid-badge'; pb.textContent = '✓ Ödendi';
+          actDiv.append(pb);
+        } else if (l.status !== 'cancelled') {
+          const unpaid = document.createElement('span'); unpaid.style.cssText = 'font-size:.65rem;color:rgba(184,45,69,.7);white-space:nowrap;';
+          unpaid.textContent = '✗ Ödenmedi';
+          actDiv.append(unpaid);
+        }
+        if (actDiv.children.length) item.append(actDiv);
+      } else if (!isPast && (l.status === 'scheduled' || l.status === 'rescheduled')) {
         const actDiv = document.createElement('div'); actDiv.className = 'lesson-actions';
 
         // Payment badge/button
@@ -939,7 +981,7 @@ async function renderAdminPanel() {
         <div class="student-row-meta">
           ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong><br>
           ${startDateStr} → ${endDateStr}<br>
-          Yaklaşan: ${upcomingLessons.length} · Ödeme: <span style="color:var(--green)">${paidCount}</span>/<span>${totalLessons}</span>
+          Yaklaşan: ${upcomingLessons.length} · Ödeme: ${paidCount === 0 ? `<span style="color:rgba(184,45,69,.7)">Yapılmadı</span>` : paidCount >= totalLessons ? `<span style="color:var(--green)">Tamamlandı ✓</span>` : `<span style="color:var(--gold)">${paidCount} ders ödendi</span>`}
         </div>`;
 
       // Per-lesson admin controls
