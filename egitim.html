@@ -483,14 +483,19 @@
       updateAuthBar(user);
       initNotifications(user);
       if (user) {
-        _db.collection('reservations').doc(user.uid).get().then(snap => {
-          if (snap.exists) {
-            const el1 = document.getElementById('labTeaserSection');
-            const el2 = document.getElementById('magazineSection');
-            if (el1) el1.style.display = '';
-            if (el2) el2.style.display = '';
-          }
-        }).catch(() => {});
+        function _showMemberContent() {
+          const el1 = document.getElementById('labTeaserSection');
+          const el2 = document.getElementById('magazineSection');
+          if (el1) el1.style.display = '';
+          if (el2) el2.style.display = '';
+        }
+        // Show sections if user has an approved reservation OR a pending lesson request
+        Promise.all([
+          _db.collection('reservations').doc(user.uid).get().catch(() => null),
+          _db.collection('lesson_requests').where('from_uid','==',user.uid).limit(1).get().catch(() => null),
+        ]).then(([resSnap, reqSnap]) => {
+          if (resSnap?.exists || reqSnap?.size > 0) _showMemberContent();
+        });
       }
     });
   } catch(e) { console.warn('Firebase init:', e.message); }
