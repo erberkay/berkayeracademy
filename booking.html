@@ -1179,7 +1179,11 @@ async function renderDashboard() {
   if (lessons.length === 0) {
     list.innerHTML += '<div class="empty-state">Henüz ders yok.</div>';
   } else {
-    lessons.sort((a,b) => a.date.localeCompare(b.date)).forEach((l, idx) => {
+    const sorted = lessons.slice().sort((a,b) => a.date.localeCompare(b.date));
+    const upcomingItems = sorted.filter(l => l.date >= today && l.status !== 'cancelled');
+    const pastItems = sorted.filter(l => l.date < today || l.status === 'completed' || l.status === 'cancelled');
+
+    const renderLesson = (l, idx) => {
       const d = dateStrToObj(l.date);
       const isPast = l.date < today;
       const item = document.createElement('div');
@@ -1196,14 +1200,34 @@ async function renderDashboard() {
           <div class="lesson-time">${l.time} – ${getEndTime(l.time)}</div>
         </div>
         <div class="lesson-status ${sc}">${statusLabel}</div>`;
-
       if (!isPast && l.status === 'scheduled') {
         const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = '↺ Ertele';
         rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
         item.append(rBtn);
       }
-      list.append(item);
-    });
+      return item;
+    };
+
+    if (upcomingItems.length === 0) {
+      list.innerHTML += '<div class="empty-state">Yaklaşan ders yok.</div>';
+    } else {
+      upcomingItems.forEach(l => list.append(renderLesson(l, sorted.indexOf(l))));
+    }
+
+    if (pastItems.length > 0) {
+      const pastToggle = document.createElement('button');
+      pastToggle.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.3);font-size:.65rem;cursor:pointer;padding:14px 0 4px;font-family:"Space Mono",monospace;display:block;width:100%;text-align:left;';
+      pastToggle.textContent = `▸ Geçmiş Dersler (${pastItems.length})`;
+      const pastSection = document.createElement('div');
+      pastSection.style.display = 'none';
+      pastItems.slice().reverse().forEach(l => pastSection.append(renderLesson(l, sorted.indexOf(l))));
+      pastToggle.onclick = () => {
+        const isOpen = pastSection.style.display !== 'none';
+        pastSection.style.display = isOpen ? 'none' : 'block';
+        pastToggle.textContent = `${isOpen ? '▸' : '▾'} Geçmiş Dersler (${pastItems.length})`;
+      };
+      list.append(pastToggle, pastSection);
+    }
   }
   initStudentQA(_user.uid, _user);
 }
@@ -1580,7 +1604,10 @@ async function renderAdminPanel() {
           const lessonIdx = allLessons.findIndex(l => l.date === lesson.date && l.time === lesson.time && l.status === lesson.status);
           const lRow = document.createElement('div'); lRow.className = 'admin-lesson-row';
           lRow.innerHTML = `
-            <div class="admin-lesson-info"><strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}</div>
+            <div class="admin-lesson-info">
+              <strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}
+              ${lesson.note ? `<div style="font-size:.6rem;color:rgba(180,120,255,.7);margin-top:2px;">📝 ${lesson.note}</div>` : ''}
+            </div>
             <div class="admin-lesson-actions"></div>`;
           // Options button + dropdown
           const wrap = document.createElement('div'); wrap.className = 'lesson-options-wrap';
@@ -1593,6 +1620,7 @@ async function renderAdminPanel() {
           };
           menu.append(
             mkItem('✓ Tamamlandı', '', () => adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson)),
+            mkItem('📝 Not Ekle', '', () => adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson)),
             Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
             mkItem('🕐 Saati Değiştir', '', () => adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson)),
             mkItem('📅 Günü Değiştir', '', () => adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson)),
@@ -1900,17 +1928,32 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
 async function adminAddRescheduleCredit(studentUid) {
   const today = toDateStr(new Date());
   const curMonthKey = today.slice(0, 7);
-  const monthLabel = new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  const monthInput = prompt('Hangi ay? (YYYY-MM formatında)', curMonthKey);
+  if (!monthInput) return;
+  if (!/^\d{4}-\d{2}$/.test(monthInput)) { toast('Geçersiz format. YYYY-MM olmalı.', true); return; }
+  const monthLabel = new Date(monthInput + '-01').toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
   if (!confirm(`${monthLabel} için 1 erteleme kredisi eklensin mi?`)) return;
   try {
     const snap = await db.collection('reservations').doc(studentUid).get();
     if (!snap.exists) { toast('Rezervasyon bulunamadı.', true); return; }
     const credits = snap.data().reschedule_credits || {};
-    const current = credits[curMonthKey] ?? 0;
+    const current = credits[monthInput] ?? 0;
     await db.collection('reservations').doc(studentUid).update({
-      [`reschedule_credits.${curMonthKey}`]: current + 1,
+      [`reschedule_credits.${monthInput}`]: current + 1,
     });
     toast(`✓ ${monthLabel} için kredi eklendi (${current} → ${current + 1}).`);
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+}
+
+async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
+  const existing = lesson.note || '';
+  const note = prompt(`${formatDateStr(lesson.date)} ${lesson.time} için not:`, existing);
+  if (note === null) return; // cancelled
+  try {
+    const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, note: note.trim() || null } : l);
+    await db.collection('reservations').doc(studentUid).update({ lessons: updated });
+    toast('✓ Not kaydedildi.');
+    renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
@@ -2360,7 +2403,10 @@ function initStudentQA(uid, user) {
                 <textarea class="qa-reply-input" id="qaFollowup_${doc.id}" rows="2" placeholder="Takip sorusu ekle…"></textarea>
                 <button class="qa-reply-btn" onclick="submitStudentAnswer('${doc.id}')">→ Ekle</button>
               </div>`
-            : '<div style="font-size:.62rem;color:var(--dim);font-style:italic;margin-top:4px;">Bu soru çözüldü, yeni mesaj eklenemez.</div>'}`;
+            : '<div style="font-size:.62rem;color:var(--dim);font-style:italic;margin-top:4px;">Bu soru çözüldü, yeni mesaj eklenemez.</div>'}
+          <div style="text-align:right;margin-top:4px;">
+            <button onclick="deleteStudentQuestion('${doc.id}')" style="background:none;border:none;color:rgba(255,255,255,.2);font-size:.6rem;cursor:pointer;font-family:'Space Mono',monospace;">✕ Soruyu Sil</button>
+          </div>`;
 
         list.append(el);
 
@@ -2405,6 +2451,14 @@ function initStudentQA(uid, user) {
     } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
     sendBtn.disabled = false; sendBtn.textContent = '→ Gönder';
   };
+}
+
+async function deleteStudentQuestion(qId) {
+  if (!confirm('Bu soruyu silmek istediğine emin misin?')) return;
+  try {
+    await db.collection('lesson_questions').doc(qId).delete();
+    toast('Soru silindi.');
+  } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
 }
 
 async function submitStudentAnswer(qId) {
@@ -2452,7 +2506,17 @@ function initAdminQA() {
       if (snap.empty) { list.innerHTML = '<div class="empty-state">Henüz soru yok.</div>'; return; }
       const openDocs   = snap.docs.filter(d => d.data().status !== 'solved');
       const solvedDocs = snap.docs.filter(d => d.data().status === 'solved');
-      [...openDocs, ...solvedDocs].forEach(doc => {
+
+      // Group open by student, then solved
+      const openByStudent = {};
+      openDocs.forEach(doc => {
+        const name = doc.data().student_name || '—';
+        if (!openByStudent[name]) openByStudent[name] = [];
+        openByStudent[name].push(doc);
+      });
+
+      const renderDoc = (doc, target) => {
+        const container = target || list;
         const q = doc.data();
         const isSolved = q.status === 'solved';
         const timeStr = q.createdAt ? q.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
@@ -2501,7 +2565,7 @@ function initAdminQA() {
         }
 
         el.append(header, body, answersEl, replyRow, actionsRow);
-        list.append(el);
+        container.append(el);
 
         const unsub = db.collection('lesson_questions').doc(doc.id).collection('answers')
           .orderBy('createdAt','asc').limit(50)
@@ -2522,7 +2586,36 @@ function initAdminQA() {
             });
           }, () => {});
         _adminQAAnswerUnsubs.push(unsub);
+      };
+
+      // Render open questions grouped by student
+      Object.entries(openByStudent).forEach(([studentName, docs]) => {
+        const groupHeader = document.createElement('div');
+        groupHeader.style.cssText = 'font-size:.62rem;color:var(--gold);letter-spacing:.08em;margin:12px 0 6px;font-family:"Space Mono",monospace;';
+        groupHeader.textContent = `👤 ${studentName} — ${docs.length} açık soru`;
+        list.append(groupHeader);
+        docs.forEach(renderDoc);
       });
+
+      // Render solved questions collapsible
+      if (solvedDocs.length > 0) {
+        const solvedToggle = document.createElement('button');
+        solvedToggle.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.3);font-size:.65rem;cursor:pointer;padding:14px 0 4px;font-family:"Space Mono",monospace;display:block;width:100%;text-align:left;';
+        solvedToggle.textContent = `▸ Çözülmüş Sorular (${solvedDocs.length})`;
+        const solvedSection = document.createElement('div');
+        solvedSection.style.display = 'none';
+        solvedDocs.forEach(doc => renderDoc(doc, solvedSection));
+        solvedToggle.onclick = () => {
+          const isOpen = solvedSection.style.display !== 'none';
+          solvedSection.style.display = isOpen ? 'none' : 'block';
+          solvedToggle.textContent = `${isOpen ? '▸' : '▾'} Çözülmüş Sorular (${solvedDocs.length})`;
+        };
+        list.append(solvedToggle, solvedSection);
+      }
+
+      if (openDocs.length === 0 && solvedDocs.length === 0) {
+        list.innerHTML = '<div class="empty-state">Henüz soru yok.</div>';
+      }
     }, () => { list.innerHTML = '<div class="empty-state" style="color:var(--crimson)">Sorular yüklenemedi.</div>'; });
 }
 
