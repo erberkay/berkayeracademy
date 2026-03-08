@@ -208,6 +208,15 @@
     .admin-cancel-btn:hover { background:rgba(184,45,69,.25); }
     .admin-reschedule-btn { background:transparent; border:1px solid rgba(232,184,75,.3); color:var(--gold); font-family:'Space Mono',monospace; font-size:.65rem; padding:6px 12px; border-radius:5px; cursor:pointer; transition:all .15s; }
     .admin-reschedule-btn:hover { background:rgba(232,184,75,.1); }
+    .lesson-options-wrap { position:relative; }
+    .lesson-options-btn { background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--dim); font-family:'Space Mono',monospace; font-size:.75rem; padding:5px 10px; border-radius:5px; cursor:pointer; transition:all .15s; line-height:1; }
+    .lesson-options-btn:hover { border-color:rgba(232,184,75,.4); color:var(--white); background:rgba(255,255,255,.05); }
+    .lesson-options-menu { position:absolute; right:0; top:calc(100% + 4px); background:#1c1c22; border:1px solid rgba(255,255,255,.12); border-radius:8px; min-width:185px; z-index:999; box-shadow:0 8px 32px rgba(0,0,0,.7); overflow:hidden; }
+    .lesson-options-item { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--white); font-family:'Space Mono',monospace; font-size:.7rem; padding:10px 14px; cursor:pointer; transition:background .12s; }
+    .lesson-options-item:hover { background:rgba(255,255,255,.07); }
+    .lesson-options-item.danger { color:var(--crimson); }
+    .lesson-options-item.danger:hover { background:rgba(184,45,69,.12); }
+    .lesson-options-separator { height:1px; background:rgba(255,255,255,.07); margin:2px 0; }
     .req-row { background:rgba(180,120,255,.05); border:1px solid rgba(180,120,255,.2); border-radius:10px; padding:16px 18px; margin-bottom:12px; }
     .req-row-name { font-size:.88rem; color:var(--purple); font-weight:700; margin-bottom:8px; }
     .req-row-detail { font-size:.78rem; color:var(--white); line-height:1.8; margin-bottom:8px; }
@@ -1216,7 +1225,7 @@ async function renderAdminPanel() {
       headerDiv.append(payToggle);
       row.append(headerDiv);
 
-      // Per-lesson rows (date + time + reschedule only, no individual cancel)
+      // Per-lesson rows
       if (upcomingLessons.length > 0) {
         const lessonsDiv = document.createElement('div'); lessonsDiv.className = 'student-lessons';
         upcomingLessons.forEach(lesson => {
@@ -1226,13 +1235,28 @@ async function renderAdminPanel() {
           lRow.innerHTML = `
             <div class="admin-lesson-info"><strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}</div>
             <div class="admin-lesson-actions"></div>`;
-          const rescBtn = document.createElement('button'); rescBtn.className = 'admin-reschedule-btn'; rescBtn.textContent = '↺ Ertele';
-          rescBtn.onclick = async () => {
-            rescBtn.disabled = true;
-            await adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson);
-            renderAdminPanel();
+          // Options button + dropdown
+          const wrap = document.createElement('div'); wrap.className = 'lesson-options-wrap';
+          const optBtn = document.createElement('button'); optBtn.className = 'lesson-options-btn'; optBtn.textContent = '⋯';
+          const menu = document.createElement('div'); menu.className = 'lesson-options-menu'; menu.style.display = 'none';
+
+          const mkItem = (label, cls, fn) => {
+            const b = document.createElement('button'); b.className = 'lesson-options-item' + (cls ? ' ' + cls : '');
+            b.textContent = label; b.onclick = () => { menu.style.display = 'none'; fn(); }; return b;
           };
-          lRow.querySelector('.admin-lesson-actions').append(rescBtn);
+          menu.append(
+            mkItem('🕐 Saati Değiştir', '', () => adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson)),
+            mkItem('📅 Günü Değiştir', '', () => adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson)),
+            Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
+            mkItem('✕ Dersi İptal Et', 'danger', () => adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson))
+          );
+          optBtn.onclick = (e) => { e.stopPropagation();
+            document.querySelectorAll('.lesson-options-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+          };
+          menu.onclick = (e) => e.stopPropagation();
+          wrap.append(optBtn, menu);
+          lRow.querySelector('.admin-lesson-actions').append(wrap);
           lessonsDiv.append(lRow);
         });
         row.append(lessonsDiv);
@@ -1367,6 +1391,89 @@ async function adminCancelLesson(studentUid, lessonIdx, allLessons, lesson) {
 }
 
 // ─── Admin: Reschedule Lesson ─────────────────────────────
+async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) {
+  const timeOpts = AVAILABLE_TIMES.filter(t => t !== lesson.time);
+  const sel = `<select id="adminTimeSelect" style="background:#1c1c22;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.85rem;padding:6px 10px;border-radius:6px;width:100%;margin-top:8px;">
+    ${timeOpts.map(t => `<option value="${t}">${t}</option>`).join('')}</select>`;
+  const modal = Object.assign(document.createElement('div'), { innerHTML: `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:28px 26px;min-width:280px;font-family:'Space Mono',monospace;">
+        <div style="font-size:.85rem;color:#fff;margin-bottom:4px;">Yeni saat seç:</div>
+        <div style="font-size:.7rem;color:#888;margin-bottom:10px;">${formatDateStr(lesson.date)} — mevcut: ${lesson.time}</div>
+        ${sel}
+        <div style="display:flex;gap:10px;margin-top:18px;">
+          <button id="adminTimeSave" style="flex:1;background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.4);color:#e8b84b;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">✓ Kaydet</button>
+          <button id="adminTimeCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">İptal</button>
+        </div>
+      </div>
+    </div>` });
+  document.body.append(modal);
+  modal.querySelector('#adminTimeCancel').onclick = () => modal.remove();
+  modal.querySelector('#adminTimeSave').onclick = async () => {
+    const newTime = modal.querySelector('#adminTimeSelect').value;
+    modal.remove();
+    try {
+      const conflict = await db.collection('booked_slots').doc(lesson.date + '_' + newTime).get();
+      if (conflict.exists) { const ok = confirm(`${lesson.date} ${newTime} dolu. Yine de değiştir?`); if (!ok) return; }
+      const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, time: newTime } : l);
+      const batch = db.batch();
+      batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+      batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+      if (!conflict.exists) batch.set(db.collection('booked_slots').doc(lesson.date + '_' + newTime), { date: lesson.date, time: newTime, student_uid: studentUid });
+      await batch.commit();
+      toast(`✓ Saat değiştirildi → ${newTime}`);
+      renderAdminPanel();
+    } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+  };
+}
+
+async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) {
+  const modal = Object.assign(document.createElement('div'), { innerHTML: `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:28px 26px;min-width:280px;font-family:'Space Mono',monospace;">
+        <div style="font-size:.85rem;color:#fff;margin-bottom:4px;">Yeni gün seç:</div>
+        <div style="font-size:.7rem;color:#888;margin-bottom:10px;">Mevcut: ${formatDateStr(lesson.date)} ${lesson.time}</div>
+        <input type="date" id="adminDateInput" value="${lesson.date}" min="${toDateStr(new Date())}" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.85rem;padding:6px 10px;border-radius:6px;width:100%;box-sizing:border-box;margin-top:4px;">
+        <div style="display:flex;gap:10px;margin-top:18px;">
+          <button id="adminDateSave" style="flex:1;background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.4);color:#e8b84b;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">✓ Kaydet</button>
+          <button id="adminDateCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">İptal</button>
+        </div>
+      </div>
+    </div>` });
+  document.body.append(modal);
+  modal.querySelector('#adminDateCancel').onclick = () => modal.remove();
+  modal.querySelector('#adminDateSave').onclick = async () => {
+    const newDate = modal.querySelector('#adminDateInput').value;
+    if (!newDate || newDate === lesson.date) { modal.remove(); return; }
+    modal.remove();
+    try {
+      const conflict = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
+      if (conflict.exists) { const ok = confirm(`${newDate} ${lesson.time} dolu. Yine de değiştir?`); if (!ok) return; }
+      const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, date: newDate } : l);
+      const batch = db.batch();
+      batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+      batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+      if (!conflict.exists) batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), { date: newDate, time: lesson.time, student_uid: studentUid });
+      await batch.commit();
+      toast(`✓ Gün değiştirildi → ${formatDateStr(newDate)}`);
+      renderAdminPanel();
+    } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+  };
+}
+
+async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson) {
+  if (!confirm(`${formatDateStr(lesson.date)} ${lesson.time} dersini iptal et?`)) return;
+  try {
+    const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, status: 'cancelled' } : l);
+    const batch = db.batch();
+    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+    await batch.commit();
+    toast(`✓ Ders iptal edildi.`);
+    renderAdminPanel();
+  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+}
+
 async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
   const newDate = new Date(dateStrToObj(lesson.date));
   newDate.setDate(newDate.getDate() + 7);
@@ -1491,6 +1598,8 @@ document.getElementById('signInBtn').onclick = () =>
   auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 
 document.getElementById('submitRequestBtn').onclick = () => submitRequest();
+
+document.addEventListener('click', () => { document.querySelectorAll('.lesson-options-menu').forEach(m => m.style.display = 'none'); });
 
 // ─── Auth state ───────────────────────────────────────────
 auth.getRedirectResult().catch(e => console.error('redirectResult:', e));
