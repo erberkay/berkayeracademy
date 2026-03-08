@@ -243,6 +243,31 @@
     /* ── Empty ── */
     .empty-state { text-align:center; padding:32px; color:var(--dim); font-size:.78rem; line-height:2; }
 
+    /* ── Q&A ── */
+    .qa-question { background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px;margin-bottom:10px; }
+    .qa-question.solved { border-color:rgba(74,222,128,.2);background:rgba(74,222,128,.02); }
+    .qa-q-header { display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap; }
+    .qa-q-avatar { width:26px;height:26px;border-radius:50%;border:1.5px solid rgba(232,184,75,.3);overflow:hidden;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0; }
+    .qa-q-avatar img { width:100%;height:100%;object-fit:cover; }
+    .qa-q-name { font-size:.72rem;color:var(--white);font-weight:700; }
+    .qa-q-time { font-size:.6rem;color:var(--dim);margin-left:auto; }
+    .qa-q-text { font-size:.78rem;color:var(--white);line-height:1.6;margin-bottom:10px; }
+    .qa-solved-badge { display:inline-flex;align-items:center;gap:4px;font-size:.62rem;color:var(--green);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);padding:3px 9px;border-radius:10px; }
+    .qa-answers { padding-top:8px;border-top:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;gap:6px;margin-bottom:8px; }
+    .qa-answer { display:flex;gap:8px;align-items:flex-start; }
+    .qa-answer.from-admin .qa-ans-bubble { background:rgba(232,184,75,.07);border-color:rgba(232,184,75,.2); }
+    .qa-ans-bubble { flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:8px 11px; }
+    .qa-ans-who { font-size:.58rem;color:var(--gold);margin-bottom:3px;font-weight:700;letter-spacing:.05em; }
+    .qa-ans-text { font-size:.75rem;color:var(--white);line-height:1.55; }
+    .qa-ans-time { font-size:.55rem;color:var(--dim);margin-top:3px; }
+    .qa-reply-row { display:flex;gap:8px;align-items:flex-end;margin-top:6px; }
+    .qa-reply-input { flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--white);font-family:'Space Mono',monospace;font-size:.75rem;padding:7px 10px;resize:none;outline:none;transition:border-color .15s;line-height:1.5; }
+    .qa-reply-input:focus { border-color:rgba(232,184,75,.4); }
+    .qa-reply-btn { background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.65rem;font-weight:bold;padding:8px 12px;border-radius:5px;cursor:pointer;white-space:nowrap;transition:background .15s; }
+    .qa-reply-btn:hover { background:rgba(232,184,75,.22); }
+    .qa-solved-btn { background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--green);font-family:'Space Mono',monospace;font-size:.65rem;padding:6px 12px;border-radius:5px;cursor:pointer;transition:all .15s; }
+    .qa-solved-btn:hover { background:rgba(74,222,128,.2); }
+
     /* ── Bottom nav ── */
     .bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:500; background:rgba(6,6,9,.96); border-top:1px solid var(--mid); backdrop-filter:blur(16px); display:flex; height:58px; }
     .bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; text-decoration:none; color:rgba(238,235,230,.3); transition:color .15s; }
@@ -417,11 +442,28 @@
         </div>
       </div>
     </div>
+
+    <!-- Q&A: Soru Sor -->
+    <div class="card" id="studentQACard" style="margin-top:16px;margin-bottom:0;display:none;">
+      <div class="section-title">❓ Soru Sor</div>
+      <div style="font-size:.68rem;color:var(--dim);margin-bottom:14px;line-height:1.7;">Ders hakkında aklına takılan soruları buradan sorabilirsin. Berkay Er yanıtlayacak.</div>
+      <div id="studentQAList" style="margin-bottom:12px;"></div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <textarea id="studentQAInput" class="qa-reply-input" rows="2" placeholder="Sorunuzu yazın…" style="flex:1;"></textarea>
+        <button id="studentQASend" class="qa-reply-btn">→ Gönder</button>
+      </div>
+    </div>
   </div>
 
   <!-- ── View: Admin Panel ── -->
   <div class="view" id="view-admin">
     <div class="admin-badge">🔐 Admin Paneli</div>
+
+    <!-- Monthly Stats -->
+    <div class="card" id="adminStatsCard">
+      <div class="section-title">📊 Aylık İstatistikler</div>
+      <div id="adminStatsContent" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;"></div>
+    </div>
 
     <!-- Weekly Calendar -->
     <div class="card">
@@ -446,6 +488,13 @@
     <div class="card">
       <div class="section-title">Aktif Öğrenciler</div>
       <div id="adminStudentsList"><div class="empty-state">Yükleniyor…</div></div>
+    </div>
+
+    <!-- Q&A: Admin View -->
+    <div class="card">
+      <div class="section-title">❓ Öğrenci Soruları</div>
+      <div style="font-size:.65rem;color:var(--dim);margin-bottom:12px;">Öğrencilerin sorduğu sorular. Yanıtla veya "Çözüldü" olarak işaretle.</div>
+      <div id="adminQAList"><div class="empty-state">Yükleniyor…</div></div>
     </div>
 
     <!-- Lesson Panel Announcements (admin only) -->
@@ -488,7 +537,7 @@
 <script>
 'use strict';
 const ADMIN_EMAIL = 'berkayer032@gmail.com';
-const AVAILABLE_TIMES = ['00:00','01:00','02:00','03:00','04:00','05:00','06:00','07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00','21:00','22:00','23:00'];
+const AVAILABLE_TIMES = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
 const DAYS_TR = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
 const DAYS_TR_SHORT = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS_TR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
@@ -540,7 +589,8 @@ function yearMonthKey(d) { return d.slice(0,7); }
 
 function getEndTime(time) {
   const [h, m] = time.split(':').map(Number);
-  return `${String(h + 1).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  const total = h * 60 + m + 60;
+  return `${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
 }
 
 // ─── Date Calculation ─────────────────────────────────────
@@ -918,6 +968,8 @@ function initRequestForm() {
 
 // ─── Student Dashboard ────────────────────────────────────
 async function renderDashboard() {
+  if (_adminQAUnsub) { _adminQAUnsub(); _adminQAUnsub = null; }
+  _adminQAAnswerUnsubs.forEach(u => u()); _adminQAAnswerUnsubs = [];
   showView('view-dashboard');
   initLessonAnnouncements(false);
   const snap = await db.collection('reservations').doc(_user.uid).get().catch(() => null);
@@ -1106,12 +1158,16 @@ async function renderDashboard() {
       list.append(item);
     });
   }
+  initStudentQA(_user.uid, _user);
 }
 
 // ─── Admin Panel ──────────────────────────────────────────
 async function renderAdminPanel() {
+  if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
+  _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
   showView('view-admin');
   initLessonAnnouncements(true);
+  initAdminQA();
 
   // Load pending requests
   const reqList = document.getElementById('adminRequestsList');
@@ -1291,17 +1347,50 @@ async function renderAdminPanel() {
   const studList = document.getElementById('adminStudentsList');
   studList.innerHTML = '';
 
-  // Build calendar data from all students
-  const calAllLessons = []; // { date, time, name, photo }
+  // Build calendar data + monthly stats
+  const calAllLessons = [];
+  const curMonthStr = toDateStr(new Date()).slice(0,7);
+  let statsRevenue = 0, statsLessons = 0, statsCompleted = 0;
+  const statsPerStudent = [];
   if (studSnap && !studSnap.empty) {
     studSnap.docs.forEach(doc => {
       const d = doc.data();
+      const price = d.custom_lesson_price || LESSON_PRICE;
+      let studentMonthLessons = 0;
       (d.lessons||[]).forEach(l => {
-        if (l.status === 'scheduled' || l.status === 'rescheduled') {
+        if (l.status === 'scheduled' || l.status === 'rescheduled')
           calAllLessons.push({ date: l.date, time: l.time, name: (d.student_name||d.student_email||'').split(' ')[0], photo: d.student_photo||'' });
+        if (l.date.startsWith(curMonthStr)) {
+          if (l.status === 'completed') { statsRevenue += price; statsCompleted++; }
+          if (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'completed') { statsLessons++; studentMonthLessons++; }
         }
       });
+      if (studentMonthLessons > 0)
+        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, revenue: studentMonthLessons * price });
     });
+  }
+  // Render stats card
+  const statsEl = document.getElementById('adminStatsContent');
+  if (statsEl) {
+    const monthName = new Date().toLocaleDateString('tr-TR', {month:'long', year:'numeric'});
+    statsEl.innerHTML = `
+      <div style="flex:1;min-width:140px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;">
+        <div style="font-size:.6rem;color:var(--dim);letter-spacing:.08em;margin-bottom:4px;">TOPLAM KAZANÇ (${monthName})</div>
+        <div style="font-size:1.3rem;color:var(--gold);font-family:'Space Mono',monospace;font-weight:bold;">${statsRevenue.toLocaleString('tr-TR')} ₺</div>
+        <div style="font-size:.62rem;color:var(--dim);margin-top:2px;">${statsCompleted} tamamlanan dersten</div>
+      </div>
+      <div style="flex:1;min-width:120px;background:rgba(143,200,232,.07);border:1px solid rgba(143,200,232,.2);border-radius:8px;padding:14px 16px;">
+        <div style="font-size:.6rem;color:var(--dim);letter-spacing:.08em;margin-bottom:4px;">TOPLAM DERS</div>
+        <div style="font-size:1.3rem;color:var(--ice);font-family:'Space Mono',monospace;font-weight:bold;">${statsLessons}</div>
+        <div style="font-size:.62rem;color:var(--dim);margin-top:2px;">${statsCompleted} tamamlandı · ${statsLessons - statsCompleted} planlandı</div>
+      </div>
+      ${statsPerStudent.length > 1 ? `<div style="flex:100%;margin-top:4px;">
+        <div style="font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:.06em;">ÖĞRENCİ BAZINDA</div>
+        ${statsPerStudent.map(st => `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+          <span style="color:var(--white);">${st.name}</span>
+          <span style="color:var(--dim);">${st.lessons} ders · <strong style="color:var(--gold);">${st.revenue.toLocaleString('tr-TR')} ₺</strong></span>
+        </div>`).join('')}
+      </div>` : ''}`;
   }
   renderAdminCalendar(calAllLessons, 0);
 
@@ -1318,7 +1407,8 @@ async function renderAdminPanel() {
       const thisMonthCount = allLessonsArr.filter(l => l.date.startsWith(curMonthAdmin) && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'completed')).length;
       const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
       const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
-      const totalPrice = totalLessons * LESSON_PRICE;
+      const lessonPrice = s.custom_lesson_price || LESSON_PRICE;
+      const totalPrice = totalLessons * lessonPrice;
       const isResPaid = !!s.payment_confirmed;
       const isPending = !isResPaid && !!s.payment_pending;
       const row = document.createElement('div'); row.className = 'student-row';
@@ -1327,7 +1417,8 @@ async function renderAdminPanel() {
         <div>
           <div class="student-row-name">${s.student_name || s.student_email}</div>
           <div class="student-row-meta">
-            ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong> · <strong style="color:var(--gold)">${totalPrice.toLocaleString('tr-TR')} TL</strong><br>
+            ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong> · <strong style="color:var(--gold)">${totalPrice.toLocaleString('tr-TR')} TL</strong>
+            <span style="font-size:.6rem;color:var(--dim);margin-left:4px;">(${lessonPrice.toLocaleString('tr-TR')} TL/ders)</span><br>
             ${(s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ')}<br>
             ${startDateStr} → ${endDateStr}<br>
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
@@ -1414,6 +1505,14 @@ async function renderAdminPanel() {
             Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
             mkItem('✕ Dersi İptal Et', 'danger', () => adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson))
           );
+          // Price edit button (per-student, outside lesson menu)
+          if (upcomingLessons.indexOf(lesson) === 0) {
+            const priceBtn = document.createElement('button');
+            priceBtn.style.cssText = 'background:none;border:none;color:rgba(232,184,75,.5);font-size:.65rem;cursor:pointer;padding:2px 6px;font-family:"Space Mono",monospace;';
+            priceBtn.textContent = '₺ Fiyat Düzenle';
+            priceBtn.onclick = () => adminEditStudentPrice(studentUid, lessonPrice);
+            lRow.querySelector('.admin-lesson-actions').append(priceBtn);
+          }
           optBtn.onclick = (e) => { e.stopPropagation();
             document.querySelectorAll('.lesson-options-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
             menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
@@ -1538,6 +1637,34 @@ async function adminDeletePlan(studentUid, allLessons) {
     await batch.commit();
     toast('Plan tamamen silindi.');
   } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+}
+
+// ─── Admin: Edit Student Price ────────────────────────────
+async function adminEditStudentPrice(studentUid, currentPrice) {
+  const modal = Object.assign(document.createElement('div'), { innerHTML: `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;">
+      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:28px 26px;min-width:280px;font-family:'Space Mono',monospace;">
+        <div style="font-size:.85rem;color:#fff;margin-bottom:4px;">Ders ücreti (TL/ders):</div>
+        <div style="font-size:.7rem;color:#888;margin-bottom:10px;">Mevcut: ${currentPrice.toLocaleString('tr-TR')} TL</div>
+        <input id="adminPriceInput" type="number" min="0" value="${currentPrice}" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.9rem;padding:8px 10px;border-radius:6px;width:100%;box-sizing:border-box;outline:none;">
+        <div style="display:flex;gap:10px;margin-top:18px;">
+          <button id="adminPriceSave" style="flex:1;background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.4);color:#e8b84b;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">✓ Kaydet</button>
+          <button id="adminPriceCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">İptal</button>
+        </div>
+      </div>
+    </div>` });
+  document.body.append(modal);
+  modal.querySelector('#adminPriceCancel').onclick = () => modal.remove();
+  modal.querySelector('#adminPriceSave').onclick = async () => {
+    const val = parseInt(modal.querySelector('#adminPriceInput').value, 10);
+    if (isNaN(val) || val < 0) return;
+    modal.remove();
+    try {
+      await db.collection('reservations').doc(studentUid).update({ custom_lesson_price: val });
+      toast(`✓ Ders ücreti güncellendi — ${val.toLocaleString('tr-TR')} TL/ders`);
+      renderAdminPanel();
+    } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+  };
 }
 
 // ─── Admin: Cancel Lesson ─────────────────────────────────
@@ -1833,6 +1960,247 @@ function initLessonAnnouncements(isAdmin) {
       }).join('');
     }, () => {});
   }
+}
+
+// ─── Student Q&A ─────────────────────────────────────────
+let _qaUnsub = null;
+let _qaAnswerUnsubs = [];
+
+function initStudentQA(uid, user) {
+  if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
+  _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
+
+  const card = document.getElementById('studentQACard');
+  const list = document.getElementById('studentQAList');
+  const input = document.getElementById('studentQAInput');
+  const sendBtn = document.getElementById('studentQASend');
+  if (!card || !list) return;
+  card.style.display = '';
+
+  _qaUnsub = db.collection('lesson_questions')
+    .where('uid', '==', uid)
+    .orderBy('createdAt', 'desc')
+    .limit(50)
+    .onSnapshot(snap => {
+      _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
+      list.innerHTML = '';
+      if (snap.empty) {
+        list.innerHTML = '<div style="font-size:.72rem;color:var(--dim);margin-bottom:10px;">Henüz soru sormadınız.</div>';
+        return;
+      }
+      snap.docs.forEach(doc => {
+        const q = doc.data();
+        const isSolved = q.status === 'solved';
+        const timeStr = q.createdAt ? q.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+
+        const el = document.createElement('div');
+        el.className = 'qa-question' + (isSolved ? ' solved' : '');
+        el.innerHTML = `
+          <div class="qa-q-header">
+            <span style="font-size:.65rem;color:var(--gold);font-weight:700;">Sorum</span>
+            ${isSolved
+              ? '<span class="qa-solved-badge">✓ Çözüldü</span>'
+              : '<span style="font-size:.62rem;color:rgba(143,200,232,.7);background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.2);padding:2px 8px;border-radius:10px;">Açık</span>'}
+            <span class="qa-q-time">${timeStr}</span>
+          </div>
+          <div class="qa-q-text">${q.question}</div>
+          <div class="qa-answers" id="qaAns_${doc.id}">
+            <div style="font-size:.65rem;color:var(--dim);">Yanıtlar yükleniyor…</div>
+          </div>
+          ${!isSolved
+            ? `<div class="qa-reply-row">
+                <textarea class="qa-reply-input" id="qaFollowup_${doc.id}" rows="2" placeholder="Takip sorusu ekle…"></textarea>
+                <button class="qa-reply-btn" onclick="submitStudentAnswer('${doc.id}')">→ Ekle</button>
+              </div>`
+            : '<div style="font-size:.62rem;color:var(--dim);font-style:italic;margin-top:4px;">Bu soru çözüldü, yeni mesaj eklenemez.</div>'}`;
+
+        list.append(el);
+
+        const answersEl = el.querySelector('#qaAns_' + doc.id);
+        const unsub = db.collection('lesson_questions').doc(doc.id).collection('answers')
+          .orderBy('createdAt','asc').limit(50)
+          .onSnapshot(aSnap => {
+            answersEl.innerHTML = '';
+            if (aSnap.empty) { answersEl.innerHTML = '<div style="font-size:.65rem;color:var(--dim);">Henüz yanıt yok.</div>'; return; }
+            aSnap.docs.forEach(ad => {
+              const a = ad.data();
+              const aTime = a.createdAt ? a.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+              const div = document.createElement('div');
+              div.className = 'qa-answer' + (a.fromAdmin ? ' from-admin' : '');
+              div.innerHTML = `<div class="qa-ans-bubble">
+                <div class="qa-ans-who">${a.fromAdmin ? '👨‍🏫 Berkay Er' : '👤 Sen'}</div>
+                <div class="qa-ans-text">${a.text}</div>
+                <div class="qa-ans-time">${aTime}</div>
+              </div>`;
+              answersEl.append(div);
+            });
+          }, () => {});
+        _qaAnswerUnsubs.push(unsub);
+      });
+    }, () => {});
+
+  if (sendBtn) sendBtn.onclick = async () => {
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    sendBtn.disabled = true; sendBtn.textContent = '⏳';
+    try {
+      await db.collection('lesson_questions').add({
+        uid,
+        student_name: user.displayName || '',
+        student_photo: user.photoURL || '',
+        question: text,
+        status: 'open',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      input.value = '';
+      toast('✓ Sorunuz gönderildi!');
+    } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+    sendBtn.disabled = false; sendBtn.textContent = '→ Gönder';
+  };
+}
+
+async function submitStudentAnswer(qId) {
+  if (!_user) return;
+  const input = document.getElementById('qaFollowup_' + qId);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) { input.focus(); return; }
+  const qSnap = await db.collection('lesson_questions').doc(qId).get().catch(() => null);
+  if (qSnap && qSnap.exists && qSnap.data().status === 'solved') {
+    toast('Bu soru çözüldü, yeni mesaj eklenemez.', true); return;
+  }
+  input.disabled = true;
+  try {
+    await db.collection('lesson_questions').doc(qId).collection('answers').add({
+      text,
+      fromAdmin: false,
+      authorName: _user.displayName || '',
+      authorUid: _user.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    input.value = '';
+  } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+  input.disabled = false;
+}
+
+// ─── Admin Q&A ────────────────────────────────────────────
+let _adminQAUnsub = null;
+let _adminQAAnswerUnsubs = [];
+
+function initAdminQA() {
+  if (_adminQAUnsub) { _adminQAUnsub(); _adminQAUnsub = null; }
+  _adminQAAnswerUnsubs.forEach(u => u()); _adminQAAnswerUnsubs = [];
+
+  const list = document.getElementById('adminQAList');
+  if (!list) return;
+  list.innerHTML = '<div class="empty-state">Yükleniyor…</div>';
+
+  _adminQAUnsub = db.collection('lesson_questions')
+    .orderBy('createdAt', 'desc')
+    .limit(100)
+    .onSnapshot(snap => {
+      _adminQAAnswerUnsubs.forEach(u => u()); _adminQAAnswerUnsubs = [];
+      list.innerHTML = '';
+      if (snap.empty) { list.innerHTML = '<div class="empty-state">Henüz soru yok.</div>'; return; }
+      const openDocs   = snap.docs.filter(d => d.data().status !== 'solved');
+      const solvedDocs = snap.docs.filter(d => d.data().status === 'solved');
+      [...openDocs, ...solvedDocs].forEach(doc => {
+        const q = doc.data();
+        const isSolved = q.status === 'solved';
+        const timeStr = q.createdAt ? q.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+
+        const el = document.createElement('div');
+        el.className = 'qa-question' + (isSolved ? ' solved' : '');
+
+        const header = document.createElement('div');
+        header.className = 'qa-q-header';
+        header.innerHTML = `
+          <div class="qa-q-avatar">${q.student_photo ? `<img src="${q.student_photo}" alt="">` : (q.student_name?.[0]||'?')}</div>
+          <span class="qa-q-name">${q.student_name || '—'}</span>
+          ${isSolved
+            ? '<span class="qa-solved-badge">✓ Çözüldü</span>'
+            : '<span style="font-size:.62rem;color:rgba(143,200,232,.7);background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.2);padding:2px 8px;border-radius:10px;">Açık</span>'}
+          <span class="qa-q-time">${timeStr}</span>`;
+
+        const body = document.createElement('div');
+        body.className = 'qa-q-text';
+        body.textContent = q.question;
+
+        const answersEl = document.createElement('div');
+        answersEl.className = 'qa-answers';
+
+        // Reply row (always visible for admin even if solved)
+        const replyRow = document.createElement('div');
+        replyRow.className = 'qa-reply-row';
+        const replyInput = document.createElement('textarea');
+        replyInput.className = 'qa-reply-input';
+        replyInput.rows = 2;
+        replyInput.placeholder = 'Cevap yaz…';
+        const replyBtn = document.createElement('button');
+        replyBtn.className = 'qa-reply-btn';
+        replyBtn.textContent = '→ Yanıtla';
+        replyBtn.onclick = () => adminAnswerQuestion(doc.id, replyInput);
+        replyRow.append(replyInput, replyBtn);
+
+        const actionsRow = document.createElement('div');
+        actionsRow.style.cssText = 'display:flex;gap:8px;margin-top:8px;';
+        if (!isSolved) {
+          const solvedBtn = document.createElement('button');
+          solvedBtn.className = 'qa-solved-btn';
+          solvedBtn.textContent = '✓ Sorun Çözüldü';
+          solvedBtn.onclick = () => adminMarkSolved(doc.id);
+          actionsRow.append(solvedBtn);
+        }
+
+        el.append(header, body, answersEl, replyRow, actionsRow);
+        list.append(el);
+
+        const unsub = db.collection('lesson_questions').doc(doc.id).collection('answers')
+          .orderBy('createdAt','asc').limit(50)
+          .onSnapshot(aSnap => {
+            answersEl.innerHTML = '';
+            if (aSnap.empty) { answersEl.innerHTML = '<div style="font-size:.65rem;color:var(--dim);">Henüz yanıt yok.</div>'; return; }
+            aSnap.docs.forEach(ad => {
+              const a = ad.data();
+              const aTime = a.createdAt ? a.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+              const div = document.createElement('div');
+              div.className = 'qa-answer' + (a.fromAdmin ? ' from-admin' : '');
+              div.innerHTML = `<div class="qa-ans-bubble">
+                <div class="qa-ans-who">${a.fromAdmin ? '👨‍🏫 Berkay Er' : ('👤 ' + (a.authorName || 'Öğrenci'))}</div>
+                <div class="qa-ans-text">${a.text}</div>
+                <div class="qa-ans-time">${aTime}</div>
+              </div>`;
+              answersEl.append(div);
+            });
+          }, () => {});
+        _adminQAAnswerUnsubs.push(unsub);
+      });
+    }, () => { list.innerHTML = '<div class="empty-state" style="color:var(--crimson)">Sorular yüklenemedi.</div>'; });
+}
+
+async function adminAnswerQuestion(qId, inputEl) {
+  const text = inputEl.value.trim();
+  if (!text) { inputEl.focus(); return; }
+  inputEl.disabled = true;
+  try {
+    await db.collection('lesson_questions').doc(qId).collection('answers').add({
+      text,
+      fromAdmin: true,
+      authorName: 'Berkay Er',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    inputEl.value = '';
+    toast('✓ Cevap gönderildi.');
+  } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+  inputEl.disabled = false;
+}
+
+async function adminMarkSolved(qId) {
+  if (!confirm('Bu soruyu "Çözüldü" olarak işaretle? Öğrenci artık yeni mesaj ekleyemeyecek.')) return;
+  try {
+    await db.collection('lesson_questions').doc(qId).update({ status: 'solved' });
+    toast('✓ Soru çözüldü olarak işaretlendi.');
+  } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
 }
 
 // ─── Event listeners ──────────────────────────────────────

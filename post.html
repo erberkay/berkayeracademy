@@ -342,27 +342,15 @@ function initNotifications(user) {
   if (_annUnsub) { _annUnsub(); _annUnsub = null; }
   _personalNotifs = []; _announcements = []; _annSeenAt = null; _dismissedAnns = [];
   if (!user) return;
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().catch(() => {});
-  }
   db.collection('users').doc(user.uid).get().then(d => {
     _annSeenAt = d.data()?.announcementsSeenAt || null;
     _dismissedAnns = d.data()?.dismissedAnns || [];
     _mergeNotifs(user.uid);
   }).catch(() => {});
-  let _prevNIds_pst = new Set();
   _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
     .orderBy('createdAt', 'desc').limit(20)
     .onSnapshot(snap => {
       _personalNotifs = snap.docs.map(d => ({...d.data(), _id: d.id}));
-      if (_prevNIds_pst.size > 0 && 'Notification' in window && Notification.permission === 'granted') {
-        snap.docs.forEach(d => {
-          if (!_prevNIds_pst.has(d.id) && !d.data().read) {
-            try { new Notification('Berkay Academy', { body: d.data().text || 'Yeni bildirim', icon: '/assets/img/logo.png' }); } catch(_){}
-          }
-        });
-      }
-      _prevNIds_pst = new Set(snap.docs.map(d => d.id));
       if (snap.docs.length > 4) snap.docs.slice(4).forEach(d => d.ref.delete());
       _mergeNotifs(user.uid);
     }, () => {});

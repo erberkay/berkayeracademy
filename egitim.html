@@ -436,21 +436,9 @@
       if(_notifUnsub){_notifUnsub();_notifUnsub=null;}if(_annUnsub){_annUnsub();_annUnsub=null;}
       _personalNotifs=[];_announcements=[];_annSeenAt=null;_dismissedAnns=[];
       if (!user) return;
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission().catch(() => {});
-      }
       _db.collection('users').doc(user.uid).get().then(d=>{_annSeenAt=d.data()?.announcementsSeenAt||null;_dismissedAnns=d.data()?.dismissedAnns||[];_mergeNotifs(user.uid);}).catch(()=>{});
-      let _prevNIds_egt = new Set();
       _notifUnsub=_db.collection('notifications').doc(user.uid).collection('items').orderBy('createdAt','desc').limit(20).onSnapshot(snap=>{
         _personalNotifs=snap.docs.map(d=>({...d.data(),_id:d.id}));
-        if (_prevNIds_egt.size > 0 && 'Notification' in window && Notification.permission === 'granted') {
-          snap.docs.forEach(d => {
-            if (!_prevNIds_egt.has(d.id) && !d.data().read) {
-              try { new Notification('Berkay Academy', { body: d.data().text || 'Yeni bildirim', icon: '/assets/img/logo.png' }); } catch(_){}
-            }
-          });
-        }
-        _prevNIds_egt = new Set(snap.docs.map(d => d.id));
         _mergeNotifs(user.uid);
       },()=>{});
       _annUnsub=_db.collection('announcements').orderBy('createdAt','desc').limit(15).onSnapshot(snap=>{_announcements=snap.docs.map(d=>({...d.data(),_id:d.id}));_mergeNotifs(user.uid);},()=>{});
