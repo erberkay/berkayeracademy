@@ -702,7 +702,7 @@ function updateAuthBar(user) {
     const img  = document.createElement('img');  img.className = 'auth-avatar';
       const _bnavAv = document.getElementById('bnavProfileAv');
       const _bnavAdmin = document.getElementById('bnavAdminItem');
-      if (_bnavAdmin && user.email === 'berkayer032@gmail.com') _bnavAdmin.style.display = 'flex';
+      if (_bnavAdmin) _bnavAdmin.style.display = 'flex';
       if (_bnavAv) { _bnavAv.innerHTML = user.photoURL ? '<img src="' + user.photoURL + '" alt="">' : '👤'; }
     img.src = user.photoURL || ''; img.alt = '';
     const name = document.createElement('span'); name.className = 'auth-name';
@@ -1324,6 +1324,36 @@ async function renderProfile() {
     annRow.append(annSend, annDelAll, annStatus);
     annPanel.append(annLbl, annTa, annRow);
     pCard.append(annPanel);
+
+    // Delete all chats panel
+    const msgPanel = document.createElement('div'); msgPanel.className = 'admin-announce-panel';
+    msgPanel.style.borderTop = '1px solid rgba(184,45,69,.18)';
+    const msgLbl = document.createElement('div'); msgLbl.className = 'admin-title-label'; msgLbl.textContent = '💬 Mesaj Yönetimi';
+    const msgDelAll = document.createElement('button'); msgDelAll.className = 'admin-announce-send';
+    msgDelAll.style.cssText = 'background:rgba(184,45,69,.15);border:1px solid rgba(184,45,69,.35);color:var(--crimson);margin-top:8px;';
+    msgDelAll.textContent = '🗑 Tüm Mesajları Sil';
+    const msgStatus = document.createElement('span'); msgStatus.style.cssText = 'font-size:.58rem;color:var(--dim);display:block;margin-top:6px;';
+    msgDelAll.onclick = async () => {
+      if (!confirm('Tüm sohbet mesajlarını silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
+      msgDelAll.disabled = true; msgDelAll.textContent = '⏳ Siliniyor...';
+      try {
+        const chatSnap = await db.collection('chats').get();
+        for (const chatDoc of chatSnap.docs) {
+          const msgSnap = await chatDoc.ref.collection('messages').get();
+          const batch = db.batch();
+          msgSnap.docs.forEach(m => batch.delete(m.ref));
+          batch.delete(chatDoc.ref);
+          await batch.commit();
+        }
+        msgStatus.style.color = 'var(--green)'; msgStatus.textContent = '✓ Tüm mesajlar silindi (' + chatSnap.size + ' sohbet)';
+        setTimeout(() => { msgStatus.textContent = ''; }, 4000);
+      } catch(e) {
+        msgStatus.style.color = 'var(--crimson)'; msgStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+      }
+      msgDelAll.disabled = false; msgDelAll.textContent = '🗑 Tüm Mesajları Sil';
+    };
+    msgPanel.append(msgLbl, msgDelAll, msgStatus);
+    pCard.append(msgPanel);
   }
 
   layout.append(pCard);
