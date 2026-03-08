@@ -450,12 +450,14 @@ async function renderPost() {
   likeBtn.onclick = async () => {
     if (!_user) { showToast('Beğenmek için giriş yap', 'info'); return; }
     const ref = db.collection('forum').doc(postId);
-    if (isLiked) {
-      await ref.update({ likedBy: firebase.firestore.FieldValue.arrayRemove(_user.uid), likeCount: firebase.firestore.FieldValue.increment(-1) });
-    } else {
-      await ref.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(_user.uid), likeCount: firebase.firestore.FieldValue.increment(1) });
-    }
-    renderPost();
+    try {
+      if (isLiked) {
+        await ref.update({ likedBy: firebase.firestore.FieldValue.arrayRemove(_user.uid), likeCount: firebase.firestore.FieldValue.increment(-1) });
+      } else {
+        await ref.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(_user.uid), likeCount: firebase.firestore.FieldValue.increment(1) });
+      }
+      renderPost();
+    } catch(e) { showToast('Hata: ' + (e.code || e.message), 'error'); }
   };
   actions.append(likeBtn);
 
@@ -542,9 +544,11 @@ async function renderReplies(layout, post) {
     if (_user && isAdmin(_user)) {
       const rdel = document.createElement('button'); rdel.className = 'reply-del'; rdel.textContent = '🗑';
       rdel.onclick = async () => {
-        await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
-        await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(-1) });
-        rCard.remove();
+        try {
+          await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
+          await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(-1) });
+          rCard.remove();
+        } catch(e) { showToast('Silme hatası: ' + (e.code || e.message), 'error'); }
       };
       rAuthorRow.append(rdel);
     }
@@ -597,6 +601,7 @@ async function renderReplies(layout, post) {
     sub.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) return;
       sub.disabled = true; sub.textContent = '⏳';
+      try {
       await db.collection('forum').doc(postId).collection('replies').add({
         text:          txt,
         authorName:    _user.displayName?.split(' ')[0] || 'Üye',
@@ -629,6 +634,7 @@ async function renderReplies(layout, post) {
       }
       ta.value = '';
       await renderPost();
+      } catch(e) { showToast('Yanıt gönderilemedi: ' + (e.code || e.message), 'error'); sub.disabled = false; sub.textContent = 'Yanıtla'; }
     };
     row.append(ta, sub); formCard.append(ft, row);
   } else {

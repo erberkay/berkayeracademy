@@ -472,14 +472,16 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
             const acceptBtn = document.createElement('button'); acceptBtn.className = 'collab-req-accept'; acceptBtn.textContent = 'Kabul Et';
             const rejectBtn = document.createElement('button'); rejectBtn.className = 'collab-req-reject'; rejectBtn.textContent = 'Reddet';
             acceptBtn.onclick = async () => {
-              await d.ref.update({ status: 'accepted' });
-              await db.collection('notifications').doc(m.fromUid).collection('items').add({
-                text: `${_user.displayName?.split(' ')[0]||'Biri'} collab isteğini kabul etti!`,
-                fromUid: _user.uid, type: 'collab_accepted', read: false,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-              }).catch(()=>{});
+              try {
+                await d.ref.update({ status: 'accepted' });
+                db.collection('notifications').doc(m.fromUid).collection('items').add({
+                  text: `${_user.displayName?.split(' ')[0]||'Biri'} collab isteğini kabul etti!`,
+                  fromUid: _user.uid, type: 'collab_accepted', read: false,
+                  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                }).catch(()=>{});
+              } catch(e) { alert('Hata: ' + (e.message || e.code)); }
             };
-            rejectBtn.onclick = async () => { await d.ref.update({ status: 'rejected' }); };
+            rejectBtn.onclick = async () => { await d.ref.update({ status: 'rejected' }).catch(e => alert('Hata: ' + (e.message || e.code))); };
             btns.append(acceptBtn, rejectBtn); card.append(btns);
           } else if (m.status === 'accepted') {
             const s = document.createElement('div'); s.className = 'collab-req-card-status accepted'; s.textContent = '✓ Kabul edildi'; card.append(s);
@@ -770,7 +772,7 @@ function _mergeNotifs(uid) {
         del.onclick = e => {
           e.stopPropagation();
           if (n._t === 'p') {
-            db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();
+            db.collection('notifications').doc(uid).collection('items').doc(n._id).delete().catch(() => {});
           } else {
             if (!_dismissedAnns.includes(n._id)) { _dismissedAnns.push(n._id); }
             db.collection('users').doc(uid).update({ dismissedAnns: firebase.firestore.FieldValue.arrayUnion(n._id) }).catch(() => {});
@@ -810,7 +812,7 @@ function initNotifications(user) {
     .orderBy('createdAt', 'desc').limit(20)
     .onSnapshot(snap => {
       _personalNotifs = snap.docs.map(d => ({...d.data(), _id: d.id}));
-      if (snap.docs.length > 4) snap.docs.slice(4).forEach(d => d.ref.delete());
+      if (snap.docs.length > 4) { const b = db.batch(); snap.docs.slice(4).forEach(d => b.delete(d.ref)); b.commit().catch(() => {}); }
       _mergeNotifs(user.uid);
     }, () => {});
   _annUnsub = db.collection('announcements').orderBy('createdAt', 'desc').limit(15)
@@ -840,7 +842,7 @@ async function renderProfile() {
   const [postsSnap, repliesSnap, followersSnap, followDoc] = await Promise.all([
     db.collection('forum').where('authorId','==',uid).limit(20).get().catch(e=>{console.error('posts query:',e);return null;}),
     db.collection('users').doc(uid).collection('userReplies').orderBy('createdAt','desc').limit(20).get().catch(()=>null),
-    db.collection('follows').where('followeeId','==',uid).get().catch(()=>null),
+    db.collection('follows').where('followeeId','==',uid).limit(500).get().catch(()=>null),
     (followId && !isOwn) ? db.collection('follows').doc(followId).get().catch(()=>null) : Promise.resolve(null),
   ]);
   const followerCount = followersSnap?.size || 0;

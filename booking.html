@@ -355,6 +355,14 @@
       <div id="paymentBox"></div>
       <div class="credit-badge" id="creditBadge"></div>
       <button class="cancel-plan-btn" id="cancelPlanBtn" style="display:none;">✕ Planı İptal Et</button>
+      <div id="studentNoteSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.05);">
+        <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.06em;margin-bottom:8px;">💬 NOTUM</div>
+        <div style="display:flex;gap:8px;align-items:flex-start;">
+          <textarea id="studentNoteInput" rows="2" style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--white);font-size:.78rem;font-family:inherit;padding:8px 10px;resize:vertical;outline:none;line-height:1.55;transition:border-color .2s;" placeholder="Tercihleriniz, sorularınız veya eklemek istediğiniz herhangi bir şey…" onfocus="this.style.borderColor='rgba(143,200,232,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+          <button id="studentNoteSave" style="background:rgba(143,200,232,.12);border:1px solid rgba(143,200,232,.3);color:var(--ice);font-family:'Space Mono',monospace;font-size:.65rem;font-weight:bold;letter-spacing:.04em;padding:8px 14px;border-radius:5px;cursor:pointer;white-space:nowrap;transition:background .2s;" onmouseover="this.style.background='rgba(143,200,232,.22)'" onmouseout="this.style.background='rgba(143,200,232,.12)'">Kaydet</button>
+        </div>
+        <div id="studentNoteStatus" style="font-size:.62rem;margin-top:5px;height:14px;"></div>
+      </div>
     </div>
 
     <!-- Lesson Panel Announcements (student view) -->
@@ -394,6 +402,18 @@
             <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:#e88;line-height:1.5;"><strong>Ders başlamadan önce</strong> sample ve presetlerin kurulumu yapılmalıdır.</span>
           </div>
           <a href="https://drive.google.com/drive/folders/1TtDljp-lnzl8GOoTafiFfQlwPWZ2CrJX" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(26,90,136,.15);border:1px solid rgba(26,90,136,.45);color:var(--ice);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:bold;letter-spacing:.06em;padding:9px 18px;border-radius:4px;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(26,90,136,.28)'" onmouseout="this.style.background='rgba(26,90,136,.15)'">📂 Drive'ı Aç →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Plugin Listesi -->
+    <div class="card" style="margin-top:16px;margin-bottom:0;">
+      <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+        <div style="flex-shrink:0;font-size:1.8rem;line-height:1;">🔌</div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--ice);font-weight:bold;letter-spacing:.06em;margin-bottom:6px;">PLUGIN LİSTESİ — Derslerde Kullanılan Araçlar</div>
+          <div style="font-size:.75rem;color:var(--dim);line-height:1.7;margin-bottom:14px;">Derslerde kullanılan tüm VST plugin'lerin listesine aşağıdan ulaşabilirsiniz. Hangi araçların gerekli olduğunu görmek ve kurulum planlaması yapmak için listeyi inceleyin.</div>
+          <a href="https://docs.google.com/document/d/1RtBM2GeM00sl8dCz6kSep6nBsxqZ6-g9YFr8jG-p4U8/edit" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(26,90,136,.15);border:1px solid rgba(26,90,136,.45);color:var(--ice);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:bold;letter-spacing:.06em;padding:9px 18px;border-radius:4px;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(26,90,136,.28)'" onmouseout="this.style.background='rgba(26,90,136,.15)'">📄 Plugin Listesini Gör →</a>
         </div>
       </div>
     </div>
@@ -930,6 +950,24 @@ async function renderDashboard() {
   document.getElementById('creditBadge').style.display = '';
   document.querySelector('.dash-layout').style.display = '';
 
+  // Note section
+  const noteSection = document.getElementById('studentNoteSection');
+  const noteInput = document.getElementById('studentNoteInput');
+  const noteSave = document.getElementById('studentNoteSave');
+  const noteStatus = document.getElementById('studentNoteStatus');
+  noteSection.style.display = '';
+  noteInput.value = res.note || '';
+  noteSave.onclick = async () => {
+    const val = noteInput.value.trim();
+    noteSave.disabled = true; noteSave.textContent = '⏳';
+    try {
+      await db.collection('reservations').doc(_user.uid).update({ note: val });
+      noteStatus.style.color = 'var(--green)'; noteStatus.textContent = '✓ Kaydedildi';
+      setTimeout(() => { noteStatus.textContent = ''; }, 2500);
+    } catch(e) { noteStatus.style.color = 'var(--crimson)'; noteStatus.textContent = '⚠ ' + (e.code || e.message); }
+    noteSave.disabled = false; noteSave.textContent = 'Kaydet';
+  };
+
   const upcoming = lessons.filter(l => l.date >= today && l.status === 'scheduled');
   const done = lessons.filter(l => l.status === 'completed');
 
@@ -1074,11 +1112,17 @@ async function renderAdminPanel() {
 
   reqList.innerHTML = '';
 
-  // Auto-migrate: set hasLessonRequest:true for ALL existing requesters unconditionally
-  db.collection('lesson_requests').get().then(allReqs => {
-    const uids = [...new Set(allReqs.docs.map(d => d.data().from_uid).filter(Boolean))];
-    uids.forEach(uid => db.collection('users').doc(uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {}));
-  }).catch(() => {});
+  // Auto-migrate: set hasLessonRequest:true for existing requesters (runs once per session)
+  if (!window._migrationDone) {
+    window._migrationDone = true;
+    db.collection('lesson_requests').limit(500).get().then(allReqs => {
+      const uids = [...new Set(allReqs.docs.map(d => d.data().from_uid).filter(Boolean))];
+      if (!uids.length) return;
+      const b = db.batch();
+      uids.forEach(uid => b.set(db.collection('users').doc(uid), { hasLessonRequest: true }, { merge: true }));
+      b.commit().catch(() => {});
+    }).catch(() => {});
+  }
 
   if (!reqSnap || reqSnap.empty) {
     reqList.innerHTML = '<div class="empty-state">Bekleyen talep yok.</div>';
@@ -1220,7 +1264,7 @@ async function renderAdminPanel() {
   }
 
   // Load active students
-  const studSnap = await db.collection('reservations').orderBy('created_at','desc').get().catch(() => null);
+  const studSnap = await db.collection('reservations').orderBy('created_at','desc').limit(200).get().catch(() => null);
   const studList = document.getElementById('adminStudentsList');
   studList.innerHTML = '';
 
@@ -1264,6 +1308,7 @@ async function renderAdminPanel() {
             ${(s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ')}<br>
             ${startDateStr} → ${endDateStr}<br>
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
+            ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 "${s.note}"</span>` : ''}
           </div>
         </div>`;
       const payWrap = document.createElement('div'); payWrap.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
@@ -1636,6 +1681,7 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
     student_photo: r.from_photo || '',
     duration_months: r.duration_months,
     schedule:      r.schedule,
+    note:          r.note || '',
     start_date:    toDateStr(new Date()),
     end_date:      endDate,
     lessons,
@@ -1718,7 +1764,7 @@ function initLessonAnnouncements(isAdmin) {
         item.innerHTML = `<div><div style="font-size:.75rem;color:var(--white);line-height:1.55;margin-bottom:3px;">${ann.text}</div><div style="font-size:.58rem;color:var(--dim);">${timeStr}</div></div>`;
         const del = document.createElement('button');
         del.textContent = '×'; del.style.cssText = 'background:none;border:none;color:rgba(238,235,230,.3);font-size:1rem;cursor:pointer;padding:0 3px;flex-shrink:0;';
-        del.onclick = () => { if(confirm('Bu duyuruyu silmek istediğine emin misin?')) d.ref.delete(); };
+        del.onclick = () => { if(confirm('Bu duyuruyu silmek istediğine emin misin?')) d.ref.delete().catch(() => {}); };
         item.append(del);
         list.append(item);
       });

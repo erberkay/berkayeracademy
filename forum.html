@@ -443,7 +443,7 @@ function _mergeNotifs(uid) {
         del.onclick = e => {
           e.stopPropagation();
           if (n._t === 'p') {
-            db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();
+            db.collection('notifications').doc(uid).collection('items').doc(n._id).delete().catch(() => {});
           } else {
             if (!_dismissedAnns.includes(n._id)) { _dismissedAnns.push(n._id); }
             db.collection('users').doc(uid).update({ dismissedAnns: firebase.firestore.FieldValue.arrayUnion(n._id) }).catch(() => {});
@@ -483,7 +483,7 @@ function initNotifications(user) {
     .orderBy('createdAt', 'desc').limit(20)
     .onSnapshot(snap => {
       _personalNotifs = snap.docs.map(d => ({...d.data(), _id: d.id}));
-      if (snap.docs.length > 4) snap.docs.slice(4).forEach(d => d.ref.delete());
+      if (snap.docs.length > 4) { const b = db.batch(); snap.docs.slice(4).forEach(d => b.delete(d.ref)); b.commit().catch(() => {}); }
       _mergeNotifs(user.uid);
     }, () => {});
   _annUnsub = db.collection('announcements').orderBy('createdAt', 'desc').limit(15)
@@ -746,12 +746,19 @@ function renderPost(post, container) {
     const del = document.createElement('button'); del.className = 'pcard-delete-btn'; del.textContent = '🗑 Sil';
     del.onclick = async () => {
       if (!confirm('Bu konuyu ve tüm yanıtlarını silmek istediğine emin misin?')) return;
-      const rSnap = await db.collection('forum').doc(post.id).collection('replies').get();
-      const batch = db.batch();
-      rSnap.docs.forEach(d => batch.delete(d.ref));
-      batch.delete(db.collection('forum').doc(post.id));
-      await batch.commit();
-      showToast('Konu silindi', 'info');
+      try {
+        const rSnap = await db.collection('forum').doc(post.id).collection('replies').get();
+        // Batch in chunks of 400 to stay under Firestore 500-op limit
+        const chunks = [];
+        for (let i = 0; i < rSnap.docs.length; i += 400) chunks.push(rSnap.docs.slice(i, i + 400));
+        for (const chunk of chunks) {
+          const b = db.batch();
+          chunk.forEach(d => b.delete(d.ref));
+          await b.commit();
+        }
+        await db.collection('forum').doc(post.id).delete();
+        showToast('Konu silindi', 'info');
+      } catch(e) { showToast('Silme hatası: ' + (e.code || e.message), 'error'); }
     };
     actions.append(del);
   }
