@@ -110,6 +110,8 @@
     .ls-rescheduled { background:rgba(232,184,75,.1); color:var(--gold); border:1px solid rgba(232,184,75,.25); }
     .ls-cancelled { background:rgba(184,45,69,.1); color:var(--crimson); border:1px solid rgba(184,45,69,.25); }
     .lesson-item.past { opacity:.5; }
+    .lesson-reschedule { background:transparent; border:1px solid rgba(232,184,75,.3); color:var(--gold); font-family:'Space Mono',monospace; font-size:.55rem; padding:3px 9px; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; flex-shrink:0; }
+    .lesson-reschedule:hover { background:rgba(232,184,75,.1); border-color:var(--gold); }
 
     /* ── Credit badge ── */
     .credit-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(180,120,255,.1); border:1px solid rgba(180,120,255,.3); border-radius:20px; padding:5px 12px; font-size:.68rem; color:var(--purple); margin-bottom:16px; }
@@ -367,6 +369,11 @@ function dateStrToObj(s) {
 
 function yearMonthKey(d) { return d.slice(0,7); }
 
+function getEndTime(time) {
+  const [h, m] = time.split(':').map(Number);
+  return `${String(h + 1).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
 // ─── Date Calculation ─────────────────────────────────────
 function calculateLessonDates(schedule, durationMonths) {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -491,6 +498,57 @@ function toggleSlot(key, cell) {
   }
   updateSlotSummary();
   document.getElementById('submitRequestBtn').disabled = _selectedSlots.size === 0;
+}
+
+// ─── Reschedule Lesson ────────────────────────────────────
+async function rescheduleLesson(lesson, idx, allLessons, res) {
+  const monthKey = yearMonthKey(lesson.date);
+  const credits = res.reschedule_credits?.[monthKey] ?? 0;
+  if (credits <= 0) { toast('Bu ay için erteleme hakkınız kalmadı.', true); return; }
+
+  // 24-hour check
+  const now = new Date();
+  const lessonDt = dateStrToObj(lesson.date);
+  const [lh, lm] = lesson.time.split(':').map(Number);
+  lessonDt.setHours(lh, lm, 0, 0);
+  if ((lessonDt - now) < 24 * 60 * 60 * 1000) {
+    toast('Erteleme en az 24 saat önceden yapılmalıdır.', true); return;
+  }
+
+  const newDate = new Date(dateStrToObj(lesson.date));
+  newDate.setDate(newDate.getDate() + 7);
+  const newDateStr = toDateStr(newDate);
+
+  const conflictSnap = await db.collection('booked_slots').doc(newDateStr + '_' + lesson.time).get().catch(() => null);
+  if (conflictSnap && conflictSnap.exists) {
+    const ok = confirm(`${formatDateStr(newDateStr)} tarihinde ${lesson.time} saati dolu.\nYine de ertele? (Yeni saat atanmayacak)`);
+    if (!ok) return;
+  }
+
+  const updatedLessons = allLessons.map((l, i) =>
+    i === idx ? { ...l, date: newDateStr, status: 'rescheduled' } : l
+  );
+  const updatedCredits = { ...res.reschedule_credits, [monthKey]: credits - 1 };
+
+  const batch = db.batch();
+  batch.update(db.collection('reservations').doc(_user.uid), {
+    lessons: updatedLessons,
+    reschedule_credits: updatedCredits,
+  });
+  batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+  if (!conflictSnap || !conflictSnap.exists) {
+    batch.set(db.collection('booked_slots').doc(newDateStr + '_' + lesson.time), {
+      date: newDateStr, time: lesson.time, student_uid: _user.uid,
+    });
+  }
+
+  try {
+    await batch.commit();
+    toast(`✓ Ders ertelendi → ${formatDateStr(newDateStr)} ${lesson.time}`);
+    renderDashboard();
+  } catch(e) {
+    toast('Hata: ' + (e.message || e.code), true);
+  }
 }
 
 // Adjust consecutive same-day slots: if a slot starts < 30 min after previous ends, push it 30 min after
@@ -657,10 +715,21 @@ async function renderDashboard() {
 
   const list = document.getElementById('lessonList');
   list.innerHTML = '';
+  const curMonth = today.slice(0, 7);
+  const thisMonthLessons = lessons.filter(l => l.date.startsWith(curMonth));
+  const thisMonthDone = thisMonthLessons.filter(l => l.status === 'completed').length;
+
+  if (thisMonthLessons.length > 0) {
+    const monthInfo = document.createElement('div');
+    monthInfo.style.cssText = 'font-size:.65rem;color:var(--dim);margin-bottom:14px;padding:8px 12px;background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.12);border-radius:8px;';
+    monthInfo.innerHTML = `Bu ay: <strong style="color:var(--white)">${thisMonthDone}/${thisMonthLessons.length} ders</strong> · <span style="color:var(--gold)">${thisMonthLessons.length - thisMonthDone} kaldı</span>`;
+    list.append(monthInfo);
+  }
+
   if (lessons.length === 0) {
-    list.innerHTML = '<div class="empty-state">Henüz ders yok.</div>';
+    list.innerHTML += '<div class="empty-state">Henüz ders yok.</div>';
   } else {
-    lessons.sort((a,b) => a.date.localeCompare(b.date)).forEach(l => {
+    lessons.sort((a,b) => a.date.localeCompare(b.date)).forEach((l, idx) => {
       const d = dateStrToObj(l.date);
       const isPast = l.date < today;
       const item = document.createElement('div');
@@ -673,11 +742,18 @@ async function renderDashboard() {
         </div>
         <div class="lesson-info">
           <div class="lesson-dow">${DAYS_TR[d.getDay()]}</div>
-          <div class="lesson-time">${l.time} · ${d.getFullYear()}</div>
+          <div class="lesson-time">${l.time} – ${getEndTime(l.time)}</div>
         </div>
         <div class="lesson-status ${sc}">${
           {scheduled:'Planlandı',completed:'Tamamlandı',rescheduled:'Ertelendi',cancelled:'İptal'}[l.status]||l.status
         }</div>`;
+      if (!isPast && l.status === 'scheduled') {
+        const rBtn = document.createElement('button');
+        rBtn.className = 'lesson-reschedule';
+        rBtn.textContent = '↺ Ertele';
+        rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
+        item.append(rBtn);
+      }
       list.append(item);
     });
   }
@@ -773,7 +849,7 @@ async function renderAdminPanel() {
       const s = doc.data();
       const today = toDateStr(new Date());
       const upcoming = (s.lessons||[]).filter(l => l.date >= today && l.status === 'scheduled').length;
-      const daysStr = (s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time).join(', ');
+      const daysStr = (s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ');
       const row = document.createElement('div'); row.className = 'student-row';
       row.innerHTML = `
         <div class="student-row-name">${s.student_name || s.student_email}</div>
