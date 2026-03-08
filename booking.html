@@ -357,7 +357,10 @@
       <button class="cancel-plan-btn" id="cancelPlanBtn" style="display:none;">✕ Planı İptal Et</button>
     </div>
 
-    <div class="dash-layout">
+    <!-- Lesson Panel Announcements (student view) -->
+  <div id="lessonAnnDisplay" style="display:none;max-width:860px;margin:0 auto 0;padding:16px 0 0;"></div>
+
+  <div class="dash-layout">
       <!-- Left: lesson calendar -->
       <div class="card" style="margin-bottom:0;">
         <div class="section-title">Ders Takvimim</div>
@@ -423,6 +426,19 @@
     <div class="card">
       <div class="section-title">Aktif Öğrenciler</div>
       <div id="adminStudentsList"><div class="empty-state">Yükleniyor…</div></div>
+    </div>
+
+    <!-- Lesson Panel Announcements (admin only) -->
+    <div class="card">
+      <div class="section-title">📢 Ders Paneli Duyuruları</div>
+      <div style="font-size:.65rem;color:var(--dim);margin-bottom:10px;">Bu duyurular yalnızca ders alan öğrencilerin panelinde görünür.</div>
+      <textarea id="lessonAnnTa" style="width:100%;background:var(--mid2);border:1px solid var(--mid);border-radius:6px;color:var(--white);font-family:'Space Mono',monospace;font-size:.8rem;padding:10px 12px;resize:vertical;min-height:68px;outline:none;line-height:1.6;box-sizing:border-box;" placeholder="Öğrencilere özel duyuru, hatırlatma veya güncelleme..."></textarea>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+        <button id="lessonAnnSend" style="padding:8px 18px;background:var(--gold);color:var(--black);border:none;border-radius:5px;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:bold;cursor:pointer;">📢 Gönder</button>
+        <button id="lessonAnnDelAll" style="padding:8px 16px;background:rgba(184,45,69,.15);border:1px solid rgba(184,45,69,.35);color:var(--crimson);border-radius:5px;font-family:'Space Mono',monospace;font-size:.72rem;cursor:pointer;">🗑 Tümünü Sil</button>
+        <span id="lessonAnnStatus" style="font-size:.6rem;color:var(--dim);"></span>
+      </div>
+      <div id="lessonAnnList" style="margin-top:14px;display:flex;flex-direction:column;gap:8px;"></div>
     </div>
   </div>
 
@@ -869,6 +885,7 @@ function initRequestForm() {
 // ─── Student Dashboard ────────────────────────────────────
 async function renderDashboard() {
   showView('view-dashboard');
+  initLessonAnnouncements(false);
   const snap = await db.collection('reservations').doc(_user.uid).get().catch(() => null);
   if (!snap || !snap.exists) { initRequestForm(); return; }
   const res = snap.data();
@@ -1045,6 +1062,7 @@ async function renderDashboard() {
 // ─── Admin Panel ──────────────────────────────────────────
 async function renderAdminPanel() {
   showView('view-admin');
+  initLessonAnnouncements(true);
 
   // Load pending requests
   const reqList = document.getElementById('adminRequestsList');
@@ -1669,6 +1687,83 @@ async function loadUserState(user) {
 
   // No request yet → show form
   initRequestForm();
+}
+
+// ─── Lesson Panel Announcements ───────────────────────────
+let _lessonAnnUnsub = null;
+
+function initLessonAnnouncements(isAdmin) {
+  if (_lessonAnnUnsub) { _lessonAnnUnsub(); _lessonAnnUnsub = null; }
+  const query = db.collection('announcements')
+    .where('lessonPanel', '==', true)
+    .orderBy('createdAt', 'desc').limit(20);
+
+  if (isAdmin) {
+    // Admin: show list in admin panel + wire up send/delete buttons
+    const list = document.getElementById('lessonAnnList');
+    const status = document.getElementById('lessonAnnStatus');
+    const ta = document.getElementById('lessonAnnTa');
+    const sendBtn = document.getElementById('lessonAnnSend');
+    const delBtn = document.getElementById('lessonAnnDelAll');
+    if (!list) return;
+
+    _lessonAnnUnsub = query.onSnapshot(snap => {
+      list.innerHTML = '';
+      if (snap.empty) { list.innerHTML = '<div style="font-size:.65rem;color:var(--dim);">Henüz duyuru yok.</div>'; return; }
+      snap.docs.forEach(d => {
+        const ann = d.data();
+        const item = document.createElement('div');
+        item.style.cssText = 'background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:5px;padding:10px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;';
+        const timeStr = ann.createdAt ? ann.createdAt.toDate().toLocaleDateString('tr-TR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+        item.innerHTML = `<div><div style="font-size:.75rem;color:var(--white);line-height:1.55;margin-bottom:3px;">${ann.text}</div><div style="font-size:.58rem;color:var(--dim);">${timeStr}</div></div>`;
+        const del = document.createElement('button');
+        del.textContent = '×'; del.style.cssText = 'background:none;border:none;color:rgba(238,235,230,.3);font-size:1rem;cursor:pointer;padding:0 3px;flex-shrink:0;';
+        del.onclick = () => { if(confirm('Bu duyuruyu silmek istediğine emin misin?')) d.ref.delete(); };
+        item.append(del);
+        list.append(item);
+      });
+    }, () => {});
+
+    if (sendBtn) sendBtn.onclick = async () => {
+      const txt = ta.value.trim(); if (!txt) { ta.focus(); return; }
+      sendBtn.disabled = true; sendBtn.textContent = '⏳';
+      try {
+        await db.collection('announcements').add({ text: txt, lessonPanel: true, type: 'lesson', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        ta.value = '';
+        status.style.color = 'var(--green)'; status.textContent = '✓ Gönderildi';
+        setTimeout(() => status.textContent = '', 3000);
+      } catch(e) { status.style.color = 'var(--crimson)'; status.textContent = '⚠ ' + (e.code || e.message); }
+      sendBtn.disabled = false; sendBtn.textContent = '📢 Gönder';
+    };
+
+    if (delBtn) delBtn.onclick = async () => {
+      if (!confirm('Tüm ders paneli duyurularını silmek istediğine emin misin?')) return;
+      delBtn.disabled = true; delBtn.textContent = '⏳';
+      const snap2 = await db.collection('announcements').where('lessonPanel','==',true).get().catch(() => null);
+      if (snap2) { const b = db.batch(); snap2.docs.forEach(d => b.delete(d.ref)); await b.commit(); }
+      status.style.color = 'var(--green)'; status.textContent = '✓ Tüm duyurular silindi';
+      setTimeout(() => status.textContent = '', 3000);
+      delBtn.disabled = false; delBtn.textContent = '🗑 Tümünü Sil';
+    };
+
+  } else {
+    // Student: show announcements in dashboard
+    const display = document.getElementById('lessonAnnDisplay');
+    if (!display) return;
+    _lessonAnnUnsub = query.onSnapshot(snap => {
+      if (snap.empty) { display.style.display = 'none'; return; }
+      display.style.display = '';
+      display.innerHTML = snap.docs.map(d => {
+        const ann = d.data();
+        const timeStr = ann.createdAt ? ann.createdAt.toDate().toLocaleDateString('tr-TR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+        return `<div style="background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.2);border-left:3px solid var(--gold);border-radius:6px;padding:12px 16px;margin-bottom:8px;">
+          <div style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace;letter-spacing:.08em;margin-bottom:4px;">📢 DERS PANELİ DUYURUSU</div>
+          <div style="font-size:.8rem;color:var(--white);line-height:1.6;">${ann.text}</div>
+          <div style="font-size:.58rem;color:var(--dim);margin-top:5px;">${timeStr}</div>
+        </div>`;
+      }).join('');
+    }, () => {});
+  }
 }
 
 // ─── Event listeners ──────────────────────────────────────
