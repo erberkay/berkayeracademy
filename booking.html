@@ -1077,8 +1077,31 @@ async function renderAdminPanel() {
         renderAdminPanel();
       };
       headerDiv.append(payToggle);
-      row.append(headerDiv, cancelPlanBtn);
+      row.append(headerDiv);
 
+      // Per-lesson rows (date + time + reschedule only, no individual cancel)
+      if (upcomingLessons.length > 0) {
+        const lessonsDiv = document.createElement('div'); lessonsDiv.className = 'student-lessons';
+        upcomingLessons.forEach(lesson => {
+          const allLessons = s.lessons || [];
+          const lessonIdx = allLessons.findIndex(l => l.date === lesson.date && l.time === lesson.time && l.status === lesson.status);
+          const lRow = document.createElement('div'); lRow.className = 'admin-lesson-row';
+          lRow.innerHTML = `
+            <div class="admin-lesson-info"><strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}</div>
+            <div class="admin-lesson-actions"></div>`;
+          const rescBtn = document.createElement('button'); rescBtn.className = 'admin-reschedule-btn'; rescBtn.textContent = '↺ Ertele';
+          rescBtn.onclick = async () => {
+            rescBtn.disabled = true;
+            await adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson);
+            renderAdminPanel();
+          };
+          lRow.querySelector('.admin-lesson-actions').append(rescBtn);
+          lessonsDiv.append(lRow);
+        });
+        row.append(lessonsDiv);
+      }
+
+      row.append(cancelPlanBtn);
       studList.append(row);
     });
   }
