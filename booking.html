@@ -1238,6 +1238,7 @@ async function renderAdminPanel() {
   _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
   if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
+  if (_adminAccessUnsub) { _adminAccessUnsub(); _adminAccessUnsub = null; }
   showView('view-admin');
   loadAdminAccessRequests();
   initLessonAnnouncements(true);
@@ -2175,7 +2176,16 @@ function renderAccessView(user, state, rejectReason) {
     card.innerHTML = `
       <div style="font-size:2.2rem;margin-bottom:14px;">⏳</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold);letter-spacing:.06em;margin-bottom:8px;">Talep İnceleniyor</div>
-      <div style="font-size:.78rem;color:var(--dim);line-height:1.8;">Erişim talebiniz alındı. Berkay Er inceledikten sonra bu sayfa otomatik olarak güncellenecek.</div>`;
+      <div style="font-size:.78rem;color:var(--dim);line-height:1.8;margin-bottom:20px;">Erişim talebiniz alındı. Berkay Er inceledikten sonra bu sayfa otomatik olarak güncellenecek.</div>
+      <button class="btn btn-ghost" id="cancelAccessBtn" style="font-size:.7rem;opacity:.6;">Talebi İptal Et</button>`;
+    card.querySelector('#cancelAccessBtn').onclick = async () => {
+      if (!confirm('Erişim talebini iptal etmek istediğine emin misin?')) return;
+      try {
+        await db.collection('booking_access_requests').doc(user.uid).delete();
+        if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
+        renderAccessView(user, 'none');
+      } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+    };
     // Auto-refresh: watch for status change
     if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
     _accessListenUnsub = db.collection('booking_access_requests').doc(user.uid)
@@ -2208,64 +2218,65 @@ function renderAccessView(user, state, rejectReason) {
 }
 
 // ─── Admin: Load Access Requests ──────────────────────────
-async function loadAdminAccessRequests() {
+let _adminAccessUnsub = null;
+
+function loadAdminAccessRequests() {
   const card = document.getElementById('adminAccessCard');
   const list = document.getElementById('adminAccessList');
   if (!card || !list) return;
 
-  const snap = await db.collection('booking_access_requests')
-    .where('status', '==', 'pending')
-    .orderBy('createdAt', 'asc')
-    .get()
-    .catch(e => { const c=errId(); list.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Hata (${c})</div>`; return null; });
+  if (_adminAccessUnsub) { _adminAccessUnsub(); _adminAccessUnsub = null; }
 
-  if (!snap || snap.empty) { card.style.display = 'none'; return; }
-
+  // Show loading state immediately so card is visible on error too
   card.style.display = '';
-  list.innerHTML = '';
-  snap.docs.forEach(doc => {
-    const r = doc.data();
-    const row = document.createElement('div');
-    row.style.cssText = 'background:rgba(232,184,75,.04);border:1px solid rgba(232,184,75,.18);border-radius:10px;margin-bottom:10px;overflow:hidden;';
-    row.innerHTML = `
-      <div style="padding:14px 16px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(232,184,75,.35);flex-shrink:0;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:.8rem;">
-            ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;" alt="">` : (r.name?.[0]||'?')}
-          </div>
-          <div>
-            <div style="font-size:.88rem;color:var(--white);font-weight:700;">${r.name || '—'}</div>
-            <div style="font-size:.65rem;color:var(--dim);">${r.email || ''}</div>
-          </div>
-        </div>
-        ${r.message ? `<div style="font-size:.75rem;color:var(--dim);font-style:italic;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:6px;border-left:2px solid rgba(232,184,75,.25);margin-bottom:2px;">"${r.message}"</div>` : ''}
-      </div>
-      <div style="display:flex;border-top:1px solid rgba(255,255,255,.06);">
-        <button class="accessApproveBtn" style="flex:1;background:rgba(74,222,128,.07);border:none;border-right:1px solid rgba(255,255,255,.06);color:var(--green);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;transition:background .15s;letter-spacing:.04em;">✓ Onayla</button>
-        <button class="accessRejectBtn"  style="flex:1;background:rgba(184,45,69,.07);border:none;color:var(--crimson);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;transition:background .15s;letter-spacing:.04em;">✕ Reddet</button>
-      </div>`;
+  list.innerHTML = '<div class="empty-state">Yükleniyor…</div>';
 
-    row.querySelector('.accessApproveBtn').onclick = async (e) => {
-      e.target.disabled = true;
-      try {
-        await db.collection('booking_access_requests').doc(r.uid).update({ status: 'approved' });
-        toast(`✓ ${r.name || r.email} erişimi onaylandı.`);
-        row.remove();
-        if (!list.children.length) card.style.display = 'none';
-      } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
-    };
-    row.querySelector('.accessRejectBtn').onclick = async (e) => {
-      const reason = prompt('Reddetme sebebi (isteğe bağlı):') ?? '';
-      e.target.disabled = true;
-      try {
-        await db.collection('booking_access_requests').doc(r.uid).update({ status: 'rejected', reject_reason: reason });
-        toast(`${r.name || r.email} erişimi reddedildi.`);
-        row.remove();
-        if (!list.children.length) card.style.display = 'none';
-      } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
-    };
-    list.append(row);
-  });
+  _adminAccessUnsub = db.collection('booking_access_requests')
+    .where('status', '==', 'pending')
+    .onSnapshot(snap => {
+      list.innerHTML = '';
+      if (snap.empty) { card.style.display = 'none'; return; }
+      card.style.display = '';
+      snap.docs.forEach(doc => {
+        const r = doc.data();
+        const row = document.createElement('div');
+        row.style.cssText = 'background:rgba(232,184,75,.04);border:1px solid rgba(232,184,75,.18);border-radius:10px;margin-bottom:10px;overflow:hidden;';
+        row.innerHTML = `
+          <div style="padding:14px 16px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(232,184,75,.35);flex-shrink:0;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:.8rem;">
+                ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;" alt="">` : (r.name?.[0]||'?')}
+              </div>
+              <div>
+                <div style="font-size:.88rem;color:var(--white);font-weight:700;">${r.name || '—'}</div>
+                <div style="font-size:.65rem;color:var(--dim);">${r.email || ''}</div>
+              </div>
+            </div>
+            ${r.message ? `<div style="font-size:.75rem;color:var(--dim);font-style:italic;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:6px;border-left:2px solid rgba(232,184,75,.25);margin-bottom:2px;">"${r.message}"</div>` : ''}
+          </div>
+          <div style="display:flex;border-top:1px solid rgba(255,255,255,.06);">
+            <button class="accessApproveBtn" style="flex:1;background:rgba(74,222,128,.07);border:none;border-right:1px solid rgba(255,255,255,.06);color:var(--green);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;letter-spacing:.04em;">✓ Onayla</button>
+            <button class="accessRejectBtn"  style="flex:1;background:rgba(184,45,69,.07);border:none;color:var(--crimson);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;letter-spacing:.04em;">✕ Reddet</button>
+          </div>`;
+
+        row.querySelector('.accessApproveBtn').onclick = async (e) => {
+          e.target.disabled = true;
+          try {
+            await db.collection('booking_access_requests').doc(doc.id).update({ status: 'approved' });
+            toast(`✓ ${r.name || r.email} erişimi onaylandı.`);
+          } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
+        };
+        row.querySelector('.accessRejectBtn').onclick = async (e) => {
+          const reason = prompt('Reddetme sebebi (isteğe bağlı):') ?? '';
+          e.target.disabled = true;
+          try {
+            await db.collection('booking_access_requests').doc(doc.id).update({ status: 'rejected', reject_reason: reason });
+            toast(`${r.name || r.email} erişimi reddedildi.`);
+          } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
+        };
+        list.append(row);
+      });
+    }, e => { const c=errId(); list.innerHTML = `<div class="empty-state" style="color:var(--crimson);">Yüklenemedi (${c}): ${e.code||e.message}</div>`; });
 }
 
 // ─── Lesson Panel Announcements ───────────────────────────
