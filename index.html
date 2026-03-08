@@ -370,6 +370,7 @@
 
   // ── Yorum formu (Firestore) ──
   let _db = null;
+  function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
   function makeCommentEl(name, text) {
     const div = document.createElement('div');
     div.className = 'testimonial testimonial-user';
@@ -407,7 +408,7 @@
       document.getElementById('testimonialList').appendChild(makeCommentEl(name, text));
       document.getElementById('commentName').value = '';
       document.getElementById('commentText').value = '';
-    } catch(e) { console.error(e); alert('Gönderilemedi, tekrar dene.'); }
+    } catch(e) { const c=errId(); console.error(c,e); alert(`Gönderilemedi (${c}): ${e.message||e.code||'Bağlantı hatası'}`); }
     if (btn) { btn.disabled = false; btn.textContent = 'Gönder'; }
   }
 
@@ -531,7 +532,19 @@
       _personalNotifs=[];_announcements=[];_annSeenAt=null;_dismissedAnns=[];
       if(!user)return;
       _db.collection('users').doc(user.uid).get().then(d=>{_annSeenAt=d.data()?.announcementsSeenAt||null;_dismissedAnns=d.data()?.dismissedAnns||[];_mergeNotifs(user.uid);}).catch(()=>{});
-      _notifUnsub=_db.collection('notifications').doc(user.uid).collection('items').orderBy('createdAt','desc').limit(20).onSnapshot(snap=>{_personalNotifs=snap.docs.map(d=>({...d.data(),_id:d.id}));_mergeNotifs(user.uid);},()=>{});
+      let _prevNIds_idx = new Set();
+      _notifUnsub=_db.collection('notifications').doc(user.uid).collection('items').orderBy('createdAt','desc').limit(20).onSnapshot(snap=>{
+        _personalNotifs=snap.docs.map(d=>({...d.data(),_id:d.id}));
+        if (_prevNIds_idx.size > 0 && 'Notification' in window && Notification.permission === 'granted') {
+          snap.docs.forEach(d => {
+            if (!_prevNIds_idx.has(d.id) && !d.data().read) {
+              try { new Notification('Berkay Academy', { body: d.data().text || 'Yeni bildirim', icon: '/assets/img/logo.png' }); } catch(_){}
+            }
+          });
+        }
+        _prevNIds_idx = new Set(snap.docs.map(d => d.id));
+        _mergeNotifs(user.uid);
+      },()=>{});
       _annUnsub=_db.collection('announcements').orderBy('createdAt','desc').limit(15).onSnapshot(snap=>{_announcements=snap.docs.map(d=>({...d.data(),_id:d.id}));_mergeNotifs(user.uid);},()=>{});
     }
     // ── Auth bar ──────────────────────────────────────────────────
@@ -541,6 +554,9 @@
       bar.innerHTML = '';
       _notifPanelEl = null;
       if (user) {
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission().catch(() => {});
+        }
         const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
         const img  = document.createElement('img');  img.className = 'auth-avatar';
       const _bnavAv = document.getElementById('bnavProfileAv');

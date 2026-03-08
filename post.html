@@ -221,7 +221,14 @@ function renderMd(txt) {
 }
 function goProfile(uid) { location.href = `profile.html?uid=${uid}`; }
 
-function showToast() {}
+function showToast(msg, type='success', ms=3500) {
+  let c = document.getElementById('toastCt');
+  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
+  const t = document.createElement('div'); t.className='toast'+(type==='error'?' err':''); t.textContent=msg;
+  c.append(t);
+  setTimeout(()=>{ t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
+}
+function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 
 let _notifUnsub = null, _annUnsub = null;
 let _notifPanelEl = null;
@@ -335,15 +342,27 @@ function initNotifications(user) {
   if (_annUnsub) { _annUnsub(); _annUnsub = null; }
   _personalNotifs = []; _announcements = []; _annSeenAt = null; _dismissedAnns = [];
   if (!user) return;
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
   db.collection('users').doc(user.uid).get().then(d => {
     _annSeenAt = d.data()?.announcementsSeenAt || null;
     _dismissedAnns = d.data()?.dismissedAnns || [];
     _mergeNotifs(user.uid);
   }).catch(() => {});
+  let _prevNIds_pst = new Set();
   _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
     .orderBy('createdAt', 'desc').limit(20)
     .onSnapshot(snap => {
       _personalNotifs = snap.docs.map(d => ({...d.data(), _id: d.id}));
+      if (_prevNIds_pst.size > 0 && 'Notification' in window && Notification.permission === 'granted') {
+        snap.docs.forEach(d => {
+          if (!_prevNIds_pst.has(d.id) && !d.data().read) {
+            try { new Notification('Berkay Academy', { body: d.data().text || 'Yeni bildirim', icon: '/assets/img/logo.png' }); } catch(_){}
+          }
+        });
+      }
+      _prevNIds_pst = new Set(snap.docs.map(d => d.id));
       if (snap.docs.length > 4) snap.docs.slice(4).forEach(d => d.ref.delete());
       _mergeNotifs(user.uid);
     }, () => {});
@@ -457,7 +476,7 @@ async function renderPost() {
         await ref.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(_user.uid), likeCount: firebase.firestore.FieldValue.increment(1) });
       }
       renderPost();
-    } catch(e) { showToast('Hata: ' + (e.code || e.message), 'error'); }
+    } catch(e) { const c=errId(); showToast(`Hata (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
   };
   actions.append(likeBtn);
 
@@ -548,7 +567,7 @@ async function renderReplies(layout, post) {
           await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
           await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(-1) });
           rCard.remove();
-        } catch(e) { showToast('Silme hatası: ' + (e.code || e.message), 'error'); }
+        } catch(e) { const c=errId(); showToast(`Silme hatası (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
       };
       rAuthorRow.append(rdel);
     }
@@ -634,7 +653,7 @@ async function renderReplies(layout, post) {
       }
       ta.value = '';
       await renderPost();
-      } catch(e) { showToast('Yanıt gönderilemedi: ' + (e.code || e.message), 'error'); sub.disabled = false; sub.textContent = 'Yanıtla'; }
+      } catch(e) { const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); sub.disabled=false; sub.textContent='Yanıtla'; }
     };
     row.append(ta, sub); formCard.append(ft, row);
   } else {

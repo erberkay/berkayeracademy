@@ -357,7 +357,14 @@ function doSignIn() {
 
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 
-function showToast() {}
+function showToast(msg, type='success', ms=3500) {
+  let c = document.getElementById('toastCt');
+  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
+  const t = document.createElement('div'); t.className='toast'+(type==='error'?' err':''); t.textContent=msg;
+  c.append(t);
+  setTimeout(()=>{ t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
+}
+function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 
 function fmtDate(ts) {
   if (!ts) return '';
@@ -474,15 +481,27 @@ function initNotifications(user) {
   if (_annUnsub) { _annUnsub(); _annUnsub = null; }
   _personalNotifs = []; _announcements = []; _annSeenAt = null; _dismissedAnns = [];
   if (!user) return;
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});
+  }
   db.collection('users').doc(user.uid).get().then(d => {
     _annSeenAt = d.data()?.announcementsSeenAt || null;
     _dismissedAnns = d.data()?.dismissedAnns || [];
     _mergeNotifs(user.uid);
   }).catch(() => {});
+  let _prevNIds_frm = new Set();
   _notifUnsub = db.collection('notifications').doc(user.uid).collection('items')
     .orderBy('createdAt', 'desc').limit(20)
     .onSnapshot(snap => {
       _personalNotifs = snap.docs.map(d => ({...d.data(), _id: d.id}));
+      if (_prevNIds_frm.size > 0 && 'Notification' in window && Notification.permission === 'granted') {
+        snap.docs.forEach(d => {
+          if (!_prevNIds_frm.has(d.id) && !d.data().read) {
+            try { new Notification('Berkay Academy', { body: d.data().text || 'Yeni bildirim', icon: '/assets/img/logo.png' }); } catch(_){}
+          }
+        });
+      }
+      _prevNIds_frm = new Set(snap.docs.map(d => d.id));
       if (snap.docs.length > 4) { const b = db.batch(); snap.docs.slice(4).forEach(d => b.delete(d.ref)); b.commit().catch(() => {}); }
       _mergeNotifs(user.uid);
     }, () => {});
@@ -758,7 +777,7 @@ function renderPost(post, container) {
         }
         await db.collection('forum').doc(post.id).delete();
         showToast('Konu silindi', 'info');
-      } catch(e) { showToast('Silme hatası: ' + (e.code || e.message), 'error'); }
+      } catch(e) { const c=errId(); showToast(`Silme hatası (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
     };
     actions.append(del);
   }

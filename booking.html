@@ -519,6 +519,7 @@ function toast(msg, isErr = false) {
   t.textContent = msg; w.append(t);
   setTimeout(() => t.remove(), 3500);
 }
+function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 
 function toDateStr(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
@@ -831,7 +832,8 @@ async function submitRequest() {
     toast('✓ Talebiniz gönderildi!');
     loadUserState(_user);
   } catch(e) {
-    errEl.textContent = 'Hata: ' + (e.message || e.code);
+    const c = errId();
+    errEl.textContent = `Hata (${c}): ` + (e.message || e.code || 'Bağlantı hatası');
     errEl.style.display = '';
     btn.disabled = false; btn.textContent = 'Talep Gönder →';
   }
@@ -964,7 +966,7 @@ async function renderDashboard() {
       await db.collection('reservations').doc(_user.uid).update({ note: val });
       noteStatus.style.color = 'var(--green)'; noteStatus.textContent = '✓ Kaydedildi';
       setTimeout(() => { noteStatus.textContent = ''; }, 2500);
-    } catch(e) { noteStatus.style.color = 'var(--crimson)'; noteStatus.textContent = '⚠ ' + (e.code || e.message); }
+    } catch(e) { const c=errId(); noteStatus.style.color='var(--crimson)'; noteStatus.textContent=`⚠ (${c}) `+(e.code||e.message||'Hata'); }
     noteSave.disabled = false; noteSave.textContent = 'Kaydet';
   };
 
@@ -1248,7 +1250,7 @@ async function renderAdminPanel() {
           toast('✓ Talep kabul edildi, dersler oluşturuldu.');
           row.remove();
         } catch(e) {
-          toast('Hata: ' + (e.message||e.code), true);
+          const c = errId(); toast(`Hata (${c}): ` + (e.message||e.code||'Bilinmeyen hata'), true);
           approveBtn.disabled = false; approveBtn.textContent = '✓ Kabul Et';
         }
       };
