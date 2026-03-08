@@ -881,6 +881,7 @@ async function renderDashboard() {
   // Payment box
   const totalPrice = lessons.length * LESSON_PRICE;
   const isPaid = !!res.payment_confirmed;
+  const isPending = !!res.payment_pending;
   const pboxEl = document.getElementById('paymentBox');
   pboxEl.innerHTML = '';
   const pbox = document.createElement('div'); pbox.className = 'payment-box';
@@ -888,18 +889,38 @@ async function renderDashboard() {
   if (isPaid) {
     const badge = document.createElement('span'); badge.className = 'payment-box-paid'; badge.textContent = '✓ Ödendi';
     pbox.append(badge);
+  } else if (isPending) {
+    const pendingBadge = document.createElement('span');
+    pendingBadge.style.cssText = 'font-size:.72rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);padding:8px 14px;border-radius:6px;white-space:nowrap;';
+    pendingBadge.textContent = '⏳ Onay Bekliyor';
+    pbox.append(pendingBadge);
   } else {
     const payBtn = document.createElement('button'); payBtn.className = 'payment-box-btn'; payBtn.textContent = '₺ Ödeme Yaptım';
     payBtn.onclick = async () => {
       if (!confirm('Ödeme yaptığını onaylıyor musun?')) return;
-      await db.collection('reservations').doc(_user.uid).update({ payment_confirmed: true });
-      toast('✓ Ödeme onaylandı.'); renderDashboard();
+      payBtn.disabled = true;
+      try {
+        const batch = db.batch();
+        batch.update(db.collection('reservations').doc(_user.uid), { payment_pending: true });
+        batch.set(db.collection('lesson_requests').doc(), {
+          type: 'payment_request',
+          from_uid: _user.uid,
+          from_name: _user.displayName || '',
+          from_email: _user.email || '',
+          total_price: totalPrice,
+          status: 'pending',
+          created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        await batch.commit();
+        toast('Ödeme talebiniz gönderildi, onay bekleniyor.');
+        renderDashboard();
+      } catch(e) { toast('Hata: ' + (e.message||e.code), true); payBtn.disabled = false; }
     };
     pbox.append(payBtn);
   }
   pboxEl.append(pbox);
 
-  // Payment info link + popup (only if not yet paid)
+  // Payment info link + popup (only if not yet confirmed)
   if (!isPaid) {
     const infoLink = document.createElement('div'); infoLink.className = 'pay-info-link';
     infoLink.innerHTML = `<span>ℹ</span> Ödeme Bilgileri`;
@@ -996,7 +1017,40 @@ async function renderAdminPanel() {
     sortedDocs.forEach(doc => {
       const r = doc.data();
       const isCancelReq = r.type === 'cancel_request';
+      const isPaymentReq = r.type === 'payment_request';
       const row = document.createElement('div'); row.className = 'req-row';
+
+      if (isPaymentReq) {
+        row.style.borderColor = 'rgba(74,222,128,.3)';
+        row.style.background = 'rgba(74,222,128,.04)';
+        row.innerHTML = `
+          <div class="req-row-name" style="color:var(--green)">₺ Ödeme Talebi — ${r.from_name || r.from_email}</div>
+          <div class="req-row-detail">Toplam: <strong>${(r.total_price||0).toLocaleString('tr-TR')} TL</strong></div>
+        `;
+        const actions = document.createElement('div'); actions.className = 'req-actions';
+        const approveBtn = document.createElement('button'); approveBtn.className = 'req-approve'; approveBtn.textContent = '✓ Ödendi Onayla';
+        approveBtn.onclick = async () => {
+          approveBtn.disabled = true;
+          const batch = db.batch();
+          batch.update(db.collection('reservations').doc(r.from_uid), { payment_confirmed: true, payment_pending: false });
+          batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+          await batch.commit();
+          toast('✓ Ödeme onaylandı.'); row.remove();
+        };
+        const rejectBtn = document.createElement('button'); rejectBtn.className = 'req-reject'; rejectBtn.textContent = '✕ Reddet';
+        rejectBtn.onclick = async () => {
+          rejectBtn.disabled = true;
+          const batch = db.batch();
+          batch.update(db.collection('reservations').doc(r.from_uid), { payment_pending: false });
+          batch.update(doc.ref, { status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+          await batch.commit();
+          toast('Ödeme talebi reddedildi.'); row.remove();
+        };
+        actions.append(approveBtn, rejectBtn);
+        row.append(actions);
+        reqList.append(row);
+        return;
+      }
 
       if (isCancelReq) {
         row.style.borderColor = 'rgba(184,45,69,.35)';
