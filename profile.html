@@ -328,8 +328,20 @@ let _signingIn = false;
 function doSignIn() {
   if (_signingIn) return;
   _signingIn = true;
-  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
-    .catch(e=>{console.error(e); alert('Giriş hatası: '+(e.message||e.code||e));}).finally(() => { _signingIn = false; });
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .catch(e => {
+      console.error(e);
+      // if popup failed or was blocked/closed, fall back to redirect
+      if (e.code === 'auth/popup-closed-by-user' ||
+          e.code === 'auth/cancelled-popup-request' ||
+          e.code === 'auth/popup-blocked') {
+        auth.signInWithRedirect(provider);
+      } else {
+        alert('Giriş hatası: ' + (e.message || e.code || e));
+      }
+    })
+    .finally(() => { _signingIn = false; });
 }
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 
