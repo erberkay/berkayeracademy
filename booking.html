@@ -827,7 +827,7 @@ async function submitRequest() {
       created_at: firebase.firestore.FieldValue.serverTimestamp(),
     });
     // Flag user doc so egitim.html can unlock member content without a collection query
-    db.collection('users').doc(_user.uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {});
+    await db.collection('users').doc(_user.uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {});
     toast('✓ Talebiniz gönderildi!');
     loadUserState(_user);
   } catch(e) {
@@ -1238,6 +1238,12 @@ async function renderAdminPanel() {
               return;
             }
           }
+          // Final conflict re-check right before committing (closes race window)
+          const freshConflicts = await checkConflicts(
+            calculateLessonDates(r.schedule, r.duration_months)
+              .filter(l => !conflicts.has(l.date + '_' + l.time))
+          );
+          freshConflicts.forEach(k => conflicts.add(k));
           await acceptRequest(doc.id, r, conflicts);
           toast('✓ Talep kabul edildi, dersler oluşturuldu.');
           row.remove();
