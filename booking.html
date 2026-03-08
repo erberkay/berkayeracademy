@@ -1368,6 +1368,7 @@ async function renderAdminPanel() {
   // Build calendar data + monthly stats
   const calAllLessons = [];
   const curMonthStr = toDateStr(new Date()).slice(0,7);
+  const todayStr = toDateStr(new Date());
   let statsRevenue = 0, statsLessons = 0, statsCompleted = 0;
   const statsPerStudent = [];
   if (studSnap && !studSnap.empty) {
@@ -1379,8 +1380,11 @@ async function renderAdminPanel() {
         if (l.status === 'scheduled' || l.status === 'rescheduled')
           calAllLessons.push({ date: l.date, time: l.time, name: (d.student_name||d.student_email||'').split(' ')[0], photo: d.student_photo||'' });
         if (l.date.startsWith(curMonthStr)) {
-          if (l.status === 'completed') { statsRevenue += price; statsCompleted++; }
-          if (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'completed') { statsLessons++; studentMonthLessons++; }
+          // Count past scheduled/rescheduled as done (auto-complete only runs on student login)
+          const isDone = l.status === 'completed' ||
+            ((l.status === 'scheduled' || l.status === 'rescheduled') && l.date < todayStr);
+          if (isDone) { statsRevenue += price; statsCompleted++; }
+          if (l.status !== 'cancelled') { statsLessons++; studentMonthLessons++; }
         }
       });
       if (studentMonthLessons > 0)
