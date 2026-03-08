@@ -511,7 +511,15 @@
           _db.collection('reservations').doc(user.uid).get().catch(() => null),
           _db.collection('users').doc(user.uid).get().catch(() => null),
         ]).then(([resSnap, userSnap]) => {
-          if (resSnap?.exists || userSnap?.data()?.hasLessonRequest) _showMemberContent();
+          const hasReservation = resSnap?.exists;
+          const hasFlag = userSnap?.data()?.hasLessonRequest;
+          if (hasReservation || hasFlag) {
+            // If reservation exists but flag missing, backfill it
+            if (hasReservation && !hasFlag) {
+              _db.collection('users').doc(user.uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {});
+            }
+            _showMemberContent();
+          }
         });
       }
     });
