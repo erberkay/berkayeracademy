@@ -489,12 +489,12 @@
           if (el1) el1.style.display = '';
           if (el2) el2.style.display = '';
         }
-        // Show sections if user has an approved reservation OR a pending lesson request
+        // Show sections if user has reservation OR has submitted a lesson request (flag in user doc)
         Promise.all([
           _db.collection('reservations').doc(user.uid).get().catch(() => null),
-          _db.collection('lesson_requests').where('from_uid','==',user.uid).limit(1).get().catch(() => null),
-        ]).then(([resSnap, reqSnap]) => {
-          if (resSnap?.exists || reqSnap?.size > 0) _showMemberContent();
+          _db.collection('users').doc(user.uid).get().catch(() => null),
+        ]).then(([resSnap, userSnap]) => {
+          if (resSnap?.exists || userSnap?.data()?.hasLessonRequest) _showMemberContent();
         });
       }
     });
