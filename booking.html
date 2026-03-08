@@ -969,6 +969,23 @@ function renderPendingView(reqData) {
   } else {
     actions.innerHTML = '';
   }
+
+  // Auto-refresh: watch lesson_request status
+  if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
+  if (isPending && reqData.id) {
+    _pendingListenUnsub = db.collection('lesson_requests').doc(reqData.id)
+      .onSnapshot(snap => {
+        if (!snap.exists) return;
+        const st = snap.data().status;
+        if (st === 'accepted') {
+          if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
+          renderDashboard();
+        } else if (st === 'rejected') {
+          if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
+          renderPendingView({ ...snap.data(), id: snap.id });
+        }
+      });
+  }
 }
 
 function initRequestForm() {
@@ -990,6 +1007,8 @@ function initRequestForm() {
 async function renderDashboard() {
   if (_adminQAUnsub) { _adminQAUnsub(); _adminQAUnsub = null; }
   _adminQAAnswerUnsubs.forEach(u => u()); _adminQAAnswerUnsubs = [];
+  if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
+  if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   showView('view-dashboard');
   initLessonAnnouncements(false);
   let snap;
@@ -1030,7 +1049,11 @@ async function renderDashboard() {
       <div class="stat-card"><div class="stat-val">${completed}</div><div class="stat-lbl">Tamamlanan Ders</div></div>
       <div class="stat-card"><div class="stat-val">${lessons.length}</div><div class="stat-lbl">Toplam Ders</div></div>
     `;
-    document.getElementById('paymentBox').innerHTML = '';
+    document.getElementById('paymentBox').innerHTML = `
+      <div style="text-align:center;padding:20px 0 6px;">
+        <button class="btn btn-gold" id="renewPlanBtn" style="width:100%;max-width:340px;">+ Yeni Ders Talebi Oluştur</button>
+      </div>`;
+    document.getElementById('renewPlanBtn').onclick = () => initRequestForm();
     document.getElementById('cancelPlanBtn').style.display = 'none';
     document.getElementById('creditBadge').style.display = 'none';
     document.querySelector('.dash-layout').style.display = 'none';
@@ -1189,6 +1212,8 @@ async function renderDashboard() {
 async function renderAdminPanel() {
   if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
   _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
+  if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
+  if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   showView('view-admin');
   loadAdminAccessRequests();
   initLessonAnnouncements(true);
@@ -1477,8 +1502,9 @@ async function renderAdminPanel() {
             ${(s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ')}<br>
             ${startDateStr} → ${endDateStr}<br>
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
-            ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 "${s.note}"</span>` : ''}
+            ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 Öğrenci notu: "${s.note}"</span>` : ''}
           </div>
+          <button onclick="adminAddRescheduleCredit('${studentUid}')" style="background:none;border:1px solid rgba(180,120,255,.2);color:rgba(180,120,255,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:6px;">🔄 +Kredi</button>
         </div>`;
       const payWrap = document.createElement('div'); payWrap.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
       if (isResPaid) {
@@ -1566,6 +1592,8 @@ async function renderAdminPanel() {
             b.textContent = label; b.onclick = () => { menu.style.display = 'none'; fn(); }; return b;
           };
           menu.append(
+            mkItem('✓ Tamamlandı', '', () => adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson)),
+            Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
             mkItem('🕐 Saati Değiştir', '', () => adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson)),
             mkItem('📅 Günü Değiştir', '', () => adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson)),
             Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
@@ -1589,6 +1617,31 @@ async function renderAdminPanel() {
           lessonsDiv.append(lRow);
         });
         row.append(lessonsDiv);
+      }
+
+      // Past/completed/cancelled lessons collapsible
+      const pastLessons = allLessonsArr.filter(l => l.status === 'completed' || l.status === 'cancelled' || (l.date < toDateStr(new Date()) && l.status === 'rescheduled'));
+      if (pastLessons.length > 0) {
+        const pastToggle = document.createElement('button');
+        pastToggle.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.3);font-size:.65rem;cursor:pointer;padding:8px 0 4px;font-family:"Space Mono",monospace;display:block;width:100%;text-align:left;';
+        pastToggle.textContent = `▸ Geçmiş Dersler (${pastLessons.length})`;
+        const pastDiv = document.createElement('div');
+        pastDiv.style.display = 'none';
+        pastDiv.style.cssText = 'display:none;';
+        pastLessons.slice().sort((a,b) => b.date.localeCompare(a.date)).forEach(lesson => {
+          const lRow = document.createElement('div');
+          lRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.03);font-size:.7rem;';
+          const statusColor = lesson.status === 'completed' ? 'var(--green)' : lesson.status === 'cancelled' ? 'var(--crimson)' : 'var(--dim)';
+          const statusLabel = lesson.status === 'completed' ? '✓ Tamamlandı' : lesson.status === 'cancelled' ? '✕ İptal' : '↩ Ertelendi';
+          lRow.innerHTML = `<span style="color:var(--dim);">${formatDateStr(lesson.date)} ${lesson.time}</span><span style="color:${statusColor};font-size:.62rem;">${statusLabel}</span>`;
+          pastDiv.append(lRow);
+        });
+        pastToggle.onclick = () => {
+          const isOpen = pastDiv.style.display !== 'none';
+          pastDiv.style.display = isOpen ? 'none' : 'block';
+          pastToggle.textContent = `${isOpen ? '▸' : '▾'} Geçmiş Dersler (${pastLessons.length})`;
+        };
+        row.append(pastToggle, pastDiv);
       }
 
       row.append(cancelPlanBtn);
@@ -1844,6 +1897,36 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
   };
 }
 
+async function adminAddRescheduleCredit(studentUid) {
+  const today = toDateStr(new Date());
+  const curMonthKey = today.slice(0, 7);
+  const monthLabel = new Date().toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  if (!confirm(`${monthLabel} için 1 erteleme kredisi eklensin mi?`)) return;
+  try {
+    const snap = await db.collection('reservations').doc(studentUid).get();
+    if (!snap.exists) { toast('Rezervasyon bulunamadı.', true); return; }
+    const credits = snap.data().reschedule_credits || {};
+    const current = credits[curMonthKey] ?? 0;
+    await db.collection('reservations').doc(studentUid).update({
+      [`reschedule_credits.${curMonthKey}`]: current + 1,
+    });
+    toast(`✓ ${monthLabel} için kredi eklendi (${current} → ${current + 1}).`);
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+}
+
+async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
+  if (!confirm(`${formatDateStr(lesson.date)} ${lesson.time} dersini tamamlandı olarak işaretle?`)) return;
+  try {
+    const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, status: 'completed' } : l);
+    const batch = db.batch();
+    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+    await batch.commit();
+    toast('✓ Ders tamamlandı olarak işaretlendi.');
+    renderAdminPanel();
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+}
+
 async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson) {
   if (!confirm(`${formatDateStr(lesson.date)} ${lesson.time} dersini iptal et?`)) return;
   try {
@@ -1995,7 +2078,7 @@ async function loadUserState(user) {
   if (reqSnap && !reqSnap.empty) {
     const latestDoc = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
     const req = latestDoc.data();
-    if (req.status === 'pending' || req.status === 'rejected') { renderPendingView(req); return; }
+    if (req.status === 'pending' || req.status === 'rejected') { renderPendingView({ ...req, id: latestDoc.id }); return; }
     if (req.status === 'accepted') { renderDashboard(); return; }
   }
 
@@ -2050,6 +2133,20 @@ function renderAccessView(user, state, rejectReason) {
       <div style="font-size:2.2rem;margin-bottom:14px;">⏳</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold);letter-spacing:.06em;margin-bottom:8px;">Talep İnceleniyor</div>
       <div style="font-size:.78rem;color:var(--dim);line-height:1.8;">Erişim talebiniz alındı. Berkay Er inceledikten sonra bu sayfa otomatik olarak güncellenecek.</div>`;
+    // Auto-refresh: watch for status change
+    if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
+    _accessListenUnsub = db.collection('booking_access_requests').doc(user.uid)
+      .onSnapshot(snap => {
+        if (!snap.exists) return;
+        const st = snap.data().status;
+        if (st === 'approved') {
+          if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
+          loadUserState(user);
+        } else if (st === 'rejected') {
+          if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
+          renderAccessView(user, 'rejected', snap.data().reject_reason || '');
+        }
+      });
     return;
   }
 
@@ -2214,6 +2311,8 @@ function initLessonAnnouncements(isAdmin) {
 // ─── Student Q&A ─────────────────────────────────────────
 let _qaUnsub = null;
 let _qaAnswerUnsubs = [];
+let _accessListenUnsub = null;
+let _pendingListenUnsub = null;
 
 function initStudentQA(uid, user) {
   if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
