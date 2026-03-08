@@ -597,18 +597,20 @@ async function renderAdminPanel() {
   showView('view-admin');
 
   // Load pending requests
+  const reqList = document.getElementById('adminRequestsList');
+  reqList.innerHTML = '<div class="empty-state">Yükleniyor…</div>';
   const reqSnap = await db.collection('lesson_requests')
     .where('status','==','pending')
-    .orderBy('created_at','desc')
-    .get().catch(() => null);
+    .get()
+    .catch(e => { reqList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Hata: ${e.message}</div>`; return null; });
 
-  const reqList = document.getElementById('adminRequestsList');
   reqList.innerHTML = '';
 
   if (!reqSnap || reqSnap.empty) {
     reqList.innerHTML = '<div class="empty-state">Bekleyen talep yok.</div>';
   } else {
-    reqSnap.docs.forEach(doc => {
+    const sortedDocs = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0));
+    sortedDocs.forEach(doc => {
       const r = doc.data();
       const daysText = (r.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
       const row = document.createElement('div'); row.className = 'req-row';
@@ -771,12 +773,11 @@ async function loadUserState(user) {
   // Check existing request
   const reqSnap = await db.collection('lesson_requests')
     .where('from_uid','==', user.uid)
-    .orderBy('created_at','desc')
-    .limit(1)
     .get().catch(() => null);
 
   if (reqSnap && !reqSnap.empty) {
-    const req = reqSnap.docs[0].data();
+    const latestDoc = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
+    const req = latestDoc.data();
     if (req.status === 'pending' || req.status === 'rejected') {
       renderPendingView(req); return;
     }
