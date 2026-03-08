@@ -624,9 +624,25 @@ async function renderAdminPanel() {
       // Accept button
       const approveBtn = document.createElement('button'); approveBtn.className='req-approve'; approveBtn.textContent='✓ Kabul Et';
       approveBtn.onclick = async () => {
-        approveBtn.disabled = true; approveBtn.textContent = 'İşleniyor…';
+        approveBtn.disabled = true; approveBtn.textContent = 'Kontrol ediliyor…';
         try {
-          await acceptRequest(doc.id, r);
+          // Check conflicts before accepting
+          const allLessons = calculateLessonDates(r.schedule, r.duration_months);
+          const conflicts = await checkConflicts(allLessons);
+          if (conflicts.size > 0) {
+            const conflictDates = allLessons
+              .filter(l => conflicts.has(l.date + '_' + l.time))
+              .map(l => `${formatDateStr(l.date)} ${l.time}`)
+              .join('\n');
+            const proceed = confirm(
+              `⚠ ${conflicts.size} tarihte çakışma var (başka öğrenci o saate kayıtlı):\n\n${conflictDates}\n\nBu dersler takvime eklenmeyecek. Yine de kabul et?`
+            );
+            if (!proceed) {
+              approveBtn.disabled = false; approveBtn.textContent = '✓ Kabul Et';
+              return;
+            }
+          }
+          await acceptRequest(doc.id, r, conflicts);
           toast('✓ Talep kabul edildi, dersler oluşturuldu.');
           row.remove();
         } catch(e) {
@@ -677,9 +693,27 @@ async function renderAdminPanel() {
   }
 }
 
+// ─── Conflict Check ───────────────────────────────────────
+async function checkConflicts(lessons) {
+  const conflicts = new Set();
+  const batchSize = 10;
+  for (let i = 0; i < lessons.length; i += batchSize) {
+    const batch = lessons.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map(l => db.collection('booked_slots').doc(l.date + '_' + l.time).get().catch(() => null))
+    );
+    results.forEach((snap, idx) => {
+      if (snap && snap.exists) conflicts.add(batch[idx].date + '_' + batch[idx].time);
+    });
+  }
+  return conflicts;
+}
+
 // ─── Accept Request → Create Reservation ─────────────────
-async function acceptRequest(reqId, r) {
-  const lessons = calculateLessonDates(r.schedule, r.duration_months);
+async function acceptRequest(reqId, r, conflicts = new Set()) {
+  const allLessons = calculateLessonDates(r.schedule, r.duration_months);
+  // Skip conflicting slots
+  const lessons = allLessons.filter(l => !conflicts.has(l.date + '_' + l.time));
 
   // Build reschedule credits (1 per month)
   const reschedule_credits = {};
