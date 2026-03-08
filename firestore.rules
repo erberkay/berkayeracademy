@@ -115,21 +115,16 @@ service cloud.firestore {
         request.auth.uid == uid ||
         request.auth.token.email == "berkayer032@gmail.com"
       );
-      allow create: if request.auth != null && (
-        request.auth.uid == uid ||
-        request.auth.token.email == "berkayer032@gmail.com"
-      );
-      allow update: if request.auth != null && (
-        request.auth.uid == uid ||
-        request.auth.token.email == "berkayer032@gmail.com"
-      );
-      allow delete: if request.auth != null &&
+      // Only admin can create, update or delete reservations
+      allow create, update, delete: if request.auth != null &&
         request.auth.token.email == "berkayer032@gmail.com";
     }
 
     match /booked_slots/{slotId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      // Only admin can write booked slots
+      allow write: if request.auth != null &&
+        request.auth.token.email == "berkayer032@gmail.com";
     }
 
     match /lesson_requests/{reqId} {
