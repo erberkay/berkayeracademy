@@ -176,6 +176,12 @@
     .rule-item { display:flex; gap:10px; margin-bottom:10px; font-size:.7rem; line-height:1.6; color:var(--dim); }
     .rule-dot { color:var(--gold); flex-shrink:0; margin-top:2px; }
 
+    /* ── Lesson type toggle ── */
+    .req-type-toggle { display:flex; gap:8px; margin-bottom:20px; }
+    .req-type-btn { flex:1; padding:10px 8px; text-align:center; border-radius:8px; font-family:'Space Mono',monospace; font-size:.72rem; cursor:pointer; transition:all .15s; border:1.5px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); color:var(--dim); }
+    .req-type-btn.active { border-color:rgba(232,184,75,.7); background:rgba(232,184,75,.1); color:var(--gold); }
+    .single-lesson-note { background:rgba(184,45,69,.06); border:1px solid rgba(184,45,69,.2); border-radius:8px; padding:12px 14px; font-size:.72rem; color:rgba(238,235,230,.65); line-height:1.7; margin-bottom:16px; }
+    .single-lesson-note strong { color:var(--crimson); }
     /* ── Pending status ── */
     .status-box { border-radius:12px; padding:24px; text-align:center; margin-bottom:20px; }
     .status-box.pending { background:rgba(232,184,75,.06); border:1px solid rgba(232,184,75,.25); }
@@ -262,7 +268,16 @@
       <div class="card-title">Ders Talebi Oluştur</div>
       <div class="card-sub">Tercihlerini belirt, Berkay Er inceleyip onaylayacak.</div>
 
-      <div class="field-group">
+      <div class="req-type-toggle">
+        <button class="req-type-btn active" id="typeMonthly" onclick="setReqType('monthly')">📅 Aylık Plan</button>
+        <button class="req-type-btn" id="typeSingle" onclick="setReqType('single')">🎯 Tek Ders</button>
+      </div>
+
+      <div id="singleLessonNote" class="single-lesson-note" style="display:none;">
+        ⚠ Aylık ders alan öğrencilerin ders saati değişiklikleri ile çakıştığında <strong>aylık ders alan öğrencilerin öncelikleri vardır</strong>. Bu nedenle seçtiğiniz saat iptal edilebilir.
+      </div>
+
+      <div class="field-group" id="durationField">
         <label class="field-label">Süre</label>
         <select class="field-input" id="reqDuration" style="cursor:pointer;">
           <option value="1">1 Ay</option>
@@ -274,7 +289,7 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label">Gün & Saat Seç <span style="color:var(--dim);font-size:.6rem;">(birden fazla seçebilirsin)</span></label>
+        <label class="field-label" id="slotLabel">Gün & Saat Seç <span style="color:var(--dim);font-size:.6rem;">(birden fazla seçebilirsin)</span></label>
         <div class="avail-legend">
           <span><i class="lg-free"></i> Müsait</span>
           <span><i class="lg-busy"></i> Dolu</span>
@@ -660,10 +675,31 @@ function updateSlotSummary() {
   updatePriceEstimate();
 }
 
+let _reqType = 'monthly'; // 'monthly' | 'single'
+
+function setReqType(type) {
+  _reqType = type;
+  document.getElementById('typeMonthly').classList.toggle('active', type === 'monthly');
+  document.getElementById('typeSingle').classList.toggle('active', type === 'single');
+  document.getElementById('durationField').style.display = type === 'single' ? 'none' : '';
+  document.getElementById('singleLessonNote').style.display = type === 'single' ? '' : 'none';
+  document.getElementById('slotLabel').innerHTML = type === 'single'
+    ? 'Gün & Saat Seç <span style="color:var(--dim);font-size:.6rem;">(bir saat seç)</span>'
+    : 'Gün & Saat Seç <span style="color:var(--dim);font-size:.6rem;">(birden fazla seçebilirsin)</span>';
+  _selectedSlots.clear();
+  renderAvailGrid();
+  updatePriceEstimate();
+}
+
 function updatePriceEstimate() {
   const el = document.getElementById('priceEstimate');
   if (!el) return;
   if (_selectedSlots.size === 0) { el.style.display = 'none'; return; }
+  if (_reqType === 'single') {
+    el.style.display = '';
+    el.innerHTML = `Tek ders ücreti: <strong style="color:var(--gold)">${LESSON_PRICE.toLocaleString('tr-TR')} TL</strong>`;
+    return;
+  }
   const duration = parseInt(document.getElementById('reqDuration')?.value || '1');
   const raw = [..._selectedSlots].map(k => { const [dow, time] = k.split('_'); return { dayIndex: parseInt(dow), time }; });
   const schedule = adjustSchedule(raw);
@@ -683,13 +719,18 @@ async function submitRequest() {
     errEl.textContent = 'En az bir ders saati seçmelisin.';
     errEl.style.display = ''; return;
   }
+  if (_reqType === 'single' && _selectedSlots.size > 1) {
+    errEl.textContent = 'Tek ders için yalnızca bir saat seçmelisin.';
+    errEl.style.display = ''; return;
+  }
 
-  const duration = parseInt(document.getElementById('reqDuration').value);
+  const isSingle = _reqType === 'single';
+  const duration = isSingle ? 0 : parseInt(document.getElementById('reqDuration').value);
   const rawSlots = [..._selectedSlots].map(k => {
     const [dow, time] = k.split('_');
     return { dayIndex: parseInt(dow), time };
   });
-  const schedule = adjustSchedule(rawSlots);
+  const schedule = isSingle ? rawSlots : adjustSchedule(rawSlots);
   const note = document.getElementById('reqNote').value.trim();
 
   btn.disabled = true; btn.textContent = 'Gönderiliyor…';
@@ -699,6 +740,7 @@ async function submitRequest() {
       from_name:   _user.displayName || '',
       from_email:  _user.email || '',
       from_photo:  _user.photoURL || '',
+      lesson_type: isSingle ? 'single' : 'monthly',
       duration_months: duration,
       schedule,
       note,
@@ -766,9 +808,14 @@ function renderPendingView(reqData) {
 
 function initRequestForm() {
   _selectedSlots.clear();
+  _reqType = 'monthly';
   document.getElementById('submitRequestBtn').disabled = true;
   const priceEl = document.getElementById('priceEstimate');
   if (priceEl) priceEl.style.display = 'none';
+  document.getElementById('typeMonthly').classList.add('active');
+  document.getElementById('typeSingle').classList.remove('active');
+  document.getElementById('durationField').style.display = '';
+  document.getElementById('singleLessonNote').style.display = 'none';
   showView('view-request');
   loadAndRenderAvailGrid();
   document.getElementById('reqDuration').onchange = updatePriceEstimate;
@@ -991,10 +1038,11 @@ async function renderAdminPanel() {
       }
 
       const daysText = (r.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
+      const isSingleReq = r.lesson_type === 'single';
       row.innerHTML = `
-        <div class="req-row-name">${r.from_name || r.from_email}</div>
+        <div class="req-row-name">${r.from_name || r.from_email} ${isSingleReq ? '<span style="font-size:.62rem;color:rgba(143,200,232,.8);background:rgba(143,200,232,.1);border:1px solid rgba(143,200,232,.25);padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle;">Tek Ders</span>' : ''}</div>
         <div class="req-row-detail">
-          📅 <strong>${r.duration_months} Ay</strong> · ${daysText}
+          ${isSingleReq ? '🎯 <strong>Tek Ders</strong>' : `📅 <strong>${r.duration_months} Ay</strong>`} · ${daysText}
         </div>
         ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
       `;
