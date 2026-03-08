@@ -822,7 +822,8 @@ async function renderDashboard() {
 
   const curMonthKey = yearMonthKey(today);
   const credits = res.reschedule_credits?.[curMonthKey] ?? 0;
-  document.getElementById('creditBadge').innerHTML = `🔄 Bu ay erteleme hakkı: <strong>${credits}</strong>/1`;
+  const totalLessonsCount = lessons.length;
+  document.getElementById('creditBadge').innerHTML = `🔄 Bu ay erteleme hakkı: <strong>${credits}</strong>/1 &nbsp;·&nbsp; Toplam: <strong>${totalLessonsCount} ders</strong>`;
 
   const list = document.getElementById('lessonList');
   list.innerHTML = '';
@@ -1001,6 +1002,8 @@ async function renderAdminPanel() {
       const allLessonsArr = s.lessons || [];
       const upcomingLessons = allLessonsArr.filter(l => l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'cancel_requested'));
       const totalLessons = allLessonsArr.length;
+      const curMonthAdmin = today.slice(0, 7);
+      const thisMonthCount = allLessonsArr.filter(l => l.date.startsWith(curMonthAdmin) && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'completed')).length;
       const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
       const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
       const totalPrice = totalLessons * LESSON_PRICE;
@@ -1013,7 +1016,7 @@ async function renderAdminPanel() {
           <div class="student-row-meta">
             ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong> · <strong style="color:var(--gold)">${totalPrice.toLocaleString('tr-TR')} TL</strong><br>
             ${startDateStr} → ${endDateStr}<br>
-            Yaklaşan: ${upcomingLessons.length}
+            Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
           </div>
         </div>`;
       const payToggle = document.createElement('button');
