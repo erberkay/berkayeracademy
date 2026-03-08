@@ -139,6 +139,15 @@
     .student-row { background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:12px 14px; margin-bottom:8px; }
     .student-row-name { font-size:.78rem; color:var(--white); font-weight:700; margin-bottom:4px; }
     .student-row-meta { font-size:.65rem; color:var(--dim); line-height:1.7; }
+    .student-lessons { margin-top:10px; display:flex; flex-direction:column; gap:5px; }
+    .admin-lesson-row { display:flex; align-items:center; justify-content:space-between; gap:8px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05); border-radius:6px; padding:6px 10px; }
+    .admin-lesson-info { font-size:.62rem; color:var(--dim); line-height:1.6; flex:1; }
+    .admin-lesson-info strong { color:var(--white); }
+    .admin-lesson-actions { display:flex; gap:5px; flex-shrink:0; }
+    .admin-cancel-btn { background:rgba(184,45,69,.1); border:1px solid rgba(184,45,69,.3); color:var(--crimson); font-family:'Space Mono',monospace; font-size:.55rem; padding:3px 8px; border-radius:4px; cursor:pointer; transition:all .15s; }
+    .admin-cancel-btn:hover { background:rgba(184,45,69,.25); }
+    .admin-reschedule-btn { background:transparent; border:1px solid rgba(232,184,75,.3); color:var(--gold); font-family:'Space Mono',monospace; font-size:.55rem; padding:3px 8px; border-radius:4px; cursor:pointer; transition:all .15s; }
+    .admin-reschedule-btn:hover { background:rgba(232,184,75,.1); }
     .req-row { background:rgba(180,120,255,.05); border:1px solid rgba(180,120,255,.2); border-radius:8px; padding:14px 16px; margin-bottom:10px; }
     .req-row-name { font-size:.75rem; color:var(--purple); font-weight:700; margin-bottom:6px; }
     .req-row-detail { font-size:.68rem; color:var(--white); line-height:1.8; margin-bottom:6px; }
@@ -846,21 +855,94 @@ async function renderAdminPanel() {
     studList.innerHTML = '<div class="empty-state">Henüz öğrenci yok.</div>';
   } else {
     studSnap.docs.forEach(doc => {
-      const s = doc.data();
+      const s = doc.data(); const studentUid = doc.id;
       const today = toDateStr(new Date());
-      const upcoming = (s.lessons||[]).filter(l => l.date >= today && l.status === 'scheduled').length;
+      const upcomingLessons = (s.lessons||[]).filter(l => l.date >= today && l.status === 'scheduled');
       const daysStr = (s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ');
       const row = document.createElement('div'); row.className = 'student-row';
       row.innerHTML = `
         <div class="student-row-name">${s.student_name || s.student_email}</div>
         <div class="student-row-meta">
           ${s.duration_months} Ay · ${daysStr}<br>
-          Yaklaşan: ${upcoming} · Toplam: ${(s.lessons||[]).length}<br>
+          Yaklaşan: ${upcomingLessons.length} · Toplam: ${(s.lessons||[]).length}<br>
           Bitiş: ${s.end_date ? formatDateStr(s.end_date) : '—'}
         </div>`;
+
+      // Per-lesson admin controls
+      if (upcomingLessons.length > 0) {
+        const lessonsDiv = document.createElement('div'); lessonsDiv.className = 'student-lessons';
+        upcomingLessons.slice(0,5).forEach(lesson => {
+          const allLessons = s.lessons || [];
+          const lessonIdx = allLessons.findIndex(l => l.date === lesson.date && l.time === lesson.time && l.status === lesson.status);
+          const lRow = document.createElement('div'); lRow.className = 'admin-lesson-row';
+          lRow.innerHTML = `
+            <div class="admin-lesson-info"><strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}</div>
+            <div class="admin-lesson-actions"></div>`;
+          const actDiv = lRow.querySelector('.admin-lesson-actions');
+
+          const rescBtn = document.createElement('button'); rescBtn.className='admin-reschedule-btn'; rescBtn.textContent='↺ Ertele';
+          rescBtn.onclick = async () => {
+            rescBtn.disabled = true;
+            await adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson);
+            renderAdminPanel();
+          };
+
+          const cancelBtn = document.createElement('button'); cancelBtn.className='admin-cancel-btn'; cancelBtn.textContent='✕ İptal';
+          cancelBtn.onclick = async () => {
+            if (!confirm(`${s.student_name || s.student_email} — ${formatDateStr(lesson.date)} ${lesson.time} dersini iptal et?`)) return;
+            cancelBtn.disabled = true;
+            await adminCancelLesson(studentUid, lessonIdx, allLessons, lesson);
+            renderAdminPanel();
+          };
+
+          actDiv.append(rescBtn, cancelBtn);
+          lessonsDiv.append(lRow);
+        });
+        row.append(lessonsDiv);
+      }
+
       studList.append(row);
     });
   }
+}
+
+// ─── Admin: Cancel Lesson ─────────────────────────────────
+async function adminCancelLesson(studentUid, lessonIdx, allLessons, lesson) {
+  try {
+    const updatedLessons = allLessons.map((l, i) =>
+      i === lessonIdx ? { ...l, status: 'cancelled' } : l
+    );
+    const batch = db.batch();
+    batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons });
+    batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+    await batch.commit();
+    toast(`✓ Ders iptal edildi — ${formatDateStr(lesson.date)} ${lesson.time}`);
+  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
+}
+
+// ─── Admin: Reschedule Lesson ─────────────────────────────
+async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
+  const newDate = new Date(dateStrToObj(lesson.date));
+  newDate.setDate(newDate.getDate() + 7);
+  const newDateStr = toDateStr(newDate);
+  const conflictSnap = await db.collection('booked_slots').doc(newDateStr + '_' + lesson.time).get().catch(() => null);
+  if (conflictSnap && conflictSnap.exists) {
+    const ok = confirm(`${formatDateStr(newDateStr)} ${lesson.time} başka bir öğrenciye ait. Yine de ertele?`);
+    if (!ok) return;
+  }
+  try {
+    const updatedLessons = allLessons.map((l, i) =>
+      i === lessonIdx ? { ...l, date: newDateStr, status: 'rescheduled' } : l
+    );
+    const batch = db.batch();
+    batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons });
+    batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+    if (!conflictSnap || !conflictSnap.exists) {
+      batch.set(db.collection('booked_slots').doc(newDateStr + '_' + lesson.time), { date: newDateStr, time: lesson.time, student_uid: studentUid });
+    }
+    await batch.commit();
+    toast(`✓ Ders ertelendi → ${formatDateStr(newDateStr)} ${lesson.time}`);
+  } catch(e) { toast('Hata: ' + (e.message||e.code), true); }
 }
 
 // ─── Conflict Check ───────────────────────────────────────
