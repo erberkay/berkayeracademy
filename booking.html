@@ -1571,7 +1571,7 @@ async function renderAdminPanel() {
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
             ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 Öğrenci notu: "${s.note}"</span>` : ''}
           </div>
-          <button onclick="adminAddRescheduleCredit('${studentUid}')" style="background:none;border:1px solid rgba(180,120,255,.2);color:rgba(180,120,255,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:6px;">🔄 +Kredi</button>
+          <button onclick="adminAddLesson('${studentUid}')" style="background:none;border:1px solid rgba(180,120,255,.2);color:rgba(180,120,255,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:6px;">➕ Ders Ekle</button>
         </div>`;
       const payWrap = document.createElement('div'); payWrap.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
       if (isResPaid) {
@@ -1968,24 +1968,50 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
   };
 }
 
-async function adminAddRescheduleCredit(studentUid) {
+async function adminAddLesson(studentUid) {
   const today = toDateStr(new Date());
-  const curMonthKey = today.slice(0, 7);
-  const monthInput = await showInputModal({ title: 'Hangi ay için kredi eklensin?', placeholder: 'YYYY-MM', defaultVal: curMonthKey });
-  if (!monthInput) return;
-  if (!/^\d{4}-\d{2}$/.test(monthInput)) { toast('Geçersiz format. YYYY-MM olmalı.', true); return; }
-  const monthLabel = new Date(monthInput + '-01').toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-  if (!confirm(`${monthLabel} için 1 erteleme kredisi eklensin mi?`)) return;
-  try {
-    const snap = await db.collection('reservations').doc(studentUid).get();
-    if (!snap.exists) { toast('Rezervasyon bulunamadı.', true); return; }
-    const credits = snap.data().reschedule_credits || {};
-    const current = credits[monthInput] ?? 0;
-    await db.collection('reservations').doc(studentUid).update({
-      [`reschedule_credits.${monthInput}`]: current + 1,
-    });
-    toast(`✓ ${monthLabel} için kredi eklendi (${current} → ${current + 1}).`);
-  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+  const timeOpts = AVAILABLE_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
+  const modal = Object.assign(document.createElement('div'), { innerHTML: `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:320px;font-family:'Space Mono',monospace;">
+        <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:16px;">➕ Ders Saati Ekle</div>
+        <div style="font-size:.65rem;color:#888;margin-bottom:5px;letter-spacing:.06em;">TARİH</div>
+        <input type="date" id="addLessonDate" value="${today}" min="${today}" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:14px;">
+        <div style="font-size:.65rem;color:#888;margin-bottom:5px;letter-spacing:.06em;">SAAT</div>
+        <select id="addLessonTime" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:20px;">${timeOpts}</select>
+        <div style="display:flex;gap:8px;">
+          <button id="addLessonCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;">İptal</button>
+          <button id="addLessonSave" style="flex:1;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">✓ Ekle</button>
+        </div>
+      </div>
+    </div>` });
+  document.body.append(modal);
+  modal.querySelector('#addLessonCancel').onclick = () => modal.remove();
+  modal.querySelector('#addLessonSave').onclick = async () => {
+    const date = modal.querySelector('#addLessonDate').value;
+    const time = modal.querySelector('#addLessonTime').value;
+    if (!date || !time) return;
+    const saveBtn = modal.querySelector('#addLessonSave');
+    saveBtn.disabled = true; saveBtn.textContent = '⏳';
+    try {
+      const conflict = await db.collection('booked_slots').doc(date + '_' + time).get();
+      if (conflict.exists) {
+        saveBtn.disabled = false; saveBtn.textContent = '✓ Ekle';
+        toast(`${formatDateStr(date)} ${time} başka bir öğrenciye ait.`, true); return;
+      }
+      const snap = await db.collection('reservations').doc(studentUid).get();
+      if (!snap.exists) { toast('Rezervasyon bulunamadı.', true); modal.remove(); return; }
+      const lessons = snap.data().lessons || [];
+      const newLesson = { date, time, status: 'scheduled' };
+      const batch = db.batch();
+      batch.update(db.collection('reservations').doc(studentUid), { lessons: [...lessons, newLesson] });
+      batch.set(db.collection('booked_slots').doc(date + '_' + time), { date, time, student_uid: studentUid });
+      await batch.commit();
+      modal.remove();
+      toast(`✓ Ders eklendi: ${formatDateStr(date)} ${time}`);
+      renderAdminPanel();
+    } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); saveBtn.disabled = false; saveBtn.textContent = '✓ Ekle'; }
+  };
 }
 
 async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
