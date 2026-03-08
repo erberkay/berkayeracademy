@@ -65,21 +65,22 @@
 
     /* ── Availability grid ── */
     .avail-wrap { overflow-x:auto; margin-bottom:8px; -webkit-overflow-scrolling:touch; }
-    .avail-table { border-collapse:separate; border-spacing:3px; width:100%; min-width:320px; }
-    .avail-table th { font-size:.55rem; color:var(--dim); text-align:center; padding:4px 2px; letter-spacing:.04em; font-weight:700; }
+    .avail-table { border-collapse:separate; border-spacing:3px; width:100%; min-width:280px; }
+    .avail-table th { font-size:.58rem; color:rgba(238,235,230,.5); text-align:center; padding:6px 2px 8px; letter-spacing:.06em; font-weight:700; }
     .avail-table td { padding:0; }
-    .avail-time { font-size:.52rem; color:var(--dim); padding:2px 5px; white-space:nowrap; text-align:right; }
-    .av-cell { display:block; width:100%; padding:7px 2px; text-align:center; font-size:.5rem; font-family:'Space Mono',monospace; border-radius:5px; cursor:pointer; transition:all .12s; border:1.5px solid transparent; user-select:none; }
-    .av-cell.free { background:rgba(74,222,128,.07); color:rgba(74,222,128,.6); border-color:rgba(74,222,128,.18); }
-    .av-cell.free:hover { background:rgba(74,222,128,.18); color:var(--green); border-color:rgba(74,222,128,.4); }
-    .av-cell.busy { background:rgba(184,45,69,.1); color:rgba(184,45,69,.5); border-color:rgba(184,45,69,.2); cursor:not-allowed; }
-    .av-cell.selected { background:rgba(232,184,75,.18); color:var(--gold); border-color:var(--gold); font-weight:700; }
+    .avail-time { display:none; }
+    .av-cell { display:flex; align-items:center; justify-content:center; width:100%; height:36px; border-radius:5px; cursor:pointer; transition:background .1s, border-color .1s; border:1.5px solid transparent; user-select:none; font-family:'Space Mono',monospace; font-size:.5rem; }
+    .av-cell.free { background:rgba(74,222,128,.07); border-color:rgba(74,222,128,.14); color:rgba(74,222,128,.3); }
+    .av-cell.free:hover { background:rgba(74,222,128,.2); border-color:rgba(74,222,128,.45); color:rgba(74,222,128,.7); }
+    .av-cell.busy { background:rgba(184,45,69,.13); border-color:rgba(184,45,69,.22); color:rgba(184,45,69,.35); cursor:not-allowed; }
+    .av-cell.selected { background:rgba(232,184,75,.18); border-color:rgba(232,184,75,.7); box-shadow:0 0 0 1px rgba(232,184,75,.2); color:var(--gold); font-size:.55rem; font-weight:700; }
+    .av-cell.selected:hover { background:rgba(232,184,75,.25); }
     .avail-legend { display:flex; gap:14px; font-size:.6rem; color:var(--dim); margin-bottom:14px; flex-wrap:wrap; }
     .avail-legend span { display:flex; align-items:center; gap:5px; }
     .avail-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; }
     .avail-legend .lg-free { background:rgba(74,222,128,.2); border:1px solid rgba(74,222,128,.4); }
     .avail-legend .lg-busy { background:rgba(184,45,69,.2); border:1px solid rgba(184,45,69,.3); }
-    .avail-legend .lg-sel  { background:rgba(232,184,75,.25); border:1px solid var(--gold); }
+    .avail-legend .lg-sel  { background:rgba(232,184,75,.25); border:1.5px solid rgba(232,184,75,.7); }
     .avail-selected-summary { font-size:.68rem; color:var(--gold); min-height:1.2em; margin-bottom:12px; }
 
     /* ── Dashboard ── */
@@ -317,7 +318,7 @@
 <script>
 'use strict';
 const ADMIN_EMAIL = 'berkayer032@gmail.com';
-const AVAILABLE_TIMES = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30'];
+const AVAILABLE_TIMES = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
 const DAYS_TR = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
 const DAYS_TR_SHORT = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS_TR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
@@ -465,7 +466,7 @@ function renderAvailGrid() {
       const td = document.createElement('td');
       const cell = document.createElement('div');
       cell.className = 'av-cell ' + (_busySlots.has(key) ? 'busy' : _selectedSlots.has(key) ? 'selected' : 'free');
-      cell.textContent = _busySlots.has(key) ? '✕' : _selectedSlots.has(key) ? '✓' : '·';
+      cell.textContent = time;
       cell.dataset.key = key;
       if (!_busySlots.has(key)) {
         cell.onclick = () => toggleSlot(key, cell);
@@ -478,14 +479,15 @@ function renderAvailGrid() {
 }
 
 function toggleSlot(key, cell) {
+  const time = key.split('_')[1];
   if (_selectedSlots.has(key)) {
     _selectedSlots.delete(key);
     cell.className = 'av-cell free';
-    cell.textContent = '·';
+    cell.textContent = time;
   } else {
     _selectedSlots.add(key);
     cell.className = 'av-cell selected';
-    cell.textContent = '✓';
+    cell.textContent = time;
   }
   updateSlotSummary();
   document.getElementById('submitRequestBtn').disabled = _selectedSlots.size === 0;
