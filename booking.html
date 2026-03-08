@@ -1041,6 +1041,17 @@ async function renderAdminPanel() {
 
   reqList.innerHTML = '';
 
+  // Auto-migrate: set hasLessonRequest:true for all existing requesters who don't have it
+  if (reqSnap && !reqSnap.empty) {
+    const allReqs = await db.collection('lesson_requests').get().catch(() => null);
+    if (allReqs) {
+      const uids = [...new Set(allReqs.docs.map(d => d.data().from_uid).filter(Boolean))];
+      for (const uid of uids) {
+        db.collection('users').doc(uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {});
+      }
+    }
+  }
+
   if (!reqSnap || reqSnap.empty) {
     reqList.innerHTML = '<div class="empty-state">Bekleyen talep yok.</div>';
   } else {
