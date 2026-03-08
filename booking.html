@@ -151,12 +151,13 @@
     .cal-week { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
     .cal-day-row { display:flex; align-items:flex-start; gap:12px; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.05); }
     .cal-day-row.has-lessons { border-color:rgba(232,184,75,.15); background:rgba(232,184,75,.04); }
-    .cal-day-row.is-today { border-color:rgba(232,184,75,.35); background:rgba(232,184,75,.08); }
+    .cal-day-row.is-today { border-color:var(--gold); background:rgba(232,184,75,.12); box-shadow:0 0 0 1px rgba(232,184,75,.15); }
     .cal-day-label { min-width:80px; flex-shrink:0; }
     .cal-day-name { font-size:.78rem; color:var(--dim); font-weight:700; }
-    .cal-day-row.has-lessons .cal-day-name, .cal-day-row.is-today .cal-day-name { color:var(--white); }
+    .cal-day-row.has-lessons .cal-day-name { color:var(--white); }
+    .cal-day-row.is-today .cal-day-name { color:var(--gold); font-size:.82rem; }
     .cal-day-date { font-size:.65rem; color:rgba(255,255,255,.2); margin-top:1px; }
-    .cal-day-row.is-today .cal-day-date { color:var(--gold); }
+    .cal-day-row.is-today .cal-day-date { color:var(--gold); font-weight:700; }
     .cal-slots-list { display:flex; flex-direction:column; gap:5px; flex:1; }
     .cal-slot { display:flex; align-items:center; gap:8px; }
     .cal-slot-photo { width:28px; height:28px; border-radius:50%; background:var(--mid); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:.7rem; border:1.5px solid rgba(232,184,75,.3); overflow:hidden; }
@@ -1203,11 +1204,18 @@ function renderAdminCalendar(lessons, weekOffset) {
       });
     }
 
+    if (isToday) row.id = 'calToday';
     row.append(label, slotsList);
     week.append(row);
   });
 
   calEl.innerHTML = ''; calEl.append(week);
+
+  // Scroll to today
+  requestAnimationFrame(() => {
+    const todayRow = document.getElementById('calToday');
+    if (todayRow) todayRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 
   document.getElementById('calPrev').onclick = () => renderAdminCalendar(lessons, weekOffset - 1);
   document.getElementById('calNext').onclick = () => renderAdminCalendar(lessons, weekOffset + 1);
