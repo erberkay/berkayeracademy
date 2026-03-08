@@ -130,6 +130,18 @@
     .payment-box-paid { font-size:.75rem; color:var(--green); background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); padding:8px 16px; border-radius:6px; white-space:nowrap; }
     .payment-box-btn { font-family:'Space Mono',monospace; font-size:.72rem; padding:9px 18px; border-radius:6px; cursor:pointer; transition:all .15s; white-space:nowrap; background:rgba(74,222,128,.09); border:1px solid rgba(74,222,128,.35); color:var(--green); }
     .payment-box-btn:hover { background:rgba(74,222,128,.2); }
+    /* ── Payment info popup ── */
+    .pay-info-link { display:inline-flex; align-items:center; gap:5px; font-size:.7rem; color:var(--dim); cursor:pointer; margin-bottom:14px; text-decoration:none; transition:color .15s; }
+    .pay-info-link:hover { color:var(--gold); }
+    .pay-info-popup { display:none; background:rgba(18,18,28,.97); border:1px solid rgba(232,184,75,.25); border-radius:12px; padding:20px 22px; margin-bottom:14px; }
+    .pay-info-popup.open { display:block; }
+    .pay-info-title { font-size:.65rem; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; font-weight:700; margin-bottom:14px; }
+    .pay-info-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+    .pay-info-label { font-size:.65rem; color:var(--dim); flex-shrink:0; }
+    .pay-info-val { font-family:'Space Mono',monospace; font-size:.72rem; color:var(--white); text-align:right; word-break:break-all; }
+    .pay-copy-btn { background:rgba(232,184,75,.08); border:1px solid rgba(232,184,75,.2); color:var(--gold); font-family:'Space Mono',monospace; font-size:.58rem; padding:3px 8px; border-radius:4px; cursor:pointer; flex-shrink:0; transition:all .15s; }
+    .pay-copy-btn:hover { background:rgba(232,184,75,.2); }
+    .pay-info-warn { margin-top:12px; padding:10px 14px; background:rgba(184,45,69,.08); border:1px solid rgba(184,45,69,.2); border-radius:7px; font-size:.68rem; color:rgba(184,45,69,.9); line-height:1.6; }
     /* ── Cancel plan button ── */
     .cancel-plan-btn { display:block; width:100%; margin-top:14px; padding:10px; text-align:center; background:rgba(184,45,69,.07); border:1px solid rgba(184,45,69,.25); color:rgba(184,45,69,.75); border-radius:8px; font-family:'Space Mono',monospace; font-size:.72rem; cursor:pointer; transition:all .15s; }
     .cancel-plan-btn:hover { background:rgba(184,45,69,.18); border-color:var(--crimson); color:var(--crimson); }
@@ -810,6 +822,27 @@ async function renderDashboard() {
     pbox.append(payBtn);
   }
   pboxEl.append(pbox);
+
+  // Payment info link + popup (only if not yet paid)
+  if (!isPaid) {
+    const infoLink = document.createElement('div'); infoLink.className = 'pay-info-link';
+    infoLink.innerHTML = `<span>ℹ</span> Ödeme Bilgileri`;
+    const popup = document.createElement('div'); popup.className = 'pay-info-popup';
+    popup.innerHTML = `
+      <div class="pay-info-title">📋 Ödeme Bilgileri</div>
+      <div class="pay-info-row">
+        <span class="pay-info-label">IBAN</span>
+        <span class="pay-info-val" id="ibanVal">TR35 0006 2000 6870 0006 8982 06</span>
+        <button class="pay-copy-btn" onclick="navigator.clipboard.writeText('TR3500062000687000068982 06');this.textContent='✓';setTimeout(()=>this.textContent='Kopyala',1500)">Kopyala</button>
+      </div>
+      <div class="pay-info-row">
+        <span class="pay-info-label">İsim</span>
+        <span class="pay-info-val">Muhammet Berkay Er</span>
+      </div>
+      <div class="pay-info-warn">⚠ Lütfen açıklama kısmına <strong>hiçbir şey yazmayınız.</strong></div>`;
+    infoLink.onclick = () => popup.classList.toggle('open');
+    pboxEl.append(infoLink, popup);
+  }
 
   // Cancel plan button (only if upcoming lessons exist)
   const cpBtn = document.getElementById('cancelPlanBtn');
