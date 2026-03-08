@@ -872,11 +872,18 @@ function renderPendingView(reqData) {
   const summary = document.getElementById('pendingReqSummary');
   card.style.display = '';
   const daysText = (reqData.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
+  const isSinglePending = reqData.lesson_type === 'single';
+  const pendingLessonCount = isSinglePending ? 1 : calculateLessonDates(reqData.schedule, reqData.duration_months).length;
+  const pendingTotal = pendingLessonCount * LESSON_PRICE;
   summary.innerHTML = `
     <div class="req-summary">
-      <strong>Süre:</strong> ${reqData.duration_months} Ay<br>
+      <strong>Süre:</strong> ${isSinglePending ? 'Tek Ders' : reqData.duration_months + ' Ay'}<br>
       <strong>Günler:</strong> ${daysText || '—'}<br>
-      ${reqData.note ? `<strong>Not:</strong> ${reqData.note}` : ''}
+      ${reqData.note ? `<strong>Not:</strong> ${reqData.note}<br>` : ''}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+      <span style="font-size:.75rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">₺ ${pendingTotal.toLocaleString('tr-TR')} TL</span>
+      <span style="font-size:.75rem;color:rgba(238,235,230,.6);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">${pendingLessonCount} ders saati</span>
     </div>`;
 
   // Actions
