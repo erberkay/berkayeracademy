@@ -1102,11 +1102,11 @@ async function renderDashboard() {
   if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
+  if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   showView('view-dashboard');
   initLessonAnnouncements(false);
-  let snap;
-  try { snap = await db.collection('reservations').doc(_user.uid).get(); }
-  catch(e) { const c=errId(); toast(`Rezervasyon yüklenemedi (${c}): `+(e.message||e.code), true); return; }
+  _dashResUnsub = db.collection('reservations').doc(_user.uid)
+    .onSnapshot(async (snap) => {
   if (!snap || !snap.exists) { initRequestForm(); return; }
   const res = snap.data();
 
@@ -1339,10 +1339,12 @@ async function renderDashboard() {
   }
   initZoomJoinBox(lessons, today);
   initStudentQA(_user.uid, _user);
+  }, e => { const c=errId(); toast(`Rezervasyon yüklenemedi (${c}): `+(e.message||e.code), true); });
 }
 
 // ─── Admin Panel ──────────────────────────────────────────
 async function renderAdminPanel() {
+  if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
   _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
   if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
@@ -2172,6 +2174,7 @@ async function initAdminZoomLink() {
 }
 
 let _zoomCountdownTimer = null;
+let _dashResUnsub = null;
 
 async function initZoomJoinBox(lessons, today) {
   const box = document.getElementById('zoomJoinBox');
