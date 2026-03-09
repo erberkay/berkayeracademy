@@ -1318,15 +1318,17 @@ async function renderDashboard() {
     extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.25);color:var(--ice);font-family:"Space Mono",monospace;font-size:.72rem;font-weight:700;padding:10px 16px;border-radius:8px;cursor:pointer;text-align:left;';
     extraBtn.innerHTML = '➕ Ek Ders Satın Al';
     extraBtn.onclick = async () => {
-      // Fetch all reservations to know which slots are already booked
+      // Fetch booked_slots (readable by all authenticated users)
       let busySlots = {}; // dateStr -> [time, ...]
       try {
-        const snap = await db.collection('reservations').get();
+        const end90 = new Date(); end90.setDate(end90.getDate() + 90);
+        const snap = await db.collection('booked_slots')
+          .where('date', '>=', today)
+          .where('date', '<=', toDateStr(end90))
+          .get();
         snap.forEach(doc => {
-          (doc.data().lessons || []).forEach(l => {
-            if ((l.status === 'scheduled' || l.status === 'rescheduled') && l.date >= today)
-              (busySlots[l.date] = busySlots[l.date] || []).push(l.time);
-          });
+          const d = doc.data();
+          (busySlots[d.date] = busySlots[d.date] || []).push(d.time);
         });
       } catch(_) { /* show all as available on error */ }
 
