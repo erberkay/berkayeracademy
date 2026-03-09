@@ -1291,6 +1291,18 @@ async function renderDashboard() {
         rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
         item.append(rBtn);
       }
+      // Zoom join area for today's active lessons
+      if (l.date === today && (l.status === 'scheduled' || l.status === 'rescheduled')) {
+        const [lh2, lm2] = l.time.split(':').map(Number);
+        const lessonEndCheck = new Date(); lessonEndCheck.setHours(lh2 + 1, lm2, 0, 0);
+        if (new Date() <= lessonEndCheck) {
+          const za = document.createElement('div');
+          za.className = 'lesson-zoom-area';
+          za.dataset.time = l.time;
+          za.style.cssText = 'width:100%;margin-top:8px;';
+          item.append(za);
+        }
+      }
       return item;
     };
 
@@ -2129,25 +2141,16 @@ let _zoomCountdownTimer = null;
 
 async function initZoomJoinBox(lessons, today) {
   const box = document.getElementById('zoomJoinBox');
-  if (!box) return;
-  box.innerHTML = '';
   if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
+  if (box) box.innerHTML = '';
 
   const now = new Date();
   const todayStr = toDateStr(now);
-  const upcomingToday = lessons
+  const todayLessons = lessons
     .filter(l => l.date === todayStr && (l.status === 'scheduled' || l.status === 'rescheduled'))
     .sort((a,b) => a.time.localeCompare(b.time));
-  if (upcomingToday.length === 0) return;
 
-  const nextLesson = upcomingToday[0];
-  const [h, m] = nextLesson.time.split(':').map(Number);
-  const lessonStart = new Date(now); lessonStart.setHours(h, m, 0, 0);
-  const lessonEnd = new Date(lessonStart); lessonEnd.setHours(h + 1, m, 0, 0);
-  const secsUntil = Math.floor((lessonStart - now) / 1000);
-
-  // Hide only after lesson ends (60 min after start)
-  if (now > lessonEnd) return;
+  if (todayLessons.length === 0) return;
 
   let zoomLink = null;
   try {
@@ -2155,81 +2158,56 @@ async function initZoomJoinBox(lessons, today) {
     zoomLink = snap.exists ? snap.data().zoom_link : null;
   } catch(e) {}
 
-  const render = () => {
+  // Update the top summary box (first lesson today)
+  const renderTopBox = () => {
+    if (!box) return;
+    const [h, m] = todayLessons[0].time.split(':').map(Number);
+    const ls = new Date(); ls.setHours(h, m, 0, 0);
+    const le = new Date(); le.setHours(h + 1, m, 0, 0);
     const nowMs = Date.now();
-    const secsLeft = Math.floor((lessonStart.getTime() - nowMs) / 1000);
-    const active = zoomLink && secsLeft <= 15 * 60; // active 15 min before
+    if (nowMs > le.getTime()) { box.innerHTML = ''; return; }
+    const secsLeft = Math.floor((ls.getTime() - nowMs) / 1000);
+    const active = zoomLink && secsLeft <= 15 * 60;
     const inProgress = secsLeft <= 0;
-    const nearSoon = secsLeft <= 30 * 60; // within 30 min
-
-    let sublabel;
-    if (inProgress) {
-      sublabel = '🟢 Ders devam ediyor';
-    } else if (active) {
-      const mm = Math.floor(secsLeft / 60);
-      const ss = secsLeft % 60;
-      sublabel = `⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı`;
-    } else if (nearSoon) {
-      const mm = Math.floor(secsLeft / 60);
-      const ss = secsLeft % 60;
-      sublabel = `🔒 Link ${mm}:${String(ss).padStart(2,'0')} sonra aktif olacak`;
-    } else {
-      const hh = String(h).padStart(2,'0');
-      const mm2 = String(m).padStart(2,'0');
-      sublabel = `Bugün saat ${hh}:${mm2}'de · link 15 dk önce aktif olacak`;
-    }
-
+    const nearSoon = secsLeft <= 30 * 60;
+    let sublabel = inProgress ? '🟢 Ders devam ediyor'
+      : active ? `⏱ ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} kaldı`
+      : nearSoon ? `🔒 Link ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} sonra aktif olacak`
+      : `Bugün saat ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}'de · link 15 dk önce aktif olacak`;
     if (active) {
-      box.innerHTML = `
-        <a href="${zoomLink}" target="_blank" rel="noopener" id="zoomJoinBtn" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;">
-          <div>
-            <div style="font-size:.82rem;color:var(--green);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div>
-            <div id="zoomSubLabel" style="font-size:.65rem;color:rgba(74,222,128,.7);margin-top:2px;">${sublabel}</div>
-          </div>
-          <div style="font-size:1.4rem;color:var(--green);">→</div>
-        </a>`;
+      box.innerHTML = `<a href="${zoomLink}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;"><div><div style="font-size:.82rem;color:var(--green);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div><div style="font-size:.65rem;color:rgba(74,222,128,.7);margin-top:2px;">${sublabel}</div></div><div style="font-size:1.4rem;color:var(--green);">→</div></a>`;
     } else {
-      box.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 18px;margin-bottom:14px;opacity:.65;">
-          <div>
-            <div style="font-size:.82rem;color:var(--dim);font-weight:700;font-family:'Space Mono',monospace;">🎥 Bugün Ders Var</div>
-            <div id="zoomSubLabel" style="font-size:.65rem;color:var(--dim);margin-top:2px;">${sublabel}</div>
-          </div>
-          <div style="font-size:1.4rem;color:var(--dim);">${nearSoon ? '🔒' : '📅'}</div>
-        </div>`;
-    }
-
-    // Stop timer after lesson ends
-    if (nowMs > lessonEnd.getTime()) {
-      clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null;
-      box.innerHTML = '';
+      box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 18px;margin-bottom:14px;opacity:.65;"><div><div style="font-size:.82rem;color:var(--dim);font-weight:700;font-family:'Space Mono',monospace;">🎥 Bugün Ders Var</div><div style="font-size:.65rem;color:var(--dim);margin-top:2px;">${sublabel}</div></div><div style="font-size:1.4rem;color:var(--dim);">${nearSoon?'🔒':'📅'}</div></div>`;
     }
   };
 
-  render();
-  _zoomCountdownTimer = setInterval(() => {
-    const subLabel = box.querySelector('#zoomSubLabel');
-    if (!subLabel) { render(); return; }
-    const nowMs = Date.now();
-    const secsLeft = Math.floor((lessonStart.getTime() - nowMs) / 1000);
-    if (nowMs > lessonEnd.getTime()) {
-      clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null;
-      box.innerHTML = ''; return;
-    }
-    // Switch from locked to active when crossing 15 min mark
-    const active = secsLeft <= 15 * 60;
-    if (active && !box.querySelector('#zoomJoinBtn')) { render(); return; }
-    if (!active && box.querySelector('#zoomJoinBtn')) { render(); return; }
-    if (secsLeft <= 0) {
-      subLabel.textContent = '🟢 Ders devam ediyor';
-    } else {
-      const mm = Math.floor(secsLeft / 60);
-      const ss = secsLeft % 60;
-      subLabel.textContent = active
-        ? `⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı`
-        : `🔒 Link ${mm}:${String(ss).padStart(2,'0')} sonra aktif olacak`;
-    }
-  }, 1000);
+  // Update per-lesson card zoom buttons
+  const renderCardAreas = () => {
+    document.querySelectorAll('.lesson-zoom-area').forEach(area => {
+      const [ch, cm] = area.dataset.time.split(':').map(Number);
+      const ls = new Date(); ls.setHours(ch, cm, 0, 0);
+      const le = new Date(); le.setHours(ch + 1, cm, 0, 0);
+      const nowMs = Date.now();
+      if (nowMs > le.getTime()) { area.innerHTML = ''; return; }
+      const secsLeft = Math.floor((ls.getTime() - nowMs) / 1000);
+      const active = zoomLink && secsLeft <= 15 * 60;
+      const inProgress = secsLeft <= 0;
+      const showBtn = secsLeft <= 30 * 60; // only show within 30 min
+      if (!showBtn) { area.innerHTML = ''; return; }
+      if (active) {
+        const label = inProgress ? '🟢 Derse Gir' : `🎥 Derse Gir`;
+        const sub = inProgress ? 'Ders devam ediyor' : `⏱ ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} kaldı`;
+        area.innerHTML = `<a href="${zoomLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);border-radius:7px;padding:7px 16px;text-decoration:none;color:#4ade80;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;">${label} <span style="font-size:.58rem;opacity:.75;">${sub}</span></a>`;
+      } else {
+        const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
+        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:7px 14px;color:var(--dim);font-family:'Space Mono',monospace;font-size:.62rem;">🔒 Link ${mm}:${String(ss).padStart(2,'0')} sonra aktif olacak</div>`;
+      }
+    });
+  };
+
+  const renderAll = () => { renderTopBox(); renderCardAreas(); };
+  renderAll();
+  _zoomCountdownTimer = setInterval(renderAll, 1000);
 }
 
 async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
