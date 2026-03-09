@@ -1133,13 +1133,14 @@ async function renderDashboard() {
       .catch(e => { const c=errId(); toast(`Ders durumu güncellenemedi (${c}): `+(e.message||e.code), true); });
   }
 
-  // Plan ended: show summary only
+  // Plan ended or all lessons cancelled: show summary only
   const planEnded = res.end_date && res.end_date < today;
-  if (planEnded) {
+  const allCancelled = lessons.length > 0 && lessons.every(l => l.status === 'cancelled');
+  if (planEnded || allCancelled) {
     const completed = lessons.filter(l => l.status === 'completed').length;
     document.getElementById('dashAv').innerHTML = _user.photoURL ? `<img src="${_user.photoURL}" alt="">` : '👤';
     document.getElementById('dashName').textContent = _user.displayName || 'Öğrenci';
-    document.getElementById('dashSub').textContent = 'Ders planı tamamlandı';
+    document.getElementById('dashSub').textContent = planEnded ? 'Ders planı tamamlandı' : 'Ders planı iptal edildi';
     document.getElementById('dashStats').innerHTML = `
       <div class="stat-card"><div class="stat-val">${completed}</div><div class="stat-lbl">Tamamlanan Ders</div></div>
       <div class="stat-card"><div class="stat-val">${lessons.length}</div><div class="stat-lbl">Toplam Ders</div></div>
