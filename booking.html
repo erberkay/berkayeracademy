@@ -576,7 +576,7 @@
 <script>
 'use strict';
 const ADMIN_EMAIL = 'berkayer032@gmail.com';
-const AVAILABLE_TIMES = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00','21:30','22:00'];
+const AVAILABLE_TIMES = Array.from({length:48}, (_,i) => `${String(Math.floor(i/2)).padStart(2,'0')}:${i%2===0?'00':'30'}`);
 const DAYS_TR = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
 const DAYS_TR_SHORT = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS_TR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
@@ -1072,6 +1072,7 @@ async function renderDashboard() {
   _adminQAAnswerUnsubs.forEach(u => u()); _adminQAAnswerUnsubs = [];
   if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
+  if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
   showView('view-dashboard');
   initLessonAnnouncements(false);
   let snap;
@@ -1947,7 +1948,11 @@ async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) 
         <div style="font-size:.85rem;color:#fff;margin-bottom:4px;">Yeni saat seç:</div>
         <div style="font-size:.7rem;color:#888;margin-bottom:10px;">${formatDateStr(lesson.date)} — mevcut: ${lesson.time}</div>
         ${sel}
-        <div style="display:flex;gap:10px;margin-top:18px;">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:.68rem;color:#aaa;cursor:pointer;">
+          <input type="checkbox" id="applyAllTimes" style="width:15px;height:15px;cursor:pointer;">
+          Tüm derslere uygula (${allLessons.filter(l=>l.status==='scheduled'||l.status==='rescheduled').length} ders)
+        </label>
+        <div style="display:flex;gap:10px;margin-top:16px;">
           <button id="adminTimeSave" style="flex:1;background:rgba(232,184,75,.15);border:1px solid rgba(232,184,75,.4);color:#e8b84b;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">✓ Kaydet</button>
           <button id="adminTimeCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.72rem;padding:9px;border-radius:6px;cursor:pointer;">İptal</button>
         </div>
@@ -1957,17 +1962,32 @@ async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) 
   modal.querySelector('#adminTimeCancel').onclick = () => modal.remove();
   modal.querySelector('#adminTimeSave').onclick = async () => {
     const newTime = modal.querySelector('#adminTimeSelect').value;
+    const applyAll = modal.querySelector('#applyAllTimes').checked;
     modal.remove();
     try {
-      const conflict = await db.collection('booked_slots').doc(lesson.date + '_' + newTime).get();
-      if (conflict.exists) { const ok = confirm(`${lesson.date} ${newTime} dolu. Yine de değiştir?`); if (!ok) return; }
-      const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, time: newTime } : l);
       const batch = db.batch();
-      batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
-      batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-      if (!conflict.exists) batch.set(db.collection('booked_slots').doc(lesson.date + '_' + newTime), { date: lesson.date, time: newTime, student_uid: studentUid });
-      await batch.commit();
-      toast(`✓ Saat değiştirildi → ${newTime}`);
+      if (applyAll) {
+        const targets = allLessons.filter(l => l.status === 'scheduled' || l.status === 'rescheduled');
+        const updated = allLessons.map(l =>
+          (l.status === 'scheduled' || l.status === 'rescheduled') ? { ...l, time: newTime } : l
+        );
+        batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+        targets.forEach(l => {
+          batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
+          batch.set(db.collection('booked_slots').doc(l.date + '_' + newTime), { date: l.date, time: newTime, student_uid: studentUid });
+        });
+        await batch.commit();
+        toast(`✓ ${targets.length} dersin saati → ${newTime} olarak güncellendi.`);
+      } else {
+        const conflict = await db.collection('booked_slots').doc(lesson.date + '_' + newTime).get();
+        if (conflict.exists) { const ok = confirm(`${lesson.date} ${newTime} dolu. Yine de değiştir?`); if (!ok) return; }
+        const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, time: newTime } : l);
+        batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+        batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+        if (!conflict.exists) batch.set(db.collection('booked_slots').doc(lesson.date + '_' + newTime), { date: lesson.date, time: newTime, student_uid: studentUid });
+        await batch.commit();
+        toast(`✓ Saat değiştirildi → ${newTime}`);
+      }
       renderAdminPanel();
     } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
   };
@@ -2089,44 +2109,107 @@ async function initAdminZoomLink() {
   };
 }
 
+let _zoomCountdownTimer = null;
+
 async function initZoomJoinBox(lessons, today) {
   const box = document.getElementById('zoomJoinBox');
   if (!box) return;
   box.innerHTML = '';
+  if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
 
-  // Find the next scheduled lesson today or upcoming within 24h
   const now = new Date();
   const todayStr = toDateStr(now);
   const upcomingToday = lessons
     .filter(l => l.date === todayStr && (l.status === 'scheduled' || l.status === 'rescheduled'))
     .sort((a,b) => a.time.localeCompare(b.time));
-
   if (upcomingToday.length === 0) return;
 
   const nextLesson = upcomingToday[0];
   const [h, m] = nextLesson.time.split(':').map(Number);
   const lessonStart = new Date(now); lessonStart.setHours(h, m, 0, 0);
   const lessonEnd = new Date(lessonStart); lessonEnd.setHours(h + 1, m, 0, 0);
-  const minsUntil = Math.floor((lessonStart - now) / 60000);
+  const secsUntil = Math.floor((lessonStart - now) / 1000);
 
-  // Show button 30 min before until 60 min after start
-  if (minsUntil > 30 || now > lessonEnd) return;
+  // Show box 30 min before, hide 60 min after start
+  if (secsUntil > 30 * 60 || now > lessonEnd) return;
 
+  let zoomLink = null;
   try {
     const snap = await db.collection('settings').doc('global').get();
-    const zoomLink = snap.exists ? snap.data().zoom_link : null;
-    if (!zoomLink) return;
-
-    const label = minsUntil > 0 ? `${minsUntil} dk sonra başlıyor` : 'Ders devam ediyor';
-    box.innerHTML = `
-      <a href="${zoomLink}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;">
-        <div>
-          <div style="font-size:.82rem;color:var(--green);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div>
-          <div style="font-size:.65rem;color:rgba(74,222,128,.6);margin-top:2px;">${nextLesson.time} dersi · ${label}</div>
-        </div>
-        <div style="font-size:1.4rem;">→</div>
-      </a>`;
+    zoomLink = snap.exists ? snap.data().zoom_link : null;
   } catch(e) {}
+  if (!zoomLink) return;
+
+  const render = () => {
+    const nowMs = Date.now();
+    const secsLeft = Math.floor((lessonStart.getTime() - nowMs) / 1000);
+    const active = secsLeft <= 15 * 60; // active 15 min before
+    const inProgress = secsLeft <= 0;
+
+    let sublabel;
+    if (inProgress) {
+      sublabel = '🟢 Ders devam ediyor';
+    } else if (active) {
+      const mm = Math.floor(secsLeft / 60);
+      const ss = secsLeft % 60;
+      sublabel = `⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı`;
+    } else {
+      const mm = Math.floor(secsLeft / 60);
+      const ss = secsLeft % 60;
+      sublabel = `🔒 Link ${mm}:${String(ss).padStart(2,'0')} sonra aktif olacak`;
+    }
+
+    if (active) {
+      box.innerHTML = `
+        <a href="${zoomLink}" target="_blank" rel="noopener" id="zoomJoinBtn" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;">
+          <div>
+            <div style="font-size:.82rem;color:var(--green);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div>
+            <div id="zoomSubLabel" style="font-size:.65rem;color:rgba(74,222,128,.7);margin-top:2px;">${sublabel}</div>
+          </div>
+          <div style="font-size:1.4rem;color:var(--green);">→</div>
+        </a>`;
+    } else {
+      box.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 18px;margin-bottom:14px;opacity:.7;">
+          <div>
+            <div style="font-size:.82rem;color:var(--dim);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div>
+            <div id="zoomSubLabel" style="font-size:.65rem;color:var(--dim);margin-top:2px;">${sublabel}</div>
+          </div>
+          <div style="font-size:1.4rem;color:var(--dim);">🔒</div>
+        </div>`;
+    }
+
+    // Stop timer after lesson ends
+    if (nowMs > lessonEnd.getTime()) {
+      clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null;
+      box.innerHTML = '';
+    }
+  };
+
+  render();
+  _zoomCountdownTimer = setInterval(() => {
+    const subLabel = box.querySelector('#zoomSubLabel');
+    if (!subLabel) { render(); return; }
+    const nowMs = Date.now();
+    const secsLeft = Math.floor((lessonStart.getTime() - nowMs) / 1000);
+    if (nowMs > lessonEnd.getTime()) {
+      clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null;
+      box.innerHTML = ''; return;
+    }
+    // Switch from locked to active when crossing 15 min mark
+    const active = secsLeft <= 15 * 60;
+    if (active && !box.querySelector('#zoomJoinBtn')) { render(); return; }
+    if (!active && box.querySelector('#zoomJoinBtn')) { render(); return; }
+    if (secsLeft <= 0) {
+      subLabel.textContent = '🟢 Ders devam ediyor';
+    } else {
+      const mm = Math.floor(secsLeft / 60);
+      const ss = secsLeft % 60;
+      subLabel.textContent = active
+        ? `⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı`
+        : `🔒 Link ${mm}:${String(ss).padStart(2,'0')} sonra aktif olacak`;
+    }
+  }, 1000);
 }
 
 async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
