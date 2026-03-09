@@ -399,6 +399,7 @@
         </div>
       </div>
       <div class="stats-row" id="dashStats"></div>
+      <div id="zoomJoinBox"></div>
       <div id="paymentBox"></div>
       <div class="credit-badge" id="creditBadge"></div>
       <button class="cancel-plan-btn" id="cancelPlanBtn" style="display:none;">✕ Planı İptal Et</button>
@@ -485,6 +486,16 @@
     <div class="card" id="adminAccessCard" style="display:none;">
       <div class="section-title">🔑 Erişim Talepleri</div>
       <div id="adminAccessList"></div>
+    </div>
+
+    <!-- Zoom Link -->
+    <div class="card" id="adminZoomCard">
+      <div class="section-title">🎥 Zoom Linki</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="adminZoomInput" type="url" placeholder="https://us06web.zoom.us/j/..." style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:.72rem;padding:8px 12px;outline:none;">
+        <button id="adminZoomSave" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--green);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;padding:8px 14px;border-radius:7px;cursor:pointer;white-space:nowrap;">Kaydet</button>
+      </div>
+      <div id="adminZoomStatus" style="font-size:.62rem;margin-top:6px;"></div>
     </div>
 
     <!-- Monthly Stats -->
@@ -1270,6 +1281,7 @@ async function renderDashboard() {
       list.append(pastToggle, pastSection);
     }
   }
+  initZoomJoinBox(lessons, today);
   initStudentQA(_user.uid, _user);
 }
 
@@ -1282,6 +1294,7 @@ async function renderAdminPanel() {
   if (_adminAccessUnsub) { _adminAccessUnsub(); _adminAccessUnsub = null; }
   showView('view-admin');
   loadAdminAccessRequests();
+  initAdminZoomLink();
   initLessonAnnouncements(true);
   initAdminQA();
 
@@ -2024,6 +2037,70 @@ async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
     toast('✓ Not kaydedildi.');
     renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+}
+
+// ─── Zoom Link ────────────────────────────────────────────
+async function initAdminZoomLink() {
+  const input = document.getElementById('adminZoomInput');
+  const saveBtn = document.getElementById('adminZoomSave');
+  const status = document.getElementById('adminZoomStatus');
+  if (!input) return;
+  // Load existing
+  try {
+    const snap = await db.collection('settings').doc('global').get();
+    if (snap.exists && snap.data().zoom_link) input.value = snap.data().zoom_link;
+  } catch(e) {}
+  saveBtn.onclick = async () => {
+    const link = input.value.trim();
+    if (!link) { status.style.color='var(--crimson)'; status.textContent='Link boş olamaz.'; return; }
+    saveBtn.disabled = true; saveBtn.textContent = '⏳';
+    try {
+      await db.collection('settings').doc('global').set({ zoom_link: link }, { merge: true });
+      status.style.color = 'var(--green)'; status.textContent = '✓ Kaydedildi';
+      setTimeout(() => status.textContent = '', 2500);
+    } catch(e) { const c=errId(); status.style.color='var(--crimson)'; status.textContent=`Hata (${c})`; }
+    saveBtn.disabled = false; saveBtn.textContent = 'Kaydet';
+  };
+}
+
+async function initZoomJoinBox(lessons, today) {
+  const box = document.getElementById('zoomJoinBox');
+  if (!box) return;
+  box.innerHTML = '';
+
+  // Find the next scheduled lesson today or upcoming within 24h
+  const now = new Date();
+  const todayStr = toDateStr(now);
+  const upcomingToday = lessons
+    .filter(l => l.date === todayStr && (l.status === 'scheduled' || l.status === 'rescheduled'))
+    .sort((a,b) => a.time.localeCompare(b.time));
+
+  if (upcomingToday.length === 0) return;
+
+  const nextLesson = upcomingToday[0];
+  const [h, m] = nextLesson.time.split(':').map(Number);
+  const lessonStart = new Date(now); lessonStart.setHours(h, m, 0, 0);
+  const lessonEnd = new Date(lessonStart); lessonEnd.setHours(h + 1, m, 0, 0);
+  const minsUntil = Math.floor((lessonStart - now) / 60000);
+
+  // Show button 30 min before until 60 min after start
+  if (minsUntil > 30 || now > lessonEnd) return;
+
+  try {
+    const snap = await db.collection('settings').doc('global').get();
+    const zoomLink = snap.exists ? snap.data().zoom_link : null;
+    if (!zoomLink) return;
+
+    const label = minsUntil > 0 ? `${minsUntil} dk sonra başlıyor` : 'Ders devam ediyor';
+    box.innerHTML = `
+      <a href="${zoomLink}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;">
+        <div>
+          <div style="font-size:.82rem;color:var(--green);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div>
+          <div style="font-size:.65rem;color:rgba(74,222,128,.6);margin-top:2px;">${nextLesson.time} dersi · ${label}</div>
+        </div>
+        <div style="font-size:1.4rem;">→</div>
+      </a>`;
+  } catch(e) {}
 }
 
 async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
