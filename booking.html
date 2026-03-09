@@ -1760,8 +1760,8 @@ async function renderAdminPanel() {
           statsLessons++; studentMonthLessons++;
         }
       });
-      // Count revenue per student (monthly rate, if they have lessons this month)
-      if (studentMonthLessons > 0) {
+      // Count revenue per student (monthly rate, if they have lessons this month; skip trial)
+      if (studentMonthLessons > 0 && d.lesson_type !== 'trial') {
         if (d.payment_confirmed) { statsRevenue += monthlyRate; statsPaidStudents++; }
         else if (d.payment_pending) { statsPendingStudents++; }
         statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, revenue: monthlyRate, paid: !!d.payment_confirmed });
@@ -1836,18 +1836,21 @@ async function renderAdminPanel() {
       const thisMonthCount = allLessonsArr.filter(l => l.date.startsWith(curMonthAdmin) && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'completed')).length;
       const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
       const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
+      const isTrial = s.lesson_type === 'trial';
       const lessonPrice = s.custom_lesson_price || LESSON_PRICE;
-      const totalPrice = s.custom_total_price ?? (totalLessons * lessonPrice);
+      const totalPrice = isTrial ? 0 : (s.custom_total_price ?? (totalLessons * lessonPrice));
       const isResPaid = !!s.payment_confirmed;
       const isPending = !isResPaid && !!s.payment_pending;
       const row = document.createElement('div'); row.className = 'student-row';
       const headerDiv = document.createElement('div'); headerDiv.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;';
       headerDiv.innerHTML = `
         <div>
-          <div class="student-row-name">${s.student_name || s.student_email}</div>
+          <div class="student-row-name">${s.student_name || s.student_email}${isTrial ? ' <span style="font-size:.6rem;color:rgba(74,222,128,.9);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);padding:2px 8px;border-radius:10px;margin-left:4px;font-weight:400;">🎯 Deneme</span>' : ''}</div>
           <div class="student-row-meta">
-            ${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong> · <strong style="color:var(--gold)">${totalPrice.toLocaleString('tr-TR')} TL</strong>
-            <span style="font-size:.6rem;color:var(--dim);margin-left:4px;">(${lessonPrice.toLocaleString('tr-TR')} TL/ders)</span><br>
+            ${isTrial
+              ? `<strong style="color:rgba(74,222,128,.9);">Deneme Dersi</strong> · ${formatDateStr(s.start_date)} · <strong style="color:var(--green);">Ücretsiz</strong>`
+              : `${s.duration_months} Ay · <strong style="color:var(--white)">${totalLessons} ders</strong> · <strong style="color:var(--gold)">${totalPrice.toLocaleString('tr-TR')} TL</strong> <span style="font-size:.6rem;color:var(--dim);margin-left:4px;">(${lessonPrice.toLocaleString('tr-TR')} TL/ders)</span>`
+            }<br>
             ${(s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ')}<br>
             ${startDateStr} → ${endDateStr}<br>
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
@@ -1857,7 +1860,12 @@ async function renderAdminPanel() {
           <button onclick="adminAddLesson('${studentUid}')" style="background:none;border:1px solid rgba(180,120,255,.2);color:rgba(180,120,255,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:6px;">➕ Ders Ekle</button>
         </div>`;
       const payWrap = document.createElement('div'); payWrap.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
-      if (isResPaid) {
+      if (isTrial) {
+        const badge = document.createElement('span');
+        badge.style.cssText = 'font-size:.62rem;color:rgba(74,222,128,.9);background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);padding:4px 10px;border-radius:6px;';
+        badge.textContent = '🎯 Deneme · Ücretsiz';
+        payWrap.append(badge);
+      } else if (isResPaid) {
         const badge = document.createElement('span');
         badge.className = 'admin-pay-toggle paid'; badge.style.cursor = 'default';
         badge.textContent = '✓ Ödendi';
