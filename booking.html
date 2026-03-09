@@ -1304,10 +1304,11 @@ async function renderDashboard() {
         rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
         item.append(rBtn);
       }
-      // Zoom join area for today's active lessons (show all day)
-      if (l.date === today && (l.status === 'scheduled' || l.status === 'rescheduled')) {
+      // Zoom join area for all upcoming scheduled/rescheduled lessons
+      if (!isPast && (l.status === 'scheduled' || l.status === 'rescheduled')) {
         const za = document.createElement('div');
         za.className = 'lesson-zoom-area';
+        za.dataset.date = l.date;
         za.dataset.time = l.time;
         za.style.cssText = 'width:100%;margin-top:8px;';
         item.append(za);
@@ -2160,7 +2161,12 @@ async function initZoomJoinBox(lessons, today) {
     .filter(l => l.date === todayStr && (l.status === 'scheduled' || l.status === 'rescheduled'))
     .sort((a,b) => a.time.localeCompare(b.time));
 
-  if (todayLessons.length === 0) return;
+  // Fetch zoom link regardless of whether there are lessons today
+  const upcomingLessons = lessons
+    .filter(l => l.date >= todayStr && (l.status === 'scheduled' || l.status === 'rescheduled'))
+    .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  if (upcomingLessons.length === 0) return;
 
   let zoomLink = null;
   try {
@@ -2168,9 +2174,10 @@ async function initZoomJoinBox(lessons, today) {
     zoomLink = snap.exists ? snap.data().zoom_link : null;
   } catch(e) {}
 
-  // Update the top summary box (first lesson today)
+  // Update the top summary box (first lesson today, if any)
   const renderTopBox = () => {
     if (!box) return;
+    if (todayLessons.length === 0) { box.innerHTML = ''; return; }
     const [h, m] = todayLessons[0].time.split(':').map(Number);
     const ls = new Date(); ls.setHours(h, m, 0, 0);
     const le = new Date(); le.setHours(h + 1, m, 0, 0);
@@ -2194,10 +2201,26 @@ async function initZoomJoinBox(lessons, today) {
   // Update per-lesson card zoom buttons
   const renderCardAreas = () => {
     document.querySelectorAll('.lesson-zoom-area').forEach(area => {
+      const lessonDate = area.dataset.date;
       const [ch, cm] = area.dataset.time.split(':').map(Number);
+      const nowMs = Date.now();
+      const nowDateStr = toDateStr(new Date());
+
+      if (lessonDate < nowDateStr) { area.innerHTML = ''; return; }
+
+      if (lessonDate > nowDateStr) {
+        // Future date — red disabled, show date+time
+        const [y, mo, d] = lessonDate.split('-').map(Number);
+        const dateObj = new Date(y, mo - 1, d);
+        const dayLabel = `${d} ${MONTHS_TR[mo-1]} ${DAYS_TR[dateObj.getDay()]}`;
+        const hh = String(ch).padStart(2,'0'), mm2 = String(cm).padStart(2,'0');
+        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.7);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.85;">🔴 Derse Katıl <span style="font-size:.58rem;opacity:.7;">${dayLabel} ${hh}:${mm2}'de aktif</span></div>`;
+        return;
+      }
+
+      // Same day — use time-based logic
       const ls = new Date(); ls.setHours(ch, cm, 0, 0);
       const le = new Date(); le.setHours(ch + 1, cm, 0, 0);
-      const nowMs = Date.now();
       if (nowMs > le.getTime()) { area.innerHTML = ''; return; }
       const secsLeft = Math.floor((ls.getTime() - nowMs) / 1000);
       const active = zoomLink && secsLeft <= 15 * 60;
@@ -2205,15 +2228,12 @@ async function initZoomJoinBox(lessons, today) {
       const within60 = secsLeft <= 60 * 60;
       const hh = String(ch).padStart(2,'0'), mm2 = String(cm).padStart(2,'0');
       if (active || inProgress) {
-        // Green active button
         const sub = inProgress ? 'Ders devam ediyor' : `⏱ ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} kaldı`;
         area.innerHTML = `<a href="${zoomLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);border-radius:7px;padding:7px 16px;text-decoration:none;color:#4ade80;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;">🟢 Derse Katıl <span style="font-size:.58rem;opacity:.75;">${sub}</span></a>`;
       } else if (within60) {
-        // Red disabled button with countdown
         const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
         area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.7);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.85;">🔴 Derse Katıl <span style="font-size:.58rem;opacity:.8;">⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı</span></div>`;
       } else {
-        // Red disabled button, no countdown yet
         area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.7);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.85;">🔴 Derse Katıl <span style="font-size:.58rem;opacity:.7;">${hh}:${mm2}'de aktif olacak</span></div>`;
       }
     });
