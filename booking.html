@@ -2,8 +2,14 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Ders Rezervasyonu · BerkayEr Academy</title>
+  <meta name="description" content="BerkayEr Academy Ableton müzik dersleri rezervasyon sistemi. Ders planı oluştur, takvimini yönet.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:title" content="Ders Rezervasyonu · BerkayEr Academy">
+  <meta property="og:description" content="BerkayEr Academy online Ableton dersleri — rezervasyon ve ders takip sistemi.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#060609">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <style>
@@ -256,6 +262,37 @@
     /* ── Divider ── */
     .section-title { font-size:.65rem; color:var(--dim); letter-spacing:.14em; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,.05); display:flex; align-items:center; gap:8px; }
     .section-title::before { content:''; display:block; width:3px; height:12px; background:var(--gold); border-radius:2px; flex-shrink:0; }
+
+    /* ── Mobile ── */
+    @media (max-width:600px) {
+      .topnav { padding:0 14px; }
+      .topnav-brand { font-size:.95rem; }
+      .auth-name { max-width:60px; }
+      .page { padding:70px 12px 60px; }
+      .card { padding:18px 14px; }
+      .dash-layout { grid-template-columns:1fr; }
+      .stats-row { grid-template-columns:repeat(2,1fr); }
+      .stat-val { font-size:1.5rem; }
+      .lesson-item { flex-wrap:wrap; gap:10px; padding:12px 14px; }
+      .lesson-actions { width:100%; justify-content:flex-start; }
+      .lesson-day-num { font-size:1.5rem; }
+      .admin-lesson-row { flex-wrap:wrap; gap:8px; }
+      .admin-lesson-actions { width:100%; }
+      .req-row-pills { gap:5px; }
+      .btn-row { flex-direction:column; }
+      .btn-row .btn { width:100%; justify-content:center; }
+      .toast-wrap { bottom:12px; right:12px; left:12px; }
+      .toast { max-width:100%; }
+      .payment-box { flex-direction:column; align-items:flex-start; }
+      .cal-day-label { min-width:60px; }
+      .cal-slot-time { min-width:70px; font-size:.62rem; }
+      .avail-table th { font-size:.55rem; }
+      .av-cell { height:38px; font-size:.65rem; }
+      .input-modal { padding:18px 14px; }
+      .section-title { font-size:.6rem; }
+      .student-row { padding:12px; }
+      .req-row-body { padding:14px; }
+    }
 
     /* ── Empty ── */
     .empty-state { text-align:center; padding:32px; color:var(--dim); font-size:.78rem; line-height:2; }
@@ -522,6 +559,13 @@
     <div class="card">
       <div class="card-title">Gelen Talepler</div>
       <div id="adminRequestsList"><div class="empty-state">Yükleniyor…</div></div>
+    </div>
+
+    <!-- Email Reminders -->
+    <div class="card">
+      <div class="section-title">📧 Email Hatırlatmaları</div>
+      <div style="font-size:.65rem;color:var(--dim);margin-bottom:12px;">Her gün 09:00'da ödeme bekleyen ve 3 gün sonra dersi olan öğrencilere otomatik email gönderilir.</div>
+      <div id="adminRemindersList"><div class="empty-state">Yükleniyor…</div></div>
     </div>
 
     <!-- Active Students -->
@@ -1137,24 +1181,9 @@ async function renderDashboard() {
   // Plan ended or all lessons cancelled: show summary only
   const planEnded = res.end_date && res.end_date < today;
   const hasActiveLesson = lessons.some(l => (l.status === 'scheduled' || l.status === 'rescheduled') && l.date >= today);
-  const allCancelled = lessons.length > 0 && !hasActiveLesson && !lessons.some(l => l.status === 'scheduled' || l.status === 'rescheduled');
+  const allCancelled = lessons.length > 0 && !hasActiveLesson;
   if (planEnded || allCancelled) {
-    const completed = lessons.filter(l => l.status === 'completed').length;
-    document.getElementById('dashAv').innerHTML = _user.photoURL ? `<img src="${_user.photoURL}" alt="">` : '👤';
-    document.getElementById('dashName').textContent = _user.displayName || 'Öğrenci';
-    document.getElementById('dashSub').textContent = planEnded ? 'Ders planı tamamlandı' : 'Ders planı iptal edildi';
-    document.getElementById('dashStats').innerHTML = `
-      <div class="stat-card"><div class="stat-val">${completed}</div><div class="stat-lbl">Tamamlanan Ders</div></div>
-      <div class="stat-card"><div class="stat-val">${lessons.length}</div><div class="stat-lbl">Toplam Ders</div></div>
-    `;
-    document.getElementById('paymentBox').innerHTML = `
-      <div style="text-align:center;padding:20px 0 6px;">
-        <button class="btn btn-gold" id="renewPlanBtn" style="width:100%;max-width:340px;">+ Yeni Ders Talebi Oluştur</button>
-      </div>`;
-    document.getElementById('renewPlanBtn').onclick = () => initRequestForm();
-    document.getElementById('cancelPlanBtn').style.display = 'none';
-    document.getElementById('creditBadge').style.display = 'none';
-    document.querySelector('.dash-layout').style.display = 'none';
+    initRequestForm();
     return;
   }
   document.getElementById('creditBadge').style.display = '';
@@ -1750,6 +1779,35 @@ async function renderAdminPanel() {
   }
   renderAdminCalendar(calAllLessons, 0);
 
+  // Email reminders panel
+  const remindersList = document.getElementById('adminRemindersList');
+  if (remindersList) {
+    const reminded = studSnap ? studSnap.docs.filter(d => d.data().last_reminder_sent) : [];
+    const pending = studSnap ? studSnap.docs.filter(d => d.data().payment_pending && !d.data().payment_confirmed) : [];
+    if (pending.length === 0) {
+      remindersList.innerHTML = '<div class="empty-state">Ödeme bekleyen öğrenci yok.</div>';
+    } else {
+      remindersList.innerHTML = pending.map(d => {
+        const sd = d.data();
+        const lastSent = sd.last_reminder_sent
+          ? new Date(sd.last_reminder_sent.toDate ? sd.last_reminder_sent.toDate() : sd.last_reminder_sent)
+              .toLocaleDateString('tr-TR', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'})
+          : null;
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.72rem;">
+          <div>
+            <span style="color:var(--white);">${sd.student_name || sd.student_email || sd.from_name || '—'}</span>
+            <span style="color:var(--dim);margin-left:6px;">${sd.from_email || ''}</span>
+          </div>
+          <div style="text-align:right;">
+            ${lastSent
+              ? `<span style="color:rgba(255,200,100,.8);">📧 ${lastSent}</span>`
+              : `<span style="color:var(--dim);">Henüz gönderilmedi</span>`}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
   if (!studSnap || studSnap.empty) {
     studList.innerHTML = '<div class="empty-state">Henüz öğrenci yok.</div>';
   } else {
@@ -1778,6 +1836,7 @@ async function renderAdminPanel() {
             ${(s.schedule||[]).map(x => DAYS_TR[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ')}<br>
             ${startDateStr} → ${endDateStr}<br>
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
+            ${s.last_reminder_sent ? `<br><span style="color:rgba(255,200,100,.6);font-size:.6rem;">📧 Son hatırlatma: ${new Date(s.last_reminder_sent.toDate ? s.last_reminder_sent.toDate() : s.last_reminder_sent).toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
             ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 Öğrenci notu: "${s.note}"</span>` : ''}
           </div>
           <button onclick="adminAddLesson('${studentUid}')" style="background:none;border:1px solid rgba(180,120,255,.2);color:rgba(180,120,255,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:6px;">➕ Ders Ekle</button>
@@ -2607,7 +2666,6 @@ function renderAccessView(user, state, rejectReason) {
   const card = document.getElementById('accessCard');
 
   if (state === 'none') {
-    const timeOpts = AVAILABLE_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
     const minDate = (() => { const d = new Date(); d.setDate(d.getDate()+1); return toDateStr(d); })();
     card.style.maxWidth = '520px';
     card.innerHTML = `
@@ -2631,8 +2689,12 @@ function renderAccessView(user, state, rejectReason) {
       <div id="trialForm" style="display:none;margin-top:16px;text-align:left;">
         <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">TARİH</div>
         <input type="date" id="trialDate" min="${minDate}" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;box-sizing:border-box;margin-bottom:12px;">
-        <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">SAAT</div>
-        <select id="trialTime" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;box-sizing:border-box;margin-bottom:12px;">${timeOpts}</select>
+        <div id="trialTimeWrap" style="display:none;">
+          <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:8px;">SAAT SEÇ <span style="color:rgba(74,222,128,.6);">● Müsait</span> <span style="color:rgba(184,45,69,.6);margin-left:8px;">● Dolu</span></div>
+          <div id="trialTimeGrid" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;"></div>
+          <div id="trialTimeSelected" style="font-size:.7rem;color:var(--gold);margin-bottom:10px;min-height:1.2em;"></div>
+        </div>
+        <div id="trialTimeLoading" style="display:none;font-size:.7rem;color:var(--dim);margin-bottom:12px;">Müsaitlik yükleniyor…</div>
         <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">NOT <span style="opacity:.5;">(isteğe bağlı)</span></div>
         <textarea id="trialNote" rows="2" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:inherit;font-size:.75rem;padding:9px 12px;box-sizing:border-box;resize:vertical;margin-bottom:14px;" placeholder="Seviyeniz, ne öğrenmek istiyorsunuz…"></textarea>
         <div id="trialErr" style="font-size:.7rem;color:var(--crimson);margin-bottom:8px;display:none;"></div>
@@ -2646,13 +2708,62 @@ function renderAccessView(user, state, rejectReason) {
         <button class="btn btn-gold" id="accessSendBtn" style="width:100%;">Erişim Talebi Gönder →</button>
       </div>`;
 
+    let _trialSelectedTime = null;
+
+    card.querySelector('#trialDate').onchange = async function() {
+      const date = this.value;
+      _trialSelectedTime = null;
+      const wrap = card.querySelector('#trialTimeWrap');
+      const grid = card.querySelector('#trialTimeGrid');
+      const selLabel = card.querySelector('#trialTimeSelected');
+      const loading = card.querySelector('#trialTimeLoading');
+      if (!date) { wrap.style.display = 'none'; return; }
+      wrap.style.display = 'none';
+      loading.style.display = '';
+      grid.innerHTML = '';
+      selLabel.textContent = '';
+      try {
+        const snap = await db.collection('booked_slots').where('date','==',date).get();
+        const busyTimes = new Set();
+        snap.forEach(doc => {
+          const [h, m] = doc.data().time.split(':').map(Number);
+          const base = h * 60 + m;
+          [base, base + 30, base + 60].forEach(min => {
+            const t = `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
+            if (AVAILABLE_TIMES.includes(t)) busyTimes.add(t);
+          });
+        });
+        AVAILABLE_TIMES.forEach(t => {
+          const btn2 = document.createElement('button');
+          const busy = busyTimes.has(t);
+          btn2.textContent = t;
+          btn2.type = 'button';
+          btn2.style.cssText = `font-family:'Space Mono',monospace;font-size:.65rem;padding:5px 8px;border-radius:5px;cursor:${busy?'not-allowed':'pointer'};border:1px solid ${busy?'rgba(184,45,69,.3)':'rgba(74,222,128,.3)'};background:${busy?'rgba(184,45,69,.1)':'rgba(74,222,128,.08)'};color:${busy?'rgba(184,45,69,.55)':'rgba(74,222,128,.7)'};transition:all .12s;`;
+          if (!busy) {
+            btn2.onclick = () => {
+              grid.querySelectorAll('button').forEach(b => {
+                if (!b.disabled) { b.style.background='rgba(74,222,128,.08)'; b.style.borderColor='rgba(74,222,128,.3)'; b.style.color='rgba(74,222,128,.7)'; }
+              });
+              btn2.style.background='rgba(232,184,75,.2)'; btn2.style.borderColor='rgba(232,184,75,.8)'; btn2.style.color='#e8b84b';
+              _trialSelectedTime = t;
+              selLabel.textContent = `Seçilen saat: ${t}`;
+            };
+          } else { btn2.disabled = true; }
+          grid.append(btn2);
+        });
+      } catch(e) { /* show all free on error */ }
+      loading.style.display = 'none';
+      wrap.style.display = '';
+    };
+
     card.querySelector('#trialSendBtn').onclick = async () => {
       const btn = card.querySelector('#trialSendBtn');
       const date = card.querySelector('#trialDate').value;
-      const time = card.querySelector('#trialTime').value;
+      const time = _trialSelectedTime;
       const note = card.querySelector('#trialNote').value.trim();
       const errEl = card.querySelector('#trialErr');
       if (!date) { errEl.textContent = 'Lütfen bir tarih seçin.'; errEl.style.display=''; return; }
+      if (!time) { errEl.textContent = 'Lütfen bir saat seçin.'; errEl.style.display=''; return; }
       errEl.style.display = 'none';
       btn.disabled = true; btn.textContent = 'Gönderiliyor…';
       try {
