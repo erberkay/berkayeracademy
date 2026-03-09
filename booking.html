@@ -1320,17 +1320,18 @@ async function renderDashboard() {
     extraBtn.onclick = async () => {
       // Fetch booked_slots (readable by all authenticated users)
       let busySlots = {}; // dateStr -> [time, ...]
+      const nowStr = toDateStr(new Date());
+      const end90 = new Date(); end90.setDate(end90.getDate() + 90);
       try {
-        const end90 = new Date(); end90.setDate(end90.getDate() + 90);
-        const snap = await db.collection('booked_slots')
-          .where('date', '>=', today)
+        const bsSnap = await db.collection('booked_slots')
+          .where('date', '>=', nowStr)
           .where('date', '<=', toDateStr(end90))
           .get();
-        snap.forEach(doc => {
+        bsSnap.forEach(doc => {
           const d = doc.data();
-          (busySlots[d.date] = busySlots[d.date] || []).push(d.time);
+          if (d.date && d.time) (busySlots[d.date] = busySlots[d.date] || []).push(d.time);
         });
-      } catch(_) { /* show all as available on error */ }
+      } catch(e) { toast('Müsaitlik yüklenemedi: ' + (e.code || e.message), true); }
 
       let selDate = null;
       let calYear = new Date().getFullYear();
@@ -1902,6 +1903,23 @@ async function renderAdminPanel() {
       </div>` : ''}`;
   }
   renderAdminCalendar(calAllLessons, 0);
+
+  // Backfill booked_slots from reservations (runs once per session)
+  if (!window._slotsSynced && studSnap) {
+    window._slotsSynced = true;
+    const batch = db.batch();
+    let count = 0;
+    studSnap.forEach(doc => {
+      (doc.data().lessons || []).forEach(l => {
+        if ((l.status === 'scheduled' || l.status === 'rescheduled') && l.date) {
+          const ref = db.collection('booked_slots').doc(l.date + '_' + l.time);
+          batch.set(ref, { date: l.date, time: l.time, student_uid: doc.id }, { merge: true });
+          count++;
+        }
+      });
+    });
+    if (count > 0) batch.commit().catch(() => {});
+  }
 
   // Email reminders panel — only unpaid non-trial students with upcoming lessons
   const remindersList = document.getElementById('adminRemindersList');
