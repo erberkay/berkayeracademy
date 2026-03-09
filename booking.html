@@ -1102,6 +1102,7 @@ async function renderDashboard() {
   if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
+  if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
   if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   showView('view-dashboard');
   initLessonAnnouncements(false);
@@ -2174,11 +2175,13 @@ async function initAdminZoomLink() {
 }
 
 let _zoomCountdownTimer = null;
+let _zoomSettingsUnsub = null;
 let _dashResUnsub = null;
 
 async function initZoomJoinBox(lessons, today) {
   const box = document.getElementById('zoomJoinBox');
   if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
+  if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
   if (box) box.innerHTML = '';
 
   const now = new Date();
@@ -2195,10 +2198,6 @@ async function initZoomJoinBox(lessons, today) {
   if (upcomingLessons.length === 0) return;
 
   let zoomLink = null;
-  try {
-    const snap = await db.collection('settings').doc('global').get();
-    zoomLink = snap.exists ? snap.data().zoom_link : null;
-  } catch(e) {}
 
   // Update the top summary box (first lesson today, if any)
   const renderTopBox = () => {
@@ -2266,7 +2265,14 @@ async function initZoomJoinBox(lessons, today) {
   };
 
   const renderAll = () => { renderTopBox(); renderCardAreas(); };
-  renderAll();
+
+  // Listen to zoom link changes in real-time
+  if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
+  _zoomSettingsUnsub = db.collection('settings').doc('global').onSnapshot(snap => {
+    zoomLink = snap.exists ? (snap.data().zoom_link || null) : null;
+    renderAll();
+  }, () => { renderAll(); });
+
   _zoomCountdownTimer = setInterval(renderAll, 1000);
 }
 
