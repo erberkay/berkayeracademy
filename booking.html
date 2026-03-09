@@ -1318,48 +1318,156 @@ async function renderDashboard() {
     extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.25);color:var(--ice);font-family:"Space Mono",monospace;font-size:.72rem;font-weight:700;padding:10px 16px;border-radius:8px;cursor:pointer;text-align:left;';
     extraBtn.innerHTML = '➕ Ek Ders Satın Al';
     extraBtn.onclick = async () => {
-      const timeOpts = AVAILABLE_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
-      const modal = Object.assign(document.createElement('div'), { innerHTML: `
-        <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
-          <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:320px;font-family:'Space Mono',monospace;">
-            <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:16px;">➕ Ek Ders Talebi</div>
-            <div style="font-size:.62rem;color:var(--dim);margin-bottom:5px;letter-spacing:.06em;">TARİH</div>
-            <input type="date" id="extraDate" value="${today}" min="${today}" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:14px;">
-            <div style="font-size:.62rem;color:var(--dim);margin-bottom:5px;letter-spacing:.06em;">SAAT</div>
-            <select id="extraTime" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:20px;">${timeOpts}</select>
-            <div style="display:flex;gap:8px;">
-              <button id="extraCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;">İptal</button>
-              <button id="extraSend" style="flex:1;background:rgba(143,200,232,.12);border:1px solid rgba(143,200,232,.3);color:var(--ice);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">✓ Talep Gönder</button>
-            </div>
-            <div id="extraStatus" style="font-size:.62rem;margin-top:10px;text-align:center;"></div>
-          </div>
-        </div>` });
-      document.body.append(modal);
-      modal.querySelector('#extraCancel').onclick = () => modal.remove();
-      modal.querySelector('#extraSend').onclick = async () => {
-        const date = modal.querySelector('#extraDate').value;
-        const time = modal.querySelector('#extraTime').value;
-        if (!date || !time) return;
-        const sendBtn = modal.querySelector('#extraSend');
-        const statusEl = modal.querySelector('#extraStatus');
-        sendBtn.disabled = true; sendBtn.textContent = '⏳';
-        try {
-          await db.collection('lesson_requests').add({
-            type: 'extra_lesson',
-            from_uid: _user.uid,
-            from_name: _user.displayName || '',
-            from_email: _user.email || '',
-            from_photo: _user.photoURL || '',
-            lesson_date: date,
-            lesson_time: time,
-            status: 'pending',
-            created_at: firebase.firestore.FieldValue.serverTimestamp(),
+      // Fetch all reservations to know which slots are already booked
+      let busySlots = {}; // dateStr -> [time, ...]
+      try {
+        const snap = await db.collection('reservations').get();
+        snap.forEach(doc => {
+          (doc.data().lessons || []).forEach(l => {
+            if ((l.status === 'scheduled' || l.status === 'rescheduled') && l.date >= today)
+              (busySlots[l.date] = busySlots[l.date] || []).push(l.time);
           });
-          statusEl.style.color = 'var(--green)';
-          statusEl.textContent = '✓ Talep gönderildi, eğitmeniniz onaylayacak.';
-          setTimeout(() => modal.remove(), 2500);
-        } catch(e) { const c=errId(); statusEl.style.color='var(--crimson)'; statusEl.textContent=`Hata (${c}): `+(e.message||e.code); sendBtn.disabled=false; sendBtn.textContent='✓ Talep Gönder'; }
-      };
+        });
+      } catch(_) { /* show all as available on error */ }
+
+      let selDate = null;
+      let calYear = new Date().getFullYear();
+      let calMonth = new Date().getMonth();
+
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+      overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+      const box = document.createElement('div');
+      box.style.cssText = 'background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:20px 18px;width:100%;max-width:320px;font-family:"Space Mono",monospace;';
+      overlay.append(box);
+      document.body.append(overlay);
+
+      function drawCal() {
+        box.innerHTML = '';
+        // Title row
+        const title = document.createElement('div');
+        title.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
+        title.innerHTML = '<div style="font-size:.85rem;color:#fff;font-weight:700;">➕ Ek Ders Talebi</div>'
+          + '<button id="xcClose" style="background:none;border:none;color:#666;font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>';
+        box.append(title);
+        title.querySelector('#xcClose').onclick = () => overlay.remove();
+
+        // Month nav
+        const MONTHS_NAMES = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+        const nav = document.createElement('div');
+        nav.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
+        nav.innerHTML = '<button id="xcPrev" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:.9rem;">‹</button>'
+          + `<span style="font-size:.72rem;color:#e8b84b;font-weight:700;">${MONTHS_NAMES[calMonth]} ${calYear}</span>`
+          + '<button id="xcNext" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:.9rem;">›</button>';
+        box.append(nav);
+        nav.querySelector('#xcPrev').onclick = () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } drawCal(); };
+        nav.querySelector('#xcNext').onclick = () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } drawCal(); };
+
+        // Weekday headers
+        const dayHdr = document.createElement('div');
+        dayHdr.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;';
+        ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'].forEach(d => {
+          const c = document.createElement('div');
+          c.style.cssText = 'text-align:center;font-size:.55rem;color:rgba(255,255,255,.25);padding-bottom:3px;';
+          c.textContent = d; dayHdr.append(c);
+        });
+        box.append(dayHdr);
+
+        // Day grid
+        const grid = document.createElement('div');
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:14px;';
+        const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // Mon=0
+        const lastDate = new Date(calYear, calMonth + 1, 0).getDate();
+        for (let i = 0; i < firstDow; i++) grid.append(document.createElement('div'));
+        for (let d = 1; d <= lastDate; d++) {
+          const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const isPast = ds < today;
+          const busy = busySlots[ds] || [];
+          const isFull = busy.length >= AVAILABLE_TIMES.length;
+          const isSel = ds === selDate;
+          const cell = document.createElement('div');
+          cell.style.cssText = 'text-align:center;border-radius:6px;padding:5px 2px;font-size:.72rem;position:relative;'
+            + (isSel ? 'background:#e8b84b;color:#060609;font-weight:700;cursor:default;'
+              : isPast || isFull ? 'color:rgba(255,255,255,.2);cursor:default;' + (isFull && !isPast ? 'background:rgba(200,50,50,.06);' : '')
+              : 'color:#eeebe6;cursor:pointer;');
+          cell.textContent = d;
+          if (busy.length > 0 && !isFull && !isPast && !isSel) {
+            const dot = document.createElement('div');
+            dot.style.cssText = 'width:3px;height:3px;background:#e8b84b;border-radius:50%;margin:1px auto 0;';
+            cell.append(dot);
+          }
+          if (!isPast && !isFull) {
+            cell.onmouseenter = () => { if (ds !== selDate) cell.style.background = 'rgba(255,255,255,.08)'; };
+            cell.onmouseleave = () => { if (ds !== selDate) cell.style.background = ''; };
+            cell.onclick = () => { selDate = ds; drawCal(); };
+          }
+          grid.append(cell);
+        }
+        box.append(grid);
+
+        // Time select (only after date chosen)
+        if (selDate) {
+          const busyT = busySlots[selDate] || [];
+          const timeLbl = document.createElement('div');
+          timeLbl.style.cssText = 'font-size:.6rem;color:var(--dim);margin-bottom:5px;letter-spacing:.06em;';
+          timeLbl.textContent = 'SAAT';
+          box.append(timeLbl);
+          const sel = document.createElement('select');
+          sel.id = 'xcTime';
+          sel.style.cssText = 'background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.8rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:14px;';
+          const firstFree = AVAILABLE_TIMES.find(t => !busyT.includes(t));
+          AVAILABLE_TIMES.forEach(t => {
+            const o = document.createElement('option');
+            o.value = t; o.textContent = busyT.includes(t) ? `${t} (dolu)` : t;
+            if (busyT.includes(t)) o.disabled = true;
+            sel.append(o);
+          });
+          if (firstFree) sel.value = firstFree;
+          box.append(sel);
+        }
+
+        // Buttons
+        const btnRow = document.createElement('div');
+        btnRow.style.cssText = 'display:flex;gap:8px;';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.style.cssText = 'flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:"Space Mono",monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;';
+        cancelBtn.textContent = 'İptal';
+        cancelBtn.onclick = () => overlay.remove();
+        const sendBtn = document.createElement('button');
+        sendBtn.style.cssText = 'flex:1;background:rgba(143,200,232,.12);border:1px solid rgba(143,200,232,.3);color:var(--ice);font-family:"Space Mono",monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;';
+        sendBtn.textContent = '✓ Talep Gönder';
+        if (!selDate) { sendBtn.disabled = true; sendBtn.style.opacity = '.4'; }
+        btnRow.append(cancelBtn, sendBtn);
+        box.append(btnRow);
+
+        const statusEl = document.createElement('div');
+        statusEl.style.cssText = 'font-size:.62rem;margin-top:10px;text-align:center;';
+        box.append(statusEl);
+
+        sendBtn.onclick = async () => {
+          const timeEl = box.querySelector('#xcTime');
+          const time = timeEl ? timeEl.value : null;
+          if (!selDate || !time) return;
+          sendBtn.disabled = true; sendBtn.textContent = '⏳';
+          try {
+            await db.collection('lesson_requests').add({
+              type: 'extra_lesson',
+              from_uid: _user.uid,
+              from_name: _user.displayName || '',
+              from_email: _user.email || '',
+              from_photo: _user.photoURL || '',
+              lesson_date: selDate,
+              lesson_time: time,
+              status: 'pending',
+              created_at: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+            statusEl.style.color = 'var(--green)';
+            statusEl.textContent = '✓ Talep gönderildi, eğitmeniniz onaylayacak.';
+            setTimeout(() => overlay.remove(), 2500);
+          } catch(e) { const c=errId(); statusEl.style.color='var(--crimson)'; statusEl.textContent=`Hata (${c}): `+(e.message||e.code); sendBtn.disabled=false; sendBtn.textContent='✓ Talep Gönder'; }
+        };
+      }
+      drawCal();
     };
     extraBox.innerHTML = '';
     extraBox.append(extraBtn);
