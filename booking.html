@@ -994,20 +994,31 @@ function renderPendingView(reqData) {
   const card = document.getElementById('pendingReqCard');
   const summary = document.getElementById('pendingReqSummary');
   card.style.display = '';
-  const daysText = (reqData.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
-  const isSinglePending = reqData.lesson_type === 'single';
-  const pendingLessonCount = isSinglePending ? 1 : calculateLessonDates(reqData.schedule, reqData.duration_months).length;
-  const pendingTotal = pendingLessonCount * LESSON_PRICE;
-  summary.innerHTML = `
-    <div class="req-summary">
-      <strong>Süre:</strong> ${isSinglePending ? 'Tek Ders' : reqData.duration_months + ' Ay'}<br>
-      <strong>Günler:</strong> ${daysText || '—'}<br>
-      ${reqData.note ? `<strong>Not:</strong> ${reqData.note}<br>` : ''}
-    </div>
-    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-      <span style="font-size:.75rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">₺ ${pendingTotal.toLocaleString('tr-TR')} TL</span>
-      <span style="font-size:.75rem;color:rgba(238,235,230,.6);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">${pendingLessonCount} ders saati</span>
-    </div>`;
+  const isTrialPending = reqData.lesson_type === 'trial';
+  if (isTrialPending) {
+    summary.innerHTML = `
+      <div class="req-summary">
+        <strong>Tür:</strong> 🎯 Deneme Dersi<br>
+        <strong>Tarih:</strong> ${reqData.trial_date ? formatDateStr(reqData.trial_date) : '—'}<br>
+        <strong>Saat:</strong> ${reqData.trial_time || '—'}<br>
+        ${reqData.note ? `<strong>Not:</strong> ${reqData.note}<br>` : ''}
+      </div>`;
+  } else {
+    const daysText = (reqData.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
+    const isSinglePending = reqData.lesson_type === 'single';
+    const pendingLessonCount = isSinglePending ? 1 : calculateLessonDates(reqData.schedule, reqData.duration_months).length;
+    const pendingTotal = pendingLessonCount * LESSON_PRICE;
+    summary.innerHTML = `
+      <div class="req-summary">
+        <strong>Süre:</strong> ${isSinglePending ? 'Tek Ders' : reqData.duration_months + ' Ay'}<br>
+        <strong>Günler:</strong> ${daysText || '—'}<br>
+        ${reqData.note ? `<strong>Not:</strong> ${reqData.note}<br>` : ''}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <span style="font-size:.75rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">₺ ${pendingTotal.toLocaleString('tr-TR')} TL</span>
+        <span style="font-size:.75rem;color:rgba(238,235,230,.6);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">${pendingLessonCount} ders saati</span>
+      </div>`;
+  }
 
   // Actions
   const actions = document.getElementById('pendingActions');
@@ -1015,8 +1026,8 @@ function renderPendingView(reqData) {
     actions.innerHTML = '';
     const newBtn = document.createElement('button');
     newBtn.className = 'btn btn-gold';
-    newBtn.textContent = '+ Yeni Talep Oluştur';
-    newBtn.onclick = () => initRequestForm();
+    newBtn.textContent = isTrialPending ? '↺ Yeniden Dene' : '+ Yeni Talep Oluştur';
+    newBtn.onclick = isTrialPending ? () => loadUserState(_user) : () => initRequestForm();
     actions.append(newBtn);
   } else {
     actions.innerHTML = '';
@@ -1074,8 +1085,9 @@ async function renderDashboard() {
   else avEl.textContent = '👤';
   document.getElementById('dashName').textContent = _user.displayName || 'Öğrenci';
 
-  const daysStr = (res.schedule||[]).map(s => DAYS_TR[s.dayIndex]).join(' & ');
-  document.getElementById('dashSub').textContent = `${res.duration_months} Aylık · ${daysStr}`;
+  const isTrial = res.lesson_type === 'trial';
+  const daysStr = isTrial ? 'Deneme Dersi' : (res.schedule||[]).map(s => DAYS_TR[s.dayIndex]).join(' & ');
+  document.getElementById('dashSub').textContent = isTrial ? '🎯 Deneme Dersi' : `${res.duration_months} Aylık · ${daysStr}`;
 
   let lessons = res.lessons || [];
   const today = toDateStr(new Date());
@@ -1209,6 +1221,11 @@ async function renderDashboard() {
   }
 
   document.getElementById('cancelPlanBtn').style.display = 'none';
+
+  if (isTrial) {
+    document.getElementById('paymentBox').innerHTML = '';
+    document.getElementById('creditBadge').style.display = 'none';
+  }
 
   const curMonthKey = yearMonthKey(today);
   const credits = res.reschedule_credits?.[curMonthKey] ?? 0;
@@ -1417,23 +1434,26 @@ async function renderAdminPanel() {
         return;
       }
 
+      const isTrialReq = r.lesson_type === 'trial';
       const daysText = (r.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
       const isSingleReq = r.lesson_type === 'single';
-      const reqLessonCount = isSingleReq ? 1 : calculateLessonDates(r.schedule, r.duration_months).length;
-      const reqTotalPrice = reqLessonCount * LESSON_PRICE;
+      const reqLessonCount = isSingleReq ? 1 : (isTrialReq ? 1 : calculateLessonDates(r.schedule, r.duration_months).length);
+      const reqTotalPrice = isTrialReq ? 0 : reqLessonCount * LESSON_PRICE;
       row.innerHTML = `
         <div class="req-row-body">
           <div class="req-row-name">
             ${r.from_name || r.from_email}
-            ${isSingleReq ? '<span style="font-size:.6rem;color:rgba(143,200,232,.8);background:rgba(143,200,232,.1);border:1px solid rgba(143,200,232,.25);padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;font-weight:400;">Tek Ders</span>' : ''}
+            ${isTrialReq ? '<span style="font-size:.6rem;color:rgba(74,222,128,.9);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;font-weight:400;">🎯 Deneme</span>' :
+              isSingleReq ? '<span style="font-size:.6rem;color:rgba(143,200,232,.8);background:rgba(143,200,232,.1);border:1px solid rgba(143,200,232,.25);padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle;font-weight:400;">Tek Ders</span>' : ''}
           </div>
           <div class="req-row-detail">
-            ${isSingleReq ? '🎯 Tek Ders' : `📅 ${r.duration_months} Ay`} &nbsp;·&nbsp; ${daysText}
+            ${isTrialReq ? `🎯 Deneme Dersi &nbsp;·&nbsp; ${formatDateStr(r.trial_date)} ${r.trial_time}` :
+              isSingleReq ? `🎯 Tek Ders &nbsp;·&nbsp; ${daysText}` : `📅 ${r.duration_months} Ay &nbsp;·&nbsp; ${daysText}`}
           </div>
-          <div class="req-row-pills">
+          ${!isTrialReq ? `<div class="req-row-pills">
             <span class="req-row-pill gold">₺ ${reqTotalPrice.toLocaleString('tr-TR')} TL</span>
             <span class="req-row-pill dim">${reqLessonCount} ders</span>
-          </div>
+          </div>` : ''}
           ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
         </div>`;
 
@@ -1444,6 +1464,11 @@ async function renderAdminPanel() {
       approveBtn.onclick = async () => {
         approveBtn.disabled = true; approveBtn.textContent = 'Kontrol ediliyor…';
         try {
+          if (isTrialReq) {
+            await acceptTrialRequest(doc.id, r);
+            toast('✓ Deneme dersi kabul edildi.');
+            row.remove(); return;
+          }
           // Check conflicts before accepting
           const allLessons = calculateLessonDates(r.schedule, r.duration_months);
           const conflicts = await checkConflicts(allLessons);
@@ -1832,6 +1857,7 @@ async function adminDeletePlan(studentUid, allLessons) {
   try {
     const batch = db.batch();
     batch.delete(db.collection('reservations').doc(studentUid));
+    batch.delete(db.collection('booking_access_requests').doc(studentUid));
     (allLessons || []).forEach(l => {
       if (l.status === 'scheduled' || l.status === 'rescheduled') {
         batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
@@ -2169,6 +2195,35 @@ async function checkConflicts(lessons) {
   return conflicts;
 }
 
+// ─── Accept Trial Request ─────────────────────────────────
+async function acceptTrialRequest(reqId, r) {
+  const lesson = { date: r.trial_date, time: r.trial_time, status: 'scheduled' };
+  const batch = db.batch();
+  batch.set(db.collection('reservations').doc(r.from_uid), {
+    student_uid:   r.from_uid,
+    student_name:  r.from_name,
+    student_email: r.from_email,
+    student_photo: r.from_photo || '',
+    duration_months: 0,
+    schedule: [],
+    note: r.note || '',
+    start_date: r.trial_date,
+    end_date:   r.trial_date,
+    lessons: [lesson],
+    reschedule_credits: {},
+    lesson_type: 'trial',
+    payment_confirmed: true, // no payment for trial
+    created_at: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+  batch.set(db.collection('booked_slots').doc(r.trial_date + '_' + r.trial_time), {
+    date: r.trial_date, time: r.trial_time, student_uid: r.from_uid,
+  });
+  batch.update(db.collection('lesson_requests').doc(reqId), {
+    status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+}
+
 // ─── Accept Request → Create Reservation ─────────────────
 async function acceptRequest(reqId, r, conflicts = new Set()) {
   const allLessons = calculateLessonDates(r.schedule, r.duration_months);
@@ -2236,6 +2291,15 @@ async function loadUserState(user) {
   }
 
   if (!accessSnap || !accessSnap.exists) {
+    // Check if they have a pending trial lesson request
+    let trialSnap = null;
+    try { trialSnap = await db.collection('lesson_requests').where('from_uid','==',user.uid).where('lesson_type','==','trial').get(); } catch(e) {}
+    if (trialSnap && !trialSnap.empty) {
+      const latestTrial = trialSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
+      const req = latestTrial.data();
+      if (req.status === 'pending' || req.status === 'rejected') { renderPendingView({ ...req, id: latestTrial.id }); return; }
+      if (req.status === 'accepted') { renderDashboard(); return; }
+    }
     renderAccessView(user, 'none'); return;
   }
   const accessStatus = accessSnap.data().status;
@@ -2280,38 +2344,85 @@ function renderAccessView(user, state, rejectReason) {
   const card = document.getElementById('accessCard');
 
   if (state === 'none') {
+    const timeOpts = AVAILABLE_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
+    const minDate = (() => { const d = new Date(); d.setDate(d.getDate()+1); return toDateStr(d); })();
+    card.style.maxWidth = '520px';
     card.innerHTML = `
-      <div style="font-size:2.2rem;margin-bottom:14px;">🔑</div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--gold);letter-spacing:.06em;margin-bottom:8px;">Erişim Talebi</div>
-      <div style="font-size:.78rem;color:var(--dim);margin-bottom:28px;line-height:1.8;">Ders rezervasyon sistemine erişim için Berkay Er'den onay almanız gerekiyor.<br>Talebiniz incelendikten sonra bilgilendirileceksiniz.</div>
-      <div class="field-group" style="text-align:left;">
-        <label class="field-label">Mesajınız <span style="color:var(--dim);font-size:.6rem;">(isteğe bağlı)</span></label>
-        <textarea class="field-input" id="accessMsg" rows="3" placeholder="Kendinizden kısaca bahsedin, ne öğrenmek istiyorsunuz…"></textarea>
+      <div style="font-size:2rem;margin-bottom:10px;">🎵</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.7rem;color:var(--white);letter-spacing:.06em;margin-bottom:6px;">Berkay Er Akademi</div>
+      <div style="font-size:.75rem;color:var(--dim);margin-bottom:24px;line-height:1.8;">Ders almak için aşağıdaki seçeneklerden birini tercih edin.</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px;" id="accessOptions">
+        <div id="trialPanel" style="background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2);border-radius:12px;padding:18px 16px;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('trialForm').style.display='';document.getElementById('packageForm').style.display='none';this.style.borderColor='rgba(74,222,128,.5)';document.getElementById('packagePanel').style.borderColor='rgba(255,255,255,.08)';">
+          <div style="font-size:1.2rem;margin-bottom:8px;">🎯</div>
+          <div style="font-size:.8rem;color:var(--green);font-weight:700;margin-bottom:4px;">Deneme Dersi</div>
+          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">Ücretsiz deneme dersi için tarih ve saat seç. Onay sonrası derse başlarsın.</div>
+        </div>
+        <div id="packagePanel" style="background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.2);border-radius:12px;padding:18px 16px;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('packageForm').style.display='';document.getElementById('trialForm').style.display='none';this.style.borderColor='rgba(232,184,75,.5)';document.getElementById('trialPanel').style.borderColor='rgba(255,255,255,.08)';">
+          <div style="font-size:1.2rem;margin-bottom:8px;">📦</div>
+          <div style="font-size:.8rem;color:var(--gold);font-weight:700;margin-bottom:4px;">Ders Paketi</div>
+          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">Aylık ders paketi için erişim talebi gönder. Berkay Er inceleyip onaylayacak.</div>
+        </div>
       </div>
-      <div id="accessErr" style="font-size:.7rem;color:var(--crimson);margin-bottom:10px;display:none;"></div>
-      <button class="btn btn-gold" id="accessSendBtn" style="width:100%;">Erişim İste →</button>`;
+
+      <div id="trialForm" style="display:none;margin-top:16px;text-align:left;">
+        <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">TARİH</div>
+        <input type="date" id="trialDate" min="${minDate}" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;box-sizing:border-box;margin-bottom:12px;">
+        <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">SAAT</div>
+        <select id="trialTime" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;box-sizing:border-box;margin-bottom:12px;">${timeOpts}</select>
+        <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">NOT <span style="opacity:.5;">(isteğe bağlı)</span></div>
+        <textarea id="trialNote" rows="2" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:inherit;font-size:.75rem;padding:9px 12px;box-sizing:border-box;resize:vertical;margin-bottom:14px;" placeholder="Seviyeniz, ne öğrenmek istiyorsunuz…"></textarea>
+        <div id="trialErr" style="font-size:.7rem;color:var(--crimson);margin-bottom:8px;display:none;"></div>
+        <button id="trialSendBtn" class="btn btn-ghost" style="width:100%;border-color:rgba(74,222,128,.4);color:var(--green);">Deneme Dersi İste →</button>
+      </div>
+
+      <div id="packageForm" style="display:none;margin-top:16px;text-align:left;">
+        <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">MESAJINIZ <span style="opacity:.5;">(isteğe bağlı)</span></div>
+        <textarea class="field-input" id="accessMsg" rows="3" placeholder="Kendinizden kısaca bahsedin, ne öğrenmek istiyorsunuz…" style="margin-bottom:12px;"></textarea>
+        <div id="accessErr" style="font-size:.7rem;color:var(--crimson);margin-bottom:10px;display:none;"></div>
+        <button class="btn btn-gold" id="accessSendBtn" style="width:100%;">Erişim Talebi Gönder →</button>
+      </div>`;
+
+    card.querySelector('#trialSendBtn').onclick = async () => {
+      const btn = card.querySelector('#trialSendBtn');
+      const date = card.querySelector('#trialDate').value;
+      const time = card.querySelector('#trialTime').value;
+      const note = card.querySelector('#trialNote').value.trim();
+      const errEl = card.querySelector('#trialErr');
+      if (!date) { errEl.textContent = 'Lütfen bir tarih seçin.'; errEl.style.display=''; return; }
+      errEl.style.display = 'none';
+      btn.disabled = true; btn.textContent = 'Gönderiliyor…';
+      try {
+        await db.collection('lesson_requests').add({
+          from_uid: user.uid,
+          from_name: user.displayName || '',
+          from_email: user.email || '',
+          from_photo: user.photoURL || '',
+          lesson_type: 'trial',
+          trial_date: date,
+          trial_time: time,
+          note,
+          status: 'pending',
+          created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        renderPendingView({ lesson_type:'trial', trial_date:date, trial_time:time, note, status:'pending', id:'_' });
+      } catch(e) { const c=errId(); errEl.textContent=`Hata (${c}): `+(e.message||e.code); errEl.style.display=''; btn.disabled=false; btn.textContent='Deneme Dersi İste →'; }
+    };
 
     card.querySelector('#accessSendBtn').onclick = async () => {
       const btn = card.querySelector('#accessSendBtn');
       const msg = card.querySelector('#accessMsg').value.trim();
+      const errEl = card.querySelector('#accessErr');
       btn.disabled = true; btn.textContent = 'Gönderiliyor…';
       try {
         await db.collection('booking_access_requests').doc(user.uid).set({
-          uid: user.uid,
-          name: user.displayName || '',
-          email: user.email || '',
-          photo: user.photoURL || '',
-          message: msg,
-          status: 'pending',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          uid: user.uid, name: user.displayName||'', email: user.email||'', photo: user.photoURL||'',
+          message: msg, status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
         renderAccessView(user, 'pending');
       } catch(e) {
-        const c = errId();
-        const errEl = card.querySelector('#accessErr');
-        errEl.textContent = `Hata (${c}): ` + (e.message || e.code);
-        errEl.style.display = '';
-        btn.disabled = false; btn.textContent = 'Erişim İste →';
+        const c = errId(); errEl.textContent=`Hata (${c}): `+(e.message||e.code); errEl.style.display='';
+        btn.disabled=false; btn.textContent='Erişim Talebi Gönder →';
       }
     };
     return;
