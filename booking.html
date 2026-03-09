@@ -402,6 +402,7 @@
       <div id="zoomJoinBox"></div>
       <div id="paymentBox"></div>
       <div class="credit-badge" id="creditBadge"></div>
+      <div id="extraLessonBox"></div>
       <button class="cancel-plan-btn" id="cancelPlanBtn" style="display:none;">✕ Planı İptal Et</button>
       <div id="studentNoteSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.05);">
         <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.06em;margin-bottom:8px;">💬 NOTUM</div>
@@ -1264,6 +1265,60 @@ async function renderDashboard() {
   const totalLessonsCount = lessons.filter(l => l.status !== 'cancelled').length;
   document.getElementById('creditBadge').innerHTML = `🔄 Bu ay erteleme hakkı: <strong>${credits}</strong>/1 &nbsp;·&nbsp; Toplam: <strong>${totalLessonsCount} ders</strong>`;
 
+  // Extra lesson purchase button (not for trial)
+  const extraBox = document.getElementById('extraLessonBox');
+  if (extraBox && !isTrial) {
+    const extraBtn = document.createElement('button');
+    extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.25);color:var(--ice);font-family:"Space Mono",monospace;font-size:.72rem;font-weight:700;padding:10px 16px;border-radius:8px;cursor:pointer;text-align:left;';
+    extraBtn.innerHTML = '➕ Ek Ders Satın Al';
+    extraBtn.onclick = async () => {
+      const timeOpts = AVAILABLE_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
+      const modal = Object.assign(document.createElement('div'), { innerHTML: `
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
+          <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:320px;font-family:'Space Mono',monospace;">
+            <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:16px;">➕ Ek Ders Talebi</div>
+            <div style="font-size:.62rem;color:var(--dim);margin-bottom:5px;letter-spacing:.06em;">TARİH</div>
+            <input type="date" id="extraDate" value="${today}" min="${today}" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:14px;">
+            <div style="font-size:.62rem;color:var(--dim);margin-bottom:5px;letter-spacing:.06em;">SAAT</div>
+            <select id="extraTime" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:20px;">${timeOpts}</select>
+            <div style="display:flex;gap:8px;">
+              <button id="extraCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;">İptal</button>
+              <button id="extraSend" style="flex:1;background:rgba(143,200,232,.12);border:1px solid rgba(143,200,232,.3);color:var(--ice);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">✓ Talep Gönder</button>
+            </div>
+            <div id="extraStatus" style="font-size:.62rem;margin-top:10px;text-align:center;"></div>
+          </div>
+        </div>` });
+      document.body.append(modal);
+      modal.querySelector('#extraCancel').onclick = () => modal.remove();
+      modal.querySelector('#extraSend').onclick = async () => {
+        const date = modal.querySelector('#extraDate').value;
+        const time = modal.querySelector('#extraTime').value;
+        if (!date || !time) return;
+        const sendBtn = modal.querySelector('#extraSend');
+        const statusEl = modal.querySelector('#extraStatus');
+        sendBtn.disabled = true; sendBtn.textContent = '⏳';
+        try {
+          await db.collection('lesson_requests').add({
+            type: 'extra_lesson',
+            from_uid: _user.uid,
+            from_name: _user.displayName || '',
+            from_email: _user.email || '',
+            from_photo: _user.photoURL || '',
+            lesson_date: date,
+            lesson_time: time,
+            status: 'pending',
+            created_at: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+          statusEl.style.color = 'var(--green)';
+          statusEl.textContent = '✓ Talep gönderildi, eğitmeniniz onaylayacak.';
+          setTimeout(() => modal.remove(), 2500);
+        } catch(e) { const c=errId(); statusEl.style.color='var(--crimson)'; statusEl.textContent=`Hata (${c}): `+(e.message||e.code); sendBtn.disabled=false; sendBtn.textContent='✓ Talep Gönder'; }
+      };
+    };
+    extraBox.innerHTML = '';
+    extraBox.append(extraBtn);
+  }
+
   const list = document.getElementById('lessonList');
   list.innerHTML = '';
   const curMonth = today.slice(0, 7);
@@ -1408,7 +1463,55 @@ async function renderAdminPanel() {
       const r = doc.data();
       const isCancelReq = r.type === 'cancel_request';
       const isPaymentReq = r.type === 'payment_request';
+      const isExtraReq = r.type === 'extra_lesson';
       const row = document.createElement('div'); row.className = 'req-row';
+
+      if (isExtraReq) {
+        row.style.borderColor = 'rgba(143,200,232,.3)';
+        row.style.background = 'rgba(143,200,232,.03)';
+        row.innerHTML = `
+          <div class="req-row-body">
+            <div class="req-row-name" style="color:var(--ice)">➕ Ek Ders Talebi</div>
+            <div class="req-row-detail">${r.from_name || r.from_email}</div>
+            <div class="req-row-pills">
+              <span class="req-row-pill dim">${formatDateStr(r.lesson_date)} · ${r.lesson_time}–${getEndTime(r.lesson_time)}</span>
+            </div>
+          </div>`;
+        const actions = document.createElement('div'); actions.className = 'req-actions';
+        const approveBtn = document.createElement('button'); approveBtn.className = 'req-approve'; approveBtn.textContent = '✓ Onayla';
+        approveBtn.onclick = async () => {
+          approveBtn.disabled = true;
+          try {
+            const conflict = await db.collection('booked_slots').doc(r.lesson_date + '_' + r.lesson_time).get();
+            if (conflict.exists && conflict.data().student_uid !== r.from_uid) {
+              toast(`${formatDateStr(r.lesson_date)} ${r.lesson_time} başka bir öğrenciye ait.`, true);
+              approveBtn.disabled = false; return;
+            }
+            const resSnap = await db.collection('reservations').doc(r.from_uid).get();
+            if (!resSnap.exists) { toast('Rezervasyon bulunamadı.', true); approveBtn.disabled = false; return; }
+            const existingLessons = resSnap.data().lessons || [];
+            const newLesson = { date: r.lesson_date, time: r.lesson_time, status: 'scheduled' };
+            const batch = db.batch();
+            batch.update(db.collection('reservations').doc(r.from_uid), { lessons: [...existingLessons, newLesson] });
+            batch.set(db.collection('booked_slots').doc(r.lesson_date + '_' + r.lesson_time), { date: r.lesson_date, time: r.lesson_time, student_uid: r.from_uid });
+            batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            await batch.commit();
+            toast('✓ Ek ders eklendi.'); row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); approveBtn.disabled = false; }
+        };
+        const rejectBtn = document.createElement('button'); rejectBtn.className = 'req-reject'; rejectBtn.textContent = '✕ Reddet';
+        rejectBtn.onclick = async () => {
+          rejectBtn.disabled = true;
+          try {
+            await doc.ref.update({ status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            toast('Talep reddedildi.'); row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); rejectBtn.disabled = false; }
+        };
+        actions.append(approveBtn, rejectBtn);
+        row.append(actions);
+        reqList.append(row);
+        return;
+      }
 
       if (isPaymentReq) {
         row.style.borderColor = 'rgba(74,222,128,.3)';
