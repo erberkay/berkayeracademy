@@ -1533,7 +1533,7 @@ async function renderAdminPanel() {
           }
           // Check conflicts before accepting
           const allLessons = calculateLessonDates(r.schedule, r.duration_months);
-          const conflicts = await checkConflicts(allLessons);
+          const conflicts = await checkConflicts(allLessons, r.from_uid);
           if (conflicts.size > 0) {
             const conflictDates = allLessons
               .filter(l => conflicts.has(l.date + '_' + l.time))
@@ -1550,7 +1550,8 @@ async function renderAdminPanel() {
           // Final conflict re-check right before committing (closes race window)
           const freshConflicts = await checkConflicts(
             calculateLessonDates(r.schedule, r.duration_months)
-              .filter(l => !conflicts.has(l.date + '_' + l.time))
+              .filter(l => !conflicts.has(l.date + '_' + l.time)),
+            r.from_uid
           );
           freshConflicts.forEach(k => conflicts.add(k));
           await acceptRequest(doc.id, r, conflicts);
@@ -2328,7 +2329,7 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
 }
 
 // ─── Conflict Check ───────────────────────────────────────
-async function checkConflicts(lessons) {
+async function checkConflicts(lessons, skipUid = null) {
   const conflicts = new Set();
   const batchSize = 10;
   for (let i = 0; i < lessons.length; i += batchSize) {
@@ -2337,7 +2338,11 @@ async function checkConflicts(lessons) {
       batch.map(l => db.collection('booked_slots').doc(l.date + '_' + l.time).get().catch(() => null))
     );
     results.forEach((snap, idx) => {
-      if (snap && snap.exists) conflicts.add(batch[idx].date + '_' + batch[idx].time);
+      if (snap && snap.exists) {
+        // Don't count as conflict if it belongs to the same student being scheduled
+        if (skipUid && snap.data().student_uid === skipUid) return;
+        conflicts.add(batch[idx].date + '_' + batch[idx].time);
+      }
     });
   }
   return conflicts;
