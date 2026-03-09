@@ -1304,17 +1304,13 @@ async function renderDashboard() {
         rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
         item.append(rBtn);
       }
-      // Zoom join area for today's active lessons
+      // Zoom join area for today's active lessons (show all day)
       if (l.date === today && (l.status === 'scheduled' || l.status === 'rescheduled')) {
-        const [lh2, lm2] = l.time.split(':').map(Number);
-        const lessonEndCheck = new Date(); lessonEndCheck.setHours(lh2 + 1, lm2, 0, 0);
-        if (new Date() <= lessonEndCheck) {
-          const za = document.createElement('div');
-          za.className = 'lesson-zoom-area';
-          za.dataset.time = l.time;
-          za.style.cssText = 'width:100%;margin-top:8px;';
-          item.append(za);
-        }
+        const za = document.createElement('div');
+        za.className = 'lesson-zoom-area';
+        za.dataset.time = l.time;
+        za.style.cssText = 'width:100%;margin-top:8px;';
+        item.append(za);
       }
       return item;
     };
@@ -2206,8 +2202,13 @@ async function initZoomJoinBox(lessons, today) {
       const secsLeft = Math.floor((ls.getTime() - nowMs) / 1000);
       const active = zoomLink && secsLeft <= 15 * 60;
       const inProgress = secsLeft <= 0;
-      const showBtn = secsLeft <= 30 * 60; // only show within 30 min
-      if (!showBtn) { area.innerHTML = ''; return; }
+      const within30 = secsLeft <= 30 * 60;
+      if (!within30) {
+        // Show info text all day until 30 min before
+        const hh = String(ch).padStart(2,'0'), mm2 = String(cm).padStart(2,'0');
+        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:6px 14px;color:var(--dim);font-family:'Space Mono',monospace;font-size:.62rem;">📅 ${hh}:${mm2} dersi · link 15 dk önce aktif olacak</div>`;
+        return;
+      }
       if (active) {
         const label = inProgress ? '🟢 Derse Gir' : `🎥 Derse Gir`;
         const sub = inProgress ? 'Ders devam ediyor' : `⏱ ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} kaldı`;
