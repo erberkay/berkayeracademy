@@ -1441,7 +1441,7 @@ auth.onAuthStateChanged(async user => {
   if (user) {
     const uref = db.collection('users').doc(user.uid);
     const snap = await uref.get({ source: 'server' }).catch(() => uref.get().catch(() => null));
-    const update = { displayName: user.displayName || '', photoURL: user.photoURL || '', email: user.email };
+    const update = { displayName: user.displayName?.trim() || user.email?.split('@')[0] || '', photoURL: user.photoURL || '', email: user.email };
     if (!snap?.data()?.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
     await uref.set(update, { merge: true }).catch(console.error);
   }
