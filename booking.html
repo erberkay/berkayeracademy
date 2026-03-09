@@ -3066,9 +3066,17 @@ function loadAdminAccessRequests() {
   card.style.display = '';
   list.innerHTML = '<div class="empty-state">Yükleniyor…</div>';
 
+  let _accessInitialLoad = true;
   _adminAccessUnsub = db.collection('booking_access_requests')
     .where('status', '==', 'pending')
     .onSnapshot(snap => {
+      if (!_accessInitialLoad) {
+        const hasNew = snap.docChanges().some(c => c.type === 'added');
+        if (hasNew) {
+          try { const a = new Audio('assets/audio/bildirim sesi.wav'); a.play().catch(() => {}); } catch(e) {}
+        }
+      }
+      _accessInitialLoad = false;
       list.innerHTML = '';
       if (snap.empty) { card.style.display = 'none'; return; }
       card.style.display = '';
