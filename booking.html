@@ -1782,26 +1782,27 @@ async function renderAdminPanel() {
   // Email reminders panel
   const remindersList = document.getElementById('adminRemindersList');
   if (remindersList) {
-    const reminded = studSnap ? studSnap.docs.filter(d => d.data().last_reminder_sent) : [];
-    const pending = studSnap ? studSnap.docs.filter(d => d.data().payment_pending && !d.data().payment_confirmed) : [];
-    if (pending.length === 0) {
-      remindersList.innerHTML = '<div class="empty-state">Ödeme bekleyen öğrenci yok.</div>';
+    const allStudents = studSnap ? studSnap.docs : [];
+    if (allStudents.length === 0) {
+      remindersList.innerHTML = '<div class="empty-state">Henüz öğrenci yok.</div>';
     } else {
-      remindersList.innerHTML = pending.map(d => {
+      remindersList.innerHTML = allStudents.map(d => {
         const sd = d.data();
         const lastSent = sd.last_reminder_sent
           ? new Date(sd.last_reminder_sent.toDate ? sd.last_reminder_sent.toDate() : sd.last_reminder_sent)
               .toLocaleDateString('tr-TR', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'})
           : null;
+        const isPending = sd.payment_pending && !sd.payment_confirmed;
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.72rem;">
           <div>
-            <span style="color:var(--white);">${sd.student_name || sd.student_email || sd.from_name || '—'}</span>
+            <span style="color:var(--white);">${sd.student_name || sd.from_name || '—'}</span>
             <span style="color:var(--dim);margin-left:6px;">${sd.from_email || ''}</span>
+            ${isPending ? `<span style="background:rgba(184,45,69,.15);border:1px solid rgba(184,45,69,.3);color:rgba(184,45,69,.9);font-size:.58rem;padding:1px 6px;border-radius:4px;margin-left:6px;">ÖD. BEKLİYOR</span>` : ''}
           </div>
           <div style="text-align:right;">
             ${lastSent
               ? `<span style="color:rgba(255,200,100,.8);">📧 ${lastSent}</span>`
-              : `<span style="color:var(--dim);">Henüz gönderilmedi</span>`}
+              : `<span style="color:rgba(255,255,255,.25);">Gönderilmedi</span>`}
           </div>
         </div>`;
       }).join('');
