@@ -1136,7 +1136,8 @@ async function renderDashboard() {
 
   // Plan ended or all lessons cancelled: show summary only
   const planEnded = res.end_date && res.end_date < today;
-  const allCancelled = lessons.length > 0 && lessons.every(l => l.status === 'cancelled');
+  const hasActiveLesson = lessons.some(l => (l.status === 'scheduled' || l.status === 'rescheduled') && l.date >= today);
+  const allCancelled = lessons.length > 0 && !hasActiveLesson && !lessons.some(l => l.status === 'scheduled' || l.status === 'rescheduled');
   if (planEnded || allCancelled) {
     const completed = lessons.filter(l => l.status === 'completed').length;
     document.getElementById('dashAv').innerHTML = _user.photoURL ? `<img src="${_user.photoURL}" alt="">` : '👤';
