@@ -275,17 +275,17 @@
       Berkay Er, 2010 yılında elektronik müzikle tanışan ve 2018'den itibaren profesyonel olarak müzik üretmeye başlayan Türk müzik prodüktörü ve Ableton eğitmenidir. Peaktime Techno, Melodic Techno, Minimal Tech, Minimal Bass ve Indie Dance başta olmak üzere çok sayıda elektronik türde prodüksiyon yapan Berkay Er; kurgulanan Live Set'leriyle sahnede kendi özgün hikayesini dinleyicisiyle paylaşıyor.
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:20px;">
-      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:14px 16px;">
+      <div style="background:rgba(232,184,75,.04);border:1px solid rgba(232,184,75,.18);border-radius:8px;padding:14px 16px;">
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);letter-spacing:.1em;margin-bottom:6px;">UZMANLIK</div>
-        <div style="font-size:.78rem;color:var(--white);line-height:1.7;">Ableton Live · Ses Tasarımı<br>Mix & Mastering · Ghost Production<br>Müzik Eğitimi</div>
+        <div style="font-size:.78rem;color:var(--white);line-height:1.8;"><span style="color:var(--gold);">Ableton Live</span> · Ses Tasarımı<br><span style="color:var(--gold);">Mix & Mastering</span> · Ghost Production<br>Müzik Eğitimi</div>
       </div>
-      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:14px 16px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);letter-spacing:.1em;margin-bottom:6px;">EĞİTİM HİZMETİ</div>
-        <div style="font-size:.78rem;color:var(--white);line-height:1.7;">Online Ableton özel ders<br>8 modüllük müfredat<br>Tüm seviyeler · Multi-genre</div>
+      <div style="background:rgba(26,90,136,.06);border:1px solid rgba(26,90,136,.2);border-radius:8px;padding:14px 16px;">
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--ice);letter-spacing:.1em;margin-bottom:6px;">EĞİTİM HİZMETİ</div>
+        <div style="font-size:.78rem;color:var(--white);line-height:1.8;"><span style="color:var(--ice);">Online Ableton özel ders</span><br>8 modüllük müfredat<br>Tüm seviyeler · <span style="color:var(--ice);">Multi-genre</span></div>
       </div>
-      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:14px 16px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);letter-spacing:.1em;margin-bottom:6px;">DENEYİM</div>
-        <div style="font-size:.78rem;color:var(--white);line-height:1.7;">2010'dan beri müzik<br>2018'den beri prodüksiyon<br>100+ öğrenci</div>
+      <div style="background:rgba(100,200,100,.04);border:1px solid rgba(100,200,100,.15);border-radius:8px;padding:14px 16px;">
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--green);letter-spacing:.1em;margin-bottom:6px;">DENEYİM</div>
+        <div style="font-size:.78rem;color:var(--white);line-height:1.8;"><span style="color:var(--green);">2019'dan beri</span> prodüksiyon<br><span style="color:var(--green);">100+</span> öğrenci</div>
       </div>
     </div>
   </div>
@@ -388,11 +388,17 @@
       </div>
     </div>
 
-    <div class="comment-form">
-      <div class="comment-form-title">Yorum Bırak</div>
-      <input class="comment-input" id="commentName" type="text" placeholder="İsmin (örn. Ahmet K.)" maxlength="40" />
-      <textarea class="comment-textarea" id="commentText" placeholder="Deneyimini paylaş..." maxlength="300" rows="3"></textarea>
-      <button class="comment-btn" onclick="submitComment()">Gönder</button>
+    <div class="comment-form" id="commentFormWrap">
+      <div id="commentFormLogin" style="text-align:center;padding:18px 0;">
+        <div style="font-size:.78rem;color:var(--dim);margin-bottom:12px;">Yorum bırakmak için giriş yap</div>
+        <button class="auth-sign-btn" id="commentSignInBtn">⬡ Google ile Giriş Yap</button>
+      </div>
+      <div id="commentFormInner" style="display:none;">
+        <div class="comment-form-title">Yorum Bırak</div>
+        <input class="comment-input" id="commentName" type="text" placeholder="İsmin (örn. Ahmet K.)" maxlength="40" />
+        <textarea class="comment-textarea" id="commentText" placeholder="Deneyimini paylaş..." maxlength="300" rows="3"></textarea>
+        <button class="comment-btn" onclick="submitComment()">Gönder</button>
+      </div>
     </div>
   </div>
 
@@ -461,7 +467,9 @@
       list.appendChild(makeCommentEl(c.name, c.text));
     });
   }
+  let _currentUser = null;
   async function submitComment() {
+    if (!_currentUser) { alert('Yorum bırakmak için giriş yapmalısın.'); return; }
     const name = document.getElementById('commentName').value.trim();
     const text = document.getElementById('commentText').value.trim();
     if (!name || !text || !_db) return;
@@ -640,7 +648,15 @@
         document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
         const nameInput = document.getElementById('commentName');
         if (nameInput && !nameInput.value) nameInput.value = user.displayName?.split(' ')[0] || '';
+        const cLogin = document.getElementById('commentFormLogin');
+        const cInner = document.getElementById('commentFormInner');
+        if (cLogin) cLogin.style.display = 'none';
+        if (cInner) cInner.style.display = 'block';
       } else {
+        const cLogin = document.getElementById('commentFormLogin');
+        const cInner = document.getElementById('commentFormInner');
+        if (cLogin) cLogin.style.display = 'block';
+        if (cInner) cInner.style.display = 'none';
         const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
         btn.textContent = '⬡ Google ile Giriş';
         let _signingIn = false;
@@ -749,7 +765,19 @@
 
     // ── Auth state ────────────────────────────────────────────────
     _auth.getRedirectResult().catch(e => console.error("redirectResult:", e));
+    // Comment form sign-in button
+    const _cSignBtn = document.getElementById('commentSignInBtn');
+    if (_cSignBtn) {
+      let _cSigningIn = false;
+      _cSignBtn.onclick = () => {
+        if (_cSigningIn) return; _cSigningIn = true;
+        _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+          .catch(e => { console.error(e); alert('Giriş hatası: ' + (e.message || e.code || e)); })
+          .finally(() => { _cSigningIn = false; });
+      };
+    }
 _auth.onAuthStateChanged(user => {
+      _currentUser = user;
       updateAuthBar(user);
       initNotifications(user);
       if (user) {
