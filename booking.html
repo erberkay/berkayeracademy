@@ -2130,21 +2130,21 @@ async function initZoomJoinBox(lessons, today) {
   const lessonEnd = new Date(lessonStart); lessonEnd.setHours(h + 1, m, 0, 0);
   const secsUntil = Math.floor((lessonStart - now) / 1000);
 
-  // Show box 30 min before, hide 60 min after start
-  if (secsUntil > 30 * 60 || now > lessonEnd) return;
+  // Hide only after lesson ends (60 min after start)
+  if (now > lessonEnd) return;
 
   let zoomLink = null;
   try {
     const snap = await db.collection('settings').doc('global').get();
     zoomLink = snap.exists ? snap.data().zoom_link : null;
   } catch(e) {}
-  if (!zoomLink) return;
 
   const render = () => {
     const nowMs = Date.now();
     const secsLeft = Math.floor((lessonStart.getTime() - nowMs) / 1000);
-    const active = secsLeft <= 15 * 60; // active 15 min before
+    const active = zoomLink && secsLeft <= 15 * 60; // active 15 min before
     const inProgress = secsLeft <= 0;
+    const nearSoon = secsLeft <= 30 * 60; // within 30 min
 
     let sublabel;
     if (inProgress) {
@@ -2153,10 +2153,14 @@ async function initZoomJoinBox(lessons, today) {
       const mm = Math.floor(secsLeft / 60);
       const ss = secsLeft % 60;
       sublabel = `⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı`;
-    } else {
+    } else if (nearSoon) {
       const mm = Math.floor(secsLeft / 60);
       const ss = secsLeft % 60;
       sublabel = `🔒 Link ${mm}:${String(ss).padStart(2,'0')} sonra aktif olacak`;
+    } else {
+      const hh = String(h).padStart(2,'0');
+      const mm2 = String(m).padStart(2,'0');
+      sublabel = `Bugün saat ${hh}:${mm2}'de · link 15 dk önce aktif olacak`;
     }
 
     if (active) {
@@ -2170,12 +2174,12 @@ async function initZoomJoinBox(lessons, today) {
         </a>`;
     } else {
       box.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px 18px;margin-bottom:14px;opacity:.7;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 18px;margin-bottom:14px;opacity:.65;">
           <div>
-            <div style="font-size:.82rem;color:var(--dim);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div>
+            <div style="font-size:.82rem;color:var(--dim);font-weight:700;font-family:'Space Mono',monospace;">🎥 Bugün Ders Var</div>
             <div id="zoomSubLabel" style="font-size:.65rem;color:var(--dim);margin-top:2px;">${sublabel}</div>
           </div>
-          <div style="font-size:1.4rem;color:var(--dim);">🔒</div>
+          <div style="font-size:1.4rem;color:var(--dim);">${nearSoon ? '🔒' : '📅'}</div>
         </div>`;
     }
 
