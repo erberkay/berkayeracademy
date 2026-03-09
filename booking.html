@@ -1348,21 +1348,16 @@ async function renderAdminPanel() {
   if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   if (_adminAccessUnsub) { _adminAccessUnsub(); _adminAccessUnsub = null; }
+  if (_adminReqUnsub) { _adminReqUnsub(); _adminReqUnsub = null; }
   showView('view-admin');
   loadAdminAccessRequests();
   initAdminZoomLink();
   initLessonAnnouncements(true);
   initAdminQA();
 
-  // Load pending requests
+  // Load pending requests (real-time listener)
   const reqList = document.getElementById('adminRequestsList');
   reqList.innerHTML = '<div class="empty-state">Yükleniyor…</div>';
-  const reqSnap = await db.collection('lesson_requests')
-    .where('status','==','pending')
-    .get()
-    .catch(e => { reqList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Hata: ${e.message}</div>`; return null; });
-
-  reqList.innerHTML = '';
 
   // Auto-migrate: set hasLessonRequest:true for existing requesters (runs once per session)
   if (!window._migrationDone) {
@@ -1376,11 +1371,35 @@ async function renderAdminPanel() {
     }).catch(() => {});
   }
 
-  if (!reqSnap || reqSnap.empty) {
-    reqList.innerHTML = '<div class="empty-state">Bekleyen talep yok.</div>';
-  } else {
-    const sortedDocs = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0));
-    sortedDocs.forEach(doc => {
+  let _reqInitialLoad = true;
+  _adminReqUnsub = db.collection('lesson_requests')
+    .where('status','==','pending')
+    .onSnapshot(reqSnap => {
+      // Play sound on new requests after initial load
+      if (!_reqInitialLoad) {
+        const hasNew = reqSnap.docChanges().some(c => c.type === 'added');
+        if (hasNew) {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+            osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+          } catch(e) {}
+        }
+      }
+      _reqInitialLoad = false;
+
+      reqList.innerHTML = '';
+      if (reqSnap.empty) {
+        reqList.innerHTML = '<div class="empty-state">Bekleyen talep yok.</div>';
+        return;
+      }
+      const sortedDocs = reqSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0));
+      sortedDocs.forEach(doc => {
       const r = doc.data();
       const isCancelReq = r.type === 'cancel_request';
       const isPaymentReq = r.type === 'payment_request';
@@ -1556,7 +1575,7 @@ async function renderAdminPanel() {
       row.append(actions);
       reqList.append(row);
     });
-  }
+  }, e => { const c=errId(); reqList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Hata (${c}): ${e.message}</div>`; });
 
   // Load active students
   const studList = document.getElementById('adminStudentsList');
@@ -2595,6 +2614,7 @@ function renderAccessView(user, state, rejectReason) {
 
 // ─── Admin: Load Access Requests ──────────────────────────
 let _adminAccessUnsub = null;
+let _adminReqUnsub = null;
 
 function loadAdminAccessRequests() {
   const card = document.getElementById('adminAccessCard');
