@@ -1587,29 +1587,30 @@ async function renderAdminPanel() {
   const calAllLessons = [];
   const curMonthStr = toDateStr(new Date()).slice(0,7);
   const todayStr = toDateStr(new Date());
-  let statsRevenue = 0, statsLessons = 0, statsCompleted = 0;
+  let statsRevenue = 0, statsLessons = 0, statsPaidStudents = 0, statsPendingStudents = 0;
   const statsPerStudent = [];
   if (studSnap && !studSnap.empty) {
     studSnap.docs.forEach(doc => {
       const d = doc.data();
       const totalNonCancelled = (d.lessons||[]).filter(l => l.status !== 'cancelled').length;
-      const price = d.custom_total_price && totalNonCancelled > 0
-        ? Math.round(d.custom_total_price / totalNonCancelled)
-        : (d.custom_lesson_price || LESSON_PRICE);
+      // Monthly rate = total price / duration months
+      const monthlyRate = d.custom_total_price
+        ? Math.round(d.custom_total_price / (d.duration_months || 1))
+        : (d.custom_lesson_price || LESSON_PRICE) * 4;
       let studentMonthLessons = 0;
       (d.lessons||[]).forEach(l => {
         if (l.status === 'scheduled' || l.status === 'rescheduled')
           calAllLessons.push({ date: l.date, time: l.time, name: (d.student_name||d.student_email||'').split(' ')[0], photo: d.student_photo||'' });
-        if (l.date.startsWith(curMonthStr)) {
-          const isDone = l.status === 'completed' ||
-            ((l.status === 'scheduled' || l.status === 'rescheduled') && l.date < todayStr);
-          // Revenue only counts if payment confirmed
-          if (isDone && d.payment_confirmed) { statsRevenue += price; statsCompleted++; }
-          if (l.status !== 'cancelled') { statsLessons++; studentMonthLessons++; }
+        if (l.date.startsWith(curMonthStr) && l.status !== 'cancelled') {
+          statsLessons++; studentMonthLessons++;
         }
       });
-      if (studentMonthLessons > 0)
-        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, revenue: studentMonthLessons * price });
+      // Count revenue per student (monthly rate, if they have lessons this month)
+      if (studentMonthLessons > 0) {
+        if (d.payment_confirmed) { statsRevenue += monthlyRate; statsPaidStudents++; }
+        else if (d.payment_pending) { statsPendingStudents++; }
+        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, revenue: monthlyRate, paid: !!d.payment_confirmed });
+      }
     });
   }
   // Render stats card
@@ -1618,19 +1619,19 @@ async function renderAdminPanel() {
     const monthName = new Date().toLocaleDateString('tr-TR', {month:'long', year:'numeric'});
     statsEl.innerHTML = `
       <div style="flex:1;min-width:140px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;">
-        <div style="font-size:.6rem;color:var(--dim);letter-spacing:.08em;margin-bottom:4px;">TOPLAM KAZANÇ (${monthName})</div>
+        <div style="font-size:.6rem;color:var(--dim);letter-spacing:.08em;margin-bottom:4px;">AYLIK GELİR (${monthName})</div>
         <div style="font-size:1.3rem;color:var(--gold);font-family:'Space Mono',monospace;font-weight:bold;">${statsRevenue.toLocaleString('tr-TR')} ₺</div>
-        <div style="font-size:.62rem;color:var(--dim);margin-top:2px;">${statsCompleted} tamamlanan dersten</div>
+        <div style="font-size:.62rem;color:var(--dim);margin-top:2px;">${statsPaidStudents} öğrenci · ödeme onaylı${statsPendingStudents > 0 ? ` · ${statsPendingStudents} beklemede` : ''}</div>
       </div>
       <div style="flex:1;min-width:120px;background:rgba(143,200,232,.07);border:1px solid rgba(143,200,232,.2);border-radius:8px;padding:14px 16px;">
-        <div style="font-size:.6rem;color:var(--dim);letter-spacing:.08em;margin-bottom:4px;">TOPLAM DERS</div>
+        <div style="font-size:.6rem;color:var(--dim);letter-spacing:.08em;margin-bottom:4px;">BU AY DERS</div>
         <div style="font-size:1.3rem;color:var(--ice);font-family:'Space Mono',monospace;font-weight:bold;">${statsLessons}</div>
-        <div style="font-size:.62rem;color:var(--dim);margin-top:2px;">${statsCompleted} tamamlandı · ${statsLessons - statsCompleted} planlandı</div>
+        <div style="font-size:.62rem;color:var(--dim);margin-top:2px;">${statsPerStudent.length} aktif öğrenci</div>
       </div>
       ${statsPerStudent.length > 1 ? `<div style="flex:100%;margin-top:4px;">
         <div style="font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:.06em;">ÖĞRENCİ BAZINDA</div>
         ${statsPerStudent.map(st => `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);">
-          <span style="color:var(--white);">${st.name}</span>
+          <span style="color:var(--white);">${st.name} ${st.paid ? '<span style="font-size:.55rem;color:var(--green);">✓</span>' : ''}</span>
           <span style="color:var(--dim);">${st.lessons} ders · <strong style="color:var(--gold);">${st.revenue.toLocaleString('tr-TR')} ₺</strong></span>
         </div>`).join('')}
       </div>` : ''}`;
