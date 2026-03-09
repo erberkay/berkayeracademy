@@ -136,6 +136,46 @@ exports.paymentReminder = onSchedule(
     },
 );
 
+// ── Helper: branded template for custom admin messages ──
+function buildCustomMailOptions(toName, toEmail, subject, message) {
+  const safeMessage = message.replace(/\n/g, "<br>");
+  return {
+    from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
+    replyTo: "berkayer032@gmail.com",
+    to: toEmail,
+    subject: subject,
+    headers: {
+      "List-Unsubscribe": "<mailto:berkayer032@gmail.com?subject=unsubscribe>",
+    },
+    text: `Merhaba ${toName},\n\n${message}\n\nBerkay Er Academy\nberkayeracademy.com`,
+    html: `
+<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;max-width:560px;">
+        <tr><td style="background:#060609;padding:24px 32px;text-align:center;">
+          <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;font-weight:bold;color:#e8b84b;letter-spacing:2px;">BERKAY ER ACADEMY</div>
+          <div style="font-size:11px;color:rgba(238,235,230,.5);letter-spacing:3px;margin-top:4px;">ABLETON ÖZEL DERS</div>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 20px;font-size:15px;color:#222;">Merhaba <strong>${toName}</strong>,</p>
+          <div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-wrap;">${safeMessage}</div>
+        </td></tr>
+        <tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #eee;">
+          <p style="margin:0;font-size:11px;color:#aaa;">Berkay Er Academy · berkayeracademy.com</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#ccc;">Bu emaili almak istemiyorsanız <a href="mailto:berkayer032@gmail.com?subject=unsubscribe" style="color:#aaa;">buraya tıklayın</a>.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  };
+}
+
 // Manual trigger: admin clicks "Email Gönder" in admin panel
 const ADMIN_EMAIL = "berkayer032@gmail.com";
 exports.sendPaymentRemindersManual = onCall(
@@ -159,5 +199,20 @@ exports.sendPaymentRemindersManual = onCall(
       });
       await Promise.all(promises);
       return {sent: promises.length};
+    },
+);
+
+// Admin: send a custom email to a specific student
+exports.sendCustomEmail = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+        throw new Error("Unauthorized");
+      }
+      const {toEmail, toName, subject, message} = request.data;
+      if (!toEmail || !message) throw new Error("Missing toEmail or message");
+      const mail = buildCustomMailOptions(toName || "Öğrenci", toEmail, subject || "Berkay Er Academy", message);
+      await transporter.sendMail(mail);
+      return {ok: true};
     },
 );
