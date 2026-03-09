@@ -548,6 +548,7 @@
         <button id="adminZoomSave" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--green);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;padding:8px 14px;border-radius:7px;cursor:pointer;white-space:nowrap;">Kaydet</button>
       </div>
       <div id="adminZoomStatus" style="font-size:.62rem;margin-top:6px;"></div>
+      <div id="adminZoomJoinLink"></div>
     </div>
 
     <!-- Monthly Stats -->
@@ -2544,9 +2545,21 @@ async function initAdminZoomLink() {
   const status = document.getElementById('adminZoomStatus');
   if (!input) return;
   // Load existing
+  const joinDiv = document.getElementById('adminZoomJoinLink');
+  function renderAdminZoomJoin(link) {
+    if (!joinDiv) return;
+    if (link) {
+      joinDiv.innerHTML = `<a href="${link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;margin-top:10px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.35);border-radius:8px;padding:10px 16px;text-decoration:none;font-family:'Space Mono',monospace;font-size:.72rem;color:var(--green);font-weight:700;">🎥 Toplantıya Katıl →</a>`;
+    } else {
+      joinDiv.innerHTML = '';
+    }
+  }
   try {
     const snap = await db.collection('settings').doc('global').get();
-    if (snap.exists && snap.data().zoom_link) input.value = snap.data().zoom_link;
+    if (snap.exists && snap.data().zoom_link) {
+      input.value = snap.data().zoom_link;
+      renderAdminZoomJoin(snap.data().zoom_link);
+    }
   } catch(e) {}
   saveBtn.onclick = async () => {
     const link = input.value.trim();
@@ -2555,6 +2568,7 @@ async function initAdminZoomLink() {
     try {
       await db.collection('settings').doc('global').set({ zoom_link: link }, { merge: true });
       status.style.color = 'var(--green)'; status.textContent = '✓ Kaydedildi';
+      renderAdminZoomJoin(link);
       setTimeout(() => status.textContent = '', 2500);
     } catch(e) { const c=errId(); status.style.color='var(--crimson)'; status.textContent=`Hata (${c})`; }
     saveBtn.disabled = false; saveBtn.textContent = 'Kaydet';
