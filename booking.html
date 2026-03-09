@@ -1862,10 +1862,10 @@ async function renderAdminPanel() {
     studSnap.docs.forEach(doc => {
       const d = doc.data();
       const totalNonCancelled = (d.lessons||[]).filter(l => l.status !== 'cancelled').length;
-      // Monthly rate = total price / duration months
-      const monthlyRate = d.custom_total_price
-        ? Math.round(d.custom_total_price / (d.duration_months || 1))
-        : (d.custom_lesson_price || LESSON_PRICE) * 4;
+      // Per-lesson price: custom_total/totalLessons, or custom_lesson_price, or default
+      const perLessonPrice = d.custom_total_price
+        ? Math.round(d.custom_total_price / Math.max(totalNonCancelled, 1))
+        : (d.custom_lesson_price || LESSON_PRICE);
       let studentMonthLessons = 0;
       (d.lessons||[]).forEach(l => {
         if (l.status === 'scheduled' || l.status === 'rescheduled')
@@ -1874,11 +1874,12 @@ async function renderAdminPanel() {
           statsLessons++; studentMonthLessons++;
         }
       });
-      // Count revenue per student (monthly rate, if they have lessons this month; skip trial)
+      // Count revenue per student (lessons × per-lesson price; skip trial)
       if (studentMonthLessons > 0 && d.lesson_type !== 'trial') {
-        if (d.payment_confirmed) { statsRevenue += monthlyRate; statsPaidStudents++; }
+        const studentRevenue = studentMonthLessons * perLessonPrice;
+        if (d.payment_confirmed) { statsRevenue += studentRevenue; statsPaidStudents++; }
         else if (d.payment_pending) { statsPendingStudents++; }
-        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, revenue: monthlyRate, paid: !!d.payment_confirmed });
+        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, revenue: studentRevenue, paid: !!d.payment_confirmed });
       }
     });
   }
