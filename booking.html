@@ -2202,20 +2202,19 @@ async function initZoomJoinBox(lessons, today) {
       const secsLeft = Math.floor((ls.getTime() - nowMs) / 1000);
       const active = zoomLink && secsLeft <= 15 * 60;
       const inProgress = secsLeft <= 0;
-      const within30 = secsLeft <= 30 * 60;
-      if (!within30) {
-        // Show info text all day until 30 min before
-        const hh = String(ch).padStart(2,'0'), mm2 = String(cm).padStart(2,'0');
-        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:6px 14px;color:var(--dim);font-family:'Space Mono',monospace;font-size:.62rem;">📅 ${hh}:${mm2} dersi · link 15 dk önce aktif olacak</div>`;
-        return;
-      }
-      if (active) {
-        const label = inProgress ? '🟢 Derse Gir' : `🎥 Derse Gir`;
+      const within60 = secsLeft <= 60 * 60;
+      const hh = String(ch).padStart(2,'0'), mm2 = String(cm).padStart(2,'0');
+      if (active || inProgress) {
+        // Green active button
         const sub = inProgress ? 'Ders devam ediyor' : `⏱ ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} kaldı`;
-        area.innerHTML = `<a href="${zoomLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);border-radius:7px;padding:7px 16px;text-decoration:none;color:#4ade80;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;">${label} <span style="font-size:.58rem;opacity:.75;">${sub}</span></a>`;
-      } else {
+        area.innerHTML = `<a href="${zoomLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);border-radius:7px;padding:7px 16px;text-decoration:none;color:#4ade80;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;">🟢 Derse Katıl <span style="font-size:.58rem;opacity:.75;">${sub}</span></a>`;
+      } else if (within60) {
+        // Red disabled button with countdown
         const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
-        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:7px 14px;color:var(--dim);font-family:'Space Mono',monospace;font-size:.62rem;">🔒 Link ${mm}:${String(ss).padStart(2,'0')} sonra aktif olacak</div>`;
+        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.7);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.85;">🔴 Derse Katıl <span style="font-size:.58rem;opacity:.8;">⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı</span></div>`;
+      } else {
+        // Red disabled button, no countdown yet
+        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.7);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.85;">🔴 Derse Katıl <span style="font-size:.58rem;opacity:.7;">${hh}:${mm2}'de aktif olacak</span></div>`;
       }
     });
   };
