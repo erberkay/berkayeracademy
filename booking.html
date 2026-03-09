@@ -1197,6 +1197,18 @@ async function renderDashboard() {
   const hasActiveLesson = lessons.some(l => (l.status === 'scheduled' || l.status === 'rescheduled') && l.date >= today);
   const allCancelled = lessons.length > 0 && !hasActiveLesson;
   if (planEnded || allCancelled) {
+    // Check if student already submitted a monthly/single request (don't re-show the form)
+    try {
+      const pendingReqs = await db.collection('lesson_requests')
+        .where('from_uid', '==', _user.uid)
+        .where('status', '==', 'pending')
+        .get();
+      if (pendingReqs && !pendingReqs.empty) {
+        const latest = pendingReqs.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
+        renderPendingView({...latest.data(), id: latest.id});
+        return;
+      }
+    } catch(e) {}
     initRequestForm();
     return;
   }
@@ -1440,7 +1452,11 @@ async function renderDashboard() {
   }
   initZoomJoinBox(lessons, today);
   initStudentQA(_user.uid, _user);
-  }, e => { const c=errId(); toast(`Rezervasyon yüklenemedi (${c}): `+(e.message||e.code), true); });
+  }, e => {
+    // permission-denied is usually a transient auth token refresh — Firebase auto-retries
+    if (e.code === 'permission-denied') return;
+    const c=errId(); toast(`Rezervasyon yüklenemedi (${c}): `+(e.message||e.code), true);
+  });
 }
 
 // ─── Admin Panel ──────────────────────────────────────────
