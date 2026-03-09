@@ -118,19 +118,23 @@ service cloud.firestore {
       // Only admin can create or delete reservations
       allow create, delete: if request.auth != null &&
         request.auth.token.email == "berkayer032@gmail.com";
-      // Admin can update anything; student can only update note or payment_pending
+      // Admin can update anything; student can update note, payment_pending, lessons, reschedule_credits
       allow update: if request.auth != null && (
         request.auth.token.email == "berkayer032@gmail.com" ||
         (request.auth.uid == uid &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['note', 'payment_pending']))
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['note', 'payment_pending', 'lessons', 'reschedule_credits']))
       );
     }
 
     match /booked_slots/{slotId} {
       allow read: if request.auth != null;
-      // Only admin can write booked slots
+      // Admin can write anything; students can create/delete their own slots (for reschedule)
       allow write: if request.auth != null &&
         request.auth.token.email == "berkayer032@gmail.com";
+      allow create: if request.auth != null &&
+        request.resource.data.student_uid == request.auth.uid;
+      allow delete: if request.auth != null &&
+        resource.data.student_uid == request.auth.uid;
     }
 
     match /lesson_requests/{reqId} {
