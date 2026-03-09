@@ -2394,6 +2394,11 @@ async function loadUserState(user) {
   }
 
   if (!accessSnap || !accessSnap.exists) {
+    // Even without an access request doc, check if they already have a reservation
+    let earlyResSnap = null;
+    try { earlyResSnap = await db.collection('reservations').doc(user.uid).get(); } catch(e) {}
+    if (earlyResSnap && earlyResSnap.exists) { renderDashboard(); return; }
+
     // Check if they have a pending trial lesson request
     let trialSnap = null;
     try { trialSnap = await db.collection('lesson_requests').where('from_uid','==',user.uid).where('lesson_type','==','trial').get(); } catch(e) {}
