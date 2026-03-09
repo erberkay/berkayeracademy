@@ -1349,6 +1349,7 @@ async function renderAdminPanel() {
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   if (_adminAccessUnsub) { _adminAccessUnsub(); _adminAccessUnsub = null; }
   if (_adminReqUnsub) { _adminReqUnsub(); _adminReqUnsub = null; }
+  if (_adminStudUnsub) { _adminStudUnsub(); _adminStudUnsub = null; }
   showView('view-admin');
   loadAdminAccessRequests();
   initAdminZoomLink();
@@ -1577,11 +1578,12 @@ async function renderAdminPanel() {
     });
   }, e => { const c=errId(); reqList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Hata (${c}): ${e.message}</div>`; });
 
-  // Load active students
+  // Load active students (real-time)
   const studList = document.getElementById('adminStudentsList');
-  studList.innerHTML = '';
-  const studSnap = await db.collection('reservations').orderBy('created_at','desc').limit(200).get()
-    .catch(e => { const c=errId(); studList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Öğrenciler yüklenemedi (${c}): ${e.message||e.code}</div>`; return null; });
+  studList.innerHTML = '<div class="empty-state">Yükleniyor…</div>';
+  if (_adminStudUnsub) { _adminStudUnsub(); _adminStudUnsub = null; }
+  _adminStudUnsub = db.collection('reservations').orderBy('created_at','desc').limit(200)
+    .onSnapshot(studSnap => {
 
   // Build calendar data + monthly stats
   const calAllLessons = [];
@@ -1816,6 +1818,7 @@ async function renderAdminPanel() {
       studList.append(row);
     });
   }
+  }, e => { const c=errId(); studList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Öğrenciler yüklenemedi (${c}): ${e.message||e.code}</div>`; });
 }
 
 // ─── Admin Calendar ───────────────────────────────────────
@@ -2616,6 +2619,7 @@ function renderAccessView(user, state, rejectReason) {
 // ─── Admin: Load Access Requests ──────────────────────────
 let _adminAccessUnsub = null;
 let _adminReqUnsub = null;
+let _adminStudUnsub = null;
 
 function loadAdminAccessRequests() {
   const card = document.getElementById('adminAccessCard');
