@@ -1899,13 +1899,14 @@ async function adminDeletePlan(studentUid, allLessons) {
   try {
     const batch = db.batch();
     batch.delete(db.collection('reservations').doc(studentUid));
-    batch.delete(db.collection('booking_access_requests').doc(studentUid));
     (allLessons || []).forEach(l => {
       if (l.status === 'scheduled' || l.status === 'rescheduled') {
         batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
       }
     });
     await batch.commit();
+    // Reset access request separately (may silently fail if rules not yet deployed)
+    db.collection('booking_access_requests').doc(studentUid).delete().catch(() => {});
     toast('Plan tamamen silindi.');
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
@@ -2238,15 +2239,15 @@ async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
 
 async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson) {
   if (!confirm(`${formatDateStr(lesson.date)} ${lesson.time} dersini iptal et?`)) return;
+  const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, status: 'cancelled' } : l);
   try {
-    const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, status: 'cancelled' } : l);
-    const batch = db.batch();
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
-    batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-    await batch.commit();
-    toast(`✓ Ders iptal edildi.`);
-    renderAdminPanel();
-  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+    await db.collection('reservations').doc(studentUid).update({ lessons: updated });
+  } catch(e) { const c=errId(); toast(`Hata rezervasyon (${c}): ` + (e.message||e.code), true); return; }
+  try {
+    await db.collection('booked_slots').doc(lesson.date + '_' + lesson.time).delete();
+  } catch(e) { const c=errId(); toast(`Hata slot (${c}): ` + (e.message||e.code), true); return; }
+  toast(`✓ Ders iptal edildi.`);
+  renderAdminPanel();
 }
 
 async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
