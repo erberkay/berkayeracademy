@@ -2915,6 +2915,19 @@ function initAdminQA() {
           actionsRow.append(solvedBtn);
         }
 
+        const deleteQBtn = document.createElement('button');
+        deleteQBtn.style.cssText = 'background:none;border:1px solid rgba(184,45,69,.25);color:rgba(184,45,69,.65);font-family:"Space Mono",monospace;font-size:.62rem;padding:5px 10px;border-radius:6px;cursor:pointer;';
+        deleteQBtn.textContent = '🗑 Sil';
+        deleteQBtn.onclick = async () => {
+          const confirmed = await showInputModal({ title: 'Bu soruyu silmek istediğine emin misin?', placeholder: 'Onaylamak için "evet" yaz', defaultVal: '' });
+          if (!confirmed || confirmed.trim().toLowerCase() !== 'evet') return;
+          try {
+            await db.collection('lesson_questions').doc(doc.id).delete();
+            toast('Soru silindi.');
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+        };
+        actionsRow.append(deleteQBtn);
+
         el.append(header, body, answersEl, replyRow, actionsRow);
         container.append(el);
 
