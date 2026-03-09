@@ -1063,7 +1063,7 @@ function renderPendingView(reqData) {
           if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
           renderPendingView({ ...snap.data(), id: snap.id });
         }
-      });
+      }, e => { const c=errId(); toast(`Bağlantı hatası (${c}): ${e.code||e.message}`, true); });
   }
 }
 
@@ -2563,7 +2563,7 @@ function renderAccessView(user, state, rejectReason) {
           if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
           renderAccessView(user, 'rejected', snap.data().reject_reason || '');
         }
-      });
+      }, e => { const c=errId(); toast(`Bağlantı hatası (${c}): ${e.code||e.message}`, true); });
     return;
   }
 
@@ -2575,7 +2575,7 @@ function renderAccessView(user, state, rejectReason) {
       <button class="btn btn-ghost" id="accessRetryBtn">Tekrar Talep Gönder</button>`;
     card.querySelector('#accessRetryBtn').onclick = async () => {
       // Delete old rejected request so they can send a new one
-      try { await db.collection('booking_access_requests').doc(user.uid).delete(); } catch(e) {}
+      try { await db.collection('booking_access_requests').doc(user.uid).delete(); } catch(e) { const c=errId(); toast(`Hata (${c}): ${e.code||e.message}`, true); return; }
       renderAccessView(user, 'none');
     };
   }
@@ -2723,7 +2723,7 @@ function initLessonAnnouncements(isAdmin) {
           <div style="font-size:.58rem;color:var(--dim);margin-top:5px;">${timeStr}</div>
         </div>`;
       }).join('');
-    }, () => {});
+    }, e => { const c=errId(); display.style.display=''; display.innerHTML=`<div style="font-size:.65rem;color:var(--crimson);padding:8px;">Duyurular yüklenemedi (${c}): ${e.code||e.message}</div>`; });
   }
 }
 
@@ -2804,10 +2804,10 @@ function initStudentQA(uid, user) {
               </div>`;
               answersEl.append(div);
             });
-          }, () => {});
+          }, e => { const c=errId(); answersEl.innerHTML=`<div style="font-size:.62rem;color:var(--crimson);">Yanıtlar yüklenemedi (${c}): ${e.code||e.message}</div>`; });
         _qaAnswerUnsubs.push(unsub);
       });
-    }, () => {});
+    }, e => { const c=errId(); list.innerHTML=`<div style="font-size:.72rem;color:var(--crimson);">Sorular yüklenemedi (${c}): ${e.code||e.message}</div>`; });
 
   if (sendBtn) sendBtn.onclick = async () => {
     const text = input.value.trim();
@@ -2973,7 +2973,7 @@ function initAdminQA() {
               </div>`;
               answersEl.append(div);
             });
-          }, () => {});
+          }, e => { const c=errId(); answersEl.innerHTML=`<div style="font-size:.62rem;color:var(--crimson);">Yanıtlar yüklenemedi (${c}): ${e.code||e.message}</div>`; });
         _adminQAAnswerUnsubs.push(unsub);
       };
 
