@@ -1,6 +1,6 @@
 const {setGlobalOptions} = require("firebase-functions");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {onCall} = require("firebase-functions/v2/https");
+const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {defineSecret} = require("firebase-functions/params");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
@@ -227,7 +227,7 @@ exports.createZoomMeeting = onCall(
     {region: "europe-west1", secrets: [ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET]},
     async (request) => {
       if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
-        throw new Error("Unauthorized");
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
 
       const {topic, startTime, duration} = request.data;
@@ -238,41 +238,44 @@ exports.createZoomMeeting = onCall(
       const clientSecret = ZOOM_CLIENT_SECRET.value();
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-      const tokenRes = await fetch(
-          `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${accountId}`,
-          {
-            method: "POST",
-            headers: {Authorization: `Basic ${credentials}`},
-          },
-      );
-      const tokenData = await tokenRes.json();
+      let tokenData;
+      try {
+        const tokenRes = await fetch(
+            `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${accountId}`,
+            {method: "POST", headers: {"Authorization": `Basic ${credentials}`}},
+        );
+        tokenData = await tokenRes.json();
+      } catch (e) {
+        throw new HttpsError("unavailable", "Zoom token isteği başarısız: " + e.message);
+      }
       if (!tokenData.access_token) {
-        throw new Error("Zoom token alınamadı: " + JSON.stringify(tokenData));
+        throw new HttpsError("failed-precondition", "Zoom token alınamadı: " + JSON.stringify(tokenData));
       }
 
       // 2. Create meeting
-      const meetingRes = await fetch("https://api.zoom.us/v2/users/me/meetings", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${tokenData.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          topic: topic || "Ableton Özel Ders",
-          type: startTime ? 2 : 1, // 2=scheduled, 1=instant
-          start_time: startTime || undefined,
-          duration: duration || 60,
-          timezone: "Europe/Istanbul",
-          settings: {
-            host_video: true,
-            participant_video: true,
-            waiting_room: false,
+      let meetingData;
+      try {
+        const meetingRes = await fetch("https://api.zoom.us/v2/users/me/meetings", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${tokenData.access_token}`,
+            "Content-Type": "application/json",
           },
-        }),
-      });
-      const meetingData = await meetingRes.json();
+          body: JSON.stringify({
+            topic: topic || "Ableton Özel Ders",
+            type: startTime ? 2 : 1,
+            start_time: startTime || undefined,
+            duration: duration || 60,
+            timezone: "Europe/Istanbul",
+            settings: {host_video: true, participant_video: true, waiting_room: false},
+          }),
+        });
+        meetingData = await meetingRes.json();
+      } catch (e) {
+        throw new HttpsError("unavailable", "Zoom toplantı isteği başarısız: " + e.message);
+      }
       if (!meetingData.join_url) {
-        throw new Error("Toplantı oluşturulamadı: " + JSON.stringify(meetingData));
+        throw new HttpsError("failed-precondition", "Toplantı oluşturulamadı: " + JSON.stringify(meetingData));
       }
 
       // 3. Save to Firestore
