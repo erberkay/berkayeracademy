@@ -575,9 +575,14 @@ async function renderReplies(layout, post) {
         saveB.onclick = async () => {
           const t = ta.value.trim(); if (!t) return;
           saveB.disabled = true;
-          await db.collection('forum').doc(postId).collection('replies').doc(r.id).update({ text: t, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
-          replyEditWrap.remove(); replyEditWrap = null;
-          rTxt.textContent = t; showToast('✓ Yanıt güncellendi');
+          try {
+            await db.collection('forum').doc(postId).collection('replies').doc(r.id).update({ text: t, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
+            replyEditWrap.remove(); replyEditWrap = null;
+            rTxt.textContent = t; showToast('✓ Yanıt güncellendi');
+          } catch(e) {
+            showToast('Güncelleme hatası: ' + (e.message||e.code), 'error');
+            saveB.disabled = false;
+          }
         };
         btns.append(saveB, cancelB); replyEditWrap.append(ta, btns);
         rBody.append(replyEditWrap);
