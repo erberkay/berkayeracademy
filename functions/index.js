@@ -310,12 +310,12 @@ function buildWelcomeMailOptions(name, toEmail) {
   const moduleCards = MODULES.map((m) => `
     <td style="width:50%;padding:6px;vertical-align:top;">
       <div style="background:#f8f8f8;border:1px solid ${m.free ? "#e8b84b" : "#e5e5e5"};border-radius:6px;padding:14px 16px;height:100%;box-sizing:border-box;">
-        ${m.free ? `<div style="display:inline-block;background:#e8b84b;color:#060609;font-size:9px;font-weight:bold;padding:2px 7px;border-radius:3px;letter-spacing:.5px;margin-bottom:8px;">ÜCRETSİZ</div>` : ""}
-        <table cellpadding="0" cellspacing="0" style="margin-bottom:6px;">
+        ${m.free ? `<div style="display:inline-block;background:#e8b84b;color:#060609;font-size:9px;font-weight:bold;padding:2px 7px;border-radius:3px;letter-spacing:.5px;margin-bottom:8px;">ÜCRETSİZ</div><br>` : ""}
+        <table cellpadding="0" cellspacing="0" style="margin-bottom:6px;width:100%;">
           <tr>
-            <td style="vertical-align:middle;padding-right:8px;font-size:18px;font-weight:bold;color:${m.free ? "#e8b84b" : "#bbb"};font-family:'Helvetica Neue',Arial,sans-serif;line-height:1;">${m.num}</td>
-            <td style="vertical-align:middle;">
-              <div style="font-size:12px;font-weight:bold;color:#222;line-height:1.2;">${m.title}</div>
+            <td style="vertical-align:top;padding-right:8px;width:28px;font-size:17px;font-weight:bold;color:${m.free ? "#e8b84b" : "#ccc"};font-family:'Helvetica Neue',Arial,sans-serif;line-height:1.3;">${m.num}</td>
+            <td style="vertical-align:top;">
+              <div style="font-size:12px;font-weight:bold;color:#222;line-height:1.3;">${m.title}</div>
               <div style="font-size:10px;color:#999;margin-top:2px;">${m.level}</div>
             </td>
           </tr>
@@ -392,5 +392,114 @@ exports.sendWelcomeEmail = onCall(
       const mail = buildWelcomeMailOptions(toName || "Öğrenci", toEmail);
       await transporter.sendMail(mail);
       return {ok: true};
+    },
+);
+
+// ── Promo Email ────────────────────────────────────────────────────────────
+function buildPromoMailOptions(name, toEmail) {
+  const moduleRows = [
+    ["01 · Ableton Live Temelleri", "ÜCRETSİZ", "#e8b84b"],
+    ["02 · Ritim & Beat Üretimi", "Başlangıç — Orta", "#aaa"],
+    ["03 · Parça Kurgulama ve Yapımı", "Orta — İleri", "#aaa"],
+    ["04 · Loop & Sample Tasarımı", "Orta", "#aaa"],
+    ["05 · Ses Tasarımı & Synthesis", "Orta", "#aaa"],
+    ["06 · Mixing & Mastering", "Orta — İleri", "#aaa"],
+    ["07 · Özgün Tarz Geliştirme", "Tüm seviyeler", "#aaa"],
+    ["08 · Live Set Kurgulama", "İleri", "#aaa"],
+  ].map(([title, badge, color]) => `
+    <tr>
+      <td style="padding:7px 0;border-bottom:1px solid #f0f0f0;">
+        <table cellpadding="0" cellspacing="0" width="100%"><tr>
+          <td style="font-size:12px;color:#222;font-weight:600;">${title}</td>
+          <td style="text-align:right;white-space:nowrap;"><span style="font-size:10px;color:${color};font-weight:bold;">${badge}</span></td>
+        </tr></table>
+      </td>
+    </tr>`).join("");
+
+  return {
+    from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
+    replyTo: "berkayer032@gmail.com",
+    to: toEmail,
+    subject: `Ableton özel ders — elektronik müzik prodüksiyonunu profesyonelce öğren`,
+    headers: {"List-Unsubscribe": "<mailto:berkayer032@gmail.com?subject=unsubscribe>"},
+    text: `Merhaba ${name},\n\nBerkay Er Academy ile Ableton Live özel dersleri başlıyor.\n\n2019'dan bu yana süregelen müzikal birikim ve prodüksiyon deneyimiyle elektronik müzik üretimini sıfırdan profesyonel düzeye taşı.\n\n8 Modül:\n${MODULES.map((m) => `${m.num}. ${m.title}`).join("\n")}\n\nAyrıca:\n• Ücretsiz deneme dersi\n• 500 GB preset & sample paketi\n• Online, esnek takvim\n\nDeneme dersini rezerve et: https://berkayeracademy.com/egitim\n\nBerkay Er Academy\nberkayeracademy.com`,
+    html: `
+<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;max-width:560px;">
+        <tr><td style="background:#060609;padding:28px 32px;text-align:center;">
+          <div style="font-size:22px;font-weight:bold;color:#e8b84b;letter-spacing:2px;font-family:'Helvetica Neue',Arial,sans-serif;">BERKAY ER ACADEMY</div>
+          <div style="font-size:11px;color:rgba(238,235,230,.5);letter-spacing:3px;margin-top:4px;">ABLETON ÖZEL DERS</div>
+        </td></tr>
+        <tr><td style="background:#0d0d14;padding:28px 32px;text-align:center;">
+          <div style="font-size:13px;color:rgba(232,184,75,.7);letter-spacing:2px;margin-bottom:10px;">ELEKTRONİK MÜZİK PRODÜKSİYONU</div>
+          <div style="font-size:26px;font-weight:bold;color:#fff;line-height:1.25;margin-bottom:12px;">Sıfırdan Profesyonele<br><span style="color:#e8b84b;">Ableton Özel Ders</span></div>
+          <div style="font-size:13px;color:rgba(238,235,230,.55);line-height:1.7;max-width:400px;margin:0 auto 20px;">Berkay Er ile kişiye özel müfredat, online uygulamalı dersler. 2019'dan bu yana süregelen prodüksiyon deneyimi.</div>
+          <a href="https://berkayeracademy.com/egitim" style="display:inline-block;background:#e8b84b;color:#060609;font-size:13px;font-weight:bold;padding:13px 30px;border-radius:4px;text-decoration:none;letter-spacing:1px;">Ücretsiz Deneme Dersi Al →</a>
+        </td></tr>
+        <tr><td style="padding:28px 32px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:33%;text-align:center;padding:0 8px;">
+                <div style="font-size:24px;margin-bottom:6px;">🎓</div>
+                <div style="font-size:12px;font-weight:bold;color:#222;margin-bottom:3px;">8 Modül</div>
+                <div style="font-size:11px;color:#888;line-height:1.5;">Tüm seviyeler, kişiye özel müfredat</div>
+              </td>
+              <td style="width:33%;text-align:center;padding:0 8px;">
+                <div style="font-size:24px;margin-bottom:6px;">📦</div>
+                <div style="font-size:12px;font-weight:bold;color:#222;margin-bottom:3px;">500 GB Paket</div>
+                <div style="font-size:11px;color:#888;line-height:1.5;">Preset, sample ve kaynak arşivi</div>
+              </td>
+              <td style="width:33%;text-align:center;padding:0 8px;">
+                <div style="font-size:24px;margin-bottom:6px;">🆓</div>
+                <div style="font-size:12px;font-weight:bold;color:#222;margin-bottom:3px;">Ücretsiz Deneme</div>
+                <div style="font-size:11px;color:#888;line-height:1.5;">İlk ders tamamen ücretsiz</div>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:0 32px;"><div style="height:1px;background:#eee;"></div></td></tr>
+        <tr><td style="padding:24px 32px;">
+          <div style="font-size:11px;color:#999;letter-spacing:2px;margin-bottom:14px;">DERS İÇERİĞİ</div>
+          <table width="100%" cellpadding="0" cellspacing="0">${moduleRows}</table>
+        </td></tr>
+        <tr><td style="background:#f9f6f0;padding:24px 32px;text-align:center;border-top:1px solid #eee;">
+          <div style="font-size:14px;color:#222;font-weight:bold;margin-bottom:6px;">Hemen başla — ilk ders ücretsiz</div>
+          <div style="font-size:12px;color:#888;margin-bottom:16px;">Online · Esnek takvim · Kişiye özel</div>
+          <a href="https://berkayeracademy.com/egitim" style="display:inline-block;background:#060609;color:#e8b84b;font-size:13px;font-weight:bold;padding:12px 28px;border-radius:4px;text-decoration:none;letter-spacing:1px;">Eğitim Sayfasına Git →</a>
+        </td></tr>
+        <tr><td style="background:#f8f8f8;padding:18px 32px;text-align:center;border-top:1px solid #eee;">
+          <p style="margin:0;font-size:11px;color:#aaa;">Berkay Er Academy · berkayeracademy.com</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#ccc;">Bu emaili almak istemiyorsanız <a href="mailto:berkayer032@gmail.com?subject=unsubscribe" style="color:#aaa;">buraya tıklayın</a>.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  };
+}
+
+exports.sendPromoEmailAll = onCall(
+    {region: "europe-west1", timeoutSeconds: 300},
+    async (request) => {
+      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
+      }
+      const db = getFirestore();
+      const snap = await db.collection("users").get();
+      const promises = [];
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (!d.email || d.email === ADMIN_EMAIL) return;
+        const mail = buildPromoMailOptions(d.displayName || d.email.split("@")[0], d.email);
+        promises.push(transporter.sendMail(mail).catch(() => {}));
+      });
+      await Promise.all(promises);
+      return {sent: promises.length};
     },
 );

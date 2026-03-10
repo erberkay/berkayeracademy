@@ -586,6 +586,14 @@
       <div id="adminRemindersList"><div class="empty-state">Yükleniyor…</div></div>
     </div>
 
+    <!-- Promo Email -->
+    <div class="card">
+      <div class="section-title">📢 Tanıtım Maili</div>
+      <div style="font-size:.65rem;color:var(--dim);margin-bottom:14px;">Siteye kayıtlı tüm üyelere ders tanıtım maili gönder.</div>
+      <button id="promoEmailBtn" class="btn btn-gold" style="font-size:.72rem;padding:9px 20px;">📢 Tüm Üyelere Gönder</button>
+      <div id="promoEmailStatus" style="font-size:.62rem;margin-top:8px;"></div>
+    </div>
+
     <!-- Active Students -->
     <div class="card">
       <div class="section-title">Aktif Öğrenciler</div>
@@ -2050,6 +2058,22 @@ async function renderAdminPanel() {
         remindersList.appendChild(row);
       });
     }
+  }
+
+  // Promo email button
+  const promoBtn = document.getElementById('promoEmailBtn');
+  const promoStatus = document.getElementById('promoEmailStatus');
+  if (promoBtn) {
+    promoBtn.onclick = async () => {
+      if (!confirm('Tüm üyelere tanıtım maili gönderilsin mi?')) return;
+      promoBtn.disabled = true; promoBtn.textContent = '⏳ Gönderiliyor…';
+      promoStatus.style.color = 'var(--dim)'; promoStatus.textContent = 'Lütfen bekleyin…';
+      try {
+        const res = await firebase.app().functions('europe-west1').httpsCallable('sendPromoEmailAll')();
+        promoStatus.style.color = 'var(--green)'; promoStatus.textContent = `✓ ${res.data.sent} kişiye gönderildi.`;
+      } catch(e) { const c=errId(); promoStatus.style.color='var(--crimson)'; promoStatus.textContent=`Hata (${c}): `+(e.message||e.code); }
+      promoBtn.disabled = false; promoBtn.textContent = '📢 Tüm Üyelere Gönder';
+    };
   }
 
   if (!studSnap || studSnap.empty) {
