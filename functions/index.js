@@ -233,9 +233,9 @@ exports.createZoomMeeting = onCall(
       const {topic, startTime, duration} = request.data;
 
       // 1. Get access token
-      const accountId = ZOOM_ACCOUNT_ID.value();
-      const clientId = ZOOM_CLIENT_ID.value();
-      const clientSecret = ZOOM_CLIENT_SECRET.value();
+      const accountId = ZOOM_ACCOUNT_ID.value().trim();
+      const clientId = ZOOM_CLIENT_ID.value().trim();
+      const clientSecret = ZOOM_CLIENT_SECRET.value().trim();
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
       let tokenData;
