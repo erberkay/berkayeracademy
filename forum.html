@@ -720,9 +720,14 @@ function renderPost(post, container) {
       saveB.onclick = async () => {
         const newText = ta.value.trim(); if (!newText) return;
         saveB.disabled = true; saveB.textContent = '⏳';
-        await db.collection('forum').doc(post.id).update({ text: newText, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        editFormEl.remove(); editFormEl = null;
-        showToast('✓ Konu güncellendi');
+        try {
+          await db.collection('forum').doc(post.id).update({ text: newText, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          editFormEl.remove(); editFormEl = null;
+          showToast('✓ Konu güncellendi');
+        } catch(e) {
+          showToast('Güncelleme hatası: ' + (e.message||e.code), 'error');
+          saveB.disabled = false; saveB.textContent = '💾 Kaydet';
+        }
       };
       btns.append(saveB, cancelB); editFormEl.append(ta, btns);
       card.insertBefore(editFormEl, repliesWrap);
