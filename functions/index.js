@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: "berkayer032@gmail.com",
-    pass: "gkkpghxlnpjscxzm",
+    pass: process.env.GMAIL_PASS,
   },
 });
 
@@ -485,7 +485,7 @@ function buildPromoMailOptions(name, toEmail) {
 }
 
 exports.sendPromoEmailAll = onCall(
-    {region: "europe-west1", timeoutSeconds: 300},
+    {region: "europe-west1", timeoutSeconds: 300, invoker: "public"},
     async (request) => {
       if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");

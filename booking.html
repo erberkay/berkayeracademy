@@ -487,6 +487,7 @@
           <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)">Erteleme İstisnaları:</strong> Sağlık sorunları veya acil durumlar gibi özel durumlarda istisna yapılabilir. Bu durumları belgelemeniz gerekebilir.</span></div>
           <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)">Derse Geç Kalma:</strong> Derse 40 dakika içinde girilmezse, ders yapılmış sayılır. Ancak ders sonrası başka ders yoksa süre uzatılabilir.</span></div>
           <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)">Devamsızlık:</strong> Haber vermeden derse katılmazsanız, ders yapılmış sayılır ve yeniden planlanmaz.</span></div>
+          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)">İptal ve Devir:</strong> Alınan dersler iptal edilemez ve başka bir kişiye devir edilemez.</span></div>
           <div style="font-size:.65rem;color:var(--dim);margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05);line-height:1.7;">Bu kurallar derslerin düzenli ve etkili yapılmasına yardımcı olacaktır. Aylık ders saatlerini ve günlerini belirlemeyen arkadaşlar için ders yapılamayacaktır.<br><br>Sorularınız olursa bana ulaşmaktan çekinmeyin. Anlayışınız ve işbirliğiniz için teşekkür ederim.</div>
         </div>
       </div>
@@ -590,10 +591,6 @@
     <div class="card">
       <div class="section-title">📢 Tanıtım Maili</div>
       <div style="font-size:.65rem;color:var(--dim);margin-bottom:14px;">Siteye kayıtlı tüm üyelere ders tanıtım maili gönder.</div>
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <input id="promoTestEmail" type="email" placeholder="test@email.com" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.72rem;padding:8px 10px;border-radius:6px;outline:none;box-sizing:border-box;">
-        <button id="promoTestBtn" style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.25);color:var(--gold);font-family:'Space Mono',monospace;font-size:.68rem;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap;">🧪 Test Gönder</button>
-      </div>
       <button id="promoEmailBtn" class="btn btn-gold" style="font-size:.72rem;padding:9px 20px;">📢 Tüm Üyelere Gönder</button>
       <div id="promoEmailStatus" style="font-size:.62rem;margin-top:8px;"></div>
     </div>
@@ -1048,7 +1045,7 @@ async function submitRequest() {
 
   btn.disabled = true; btn.textContent = 'Gönderiliyor…';
   try {
-    await db.collection('lesson_requests').add({
+    const reqRef = await db.collection('lesson_requests').add({
       from_uid:    _user.uid,
       from_name:   _user.displayName || '',
       from_email:  _user.email || '',
@@ -1069,7 +1066,7 @@ async function submitRequest() {
       firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: _user.email, toName: _user.displayName || '' }).catch(() => {});
     }
     toast('✓ Talebiniz gönderildi!');
-    loadUserState(_user);
+    renderPendingView({ from_uid: _user.uid, from_name: _user.displayName||'', from_email: _user.email||'', lesson_type: isSingle?'single':'monthly', duration_months: duration, schedule, note, status: 'pending', id: reqRef.id });
   } catch(e) {
     const c = errId();
     errEl.textContent = `Hata (${c}): ` + (e.message || e.code || 'Bağlantı hatası');
@@ -1186,6 +1183,7 @@ async function renderDashboard() {
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
   if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
+  if (_zoomVisibilityHandler) { document.removeEventListener('visibilitychange', _zoomVisibilityHandler); _zoomVisibilityHandler = null; }
   if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   showView('view-dashboard');
   initLessonAnnouncements(false);
@@ -2067,20 +2065,6 @@ async function renderAdminPanel() {
   // Promo email button
   const promoBtn = document.getElementById('promoEmailBtn');
   const promoStatus = document.getElementById('promoEmailStatus');
-  const promoTestBtn = document.getElementById('promoTestBtn');
-  if (promoTestBtn) {
-    promoTestBtn.onclick = async () => {
-      const email = document.getElementById('promoTestEmail').value.trim();
-      if (!email) { promoStatus.style.color = 'var(--crimson)'; promoStatus.textContent = 'Email adresi girin.'; return; }
-      promoTestBtn.disabled = true; promoTestBtn.textContent = '⏳';
-      promoStatus.style.color = 'var(--dim)'; promoStatus.textContent = '';
-      try {
-        await firebase.app().functions('europe-west1').httpsCallable('sendPromoEmailSingle')({ toEmail: email });
-        promoStatus.style.color = 'var(--green)'; promoStatus.textContent = `✓ Test gönderildi → ${email}`;
-      } catch(e) { const c=errId(); promoStatus.style.color='var(--crimson)'; promoStatus.textContent=`Hata (${c}): `+(e.message||e.code); }
-      promoTestBtn.disabled = false; promoTestBtn.textContent = '🧪 Test Gönder';
-    };
-  }
   if (promoBtn) {
     promoBtn.onclick = async () => {
       if (!confirm('Tüm üyelere tanıtım maili gönderilsin mi?')) return;
@@ -2749,6 +2733,7 @@ async function initAdminZoomLink() {
 let _zoomCountdownTimer = null;
 let _zoomSettingsUnsub = null;
 let _dashResUnsub = null;
+let _zoomVisibilityHandler = null;
 
 async function initZoomJoinBox(lessons, today, isPaid) {
   const box = document.getElementById('zoomJoinBox');
@@ -2851,6 +2836,9 @@ async function initZoomJoinBox(lessons, today, isPaid) {
   }, () => { renderAll(); });
 
   _zoomCountdownTimer = setInterval(renderAll, 1000);
+  // Re-render immediately when page becomes visible (fixes background tab timer throttling)
+  _zoomVisibilityHandler = () => { if (document.visibilityState === 'visible') renderAll(); };
+  document.addEventListener('visibilitychange', _zoomVisibilityHandler);
 }
 
 async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
@@ -3075,6 +3063,15 @@ async function loadUserState(user) {
     if (rd.lesson_type === 'trial') { renderAccessView(user, 'none'); return; }
     initRequestForm(); return;
   }
+
+  // Check for pending lesson request (monthly/single)
+  let pendingReqSnap = null;
+  try {
+    const qs = await db.collection('lesson_requests').where('from_uid', '==', user.uid).get();
+    const pending = qs.docs.filter(d => d.data().status === 'pending' && d.data().lesson_type !== 'trial');
+    if (pending.length) pendingReqSnap = pending.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
+  } catch(e) {}
+  if (pendingReqSnap) { renderPendingView({ ...pendingReqSnap.data(), id: pendingReqSnap.id }); return; }
 
   initRequestForm();
 }
