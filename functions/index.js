@@ -503,3 +503,17 @@ exports.sendPromoEmailAll = onCall(
       return {sent: promises.length};
     },
 );
+
+exports.sendPromoEmailSingle = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
+      }
+      const {toEmail, toName} = request.data;
+      if (!toEmail) throw new HttpsError("invalid-argument", "toEmail gerekli");
+      const mail = buildPromoMailOptions(toName || toEmail.split("@")[0], toEmail);
+      await transporter.sendMail(mail);
+      return {ok: true};
+    },
+);

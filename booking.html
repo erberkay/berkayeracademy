@@ -590,6 +590,10 @@
     <div class="card">
       <div class="section-title">📢 Tanıtım Maili</div>
       <div style="font-size:.65rem;color:var(--dim);margin-bottom:14px;">Siteye kayıtlı tüm üyelere ders tanıtım maili gönder.</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input id="promoTestEmail" type="email" placeholder="test@email.com" style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.72rem;padding:8px 10px;border-radius:6px;outline:none;box-sizing:border-box;">
+        <button id="promoTestBtn" style="background:rgba(232,184,75,.08);border:1px solid rgba(232,184,75,.25);color:var(--gold);font-family:'Space Mono',monospace;font-size:.68rem;padding:8px 14px;border-radius:6px;cursor:pointer;white-space:nowrap;">🧪 Test Gönder</button>
+      </div>
       <button id="promoEmailBtn" class="btn btn-gold" style="font-size:.72rem;padding:9px 20px;">📢 Tüm Üyelere Gönder</button>
       <div id="promoEmailStatus" style="font-size:.62rem;margin-top:8px;"></div>
     </div>
@@ -2063,6 +2067,20 @@ async function renderAdminPanel() {
   // Promo email button
   const promoBtn = document.getElementById('promoEmailBtn');
   const promoStatus = document.getElementById('promoEmailStatus');
+  const promoTestBtn = document.getElementById('promoTestBtn');
+  if (promoTestBtn) {
+    promoTestBtn.onclick = async () => {
+      const email = document.getElementById('promoTestEmail').value.trim();
+      if (!email) { promoStatus.style.color = 'var(--crimson)'; promoStatus.textContent = 'Email adresi girin.'; return; }
+      promoTestBtn.disabled = true; promoTestBtn.textContent = '⏳';
+      promoStatus.style.color = 'var(--dim)'; promoStatus.textContent = '';
+      try {
+        await firebase.app().functions('europe-west1').httpsCallable('sendPromoEmailSingle')({ toEmail: email });
+        promoStatus.style.color = 'var(--green)'; promoStatus.textContent = `✓ Test gönderildi → ${email}`;
+      } catch(e) { const c=errId(); promoStatus.style.color='var(--crimson)'; promoStatus.textContent=`Hata (${c}): `+(e.message||e.code); }
+      promoTestBtn.disabled = false; promoTestBtn.textContent = '🧪 Test Gönder';
+    };
+  }
   if (promoBtn) {
     promoBtn.onclick = async () => {
       if (!confirm('Tüm üyelere tanıtım maili gönderilsin mi?')) return;
