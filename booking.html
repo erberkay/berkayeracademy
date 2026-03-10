@@ -1564,9 +1564,9 @@ async function renderDashboard() {
   initZoomJoinBox(lessons, today, isPaid);
   initStudentQA(_user.uid, _user);
 
-  // First-visit popup
+  // First-visit popup — skip for trial students (no payment needed)
   const _bkKey = 'bk_welcomed_' + _user.uid;
-  if (!localStorage.getItem(_bkKey)) {
+  if (!localStorage.getItem(_bkKey) && res.lesson_type !== 'trial') {
     localStorage.setItem(_bkKey, '1');
     setTimeout(() => {
       const ov = document.createElement('div');
@@ -1922,9 +1922,10 @@ async function renderAdminPanel() {
       // Count revenue per student (lessons × per-lesson price; skip trial)
       if (studentMonthLessons > 0 && d.lesson_type !== 'trial') {
         const studentRevenue = studentMonthLessons * perLessonPrice;
+        const totalRevenue = d.custom_total_price ?? (totalNonCancelled * perLessonPrice);
         if (d.payment_confirmed) { statsRevenue += studentRevenue; statsPaidStudents++; }
         else if (d.payment_pending) { statsPendingStudents++; }
-        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, revenue: studentRevenue, paid: !!d.payment_confirmed });
+        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, totalLessons: totalNonCancelled, revenue: studentRevenue, totalRevenue, paid: !!d.payment_confirmed });
       }
     });
   }
@@ -1945,9 +1946,13 @@ async function renderAdminPanel() {
       </div>
       ${statsPerStudent.length > 1 ? `<div style="flex:100%;margin-top:4px;">
         <div style="font-size:.62rem;color:var(--dim);margin-bottom:6px;letter-spacing:.06em;">ÖĞRENCİ BAZINDA</div>
-        ${statsPerStudent.map(st => `<div style="display:flex;justify-content:space-between;font-size:.72rem;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);">
-          <span style="color:var(--white);">${st.name} ${st.paid ? '<span style="font-size:.55rem;color:var(--green);">✓</span>' : ''}</span>
-          <span style="color:var(--dim);">${st.lessons} ders · <strong style="color:var(--gold);">${st.revenue.toLocaleString('tr-TR')} ₺</strong></span>
+        ${statsPerStudent.map(st => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:.72rem;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+          <div>
+            <span style="color:var(--white);">${st.name}</span>
+            ${st.paid ? '<span style="font-size:.55rem;color:var(--green);margin-left:4px;">✓</span>' : ''}
+            <div style="font-size:.58rem;color:var(--dim);margin-top:1px;">Bu ay: ${st.lessons} ders · Toplam: ${st.totalLessons} ders</div>
+          </div>
+          <strong style="color:var(--gold);white-space:nowrap;">${st.totalRevenue.toLocaleString('tr-TR')} ₺</strong>
         </div>`).join('')}
       </div>` : ''}`;
   }
@@ -1981,47 +1986,68 @@ async function renderAdminPanel() {
       return (sd.lessons || []).some(l => l.date >= todayStr && (l.status === 'scheduled' || l.status === 'rescheduled'));
     });
 
-    const sendBtn = document.createElement('button');
-    sendBtn.className = 'btn btn-gold';
-    sendBtn.style.cssText = 'margin-bottom:14px;font-size:.72rem;padding:8px 18px;';
-    sendBtn.textContent = `📧 Email Gönder (${unpaidStudents.length} öğrenci)`;
-    sendBtn.disabled = unpaidStudents.length === 0;
-    sendBtn.onclick = async () => {
-      sendBtn.disabled = true; sendBtn.textContent = '⏳ Gönderiliyor…';
-      try {
-        const fn = firebase.app().functions('europe-west1');
-        const sendReminders = fn.httpsCallable('sendPaymentRemindersManual');
-        const result = await sendReminders();
-        toast(`✓ ${result.data.sent} email gönderildi.`);
-        renderAdminPanel();
-      } catch(e) { const c=errId(); toast(`Email hatası (${c}): `+(e.message||e.code), true); sendBtn.disabled=false; sendBtn.textContent=`📧 Email Gönder`; }
-    };
-
     remindersList.innerHTML = '';
-    remindersList.appendChild(sendBtn);
 
     if (unpaidStudents.length === 0) {
       remindersList.insertAdjacentHTML('beforeend', '<div class="empty-state">Ödeme bekleyen öğrenci yok.</div>');
     } else {
-      const rows = unpaidStudents.map(d => {
-        const sd = d.data();
+      unpaidStudents.forEach(d => {
+        const sd = d.data(); const uid = d.id;
+        const email = sd.student_email || sd.from_email || '';
+        const name = sd.student_name || sd.from_name || '—';
         const lastSent = sd.last_reminder_sent
           ? new Date(sd.last_reminder_sent.toDate ? sd.last_reminder_sent.toDate() : sd.last_reminder_sent)
               .toLocaleDateString('tr-TR', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})
           : null;
         const nextLesson = (sd.lessons || []).filter(l => l.date >= todayStr && (l.status==='scheduled'||l.status==='rescheduled')).sort((a,b)=>a.date.localeCompare(b.date))[0];
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.72rem;">
-          <div>
-            <span style="color:var(--white);">${sd.student_name || sd.from_name || '—'}</span>
-            <span style="color:var(--dim);margin-left:6px;">${sd.student_email || sd.from_email || ''}</span>
-            ${nextLesson ? `<span style="color:var(--gold);margin-left:6px;font-size:.62rem;">${formatDateStr(nextLesson.date)} ${nextLesson.time}</span>` : ''}
-          </div>
-          <div style="text-align:right;">
-            ${lastSent ? `<span style="color:rgba(255,200,100,.7);font-size:.62rem;">📧 ${lastSent}</span>` : `<span style="color:rgba(255,255,255,.25);font-size:.62rem;">—</span>`}
-          </div>
+
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.72rem;gap:8px;';
+        row.innerHTML = `<div style="flex:1;min-width:0;">
+          <div style="color:var(--white);">${name} <span style="color:var(--dim);font-size:.62rem;">${email}</span></div>
+          ${nextLesson ? `<div style="color:var(--gold);font-size:.62rem;margin-top:1px;">${formatDateStr(nextLesson.date)} ${nextLesson.time}</div>` : ''}
+          ${lastSent ? `<div style="color:rgba(255,200,100,.6);font-size:.58rem;margin-top:1px;">📧 Son: ${lastSent}</div>` : ''}
         </div>`;
-      }).join('');
-      remindersList.insertAdjacentHTML('beforeend', rows);
+
+        const btns = document.createElement('div');
+        btns.style.cssText = 'display:flex;flex-direction:column;gap:4px;flex-shrink:0;';
+
+        const reminderBtn = document.createElement('button');
+        reminderBtn.textContent = '📧 Ödeme Hatırlatma';
+        reminderBtn.style.cssText = 'background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);color:var(--gold);font-family:"Space Mono",monospace;font-size:.58rem;padding:4px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;';
+        reminderBtn.onclick = async () => {
+          reminderBtn.disabled = true; reminderBtn.textContent = '⏳';
+          try {
+            const fn = firebase.app().functions('europe-west1');
+            await fn.httpsCallable('sendPaymentRemindersManual')();
+            toast(`✓ Hatırlatma gönderildi → ${name}`);
+            await db.collection('reservations').doc(uid).update({ last_reminder_sent: firebase.firestore.FieldValue.serverTimestamp() });
+            renderAdminPanel();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); reminderBtn.disabled=false; reminderBtn.textContent='📧 Ödeme Hatırlatma'; }
+        };
+
+        const customBtn = document.createElement('button');
+        customBtn.textContent = '✉️ Kişiye Özel';
+        customBtn.style.cssText = 'background:rgba(143,200,232,.07);border:1px solid rgba(143,200,232,.2);color:rgba(143,200,232,.7);font-family:"Space Mono",monospace;font-size:.58rem;padding:4px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;';
+        customBtn.onclick = () => adminComposeEmail(uid, email, name, false);
+
+        const welcomeBtn = document.createElement('button');
+        welcomeBtn.textContent = '🎉 Hoşgeldin';
+        welcomeBtn.style.cssText = 'background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2);color:rgba(74,222,128,.7);font-family:"Space Mono",monospace;font-size:.58rem;padding:4px 9px;border-radius:5px;cursor:pointer;white-space:nowrap;';
+        welcomeBtn.onclick = async () => {
+          welcomeBtn.disabled = true; welcomeBtn.textContent = '⏳';
+          try {
+            const fn = firebase.app().functions('europe-west1');
+            await fn.httpsCallable('sendWelcomeEmail')({ toEmail: email, toName: name });
+            toast(`✓ Hoşgeldin maili gönderildi → ${name}`);
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+          welcomeBtn.disabled = false; welcomeBtn.textContent = '🎉 Hoşgeldin';
+        };
+
+        btns.append(reminderBtn, customBtn, welcomeBtn);
+        row.append(btns);
+        remindersList.appendChild(row);
+      });
     }
   }
 
@@ -2061,6 +2087,7 @@ async function renderAdminPanel() {
           </div>
           <button onclick="adminAddLesson('${studentUid}')" style="background:none;border:1px solid rgba(180,120,255,.2);color:rgba(180,120,255,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:6px;">➕ Ders Ekle</button>
           <button onclick="adminComposeEmail('${studentUid}','${(s.student_email||s.from_email||'').replace(/'/g,"\\'")}','${(s.student_name||s.from_name||'Öğrenci').replace(/'/g,"\\'")}',${isTrial})" style="background:none;border:1px solid rgba(143,200,232,.2);color:rgba(143,200,232,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:4px;">✉️ Email Yaz</button>
+          <button onclick="adminSendWelcomeEmail('${(s.student_email||s.from_email||'').replace(/'/g,"\\'")}','${(s.student_name||s.from_name||'Öğrenci').replace(/'/g,"\\'")}',this)" style="background:none;border:1px solid rgba(74,222,128,.2);color:rgba(74,222,128,.6);font-size:.58rem;cursor:pointer;padding:3px 8px;border-radius:6px;font-family:'Space Mono',monospace;margin-top:4px;">🎉 Hoşgeldin Maili</button>
         </div>`;
       const payWrap = document.createElement('div'); payWrap.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
       if (isTrial) {
@@ -2549,6 +2576,17 @@ async function adminAddLesson(studentUid) {
       renderAdminPanel();
     } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); saveBtn.disabled = false; saveBtn.textContent = '✓ Ekle'; }
   };
+}
+
+async function adminSendWelcomeEmail(toEmail, toName, btn) {
+  if (!toEmail) { toast('Email adresi bulunamadı.', true); return; }
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳';
+  try {
+    await firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail, toName });
+    toast(`✓ Hoşgeldin maili gönderildi → ${toName}`);
+  } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
+  btn.disabled = false; btn.textContent = orig;
 }
 
 function adminComposeEmail(studentUid, toEmail, toName, isTrial) {
