@@ -311,13 +311,15 @@ function buildWelcomeMailOptions(name, toEmail) {
     <td style="width:50%;padding:6px;vertical-align:top;">
       <div style="background:#f8f8f8;border:1px solid ${m.free ? "#e8b84b" : "#e5e5e5"};border-radius:6px;padding:14px 16px;height:100%;box-sizing:border-box;">
         ${m.free ? `<div style="display:inline-block;background:#e8b84b;color:#060609;font-size:9px;font-weight:bold;padding:2px 7px;border-radius:3px;letter-spacing:.5px;margin-bottom:8px;">ÜCRETSİZ</div>` : ""}
-        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px;">
-          <span style="font-size:18px;font-weight:bold;color:${m.free ? "#e8b84b" : "#bbb"};font-family:'Helvetica Neue',Arial,sans-serif;">${m.num}</span>
-          <div>
-            <div style="font-size:12px;font-weight:bold;color:#222;">${m.title}</div>
-            <div style="font-size:10px;color:#999;margin-top:1px;">${m.level}</div>
-          </div>
-        </div>
+        <table cellpadding="0" cellspacing="0" style="margin-bottom:6px;">
+          <tr>
+            <td style="vertical-align:middle;padding-right:8px;font-size:18px;font-weight:bold;color:${m.free ? "#e8b84b" : "#bbb"};font-family:'Helvetica Neue',Arial,sans-serif;line-height:1;">${m.num}</td>
+            <td style="vertical-align:middle;">
+              <div style="font-size:12px;font-weight:bold;color:#222;line-height:1.2;">${m.title}</div>
+              <div style="font-size:10px;color:#999;margin-top:2px;">${m.level}</div>
+            </td>
+          </tr>
+        </table>
         <ul style="margin:0;padding-left:14px;">
           ${m.topics.map((t) => `<li style="font-size:11px;color:#555;margin-bottom:3px;line-height:1.4;">${t}</li>`).join("")}
         </ul>
