@@ -2736,8 +2736,13 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
   const newDate = new Date(dateStrToObj(lesson.date));
   newDate.setDate(newDate.getDate() + 7);
   const newDateStr = toDateStr(newDate);
+
+  // Block if same student already has a lesson on that date
+  const alreadyHas = allLessons.some((l, i) => i !== lessonIdx && l.date === newDateStr && (l.status === 'scheduled' || l.status === 'rescheduled'));
+  if (alreadyHas) { toast(`${formatDateStr(newDateStr)} tarihinde zaten bir ders var — ertelenemez.`, true); return; }
+
   const conflictSnap = await db.collection('booked_slots').doc(newDateStr + '_' + lesson.time).get().catch(() => null);
-  if (conflictSnap && conflictSnap.exists) {
+  if (conflictSnap && conflictSnap.exists && conflictSnap.data()?.student_uid !== studentUid) {
     const ok = confirm(`${formatDateStr(newDateStr)} ${lesson.time} başka bir öğrenciye ait. Yine de ertele?`);
     if (!ok) return;
   }
