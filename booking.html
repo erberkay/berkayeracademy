@@ -886,17 +886,21 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
     toast('Erteleme en az 24 saat önceden yapılmalıdır.', true); return;
   }
 
-  const minDate = toDateStr(new Date(now.getTime() + 24 * 60 * 60 * 1000));
-  const timeOpts = AVAILABLE_TIMES.map(t => `<option value="${t}"${t === lesson.time ? ' selected' : ''}>${t}</option>`).join('');
+  // Auto-compute +7 days
+  const newDateObj = new Date(dateStrToObj(lesson.date));
+  newDateObj.setDate(newDateObj.getDate() + 7);
+  const newDate = toDateStr(newDateObj);
+
   const modal = Object.assign(document.createElement('div'), { innerHTML: `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
       <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:320px;font-family:'Space Mono',monospace;">
-        <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:5px;">↺ Ders Ertele</div>
-        <div style="font-size:.62rem;color:#888;margin-bottom:16px;">${formatDateStr(lesson.date)} ${lesson.time} → yeni tarih & saat seç</div>
-        <div style="font-size:.65rem;color:#888;margin-bottom:5px;letter-spacing:.06em;">YENİ TARİH</div>
-        <input type="date" id="reschDate" min="${minDate}" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:14px;">
-        <div style="font-size:.65rem;color:#888;margin-bottom:5px;letter-spacing:.06em;">YENİ SAAT</div>
-        <select id="reschTime" style="background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.82rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:20px;">${timeOpts}</select>
+        <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:12px;">↺ Ders Ertele</div>
+        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+          <div style="font-size:.65rem;color:#888;margin-bottom:4px;">MEVCUT</div>
+          <div style="font-size:.82rem;color:#fff;">${formatDateStr(lesson.date)} ${lesson.time}</div>
+          <div style="font-size:.65rem;color:rgba(232,184,75,.6);margin:8px 0 4px;">→ 1 HAFTA SONRA</div>
+          <div style="font-size:.82rem;color:var(--gold);font-weight:700;">${formatDateStr(newDate)} ${lesson.time}</div>
+        </div>
         <div style="display:flex;gap:8px;">
           <button id="reschCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;">İptal</button>
           <button id="reschSave" style="flex:1;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">↺ Ertele</button>
@@ -906,20 +910,17 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
   document.body.append(modal);
   modal.querySelector('#reschCancel').onclick = () => modal.remove();
   modal.querySelector('#reschSave').onclick = async () => {
-    const newDate = modal.querySelector('#reschDate').value;
-    const newTime = modal.querySelector('#reschTime').value;
-    if (!newDate) { toast('Lütfen tarih seçin.', true); return; }
     const saveBtn = modal.querySelector('#reschSave');
     saveBtn.disabled = true; saveBtn.textContent = '⏳';
     try {
-      const conflict = await db.collection('booked_slots').doc(newDate + '_' + newTime).get();
+      const conflict = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
       if (conflict.exists) {
         saveBtn.disabled = false; saveBtn.textContent = '↺ Ertele';
-        toast(`${formatDateStr(newDate)} ${newTime} saati dolu, başka bir saat seçin.`, true); return;
+        toast(`${formatDateStr(newDate)} ${lesson.time} saati dolu, lütfen admin ile iletişime geçin.`, true); return;
       }
       const updatedLessons = allLessons.map((l, i) =>
-        i === idx ? { ...l, date: newDate, time: newTime, status: 'rescheduled' } : l
-      );
+        i === idx ? { ...l, date: newDate, status: 'rescheduled' } : l
+      ).sort((a,b) => a.date.localeCompare(b.date));
       const updatedCredits = { ...res.reschedule_credits, [monthKey]: credits - 1 };
       const batch = db.batch();
       batch.update(db.collection('reservations').doc(_user.uid), {
@@ -927,12 +928,12 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
         reschedule_credits: updatedCredits,
       });
       batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-      batch.set(db.collection('booked_slots').doc(newDate + '_' + newTime), {
-        date: newDate, time: newTime, student_uid: _user.uid,
+      batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), {
+        date: newDate, time: lesson.time, student_uid: _user.uid,
       });
       await batch.commit();
       modal.remove();
-      toast(`✓ Ders ertelendi → ${formatDateStr(newDate)} ${newTime}`);
+      toast(`✓ Ders ertelendi → ${formatDateStr(newDate)} ${lesson.time}`);
       renderDashboard();
     } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); saveBtn.disabled = false; saveBtn.textContent = '↺ Ertele'; }
   };
@@ -1989,7 +1990,7 @@ async function renderAdminPanel() {
       const s = doc.data(); const studentUid = doc.id;
       const today = toDateStr(new Date());
       const allLessonsArr = s.lessons || [];
-      const upcomingLessons = allLessonsArr.filter(l => l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'cancel_requested'));
+      const upcomingLessons = allLessonsArr.filter(l => l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'cancel_requested')).sort((a,b) => a.date.localeCompare(b.date));
       const totalLessons = allLessonsArr.filter(l => l.status !== 'cancelled').length;
       const curMonthAdmin = today.slice(0, 7);
       const thisMonthCount = allLessonsArr.filter(l => l.date.startsWith(curMonthAdmin) && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'completed')).length;
@@ -2116,6 +2117,7 @@ async function renderAdminPanel() {
             mkItem('✓ Tamamlandı', '', () => adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson)),
             mkItem('📝 Not Ekle', '', () => adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson)),
             Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
+            mkItem('↺ 1 Hafta Ertele', '', () => adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson)),
             mkItem('🕐 Saati Değiştir', '', () => adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson)),
             mkItem('📅 Günü Değiştir', '', () => adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson)),
             Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
@@ -2429,7 +2431,8 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
     try {
       const conflict = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
       if (conflict.exists) { const ok = confirm(`${newDate} ${lesson.time} dolu. Yine de değiştir?`); if (!ok) return; }
-      const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, date: newDate } : l);
+      const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, date: newDate } : l)
+        .sort((a,b) => a.date.localeCompare(b.date));
       const batch = db.batch();
       batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
       batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
@@ -2741,7 +2744,7 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
   try {
     const updatedLessons = allLessons.map((l, i) =>
       i === lessonIdx ? { ...l, date: newDateStr, status: 'rescheduled' } : l
-    );
+    ).sort((a,b) => a.date.localeCompare(b.date));
     const batch = db.batch();
     batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons });
     batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
@@ -2750,6 +2753,7 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
     }
     await batch.commit();
     toast(`✓ Ders ertelendi → ${formatDateStr(newDateStr)} ${lesson.time}`);
+    renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
