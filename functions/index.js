@@ -491,11 +491,16 @@ exports.sendPromoEmailAll = onCall(
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const db = getFirestore();
-      const snap = await db.collection("users").get();
+      const [usersSnap, resSnap] = await Promise.all([
+        db.collection("users").get(),
+        db.collection("reservations").get(),
+      ]);
+      const studentUids = new Set(resSnap.docs.map((d) => d.id));
       const promises = [];
-      snap.forEach((doc) => {
+      usersSnap.forEach((doc) => {
         const d = doc.data();
         if (!d.email || d.email === ADMIN_EMAIL) return;
+        if (studentUids.has(doc.id)) return; // skip existing students
         const mail = buildPromoMailOptions(d.displayName || d.email.split("@")[0], d.email);
         promises.push(transporter.sendMail(mail).catch(() => {}));
       });
