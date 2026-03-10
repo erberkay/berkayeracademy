@@ -293,3 +293,102 @@ exports.createZoomMeeting = onCall(
       return {join_url: meetingData.join_url, meeting_id: meetingData.id};
     },
 );
+
+// ── Welcome Email ──────────────────────────────────────────────────────────
+const MODULES = [
+  {num: "01", title: "Ableton Live Temelleri", level: "Başlangıç", free: true, topics: ["Arayüz & workflow optimizasyonu", "Session View vs Arrangement View", "MIDI & Audio routing", "Temel efektler & sinyal zinciri"]},
+  {num: "02", title: "Ritim & Beat Üretimi", level: "Başlangıç — Orta", free: false, topics: ["Drum Rack & sample layering", "Swing, groove & humanization", "Velocity programlama", "Peaktime & Techno ritim yapıları"]},
+  {num: "03", title: "Parça Kurgulama ve Yapımı", level: "Orta — İleri", free: false, topics: ["Dark melodi & harmoni yapısı", "Tension, build & release dinamiği", "Arrangement şablonları", "Ses mimarisi & atmosfer katmanlama"]},
+  {num: "04", title: "Loop & Sample Tasarımı", level: "Orta", free: false, topics: ["Sample seçimi & düzenleme", "Creative resampling teknikleri", "Chop, slice & warp", "Loop'tan sahneye taşıma"]},
+  {num: "05", title: "Ses Tasarımı & Synthesis", level: "Orta", free: false, topics: ["Oscillator, ADSR, Filter temelleri", "Ableton Wavetable & Operator", "Serum / VST synthesizer kullanımı", "Atmospheric pad & texture tasarımı"]},
+  {num: "06", title: "Mixing & Mastering", level: "Orta — İleri", free: false, topics: ["EQ, Compressor & Sidechain", "Reverb / Delay space tasarımı", "Stereo genişlik & derinlik", "Master chain & loudness yönetimi"]},
+  {num: "07", title: "Özgün Tarz Geliştirme", level: "Tüm seviyeler", free: false, topics: ["Referans analizi & kulak eğitimi", "Müzikal kimlik & imza ses", "Demo & release süreçleri", "Geri bildirim & kritik çalışması"]},
+  {num: "08", title: "Live Set Kurgulama", level: "İleri", free: false, topics: ["Sahne için clip & scene düzeni", "Controller mapping & MIDI takımı", "Canlı efekt & otomasyon", "Sahne dinamiği & crowd okuma"]},
+];
+
+function buildWelcomeMailOptions(name, toEmail) {
+  const moduleCards = MODULES.map((m) => `
+    <td style="width:50%;padding:6px;vertical-align:top;">
+      <div style="background:#f8f8f8;border:1px solid ${m.free ? "#e8b84b" : "#e5e5e5"};border-radius:6px;padding:14px 16px;height:100%;box-sizing:border-box;">
+        ${m.free ? `<div style="display:inline-block;background:#e8b84b;color:#060609;font-size:9px;font-weight:bold;padding:2px 7px;border-radius:3px;letter-spacing:.5px;margin-bottom:8px;">ÜCRETSİZ</div>` : ""}
+        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px;">
+          <span style="font-size:18px;font-weight:bold;color:${m.free ? "#e8b84b" : "#bbb"};font-family:'Helvetica Neue',Arial,sans-serif;">${m.num}</span>
+          <div>
+            <div style="font-size:12px;font-weight:bold;color:#222;">${m.title}</div>
+            <div style="font-size:10px;color:#999;margin-top:1px;">${m.level}</div>
+          </div>
+        </div>
+        <ul style="margin:0;padding-left:14px;">
+          ${m.topics.map((t) => `<li style="font-size:11px;color:#555;margin-bottom:3px;line-height:1.4;">${t}</li>`).join("")}
+        </ul>
+      </div>
+    </td>`).reduce((rows, card, i) => {
+    if (i % 2 === 0) rows.push(`<tr>${card}`);
+    else rows[rows.length - 1] += `${card}</tr>`;
+    return rows;
+  }, []).join("");
+
+  return {
+    from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
+    replyTo: "berkayer032@gmail.com",
+    to: toEmail,
+    subject: `Hoş geldin ${name} — Ders programın hazır`,
+    headers: {"List-Unsubscribe": "<mailto:berkayer032@gmail.com?subject=unsubscribe>"},
+    text: `Merhaba ${name},\n\nDers talebini aldık, çok yakında seninle iletişime geçeceğiz.\n\nSeni neler bekliyor?\n\n${MODULES.map((m) => `${m.num}. ${m.title} (${m.level})${m.free ? " — ÜCRETSİZ" : ""}\n${m.topics.map((t) => "   • " + t).join("\n")}`).join("\n\n")}\n\nDers Paneli: https://berkayeracademy.com/booking\n\nBerkay Er Academy\nberkayeracademy.com`,
+    html: `
+<!DOCTYPE html>
+<html lang="tr">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:32px 0;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;max-width:580px;">
+        <tr><td style="background:#060609;padding:24px 32px;text-align:center;">
+          <div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:22px;font-weight:bold;color:#e8b84b;letter-spacing:2px;">BERKAY ER ACADEMY</div>
+          <div style="font-size:11px;color:rgba(238,235,230,.5);letter-spacing:3px;margin-top:4px;">ABLETON ÖZEL DERS</div>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="margin:0 0 8px;font-size:15px;color:#222;">Merhaba <strong>${name}</strong>,</p>
+          <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">Ders talebini aldık — çok yakında seninle iletişime geçeceğiz. Seni neler beklediğine bir göz at:</p>
+
+          <div style="background:#060609;border-radius:6px;padding:14px 18px;margin-bottom:24px;">
+            <div style="font-size:11px;color:rgba(232,184,75,.7);letter-spacing:2px;font-weight:bold;margin-bottom:4px;">DERS İÇERİĞİ</div>
+            <div style="font-size:13px;color:rgba(238,235,230,.7);line-height:1.6;">8 modül · Tüm seviyeler · Kişiye özel müfredat</div>
+          </div>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+            ${moduleCards}
+          </table>
+
+          <div style="background:#f9f6f0;border:1px solid #e8b84b;border-radius:6px;padding:14px 18px;margin-bottom:24px;">
+            <div style="font-size:12px;color:#856404;font-weight:bold;margin-bottom:4px;">📦 500 GB Preset Paketi</div>
+            <div style="font-size:12px;color:#555;line-height:1.5;">Ders sürecinde kullanmak üzere 500 GB preset, sample ve kaynak paketi paylaşılacaktır.</div>
+          </div>
+
+          <a href="https://berkayeracademy.com/booking" style="display:inline-block;background:#e8b84b;color:#060609;font-size:13px;font-weight:bold;padding:12px 28px;border-radius:4px;text-decoration:none;letter-spacing:1px;">Ders Panelinize Git →</a>
+        </td></tr>
+        <tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #eee;">
+          <p style="margin:0;font-size:11px;color:#aaa;">Berkay Er Academy · berkayeracademy.com</p>
+          <p style="margin:4px 0 0;font-size:11px;color:#ccc;">Bu emaili almak istemiyorsanız <a href="mailto:berkayer032@gmail.com?subject=unsubscribe" style="color:#aaa;">buraya tıklayın</a>.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+  };
+}
+
+exports.sendWelcomeEmail = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Giriş gerekli");
+      }
+      const {toEmail, toName} = request.data;
+      if (!toEmail) throw new HttpsError("invalid-argument", "toEmail gerekli");
+      const mail = buildWelcomeMailOptions(toName || "Öğrenci", toEmail);
+      await transporter.sendMail(mail);
+      return {ok: true};
+    },
+);

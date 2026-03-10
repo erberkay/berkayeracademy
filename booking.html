@@ -1050,6 +1050,12 @@ async function submitRequest() {
     });
     // Flag user doc so egitim.html can unlock member content without a collection query
     await db.collection('users').doc(_user.uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {});
+    // Welcome email — send only once
+    const _wKey = 'bk_welcome_mail_' + _user.uid;
+    if (!localStorage.getItem(_wKey)) {
+      localStorage.setItem(_wKey, '1');
+      firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: _user.email, toName: _user.displayName || '' }).catch(() => {});
+    }
     toast('✓ Talebiniz gönderildi!');
     loadUserState(_user);
   } catch(e) {
@@ -3111,6 +3117,12 @@ function renderAccessView(user, state, rejectReason) {
           status: 'pending',
           created_at: firebase.firestore.FieldValue.serverTimestamp(),
         });
+        // Welcome email — send only once
+        const _wKey2 = 'bk_welcome_mail_' + user.uid;
+        if (!localStorage.getItem(_wKey2)) {
+          localStorage.setItem(_wKey2, '1');
+          firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: user.email, toName: user.displayName || '' }).catch(() => {});
+        }
         renderPendingView({ lesson_type:'trial', trial_date:date, trial_time:time, note, status:'pending', id:'_' });
       } catch(e) { const c=errId(); errEl.textContent=`Hata (${c}): `+(e.message||e.code); errEl.style.display=''; btn.disabled=false; btn.textContent='Deneme Dersi İste →'; }
     };
