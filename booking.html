@@ -548,6 +548,7 @@
       <div style="display:flex;gap:8px;align-items:center;">
         <input id="adminZoomInput" type="url" placeholder="https://us06web.zoom.us/j/..." style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:.72rem;padding:8px 12px;outline:none;">
         <button id="adminZoomSave" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--green);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;padding:8px 14px;border-radius:7px;cursor:pointer;white-space:nowrap;">Kaydet</button>
+        <button id="adminZoomCreate" style="background:rgba(99,179,237,.1);border:1px solid rgba(99,179,237,.3);color:#63b3ed;font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;padding:8px 14px;border-radius:7px;cursor:pointer;white-space:nowrap;">🎥 Oluştur</button>
       </div>
       <div id="adminZoomStatus" style="font-size:.62rem;margin-top:6px;"></div>
       <div id="adminZoomJoinLink"></div>
@@ -2577,6 +2578,27 @@ async function initAdminZoomLink() {
     } catch(e) { const c=errId(); status.style.color='var(--crimson)'; status.textContent=`Hata (${c})`; }
     saveBtn.disabled = false; saveBtn.textContent = 'Kaydet';
   };
+
+  const createBtn = document.getElementById('adminZoomCreate');
+  if (createBtn) {
+    createBtn.onclick = async () => {
+      createBtn.disabled = true; createBtn.textContent = '⏳ Oluşturuluyor...';
+      status.style.color = ''; status.textContent = '';
+      try {
+        const createZoomMeeting = firebase.functions().httpsCallable('createZoomMeeting');
+        const result = await createZoomMeeting({ topic: 'Ableton Özel Ders', duration: 60 });
+        const link = result.data.join_url;
+        input.value = link;
+        renderAdminZoomJoin(link);
+        status.style.color = 'var(--green)'; status.textContent = '✓ Toplantı oluşturuldu';
+        setTimeout(() => status.textContent = '', 3000);
+      } catch(e) {
+        status.style.color = 'var(--crimson)';
+        status.textContent = 'Hata: ' + (e.message || e.code || 'bilinmiyor');
+      }
+      createBtn.disabled = false; createBtn.textContent = '🎥 Oluştur';
+    };
+  }
 }
 
 let _zoomCountdownTimer = null;
