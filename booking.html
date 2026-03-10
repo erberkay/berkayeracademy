@@ -1565,6 +1565,7 @@ async function renderDashboard() {
 
 // ─── Admin Panel ──────────────────────────────────────────
 async function renderAdminPanel() {
+  if (!_user || _user.email !== ADMIN_EMAIL) return;
   if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
   _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
@@ -2621,7 +2622,7 @@ async function initZoomJoinBox(lessons, today) {
       : nearSoon ? `🔒 Link ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} sonra aktif olacak`
       : `Bugün saat ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}'de · link 15 dk önce aktif olacak`;
     if (active) {
-      box.innerHTML = `<a href="${zoomLink}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;"><div><div style="font-size:.82rem;color:var(--green);font-weight:700;font-family:'Space Mono',monospace;">🎥 Derse Katıl</div><div style="font-size:.65rem;color:rgba(74,222,128,.7);margin-top:2px;">${sublabel}</div></div><div style="font-size:1.4rem;color:var(--green);">→</div></a>`;
+      const _za=document.createElement('a');_za.target='_blank';_za.rel='noopener';_za.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;';if(zoomLink&&(zoomLink.startsWith('https://')||zoomLink.startsWith('http://')))_za.href=zoomLink;const _zd1=document.createElement('div');const _zd1a=document.createElement('div');_zd1a.style.cssText='font-size:.82rem;color:var(--green);font-weight:700;font-family:"Space Mono",monospace;';_zd1a.textContent='🎥 Derse Katıl';const _zd1b=document.createElement('div');_zd1b.style.cssText='font-size:.65rem;color:rgba(74,222,128,.7);margin-top:2px;';_zd1b.textContent=sublabel;_zd1.append(_zd1a,_zd1b);const _zd2=document.createElement('div');_zd2.style.cssText='font-size:1.4rem;color:var(--green);';_zd2.textContent='→';_za.append(_zd1,_zd2);box.innerHTML='';box.append(_za);
     } else {
       box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 18px;margin-bottom:14px;opacity:.65;"><div><div style="font-size:.82rem;color:var(--dim);font-weight:700;font-family:'Space Mono',monospace;">🎥 Bugün Ders Var</div><div style="font-size:.65rem;color:var(--dim);margin-top:2px;">${sublabel}</div></div><div style="font-size:1.4rem;color:var(--dim);">${nearSoon?'🔒':'📅'}</div></div>`;
     }
@@ -2658,7 +2659,7 @@ async function initZoomJoinBox(lessons, today) {
       const hh = String(ch).padStart(2,'0'), mm2 = String(cm).padStart(2,'0');
       if (active || inProgress) {
         const sub = inProgress ? 'Ders devam ediyor' : `⏱ ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} kaldı`;
-        area.innerHTML = `<a href="${zoomLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);border-radius:7px;padding:7px 16px;text-decoration:none;color:#4ade80;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;">🟢 Derse Katıl <span style="font-size:.58rem;opacity:.75;">${sub}</span></a>`;
+        const _za2=document.createElement('a');_za2.target='_blank';_za2.rel='noopener';_za2.style.cssText='display:inline-flex;align-items:center;gap:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);border-radius:7px;padding:7px 16px;text-decoration:none;color:#4ade80;font-family:"Space Mono",monospace;font-size:.72rem;font-weight:700;';if(zoomLink&&(zoomLink.startsWith('https://')||zoomLink.startsWith('http://')))_za2.href=zoomLink;_za2.textContent='🟢 Derse Katıl ';const _zs=document.createElement('span');_zs.style.cssText='font-size:.58rem;opacity:.75;';_zs.textContent=sub;_za2.append(_zs);area.innerHTML='';area.append(_za2);
       } else if (within60) {
         const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
         area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.7);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.85;">🔴 Derse Katıl <span style="font-size:.58rem;opacity:.8;">⏱ ${mm}:${String(ss).padStart(2,'0')} kaldı</span></div>`;
@@ -2850,7 +2851,7 @@ async function loadUserState(user) {
   catch(e) {
     const c = errId();
     showView('view-signin');
-    document.getElementById('view-signin').innerHTML += `<div style="margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;">Bağlantı hatası (${c}): ${e.message||e.code}<br>Sayfayı yenileyin.</div>`;
+    const _em=document.createElement('div');_em.style.cssText='margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;';_em.textContent=`Bağlantı hatası (${c}): ${e.message||e.code} — Sayfayı yenileyin.`;document.getElementById('view-signin').append(_em);
     return;
   }
 
@@ -2887,7 +2888,7 @@ async function loadUserState(user) {
   catch(e) {
     const c = errId();
     showView('view-signin');
-    document.getElementById('view-signin').innerHTML += `<div style="margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;">Bağlantı hatası (${c}): ${e.message||e.code}<br>Sayfayı yenileyin.</div>`;
+    const _em=document.createElement('div');_em.style.cssText='margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;';_em.textContent=`Bağlantı hatası (${c}): ${e.message||e.code} — Sayfayı yenileyin.`;document.getElementById('view-signin').append(_em);
     return;
   }
   if (resSnap && resSnap.exists) {
