@@ -49,8 +49,10 @@ Banka : Garanti Bankası
 İsim  : Muhammet Berkay Er
 IBAN  : TR35 0006 2000 6870 0006 8982 06
 
+Ödeme ders saatine kadar gerçekleşmelidir. Gerçekleşmediği takdirde derse giriş butonu aktifleşmeyecektir.
+
 Ödeme yaptıktan sonra ders panelinizden bildirim göndermeyi unutmayın.
-Ders Paneliniz: https://berkayeracademy.com/booking.html
+Ders Paneliniz: https://berkayeracademy.com/booking
 
 Herhangi bir sorunuz için bu emaile yanıt verebilirsiniz.
 
@@ -80,6 +82,10 @@ berkayeracademy.com`,
             <tr><td style="font-size:12px;color:#888;padding:3px 0;">İsim</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">Muhammet Berkay Er</td></tr>
             <tr><td style="font-size:12px;color:#888;padding:3px 0;">IBAN</td><td style="font-size:13px;color:#222;font-weight:bold;text-align:right;font-family:monospace;letter-spacing:1px;">TR35 0006 2000 6870 0006 8982 06</td></tr>
           </table>
+          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:12px 16px;margin-bottom:20px;">
+            <p style="margin:0;font-size:13px;color:#856404;font-weight:bold;">⚠️ Ödeme ders saatine kadar gerçekleşmelidir.</p>
+            <p style="margin:6px 0 0;font-size:12px;color:#856404;">Gerçekleşmediği takdirde derse giriş butonu aktifleşmeyecektir.</p>
+          </div>
           <p style="margin:0 0 24px;font-size:13px;color:#666;line-height:1.6;">Ödeme yaptıktan sonra ders panelinizden bildirim göndermeyi unutmayın. Herhangi bir sorunuz için bu emaile yanıt verebilirsiniz.</p>
           <a href="https://berkayeracademy.com/booking.html" style="display:inline-block;background:#e8b84b;color:#060609;font-size:13px;font-weight:bold;padding:12px 28px;border-radius:4px;text-decoration:none;letter-spacing:1px;">Ders Panelinize Git →</a>
         </td></tr>
