@@ -1,14 +1,10 @@
 const {setGlobalOptions} = require("firebase-functions");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onCall, HttpsError} = require("firebase-functions/v2/https");
-const {defineSecret} = require("firebase-functions/params");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const nodemailer = require("nodemailer");
 
-const ZOOM_ACCOUNT_ID = defineSecret("ZOOM_ACCOUNT_ID");
-const ZOOM_CLIENT_ID = defineSecret("ZOOM_CLIENT_ID");
-const ZOOM_CLIENT_SECRET = defineSecret("ZOOM_CLIENT_SECRET");
 
 setGlobalOptions({maxInstances: 10, region: "europe-west1"});
 
@@ -224,7 +220,7 @@ exports.sendCustomEmail = onCall(
 
 // ── Zoom: Create Meeting ────────────────────────────────────────────────────
 exports.createZoomMeeting = onCall(
-    {region: "europe-west1", secrets: [ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET]},
+    {region: "europe-west1"},
     async (request) => {
       if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
@@ -233,9 +229,12 @@ exports.createZoomMeeting = onCall(
       const {topic, startTime, duration} = request.data;
 
       // 1. Get access token
-      const accountId = ZOOM_ACCOUNT_ID.value().trim();
-      const clientId = ZOOM_CLIENT_ID.value().trim();
-      const clientSecret = ZOOM_CLIENT_SECRET.value().trim();
+      const accountId = process.env.Z_ACCOUNT_ID;
+      const clientId = process.env.Z_CLIENT_ID;
+      const clientSecret = process.env.Z_CLIENT_SECRET;
+      if (!accountId || !clientId || !clientSecret) {
+        throw new HttpsError("failed-precondition", "Zoom credentials eksik");
+      }
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
       let tokenData;
