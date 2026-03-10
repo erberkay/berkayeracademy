@@ -2153,11 +2153,30 @@ async function renderAdminPanel() {
         pastDiv.style.display = 'none';
         pastDiv.style.cssText = 'display:none;';
         pastLessons.slice().sort((a,b) => b.date.localeCompare(a.date)).forEach(lesson => {
+          const allLessons = allLessonsArr;
+          const lessonIdx = allLessons.findIndex(l => l.date === lesson.date && l.time === lesson.time && l.status === lesson.status);
           const lRow = document.createElement('div');
           lRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.03);font-size:.7rem;';
           const statusColor = lesson.status === 'completed' ? 'var(--green)' : lesson.status === 'cancelled' ? 'var(--crimson)' : 'var(--dim)';
           const statusLabel = lesson.status === 'completed' ? '✓ Tamamlandı' : lesson.status === 'cancelled' ? '✕ İptal' : '↩ Ertelendi';
+          const delBtn = document.createElement('button');
+          delBtn.textContent = '🗑';
+          delBtn.title = 'Kaydı sil';
+          delBtn.style.cssText = 'background:none;border:none;color:rgba(220,50,50,.4);font-size:.75rem;cursor:pointer;padding:0 4px;line-height:1;';
+          delBtn.onmouseenter = () => delBtn.style.color = 'var(--crimson)';
+          delBtn.onmouseleave = () => delBtn.style.color = 'rgba(220,50,50,.4)';
+          delBtn.onclick = async () => {
+            if (!confirm(`${formatDateStr(lesson.date)} ${lesson.time} kaydını kalıcı olarak sil?`)) return;
+            const updated = allLessons.filter((_, i) => i !== lessonIdx);
+            try {
+              await db.collection('reservations').doc(studentUid).update({ lessons: updated });
+              lRow.remove();
+              const remaining = pastDiv.querySelectorAll('div').length;
+              pastToggle.textContent = `▾ Geçmiş Dersler (${remaining})`;
+            } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+          };
           lRow.innerHTML = `<span style="color:var(--dim);">${formatDateStr(lesson.date)} ${lesson.time}</span><span style="color:${statusColor};font-size:.62rem;">${statusLabel}</span>`;
+          lRow.append(delBtn);
           pastDiv.append(lRow);
         });
         pastToggle.onclick = () => {
