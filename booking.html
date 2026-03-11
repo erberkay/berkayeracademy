@@ -81,6 +81,7 @@
     .av-cell.free { background:rgba(74,222,128,.1); border-color:rgba(74,222,128,.25); color:rgba(74,222,128,.6); }
     .av-cell.free:hover { background:rgba(74,222,128,.22); border-color:rgba(74,222,128,.6); color:rgba(74,222,128,.95); }
     .av-cell.busy { background:rgba(184,45,69,.15); border-color:rgba(184,45,69,.3); color:rgba(184,45,69,.55); cursor:not-allowed; }
+    .av-cell.closed { background:rgba(255,255,255,.02); border-color:rgba(255,255,255,.06); color:rgba(255,255,255,.12); cursor:not-allowed; }
     .av-cell.selected { background:rgba(232,184,75,.22); border-color:rgba(232,184,75,.85); box-shadow:0 0 0 2px rgba(232,184,75,.18); color:var(--gold); font-size:.74rem; font-weight:700; }
     .av-cell.selected:hover { background:rgba(232,184,75,.32); }
     .avail-legend { display:flex; gap:14px; font-size:.6rem; color:var(--dim); margin-bottom:14px; flex-wrap:wrap; }
@@ -88,6 +89,7 @@
     .avail-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; }
     .avail-legend .lg-free { background:rgba(74,222,128,.2); border:1px solid rgba(74,222,128,.4); }
     .avail-legend .lg-busy { background:rgba(184,45,69,.2); border:1px solid rgba(184,45,69,.3); }
+    .avail-legend .lg-closed { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); }
     .avail-legend .lg-sel  { background:rgba(232,184,75,.25); border:1.5px solid rgba(232,184,75,.7); }
     .avail-selected-summary { font-size:.68rem; color:var(--gold); min-height:1.2em; margin-bottom:12px; }
 
@@ -460,6 +462,7 @@
         <div class="avail-legend">
           <span><i class="lg-free"></i> Müsait</span>
           <span><i class="lg-busy"></i> Dolu</span>
+          <span><i class="lg-closed"></i> Kapalı</span>
           <span><i class="lg-sel"></i> Seçili</span>
         </div>
         <div class="avail-wrap">
@@ -721,6 +724,7 @@
 'use strict';
 const ADMIN_EMAIL = 'berkayer032@gmail.com';
 const AVAILABLE_TIMES = Array.from({length:48}, (_,i) => `${String(Math.floor(i/2)).padStart(2,'0')}:${i%2===0?'00':'30'}`);
+const GRID_TIMES = AVAILABLE_TIMES.filter(t => t >= '08:00' && t <= '23:30');
 const DAYS_TR = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
 const DAYS_TR_SHORT = ['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS_TR = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
@@ -739,6 +743,7 @@ const db   = firebase.firestore();
 let _user = null;
 let _selectedSlots = new Set(); // "dayIndex_time" e.g. "1_14:00"
 let _busySlots     = new Set(); // same format, loaded from booked_slots
+let _closedSlots   = new Set(); // same format, admin-blocked days (shown grey)
 
 // ─── Helpers ─────────────────────────────────────────────
 function showView(id) {
@@ -878,6 +883,7 @@ async function loadAndRenderAvailGrid() {
   const endStr   = toDateStr(end90);
 
   _busySlots.clear();
+  _closedSlots.clear();
   let _availDays = null; // null = all days open
   try {
     const [settingsSnap, slotsSnap] = await Promise.all([
@@ -903,11 +909,11 @@ async function loadAndRenderAvailGrid() {
       const c=errId(); toast(`Müsaitlik yüklenemedi (${c}): `+(e.message||e.code), true);
     }
   }
-  // Block all slots on unavailable days
+  // Mark admin-closed days as closed (grey) — separate from busy (red)
   if (_availDays !== null) {
     GRID_DAYS.forEach(dow => {
       if (!_availDays.includes(dow)) {
-        AVAILABLE_TIMES.forEach(t => _busySlots.add(`${dow}_${t}`));
+        GRID_TIMES.forEach(t => _closedSlots.add(`${dow}_${t}`));
       }
     });
   }
@@ -929,19 +935,21 @@ function renderAvailGrid() {
     hr.append(th);
   });
 
-  // Body: one row per time
+  // Body: one row per time (only 08:00–23:30)
   const tbody = table.createTBody();
-  AVAILABLE_TIMES.forEach(time => {
+  GRID_TIMES.forEach(time => {
     const tr = tbody.insertRow();
 
     GRID_DAYS.forEach(dow => {
       const key = `${dow}_${time}`;
       const td = document.createElement('td');
       const cell = document.createElement('div');
-      cell.className = 'av-cell ' + (_busySlots.has(key) ? 'busy' : _selectedSlots.has(key) ? 'selected' : 'free');
+      const isClosed = _closedSlots.has(key);
+      const isBusy   = _busySlots.has(key);
+      cell.className = 'av-cell ' + (isClosed ? 'closed' : isBusy ? 'busy' : _selectedSlots.has(key) ? 'selected' : 'free');
       cell.textContent = time;
       cell.dataset.key = key;
-      if (!_busySlots.has(key)) {
+      if (!isBusy && !isClosed) {
         cell.onclick = () => toggleSlot(key, cell);
       }
       td.append(cell); tr.append(td);
