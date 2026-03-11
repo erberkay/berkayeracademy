@@ -285,6 +285,7 @@
       .card { padding:18px 14px; }
       .dash-layout { grid-template-columns:1fr; }
       .stats-row { grid-template-columns:repeat(2,1fr); }
+      #adminTopRow { grid-template-columns:1fr; }
       .stat-val { font-size:1.5rem; }
       .lesson-item { flex-wrap:wrap; gap:10px; padding:12px 14px; }
       .lesson-actions { width:100%; justify-content:flex-start; }
@@ -604,10 +605,16 @@
   <div class="view" id="view-admin">
     <div class="admin-badge">🔐 Admin Paneli</div>
 
-    <!-- Access Requests -->
-    <div class="card" id="adminAccessCard" style="display:none;">
-      <div class="section-title">🔑 Erişim Talepleri</div>
-      <div id="adminAccessList"></div>
+    <!-- Access Requests + Pending Requests side by side -->
+    <div id="adminTopRow" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+      <div class="card" id="adminAccessCard" style="margin:0;">
+        <div class="section-title">🔑 Erişim Talepleri</div>
+        <div id="adminAccessList"></div>
+      </div>
+      <div class="card" id="adminRequestsCard" style="margin:0;">
+        <div class="card-title">Gelen Talepler</div>
+        <div id="adminRequestsList"><div class="empty-state">Yükleniyor…</div></div>
+      </div>
     </div>
 
     <!-- Zoom Link -->
@@ -648,11 +655,6 @@
       <div id="adminCalendar"></div>
     </div>
 
-    <!-- Pending Requests -->
-    <div class="card">
-      <div class="card-title">Gelen Talepler</div>
-      <div id="adminRequestsList"><div class="empty-state">Yükleniyor…</div></div>
-    </div>
 
     <!-- Email Reminders -->
     <div class="card">
@@ -3731,9 +3733,9 @@ function loadAdminAccessRequests() {
         }
       }
       _accessInitialLoad = false;
-      list.innerHTML = '';
-      if (snap.empty) { card.style.display = 'none'; return; }
       card.style.display = '';
+      list.innerHTML = '';
+      if (snap.empty) { list.innerHTML = '<div class="empty-state">Bekleyen erişim talebi yok.</div>'; return; }
       snap.docs.forEach(doc => {
         const r = doc.data();
         const row = document.createElement('div');
