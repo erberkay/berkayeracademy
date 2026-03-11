@@ -1606,7 +1606,7 @@ async function renderDashboard() {
   const thisMonthLessons = lessons.filter(l => l.date.startsWith(curMonth));
   const thisMonthDone = thisMonthLessons.filter(l => l.status === 'completed').length;
 
-  if (hasFrozenLessons) {
+  if (hasFrozenLessons && !isTrial) {
     const frozenBanner = document.createElement('div');
     frozenBanner.style.cssText = 'margin-bottom:14px;padding:10px 14px;background:rgba(143,200,232,.06);border:1px solid rgba(143,200,232,.25);border-radius:8px;font-size:.72rem;color:rgba(143,200,232,.8);line-height:1.6;';
     frozenBanner.innerHTML = '❄️ <strong style="color:rgba(143,200,232,.95);">Ders planınız dondurulmuştur.</strong> Yeni tarihler belirlendiğinde bildirim alacaksınız. Sorularınız için eğitmeninizle iletişime geçebilirsiniz.';
@@ -2380,8 +2380,12 @@ async function renderAdminPanel() {
           await adminBulkCancel(studentUid, idxArr, allLessons);
         });
         const bulkFreezeBtn = mkBulkBtn('❄️ Dondur', () => {
-          const idxArr = [...selectedIdxs];
-          adminBulkFreezeModal(studentUid, idxArr, allLessons);
+          const _today = toDateStr(new Date());
+          const allUpcomingIdxs = allLessons
+            .map((l, i) => ({ l, i }))
+            .filter(({ l }) => l.status !== 'cancelled' && l.status !== 'frozen' && l.date >= _today)
+            .map(({ i }) => i);
+          adminBulkFreezeModal(studentUid, allUpcomingIdxs, allLessons);
         });
 
         bulkBar.append(bulkLabel, bulkRescheduleBtn, bulkCompleteBtn, bulkCancelBtn, bulkFreezeBtn, cancelSelBtn);
@@ -2733,7 +2737,7 @@ function adminBulkFreezeModal(studentUid, idxArr, allLessons) {
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
       <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:340px;font-family:'Space Mono',monospace;">
         <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:8px;">❄️ Dersleri Dondur</div>
-        <div style="font-size:.72rem;color:rgba(238,235,230,.45);line-height:1.6;margin-bottom:16px;">Seçili ${selectedLessons.length} ders dondurulacak. Yeni başlangıç tarihini seç — dersler oradan itibaren aynı aralıkla devam eder.</div>
+        <div style="font-size:.72rem;color:rgba(238,235,230,.45);line-height:1.6;margin-bottom:16px;">Tüm ${selectedLessons.length} yaklaşan ders dondurulacak. Yeni başlangıç tarihini seç — dersler oradan itibaren aynı aralıkla devam eder.</div>
         <label style="font-size:.65rem;color:#888;display:block;margin-bottom:6px;">YENİDEN BAŞLAMA TARİHİ</label>
         <input type="date" id="freezeResumeDate" min="${toDateStr(new Date())}" value="${earliest.date}" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:6px;color:#fff;font-family:'Space Mono',monospace;font-size:.8rem;padding:9px 12px;width:100%;box-sizing:border-box;margin-bottom:20px;">
         <div style="display:flex;gap:8px;">
