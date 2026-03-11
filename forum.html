@@ -846,23 +846,28 @@ function loadReplies(postId, wrap, solved) {
     btn.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) return;
       btn.disabled = true; btn.textContent = '⏳';
-      const admin = isAdmin(_user);
-      await db.collection('forum').doc(postId).collection('replies').add({
-        text:       txt,
-        authorName: _user.displayName?.split(' ')[0] || 'Üye',
-        authorEmail:_user.email,
-        authorId:   _user.uid,
-        isAdmin:    admin,
-        createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
-      });
-      await db.collection('forum').doc(postId).update({
-        replyCount: firebase.firestore.FieldValue.increment(1),
-      });
-      db.collection('users').doc(_user.uid).set({
-        replyCount: firebase.firestore.FieldValue.increment(1),
-      }, { merge: true }).catch(() => {});
-      ta.value = '';
-      btn.disabled = false; btn.textContent = 'Yanıtla';
+      try {
+        const admin = isAdmin(_user);
+        await db.collection('forum').doc(postId).collection('replies').add({
+          text:       txt,
+          authorName: _user.displayName?.split(' ')[0] || 'Üye',
+          authorEmail:_user.email,
+          authorId:   _user.uid,
+          isAdmin:    admin,
+          createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection('forum').doc(postId).update({
+          replyCount: firebase.firestore.FieldValue.increment(1),
+        });
+        db.collection('users').doc(_user.uid).set({
+          replyCount: firebase.firestore.FieldValue.increment(1),
+        }, { merge: true }).catch(() => {});
+        ta.value = '';
+      } catch(e) {
+        const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.message||e.code||'Hata'), 'error');
+      } finally {
+        btn.disabled = false; btn.textContent = 'Yanıtla';
+      }
     };
     form.append(ta, btn); wrap.append(form);
   }

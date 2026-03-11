@@ -665,39 +665,35 @@ async function renderReplies(layout, post) {
       const txt = ta.value.trim(); if (!txt) return;
       sub.disabled = true; sub.textContent = '⏳';
       try {
-      await db.collection('forum').doc(postId).collection('replies').add({
-        text:          txt,
-        authorName:    _user.displayName?.split(' ')[0] || 'Üye',
-        authorEmail:   _user.email,
-        authorId:      _user.uid,
-        authorPhotoURL:_user.photoURL || '',
-        isAdmin:       isAdmin(_user),
-        createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
-      });
-      await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(1) });
-      // Track in user's reply subcollection (for profile display) + increment user replyCount
-      db.collection('users').doc(_user.uid).collection('userReplies').add({
-        postId,
-        text: txt.slice(0, 200),
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      }).catch(() => {});
-      db.collection('users').doc(_user.uid).set({
-        replyCount: firebase.firestore.FieldValue.increment(1),
-      }, { merge: true }).catch(() => {});
-      // Notify post author
-      if (post.authorId && post.authorId !== _user.uid) {
-        db.collection('notifications').doc(post.authorId).collection('items').add({
-          text: `${_user.displayName?.split(' ')[0] || 'Biri'}, "${post.title || 'konuna'}" konusuna yanıt verdi`,
-          postId: postId,
-          fromUid: _user.uid,
-          fromName: _user.displayName?.split(' ')[0] || 'Üye',
-          read: false,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        await db.collection('forum').doc(postId).collection('replies').add({
+          text:          txt,
+          authorName:    _user.displayName?.split(' ')[0] || 'Üye',
+          authorEmail:   _user.email,
+          authorId:      _user.uid,
+          authorPhotoURL:_user.photoURL || '',
+          isAdmin:       isAdmin(_user),
+          createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(1) });
+        db.collection('users').doc(_user.uid).collection('userReplies').add({
+          postId, text: txt.slice(0, 200), createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         }).catch(() => {});
+        db.collection('users').doc(_user.uid).set({
+          replyCount: firebase.firestore.FieldValue.increment(1),
+        }, { merge: true }).catch(() => {});
+        if (post.authorId && post.authorId !== _user.uid) {
+          db.collection('notifications').doc(post.authorId).collection('items').add({
+            text: `${_user.displayName?.split(' ')[0] || 'Biri'}, "${post.title || 'konuna'}" konusuna yanıt verdi`,
+            postId, fromUid: _user.uid, fromName: _user.displayName?.split(' ')[0] || 'Üye',
+            read: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          }).catch(() => {});
+        }
+        ta.value = '';
+      } catch(e) {
+        const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error');
+      } finally {
+        sub.disabled = false; sub.textContent = 'Yanıtla';
       }
-      ta.value = '';
-      sub.disabled = false; sub.textContent = 'Yanıtla';
-      } catch(e) { const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); sub.disabled=false; sub.textContent='Yanıtla'; }
     };
     row.append(ta, sub); formCard.append(ft, row);
   } else {

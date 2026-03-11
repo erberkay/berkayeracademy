@@ -39,7 +39,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .auth-sign-btn:hover { background:var(--gold); color:var(--black); }
 .auth-user-wrap { display:flex; align-items:center; gap:8px; background:var(--deep); border:1.5px solid rgba(232,184,75,.4); padding:4px 10px 4px 4px; border-radius:20px; transition:background .2s, border-color .2s; }
 .auth-avatar { width:26px; height:26px; border-radius:50%; border:2px solid var(--gold); object-fit:cover; }
-.auth-name { font-size:.62rem; color:var(--white); max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.auth-name { font-size:.62rem; color:var(--white); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .auth-out-btn { background:transparent; border:none; color:var(--dim); font-size:.6rem; cursor:pointer; font-family:'Space Mono',monospace; }
 
 .layout { max-width:1400px; margin:0 auto; padding:72px 28px 80px; display:grid; grid-template-columns:300px 1fr 360px; gap:28px; position:relative; z-index:1; }
@@ -445,28 +445,28 @@ let _chatPanelEl = null, _chatThreadsEl = null, _chatMsgsEl = null, _chatMainEl 
 async function _sendMsg(fromUid, fromName, fromPhoto, toUid, toName, toPhoto, text) {
   if (fromUid === toUid) throw new Error('Kendinize mesaj gönderemezsiniz.');
   const cid = _chatId(fromUid, toUid);
-  const ref = db.collection('chats').doc(cid);
-  // Chat doc must exist before message is written (Firestore rule checks participants via get())
-  // So: update chat doc first, then add message. On message failure, roll back lastMessage.
-  const prevSnap = await ref.get().catch(() => null);
-  await ref.set({ participants:[fromUid,toUid], names:{[fromUid]:fromName,[toUid]:toName}, photos:{[fromUid]:fromPhoto||'', [toUid]:toPhoto||''}, lastMessage:text.slice(0,100), lastAt:firebase.firestore.FieldValue.serverTimestamp(), unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid) }, { merge:true });
-  try {
-    await ref.collection('messages').add({ fromUid, text: text.slice(0, 2000), createdAt:firebase.firestore.FieldValue.serverTimestamp() });
-  } catch(e) {
-    // Roll back lastMessage to previous value to keep chat doc consistent
-    if (prevSnap && prevSnap.exists) {
-      const prev = prevSnap.data();
-      ref.update({ lastMessage: prev.lastMessage || '', lastAt: prev.lastAt || null }).catch(() => {});
-    }
-    throw e;
-  }
-  // Notify recipient
-  db.collection('notifications').doc(toUid).collection('items').add({
-    text: `💬 ${fromName}: ${text.slice(0,60)}${text.length>60?'…':''}`,
-    read: false,
+  const chatRef = db.collection('chats').doc(cid);
+  const msgRef = chatRef.collection('messages').doc();
+  const batch = db.batch();
+  batch.set(chatRef, {
+    participants:[fromUid,toUid],
+    names:{[fromUid]:fromName,[toUid]:toName},
+    photos:{[fromUid]:fromPhoto||'',[toUid]:toPhoto||''},
+    lastMessage:text.slice(0,100),
+    lastAt:firebase.firestore.FieldValue.serverTimestamp(),
+    unreadBy:firebase.firestore.FieldValue.arrayUnion(toUid),
+  }, { merge:true });
+  batch.set(msgRef, {
     fromUid,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-  }).catch(() => {});
+    text:text.slice(0,2000),
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+  db.collection('notifications').doc(toUid).collection('items').add({
+    text:`💬 ${fromName}: ${text.slice(0,60)}${text.length>60?'…':''}`,
+    read:false, fromUid,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+  }).catch(()=>{});
 }
 
 function _mkAvEl(photo, name, cls) {
@@ -674,23 +674,24 @@ function initChatPanel(user) {
   const inputWrap = document.createElement('div'); inputWrap.className = 'chat-input-wrap'; main.append(inputWrap);
   const chatInput = document.createElement('textarea'); chatInput.className = 'chat-input'; chatInput.placeholder = 'Mesaj yaz…'; chatInput.rows = 1; inputWrap.append(chatInput);
   const sendBtn = document.createElement('button'); sendBtn.className = 'chat-send-btn'; sendBtn.textContent = '↩'; inputWrap.append(sendBtn);
-  const doSend = async () => {
-    const txt = chatInput.value.trim(); if (!txt || !_activeChatOther) return;
-    if (txt.length > 2000) { alert('Mesaj en fazla 2000 karakter olabilir.'); return; }
-    chatInput.value = ''; sendBtn.disabled = true;
+  let _msgQueue = Promise.resolve();
+  const doSend = () => {
+    const txt = chatInput.value.trim();
+    if (!txt || !_activeChatOther) return;
+    if (txt.length > 2000) { showToast('Mesaj en fazla 2000 karakter.', 'error'); return; }
+    chatInput.value = '';
+    chatInput.style.height = 'auto';
+    chatInput.focus();
     const myName = _user?.displayName?.split(' ')[0] || 'Üye';
     const myPhoto = _user?.photoURL || '';
-    try {
-      await _sendMsg(user.uid, myName, myPhoto, _activeChatOther.uid, _activeChatOther.name, _activeChatOther.photo||'', txt);
-    } catch(e) {
-      chatInput.value = txt; // restore message on failure
-      const c=errId(); alert(`Mesaj gönderilemedi (${c}): `+(e.message||e.code||'Bağlantı hatası'));
-    }
-    sendBtn.disabled = false;
-    chatInput.focus();
+    _msgQueue = _msgQueue.then(() =>
+      _sendMsg(user.uid, myName, myPhoto, _activeChatOther.uid, _activeChatOther.name, _activeChatOther.photo||'', txt)
+      .catch(e => { const c=errId(); showToast(`Mesaj gönderilemedi (${c}): `+(e.message||e.code||'Bağlantı hatası'), 'error'); })
+    );
   };
   sendBtn.onclick = doSend;
   chatInput.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } });
+  chatInput.addEventListener('input', () => { chatInput.style.height='auto'; chatInput.style.height=Math.min(chatInput.scrollHeight,120)+'px'; });
   // Show msgs area when a thread is opened
   const origOpenThread = _openThread;
   // Patch: show/hide empty state
