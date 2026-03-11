@@ -619,6 +619,13 @@
       <div id="adminZoomJoinLink"></div>
     </div>
 
+    <!-- Available Days -->
+    <div class="card" id="adminAvailDaysCard">
+      <div class="section-title">📅 Müsait Günler</div>
+      <div style="font-size:.65rem;color:var(--dim);margin-bottom:12px;">Öğrencilerin randevu talebinde seçebileceği günleri belirle. Kapalı günler kırmızı görünür ve seçilemez.</div>
+      <div id="adminAvailDaysList"></div>
+    </div>
+
     <!-- Monthly Stats -->
     <div class="card" id="adminStatsCard">
       <div class="section-title">📊 Aylık İstatistikler</div>
@@ -871,12 +878,16 @@ async function loadAndRenderAvailGrid() {
   const endStr   = toDateStr(end90);
 
   _busySlots.clear();
+  let _availDays = null; // null = all days open
   try {
-    const snap = await db.collection('booked_slots')
-      .where('date','>=', todayStr)
-      .where('date','<=', endStr)
-      .get();
-    snap.forEach(doc => {
+    const [settingsSnap, slotsSnap] = await Promise.all([
+      db.collection('settings').doc('global').get().catch(() => null),
+      db.collection('booked_slots').where('date','>=', todayStr).where('date','<=', endStr).get()
+    ]);
+    if (settingsSnap && settingsSnap.exists && Array.isArray(settingsSnap.data().available_days)) {
+      _availDays = settingsSnap.data().available_days;
+    }
+    slotsSnap.forEach(doc => {
       const d = doc.data();
       const dow = dateStrToObj(d.date).getDay();
       // Mark booked slot + mid-lesson (+30min) + lesson-end (+60min, need 30min buffer before next)
@@ -891,6 +902,14 @@ async function loadAndRenderAvailGrid() {
     if (e.code !== 'permission-denied') {
       const c=errId(); toast(`Müsaitlik yüklenemedi (${c}): `+(e.message||e.code), true);
     }
+  }
+  // Block all slots on unavailable days
+  if (_availDays !== null) {
+    GRID_DAYS.forEach(dow => {
+      if (!_availDays.includes(dow)) {
+        AVAILABLE_TIMES.forEach(t => _busySlots.add(`${dow}_${t}`));
+      }
+    });
   }
 
   renderAvailGrid();
@@ -1748,6 +1767,7 @@ async function renderAdminPanel() {
   if (_adminStudUnsub) { _adminStudUnsub(); _adminStudUnsub = null; }
   showView('view-admin');
   loadAdminAccessRequests();
+  initAdminAvailDays();
   initAdminZoomLink();
   initLessonAnnouncements(true);
   initAdminQA();
@@ -2991,6 +3011,42 @@ async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
     toast('✓ Not kaydedildi.');
     renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+}
+
+// ─── Available Days ───────────────────────────────────────
+async function initAdminAvailDays() {
+  const container = document.getElementById('adminAvailDaysList');
+  if (!container) return;
+  let availDays = [1,2,3,4,5,6,0]; // default: all days
+  try {
+    const snap = await db.collection('settings').doc('global').get();
+    if (snap.exists && Array.isArray(snap.data().available_days)) availDays = snap.data().available_days;
+  } catch(e) {}
+
+  container.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+  const setStyle = (btn, active) => {
+    btn.style.background = active ? 'rgba(74,222,128,.12)' : 'rgba(184,45,69,.08)';
+    btn.style.borderColor = active ? 'rgba(74,222,128,.4)' : 'rgba(184,45,69,.3)';
+    btn.style.color = active ? '#4ade80' : 'rgba(232,120,120,.8)';
+  };
+  GRID_DAYS.forEach(dow => {
+    const btn = document.createElement('button');
+    btn.textContent = DAYS_TR_SHORT[dow];
+    btn.style.cssText = 'padding:7px 14px;border-radius:6px;font-family:"Space Mono",monospace;font-size:.68rem;cursor:pointer;transition:all .15s;border:1px solid;';
+    setStyle(btn, availDays.includes(dow));
+    btn.onclick = async () => {
+      const isActive = availDays.includes(dow);
+      availDays = isActive ? availDays.filter(d => d !== dow) : [...availDays, dow];
+      setStyle(btn, !isActive);
+      try {
+        await db.collection('settings').doc('global').set({ available_days: availDays }, { merge: true });
+      } catch(e) { toast('Kayıt hatası: ' + (e.message||e.code), true); }
+    };
+    wrap.append(btn);
+  });
+  container.append(wrap);
 }
 
 // ─── Zoom Link ────────────────────────────────────────────
