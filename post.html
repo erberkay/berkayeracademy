@@ -205,7 +205,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 </nav>
 
 <nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER</a>
+  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
   <div class="lnav-items">
     <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span>Ana Sayfa</a>
     <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span>Eğitim</a>
@@ -240,6 +240,7 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db   = firebase.firestore();
 let _user = null;
+let _unsubReplies = null;
 
 let _signingIn = false;
 function doSignIn() {
@@ -566,14 +567,20 @@ async function renderPost() {
 }
 
 async function renderReplies(layout, post) {
+  if (_unsubReplies) { _unsubReplies(); _unsubReplies = null; }
   const sec = document.createElement('div'); sec.className = 'replies-section'; sec.id = 'repliesSec';
-  const snap = await db.collection('forum').doc(postId).collection('replies')
-    .orderBy('createdAt','asc').limit(200).get();
 
   const hdr = document.createElement('div'); hdr.className = 'replies-header';
-  hdr.textContent = `${snap.size} Yanıt`;
+  hdr.textContent = 'Yanıtlar yükleniyor...';
   sec.append(hdr);
 
+  const repliesListDiv = document.createElement('div');
+  sec.append(repliesListDiv);
+  layout.append(sec);
+
+  async function renderReplyCards(snap) {
+    hdr.textContent = `${snap.size} Yanıt`;
+    repliesListDiv.innerHTML = '';
   for (const d of snap.docs) {
     const r = { id: d.id, ...d.data() };
     const rCard = document.createElement('div'); rCard.className = 'reply-card';
@@ -632,9 +639,13 @@ async function renderReplies(layout, post) {
     const rTxt = document.createElement('div'); rTxt.className = 'reply-text'; rTxt.textContent = r.text;
     rBody.append(rAuthorRow, rTxt);
     rCard.append(rAv, rBody);
-    sec.append(rCard);
+    repliesListDiv.append(rCard);
   }
-  layout.append(sec);
+  }
+
+  _unsubReplies = db.collection('forum').doc(postId).collection('replies')
+    .orderBy('createdAt','asc').limit(200)
+    .onSnapshot(snap => renderReplyCards(snap));
 
   // ── Reply form ──
   const formCard = document.createElement('div'); formCard.className = 'reply-form-card';
@@ -685,7 +696,7 @@ async function renderReplies(layout, post) {
         }).catch(() => {});
       }
       ta.value = '';
-      await renderPost();
+      sub.disabled = false; sub.textContent = 'Yanıtla';
       } catch(e) { const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); sub.disabled=false; sub.textContent='Yanıtla'; }
     };
     row.append(ta, sub); formCard.append(ft, row);

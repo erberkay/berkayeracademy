@@ -168,7 +168,8 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .chat-send-btn:hover { background:linear-gradient(135deg,rgba(143,200,232,.5),rgba(143,200,232,.3)); box-shadow:0 0 12px rgba(143,200,232,.3); }
 /* Mobile toggle */
 .chat-mobile-btn { display:none; position:fixed; bottom:70px; right:16px; width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg,var(--ice),rgba(143,200,232,.7)); color:var(--black); border:none; font-size:1.3rem; cursor:pointer; z-index:400; box-shadow:0 4px 20px rgba(143,200,232,.4); align-items:center; justify-content:center; }
-@media(max-width:1100px) { .chat-mobile-btn { display:flex; } .chat-panel { position:fixed; top:52px; right:0; bottom:58px; width:340px; border-radius:0; border:none; border-left:1px solid var(--mid); transform:translateX(100%); transition:transform .28s cubic-bezier(.4,0,.2,1); z-index:350; } .chat-panel.mobile-open { transform:translateX(0); } }
+@media(max-width:1100px) { .chat-mobile-btn { display:flex; } .chat-panel { position:fixed; top:52px; right:0; bottom:58px; width:min(340px,100vw); border-radius:0; border:none; border-left:1px solid var(--mid); transform:translateX(100%); transition:transform .28s cubic-bezier(.4,0,.2,1); z-index:350; } .chat-panel.mobile-open { transform:translateX(0); } }
+@supports(height:100dvh) { @media(max-width:1100px) { .chat-panel { bottom:env(safe-area-inset-bottom,58px); } } }
 
 /* ── Edit form ── */
 .edit-form { display:none; padding:0 22px 22px; border-top:1px solid rgba(255,255,255,.06); margin-top:10px; }
@@ -239,7 +240,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .notif-bell.ringing { animation:bellRing 0.55s ease-in-out 3; }
 @keyframes bellRing { 0%{transform:rotate(0)} 15%{transform:rotate(18deg)} 35%{transform:rotate(-15deg)} 55%{transform:rotate(10deg)} 75%{transform:rotate(-6deg)} 90%{transform:rotate(3deg)} 100%{transform:rotate(0)} }
 .notif-badge { position:absolute; top:0; right:0; background:var(--crimson); color:#fff; font-size:.55rem; font-family:'Space Mono',monospace; border-radius:6px; padding:1px 5px; min-width:14px; text-align:center; pointer-events:none; }
-.notif-panel { position:absolute; top:40px; right:0; width:320px; background:var(--card); border:1px solid var(--mid); border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
+.notif-panel { position:absolute; top:40px; right:0; width:min(320px,90vw); background:var(--card); border:1px solid var(--mid); border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
 .notif-panel.open { display:block; }
 .notif-panel-head { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; }
 .notif-panel-title { font-size:.75rem; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
@@ -335,7 +336,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 </nav>
 
 <nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER</a>
+  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
   <div class="lnav-items">
     <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span>Ana Sayfa</a>
     <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span>Eğitim</a>
@@ -606,11 +607,19 @@ function initChatPanel(user) {
   // Header
   const hdr = document.createElement('div'); hdr.className = 'chat-panel-hdr';
   const title = document.createElement('div'); title.className = 'chat-panel-title'; title.textContent = 'Mesajlar';
-  hdr.append(title); panel.append(hdr);
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'display:none;background:none;border:none;color:rgba(238,235,230,.4);font-size:1.1rem;cursor:pointer;padding:4px 6px;line-height:1;border-radius:4px;transition:color .15s;';
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Kapat';
+  closeBtn.onmouseenter = () => closeBtn.style.color = 'var(--white)';
+  closeBtn.onmouseleave = () => closeBtn.style.color = 'rgba(238,235,230,.4)';
+  closeBtn.onclick = () => { panel.classList.remove('mobile-open'); if (typeof mobileBtn !== 'undefined') mobileBtn.style.display = 'flex'; };
+  hdr.append(title, closeBtn); panel.append(hdr);
   const body = document.createElement('div'); body.className = 'chat-body'; panel.append(body);
   // Sidebar
   const sidebar = document.createElement('div'); sidebar.className = 'chat-sidebar'; body.append(sidebar);
-  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = 'Üye ara…'; sidebar.append(searchInput);
+  const searchWrap = document.createElement('div'); searchWrap.className = 'chat-search-wrap'; sidebar.append(searchWrap);
+  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = 'Üye ara…'; searchWrap.append(searchInput);
   _chatThreadsEl = document.createElement('div'); _chatThreadsEl.className = 'chat-threads'; sidebar.append(_chatThreadsEl);
   // All users cache for combined list
   let _allUsers = {}, _chatDocs = [], _searchTerm = '';
@@ -723,7 +732,9 @@ function initChatPanel(user) {
   mobileBtn.onclick = e => {
     e.stopPropagation();
     panel.classList.toggle('mobile-open');
-    mobileBtn.style.display = panel.classList.contains('mobile-open') ? 'none' : 'flex';
+    const isOpen = panel.classList.contains('mobile-open');
+    mobileBtn.style.display = isOpen ? 'none' : 'flex';
+    closeBtn.style.display = isOpen ? 'block' : 'none';
   };
   // Hide mobileBtn when panel closes via back-tap
   panel.addEventListener('click', e => {

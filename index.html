@@ -166,7 +166,7 @@
 <button id="backToTop" aria-label="Yukarı çık">↑</button>
 
 <nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER</a>
+  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
   <div class="lnav-items">
     <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span>Ana Sayfa</a>
     <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span>Eğitim</a>
@@ -480,15 +480,21 @@
     div.appendChild(a);
     return div;
   }
-  async function loadTestimonials() {
+  var _unsubTestimonials = null;
+  var _unsubForumPreview = null;
+  function loadTestimonials() {
     if (!_db) return;
     const list = document.getElementById('testimonialList');
     if (!list) return;
-    const snap = await _db.collection('testimonials').orderBy('createdAt','asc').limit(30).get();
-    snap.docs.forEach(d => {
-      const c = d.data();
-      list.appendChild(makeCommentEl(c.name, c.text));
-    });
+    if (_unsubTestimonials) { _unsubTestimonials(); _unsubTestimonials = null; }
+    _unsubTestimonials = _db.collection('testimonials').orderBy('createdAt','asc').limit(30)
+      .onSnapshot(snap => {
+        list.innerHTML = '';
+        snap.docs.forEach(d => {
+          const c = d.data();
+          list.appendChild(makeCommentEl(c.name, c.text));
+        });
+      });
   }
   var _currentUser = null;
   async function submitComment() {
@@ -503,7 +509,6 @@
         name, text,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
-      document.getElementById('testimonialList').appendChild(makeCommentEl(name, text));
       document.getElementById('commentName').value = '';
       document.getElementById('commentText').value = '';
     } catch(e) { const c=errId(); console.error(c,e); alert(`Gönderilemedi (${c}): ${e.message||e.code||'Bağlantı hatası'}`); }
@@ -701,39 +706,38 @@
     }
 
     // ── Forum preview ─────────────────────────────────────────────
-    async function renderForumPreview(user) {
+    function renderForumPreview(user) {
       const c = document.getElementById('forumPreview');
       if (!c) return;
       c.innerHTML = '<div class="forum-preview-empty">Yükleniyor...</div>';
-      let snap;
-      try {
-        snap = await _db.collection('forum').orderBy('createdAt','desc').limit(3).get();
-      } catch(e) {
-        c.innerHTML = '<div class="forum-preview-login">Soruları görmek için <a href="forum" style="color:#e8b84b;">foruma git</a> →</div>';
-        return;
-      }
-      if (snap.empty) {
-        c.innerHTML = '<div class="forum-preview-empty">Henüz soru yok. İlk soruyu sor!</div>';
-        return;
-      }
-      c.innerHTML = '';
-      snap.docs.forEach(d => {
-        const q = d.data();
-        const item = document.createElement('div'); item.className = 'forum-preview-item';
-        item.onclick = () => location.href = 'forum';
-        const heading = document.createElement('div'); heading.className = 'forum-preview-q';
-        heading.style.fontWeight = 'bold';
-        heading.textContent = q.title || (q.text?.length > 80 ? q.text.slice(0,80)+'…' : q.text) || '';
-        const meta = document.createElement('div'); meta.className = 'forum-preview-meta';
-        const author = document.createElement('span'); author.className = 'forum-preview-author';
-        author.textContent = q.authorName || 'Üye';
-        const badge = document.createElement('span');
-        badge.className = 'forum-preview-badge ' + (q.solved ? 'badge-answered' : 'badge-pending');
-        badge.textContent = q.solved ? '✓ Çözüldü' : `💬 ${q.replyCount||0} yanıt`;
-        meta.append(author, badge);
-        item.append(heading, meta);
-        c.append(item);
-      });
+      if (_unsubForumPreview) { _unsubForumPreview(); _unsubForumPreview = null; }
+      _unsubForumPreview = _db.collection('forum').orderBy('createdAt','desc').limit(3)
+        .onSnapshot(snap => {
+          if (snap.empty) {
+            c.innerHTML = '<div class="forum-preview-empty">Henüz soru yok. İlk soruyu sor!</div>';
+            return;
+          }
+          c.innerHTML = '';
+          snap.docs.forEach(d => {
+            const q = d.data();
+            const item = document.createElement('div'); item.className = 'forum-preview-item';
+            item.onclick = () => location.href = 'forum';
+            const heading = document.createElement('div'); heading.className = 'forum-preview-q';
+            heading.style.fontWeight = 'bold';
+            heading.textContent = q.title || (q.text?.length > 80 ? q.text.slice(0,80)+'…' : q.text) || '';
+            const meta = document.createElement('div'); meta.className = 'forum-preview-meta';
+            const author = document.createElement('span'); author.className = 'forum-preview-author';
+            author.textContent = q.authorName || 'Üye';
+            const badge = document.createElement('span');
+            badge.className = 'forum-preview-badge ' + (q.solved ? 'badge-answered' : 'badge-pending');
+            badge.textContent = q.solved ? '✓ Çözüldü' : `💬 ${q.replyCount||0} yanıt`;
+            meta.append(author, badge);
+            item.append(heading, meta);
+            c.append(item);
+          });
+        }, () => {
+          c.innerHTML = '<div class="forum-preview-login">Soruları görmek için <a href="forum" style="color:#e8b84b;">foruma git</a> →</div>';
+        });
     }
 
     // ── Welcome modal ─────────────────────────────────────────────

@@ -124,7 +124,7 @@ body::before {
 .notif-bell { background:none; border:none; color:rgba(238,235,230,.45); font-size:1.1rem; cursor:pointer; padding:4px; line-height:1; transition:color .15s; }
 .notif-bell:hover { color:var(--gold); }
 .notif-badge { position:absolute; top:0; right:0; background:var(--crimson); color:#fff; font-size:.42rem; font-family:'Space Mono',monospace; border-radius:6px; padding:1px 4px; min-width:12px; text-align:center; pointer-events:none; }
-.notif-panel { position:absolute; top:40px; right:0; width:290px; background:var(--card); border:1px solid var(--mid); border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
+.notif-panel { position:absolute; top:40px; right:0; width:min(290px,90vw); background:var(--card); border:1px solid var(--mid); border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); z-index:9999; overflow:hidden; display:none; }
 .notif-panel.open { display:block; }
 .notif-panel-head { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.06); display:flex; align-items:center; justify-content:space-between; }
 .notif-panel-title { font-size:.62rem; color:var(--gold); letter-spacing:.08em; text-transform:uppercase; }
@@ -190,7 +190,7 @@ body::before {
 </nav>
 
 <nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER</a>
+  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
   <div class="lnav-items">
     <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span>Ana Sayfa</a>
     <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span>Eğitim</a>
@@ -411,6 +411,8 @@ function initNotifications(user) {
 let _allMembers = [];
 let _titleFilter = 'all';
 let _genreFilter = '';
+let _unsubMembers = null;
+let _postCounts = {}, _replyCounts = {};
 let _search = '';
 let _sort = 'new';
 
@@ -612,23 +614,28 @@ function renderGrid() {
 
 async function loadMembers() {
   showSkeletons();
-  const [snap, postsSnap, repliesSnap] = await Promise.all([
-    db.collection('users').limit(200).get(),
+  if (_unsubMembers) { _unsubMembers(); _unsubMembers = null; }
+
+  // Fetch counts once (posts/replies don't need real-time for member grid)
+  const [postsSnap, repliesSnap] = await Promise.all([
     db.collection('forum').limit(2000).get().catch(() => null),
     db.collectionGroup('replies').limit(5000).get().catch(() => null),
   ]);
-  const postCounts = {}, replyCounts = {};
-  postsSnap?.docs.forEach(d => { const a = d.data().authorId; if (a) postCounts[a] = (postCounts[a]||0)+1; });
-  repliesSnap?.docs.forEach(d => { const a = d.data().authorId; if (a) replyCounts[a] = (replyCounts[a]||0)+1; });
-  _allMembers = snap.docs.map(d => { const obj = d.data(); obj._uid = d.id; obj.postCount = postCounts[d.id]||0; obj.replyCount = replyCounts[d.id]||0; return obj; });
-  _allMembers.sort((a,b) => (b.joinedAt?.toMillis?.()??0) - (a.joinedAt?.toMillis?.()??0));
+  _postCounts = {}; _replyCounts = {};
+  postsSnap?.docs.forEach(d => { const a = d.data().authorId; if (a) _postCounts[a] = (_postCounts[a]||0)+1; });
+  repliesSnap?.docs.forEach(d => { const a = d.data().authorId; if (a) _replyCounts[a] = (_replyCounts[a]||0)+1; });
 
-  document.getElementById('memberCount').textContent = snap.size;
-  document.getElementById('memberCountWrap').classList.add('loaded');
+  _unsubMembers = db.collection('users').limit(200).onSnapshot(snap => {
+    _allMembers = snap.docs.map(d => { const obj = d.data(); obj._uid = d.id; obj.postCount = _postCounts[d.id]||0; obj.replyCount = _replyCounts[d.id]||0; return obj; });
+    _allMembers.sort((a,b) => (b.joinedAt?.toMillis?.()??0) - (a.joinedAt?.toMillis?.()??0));
 
-  buildFilters();
-  buildGenreFilter();
-  renderGrid();
+    document.getElementById('memberCount').textContent = snap.size;
+    document.getElementById('memberCountWrap').classList.add('loaded');
+
+    buildFilters();
+    buildGenreFilter();
+    renderGrid();
+  });
 }
 
 document.getElementById('searchInput').oninput = e => {

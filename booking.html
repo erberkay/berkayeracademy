@@ -222,7 +222,7 @@
     .lesson-options-wrap { position:relative; }
     .lesson-options-btn { background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--dim); font-family:'Space Mono',monospace; font-size:.75rem; padding:5px 10px; border-radius:5px; cursor:pointer; transition:all .15s; line-height:1; }
     .lesson-options-btn:hover { border-color:rgba(232,184,75,.4); color:var(--white); background:rgba(255,255,255,.05); }
-    .lesson-options-menu { position:absolute; right:0; top:calc(100% + 4px); background:#1c1c22; border:1px solid rgba(255,255,255,.12); border-radius:8px; min-width:185px; z-index:999; box-shadow:0 8px 32px rgba(0,0,0,.7); overflow:hidden; }
+    .lesson-options-menu { position:fixed; background:#1c1c22; border:1px solid rgba(255,255,255,.12); border-radius:8px; min-width:185px; max-width:calc(100vw - 24px); z-index:9999; box-shadow:0 8px 32px rgba(0,0,0,.7); overflow:hidden; }
     .lesson-options-item { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--white); font-family:'Space Mono',monospace; font-size:.7rem; padding:10px 14px; cursor:pointer; transition:background .12s; }
     .lesson-options-item:hover { background:rgba(255,255,255,.07); }
     .lesson-options-item.danger { color:var(--crimson); }
@@ -374,7 +374,7 @@
 </nav>
 
 <nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER</a>
+  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
   <div class="lnav-items">
     <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span>Ana Sayfa</a>
     <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span>Eğitim</a>
@@ -2270,6 +2270,33 @@ async function renderAdminPanel() {
 
         const lessonsDiv = document.createElement('div'); lessonsDiv.className = 'student-lessons';
 
+        // Controls row: Select All + Price Edit
+        const controlsRow = document.createElement('div');
+        controlsRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px;';
+        const selectAllBtn = document.createElement('button');
+        selectAllBtn.style.cssText = 'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(238,235,230,.5);font-family:"Space Mono",monospace;font-size:.62rem;padding:4px 10px;border-radius:5px;cursor:pointer;display:flex;align-items:center;gap:5px;';
+        selectAllBtn.innerHTML = '<span style="font-size:.75rem;">☐</span> Tümünü Seç';
+        selectAllBtn.onclick = () => {
+          const rows = lessonsDiv.querySelectorAll('.admin-lesson-row');
+          const allSelected = selectedIdxs.size === upcomingLessons.length;
+          if (allSelected) {
+            selectedIdxs.clear();
+            rows.forEach(r => { r.classList.remove('bulk-selected'); const bc = r.querySelector('.bulk-check'); if(bc){bc.textContent='';bc.style.background='';bc.style.borderColor='rgba(232,184,75,.3)';} });
+            selectAllBtn.innerHTML = '<span style="font-size:.75rem;">☐</span> Tümünü Seç';
+          } else {
+            upcomingLessons.forEach(lesson => { const idx = allLessons.findIndex(l => l.date===lesson.date&&l.time===lesson.time&&l.status===lesson.status); if(idx>=0) selectedIdxs.add(idx); });
+            rows.forEach(r => { r.classList.add('bulk-selected'); const bc = r.querySelector('.bulk-check'); if(bc){bc.textContent='✓';bc.style.background='rgba(232,184,75,.2)';bc.style.borderColor='var(--gold)';} });
+            selectAllBtn.innerHTML = '<span style="font-size:.75rem;">☑</span> Tüm Seçimi Kaldır';
+          }
+          updateBulkBar();
+        };
+        const priceEditBtn = document.createElement('button');
+        priceEditBtn.style.cssText = 'background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);color:var(--gold);font-family:"Space Mono",monospace;font-size:.62rem;padding:4px 10px;border-radius:5px;cursor:pointer;margin-left:auto;';
+        priceEditBtn.textContent = '₺ Fiyat Düzenle';
+        priceEditBtn.onclick = () => adminEditStudentPrice(studentUid, lessonPrice, totalLessons, s.custom_total_price ?? null);
+        controlsRow.append(selectAllBtn, priceEditBtn);
+        lessonsDiv.append(controlsRow);
+
         // Bulk action bar (hidden until selection)
         const bulkBar = document.createElement('div');
         bulkBar.style.cssText = 'display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;margin-bottom:8px;';
@@ -2286,14 +2313,17 @@ async function renderAdminPanel() {
 
         const updateBulkBar = () => {
           const n = selectedIdxs.size;
-          if (n === 0) { bulkBar.style.display = 'none'; return; }
+          if (n === 0) { bulkBar.style.display = 'none'; selectAllBtn.innerHTML = '<span style="font-size:.75rem;">☐</span> Tümünü Seç'; return; }
           bulkBar.style.display = 'flex';
           bulkLabel.textContent = `Seçili: ${n} ders`;
+          if (n === upcomingLessons.length) selectAllBtn.innerHTML = '<span style="font-size:.75rem;">☑</span> Tüm Seçimi Kaldır';
+          else selectAllBtn.innerHTML = '<span style="font-size:.75rem;">☐</span> Tümünü Seç';
         };
 
         cancelSelBtn.onclick = () => {
           selectedIdxs.clear();
-          lessonsDiv.querySelectorAll('.admin-lesson-row').forEach(r => r.classList.remove('bulk-selected'));
+          lessonsDiv.querySelectorAll('.admin-lesson-row').forEach(r => { r.classList.remove('bulk-selected'); const bc = r.querySelector('.bulk-check'); if(bc){bc.textContent='';bc.style.background='';bc.style.borderColor='rgba(232,184,75,.3)';} });
+          selectAllBtn.innerHTML = '<span style="font-size:.75rem;">☐</span> Tümünü Seç';
           updateBulkBar();
         };
 
@@ -2326,7 +2356,7 @@ async function renderAdminPanel() {
           lRow.style.cursor = 'pointer';
           lRow.innerHTML = `
             <div class="admin-lesson-info" style="display:flex;align-items:center;gap:8px;">
-              <div class="bulk-check" style="width:16px;height:16px;border:1.5px solid rgba(232,184,75,.3);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;transition:all .15s;"></div>
+              <div class="bulk-check" style="width:22px;height:22px;border:1.5px solid rgba(232,184,75,.3);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:all .15s;"></div>
               <div>
                 <strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}
                 ${lesson.note ? `<div style="font-size:.6rem;color:rgba(180,120,255,.7);margin-top:2px;">📝 ${lesson.note}</div>` : ''}
@@ -2384,7 +2414,15 @@ async function renderAdminPanel() {
           }
           optBtn.onclick = (e) => { e.stopPropagation();
             document.querySelectorAll('.lesson-options-menu').forEach(m => { if (m !== menu) m.style.display = 'none'; });
-            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+            if (menu.style.display === 'none') {
+              menu.style.display = 'block';
+              const r = optBtn.getBoundingClientRect();
+              let left = r.right - menu.offsetWidth;
+              if (left < 12) left = 12;
+              if (left + menu.offsetWidth > window.innerWidth - 12) left = window.innerWidth - menu.offsetWidth - 12;
+              menu.style.top = (r.bottom + 4) + 'px';
+              menu.style.left = left + 'px';
+            } else { menu.style.display = 'none'; }
           };
           menu.onclick = (e) => e.stopPropagation();
           wrap.append(optBtn, menu);
