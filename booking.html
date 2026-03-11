@@ -2114,21 +2114,34 @@ async function renderAdminPanel() {
   }
   renderAdminCalendar(calAllLessons, 0);
 
-  // Backfill booked_slots from reservations (runs once per session)
+  // Sync booked_slots: backfill missing + purge stale (runs once per session)
   if (!window._slotsSynced && studSnap) {
     window._slotsSynced = true;
-    const batch = db.batch();
-    let count = 0;
+    // Build set of valid slot IDs from active lessons
+    const validSlotIds = new Set();
     studSnap.forEach(doc => {
       (doc.data().lessons || []).forEach(l => {
         if ((l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen') && l.date) {
-          const ref = db.collection('booked_slots').doc(l.date + '_' + l.time);
-          batch.set(ref, { date: l.date, time: l.time, student_uid: doc.id }, { merge: true });
-          count++;
+          validSlotIds.add(l.date + '_' + l.time);
         }
       });
     });
-    if (count > 0) batch.commit().catch(() => {});
+    // Fetch all current booked_slots and delete orphans, add missing
+    db.collection('booked_slots').get().then(slotSnap => {
+      const batch = db.batch();
+      let changed = 0;
+      slotSnap.forEach(d => {
+        if (!validSlotIds.has(d.id)) { batch.delete(d.ref); changed++; }
+      });
+      validSlotIds.forEach(id => {
+        const [date, time] = [id.slice(0, 10), id.slice(11)];
+        if (!slotSnap.docs.find(d => d.id === id)) {
+          batch.set(db.collection('booked_slots').doc(id), { date, time }, { merge: true });
+          changed++;
+        }
+      });
+      if (changed > 0) batch.commit().catch(() => {});
+    }).catch(() => {});
   }
 
   // Email reminders panel — only unpaid non-trial students with upcoming lessons
