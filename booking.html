@@ -1427,11 +1427,18 @@ async function renderDashboard() {
   document.getElementById('creditBadge').innerHTML = `🔄 Bu ay erteleme hakkı: <strong>${credits}</strong>/1 &nbsp;·&nbsp; Toplam: <strong>${totalLessonsCount} ders</strong>`;
 
   // Extra lesson purchase button (not for trial)
+  const hasFrozenLessons = lessons.some(l => l.status === 'frozen' && l.date >= today);
   const extraBox = document.getElementById('extraLessonBox');
   if (extraBox && !isTrial) {
     const extraBtn = document.createElement('button');
-    extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.25);color:var(--ice);font-family:"Space Mono",monospace;font-size:.72rem;font-weight:700;padding:10px 16px;border-radius:8px;cursor:pointer;text-align:left;';
-    extraBtn.innerHTML = '➕ Ek Ders Satın Al';
+    if (hasFrozenLessons) {
+      extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.04);border:1px solid rgba(143,200,232,.15);color:rgba(143,200,232,.45);font-family:"Space Mono",monospace;font-size:.72rem;padding:10px 16px;border-radius:8px;cursor:not-allowed;text-align:left;opacity:.6;';
+      extraBtn.innerHTML = '❄️ Plan donduruldu — ek ders talep edilemez';
+      extraBtn.disabled = true;
+    } else {
+      extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.25);color:var(--ice);font-family:"Space Mono",monospace;font-size:.72rem;font-weight:700;padding:10px 16px;border-radius:8px;cursor:pointer;text-align:left;';
+      extraBtn.innerHTML = '➕ Ek Ders Satın Al';
+    }
     extraBtn.onclick = async () => {
       // Fetch booked_slots (readable by all authenticated users)
       let busySlots = {}; // dateStr -> [time, ...]
@@ -1599,6 +1606,12 @@ async function renderDashboard() {
   const thisMonthLessons = lessons.filter(l => l.date.startsWith(curMonth));
   const thisMonthDone = thisMonthLessons.filter(l => l.status === 'completed').length;
 
+  if (hasFrozenLessons) {
+    const frozenBanner = document.createElement('div');
+    frozenBanner.style.cssText = 'margin-bottom:14px;padding:10px 14px;background:rgba(143,200,232,.06);border:1px solid rgba(143,200,232,.25);border-radius:8px;font-size:.72rem;color:rgba(143,200,232,.8);line-height:1.6;';
+    frozenBanner.innerHTML = '❄️ <strong style="color:rgba(143,200,232,.95);">Ders planınız dondurulmuştur.</strong> Yeni tarihler belirlendiğinde bildirim alacaksınız. Sorularınız için eğitmeninizle iletişime geçebilirsiniz.';
+    list.append(frozenBanner);
+  }
   if (thisMonthLessons.length > 0) {
     const monthInfo = document.createElement('div');
     monthInfo.style.cssText = 'font-size:.65rem;color:var(--dim);margin-bottom:14px;padding:8px 12px;background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.12);border-radius:8px;';
@@ -1630,11 +1643,17 @@ async function renderDashboard() {
           <div class="lesson-time">${l.time} – ${getEndTime(l.time)}</div>
         </div>
         <div class="lesson-status ${sc}">${statusLabel}</div>`;
-      if (!isPast && l.status === 'scheduled' && l.status !== 'frozen') {
+      if (!isPast && l.status === 'scheduled') {
         const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = '↺ Ertele';
         if (!isPaid) { rBtn.disabled = true; rBtn.title = 'Ödeme yapılmadan ders ertelenemez.'; rBtn.style.opacity = '.4'; rBtn.style.cursor = 'not-allowed'; }
         else rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
         item.append(rBtn);
+      }
+      if (!isPast && l.status === 'frozen') {
+        const frozenNote = document.createElement('div');
+        frozenNote.style.cssText = 'width:100%;font-size:.62rem;color:rgba(143,200,232,.55);margin-top:6px;padding:5px 10px;background:rgba(143,200,232,.04);border-radius:5px;line-height:1.5;';
+        frozenNote.textContent = '❄️ Ders donduruldu — yeni tarih için eğitmeniniz sizinle iletişime geçecek.';
+        item.append(frozenNote);
       }
       // Zoom join area for all upcoming scheduled/rescheduled lessons
       if (!isPast && (l.status === 'scheduled' || l.status === 'rescheduled')) {
@@ -2707,7 +2726,7 @@ async function adminBulkCancel(studentUid, idxArr, allLessons) {
 }
 
 function adminBulkFreezeModal(studentUid, idxArr, allLessons) {
-  const selectedLessons = idxArr.map(i => allLessons[i]).filter(l => l && l.status !== 'cancelled');
+  const selectedLessons = idxArr.map(i => allLessons[i]).filter(l => l && l.status !== 'cancelled' && l.status !== 'frozen');
   if (!selectedLessons.length) { toast('Geçerli ders seçilmedi.', true); return; }
   const earliest = selectedLessons.reduce((a, b) => a.date <= b.date ? a : b);
   const modal = Object.assign(document.createElement('div'), { innerHTML: `
@@ -2736,7 +2755,7 @@ function adminBulkFreezeModal(studentUid, idxArr, allLessons) {
       const shiftDays = Math.round(shiftMs / (1000 * 60 * 60 * 24));
       const batch = db.batch();
       const updated = allLessons.map((l, i) => {
-        if (!idxArr.includes(i) || l.status === 'cancelled') return l;
+        if (!idxArr.includes(i) || l.status === 'cancelled' || l.status === 'frozen') return l;
         const d = dateStrToObj(l.date); d.setDate(d.getDate() + shiftDays); const shifted = toDateStr(d);
         batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
         batch.set(db.collection('booked_slots').doc(shifted + '_' + l.time), { date: shifted, time: l.time, student_uid: studentUid });
