@@ -627,6 +627,10 @@
       <div class="section-title">📅 Müsait Günler</div>
       <div style="font-size:.65rem;color:var(--dim);margin-bottom:12px;">Öğrencilerin randevu talebinde seçebileceği günleri belirle. Kapalı günler kırmızı görünür ve seçilemez.</div>
       <div id="adminAvailDaysList"></div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px;">
+        <button id="adminPurgeSlotsBtn" style="background:rgba(184,45,69,.08);border:1px solid rgba(184,45,69,.25);color:rgba(232,120,120,.8);font-family:'Space Mono',monospace;font-size:.65rem;padding:7px 14px;border-radius:6px;cursor:pointer;">🧹 Hatalı Slotları Temizle</button>
+        <span id="adminPurgeSlotsStatus" style="font-size:.62rem;color:var(--dim);"></span>
+      </div>
     </div>
 
     <!-- Monthly Stats -->
@@ -2675,6 +2679,7 @@ async function adminDeletePlan(studentUid, allLessons) {
     // Reset access request separately (may silently fail if rules not yet deployed)
     db.collection('booking_access_requests').doc(studentUid).delete().catch(() => {});
     toast('Plan tamamen silindi.');
+    window._slotsSynced = false;
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
@@ -2826,6 +2831,7 @@ async function adminCancelLesson(studentUid, lessonIdx, allLessons, lesson) {
     batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
     await batch.commit();
     toast(`✓ Ders iptal edildi — ${formatDateStr(lesson.date)} ${lesson.time}`);
+    window._slotsSynced = false;
     renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
@@ -3068,6 +3074,36 @@ async function initAdminAvailDays() {
     wrap.append(btn);
   });
   container.append(wrap);
+
+  // Purge stale slots button
+  const purgeBtn = document.getElementById('adminPurgeSlotsBtn');
+  const purgeStatus = document.getElementById('adminPurgeSlotsStatus');
+  if (purgeBtn) purgeBtn.onclick = async () => {
+    purgeBtn.disabled = true; purgeBtn.textContent = '⏳ Temizleniyor…'; purgeStatus.textContent = '';
+    try {
+      // Build valid slot IDs from all active reservations
+      const [studSnap2, slotSnap2] = await Promise.all([
+        db.collection('reservations').get(),
+        db.collection('booked_slots').get()
+      ]);
+      const validIds = new Set();
+      studSnap2.forEach(doc => {
+        (doc.data().lessons || []).forEach(l => {
+          if (['scheduled','rescheduled','frozen'].includes(l.status) && l.date)
+            validIds.add(l.date + '_' + l.time);
+        });
+      });
+      const batch = db.batch();
+      let deleted = 0;
+      slotSnap2.forEach(d => { if (!validIds.has(d.id)) { batch.delete(d.ref); deleted++; } });
+      if (deleted > 0) await batch.commit();
+      purgeStatus.style.color = 'var(--green)';
+      purgeStatus.textContent = `✓ ${deleted} stale slot silindi.`;
+      window._slotsSynced = false;
+    } catch(e) { purgeStatus.style.color = 'var(--crimson)'; purgeStatus.textContent = 'Hata: ' + (e.message||e.code); }
+    purgeBtn.disabled = false; purgeBtn.textContent = '🧹 Hatalı Slotları Temizle';
+    setTimeout(() => purgeStatus.textContent = '', 4000);
+  };
 }
 
 // ─── Zoom Link ────────────────────────────────────────────
@@ -3262,6 +3298,7 @@ async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson
     await db.collection('booked_slots').doc(lesson.date + '_' + lesson.time).delete();
   } catch(e) { const c=errId(); toast(`Hata slot (${c}): ` + (e.message||e.code), true); return; }
   toast(`✓ Ders iptal edildi.`);
+  window._slotsSynced = false;
   renderAdminPanel();
 }
 
