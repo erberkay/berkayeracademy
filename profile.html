@@ -261,6 +261,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .toast.error { border-left-color:var(--crimson); }
 .toast.info  { border-left-color:var(--ice); }
 @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+@media (max-width:768px) { input, textarea, select { font-size:16px!important; } }
 /* ── Top-right notification toast ── */
 .top-toast-wrap { position:fixed; top:62px; right:16px; z-index:9998; display:flex; flex-direction:column; gap:6px; pointer-events:none; }
 .top-toast { background:var(--card); border:1px solid var(--mid); border-left:3px solid var(--ice); border-radius:8px; padding:9px 14px; font-family:'Space Mono',monospace; font-size:.68rem; color:var(--white); box-shadow:0 4px 20px rgba(0,0,0,.55); max-width:260px; line-height:1.5; opacity:.9; animation:topToastIn .22s ease; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -500,6 +501,13 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         const fromName = _user.displayName?.split(' ')[0] || 'Biri';
         const fromPhoto = _user.photoURL || '';
         const chatRef = db.collection('chats').doc(cid);
+        // Check for existing pending collab request
+        const existingSnap = await chatRef.collection('messages').where('type','==','collab_request').where('status','==','pending').limit(1).get();
+        if (!existingSnap.empty) {
+          showToast('Zaten bekleyen bir collab isteği var.', 'info');
+          collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab';
+          return;
+        }
         const batch = db.batch();
         batch.set(chatRef, {
           participants:[_user.uid, otherId], names:{[_user.uid]:fromName,[otherId]:otherName},

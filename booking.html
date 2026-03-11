@@ -262,6 +262,7 @@
     .input-modal-ok { background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:700;padding:8px 16px;border-radius:7px;cursor:pointer; }
     @keyframes fadeIn { from{opacity:0} to{opacity:1} }
     @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+    @media (max-width:768px) { input, textarea, select { font-size:16px!important; } }
 
     /* ── Toast ── */
     .toast-wrap { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
@@ -2604,12 +2605,13 @@ async function cancelEntirePlan(lessons, res) {
   if (!confirm('Tüm planını iptal etmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
   try {
     const today = toDateStr(new Date());
+    const cancelStatuses = ['scheduled','rescheduled','frozen','cancel_requested'];
     const updated = lessons.map(l =>
-      l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled') ? { ...l, status: 'cancelled' } : l
+      l.date >= today && cancelStatuses.includes(l.status) ? { ...l, status: 'cancelled' } : l
     );
     const batch = db.batch();
     batch.update(db.collection('reservations').doc(_user.uid), { lessons: updated });
-    lessons.filter(l => l.date >= today && (l.status === 'scheduled' || l.status === 'rescheduled')).forEach(l => {
+    lessons.filter(l => l.date >= today && cancelStatuses.includes(l.status)).forEach(l => {
       batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
     });
     await batch.commit();
@@ -2624,7 +2626,7 @@ async function adminDeletePlan(studentUid, allLessons) {
     const batch = db.batch();
     batch.delete(db.collection('reservations').doc(studentUid));
     (allLessons || []).forEach(l => {
-      if (l.status === 'scheduled' || l.status === 'rescheduled') {
+      if (['scheduled','rescheduled','frozen','cancel_requested'].includes(l.status)) {
         batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
       }
     });
