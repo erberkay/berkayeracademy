@@ -58,6 +58,7 @@ body::before {
 
 .title-input { width:100%; background:var(--mid2); border:1px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.95rem; padding:12px 16px; outline:none; transition:border-color .15s; letter-spacing:.02em; }
 .title-input:focus { border-color:var(--gold); }
+.title-input.field-error { border-color:#b82d45; }
 .title-input::placeholder { color:rgba(238,235,230,.2); }
 
 /* ── Toolbar ── */
@@ -374,7 +375,7 @@ function renderForm(user) {
   const titleInput = document.createElement('input'); titleInput.className = 'title-input';
   titleInput.type = 'text'; titleInput.maxLength = 120;
   titleInput.placeholder = 'Konunuzu kısaca özetleyin...';
-  titleInput.oninput = () => { titleCount.textContent = `${titleInput.value.length} / 120`; };
+  titleInput.oninput = () => { titleCount.textContent = `${titleInput.value.length} / 120`; titleInput.classList.remove('field-error'); };
   sec1.append(lbl1, titleInput); card.append(sec1);
 
   // ── Body section ──
@@ -431,7 +432,7 @@ function renderForm(user) {
   submitBtn.onclick = async () => {
     const title = titleInput.value.trim();
     const body  = bodyInput.value.trim();
-    if (!title) { titleInput.focus(); titleInput.style.borderColor='var(--crimson)'; return; }
+    if (!title) { titleInput.focus(); titleInput.classList.add('field-error'); return; }
     submitBtn.disabled = true; submitBtn.textContent = '⏳ Gönderiliyor...';
     try {
       const ref = await db.collection('forum').add({
