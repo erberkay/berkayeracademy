@@ -190,6 +190,12 @@
     .req-type-toggle { display:flex; gap:8px; margin-bottom:20px; }
     .req-type-btn { flex:1; padding:10px 8px; text-align:center; border-radius:8px; font-family:'Space Mono',monospace; font-size:.72rem; cursor:pointer; transition:all .15s; border:1.5px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); color:var(--dim); }
     .req-type-btn.active { border-color:rgba(232,184,75,.7); background:rgba(232,184,75,.1); color:var(--gold); }
+    .lpm-toggle { display:flex; gap:6px; }
+    .lpm-btn { flex:1; padding:11px 6px; text-align:center; border-radius:8px; font-family:'Space Mono',monospace; cursor:pointer; transition:all .15s; border:1.5px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); color:var(--dim); line-height:1.3; }
+    .lpm-btn .lpm-num { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; display:block; color:inherit; letter-spacing:.04em; }
+    .lpm-btn .lpm-sub { font-size:.56rem; letter-spacing:.06em; color:rgba(238,235,230,.35); display:block; }
+    .lpm-btn.active { border-color:rgba(232,184,75,.7); background:rgba(232,184,75,.1); color:var(--gold); }
+    .lpm-btn.active .lpm-sub { color:rgba(232,184,75,.6); }
     .single-lesson-note { background:rgba(184,45,69,.06); border:1px solid rgba(184,45,69,.2); border-radius:8px; padding:12px 14px; font-size:.72rem; color:rgba(238,235,230,.65); line-height:1.7; margin-bottom:16px; }
     .single-lesson-note strong { color:var(--crimson); }
     /* ── Pending status ── */
@@ -431,13 +437,14 @@
             <option value="6">6 Ay</option>
           </select>
         </div>
-        <div style="flex:1;">
+        <div style="flex:1.4;">
           <label class="field-label">Aylık Ders Sayısı</label>
-          <select class="field-input" id="reqLessonsPerMonth" style="cursor:pointer;" onchange="updatePriceEstimate()">
-            <option value="2">2 Ders/Ay</option>
-            <option value="3">3 Ders/Ay</option>
-            <option value="4" selected>4 Ders/Ay</option>
-          </select>
+          <input type="hidden" id="reqLessonsPerMonth" value="4">
+          <div class="lpm-toggle">
+            <button type="button" class="lpm-btn" data-lpm="2" onclick="setLpm(2)"><span class="lpm-num">2</span><span class="lpm-sub">DERS/AY</span></button>
+            <button type="button" class="lpm-btn" data-lpm="3" onclick="setLpm(3)"><span class="lpm-num">3</span><span class="lpm-sub">DERS/AY</span></button>
+            <button type="button" class="lpm-btn active" data-lpm="4" onclick="setLpm(4)"><span class="lpm-num">4</span><span class="lpm-sub">DERS/AY</span></button>
+          </div>
         </div>
       </div>
 
@@ -1045,6 +1052,12 @@ function updateSlotSummary() {
 
 let _reqType = 'monthly'; // 'monthly' | 'single'
 
+function setLpm(n) {
+  document.getElementById('reqLessonsPerMonth').value = n;
+  document.querySelectorAll('.lpm-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.lpm) === n));
+  updatePriceEstimate();
+}
+
 function setReqType(type) {
   _reqType = type;
   document.getElementById('typeMonthly').classList.toggle('active', type === 'monthly');
@@ -1245,7 +1258,7 @@ function initRequestForm() {
   document.getElementById('startDateField').style.display = '';
   document.getElementById('singleLessonNote').style.display = 'none';
   document.getElementById('reqDuration').value = '1';
-  document.getElementById('reqLessonsPerMonth').value = '4';
+  setLpm(4);
   const _sdEl = document.getElementById('reqStartDate');
   _sdEl.min = toDateStr(new Date());
   _sdEl.value = '';

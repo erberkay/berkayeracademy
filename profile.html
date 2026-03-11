@@ -486,6 +486,43 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
   const hdr = _chatMainEl.querySelector('.chat-main-hdr');
   hdr.append(_mkAvEl(otherPhoto, otherName, 'chat-main-av'));
   const nm = document.createElement('div'); nm.className = 'chat-main-name'; nm.textContent = otherName; hdr.append(nm);
+  // Collab button in header (only when chatting with another user, not self)
+  if (_user && otherId && otherId !== _user.uid) {
+    const collabHdrBtn = document.createElement('button');
+    collabHdrBtn.style.cssText = 'margin-left:auto;flex-shrink:0;background:rgba(180,120,255,.1);border:1px solid rgba(180,120,255,.35);color:#b478ff;font-family:"Space Mono",monospace;font-size:.6rem;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;';
+    collabHdrBtn.textContent = '🤝 Collab';
+    collabHdrBtn.title = 'Collab isteği gönder';
+    collabHdrBtn.onmouseenter = () => collabHdrBtn.style.background = 'rgba(180,120,255,.2)';
+    collabHdrBtn.onmouseleave = () => collabHdrBtn.style.background = 'rgba(180,120,255,.1)';
+    collabHdrBtn.onclick = async () => {
+      collabHdrBtn.disabled = true; collabHdrBtn.textContent = '⏳';
+      try {
+        const fromName = _user.displayName?.split(' ')[0] || 'Biri';
+        const fromPhoto = _user.photoURL || '';
+        const chatRef = db.collection('chats').doc(cid);
+        const batch = db.batch();
+        batch.set(chatRef, {
+          participants:[_user.uid, otherId], names:{[_user.uid]:fromName,[otherId]:otherName},
+          photos:{[_user.uid]:fromPhoto,[otherId]:otherPhoto||''},
+          lastMessage:'🤝 Collab isteği', lastAt:firebase.firestore.FieldValue.serverTimestamp(),
+          unreadBy:firebase.firestore.FieldValue.arrayUnion(otherId),
+        }, { merge:true });
+        const msgRef = chatRef.collection('messages').doc();
+        batch.set(msgRef, { fromUid:_user.uid, type:'collab_request', status:'pending', text:'🤝 Collab isteği gönderdi', createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+        await batch.commit();
+        db.collection('notifications').doc(otherId).collection('items').add({
+          text:`${fromName} sana collab isteği gönderdi`, fromUid:_user.uid, type:'collab', read:false,
+          createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+        }).catch(()=>{});
+        collabHdrBtn.textContent = '✓ Gönderildi';
+        setTimeout(() => { collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab'; }, 4000);
+      } catch(e) {
+        const c=errId(); showToast(`Gönderilemedi (${c}): `+(e.message||e.code), 'error');
+        collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab';
+      }
+    };
+    hdr.append(collabHdrBtn);
+  }
   // Messages area
   _chatMsgsEl.innerHTML = '<div style="color:var(--dim);font-size:.58rem;text-align:center;padding:20px">Yükleniyor…</div>';
   // Mark as read
