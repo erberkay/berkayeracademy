@@ -117,6 +117,7 @@
     .ls-completed { background:rgba(74,222,128,.1); color:var(--green); border:1px solid rgba(74,222,128,.25); }
     .ls-rescheduled { background:rgba(232,184,75,.1); color:var(--gold); border:1px solid rgba(232,184,75,.25); }
     .ls-cancelled { background:rgba(184,45,69,.1); color:var(--crimson); border:1px solid rgba(184,45,69,.25); }
+    .ls-frozen { background:rgba(143,200,232,.06); color:rgba(143,200,232,.7); border:1px solid rgba(143,200,232,.2); letter-spacing:.02em; }
     .lesson-item.past { opacity:.5; }
     .lesson-reschedule { background:transparent; border:1px solid rgba(232,184,75,.3); color:var(--gold); font-family:'Space Mono',monospace; font-size:.68rem; padding:6px 13px; border-radius:5px; cursor:pointer; transition:all .15s; white-space:nowrap; flex-shrink:0; }
     .lesson-reschedule:hover { background:rgba(232,184,75,.1); border-color:var(--gold); }
@@ -1613,8 +1614,8 @@ async function renderDashboard() {
       const isPast = l.date < today;
       const item = document.createElement('div');
       item.className = 'lesson-item' + (isPast ? ' past' : '');
-      const sc = {scheduled:'ls-scheduled',completed:'ls-completed',rescheduled:'ls-rescheduled',cancelled:'ls-cancelled',cancel_requested:'ls-cancelled'}[l.status]||'ls-scheduled';
-      const statusLabel = {scheduled:'Planlandı',completed:'Tamamlandı',rescheduled:'Ertelendi',cancelled:'İptal',cancel_requested:'İptal Talep Edildi'}[l.status]||l.status;
+      const sc = {scheduled:'ls-scheduled',completed:'ls-completed',rescheduled:'ls-rescheduled',cancelled:'ls-cancelled',cancel_requested:'ls-cancelled',frozen:'ls-frozen'}[l.status]||'ls-scheduled';
+      const statusLabel = {scheduled:'Planlandı',completed:'Tamamlandı',rescheduled:'Ertelendi',cancelled:'İptal',cancel_requested:'İptal Talep Edildi',frozen:'❄️ Donduruldu'}[l.status]||l.status;
       item.innerHTML = `
         <div class="lesson-date-col">
           <div class="lesson-day-num">${d.getDate()}</div>
@@ -1625,7 +1626,7 @@ async function renderDashboard() {
           <div class="lesson-time">${l.time} – ${getEndTime(l.time)}</div>
         </div>
         <div class="lesson-status ${sc}">${statusLabel}</div>`;
-      if (!isPast && l.status === 'scheduled') {
+      if (!isPast && l.status === 'scheduled' && l.status !== 'frozen') {
         const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = '↺ Ertele';
         if (!isPaid) { rBtn.disabled = true; rBtn.title = 'Ödeme yapılmadan ders ertelenemez.'; rBtn.style.opacity = '.4'; rBtn.style.cursor = 'not-allowed'; }
         else rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
@@ -2372,6 +2373,7 @@ async function renderAdminPanel() {
               <div class="bulk-check" style="width:22px;height:22px;border:1.5px solid rgba(232,184,75,.3);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.8rem;transition:all .15s;"></div>
               <div>
                 <strong>${formatDateStr(lesson.date)}</strong> ${lesson.time}–${getEndTime(lesson.time)}
+                ${lesson.status === 'frozen' ? `<span style="font-size:.58rem;color:rgba(143,200,232,.6);margin-left:6px;background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.2);border-radius:4px;padding:1px 6px;vertical-align:middle;">❄️ Donduruldu</span>` : ''}
                 ${lesson.note ? `<div style="font-size:.6rem;color:rgba(180,120,255,.7);margin-top:2px;">📝 ${lesson.note}</div>` : ''}
               </div>
             </div>
@@ -2459,8 +2461,8 @@ async function renderAdminPanel() {
           const lessonIdx = allLessons.findIndex(l => l.date === lesson.date && l.time === lesson.time && l.status === lesson.status);
           const lRow = document.createElement('div');
           lRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.03);font-size:.7rem;';
-          const statusColor = lesson.status === 'completed' ? 'var(--green)' : lesson.status === 'cancelled' ? 'var(--crimson)' : 'var(--dim)';
-          const statusLabel = lesson.status === 'completed' ? '✓ Tamamlandı' : lesson.status === 'cancelled' ? '✕ İptal' : '↩ Ertelendi';
+          const statusColor = lesson.status === 'completed' ? 'var(--green)' : lesson.status === 'cancelled' ? 'var(--crimson)' : lesson.status === 'frozen' ? 'rgba(143,200,232,.6)' : 'var(--dim)';
+          const statusLabel = lesson.status === 'completed' ? '✓ Tamamlandı' : lesson.status === 'cancelled' ? '✕ İptal' : lesson.status === 'frozen' ? '❄️ Donduruldu' : '↩ Ertelendi';
           const delBtn = document.createElement('button');
           delBtn.textContent = '🗑';
           delBtn.title = 'Kaydı sil';
@@ -2734,7 +2736,7 @@ function adminBulkFreezeModal(studentUid, idxArr, allLessons) {
         const d = dateStrToObj(l.date); d.setDate(d.getDate() + shiftDays); const shifted = toDateStr(d);
         batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
         batch.set(db.collection('booked_slots').doc(shifted + '_' + l.time), { date: shifted, time: l.time, student_uid: studentUid });
-        return { ...l, date: shifted, status: 'rescheduled' };
+        return { ...l, date: shifted, status: 'frozen' };
       });
       batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
       await batch.commit();
