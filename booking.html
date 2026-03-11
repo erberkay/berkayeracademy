@@ -949,8 +949,7 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
   const [lh, lm] = lesson.time.split(':').map(Number);
   lessonDt.setHours(lh, lm, 0, 0);
   if ((lessonDt - now) < 24 * 60 * 60 * 1000) {
-    showRescheduleRequestModal(lesson, idx, allLessons, res, newDate);
-    return;
+    toast('Erteleme en az 24 saat önceden yapılmalıdır.', true); return;
   }
 
   // Auto-compute +7 days
@@ -1003,66 +1002,6 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
       toast(`✓ Ders ertelendi → ${formatDateStr(newDate)} ${lesson.time}`);
       renderDashboard();
     } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); saveBtn.disabled = false; saveBtn.textContent = '↺ Ertele'; }
-  };
-}
-
-// ─── Student: Reschedule Request Modal (< 24h) ────────────────────────
-async function showRescheduleRequestModal(lesson, idx, allLessons, res, newDate) {
-  const monthKey = yearMonthKey(lesson.date);
-  const modal = Object.assign(document.createElement('div'), { innerHTML: `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
-      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:340px;font-family:'Space Mono',monospace;">
-        <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:8px;">↺ Erteleme Talebi</div>
-        <div style="font-size:.72rem;color:rgba(238,235,230,.45);line-height:1.6;margin-bottom:16px;">Erteleme en az 24 saat öncesinden yapılmalıdır. Talep gönderirsen eğitmen onayladığında ertelenir.</div>
-        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;margin-bottom:20px;">
-          <div style="font-size:.65rem;color:#888;margin-bottom:4px;">MEVCUT DERS</div>
-          <div style="font-size:.82rem;color:#fff;">${formatDateStr(lesson.date)} ${lesson.time}</div>
-          <div style="font-size:.65rem;color:rgba(232,184,75,.6);margin:8px 0 4px;">→ ERTELENECEK TARİH</div>
-          <div style="font-size:.82rem;color:var(--gold);font-weight:700;">${formatDateStr(newDate)} ${lesson.time}</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button id="reschReqCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;">Vazgeç</button>
-          <button id="reschReqSend" style="flex:1;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">Talep Gönder →</button>
-        </div>
-      </div>
-    </div>` });
-  document.body.append(modal);
-  modal.querySelector('#reschReqCancel').onclick = () => modal.remove();
-  modal.querySelector('#reschReqSend').onclick = async () => {
-    const sendBtn = modal.querySelector('#reschReqSend');
-    sendBtn.disabled = true; sendBtn.textContent = '⏳';
-    try {
-      const credits = res.reschedule_credits?.[monthKey] ?? 0;
-      const updatedLessons = allLessons.map((l, i) =>
-        i === idx ? { ...l, status: 'reschedule_requested' } : l
-      );
-      const updatedCredits = { ...res.reschedule_credits, [monthKey]: credits - 1 };
-      const batch = db.batch();
-      const reqRef = db.collection('lesson_requests').doc();
-      batch.set(reqRef, {
-        type: 'reschedule_request',
-        from_uid: _user.uid,
-        from_name: _user.displayName?.trim() || _user.email?.split('@')[0] || '',
-        from_email: _user.email || '',
-        lesson_date: lesson.date,
-        lesson_time: lesson.time,
-        new_date: newDate,
-        lesson_idx: idx,
-        status: 'pending',
-        created_at: firebase.firestore.FieldValue.serverTimestamp(),
-      });
-      batch.update(db.collection('reservations').doc(_user.uid), {
-        lessons: updatedLessons,
-        reschedule_credits: updatedCredits,
-      });
-      await batch.commit();
-      modal.remove();
-      toast('✓ Erteleme talebiniz gönderildi, eğitmen onayını bekliyor.');
-      renderDashboard();
-    } catch(e) {
-      const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true);
-      sendBtn.disabled = false; sendBtn.textContent = 'Talep Gönder →';
-    }
   };
 }
 
@@ -1660,8 +1599,8 @@ async function renderDashboard() {
       const isPast = l.date < today;
       const item = document.createElement('div');
       item.className = 'lesson-item' + (isPast ? ' past' : '');
-      const sc = {scheduled:'ls-scheduled',completed:'ls-completed',rescheduled:'ls-rescheduled',cancelled:'ls-cancelled',cancel_requested:'ls-cancelled',reschedule_requested:'ls-rescheduled'}[l.status]||'ls-scheduled';
-      const statusLabel = {scheduled:'Planlandı',completed:'Tamamlandı',rescheduled:'Ertelendi',cancelled:'İptal',cancel_requested:'İptal Talep Edildi',reschedule_requested:'Erteleme Talep Edildi'}[l.status]||l.status;
+      const sc = {scheduled:'ls-scheduled',completed:'ls-completed',rescheduled:'ls-rescheduled',cancelled:'ls-cancelled',cancel_requested:'ls-cancelled'}[l.status]||'ls-scheduled';
+      const statusLabel = {scheduled:'Planlandı',completed:'Tamamlandı',rescheduled:'Ertelendi',cancelled:'İptal',cancel_requested:'İptal Talep Edildi'}[l.status]||l.status;
       item.innerHTML = `
         <div class="lesson-date-col">
           <div class="lesson-day-num">${d.getDate()}</div>
@@ -1945,58 +1884,6 @@ async function renderAdminPanel() {
             }
             toast('İptal talebi reddedildi.');
             row.remove();
-          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); rejectBtn.disabled = false; }
-        };
-        actions.append(approveBtn, rejectBtn);
-        row.append(actions);
-        reqList.append(row);
-        return;
-      }
-
-      if (r.type === 'reschedule_request') {
-        row.style.borderColor = 'rgba(232,184,75,.35)';
-        row.style.background = 'rgba(232,184,75,.03)';
-        row.innerHTML = `
-          <div class="req-row-body">
-            <div class="req-row-name" style="color:var(--gold)">↺ Erteleme Talebi</div>
-            <div class="req-row-detail">${r.from_name || r.from_email}</div>
-            <div class="req-row-pills">
-              <span class="req-row-pill dim">${formatDateStr(r.lesson_date)} · ${r.lesson_time}</span>
-              <span class="req-row-pill gold">→ ${formatDateStr(r.new_date)} · ${r.lesson_time}</span>
-            </div>
-          </div>`;
-        const actions = document.createElement('div'); actions.className = 'req-actions';
-        const approveBtn = document.createElement('button'); approveBtn.className = 'req-approve'; approveBtn.textContent = '✓ Onayla';
-        approveBtn.onclick = async () => {
-          approveBtn.disabled = true; approveBtn.textContent = 'İşleniyor…';
-          try {
-            const ok = await adminApproveRescheduleRequest(doc.ref, r);
-            if (ok) { toast('✓ Erteleme onaylandı, takvim güncellendi.'); row.remove(); }
-            else { approveBtn.disabled = false; approveBtn.textContent = '✓ Onayla'; }
-          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); approveBtn.disabled = false; approveBtn.textContent = '✓ Onayla'; }
-        };
-        const rejectBtn = document.createElement('button'); rejectBtn.className = 'req-reject'; rejectBtn.textContent = '✕ Reddet';
-        rejectBtn.onclick = async () => {
-          rejectBtn.disabled = true;
-          try {
-            const resSnap = await db.collection('reservations').doc(r.from_uid).get().catch(()=>null);
-            if (resSnap && resSnap.exists) {
-              const lessArr = resSnap.data().lessons || [];
-              const li = lessArr.findIndex(l => l.date === r.lesson_date && l.time === r.lesson_time && l.status === 'reschedule_requested');
-              const curCredits = resSnap.data().reschedule_credits || {};
-              const mk = yearMonthKey(r.lesson_date);
-              const batch = db.batch();
-              if (li >= 0) {
-                lessArr[li] = { ...lessArr[li], status: 'scheduled' };
-                curCredits[mk] = (curCredits[mk] ?? 0) + 1;
-                batch.update(db.collection('reservations').doc(r.from_uid), { lessons: lessArr, reschedule_credits: curCredits });
-              }
-              batch.update(doc.ref, { status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-              await batch.commit();
-            } else {
-              await doc.ref.update({ status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-            }
-            toast('Erteleme talebi reddedildi.'); row.remove();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); rejectBtn.disabled = false; }
         };
         actions.append(approveBtn, rejectBtn);
@@ -2657,44 +2544,6 @@ async function adminCancelLesson(studentUid, lessonIdx, allLessons, lesson) {
     await batch.commit();
     toast(`✓ Ders iptal edildi — ${formatDateStr(lesson.date)} ${lesson.time}`);
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
-}
-
-// ─── Admin: Approve Reschedule Request (shifts all subsequent lessons +7) ─────
-async function adminApproveRescheduleRequest(reqDocRef, r) {
-  const resSnap = await db.collection('reservations').doc(r.from_uid).get();
-  if (!resSnap.exists) { toast('Rezervasyon bulunamadı.', true); return false; }
-  const lessons = resSnap.data().lessons || [];
-
-  const lessonIdx = lessons.findIndex(l =>
-    l.date === r.lesson_date && l.time === r.lesson_time && l.status === 'reschedule_requested'
-  );
-  if (lessonIdx < 0) { toast('Ders bulunamadı veya durumu değişmiş.', true); return false; }
-
-  // Check slot conflict for the new date
-  const conflict = await db.collection('booked_slots').doc(r.new_date + '_' + r.lesson_time).get();
-  if (conflict.exists && conflict.data().student_uid !== r.from_uid) {
-    toast(`${formatDateStr(r.new_date)} ${r.lesson_time} saati başka bir öğrenciye ait.`, true);
-    return false;
-  }
-
-  // Shift the rescheduled lesson AND all subsequent non-cancelled lessons by +7 days
-  const batch = db.batch();
-  const updatedLessons = lessons.map((l, i) => {
-    if (i < lessonIdx || l.status === 'cancelled') return l;
-    const d = dateStrToObj(l.date);
-    d.setDate(d.getDate() + 7);
-    const shifted = toDateStr(d);
-    batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
-    batch.set(db.collection('booked_slots').doc(shifted + '_' + l.time), {
-      date: shifted, time: l.time, student_uid: r.from_uid,
-    });
-    return { ...l, date: shifted, status: i === lessonIdx ? 'rescheduled' : l.status };
-  });
-
-  batch.update(db.collection('reservations').doc(r.from_uid), { lessons: updatedLessons });
-  batch.update(reqDocRef, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
-  await batch.commit();
-  return true;
 }
 
 // ─── Admin: Reschedule Lesson ─────────────────────────────
