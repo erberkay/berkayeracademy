@@ -201,7 +201,7 @@ body::before {
 .toast.error { border-left-color:var(--crimson); }
 .toast.info  { border-left-color:var(--ice); }
 @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-@media (max-width:768px) { input, textarea, select { font-size:16px!important; } }
+@media (max-width:768px) { input, textarea, select { font-size:16px!important; } .toast-container { bottom:70px; right:12px; } }
 
 /* ── Login wall ── */
 .login-wall { background:var(--card); border:1px solid var(--mid); border-radius:12px; padding:56px 28px; text-align:center; }
@@ -614,6 +614,8 @@ async function renderFeed() {
       _allPosts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       updateStats(_allPosts.length, _allPosts.reduce((s,p) => s + (p.replyCount||0), 0));
       renderPosts();
+    }, e => {
+      if (e.code !== 'permission-denied') showToast('Forum yüklenemedi: ' + (e.message || e.code), 'error');
     });
 }
 
@@ -882,6 +884,8 @@ function loadReplies(postId, wrap, solved) {
         const r = { id:d.id, ...d.data() };
         list.append(buildReplyEl(postId, r, list));
       });
+    }, e => {
+      if (e.code !== 'permission-denied') showToast('Yanıtlar yüklenemedi: ' + (e.message || e.code), 'error');
     });
 }
 

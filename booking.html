@@ -2093,7 +2093,7 @@ async function renderAdminPanel() {
     let count = 0;
     studSnap.forEach(doc => {
       (doc.data().lessons || []).forEach(l => {
-        if ((l.status === 'scheduled' || l.status === 'rescheduled') && l.date) {
+        if ((l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen') && l.date) {
           const ref = db.collection('booked_slots').doc(l.date + '_' + l.time);
           batch.set(ref, { date: l.date, time: l.time, student_uid: doc.id }, { merge: true });
           count++;
@@ -2785,6 +2785,7 @@ async function adminCancelLesson(studentUid, lessonIdx, allLessons, lesson) {
     batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
     await batch.commit();
     toast(`✓ Ders iptal edildi — ${formatDateStr(lesson.date)} ${lesson.time}`);
+    renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 

@@ -120,7 +120,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 .toast.error { border-left-color:var(--crimson); }
 .toast.info  { border-left-color:var(--ice); }
 @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
-@media (max-width:768px) { input, textarea, select { font-size:16px!important; } }
+@media (max-width:768px) { input, textarea, select { font-size:16px!important; } .toast-container { bottom:70px; right:12px; } }
 
 /* ── Notification Bell ── */
 .notif-bell-wrap { position:relative; }
@@ -647,7 +647,9 @@ async function renderReplies(layout, post) {
 
   _unsubReplies = db.collection('forum').doc(postId).collection('replies')
     .orderBy('createdAt','asc').limit(200)
-    .onSnapshot(snap => renderReplyCards(snap));
+    .onSnapshot(snap => renderReplyCards(snap), e => {
+      if (e.code !== 'permission-denied') showToast('Yorumlar yüklenemedi: ' + (e.message || e.code), 'error');
+    });
 
   // ── Reply form ──
   const formCard = document.createElement('div'); formCard.className = 'reply-form-card';
