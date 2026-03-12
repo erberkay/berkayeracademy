@@ -251,6 +251,10 @@
     .req-approve:hover { background:rgba(74,222,128,.16); }
     .req-reject { flex:1; background:rgba(184,45,69,.07); border:none; color:var(--crimson); font-family:'Space Mono',monospace; font-size:.73rem; font-weight:700; padding:13px 10px; cursor:pointer; transition:background .15s; letter-spacing:.04em; }
     .req-reject:hover { background:rgba(184,45,69,.16); }
+    .access-row { background:rgba(232,184,75,.04); border:1px solid rgba(232,184,75,.18); border-radius:12px; margin-bottom:14px; overflow:hidden; }
+    .access-row-body { padding:18px 20px 14px; }
+    .access-row-name { font-size:.92rem; color:var(--gold); font-weight:700; margin-bottom:6px; }
+    .access-row-meta { font-size:.72rem; color:var(--dim); }
     .select-sm { background:rgba(255,255,255,.06); border:1.5px solid var(--mid); border-radius:6px; color:var(--white); font-family:'Space Mono',monospace; font-size:.72rem; padding:8px 10px; outline:none; }
 
     /* ── Input Modal ── */
@@ -306,6 +310,9 @@
       .section-title { font-size:.6rem; }
       .student-row { padding:12px; }
       .req-row-body { padding:14px; }
+      .access-row-body { padding:14px; }
+      .access-row-name { font-size:.85rem; }
+      .access-row-meta { font-size:.68rem; }
     }
 
     /* ── Empty ── */
@@ -606,13 +613,13 @@
     <div class="admin-badge">🔐 Admin Paneli</div>
 
     <!-- Access Requests + Pending Requests side by side -->
-    <div id="adminTopRow" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
+    <div id="adminTopRow" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;margin-bottom:20px;">
       <div class="card" id="adminAccessCard" style="margin:0;">
         <div class="section-title">🔑 Erişim Talepleri</div>
         <div id="adminAccessList"></div>
       </div>
       <div class="card" id="adminRequestsCard" style="margin:0;">
-        <div class="card-title">Gelen Talepler</div>
+        <div class="section-title">📋 Gelen Talepler</div>
         <div id="adminRequestsList"><div class="empty-state">Yükleniyor…</div></div>
       </div>
     </div>
@@ -743,12 +750,15 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 
 let _user = null;
-let _selectedSlots = new Set(); // "dayIndex_time" e.g. "1_14:00"
-let _busySlots     = new Set(); // same format, loaded from booked_slots
-let _closedSlots   = new Set(); // same format, admin-blocked days (shown grey)
+let _selectedSlots  = new Set(); // "dayIndex_time" e.g. "1_14:00"
+let _busySlots      = new Set(); // same format, loaded from booked_slots
+let _closedSlots    = new Set(); // same format, admin-blocked days (shown grey)
+let _unsubAvailGrid = null;      // onSnapshot unsub for booked_slots live updates
 
 // ─── Helpers ─────────────────────────────────────────────
 function showView(id) {
+  // Clean up availability grid listener when leaving request form
+  if (id !== 'view-request' && _unsubAvailGrid) { _unsubAvailGrid(); _unsubAvailGrid = null; }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(id)?.classList.add('active');
 }
@@ -854,7 +864,7 @@ function updateAuthBar(user) {
   if (!user) {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
     btn.textContent = '⬡ Google ile Giriş';
-    btn.onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    btn.onclick = () => { const p = new firebase.auth.GoogleAuthProvider(); if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { auth.signInWithRedirect(p); } else { auth.signInWithPopup(p).catch(e => { if (e.code === 'auth/popup-blocked') auth.signInWithRedirect(p); }); } };
     bar.append(btn);
   } else {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
@@ -874,44 +884,29 @@ function updateAuthBar(user) {
 const GRID_DAYS = [1,2,3,4,5,6,0]; // Mon→Sun
 
 async function loadAndRenderAvailGrid() {
+  // Unsubscribe any previous listener
+  if (_unsubAvailGrid) { _unsubAvailGrid(); _unsubAvailGrid = null; }
+
   const loading = document.getElementById('availGridLoading');
   const table   = document.getElementById('availGrid');
   loading.style.display = ''; table.style.display = 'none';
 
-  // Fetch booked_slots for next 90 days
+  // Fetch settings once (available_days don't change in real-time)
   const today = new Date(); today.setHours(0,0,0,0);
   const end90 = new Date(today); end90.setDate(end90.getDate() + 90);
   const todayStr = toDateStr(today);
   const endStr   = toDateStr(end90);
 
-  _busySlots.clear();
-  _closedSlots.clear();
-  let _availDays = null; // null = all days open
+  let _availDays = null;
   try {
-    const [settingsSnap, slotsSnap] = await Promise.all([
-      db.collection('settings').doc('global').get().catch(() => null),
-      db.collection('booked_slots').where('date','>=', todayStr).where('date','<=', endStr).get()
-    ]);
+    const settingsSnap = await db.collection('settings').doc('global').get();
     if (settingsSnap && settingsSnap.exists && Array.isArray(settingsSnap.data().available_days)) {
       _availDays = settingsSnap.data().available_days;
     }
-    slotsSnap.forEach(doc => {
-      const d = doc.data();
-      const dow = dateStrToObj(d.date).getDay();
-      // Mark booked slot + mid-lesson (+30min) + lesson-end (+60min, need 30min buffer before next)
-      const [h, m] = d.time.split(':').map(Number);
-      const base = h * 60 + m;
-      [base, base + 30, base + 60].forEach(min => {
-        const t = `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
-        if (AVAILABLE_TIMES.includes(t)) _busySlots.add(`${dow}_${t}`);
-      });
-    });
-  } catch(e) {
-    if (e.code !== 'permission-denied') {
-      const c=errId(); toast(`Müsaitlik yüklenemedi (${c}): `+(e.message||e.code), true);
-    }
-  }
-  // Mark admin-closed days as closed (grey) — separate from busy (red)
+  } catch(e) { /* ignore */ }
+
+  // Pre-compute closed slots from settings (static)
+  _closedSlots.clear();
   if (_availDays !== null) {
     GRID_DAYS.forEach(dow => {
       if (!_availDays.includes(dow)) {
@@ -920,8 +915,30 @@ async function loadAndRenderAvailGrid() {
     });
   }
 
-  renderAvailGrid();
-  loading.style.display = 'none'; table.style.display = '';
+  // Live listener for booked_slots — auto-updates grid when admin cleans up stale slots
+  _unsubAvailGrid = db.collection('booked_slots')
+    .where('date', '>=', todayStr)
+    .where('date', '<=', endStr)
+    .onSnapshot(slotsSnap => {
+      _busySlots.clear();
+      slotsSnap.forEach(doc => {
+        const d = doc.data();
+        const dow = dateStrToObj(d.date).getDay();
+        const [h, m] = d.time.split(':').map(Number);
+        const base = h * 60 + m;
+        [base, base + 30, base + 60].forEach(min => {
+          const t = `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
+          if (AVAILABLE_TIMES.includes(t)) _busySlots.add(`${dow}_${t}`);
+        });
+      });
+      renderAvailGrid();
+      loading.style.display = 'none'; table.style.display = '';
+    }, e => {
+      if (e.code !== 'permission-denied') {
+        const c = errId(); toast(`Müsaitlik yüklenemedi (${c}): ` + (e.message || e.code), true);
+      }
+      loading.style.display = 'none'; table.style.display = '';
+    });
 }
 
 function renderAvailGrid() {
@@ -3206,6 +3223,10 @@ async function initZoomJoinBox(lessons, today, isPaid) {
       : nearSoon ? `🔒 Link ${Math.floor(secsLeft/60)}:${String(secsLeft%60).padStart(2,'0')} sonra aktif olacak`
       : `Bugün saat ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}'de · link 15 dk önce aktif olacak`;
     if (active) {
+      if (!isPaid) {
+        box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:14px 18px;margin-bottom:14px;"><div><div style="font-size:.82rem;color:rgba(239,68,68,.75);font-weight:700;font-family:'Space Mono',monospace;">💳 Ödeme Yapılmadı</div><div style="font-size:.65rem;color:rgba(239,68,68,.5);margin-top:2px;">Derse katılmak için ödemenin onaylanması gerekli</div></div><div style="font-size:1.4rem;color:rgba(239,68,68,.4);">🔒</div></div>`;
+        return;
+      }
       const _za=document.createElement('a');_za.target='_blank';_za.rel='noopener';_za.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;';if(zoomLink&&(zoomLink.startsWith('https://')||zoomLink.startsWith('http://')))_za.href=zoomLink;const _zd1=document.createElement('div');const _zd1a=document.createElement('div');_zd1a.style.cssText='font-size:.82rem;color:var(--green);font-weight:700;font-family:"Space Mono",monospace;';_zd1a.textContent='🎥 Derse Katıl';const _zd1b=document.createElement('div');_zd1b.style.cssText='font-size:.65rem;color:rgba(74,222,128,.7);margin-top:2px;';_zd1b.textContent=sublabel;_zd1.append(_zd1a,_zd1b);const _zd2=document.createElement('div');_zd2.style.cssText='font-size:1.4rem;color:var(--green);';_zd2.textContent='→';_za.append(_zd1,_zd2);box.innerHTML='';box.append(_za);
     } else {
       box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 18px;margin-bottom:14px;opacity:.65;"><div><div style="font-size:.82rem;color:var(--dim);font-weight:700;font-family:'Space Mono',monospace;">🎥 Bugün Ders Var</div><div style="font-size:.65rem;color:var(--dim);margin-top:2px;">${sublabel}</div></div><div style="font-size:1.4rem;color:var(--dim);">${nearSoon?'🔒':'📅'}</div></div>`;
@@ -3739,23 +3760,23 @@ function loadAdminAccessRequests() {
       snap.docs.forEach(doc => {
         const r = doc.data();
         const row = document.createElement('div');
-        row.style.cssText = 'background:rgba(232,184,75,.04);border:1px solid rgba(232,184,75,.18);border-radius:10px;margin-bottom:10px;overflow:hidden;';
+        row.className = 'access-row';
         row.innerHTML = `
-          <div style="padding:14px 16px;">
+          <div class="access-row-body">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
               <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;border:1.5px solid rgba(232,184,75,.35);flex-shrink:0;background:var(--mid);display:flex;align-items:center;justify-content:center;font-size:.8rem;">
                 ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;" alt="">` : (r.name?.[0]||'?')}
               </div>
               <div>
-                <div style="font-size:.88rem;color:var(--white);font-weight:700;">${r.name || '—'}</div>
-                <div style="font-size:.65rem;color:var(--dim);">${r.email || ''}</div>
+                <div class="access-row-name">${r.name || '—'}</div>
+                <div class="access-row-meta">${r.email || ''}</div>
               </div>
             </div>
             ${r.message ? `<div style="font-size:.75rem;color:var(--dim);font-style:italic;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:6px;border-left:2px solid rgba(232,184,75,.25);margin-bottom:2px;">"${r.message}"</div>` : ''}
           </div>
-          <div style="display:flex;border-top:1px solid rgba(255,255,255,.06);">
-            <button class="accessApproveBtn" style="flex:1;background:rgba(74,222,128,.07);border:none;border-right:1px solid rgba(255,255,255,.06);color:var(--green);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;letter-spacing:.04em;">✓ Onayla</button>
-            <button class="accessRejectBtn"  style="flex:1;background:rgba(184,45,69,.07);border:none;color:var(--crimson);font-family:'Space Mono',monospace;font-size:.73rem;font-weight:700;padding:12px;cursor:pointer;letter-spacing:.04em;">✕ Reddet</button>
+          <div class="req-actions">
+            <button class="accessApproveBtn req-approve">✓ Onayla</button>
+            <button class="accessRejectBtn req-reject">✕ Reddet</button>
           </div>`;
 
         row.querySelector('.accessApproveBtn').onclick = async (e) => {
@@ -4171,8 +4192,11 @@ async function adminMarkSolved(qId) {
 }
 
 // ─── Event listeners ──────────────────────────────────────
-document.getElementById('signInBtn').onclick = () =>
-  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+document.getElementById('signInBtn').onclick = () => {
+  const p = new firebase.auth.GoogleAuthProvider();
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { auth.signInWithRedirect(p); }
+  else { auth.signInWithPopup(p).catch(e => { if (e.code === 'auth/popup-blocked') auth.signInWithRedirect(p); }); }
+};
 
 document.getElementById('submitRequestBtn').onclick = () => submitRequest();
 
