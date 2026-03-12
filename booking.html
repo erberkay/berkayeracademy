@@ -1292,7 +1292,18 @@ function renderPendingView(reqData) {
           if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
           renderPendingView({ ...snap.data(), id: snap.id });
         }
-      }, e => { const c=errId(); toast(`Bağlantı hatası (${c}): ${e.code||e.message}`, true); });
+      }, async e => {
+        // Listener failed — re-fetch status directly so student doesn't stay stuck on pending
+        try {
+          const snap = await db.collection('lesson_requests').doc(reqData.id).get();
+          if (snap.exists) {
+            const st = snap.data().status;
+            if (st === 'accepted') { renderDashboard(); return; }
+            if (st === 'rejected') { renderPendingView({ ...snap.data(), id: snap.id }); return; }
+          }
+        } catch(_) {}
+        const c=errId(); toast(`Bağlantı hatası (${c}): ${e.code||e.message}`, true);
+      });
   }
 }
 
@@ -3559,14 +3570,18 @@ async function loadUserState(user) {
     initRequestForm(); return;
   }
 
-  // Check for pending lesson request (monthly/single)
-  let pendingReqSnap = null;
+  // Check for pending or recently rejected lesson request (monthly/single)
+  let pendingReqSnap = null, rejectedReqSnap = null;
   try {
     const qs = await db.collection('lesson_requests').where('from_uid', '==', user.uid).get();
-    const pending = qs.docs.filter(d => d.data().status === 'pending' && d.data().lesson_type !== 'trial');
-    if (pending.length) pendingReqSnap = pending.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
+    const nonTrial = qs.docs
+      .filter(d => d.data().lesson_type !== 'trial')
+      .sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0));
+    pendingReqSnap  = nonTrial.find(d => d.data().status === 'pending')  || null;
+    rejectedReqSnap = nonTrial.find(d => d.data().status === 'rejected') || null;
   } catch(e) {}
-  if (pendingReqSnap) { renderPendingView({ ...pendingReqSnap.data(), id: pendingReqSnap.id }); return; }
+  if (pendingReqSnap)  { renderPendingView({ ...pendingReqSnap.data(),  id: pendingReqSnap.id  }); return; }
+  if (rejectedReqSnap) { renderPendingView({ ...rejectedReqSnap.data(), id: rejectedReqSnap.id }); return; }
 
   initRequestForm();
 }
