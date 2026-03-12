@@ -145,12 +145,14 @@ exports.paymentReminder = onSchedule(
 
 // ── Helper: branded template for custom admin messages ──
 function buildCustomMailOptions(toName, toEmail, subject, message) {
+  const safeSubject = (subject || '').replace(/[\r\n]/g, ' ').slice(0, 200);
+  const safeName    = (toName  || '').replace(/[\r\n<>]/g, '').slice(0, 100);
   const safeMessage = message.replace(/\n/g, "<br>");
   return {
     from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
     replyTo: "berkayer032@gmail.com",
     to: toEmail,
-    subject: subject,
+    subject: safeSubject,
     headers: {
       "List-Unsubscribe": "<mailto:berkayer032@gmail.com?subject=unsubscribe>",
     },
@@ -168,7 +170,7 @@ function buildCustomMailOptions(toName, toEmail, subject, message) {
           <div style="font-size:11px;color:rgba(238,235,230,.5);letter-spacing:3px;margin-top:4px;">ABLETON ÖZEL DERS</div>
         </td></tr>
         <tr><td style="padding:32px;">
-          <p style="margin:0 0 20px;font-size:15px;color:#222;">Merhaba <strong>${toName}</strong>,</p>
+          <p style="margin:0 0 20px;font-size:15px;color:#222;">Merhaba <strong>${safeName}</strong>,</p>
           <div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-wrap;">${safeMessage}</div>
         </td></tr>
         <tr><td style="background:#f8f8f8;padding:20px 32px;text-align:center;border-top:1px solid #eee;">
