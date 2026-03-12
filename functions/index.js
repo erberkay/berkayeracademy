@@ -145,8 +145,8 @@ exports.paymentReminder = onSchedule(
 
 // ── Helper: branded template for custom admin messages ──
 function buildCustomMailOptions(toName, toEmail, subject, message) {
-  const safeSubject = (subject || '').replace(/[\r\n]/g, ' ').slice(0, 200);
-  const safeName    = (toName  || '').replace(/[\r\n<>]/g, '').slice(0, 100);
+  const safeSubject = (subject || "").replace(/[\r\n]/g, " ").slice(0, 200);
+  const safeName = (toName || "").replace(/[\r\n<>]/g, "").slice(0, 100);
   const safeMessage = message.replace(/\n/g, "<br>");
   return {
     from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
