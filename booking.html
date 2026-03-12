@@ -2035,8 +2035,12 @@ async function renderAdminPanel() {
             toast('✓ Deneme dersi kabul edildi.');
             row.remove(); return;
           }
+          // Normalize params for single lessons (duration_months=0 would generate no dates)
+          const _effDur   = isSingleReq ? 1 : r.duration_months;
+          const _effLpm   = isSingleReq ? 1 : (r.lessons_per_month || 4);
+          const _effStart = isSingleReq ? toDateStr(new Date()) : r.preferred_start_date;
           // Check conflicts before accepting
-          const allLessons = calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date);
+          const allLessons = calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart);
           const conflicts = await checkConflicts(allLessons, r.from_uid);
           if (conflicts.size > 0) {
             const conflictDates = allLessons
@@ -2053,7 +2057,7 @@ async function renderAdminPanel() {
           }
           // Final conflict re-check right before committing (closes race window)
           const freshConflicts = await checkConflicts(
-            calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date)
+            calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart)
               .filter(l => !conflicts.has(l.date + '_' + l.time)),
             r.from_uid
           );
@@ -3431,7 +3435,11 @@ async function acceptTrialRequest(reqId, r) {
 
 // ─── Accept Request → Create Reservation ─────────────────
 async function acceptRequest(reqId, r, conflicts = new Set()) {
-  const allLessons = calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date);
+  const isSingle = r.lesson_type === 'single';
+  const effDur   = isSingle ? 1 : r.duration_months;
+  const effLpm   = isSingle ? 1 : (r.lessons_per_month || 4);
+  const effStart = isSingle ? toDateStr(new Date()) : r.preferred_start_date;
+  const allLessons = calculateLessonDates(r.schedule, effDur, effLpm, effStart);
   // Skip conflicting slots
   const lessons = allLessons.filter(l => !conflicts.has(l.date + '_' + l.time));
   if (lessons.length === 0) { toast('Tüm ders saatleri çakışıyor — talep kabul edilemez.', true); return; }
