@@ -387,18 +387,15 @@ function doSignIn() {
   if (_signingIn) return;
   _signingIn = true;
   const provider = new firebase.auth.GoogleAuthProvider();
-  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-    auth.signInWithRedirect(provider);
-  } else {
-    auth.signInWithPopup(provider)
-      .catch(e => {
-        if (e.code === 'auth/popup-blocked') {
-          auth.signInWithRedirect(provider);
-        } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-          alert('Giriş hatası: ' + (e.message || e.code || e));
-        }
-      })
-      .finally(() => { _signingIn = false; });
+  auth.signInWithPopup(provider)
+    .catch(e => {
+      if (e.code === 'auth/popup-blocked') {
+        auth.signInWithRedirect(provider);
+      } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+        alert('Giriş hatası: ' + (e.message || e.code || e));
+      }
+    })
+    .finally(() => { _signingIn = false; });
   }
 }
 window.doSignIn = doSignIn;
