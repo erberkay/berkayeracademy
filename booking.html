@@ -2321,8 +2321,9 @@ async function renderAdminPanel() {
       const totalLessons = allLessonsArr.filter(l => l.status !== 'cancelled').length;
       const curMonthAdmin = today.slice(0, 7);
       const thisMonthCount = allLessonsArr.filter(l => l.date.startsWith(curMonthAdmin) && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen' || l.status === 'completed')).length;
-      const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
-      const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
+      const activeLessons = allLessonsArr.filter(l => l.status !== 'cancelled').sort((a,b)=>a.date.localeCompare(b.date));
+      const startDateStr = activeLessons.length ? formatDateStr(activeLessons[0].date) : '—';
+      const endDateStr   = activeLessons.length ? formatDateStr(activeLessons[activeLessons.length-1].date) : '—';
       const isTrial = s.lesson_type === 'trial';
       const lessonPrice = s.custom_lesson_price || (s.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE);
       const totalPrice = isTrial ? 0 : (s.custom_total_price ?? (totalLessons * lessonPrice));
