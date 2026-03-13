@@ -1085,7 +1085,8 @@ function adjustSchedule(rawSlots) {
   return result;
 }
 
-const LESSON_PRICE = 3000; // TL per lesson hour
+const LESSON_PRICE        = 2000; // TL per lesson — monthly plans
+const LESSON_PRICE_SINGLE = 3000; // TL per lesson — single booking
 
 function updateSlotSummary() {
   const el = document.getElementById('availSummary');
@@ -1129,7 +1130,7 @@ function updatePriceEstimate() {
   if (_selectedSlots.size === 0) { el.style.display = 'none'; return; }
   if (_reqType === 'single') {
     el.style.display = '';
-    el.innerHTML = `Tek ders ücreti: <strong style="color:var(--gold)">${LESSON_PRICE.toLocaleString('tr-TR')} TL</strong>`;
+    el.innerHTML = `Tek ders ücreti: <strong style="color:var(--gold)">${LESSON_PRICE_SINGLE.toLocaleString('tr-TR')} TL</strong>`;
     return;
   }
   const duration = parseInt(document.getElementById('reqDuration')?.value || '1');
@@ -1252,7 +1253,7 @@ function renderPendingView(reqData) {
     const daysText = (reqData.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
     const isSinglePending = reqData.lesson_type === 'single';
     const pendingLessonCount = isSinglePending ? 1 : calculateLessonDates(reqData.schedule, reqData.duration_months, reqData.lessons_per_month).length;
-    const pendingTotal = pendingLessonCount * LESSON_PRICE;
+    const pendingTotal = pendingLessonCount * (isSinglePending ? LESSON_PRICE_SINGLE : LESSON_PRICE);
     summary.innerHTML = `
       <div class="req-summary">
         <strong>Süre:</strong> ${isSinglePending ? 'Tek Ders' : reqData.duration_months + ' Ay'}<br>
@@ -1415,7 +1416,7 @@ async function renderDashboard() {
 
   // Payment box
   const activeLessons = lessons.filter(l => l.status !== 'cancelled');
-  const lessonUnitPrice = res.custom_lesson_price || LESSON_PRICE;
+  const lessonUnitPrice = res.custom_lesson_price || (res.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE);
   const totalPrice = res.custom_total_price ?? (activeLessons.length * lessonUnitPrice);
   const isPaid = !!res.payment_confirmed;
   const isPending = !!res.payment_pending;
@@ -2021,7 +2022,7 @@ async function renderAdminPanel() {
       const daysText = (r.schedule||[]).map(s => DAYS_TR[s.dayIndex] + ' ' + s.time).join(', ');
       const isSingleReq = r.lesson_type === 'single';
       const reqLessonCount = isSingleReq ? 1 : (isTrialReq ? 1 : calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date).length);
-      const reqTotalPrice = isTrialReq ? 0 : reqLessonCount * LESSON_PRICE;
+      const reqTotalPrice = isTrialReq ? 0 : reqLessonCount * (isSingleReq ? LESSON_PRICE_SINGLE : LESSON_PRICE);
       row.innerHTML = `
         <div class="req-row-body">
           <div class="req-row-name">
@@ -2128,7 +2129,7 @@ async function renderAdminPanel() {
       // Per-lesson price: custom_total/totalLessons, or custom_lesson_price, or default
       const perLessonPrice = d.custom_total_price
         ? Math.round(d.custom_total_price / Math.max(totalNonCancelled, 1))
-        : (d.custom_lesson_price || LESSON_PRICE);
+        : (d.custom_lesson_price || (d.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE));
       let studentMonthLessons = 0;
       (d.lessons||[]).forEach(l => {
         if (l.status === 'scheduled' || l.status === 'rescheduled')
@@ -2312,7 +2313,7 @@ async function renderAdminPanel() {
       const startDateStr = s.start_date ? formatDateStr(s.start_date) : (allLessonsArr.length ? formatDateStr(allLessonsArr[0].date) : '—');
       const endDateStr = s.end_date ? formatDateStr(s.end_date) : '—';
       const isTrial = s.lesson_type === 'trial';
-      const lessonPrice = s.custom_lesson_price || LESSON_PRICE;
+      const lessonPrice = s.custom_lesson_price || (s.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE);
       const totalPrice = isTrial ? 0 : (s.custom_total_price ?? (totalLessons * lessonPrice));
       const isResPaid = !!s.payment_confirmed;
       const isPending = !isResPaid && !!s.payment_pending;
