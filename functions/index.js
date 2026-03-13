@@ -386,8 +386,8 @@ function buildWelcomeMailOptions(name, toEmail) {
 exports.sendWelcomeEmail = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth) {
-        throw new HttpsError("unauthenticated", "Giriş gerekli");
+      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const {toEmail, toName} = request.data;
       if (!toEmail) throw new HttpsError("invalid-argument", "toEmail gerekli");
@@ -487,7 +487,7 @@ function buildPromoMailOptions(name, toEmail) {
 }
 
 exports.sendPromoEmailAll = onCall(
-    {region: "europe-west1", timeoutSeconds: 300, invoker: "public"},
+    {region: "europe-west1", timeoutSeconds: 300},
     async (request) => {
       if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");

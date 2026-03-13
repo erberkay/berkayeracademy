@@ -1312,6 +1312,17 @@ function renderPendingView(reqData) {
         const c=errId(); toast(`Bağlantı hatası (${c}): ${e.code||e.message}`, true);
       });
   }
+  // When rejected: watch the reservation doc — if admin accepts a new request the reservation
+  // will be created and the student should see the dashboard immediately without refreshing.
+  if (isRejected) {
+    _pendingListenUnsub = db.collection('reservations').doc(_user.uid)
+      .onSnapshot(snap => {
+        if (snap && snap.exists && isReservationActive(snap.data())) {
+          if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
+          renderDashboard();
+        }
+      });
+  }
 }
 
 function initRequestForm() {
@@ -1353,7 +1364,7 @@ async function renderDashboard() {
   const res = snap.data();
 
   const avEl = document.getElementById('dashAv');
-  if (_user.photoURL) avEl.innerHTML = `<img src="${_user.photoURL}" alt="">`;
+  if (_user.photoURL) { const _pi=document.createElement('img');_pi.src=_user.photoURL;_pi.alt='';avEl.innerHTML='';avEl.appendChild(_pi); }
   else avEl.textContent = '👤';
   document.getElementById('dashName').textContent = _user.displayName || 'Öğrenci';
 
@@ -1753,7 +1764,7 @@ async function renderDashboard() {
       list.append(pastToggle, pastSection);
     }
   }
-  initZoomJoinBox(lessons, today, isPaid);
+  initZoomJoinBox(lessons, today, isPaid, isPending);
   initStudentQA(_user.uid, _user);
 
   // Welcome popup — show on first visit and again when student re-books (new start_date)
@@ -3236,7 +3247,7 @@ let _zoomSettingsUnsub = null;
 let _dashResUnsub = null;
 let _zoomVisibilityHandler = null;
 
-async function initZoomJoinBox(lessons, today, isPaid) {
+async function initZoomJoinBox(lessons, today, isPaid, isPending) {
   const box = document.getElementById('zoomJoinBox');
   if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
   if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
@@ -3276,7 +3287,9 @@ async function initZoomJoinBox(lessons, today, isPaid) {
       : `Bugün saat ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}'de · link 15 dk önce aktif olacak`;
     if (active) {
       if (!isPaid) {
-        box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:14px 18px;margin-bottom:14px;"><div><div style="font-size:.82rem;color:rgba(239,68,68,.75);font-weight:700;font-family:'Space Mono',monospace;">💳 Ödeme Yapılmadı</div><div style="font-size:.65rem;color:rgba(239,68,68,.5);margin-top:2px;">Derse katılmak için ödemenin onaylanması gerekli</div></div><div style="font-size:1.4rem;color:rgba(239,68,68,.4);">🔒</div></div>`;
+        const _zt = isPending ? '⏳ Ödeme Onayı Bekleniyor' : '💳 Ödeme Yapılmadı';
+        const _zs = isPending ? 'Ödemen alındı, admin onayını bekliyor' : 'Derse katılmak için ödemenin onaylanması gerekli';
+        box.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:14px 18px;margin-bottom:14px;"><div><div style="font-size:.82rem;color:rgba(239,68,68,.75);font-weight:700;font-family:'Space Mono',monospace;">${_zt}</div><div style="font-size:.65rem;color:rgba(239,68,68,.5);margin-top:2px;">${_zs}</div></div><div style="font-size:1.4rem;color:rgba(239,68,68,.4);">🔒</div></div>`;
         return;
       }
       const _za=document.createElement('a');_za.target='_blank';_za.rel='noopener';_za.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:14px 18px;text-decoration:none;margin-bottom:14px;';if(zoomLink&&(zoomLink.startsWith('https://')||zoomLink.startsWith('http://')))_za.href=zoomLink;const _zd1=document.createElement('div');const _zd1a=document.createElement('div');_zd1a.style.cssText='font-size:.82rem;color:var(--green);font-weight:700;font-family:"Space Mono",monospace;';_zd1a.textContent='🎥 Derse Katıl';const _zd1b=document.createElement('div');_zd1b.style.cssText='font-size:.65rem;color:rgba(74,222,128,.7);margin-top:2px;';_zd1b.textContent=sublabel;_zd1.append(_zd1a,_zd1b);const _zd2=document.createElement('div');_zd2.style.cssText='font-size:1.4rem;color:var(--green);';_zd2.textContent='→';_za.append(_zd1,_zd2);box.innerHTML='';box.append(_za);
@@ -3296,7 +3309,8 @@ async function initZoomJoinBox(lessons, today, isPaid) {
       if (lessonDate < nowDateStr) { area.innerHTML = ''; return; }
 
       if (!isPaid) {
-        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.6);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.8;">💳 Ödeme Yapılmadı</div>`;
+        const _cl = isPending ? '⏳ Onay Bekliyor' : '💳 Ödeme Yapılmadı';
+        area.innerHTML = `<div style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:7px;padding:7px 16px;color:rgba(239,68,68,.6);font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;cursor:not-allowed;opacity:.8;">${_cl}</div>`;
         return;
       }
 

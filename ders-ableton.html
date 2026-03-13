@@ -13,9 +13,14 @@
 <meta property="og:url" content="https://berkayeracademy.com/ders-ableton">
 <link rel="canonical" href="https://berkayeracademy.com/ders-ableton">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
+<link rel="manifest" href="/site.webmanifest">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <script src="assets/js/theme-init.js"></script>
 <link rel="stylesheet" href="assets/css/themes.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -273,10 +278,20 @@ body::before {
   .content-block { padding: 1rem; }
   .cta-bar { padding: 1rem; flex-direction: column; align-items: flex-start; }
 }
+#authBar { position:fixed; top:12px; right:16px; z-index:300; display:flex; align-items:center; gap:8px; }
+.auth-sign-btn { background:rgba(42,42,69,.9); border:1px solid #e8b84b; color:#e8b84b; font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.06em; padding:6px 14px; border-radius:4px; cursor:pointer; backdrop-filter:blur(6px); transition:background .18s,color .18s; }
+.auth-sign-btn:hover { background:#e8b84b; color:#060609; }
+.auth-user-wrap { display:flex; align-items:center; gap:8px; background:rgba(42,42,69,.85); border:1px solid rgba(232,184,75,.3); padding:4px 10px 4px 4px; border-radius:20px; backdrop-filter:blur(8px); }
+.auth-avatar { width:26px; height:26px; border-radius:50%; object-fit:cover; cursor:pointer; }
+.auth-name { font-family:'Space Mono',monospace; font-size:.62rem; color:#eeebe6; cursor:pointer; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.auth-out-btn { background:transparent; border:none; color:rgba(238,235,230,.4); font-size:.6rem; cursor:pointer; padding:0; transition:color .15s; }
+.auth-out-btn:hover { color:#b82d45; }
+@media (max-width:768px) { input, textarea, select { font-size:16px!important; } }
 </style>
 </head>
 <body>
 <a id="homeLogo" href="egitim" title="Eğitim">⌂ Eğitim</a>
+<div id="authBar"></div>
 <div class="card">
   <div class="accent-bar"></div>
 
@@ -368,6 +383,62 @@ body::before {
   <a class="bnav-item" id="bnavAdminItem" href="booking" data-page="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label">Ders Paneli</span></a>
   <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label">Profil</span></a>
 </nav>
-<script>(function(){if(localStorage.getItem("ps_authed")){var e=document.getElementById("bnavAdminItem");if(e)e.style.display="flex";}})()</script>
+<script>
+(function() {
+  var _fbCfg = {
+    apiKey: "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
+    authDomain: "ableton-tutorial.firebaseapp.com",
+    projectId: "ableton-tutorial",
+    storageBucket: "ableton-tutorial.firebasestorage.app",
+    messagingSenderId: "677640687230",
+    appId: "1:677640687230:web:8c6a2dfefbf55c69ffd22f"
+  };
+  try { firebase.initializeApp(_fbCfg); } catch(e) {}
+  var _auth = firebase.auth();
+  var ADMIN_EMAIL = 'berkayer032@gmail.com';
+  function isAdmin(u) { return u && u.email === ADMIN_EMAIL; }
+  function doSignIn() {
+    var _p = new firebase.auth.GoogleAuthProvider();
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      _auth.signInWithRedirect(_p);
+    } else {
+      _auth.signInWithPopup(_p).catch(function(e) {
+        if (e.code === 'auth/popup-blocked') { _auth.signInWithRedirect(_p); }
+        else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') { alert('Giriş hatası: ' + e.message); }
+      });
+    }
+  }
+  function updateAuthBar(user) {
+    var bar = document.getElementById('authBar');
+    if (!bar) return;
+    bar.innerHTML = '';
+    if (user) {
+      var wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
+      var img = document.createElement('img'); img.className = 'auth-avatar';
+      img.src = user.photoURL || ''; img.alt = '';
+      img.onclick = function() { location.href = 'profile?uid=' + user.uid; };
+      img.onerror = function() { this.style.display = 'none'; };
+      var name = document.createElement('span'); name.className = 'auth-name';
+      name.textContent = isAdmin(user) ? '⚡ Admin' : (user.displayName ? user.displayName.split(' ')[0] : (user.email ? user.email.split('@')[0] : 'Üye'));
+      name.onclick = function() { location.href = 'profile?uid=' + user.uid; };
+      var out = document.createElement('button'); out.className = 'auth-out-btn'; out.textContent = '✕';
+      out.onclick = function() { _auth.signOut(); };
+      wrap.append(img, name, out); bar.append(wrap);
+      var _ba=document.getElementById("bnavAdminItem");if(_ba)_ba.style.display="flex";
+      var av = document.getElementById('bnavProfileAv');
+      if (av && user.photoURL) { var _pi=document.createElement('img');_pi.src=user.photoURL;_pi.alt='';av.innerHTML='';av.appendChild(_pi); }
+    } else {
+      var btn = document.createElement('button'); btn.className = 'auth-sign-btn';
+      btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
+      bar.append(btn);
+    }
+  }
+  _auth.onAuthStateChanged(function(user) {
+    updateAuthBar(user);
+    var bAdm = document.getElementById('bnavAdminItem');
+    if (bAdm) bAdm.style.display = (user && isAdmin(user)) ? 'flex' : 'none';
+  });
+})();
+</script>
 </body>
 </html>

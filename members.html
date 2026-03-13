@@ -11,6 +11,9 @@
 <meta property="og:image" content="https://berkayeracademy.com/assets/img/DSC00141.jpg">
 <meta property="og:url" content="https://berkayeracademy.com/members">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
+<link rel="manifest" href="/site.webmanifest">
 <script src="assets/js/theme-init.js"></script>
 <link rel="stylesheet" href="assets/css/themes.css">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -259,18 +262,19 @@ function doSignIn() {
   if (_signingIn) return;
   _signingIn = true;
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider)
-    .catch(e => {
-      console.error(e);
-      if (e.code === 'auth/popup-closed-by-user' ||
-          e.code === 'auth/cancelled-popup-request' ||
-          e.code === 'auth/popup-blocked') {
-        auth.signInWithPopup(provider).catch(e2 => { if (e2.code !== 'auth/popup-closed-by-user' && e2.code !== 'auth/cancelled-popup-request') alert('Giriş hatası: ' + (e2.message || e2.code || e2)); });
-      } else {
-        alert('Giriş hatası: ' + (e.message || e.code || e));
-      }
-    })
-    .finally(() => { _signingIn = false; });
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+    auth.signInWithRedirect(provider);
+  } else {
+    auth.signInWithPopup(provider)
+      .catch(e => {
+        if (e.code === 'auth/popup-blocked') {
+          auth.signInWithRedirect(provider);
+        } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+          alert('Giriş hatası: ' + (e.message || e.code || e));
+        }
+      })
+      .finally(() => { _signingIn = false; });
+  }
 }
 
 const _tLight = document.documentElement.classList.contains('theme-light');
@@ -301,7 +305,7 @@ function updateAuthBar(user) {
     const img  = document.createElement('img');  img.className = 'auth-avatar';
       const _bnavAv = document.getElementById('bnavProfileAv');
       const _bnavAdmin = document.getElementById('bnavAdminItem');
-      if (_bnavAdmin) _bnavAdmin.style.display = 'flex'; localStorage.setItem('ps_authed','1');
+      if (_bnavAdmin) _bnavAdmin.style.display = 'flex';
       if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
     img.src = user.photoURL || ''; img.alt = '';
     const name = document.createElement('span'); name.className = 'auth-name';
@@ -669,12 +673,10 @@ auth.onAuthStateChanged(user => {
   <a class="bnav-item" id="bnavAdminItem" href="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label">Ders Paneli</span></a>
   <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label">Profil</span></a>
 </nav>
-<script>(function(){if(localStorage.getItem("ps_authed")){var e=document.getElementById("bnavAdminItem");if(e)e.style.display="flex";}})()</script>
 <script type="module">(function(){const a=document.querySelector('.bottom-nav')?.dataset.active;document.querySelectorAll('.bnav-item[data-page]').forEach(e=>{if(a===e.dataset.page)e.classList.add('active');});})();</script>
 <script>(function(){
   var act=document.querySelector('.bottom-nav')?.dataset.active;
   if(act){document.querySelectorAll('.lnav-item[data-page]').forEach(function(e){if(act===e.dataset.page)e.classList.add('active');});var pl=document.querySelector('.lnav-profile-link');if(pl&&act==='profile')pl.classList.add('active');}
-  if(localStorage.getItem('ps_authed')){var la=document.getElementById('lnavAdminItem');if(la)la.style.display='flex';}
   var bAv=document.getElementById('bnavProfileAv'),lAv=document.getElementById('lnavProfileAv');
   if(bAv&&lAv){lAv.innerHTML=bAv.innerHTML;new MutationObserver(function(){lAv.innerHTML=bAv.innerHTML;}).observe(bAv,{childList:true,subtree:true});}
   var bAdm=document.getElementById('bnavAdminItem'),lAdm=document.getElementById('lnavAdminItem');
