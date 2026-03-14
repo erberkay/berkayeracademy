@@ -1213,7 +1213,14 @@ async function submitRequest() {
 }
 
 // ─── Pending View ─────────────────────────────────────────
-function renderPendingView(reqData) {
+async function renderPendingView(reqData) {
+  // If a reservation already exists (e.g. admin accepted but listener missed it), go straight to dashboard
+  if (_user && reqData.status === 'pending') {
+    try {
+      const resSnap = await db.collection('reservations').doc(_user.uid).get();
+      if (resSnap.exists && isReservationActive(resSnap.data())) { renderDashboard(); return; }
+    } catch(_) {}
+  }
   showView('view-pending');
 
   const statusBox = document.getElementById('pendingStatusBox');
