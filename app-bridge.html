@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Berkay Er Academy — Uygulama Girişi</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+    background: #0d0d0d;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 12px;
+    text-align: center;
+    padding: 24px;
+  }
+  .logo { font-size: 28px; font-weight: 800; letter-spacing: 3px; color: #8b5cf6; }
+  .sub  { font-size: 11px; color: #555; letter-spacing: 4px; text-transform: uppercase; }
+  .card {
+    background: #161616;
+    border: 1px solid #242424;
+    border-radius: 16px;
+    padding: 36px 32px;
+    max-width: 360px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+  }
+  h2  { font-size: 17px; font-weight: 600; }
+  p   { font-size: 13px; color: #888; line-height: 1.6; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #2a2a2a;
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .icon-big { font-size: 44px; }
+  .btn {
+    background: #fff;
+    color: #111;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .btn:hover { background: #f0f0f0; }
+  .err { color: #ef4444; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="logo">BE</div>
+<div class="sub">BERKAY ER ACADEMY</div>
+
+<div class="card" id="card">
+  <div class="spinner"></div>
+  <h2>Uygulama Girişi</h2>
+  <p>Yükleniyor...</p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
+  authDomain:        "ableton-tutorial.firebaseapp.com",
+  projectId:         "ableton-tutorial",
+  storageBucket:     "ableton-tutorial.firebasestorage.app",
+  messagingSenderId: "677640687230",
+  appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
+})
+const _auth = firebase.auth()
+const _db   = firebase.firestore()
+
+const bridgeKey = new URLSearchParams(window.location.search).get('bridge_key')
+const card      = document.getElementById('card')
+
+function showSuccess() {
+  card.innerHTML = `
+    <div class="icon-big">✅</div>
+    <h2>Giriş Başarılı!</h2>
+    <p>Uygulamaya dönebilirsiniz.<br>Bu sekmeyi kapatabilirsiniz.</p>
+  `
+  setTimeout(() => window.close(), 1800)
+}
+
+function showCancel() {
+  card.innerHTML = `
+    <div class="icon-big">🚫</div>
+    <h2>İptal Edildi</h2>
+    <p>Giriş iptal edildi.</p>
+    <button class="btn" onclick="startSignIn()">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Tekrar Dene
+    </button>
+  `
+}
+
+function showError(msg) {
+  card.innerHTML = `
+    <div class="icon-big">⚠️</div>
+    <h2>Hata</h2>
+    <p class="err">${msg}</p>
+    <button class="btn" onclick="startSignIn()">Tekrar Dene</button>
+  `
+}
+
+async function startSignIn() {
+  card.innerHTML = `
+    <div class="spinner"></div>
+    <h2>Google ile Giriş</h2>
+    <p>Açılan Google penceresinde hesabınızı seçin...</p>
+  `
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider()
+    provider.addScope('email')
+    provider.addScope('profile')
+
+    const result     = await _auth.signInWithPopup(provider)
+    const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result)
+
+    await _db.collection('app_bridge').doc(bridgeKey).set({
+      googleIdToken: credential.idToken,
+      uid:           result.user.uid,
+      email:         result.user.email,
+      displayName:   result.user.displayName || '',
+      photoURL:      result.user.photoURL    || '',
+      expiresAt:     firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000)),
+    })
+
+    showSuccess()
+  } catch (e) {
+    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+      showCancel()
+    } else {
+      showError(e.message || e.code)
+    }
+  }
+}
+
+// Entry point
+if (!bridgeKey) {
+  window.location.href = '/'
+} else {
+  startSignIn()
+}
+</script>
+</body>
+</html>
