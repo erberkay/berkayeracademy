@@ -137,8 +137,14 @@ async function startSignIn() {
     provider.addScope('email')
     provider.addScope('profile')
 
-    const result     = await _auth.signInWithPopup(provider)
-    const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result)
+    let result     = await _auth.signInWithPopup(provider)
+    let credential = result.credential || firebase.auth.GoogleAuthProvider.credentialFromResult(result)
+
+    // Already signed in — credential can be null; force a fresh one via reauthenticate
+    if (!credential?.idToken && result.user) {
+      const reauth = await result.user.reauthenticateWithPopup(provider)
+      credential = reauth.credential || firebase.auth.GoogleAuthProvider.credentialFromResult(reauth)
+    }
 
     await _db.collection('app_bridge').doc(bridgeKey).set({
       googleIdToken: credential.idToken,
