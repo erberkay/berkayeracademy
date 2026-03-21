@@ -1385,6 +1385,40 @@ async function renderProfile() {
     };
     panel.append(lbl, grid, saveBtn);
     pCard.append(panel);
+
+    // Admin email panel
+    const emailPanel = document.createElement('div'); emailPanel.className = 'admin-announce-panel';
+    const emailLbl = document.createElement('div'); emailLbl.className = 'admin-title-label'; emailLbl.textContent = '✉️ Mail Gönder';
+    const emailSubject = document.createElement('input'); emailSubject.type = 'text';
+    emailSubject.style.cssText = 'width:100%;background:var(--mid2);border:1px solid var(--mid);border-radius:8px;color:var(--white);font-family:"Space Mono",monospace;font-size:.85rem;padding:8px 12px;outline:none;margin-top:8px;transition:border-color .15s;';
+    emailSubject.placeholder = 'Konu (opsiyonel)';
+    emailSubject.onfocus = () => emailSubject.style.borderColor = 'var(--gold)';
+    emailSubject.onblur  = () => emailSubject.style.borderColor = 'var(--mid)';
+    const emailTa = document.createElement('textarea'); emailTa.className = 'admin-announce-ta';
+    emailTa.placeholder = 'Mesaj içeriği...';
+    const emailRow = document.createElement('div'); emailRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;';
+    const emailSend = document.createElement('button'); emailSend.className = 'admin-announce-send'; emailSend.textContent = '✉️ Gönder';
+    const emailStatus = document.createElement('span'); emailStatus.style.cssText = 'font-size:.58rem;color:var(--dim);width:100%;';
+    emailSend.onclick = async () => {
+      const msg = emailTa.value.trim();
+      if (!msg) { emailTa.focus(); return; }
+      const toEmail = prof.email;
+      if (!toEmail) { emailStatus.style.color='var(--crimson)'; emailStatus.textContent='⚠ Bu üyenin email adresi bulunamadı'; return; }
+      emailSend.disabled = true; emailSend.textContent = '⏳';
+      try {
+        const fn = firebase.app().functions('europe-west1').httpsCallable('sendCustomEmail');
+        await fn({ toEmail, toName: displayName, subject: emailSubject.value.trim() || 'Berkay Er Academy', message: msg });
+        emailTa.value = ''; emailSubject.value = '';
+        emailStatus.style.color = 'var(--green)'; emailStatus.textContent = '✓ Mail gönderildi: ' + toEmail;
+        setTimeout(() => { emailStatus.textContent = ''; }, 4000);
+      } catch(e) {
+        emailStatus.style.color = 'var(--crimson)'; emailStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+      }
+      emailSend.disabled = false; emailSend.textContent = '✉️ Gönder';
+    };
+    emailRow.append(emailSend, emailStatus);
+    emailPanel.append(emailLbl, emailSubject, emailTa, emailRow);
+    pCard.append(emailPanel);
   }
 
   // Admin announcement panel (own profile only)
