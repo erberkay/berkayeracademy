@@ -603,7 +603,7 @@ async function renderFeed() {
     const key = c === 'Tümü' ? 'all' : c;
     const b = document.createElement('button');
     b.className = 'fbtn' + (_catFilter===key?' active':'');
-    b.textContent = c === 'Tümü' ? '# Tümü' : c;
+    b.textContent = c === 'Tümü' ? (window._i18n?.t('forum_cat_all')||'# Tümü') : c;
     b.style.fontSize = '.55rem';
     b.onclick = () => { _catFilter=key; renderPosts(); };
     cfbar.append(b);
@@ -634,7 +634,7 @@ function renderPosts(postList) {
     const solved = _allPosts.filter(p => p.solved).length;
     const open   = _allPosts.length - solved;
     fbar.innerHTML = '';
-    [{key:'all',label:`Tümü (${_allPosts.length})`},{key:'open',label:`Açık (${open})`},{key:'solved',label:`✓ Çözüldü (${solved})`}]
+    [{key:'all',label:`${window._i18n?.t('forum_filter_all')||'Tümü'} (${_allPosts.length})`},{key:'open',label:`${window._i18n?.t('forum_filter_open')||'Açık'} (${open})`},{key:'solved',label:`✓ ${window._i18n?.t('forum_filter_solved')||'Çözüldü'} (${solved})`}]
       .forEach(f => {
         const b = document.createElement('button');
         b.className = 'fbtn' + (_filter===f.key?' active':'');
@@ -694,7 +694,7 @@ function renderPost(post, container) {
   const dt = document.createElement('span'); dt.className = 'pcard-date'; dt.textContent = fmtDate(post.createdAt);
   meta.append(au, dt);
   if (post.solved) {
-    const sb = document.createElement('span'); sb.className = 'solved-badge'; sb.textContent = '✓ Çözüldü';
+    const sb = document.createElement('span'); sb.className = 'solved-badge'; sb.textContent = window._i18n?.t('forum_is_solved')||'✓ Çözüldü';
     meta.append(sb);
   }
   if (post.category && post.category !== 'Genel') {
@@ -799,7 +799,7 @@ function renderPost(post, container) {
     // Solve toggle
     const solveBtn = document.createElement('button');
     solveBtn.className = 'pcard-solve-btn' + (post.solved ? ' active' : '');
-    solveBtn.textContent = post.solved ? '✓ Çözüldü' : '⬡ Çözüldü işaretle';
+    solveBtn.textContent = post.solved ? (window._i18n?.t('forum_is_solved')||'✓ Çözüldü') : (window._i18n?.t('forum_mark_solved')||'⬡ Çözüldü işaretle');
     solveBtn.onclick = async () => {
       await db.collection('forum').doc(post.id).update({ solved: !post.solved });
       showToast(post.solved ? 'Konu yeniden açıldı' : '✓ Konu çözüldü olarak işaretlendi');

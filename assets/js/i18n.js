@@ -140,6 +140,26 @@
     da_req3:           { tr: 'Kulaklık veya monitör hoparlör önerilir', en: 'Headphones or monitor speakers recommended' },
     da_req4:           { tr: 'Not almak için defter/uygulama hazırla', en: 'Prepare a notebook/app for taking notes' },
 
+
+    // ── New-post extra ──
+    np_title_label:   { tr: 'Başlık',           en: 'Title' },
+    np_body_label:    { tr: 'İçerik',            en: 'Content' },
+    np_body_chars:    { tr: 'karakter',          en: 'characters' },
+    np_preview:       { tr: 'Önizleme',          en: 'Preview' },
+    np_edit:          { tr: 'Düzenle',           en: 'Edit' },
+    np_submitting:    { tr: 'Gönderiliyor...',   en: 'Submitting...' },
+
+    // ── Post page extra ──
+    post_copy_link:   { tr: 'Linki Kopyala',     en: 'Copy Link' },
+    post_edit:        { tr: 'Düzenle',           en: 'Edit' },
+    post_save:        { tr: 'Kaydet',            en: 'Save' },
+    post_cancel:      { tr: 'Vazgeç',            en: 'Cancel' },
+    post_delete:      { tr: 'Sil',               en: 'Delete' },
+    post_replies_loading: { tr: 'Yanıtlar yükleniyor...', en: 'Loading replies...' },
+    post_reply_write: { tr: 'Yanıt Yaz',         en: 'Write a Reply' },
+    post_reply_btn:   { tr: 'Yanıtla',           en: 'Reply' },
+    post_signin_reply:{ tr: 'Yanıt yazmak için giriş yap.', en: 'Sign in to reply.' },
+
     // ── Common UI ──
     ui_send:       { tr: 'Gönder',  en: 'Send' },
     ui_cancel:     { tr: 'İptal',   en: 'Cancel' },
@@ -410,11 +430,71 @@
     bk_rule_payment:  { tr: 'Ödeme',                         en: 'Payment' },
     bk_rule_cancel:   { tr: 'İptal Politikası',              en: 'Cancellation Policy' },
 
+
+    // ── Ableton Lab UI extra ──
+    lab_mod_tasks:    { tr: 'Görevler',           en: 'Tasks' },
+    lab_mod_complete: { tr: 'Modül Tamamlandı!',  en: 'Module Complete!' },
+    lab_congrats:     { tr: 'Tebrikler!',          en: 'Congratulations!' },
+    lab_badge_earned: { tr: '🎖️ Rozet Kazanıldı', en: '🎖️ Badge Earned' },
+    lab_awesome:      { tr: 'Harika!',             en: 'Awesome!' },
+    lab_preset_save:  { tr: 'Preset Kaydet',       en: 'Save Preset' },
+    lab_preset_saved: { tr: 'Kaydedildi!',         en: 'Saved!' },
+    lab_preset_load:  { tr: 'Preset Yükle',        en: 'Load Preset' },
+    lab_beat_save:    { tr: 'Beat Kaydet',          en: 'Save Beat' },
+    lab_beat_load:    { tr: 'Beat Yükle',           en: 'Load Beat' },
+    lab_reset:        { tr: '↺ Sıfırla',           en: '↺ Reset' },
+    lab_task_word:    { tr: 'Görev',               en: 'Task' },
+    lab_no_preset:    { tr: 'Kayıtlı Preset Yok',  en: 'No Saved Presets' },
+    lab_no_beat:      { tr: 'Kayıtlı Beat Yok',    en: 'No Saved Beats' },
+
     // ── Ableton Lab page ──
     lab_header_sub:   { tr: 'İnteraktif Öğrenme Platformu',  en: 'Interactive Learning Platform' },
     lab_status_done:  { tr: 'Tamamlandı',                    en: 'Completed' },
     lab_status_active:{ tr: 'Aktif',                         en: 'Active' },
     lab_status_idle:  { tr: 'Yakında',                       en: 'Coming Soon' },
+
+
+    // ── Index H1 line 2 ──
+    idx_h1_line2:    { tr: 'Profesyonel Ableton Kursu',   en: 'Professional Ableton Course' },
+
+    // ── Forum filter & solved ──
+    forum_filter_all:    { tr: 'Tümü',              en: 'All' },
+    forum_filter_open:   { tr: 'Açık',              en: 'Open' },
+    forum_filter_solved: { tr: 'Çözüldü',           en: 'Solved' },
+    forum_cat_all:       { tr: '# Tümü',            en: '# All' },
+    forum_mark_solved:   { tr: '⬡ Çözüldü işaretle', en: '⬡ Mark as Solved' },
+    forum_is_solved:     { tr: '✓ Çözüldü',         en: '✓ Solved' },
+
+    // ── Members ──
+    mem_all:          { tr: 'Tümü',                  en: 'All' },
+    mem_acemi:        { tr: 'Acemi',                  en: 'Beginner' },
+    mem_merakli:      { tr: 'Prodüksiyon Meraklısı',  en: 'Production Enthusiast' },
+    mem_uretici:      { tr: 'Üretici',                en: 'Producer' },
+    mem_veteran:      { tr: 'Veteran',                en: 'Veteran' },
+    mem_usta:         { tr: 'Usta',                   en: 'Master' },
+    mem_efsane:       { tr: 'Efsane',                 en: 'Legend' },
+    mem_collab_open:  { tr: 'Projeye Açık',           en: 'Open to Collab' },
+    mem_all_genres:   { tr: '🎵 Tüm Genreler',        en: '🎵 All Genres' },
+    mem_joined_since: { tr: "'dan beri üye",           en: 'member since' },
+    mem_no_results:   { tr: 'için sonuç bulunamadı.',  en: 'no results found.' },
+    mem_no_filter:    { tr: 'Bu kriterlerde üye yok.', en: 'No members match this filter.' },
+
+    // ── Booking status labels ──
+    bk_status_scheduled:   { tr: 'Planlandı',           en: 'Scheduled' },
+    bk_status_completed:   { tr: 'Tamamlandı',          en: 'Completed' },
+    bk_status_rescheduled: { tr: 'Ertelendi',           en: 'Rescheduled' },
+    bk_status_cancelled:   { tr: 'İptal',               en: 'Cancelled' },
+    bk_status_cancel_req:  { tr: 'İptal Talep Edildi',  en: 'Cancel Requested' },
+    bk_status_frozen:      { tr: '❄️ Donduruldu',       en: '❄️ Frozen' },
+    bk_past_lessons:       { tr: 'Geçmiş Dersler',      en: 'Past Lessons' },
+    bk_frozen_reminder: { tr: 'Yeni tarihler belirlendiğinde bildirim alacaksınız. Sorularınız için eğitmeninizle iletişime geçebilirsiniz.', en: 'You will be notified when new dates are set. Contact your instructor for any questions.' },
+    bk_frozen_banner:      { tr: 'Ders planınız dondurulmuştur.', en: 'Your lesson plan is frozen.' },
+    bk_frozen_note:        { tr: 'Ders donduruldu — Yeni tarih:', en: 'Lesson frozen — New date:' },
+    bk_no_upcoming:        { tr: 'Yaklaşan ders yok.',  en: 'No upcoming lessons.' },
+    bk_no_requests:        { tr: 'Bekleyen talep yok.', en: 'No pending requests.' },
+    bk_submit_btn:         { tr: 'Talep Gönder',        en: 'Send Request' },
+    bk_request_sent:       { tr: '✓ Talep gönderildi, eğitmeniniz onaylayacak.', en: '✓ Request sent, your instructor will approve.' },
+    bk_lessons_left:       { tr: 'kaldı',               en: 'remaining' },
 
     // ── Common footer ──
     footer_active:    { tr: 'Aktif Karakter',                en: 'Active Character' },

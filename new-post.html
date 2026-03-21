@@ -210,9 +210,9 @@ body::before {
 
 <div class="page" id="pageContent">
   <div class="login-wall">
-    <h2>Giriş Gerekli</h2>
-    <p>Konu açmak için önce giriş yapman gerekiyor.</p>
-    <button class="btn-signin" onclick="doSignIn()">Google ile Giriş Yap</button>
+    <h2 data-i18n="np_signin_h2">Giriş Gerekli</h2>
+    <p data-i18n="np_signin_p">Konu açmak için önce giriş yapman gerekiyor.</p>
+    <button class="btn-signin" onclick="doSignIn()" data-i18n="auth_signin">Google ile Giriş Yap</button>
   </div>
 </div>
 
@@ -370,7 +370,7 @@ function renderForm(user) {
   let selectedCat = 'Genel';
   const secCat = document.createElement('div'); secCat.className = 'form-section';
   const lblCat = document.createElement('div'); lblCat.className = 'form-label';
-  lblCat.innerHTML = '<span>Kategori</span>';
+  lblCat.innerHTML = '<span>'+(window._i18n?.t('np_tag_label')||'Kategori')+'</span>';
   const catWrap = document.createElement('div'); catWrap.className = 'cat-chips';
   CATS.forEach(c => {
     const chip = document.createElement('button'); chip.type = 'button';
@@ -384,7 +384,7 @@ function renderForm(user) {
   // ── Title section ──
   const sec1 = document.createElement('div'); sec1.className = 'form-section';
   const lbl1 = document.createElement('div'); lbl1.className = 'form-label';
-  const titleLeft = document.createElement('span'); titleLeft.textContent = 'Başlık';
+  const titleLeft = document.createElement('span'); titleLeft.textContent = window._i18n?.t('np_title_label')||'Başlık';
   const titleCount = document.createElement('span'); titleCount.textContent = '0 / 120';
   lbl1.append(titleLeft, titleCount);
   const titleInput = document.createElement('input'); titleInput.className = 'title-input';
@@ -396,10 +396,10 @@ function renderForm(user) {
   // ── Body section ──
   const sec2 = document.createElement('div'); sec2.className = 'form-section';
   const lbl2 = document.createElement('div'); lbl2.className = 'form-label';
-  const bodyLeft = document.createElement('span'); bodyLeft.textContent = 'İçerik';
-  const bodyCount = document.createElement('span'); bodyCount.textContent = '0 karakter';
+  const bodyLeft = document.createElement('span'); bodyLeft.textContent = window._i18n?.t('np_body_label')||'İçerik';
+  const bodyCount = document.createElement('span'); bodyCount.textContent = '0 '+(window._i18n?.t('np_body_chars')||'karakter');
   const prevToggle = document.createElement('button'); prevToggle.className = 'preview-toggle';
-  prevToggle.innerHTML = '👁 Önizleme'; prevToggle.type = 'button';
+  prevToggle.innerHTML = '👁 '+(window._i18n?.t('np_preview')||'Önizleme'); prevToggle.type = 'button';
   lbl2.append(bodyLeft, bodyCount, prevToggle);
 
   // Toolbar
@@ -429,7 +429,7 @@ function renderForm(user) {
     previewOn = !previewOn;
     previewBox.style.display = previewOn ? 'block' : 'none';
     bodyInput.style.display  = previewOn ? 'none'  : 'block';
-    prevToggle.innerHTML = previewOn ? '✏️ Düzenle' : '👁 Önizleme';
+    prevToggle.innerHTML = previewOn ? ('✏️ '+(window._i18n?.t('np_edit')||'Düzenle')) : ('👁 '+(window._i18n?.t('np_preview')||'Önizleme'));
     if (previewOn) previewBox.innerHTML = renderMarkdown(bodyInput.value) || '<span style="opacity:.3">İçerik yok</span>';
   };
 
@@ -441,14 +441,14 @@ function renderForm(user) {
   postingAs.textContent='Şu an: ';const _ps=document.createElement('span');_ps.textContent=user.displayName?.split(' ')[0]||'Üye';postingAs.append(_ps);
   const btns = document.createElement('div'); btns.className = 'form-actions-left';
   const cancelBtn = document.createElement('a'); cancelBtn.className = 'btn-cancel';
-  cancelBtn.href = 'forum'; cancelBtn.textContent = 'İptal';
+  cancelBtn.href = 'forum'; cancelBtn.textContent = window._i18n?.t('ui_cancel')||'İptal';
   const submitBtn = document.createElement('button'); submitBtn.className = 'btn-submit';
-  submitBtn.textContent = 'Yayınla';
+  submitBtn.textContent = window._i18n?.t('np_submit')||'Yayınla';
   submitBtn.onclick = async () => {
     const title = titleInput.value.trim();
     const body  = bodyInput.value.trim();
     if (!title) { titleInput.focus(); titleInput.classList.add('field-error'); return; }
-    submitBtn.disabled = true; submitBtn.textContent = '⏳ Gönderiliyor...';
+    submitBtn.disabled = true; submitBtn.textContent = '⏳ '+(window._i18n?.t('np_submitting')||'Gönderiliyor...');
     try {
       const ref = await db.collection('forum').add({
         title,

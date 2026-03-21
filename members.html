@@ -281,17 +281,19 @@ function doSignIn() {
 
 const _tLight = document.documentElement.classList.contains('theme-light');
 const TITLES = {
-  acemi:   { label:'Acemi',                 icon:'🌱', color:_tLight?'#1a7a40':'#6fc' },
-  merakli: { label:'Prodüksiyon Meraklısı', icon:'🎧', color:_tLight?'#1a5a88':'#8fc8e8' },
-  uretici: { label:'Üretici',               icon:'🎛️', color:_tLight?'#8c6200':'#e8b84b' },
-  veteran: { label:'Veteran',               icon:'🔥', color:_tLight?'#a04a08':'#d4722a' },
-  usta:    { label:'Usta',                  icon:'⚡', color:_tLight?'#902030':'#b82d45' },
-  efsane:  { label:'Efsane',               icon:'👑', color:_tLight?'#8c6200':'#ffd700' },
+  acemi:   { label: window._i18n?.t('mem_acemi')||'Acemi',                 icon:'🌱', color:_tLight?'#1a7a40':'#6fc' },
+  merakli: { label: window._i18n?.t('mem_merakli')||'Prodüksiyon Meraklısı', icon:'🎧', color:_tLight?'#1a5a88':'#8fc8e8' },
+  uretici: { label: window._i18n?.t('mem_uretici')||'Üretici',               icon:'🎛️', color:_tLight?'#8c6200':'#e8b84b' },
+  veteran: { label: window._i18n?.t('mem_veteran')||'Veteran',               icon:'🔥', color:_tLight?'#a04a08':'#d4722a' },
+  usta:    { label: window._i18n?.t('mem_usta')||'Usta',                  icon:'⚡', color:_tLight?'#902030':'#b82d45' },
+  efsane:  { label: window._i18n?.t('mem_efsane')||'Efsane',               icon:'👑', color:_tLight?'#8c6200':'#ffd700' },
 };
 
 function fmtJoined(ts) {
   if (!ts) return null;
   const d = ts.toDate ? ts.toDate() : new Date(ts);
+  var lang = window._i18n ? window._i18n.getLang() : 'tr';
+  if (lang === 'en') return (window._i18n?.t('mem_joined_since')||'member since') + ' ' + d.toLocaleDateString('en-US', { month:'long', year:'numeric' });
   return d.toLocaleDateString('tr-TR', { month:'long', year:'numeric' }) + "'dan beri üye";
 }
 
@@ -442,21 +444,21 @@ function buildFilters() {
   const bar = document.getElementById('titleFilter'); bar.innerHTML = '';
   const all = document.createElement('button');
   all.className = 'fbtn' + (_titleFilter === 'all' ? ' active' : '');
-  all.textContent = 'Tümü';
+  all.textContent = window._i18n?.t('mem_all')||'Tümü';
   all.onclick = () => { _titleFilter = 'all'; buildFilters(); renderGrid(); };
   bar.append(all);
 
   Object.entries(TITLES).forEach(([key, td]) => {
     const b = document.createElement('button');
     b.className = 'fbtn' + (_titleFilter === key ? ' active' : '');
-    b.textContent = td.icon + ' ' + td.label;
+    b.textContent = td.icon + ' ' + (window._i18n?.t('mem_' + key) || td.label);
     b.onclick = () => { _titleFilter = key; buildFilters(); renderGrid(); };
     bar.append(b);
   });
 
   const openBtn = document.createElement('button');
   openBtn.className = 'fbtn' + (_titleFilter === 'collab_open' ? ' collab-active' : '');
-  openBtn.textContent = '🟢 Projeye Açık';
+  openBtn.textContent = '🟢 ' + (window._i18n?.t('mem_collab_open')||'Projeye Açık');
   openBtn.onclick = () => { _titleFilter = 'collab_open'; buildFilters(); renderGrid(); };
   bar.append(openBtn);
 }
@@ -469,7 +471,7 @@ function buildGenreFilter() {
   bar.style.display = 'flex'; bar.innerHTML = '';
   const allBtn = document.createElement('button');
   allBtn.className = 'fbtn' + (_genreFilter === '' ? ' active' : '');
-  allBtn.textContent = '🎵 Tüm Genreler';
+  allBtn.textContent = window._i18n?.t('mem_all_genres')||'🎵 Tüm Genreler';
   allBtn.onclick = () => { _genreFilter = ''; buildGenreFilter(); renderGrid(); };
   bar.append(allBtn);
   [...genreSet].sort().forEach(g => {
@@ -509,8 +511,8 @@ function renderGrid() {
   if (!visible.length) {
     const e = document.createElement('div'); e.className = 'empty-state';
     e.innerHTML = _search
-      ? `<div style="font-size:1.5rem;margin-bottom:8px">🔍</div><div>"${_search}" için sonuç bulunamadı.</div>`
-      : '<div style="font-size:1.5rem;margin-bottom:8px">👤</div><div>Bu kriterlerde üye yok.</div>';
+      ? `<div style="font-size:1.5rem;margin-bottom:8px">🔍</div><div>"${_search}" ${window._i18n?.t('mem_no_results')||'için sonuç bulunamadı.'}</div>`
+      : '<div style="font-size:1.5rem;margin-bottom:8px">👤</div><div>' + (window._i18n?.t('mem_no_filter')||'Bu kriterlerde üye yok.') + '</div>';
     grid.append(e); return;
   }
 
@@ -553,7 +555,7 @@ function renderGrid() {
       const td = TITLES[m.title];
       const ts = document.createElement('div'); ts.className = 'mcard-title';
       ts.style.color = td.color;
-      ts.textContent = td.icon + ' ' + td.label;
+      ts.textContent = td.icon + ' ' + (window._i18n?.t('mem_' + m.title) || td.label);
       body.append(ts);
     }
 
@@ -684,5 +686,24 @@ auth.onAuthStateChanged(user => {
   var bAdm=document.getElementById('bnavAdminItem'),lAdm=document.getElementById('lnavAdminItem');
   if(bAdm&&lAdm){new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName==='style')lAdm.style.display=bAdm.style.display;});}).observe(bAdm,{attributes:true,attributeFilter:['style']});}
 })();</script>
+
+<script>
+(function() {
+  function init() {
+    if (window._i18n) {
+      var _orig = window._i18n.setLang;
+      window._i18n.setLang = function(l) {
+        _orig(l);
+        if (typeof buildFilters === 'function') buildFilters();
+        if (typeof buildGenreFilter === 'function') buildGenreFilter();
+        if (typeof renderGrid === 'function') renderGrid();
+      };
+    }
+  }
+  // membersLangHook
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
 </body>
 </html>

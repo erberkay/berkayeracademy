@@ -204,7 +204,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 <div class="mobile-lang-toggle" style="position:fixed;bottom:66px;right:10px;z-index:499;display:flex;gap:3px;background:rgba(6,6,9,.88);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 6px;backdrop-filter:blur(8px);"><button class="lang-btn" data-lang="tr" onclick="window._i18n?.setLang('tr')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(238,235,230,.4);cursor:pointer;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;padding:3px 7px;border-radius:3px;transition:all .15s;">TR</button><button class="lang-btn" data-lang="en" onclick="window._i18n?.setLang('en')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(238,235,230,.4);cursor:pointer;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;padding:3px 7px;border-radius:3px;transition:all .15s;">EN</button></div>
 <nav class="topnav">
   <div class="topnav-left">
-    <a href="forum" class="topnav-back">← Forum</a>
+    <a href="forum" class="topnav-back" data-i18n="post_back">← Forum</a>
     <span class="topnav-sep">|</span>
     <span class="topnav-brand" id="navTitle">Konu</span>
   </div>
@@ -231,7 +231,7 @@ body::before { content:''; position:fixed; inset:0; background-image:url("data:i
 </nav>
 
 <div class="layout" id="layout">
-  <div style="text-align:center;padding:60px;color:var(--dim);font-size:.75rem">Yükleniyor...</div>
+  <div style="text-align:center;padding:60px;color:var(--dim);font-size:.75rem" data-i18n="ui_loading">Yükleniyor...</div>
 </div>
 
 <script type="module">
@@ -499,7 +499,7 @@ async function renderPost() {
   actions.append(replyCount);
 
   const copyBtn = document.createElement('button'); copyBtn.className = 'action-btn';
-  copyBtn.textContent = '🔗 Linki Kopyala';
+  copyBtn.textContent = '🔗 '+(window._i18n?.t('post_copy_link')||'Linki Kopyala');
   copyBtn.onclick = () => {
     navigator.clipboard.writeText(location.href).then(() => showToast('Link kopyalandı', 'info'));
   };
@@ -527,7 +527,7 @@ async function renderPost() {
 
   // Edit own post
   if (_user && post.authorId === _user.uid) {
-    const editBtn = document.createElement('button'); editBtn.className = 'action-btn edit-own-btn'; editBtn.textContent = '✏️ Düzenle';
+    const editBtn = document.createElement('button'); editBtn.className = 'action-btn edit-own-btn'; editBtn.textContent = '✏️ '+(window._i18n?.t('post_edit')||'Düzenle');
     let editWrap = null;
     editBtn.onclick = () => {
       if (editWrap) { editWrap.remove(); editWrap = null; return; }
@@ -535,8 +535,8 @@ async function renderPost() {
       const ta = document.createElement('textarea'); ta.className = 'inline-edit-ta';
       ta.value = post.text || '';
       const btns = document.createElement('div'); btns.className = 'inline-edit-btns';
-      const saveB = document.createElement('button'); saveB.className = 'inline-edit-save'; saveB.textContent = '💾 Kaydet';
-      const cancelB = document.createElement('button'); cancelB.className = 'inline-edit-cancel'; cancelB.textContent = 'Vazgeç';
+      const saveB = document.createElement('button'); saveB.className = 'inline-edit-save'; saveB.textContent = '💾 '+(window._i18n?.t('post_save')||'Kaydet');
+      const cancelB = document.createElement('button'); cancelB.className = 'inline-edit-cancel'; cancelB.textContent = window._i18n?.t('post_cancel')||'Vazgeç';
       cancelB.onclick = () => { editWrap.remove(); editWrap = null; };
       saveB.onclick = async () => {
         const newText = ta.value.trim(); if (!newText) return;
@@ -563,7 +563,7 @@ async function renderPost() {
     };
     actions.append(solveBtn);
 
-    const del = document.createElement('button'); del.className = 'action-btn delete-btn'; del.textContent = '🗑 Sil';
+    const del = document.createElement('button'); del.className = 'action-btn delete-btn'; del.textContent = '🗑 '+(window._i18n?.t('post_delete')||'Sil');
     del.onclick = async () => {
       if (!confirm('Konuyu ve yanıtlarını sil?')) return;
       const rSnap = await db.collection('forum').doc(postId).collection('replies').get();
@@ -587,7 +587,7 @@ async function renderReplies(layout, post) {
   const sec = document.createElement('div'); sec.className = 'replies-section'; sec.id = 'repliesSec';
 
   const hdr = document.createElement('div'); hdr.className = 'replies-header';
-  hdr.textContent = 'Yanıtlar yükleniyor...';
+  hdr.textContent = window._i18n?.t('post_replies_loading')||'Yanıtlar yükleniyor...';
   sec.append(hdr);
 
   const repliesListDiv = document.createElement('div');
@@ -633,7 +633,7 @@ async function renderReplies(layout, post) {
         const ta = document.createElement('textarea'); ta.className = 'inline-edit-ta'; ta.value = r.text || '';
         const btns = document.createElement('div'); btns.className = 'inline-edit-btns';
         const saveB = document.createElement('button'); saveB.className = 'inline-edit-save'; saveB.textContent = '💾';
-        const cancelB = document.createElement('button'); cancelB.className = 'inline-edit-cancel'; cancelB.textContent = 'Vazgeç';
+        const cancelB = document.createElement('button'); cancelB.className = 'inline-edit-cancel'; cancelB.textContent = window._i18n?.t('post_cancel')||'Vazgeç';
         cancelB.onclick = () => { replyEditWrap.remove(); replyEditWrap = null; };
         saveB.onclick = async () => {
           const t = ta.value.trim(); if (!t) return;
@@ -670,14 +670,14 @@ async function renderReplies(layout, post) {
   if (post.solved) {
     formCard.innerHTML = `<div style="font-size:.65rem;color:rgba(100,200,100,.7);letter-spacing:.06em;padding:4px 0;">✓ Bu konu çözüldü — yanıt kapalı</div>`;
   } else if (_user) {
-    const ft = document.createElement('div'); ft.className = 'reply-form-title'; ft.textContent = 'Yanıt Yaz';
+    const ft = document.createElement('div'); ft.className = 'reply-form-title'; ft.textContent = window._i18n?.t('post_reply_write')||'Yanıt Yaz';
     const row = document.createElement('div'); row.className = 'reply-form-row';
     const profile = await getProfile(_user.uid);
     const myPhoto = profile?.photoURL || _user.photoURL || null;
     row.append(makeAvatar(myPhoto, 30, _user.uid));
     const ta = document.createElement('textarea'); ta.className = 'reply-ta';
     ta.placeholder = 'Yanıtını buraya yaz... (Ctrl+Enter ile gönder)';
-    const sub = document.createElement('button'); sub.className = 'reply-submit'; sub.textContent = 'Yanıtla';
+    const sub = document.createElement('button'); sub.className = 'reply-submit'; sub.textContent = window._i18n?.t('post_reply_btn')||'Yanıtla';
     ta.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); sub.click(); } });
     sub.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) return;
@@ -715,7 +715,7 @@ async function renderReplies(layout, post) {
     };
     row.append(ta, sub); formCard.append(ft, row);
   } else {
-    formCard.innerHTML = `<div class="login-hint">Yanıt yazmak için giriş yap.<br><button onclick="doSignIn()">Google ile Giriş Yap</button></div>`;
+    formCard.innerHTML = `<div class="login-hint">${window._i18n?.t('post_signin_reply')||'Yanıt yazmak için giriş yap.'}<br><button onclick="doSignIn()">${window._i18n?.t('forum_login_btn')||'Google ile Giriş Yap'}</button></div>`;
   }
   layout.append(formCard);
 }

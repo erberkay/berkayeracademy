@@ -1008,7 +1008,7 @@ async function renderProfile() {
   nameDiv.className = 'profile-name' + (prof.email === ADMIN_EMAIL || (_user?.uid===uid && isAdmin(_user)) ? ' is-admin' : '');
   nameDiv.textContent = displayName;
   const joined = document.createElement('div'); joined.className = 'profile-joined';
-  joined.textContent = prof.joinedAt ? 'Katılım: ' + fmtDate(prof.joinedAt) : '';
+  joined.textContent = prof.joinedAt ? (window._i18n?.t('prof_joined')||'Katılım:')+' '+fmtDate(prof.joinedAt) : '';
 
   // Title badge
   const titleKey = prof.title && prof.title !== 'none' ? prof.title : null;
@@ -1033,11 +1033,11 @@ async function renderProfile() {
 
   const statsDiv = document.createElement('div'); statsDiv.className = 'profile-stats';
   const pst = document.createElement('div'); pst.className = 'pstat';
-  pst.innerHTML = `<div class="pstat-val">${posts.length}</div><div class="pstat-lbl">Konu</div>`;
+  pst.innerHTML = `<div class='pstat-val'>${posts.length}</div><div class='pstat-lbl'>${window._i18n?.t('prof_topics')||'Konu'}</div>`;
   const rst = document.createElement('div'); rst.className = 'pstat';
-  rst.innerHTML = `<div class="pstat-val">${prof.replyCount || replyDocs.length || 0}</div><div class="pstat-lbl">Yanıt</div>`;
+  rst.innerHTML = `<div class='pstat-val'>${prof.replyCount || replyDocs.length || 0}</div><div class='pstat-lbl'>${window._i18n?.t('prof_replies')||'Yanıt'}</div>`;
   const fst = document.createElement('div'); fst.className = 'pstat';
-  fst.innerHTML = `<div class="pstat-val">${followerCount}</div><div class="pstat-lbl">Takipçi</div>`;
+  fst.innerHTML = `<div class='pstat-val'>${followerCount}</div><div class='pstat-lbl'>${window._i18n?.t('prof_followers')||'Takipçi'}</div>`;
   statsDiv.append(pst, rst, fst);
 
   info.append(nameDiv, joined, aboutDiv, genresDiv);
@@ -1084,13 +1084,13 @@ async function renderProfile() {
 
   // Message + follow buttons (other people's profiles)
   if (!isOwn && _user) {
-    const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = '💬 Mesaj Gönder';
+    const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = window._i18n?.t('prof_msg_btn')||'💬 Mesaj Gönder';
     msgBtn.onclick = e => { e.stopPropagation(); openChatWith(uid, displayName.split(' ')[0]||'Üye', photoURL); };
     info.append(msgBtn);
 
     const followBtn = document.createElement('button');
     followBtn.className = 'follow-btn' + (isFollowing ? ' following' : '');
-    followBtn.textContent = isFollowing ? '✓ Takip Ediliyor' : '+ Takip Et';
+    followBtn.textContent = isFollowing ? (window._i18n?.t('prof_following')||'✓ Takip Ediliyor') : (window._i18n?.t('prof_follow')||'+ Takip Et');
     followBtn.onclick = async () => {
       followBtn.disabled = true;
       const fid = `${_user.uid}_${uid}`;
@@ -1098,13 +1098,13 @@ async function renderProfile() {
         await db.collection('follows').doc(fid).delete().catch(console.error);
         isFollowing = false;
         followBtn.classList.remove('following');
-        followBtn.textContent = '+ Takip Et';
+        followBtn.textContent = window._i18n?.t('prof_follow')||'+ Takip Et';
         fst.querySelector('.pstat-val').textContent = Math.max(0, parseInt(fst.querySelector('.pstat-val').textContent) - 1);
       } else {
         await db.collection('follows').doc(fid).set({ followerId: _user.uid, followeeId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(console.error);
         isFollowing = true;
         followBtn.classList.add('following');
-        followBtn.textContent = '✓ Takip Ediliyor';
+        followBtn.textContent = window._i18n?.t('prof_following')||'✓ Takip Ediliyor';
         fst.querySelector('.pstat-val').textContent = parseInt(fst.querySelector('.pstat-val').textContent) + 1;
       }
       followBtn.disabled = false;
@@ -1114,7 +1114,7 @@ async function renderProfile() {
     {
       const collabReqBtn = document.createElement('button');
       collabReqBtn.className = 'collab-req-btn';
-      collabReqBtn.textContent = '🤝 Collab İsteği Gönder';
+      collabReqBtn.textContent = window._i18n?.t('prof_collab')||'🤝 Collab İsteği Gönder';
       collabReqBtn.onclick = async () => {
         collabReqBtn.disabled = true;
         collabReqBtn.textContent = 'Gönderiliyor…';
@@ -1159,7 +1159,7 @@ async function renderProfile() {
     bookingLink.textContent = '📅 Ders Paneli';
     info.append(bookingLink);
 
-    const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = '✏️ Profili Düzenle';
+    const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = window._i18n?.t('prof_edit_btn')||'✏️ Profili Düzenle';
     info.append(editBtn);
 
     // Edit form
@@ -1318,7 +1318,7 @@ async function renderProfile() {
 
     editBtn.onclick = () => {
       editForm.classList.toggle('open');
-      editBtn.textContent = editForm.classList.contains('open') ? '✕ Kapat' : '✏️ Profili Düzenle';
+      editBtn.textContent = editForm.classList.contains('open') ? '✕ '+(window._i18n?.t('post_cancel')||'Kapat') : (window._i18n?.t('prof_edit_btn')||'✏️ Profili Düzenle');
     };
 
     // Settings button (own profile)
@@ -1516,10 +1516,10 @@ async function renderProfile() {
   // Recent posts
   const postsSec = document.createElement('div'); postsSec.className = 'activity-section';
   const postTitle = document.createElement('div'); postTitle.className = 'activity-title';
-  postTitle.textContent = 'Son Konular';
+  postTitle.textContent = window._i18n?.t('prof_recent_topics')||'Son Konular';
   postsSec.append(postTitle);
   if (posts.length === 0) {
-    const e = document.createElement('div'); e.className = 'activity-empty'; e.textContent = 'Henüz konu açılmamış.';
+    const e = document.createElement('div'); e.className = 'activity-empty'; e.textContent = window._i18n?.t('prof_no_topics')||'Henüz konu açılmamış.';
     postsSec.append(e);
   } else {
     posts.forEach(p => {
@@ -1539,7 +1539,7 @@ async function renderProfile() {
   // Recent replies
   const repliesSec = document.createElement('div'); repliesSec.className = 'activity-section';
   const repliesTitle = document.createElement('div'); repliesTitle.className = 'activity-title';
-  repliesTitle.textContent = 'Son Yorumlar';
+  repliesTitle.textContent = window._i18n?.t('prof_recent_replies')||'Son Yorumlar';
   repliesSec.append(repliesTitle);
   console.log('[render] replies.length at render:', replies.length);
   if (replies.length === 0) {

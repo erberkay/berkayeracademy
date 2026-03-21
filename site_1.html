@@ -812,12 +812,12 @@ function showModuleCompletion(mid) {
     box.style.cssText = 'background:#13131f;border:1px solid #e8b84b;border-radius:12px;padding:36px 32px;text-align:center;max-width:380px;width:100%;animation:celebIn .35s cubic-bezier(.34,1.56,.64,1);';
     box.innerHTML = `
         <div style="font-size:3rem;margin-bottom:12px">🏆</div>
-        <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:#e8b84b;letter-spacing:.06em;margin-bottom:8px">Modül Tamamlandı!</div>
-        <div style="font-size:.85rem;color:rgba(238,235,230,.6);margin-bottom:4px">Tebrikler!</div>
+        <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:#e8b84b;letter-spacing:.06em;margin-bottom:8px">${window._i18n?.t('lab_mod_complete')||'Modül Tamamlandı!'}</div>
+        <div style="font-size:.85rem;color:rgba(238,235,230,.6);margin-bottom:4px">${window._i18n?.t('lab_congrats')||'Tebrikler!'}</div>
         <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.1rem;color:#fff;margin-bottom:20px;letter-spacing:.04em">${MODULE_NAMES[mid] || 'Modül'} ✓</div>
-        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4);border-radius:20px;padding:6px 18px;font-size:.72rem;color:#e8b84b;margin-bottom:24px;">🎖️ Rozet Kazanıldı</div>
+        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4);border-radius:20px;padding:6px 18px;font-size:.72rem;color:#e8b84b;margin-bottom:24px;">${window._i18n?.t('lab_badge_earned')||'🎖️ Rozet Kazanıldı'}</div>
         <br>
-        <button id="celebClose" style="padding:10px 28px;background:#e8b84b;color:#060609;border:none;border-radius:6px;font-family:\'Space Mono\',monospace;font-size:.75rem;font-weight:bold;cursor:pointer;">Harika!</button>
+        <button id="celebClose" style="padding:10px 28px;background:#e8b84b;color:#060609;border:none;border-radius:6px;font-family:\'Space Mono\',monospace;font-size:.75rem;font-weight:bold;cursor:pointer;">${window._i18n?.t('lab_awesome')||'Harika!'}</button>
     `;
     overlay.append(box);
     document.body.append(overlay);
@@ -883,7 +883,7 @@ function makeTaskPanel(mid) {
     const tasks  = TASKS[mid] || [];
     const panel  = mk('div','task-panel');
     const hdr    = mk('div','task-panel-header');
-    const title  = mk('span','',`📋 Modül ${mid} Görevleri`);
+    const title  = mk('span','',`📋 ${window._i18n?.t('lab_mod_tasks')||'Görevler'} ${mid}`);
     const pLabel = mk('span','task-progress-label','');
     hdr.append(title, pLabel);
     panel.append(hdr);
@@ -919,7 +919,7 @@ function makeTaskPanel(mid) {
             if (!badge) {
                 badge = mk('div','module-complete-badge');
                 badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4);border-radius:12px;padding:4px 12px;font-size:.62rem;color:var(--gold);margin-top:8px;';
-                badge.textContent = '🏆 Modül Tamamlandı';
+                badge.textContent = '🏆 ' + (window._i18n?.t('lab_mod_complete')||'Modül Tamamlandı');
                 panel.append(badge);
             }
         } else if (badge) { badge.remove(); }
@@ -1024,13 +1024,13 @@ function renderModule1() {
             const h=mk('span','cloud-hint','🔑 Preset kaydetmek için sağ üstten giriş yap');
             presetCloudRow.append(h); return;
         }
-        const saveBtn = mk('button','genre-btn','💾 Preset Kaydet');
+        const saveBtn = mk('button','genre-btn','💾 '+(window._i18n?.t('lab_preset_save')||'Preset Kaydet'));
         saveBtn.onclick = async () => {
             const name = prompt('Preset adı:'); if(!name?.trim()) return;
             saveBtn.disabled=true; saveBtn.textContent='⏳';
             await saveUserPreset(name.trim());
             saveBtn.textContent='✓ Kaydedildi';
-            setTimeout(()=>{ saveBtn.textContent='💾 Preset Kaydet'; saveBtn.disabled=false; refreshPresetCloud(); },1400);
+            setTimeout(()=>{ saveBtn.textContent='💾 '+(window._i18n?.t('lab_preset_save')||'Preset Kaydet'); saveBtn.disabled=false; refreshPresetCloud(); },1400);
         };
         const loadBtn = mk('button','genre-btn','📂 Presetlerim');
         let pList=null;
@@ -1039,7 +1039,7 @@ function renderModule1() {
             loadBtn.disabled=true; loadBtn.textContent='⏳';
             const presets = await loadUserPresets();
             loadBtn.textContent='📂 Presetlerim'; loadBtn.disabled=false;
-            if(!presets.length){ showModal('Kayıtlı Preset Yok','<p>Henüz kayıtlı preset oluşturmadın. Synthesizer ayarlarını düzenleyip <strong>Preset Kaydet</strong> butonuna bas.</p>'); return; }
+            if(!presets.length){ showModal(window._i18n?.t('lab_no_preset')||'Kayıtlı Preset Yok','<p>Henüz kayıtlı preset oluşturmadın. Synthesizer ayarlarını düzenleyip <strong>'+(window._i18n?.t('lab_preset_save')||'Preset Kaydet')+'</strong> butonuna bas.</p>'); return; }
             pList=mk('div','saved-list');
             presets.forEach(p=>{
                 const wrap=mk('div','saved-item-wrap');
@@ -1285,7 +1285,7 @@ function renderModule2() {
             const h=mk('span','cloud-hint','🔑 Beat kaydetmek için sağ üstten giriş yap');
             beatCloudRow.append(h); return;
         }
-        const saveBtn = mk('button','genre-btn','💾 Beat Kaydet');
+        const saveBtn = mk('button','genre-btn','💾 '+(window._i18n?.t('lab_beat_save')||'Beat Kaydet'));
         saveBtn.onclick = async () => {
             const name = prompt('Bu beat\'e isim ver:'); if(!name?.trim()) return;
             // Reset scheduler after prompt() to prevent note burst (prompt freezes JS but AudioContext keeps running)
@@ -1293,7 +1293,7 @@ function renderModule2() {
             saveBtn.disabled=true; saveBtn.textContent='⏳';
             await saveBeat(name.trim());
             saveBtn.textContent='✓ Kaydedildi';
-            setTimeout(()=>{ saveBtn.textContent='💾 Beat Kaydet'; saveBtn.disabled=false; },1400);
+            setTimeout(()=>{ saveBtn.textContent='💾 '+(window._i18n?.t('lab_beat_save')||'Beat Kaydet'); saveBtn.disabled=false; },1400);
         };
         const loadBtn = mk('button','genre-btn','📂 Beatlerim');
         let bList=null;
@@ -1302,7 +1302,7 @@ function renderModule2() {
             loadBtn.disabled=true; loadBtn.textContent='⏳';
             const beats = await loadBeats();
             loadBtn.textContent='📂 Beatlerim'; loadBtn.disabled=false;
-            if(!beats.length){ showModal('Kayıtlı Beat Yok','<p>Henüz kayıtlı beat oluşturmadın. Step sequencer\'da bir pattern kur, sonra <strong>💾 Beat Kaydet</strong> butonuna bas.</p>'); return; }
+            if(!beats.length){ showModal(window._i18n?.t('lab_no_beat')||'Kayıtlı Beat Yok','<p>Henüz kayıtlı beat oluşturmadın. Step sequencer\'da bir pattern kur, sonra <strong>💾 '+(window._i18n?.t('lab_beat_save')||'Beat Kaydet')+'</strong> butonuna bas.</p>'); return; }
             bList=mk('div','saved-list');
             beats.forEach(b=>{
                 const wrap=mk('div','saved-item-wrap');
@@ -2140,7 +2140,7 @@ function buildArrangementBuilder() {
         tplRow.append(btn);
     });
 
-    const resetBtn=mk('button','back-btn','↺ Sıfırla');
+    const resetBtn=mk('button','back-btn',window._i18n?.t('lab_reset')||'↺ Sıfırla');
     resetBtn.style.marginLeft='4px';
     resetBtn.onclick=()=>{
         cells.forEach(row=>row.fill(false));
@@ -3314,7 +3314,7 @@ function renderHome() {
             <div style="position:relative;z-index:1">
                 <div style="color:${m.color};font-size:1.05rem;font-weight:bold;margin-bottom:6px">${m.title}</div>
                 <div style="color:var(--dim);font-size:.74rem;margin-bottom:14px">${m.desc}</div>
-                <span class="module-card-status ${pct===100?'status-done':done>0?'status-active':'status-idle'}">${pct===100?'✓ Tamamlandı':`${done}/${tasks.length} Görev`}</span>
+                <span class="module-card-status ${pct===100?'status-done':done>0?'status-active':'status-idle'}">${pct===100?(window._i18n?.t('lab_status_done')||'✓ Tamamlandı'):`${done}/${tasks.length} ${window._i18n?.t('lab_task_word')||'Görev'}`}</span>
             </div>
             <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--mid)">
                 <div style="height:100%;width:${pct}%;background:${m.color};border-radius:2px;transition:width .3s"></div>
