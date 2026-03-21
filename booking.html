@@ -3396,34 +3396,52 @@ async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson
 }
 
 async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
-  const newDate = new Date(dateStrToObj(lesson.date));
-  newDate.setDate(newDate.getDate() + 7);
-  const newDateStr = toDateStr(newDate);
+  const addWeek = dateStr => { const d = dateStrToObj(dateStr); d.setDate(d.getDate() + 7); return toDateStr(d); };
+  const updatedLessons = allLessons.map(l => ({...l}));
+  const moves = []; // {idx, oldDate, newDate, time}
 
-  // Warn if same student already has a lesson on that date
-  const alreadyHas = allLessons.some((l, i) => i !== lessonIdx && l.date === newDateStr && (l.status === 'scheduled' || l.status === 'rescheduled'));
-  if (alreadyHas) {
-    const ok = confirm(`${formatDateStr(newDateStr)} tarihinde zaten bir ders var. Yine de ertele?`);
-    if (!ok) return;
+  // Move target lesson +7
+  const oldDate0 = updatedLessons[lessonIdx].date;
+  const newDate0 = addWeek(oldDate0);
+  updatedLessons[lessonIdx].date = newDate0;
+  updatedLessons[lessonIdx].status = 'rescheduled';
+  moves.push({ idx: lessonIdx, oldDate: oldDate0, newDate: newDate0, time: updatedLessons[lessonIdx].time });
+
+  // Cascade: if the new date conflicts with another lesson, push that one +7 too
+  let resolving = true;
+  while (resolving) {
+    resolving = false;
+    const movedIdxs = new Set(moves.map(m => m.idx));
+    const movedNewDates = new Set(moves.map(m => m.newDate));
+    for (let i = 0; i < updatedLessons.length; i++) {
+      if (movedIdxs.has(i)) continue;
+      if (!['scheduled','rescheduled'].includes(updatedLessons[i].status)) continue;
+      if (movedNewDates.has(updatedLessons[i].date)) {
+        const oldD = updatedLessons[i].date;
+        const newD = addWeek(oldD);
+        updatedLessons[i].date = newD;
+        moves.push({ idx: i, oldDate: oldD, newDate: newD, time: updatedLessons[i].time });
+        resolving = true;
+        break;
+      }
+    }
   }
 
-  const conflictSnap = await db.collection('booked_slots').doc(newDateStr + '_' + lesson.time).get().catch(() => null);
-  if (conflictSnap && conflictSnap.exists && conflictSnap.data()?.student_uid !== studentUid) {
-    const ok = confirm(`${formatDateStr(newDateStr)} ${lesson.time} başka bir öğrenciye ait. Yine de ertele?`);
-    if (!ok) return;
-  }
+  updatedLessons.sort((a, b) => a.date.localeCompare(b.date));
+
+  const moveStr = moves.map(m => `• ${formatDateStr(m.oldDate)} → ${formatDateStr(m.newDate)}`).join('\n');
+  if (!confirm(`${moves.length} ders ertelenecek:\n${moveStr}\n\nOnaylıyor musun?`)) return;
+
   try {
-    const updatedLessons = allLessons.map((l, i) =>
-      i === lessonIdx ? { ...l, date: newDateStr, status: 'rescheduled' } : l
-    ).sort((a,b) => a.date.localeCompare(b.date));
     const batch = db.batch();
     batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons });
-    batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-    if (!conflictSnap || !conflictSnap.exists) {
-      batch.set(db.collection('booked_slots').doc(newDateStr + '_' + lesson.time), { date: newDateStr, time: lesson.time, student_uid: studentUid });
+    for (const m of moves) {
+      batch.delete(db.collection('booked_slots').doc(m.oldDate + '_' + m.time));
+      batch.set(db.collection('booked_slots').doc(m.newDate + '_' + m.time), { date: m.newDate, time: m.time, student_uid: studentUid });
     }
     await batch.commit();
-    toast(`✓ Ders ertelendi → ${formatDateStr(newDateStr)} ${lesson.time}`);
+    toast(`✓ ${moves.length} ders ertelendi → ${formatDateStr(moves[0].newDate)}`);
+    window._slotsSynced = false;
     renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
