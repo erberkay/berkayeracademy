@@ -3400,9 +3400,12 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
   newDate.setDate(newDate.getDate() + 7);
   const newDateStr = toDateStr(newDate);
 
-  // Block if same student already has a lesson on that date
+  // Warn if same student already has a lesson on that date
   const alreadyHas = allLessons.some((l, i) => i !== lessonIdx && l.date === newDateStr && (l.status === 'scheduled' || l.status === 'rescheduled'));
-  if (alreadyHas) { toast(`${formatDateStr(newDateStr)} tarihinde zaten bir ders var — ertelenemez.`, true); return; }
+  if (alreadyHas) {
+    const ok = confirm(`${formatDateStr(newDateStr)} tarihinde zaten bir ders var. Yine de ertele?`);
+    if (!ok) return;
+  }
 
   const conflictSnap = await db.collection('booked_slots').doc(newDateStr + '_' + lesson.time).get().catch(() => null);
   if (conflictSnap && conflictSnap.exists && conflictSnap.data()?.student_uid !== studentUid) {
