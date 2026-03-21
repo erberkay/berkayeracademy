@@ -3396,6 +3396,15 @@ async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson
 }
 
 async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
+  // Check student's reschedule credit for this lesson's month
+  const resSnap = await db.collection('reservations').doc(studentUid).get().catch(() => null);
+  const resData = resSnap?.data() || {};
+  const monthKey = yearMonthKey(lesson.date);
+  const credit = resData.reschedule_credits?.[monthKey] ?? 0;
+  if (credit <= 0) {
+    if (!confirm(`Bu öğrencinin ${monthKey} ayı için erteleme hakkı kalmadı. Yine de ertele?`)) return;
+  }
+
   const addWeek = dateStr => { const d = dateStrToObj(dateStr); d.setDate(d.getDate() + 7); return toDateStr(d); };
   const updatedLessons = allLessons.map(l => ({...l}));
   const moves = []; // {idx, oldDate, newDate, time}
@@ -3433,8 +3442,9 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
   if (!confirm(`${moves.length} ders ertelenecek:\n${moveStr}\n\nOnaylıyor musun?`)) return;
 
   try {
+    const updatedCredits = { ...(resData.reschedule_credits || {}), [monthKey]: Math.max(0, credit - 1) };
     const batch = db.batch();
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons });
+    batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons, reschedule_credits: updatedCredits });
     for (const m of moves) {
       batch.delete(db.collection('booked_slots').doc(m.oldDate + '_' + m.time));
       batch.set(db.collection('booked_slots').doc(m.newDate + '_' + m.time), { date: m.newDate, time: m.time, student_uid: studentUid });
