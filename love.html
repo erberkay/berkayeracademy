@@ -8,13 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Space+Mono&display=swap" rel="stylesheet">
 
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
-  }
-}
-</script>
 
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -200,10 +193,9 @@ body{
 /* ── 3D canvas ── */
 #charCanvas{
   position:fixed;bottom:0;left:0;
-  width:460px;height:540px;
   pointer-events:none;z-index:4;
+  display:block;
 }
-@media(max-width:600px){#charCanvas{width:280px;height:340px}}
 </style>
 </head>
 <body>
@@ -346,40 +338,44 @@ musicBtn.addEventListener('click',function(){
 });
 </script>
 
+<!-- Three.js -->
+<script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
+
 <!-- ══════════════════════════════════════════════
      THREE.JS 3D SCENE — procedural character
 ══════════════════════════════════════════════ -->
-<script type="module">
-import * as THREE from 'three';
+<script>
+(function() {
+if (typeof THREE === 'undefined') { console.error('[3D] THREE failed to load'); return; }
 
 // ── Renderer ──────────────────────────────────────────────────────────────
-const CW = 460, CH = 540;
+const CW = 460, CH = 520;
 const canvas = document.getElementById('charCanvas');
 const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-renderer.setSize(CW, CH, false);
+renderer.setSize(CW, CH);           // THREE manages canvas size
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 // ── Scene & Camera ────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
-const cam = new THREE.PerspectiveCamera(44, CW / CH, 0.1, 50);
-cam.position.set(-0.2, 2.3, 7.2);
-cam.lookAt(-1.8, 1.1, 0);
+const cam = new THREE.PerspectiveCamera(50, CW / CH, 0.1, 50);
+cam.position.set(0, 2.2, 6.5);
+cam.lookAt(-1.5, 1.0, 0);
 
 // ── Lights ────────────────────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0x1a1a2e, 0.65));
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));   // white ambient — characters need this
 
-const moon = new THREE.DirectionalLight(0x334488, 0.22);
-moon.position.set(3, 8, 4);
-moon.castShadow = true;
-moon.shadow.mapSize.set(512, 512);
+const fill = new THREE.DirectionalLight(0x9999cc, 0.5); // fill from camera direction
+fill.position.set(1, 4, 7);
+scene.add(fill);
+
+const moon = new THREE.DirectionalLight(0x4466aa, 0.3);
+moon.position.set(-3, 8, 2);
 scene.add(moon);
 
 // ── Ground ────────────────────────────────────────────────────────────────
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(22, 9),
-  new THREE.MeshLambertMaterial({ color: 0x060412 })
+  new THREE.MeshLambertMaterial({ color: 0x0d0a1e })
 );
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
@@ -472,7 +468,7 @@ const cloudM = new THREE.MeshLambertMaterial({ color: 0x1c2b3a, transparent: tru
   m.position.set(x, y, z);
   cloudGrp.add(m);
 });
-cloudGrp.position.set(-9, 4.15, 0); // starts offscreen with char
+cloudGrp.position.set(-4.5, 4.15, 0); // starts with char
 scene.add(cloudGrp);
 
 // ── Rain ──────────────────────────────────────────────────────────────────
@@ -513,7 +509,7 @@ const c = {
   lSh: G(), rSh: G(), lElb: G(), rElb: G(),
   lHip: G(), rHip: G(), lKnee: G(), rKnee: G(), lAnk: G(), rAnk: G(),
   cig: G(),
-  x: -9, targetX: -2.1, ember: null,
+  x: -4.5, targetX: -1.8, ember: null,
 };
 
 // Build hierarchy
@@ -579,9 +575,13 @@ c.head.add(hBack);
 
 // Arms builder
 function buildArm(sh, elb, isRight) {
-  sh.add(Object.assign(M(new THREE.CylinderGeometry(0.062, 0.068, 0.31, 6), mJacket), { position: new THREE.Vector3(0, -0.155, 0) }));
+  const ua = M(new THREE.CylinderGeometry(0.062, 0.068, 0.31, 6), mJacket);
+  ua.position.y = -0.155;
+  sh.add(ua);
   elb.add(M(new THREE.SphereGeometry(0.062, 8, 6), mJacket));
-  elb.add(Object.assign(M(new THREE.CylinderGeometry(0.052, 0.062, 0.27, 6), mJacket), { position: new THREE.Vector3(0, -0.135, 0) }));
+  const la = M(new THREE.CylinderGeometry(0.052, 0.062, 0.27, 6), mJacket);
+  la.position.y = -0.135;
+  elb.add(la);
   const hand = M(new THREE.SphereGeometry(0.055, 8, 6), mSkin);
   hand.position.y = -0.28;
   elb.add(hand);
@@ -592,9 +592,13 @@ buildArm(c.rSh, c.rElb, true);
 
 // Legs builder
 function buildLeg(hip, knee, ank) {
-  hip.add(Object.assign(M(new THREE.CylinderGeometry(0.092, 0.098, 0.43, 6), mJeans), { position: new THREE.Vector3(0, -0.215, 0) }));
+  const ul = M(new THREE.CylinderGeometry(0.092, 0.098, 0.43, 6), mJeans);
+  ul.position.y = -0.215;
+  hip.add(ul);
   knee.add(M(new THREE.SphereGeometry(0.090, 8, 6), mJeans));
-  knee.add(Object.assign(M(new THREE.CylinderGeometry(0.080, 0.090, 0.39, 6), mJeans), { position: new THREE.Vector3(0, -0.195, 0) }));
+  const ll = M(new THREE.CylinderGeometry(0.080, 0.090, 0.39, 6), mJeans);
+  ll.position.y = -0.195;
+  knee.add(ll);
   ank.add(M(new THREE.SphereGeometry(0.074, 8, 6), mShoe));
   const shoe = M(new THREE.CylinderGeometry(0.06, 0.07, 0.22, 8), mShoe);
   shoe.rotation.x = Math.PI / 2; shoe.position.set(0.02, -0.04, 0.08);
@@ -836,6 +840,9 @@ function updatePuffs(dt) {
     }
   }
 }
+
+console.log('[3D] scene running, state:', state);
+})();
 </script>
 </body>
 </html>
