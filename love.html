@@ -582,7 +582,6 @@ fbxLoader.load('https://storage.googleapis.com/ableton-tutorial-assets/karakter/
 
   const animFiles = {
     sadIdle: '/karakter/Sad Idle.fbx',
-    sit:     '/karakter/Sitting Idle.fbx',
     smoke:   '/karakter/Smoking.fbx',
   };
   let done = 0, total = Object.keys(animFiles).length;
@@ -592,9 +591,9 @@ fbxLoader.load('https://storage.googleapis.com/ableton-tutorial-assets/karakter/
         actions[key] = mixer.clipAction(animFbx.animations[0]);
         actions[key].setLoop(THREE.LoopRepeat);
       }
-      if (++done >= total && charState === 'loading') { charState = 'sitting'; charObj.visible = true; playAnim('sit'); }
+      if (++done >= total && charState === 'loading') { charState = 'sadIdle'; charObj.visible = true; playAnim('sadIdle'); }
     }, undefined, () => {
-      if (++done >= total && charState === 'loading') { charState = 'sitting'; charObj.visible = true; playAnim('sadIdle'); }
+      if (++done >= total && charState === 'loading') { charState = 'sadIdle'; charObj.visible = true; playAnim('sadIdle'); }
     });
   });
 }, undefined, err => console.error('[3D] model error:', err));
@@ -621,31 +620,31 @@ let simT = 0;
   // State machine: otur → sigara → otur
   if (charState !== 'loading') {
     charStateT += dt;
-    if      (charState === 'sitting' && charStateT > 8.0)  { charState = 'smoking'; charStateT = 0; playAnim('smoke', 1.2); }
-    else if (charState === 'smoking' && charStateT > 10.0) { charState = 'sitting'; charStateT = 0; playAnim('sit', 1.2); }
+    if      (charState === 'sadIdle' && charStateT > 8.0)  { charState = 'smoking'; charStateT = 0; smokeT = 0; playAnim('smoke', 1.2); }
+    else if (charState === 'smoking' && charStateT > 10.0) { charState = 'sadIdle'; charStateT = 0; playAnim('sadIdle', 1.2); }
   }
 
   // Sigara dumanı
   smokePts.visible = (charState === 'smoking');
   if (charState === 'smoking') {
     smokeT += dt;
-    if (smokeT > 0.09) {
+    if (smokeT > 0.08) {
       smokeT = 0;
       const p = smokeP.find(p => !p.active) || smokeP[0];
-      p.x = charX + 0.28; p.y = 1.1; p.z = 0.15;
+      p.x = charX + 0.22; p.y = 1.55; p.z = 0.1;
       p.vx = (Math.random() - 0.5) * 0.08;
-      p.vy = 0.32 + Math.random() * 0.18;
-      p.life = 0; p.max = 1.8 + Math.random() * 1.2; p.active = true;
+      p.vy = 0.35 + Math.random() * 0.2;
+      p.life = 0; p.max = 2.0 + Math.random() * 1.0; p.active = true;
     }
-    for (let i = 0; i < SMOKE_N; i++) {
-      const p = smokeP[i];
-      if (p.active) { p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy *= 0.97; if (p.life >= p.max) p.active = false; }
-      smokeBuf[i*3]   = p.active ? p.x : 999;
-      smokeBuf[i*3+1] = p.active ? p.y : 999;
-      smokeBuf[i*3+2] = p.active ? p.z : 999;
-    }
-    smokeGeo.attributes.position.needsUpdate = true;
   }
+  for (let i = 0; i < SMOKE_N; i++) {
+    const p = smokeP[i];
+    if (p.active) { p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy *= 0.97; if (p.life >= p.max) p.active = false; }
+    smokeBuf[i*3]   = p.active ? p.x : 999;
+    smokeBuf[i*3+1] = p.active ? p.y : 999;
+    smokeBuf[i*3+2] = p.active ? p.z : 999;
+  }
+  smokeGeo.attributes.position.needsUpdate = true;
 
   // Işık parıltısı (koninin içinde titreşen noktalar)
   for (let i = 0; i < SPARK_N; i++) {
