@@ -401,7 +401,7 @@ function doSignIn() {
       if (e.code === 'auth/popup-blocked') {
         auth.signInWithRedirect(provider);
       } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-        alert('Giriş hatası: ' + (e.message || e.code || e));
+        alert((window._i18n?.t('prof_signin_err')||'Giriş hatası:') + ' ' + (e.message || e.code || e));
       }
     })
     .finally(() => { _signingIn = false; });
@@ -409,14 +409,17 @@ function doSignIn() {
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 
 const _tLight = document.documentElement.classList.contains('theme-light');
+function _getTitleLabel(key) {
+  return window._i18n?.t('prof_title_' + key) || key;
+}
 const TITLES = [
-  { key:'none',    label:'Ünvan Yok',             icon:'',   color:_tLight?'rgba(26,26,34,.45)':'rgba(238,235,230,.45)' },
-  { key:'acemi',   label:'Acemi',                 icon:'🌱', color:_tLight?'#1a7a40':'#6fc' },
-  { key:'merakli', label:'Prodüksiyon Meraklısı', icon:'🎧', color:_tLight?'#1a5a88':'#8fc8e8' },
-  { key:'uretici', label:'Üretici',               icon:'🎛️', color:_tLight?'#8c6200':'#e8b84b' },
-  { key:'veteran', label:'Veteran',               icon:'🔥', color:_tLight?'#a04a08':'#d4722a' },
-  { key:'usta',    label:'Usta',                  icon:'⚡', color:_tLight?'#902030':'#b82d45' },
-  { key:'efsane',  label:'Efsane',                icon:'👑', color:_tLight?'#8c6200':'#ffd700' },
+  { key:'none',    labelTr:'Ünvan Yok',             labelEn:'No Title',                  icon:'',   color:_tLight?'rgba(26,26,34,.45)':'rgba(238,235,230,.45)' },
+  { key:'acemi',   labelTr:'Acemi',                 labelEn:'Beginner',                  icon:'🌱', color:_tLight?'#1a7a40':'#6fc' },
+  { key:'merakli', labelTr:'Prodüksiyon Meraklısı', labelEn:'Production Enthusiast',     icon:'🎧', color:_tLight?'#1a5a88':'#8fc8e8' },
+  { key:'uretici', labelTr:'Üretici',               labelEn:'Producer',                  icon:'🎛️', color:_tLight?'#8c6200':'#e8b84b' },
+  { key:'veteran', labelTr:'Veteran',               labelEn:'Veteran',                   icon:'🔥', color:_tLight?'#a04a08':'#d4722a' },
+  { key:'usta',    labelTr:'Usta',                  labelEn:'Master',                    icon:'⚡', color:_tLight?'#902030':'#b82d45' },
+  { key:'efsane',  labelTr:'Efsane',                labelEn:'Legend',                    icon:'👑', color:_tLight?'#8c6200':'#ffd700' },
 ];
 
 function showToast(msg, type='success', ms=3000) {
@@ -430,12 +433,14 @@ function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCas
 function fmtDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleDateString('tr-TR', {month:'long', year:'numeric'});
+  const loc = window._i18n?.getLang() === 'en' ? 'en-US' : 'tr-TR';
+  return d.toLocaleDateString(loc, {month:'long', year:'numeric'});
 }
 function fmtDateTime(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleDateString('tr-TR', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+  const loc = window._i18n?.getLang() === 'en' ? 'en-US' : 'tr-TR';
+  return d.toLocaleDateString(loc, {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
 }
 
 // ── Chat Panel ─────────────────────────────────────────────────────
@@ -458,7 +463,7 @@ let _activeChatId = null, _activeChatOther = null;
 let _chatPanelEl = null, _chatThreadsEl = null, _chatMsgsEl = null, _chatMainEl = null;
 
 async function _sendMsg(fromUid, fromName, fromPhoto, toUid, toName, toPhoto, text) {
-  if (fromUid === toUid) throw new Error('Kendinize mesaj gönderemezsiniz.');
+  if (fromUid === toUid) throw new Error(window._i18n?.getLang()==='en' ? 'You cannot message yourself.' : 'Kendinize mesaj gönderemezsiniz.');
   const cid = _chatId(fromUid, toUid);
   const chatRef = db.collection('chats').doc(cid);
   const msgRef = chatRef.collection('messages').doc();
@@ -506,7 +511,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
     const collabHdrBtn = document.createElement('button');
     collabHdrBtn.style.cssText = 'margin-left:auto;flex-shrink:0;background:rgba(180,120,255,.1);border:1px solid rgba(180,120,255,.35);color:#b478ff;font-family:"Space Mono",monospace;font-size:.6rem;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;';
     collabHdrBtn.textContent = '🤝 Collab';
-    collabHdrBtn.title = 'Collab isteği gönder';
+    collabHdrBtn.title = window._i18n?.t('prof_collab_tooltip')||'Collab isteği gönder';
     collabHdrBtn.onmouseenter = () => collabHdrBtn.style.background = 'rgba(180,120,255,.2)';
     collabHdrBtn.onmouseleave = () => collabHdrBtn.style.background = 'rgba(180,120,255,.1)';
     collabHdrBtn.onclick = async () => {
@@ -518,7 +523,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         // Check for existing pending collab request
         const existingSnap = await chatRef.collection('messages').where('type','==','collab_request').where('status','==','pending').limit(1).get();
         if (!existingSnap.empty) {
-          showToast('Zaten bekleyen bir collab isteği var.', 'info');
+          showToast(window._i18n?.t('prof_collab_exists')||'Zaten bekleyen bir collab isteği var.', 'info');
           collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab';
           return;
         }
@@ -536,17 +541,17 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
           text:`${fromName} sana collab isteği gönderdi`, fromUid:_user.uid, type:'collab', read:false,
           createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         }).catch(()=>{});
-        collabHdrBtn.textContent = '✓ Gönderildi';
+        collabHdrBtn.textContent = '✓ '+(window._i18n?.getLang()==='en'?'Sent':'Gönderildi');
         setTimeout(() => { collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab'; }, 4000);
       } catch(e) {
-        const c=errId(); showToast(`Gönderilemedi (${c}): `+(e.message||e.code), 'error');
+        const c=errId(); showToast(`${window._i18n?.t('prof_collab_send_err')||'Gönderilemedi'} (${c}): `+(e.message||e.code), 'error');
         collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab';
       }
     };
     hdr.append(collabHdrBtn);
   }
   // Messages area
-  _chatMsgsEl.innerHTML = '<div style="color:var(--dim);font-size:.58rem;text-align:center;padding:20px">Yükleniyor…</div>';
+  _chatMsgsEl.innerHTML = `<div style="color:var(--dim);font-size:.58rem;text-align:center;padding:20px">${window._i18n?.t('prof_msg_load')||'Yükleniyor…'}</div>`;
   // Mark as read
   if (_user) db.collection('chats').doc(cid).update({ unreadBy:firebase.firestore.FieldValue.arrayRemove(_user.uid) }).catch(()=>{});
   // Subscribe real-time
@@ -561,7 +566,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
     .onSnapshot(snap => {
       const prevCount = _chatMsgsEl.querySelectorAll('.chat-msg').length;
       _chatMsgsEl.innerHTML = '';
-      if (snap.empty) { _chatMsgsEl.innerHTML = '<div class="chat-empty-state"><div class="chat-empty-state-icon">💬</div><div>Henüz mesaj yok.<br>İlk mesajı sen gönder.</div></div>'; _msgInitialized = true; return; }
+      if (snap.empty) { _chatMsgsEl.innerHTML = `<div class="chat-empty-state"><div class="chat-empty-state-icon">💬</div><div>${window._i18n?.t('prof_msg_empty')||'Henüz mesaj yok.'}<br>${window._i18n?.t('prof_msg_first')||'İlk mesajı sen gönder.'}</div></div>`; _msgInitialized = true; return; }
       const _mkSenderAv = (fromUid) => {
         const av = document.createElement('a'); av.className = 'chat-msg-sender-av';
         av.href = `profile?uid=${fromUid}`;
@@ -577,12 +582,12 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         if (m.type === 'collab_request') {
           const card = document.createElement('div'); card.className = 'collab-req-card';
           const label = document.createElement('div'); label.className = 'collab-req-card-label';
-          label.textContent = myMsg ? '🤝 Collab isteği gönderdin' : '🤝 Collab isteği aldın';
+          label.textContent = myMsg ? (window._i18n?.t('prof_collab_req_sent')||'🤝 Collab isteği gönderdin') : (window._i18n?.t('prof_collab_req_recv')||'🤝 Collab isteği aldın');
           card.append(label);
           if (m.status === 'pending' && !myMsg) {
             const btns = document.createElement('div'); btns.className = 'collab-req-card-btns';
-            const acceptBtn = document.createElement('button'); acceptBtn.className = 'collab-req-accept'; acceptBtn.textContent = 'Kabul Et';
-            const rejectBtn = document.createElement('button'); rejectBtn.className = 'collab-req-reject'; rejectBtn.textContent = 'Reddet';
+            const acceptBtn = document.createElement('button'); acceptBtn.className = 'collab-req-accept'; acceptBtn.textContent = window._i18n?.t('prof_collab_accept')||'Kabul Et';
+            const rejectBtn = document.createElement('button'); rejectBtn.className = 'collab-req-reject'; rejectBtn.textContent = window._i18n?.t('prof_collab_reject')||'Reddet';
             acceptBtn.onclick = async () => {
               try {
                 await d.ref.update({ status: 'accepted' });
@@ -596,9 +601,9 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
             rejectBtn.onclick = async () => { await d.ref.update({ status: 'rejected' }).catch(e => alert('Hata: ' + (e.message || e.code))); };
             btns.append(acceptBtn, rejectBtn); card.append(btns);
           } else if (m.status === 'accepted') {
-            const s = document.createElement('div'); s.className = 'collab-req-card-status accepted'; s.textContent = '✓ Kabul edildi'; card.append(s);
+            const s = document.createElement('div'); s.className = 'collab-req-card-status accepted'; s.textContent = window._i18n?.t('prof_collab_accepted_s')||'✓ Kabul edildi'; card.append(s);
           } else if (m.status === 'rejected') {
-            const s = document.createElement('div'); s.className = 'collab-req-card-status rejected'; s.textContent = '✕ Reddedildi'; card.append(s);
+            const s = document.createElement('div'); s.className = 'collab-req-card-status rejected'; s.textContent = window._i18n?.t('prof_collab_rejected_s')||'✕ Reddedildi'; card.append(s);
           }
           const time2 = document.createElement('div'); time2.className = 'chat-msg-time'; time2.textContent = fmtDateTime(m.createdAt);
           if (!myMsg) {
@@ -628,7 +633,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
       _msgInitialized = true;
     }, err => {
       console.error('messages snapshot:', err);
-      if (_chatMsgsEl) _chatMsgsEl.innerHTML = '<div style="color:var(--dim);font-size:.8rem;text-align:center;padding:20px">Mesajlar yüklenemedi.</div>';
+      if (_chatMsgsEl) _chatMsgsEl.innerHTML = `<div style="color:var(--dim);font-size:.8rem;text-align:center;padding:20px">${window._i18n?.t('prof_msg_err')||'Mesajlar yüklenemedi.'}</div>`;
     });
 }
 
@@ -638,10 +643,10 @@ function _buildChatThread(chatDoc, myUid) {
   let otherId, otherName;
   if (adminViewing) {
     otherId = chat.participants?.[0] || '';
-    otherName = (chat.participants || []).map(p => chat.names?.[p] || 'Üye').join(' ↔ ');
+    otherName = (chat.participants || []).map(p => chat.names?.[p] || (window._i18n?.t('ui_member')||'Üye')).join(' ↔ ');
   } else {
     otherId = chat.participants?.find(p => p !== myUid) || '';
-    otherName = chat.names?.[otherId] || 'Üye';
+    otherName = chat.names?.[otherId] || (window._i18n?.t('ui_member')||'Üye');
   }
   const otherPhoto = chat.photos?.[otherId] || null;
   const isUnread = chat.unreadBy?.includes(myUid);
@@ -665,11 +670,11 @@ function initChatPanel(user) {
   const panel = document.createElement('div'); panel.className = 'chat-panel'; _chatPanelEl = panel;
   // Header
   const hdr = document.createElement('div'); hdr.className = 'chat-panel-hdr';
-  const title = document.createElement('div'); title.className = 'chat-panel-title'; title.textContent = 'Mesajlar';
+  const title = document.createElement('div'); title.className = 'chat-panel-title'; title.textContent = window._i18n?.t('prof_chat_title')||'Mesajlar';
   const closeBtn = document.createElement('button');
   closeBtn.style.cssText = 'display:none;background:none;border:none;color:rgba(238,235,230,.4);font-size:1.1rem;cursor:pointer;padding:4px 6px;line-height:1;border-radius:4px;transition:color .15s;';
   closeBtn.textContent = '✕';
-  closeBtn.title = 'Kapat';
+  closeBtn.title = window._i18n?.t('prof_close')||'Kapat';
   closeBtn.onmouseenter = () => closeBtn.style.color = 'var(--white)';
   closeBtn.onmouseleave = () => closeBtn.style.color = 'rgba(238,235,230,.4)';
   closeBtn.onclick = () => { panel.classList.remove('mobile-open'); if (typeof mobileBtn !== 'undefined') mobileBtn.style.display = 'flex'; };
@@ -678,7 +683,7 @@ function initChatPanel(user) {
   // Sidebar
   const sidebar = document.createElement('div'); sidebar.className = 'chat-sidebar'; body.append(sidebar);
   const searchWrap = document.createElement('div'); searchWrap.className = 'chat-search-wrap'; sidebar.append(searchWrap);
-  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = 'Üye ara…'; searchWrap.append(searchInput);
+  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = window._i18n?.t('prof_search_ph')||'Üye ara…'; searchWrap.append(searchInput);
   _chatThreadsEl = document.createElement('div'); _chatThreadsEl.className = 'chat-threads'; sidebar.append(_chatThreadsEl);
   // All users cache for combined list
   let _allUsers = {}, _chatDocs = [], _searchTerm = '';
@@ -686,7 +691,7 @@ function initChatPanel(user) {
     snap.docs.forEach(d => {
       if (d.id === user.uid) return;
       const u = d.data();
-      _allUsers[d.id] = { name: u.displayName?.split(' ')[0] || 'Üye', photo: u.customPhotoURL || u.photoURL || '' };
+      _allUsers[d.id] = { name: u.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye'), photo: u.customPhotoURL || u.photoURL || '' };
     });
     _renderMemberList();
   }).catch(() => {});
@@ -699,8 +704,8 @@ function initChatPanel(user) {
       const chat = chatDoc.data();
       const adminViewing = chat.participants && !chat.participants.includes(user.uid);
       let otherId, otherName, otherPhoto;
-      if (adminViewing) { otherId = chat.participants?.[0] || ''; otherName = (chat.participants||[]).map(p => chat.names?.[p]||'Üye').join(' ↔ '); }
-      else { otherId = chat.participants?.find(p => p !== user.uid) || ''; otherName = chat.names?.[otherId] || _allUsers[otherId]?.name || 'Üye'; }
+      if (adminViewing) { otherId = chat.participants?.[0] || ''; otherName = (chat.participants||[]).map(p => chat.names?.[p]||(window._i18n?.t('ui_member')||'Üye')).join(' ↔ '); }
+      else { otherId = chat.participants?.find(p => p !== user.uid) || ''; otherName = chat.names?.[otherId] || _allUsers[otherId]?.name || (window._i18n?.t('ui_member')||'Üye'); }
       otherPhoto = chat.photos?.[otherId] || _allUsers[otherId]?.photo || null;
       if (q && !otherName.toLowerCase().includes(q)) return;
       chattedUids.add(otherId);
@@ -717,7 +722,7 @@ function initChatPanel(user) {
         item.append(_mkAvEl(u.photo, u.name, 'chat-thread-av'));
         const info = document.createElement('div'); info.className = 'chat-thread-info';
         const nm = document.createElement('div'); nm.className = 'chat-thread-name'; nm.textContent = u.name;
-        const sub = document.createElement('div'); sub.className = 'chat-thread-prev'; sub.textContent = '💬 Mesaj gönder';
+        const sub = document.createElement('div'); sub.className = 'chat-thread-prev'; sub.textContent = window._i18n?.t('prof_msg_hint')||'💬 Mesaj gönder';
         info.append(nm, sub); item.append(info);
         item.onclick = () => { const cid = _chatId(user.uid, uid); panel._openThread(cid, uid, u.name, u.photo); if (window.innerWidth<=1000) { panel.classList.add('mobile-open'); mobileBtn.style.display='none'; } };
         _chatThreadsEl.append(item);
@@ -727,25 +732,25 @@ function initChatPanel(user) {
   const main = document.createElement('div'); main.className = 'chat-main'; body.append(main); _chatMainEl = main;
   const mainHdr = document.createElement('div'); mainHdr.className = 'chat-main-hdr'; main.append(mainHdr);
   const emptyState = document.createElement('div'); emptyState.className = 'chat-empty-state';
-  emptyState.innerHTML = '<div class="chat-empty-state-icon">💬</div><div>Bir sohbet seç<br>veya üye ara</div>';
+  emptyState.innerHTML = `<div class="chat-empty-state-icon">💬</div><div>${window._i18n?.t('prof_chat_empty1')||'Bir sohbet seç'}<br>${window._i18n?.t('prof_chat_empty2')||'veya üye ara'}</div>`;
   main.append(emptyState);
   _chatMsgsEl = document.createElement('div'); _chatMsgsEl.className = 'chat-msgs'; _chatMsgsEl.style.display='none'; main.append(_chatMsgsEl);
   const inputWrap = document.createElement('div'); inputWrap.className = 'chat-input-wrap'; main.append(inputWrap);
-  const chatInput = document.createElement('textarea'); chatInput.className = 'chat-input'; chatInput.placeholder = 'Mesaj yaz…'; chatInput.rows = 1; inputWrap.append(chatInput);
+  const chatInput = document.createElement('textarea'); chatInput.className = 'chat-input'; chatInput.placeholder = window._i18n?.t('prof_msg_ph')||'Mesaj yaz…'; chatInput.rows = 1; inputWrap.append(chatInput);
   const sendBtn = document.createElement('button'); sendBtn.className = 'chat-send-btn'; sendBtn.textContent = '↩'; inputWrap.append(sendBtn);
   let _msgQueue = Promise.resolve();
   const doSend = () => {
     const txt = chatInput.value.trim();
     if (!txt || !_activeChatOther) return;
-    if (txt.length > 2000) { showToast('Mesaj en fazla 2000 karakter.', 'error'); return; }
+    if (txt.length > 2000) { showToast(window._i18n?.t('prof_msg_max_err')||'Mesaj en fazla 2000 karakter.', 'error'); return; }
     chatInput.value = '';
     chatInput.style.height = 'auto';
     chatInput.focus();
-    const myName = _user?.displayName?.split(' ')[0] || 'Üye';
+    const myName = _user?.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye');
     const myPhoto = _user?.photoURL || '';
     _msgQueue = _msgQueue.then(() =>
       _sendMsg(user.uid, myName, myPhoto, _activeChatOther.uid, _activeChatOther.name, _activeChatOther.photo||'', txt)
-      .catch(e => { const c=errId(); showToast(`Mesaj gönderilemedi (${c}): `+(e.message||e.code||'Bağlantı hatası'), 'error'); })
+      .catch(e => { const c=errId(); showToast(`${window._i18n?.t('prof_msg_send_err')||'Mesaj gönderilemedi'} (${c}): `+(e.message||e.code||(window._i18n?.getLang()==='en'?'Connection error':'Bağlantı hatası')), 'error'); })
     );
   };
   sendBtn.onclick = doSend;
@@ -837,7 +842,7 @@ function updateAuthBar(user) {
       if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
     img.src = user.photoURL || ''; img.alt = '';
     const name = document.createElement('span'); name.className = 'auth-name';
-    name.textContent = isAdmin(user) ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Üye');
+    name.textContent = isAdmin(user) ? '⚡ Admin' : (user.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye'));
     const out = document.createElement('button'); out.className = 'auth-out-btn';
     out.textContent = '✕'; out.onclick = () => auth.signOut();
     wrap.append(img, name, out);
@@ -846,7 +851,7 @@ function updateAuthBar(user) {
     const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = 'Bildirimler';
     const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
     _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
-    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all">Tümünü Oku</button></div><div class="notif-list"></div>';
+    _notifPanelEl.innerHTML = `<div class="notif-panel-head"><span class="notif-panel-title">${window._i18n?.t('ui_notifications')||'Bildirimler'}</span><button class="notif-read-all">${window._i18n?.t('ui_read_all')||'Tümünü Oku'}</button></div><div class="notif-list"></div>`;
     _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
     bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
     bellWrap.append(bell, badge, _notifPanelEl);
@@ -854,7 +859,7 @@ function updateAuthBar(user) {
     document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-    btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
+    btn.textContent = window._i18n?.t('auth_signin')||'⬡ Google ile Giriş Yap'; btn.onclick = doSignIn;
     bar.append(btn);
   }
 }
@@ -953,7 +958,7 @@ async function renderProfile() {
   const seq = ++_renderSeq;
   const uid = profileUid || _user?.uid;
   if (!uid) {
-    document.getElementById('layout').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--dim)">Profil bulunamadı.</div>';
+    document.getElementById('layout').innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--dim)">${window._i18n?.t('prof_not_found')||'Profil bulunamadı.'}</div>`;
     return;
   }
 
@@ -963,7 +968,7 @@ async function renderProfile() {
   const isOwn = _user?.uid === uid;
 
   // Load auth display name/photo if own profile
-  const displayName = prof.displayName?.trim() || (_user?.uid===uid ? _user.displayName : null) || prof.email?.split('@')[0] || 'Üye';
+  const displayName = prof.displayName?.trim() || (_user?.uid===uid ? _user.displayName : null) || prof.email?.split('@')[0] || (window._i18n?.t('ui_member')||'Üye');
   const photoURL    = prof.customPhotoURL || prof.photoURL || (_user?.uid===uid ? _user.photoURL : null) || '';
 
   // Load posts, replies, followers
@@ -1026,13 +1031,13 @@ async function renderProfile() {
     if (td) {
       const tb = document.createElement('div'); tb.className = 'profile-title-badge';
       tb.style.cssText = `color:${td.color};background:${td.color}1a;border:1px solid ${td.color}44;`;
-      tb.textContent = (td.icon ? td.icon + ' ' : '') + td.label;
+      tb.textContent = (td.icon ? td.icon + ' ' : '') + _getTitleLabel(td.key);
       info.append(tb);
     }
   }
 
   const aboutDiv = document.createElement('div'); aboutDiv.className = 'profile-about';
-  aboutDiv.textContent = prof.about || (isOwn ? 'Kendinden bahset...' : '');
+  aboutDiv.textContent = prof.about || (isOwn ? (window._i18n?.t('prof_about_empty')||'Kendinden bahset...') : '');
 
   const genresDiv = document.createElement('div'); genresDiv.className = 'profile-genres';
   (prof.genres || []).forEach(g => {
@@ -1085,7 +1090,7 @@ async function renderProfile() {
   if (prof.collabStatus && prof.collabStatus !== 'none') {
     const csDiv = document.createElement('div');
     csDiv.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:.58rem;color:var(--dim);margin-bottom:10px;';
-    csDiv.textContent = prof.collabStatus === 'open' ? '🟢 Projeye Açık' : '🔴 Meşgul';
+    csDiv.textContent = prof.collabStatus === 'open' ? (window._i18n?.t('prof_open')||'🟢 Projeye Açık') : (window._i18n?.t('prof_busy')||'🔴 Meşgul');
     info.append(csDiv);
   }
 
@@ -1094,7 +1099,7 @@ async function renderProfile() {
   // Message + follow buttons (other people's profiles)
   if (!isOwn && _user) {
     const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = window._i18n?.t('prof_msg_btn')||'💬 Mesaj Gönder';
-    msgBtn.onclick = e => { e.stopPropagation(); openChatWith(uid, displayName.split(' ')[0]||'Üye', photoURL); };
+    msgBtn.onclick = e => { e.stopPropagation(); openChatWith(uid, displayName.split(' ')[0]||(window._i18n?.t('ui_member')||'Üye'), photoURL); };
     info.append(msgBtn);
 
     const followBtn = document.createElement('button');
@@ -1126,7 +1131,7 @@ async function renderProfile() {
       collabReqBtn.textContent = window._i18n?.t('prof_collab')||'🤝 Collab İsteği Gönder';
       collabReqBtn.onclick = async () => {
         collabReqBtn.disabled = true;
-        collabReqBtn.textContent = 'Gönderiliyor…';
+        collabReqBtn.textContent = window._i18n?.t('prof_collab_sending')||'Gönderiliyor…';
         const fromName = _user.displayName?.split(' ')[0] || 'Biri';
         const fromPhoto = _user.photoURL || '';
         // Open/create chat and send collab request message
@@ -1134,7 +1139,7 @@ async function renderProfile() {
         const chatRef = db.collection('chats').doc(chatId);
         await chatRef.set({
           participants: [_user.uid, uid],
-          names: { [_user.uid]: fromName, [uid]: displayName.split(' ')[0]||'Üye' },
+          names: { [_user.uid]: fromName, [uid]: displayName.split(' ')[0]||(window._i18n?.t('ui_member')||'Üye') },
           photos: { [_user.uid]: fromPhoto, [uid]: photoURL||'' },
           lastMessage: '🤝 Collab isteği',
           lastAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1154,8 +1159,8 @@ async function renderProfile() {
           read: false,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         }).catch(console.error);
-        collabReqBtn.textContent = '✓ İstek Gönderildi';
-        setTimeout(() => { collabReqBtn.disabled = false; collabReqBtn.textContent = '🤝 Collab İsteği Gönder'; }, 5000);
+        collabReqBtn.textContent = window._i18n?.t('prof_collab_sent')||'✓ İstek Gönderildi';
+        setTimeout(() => { collabReqBtn.disabled = false; collabReqBtn.textContent = window._i18n?.t('prof_collab')||'🤝 Collab İsteği Gönder'; }, 5000);
       };
       info.append(collabReqBtn);
     }
@@ -1165,7 +1170,7 @@ async function renderProfile() {
   if (isOwn) {
     const bookingLink = document.createElement('a'); bookingLink.href = 'booking';
     bookingLink.className = 'booking-profile-btn';
-    bookingLink.textContent = '📅 Ders Paneli';
+    bookingLink.textContent = window._i18n?.t('prof_booking_btn')||'📅 Ders Paneli';
     info.append(bookingLink);
 
     const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = window._i18n?.t('prof_edit_btn')||'✏️ Profili Düzenle';
@@ -1176,18 +1181,18 @@ async function renderProfile() {
     let editGenres = [...(prof.genres || [])];
 
     // Photo section
-    const photoLabel = document.createElement('div'); photoLabel.className = 'ef-label'; photoLabel.textContent = 'Profil Fotoğrafı';
+    const photoLabel = document.createElement('div'); photoLabel.className = 'ef-label'; photoLabel.textContent = window._i18n?.t('prof_photo_label')||'Profil Fotoğrafı';
     editForm.append(photoLabel);
     const photoWrap = document.createElement('div'); photoWrap.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:8px;';
     const curPhoto = prof.customPhotoURL || prof.photoURL || _user?.photoURL || '';
     const photoPreview = document.createElement('img'); photoPreview.style.cssText = 'width:52px;height:52px;border-radius:50%;border:2px solid var(--mid);object-fit:cover;background:var(--mid);';
     if (curPhoto) photoPreview.src = curPhoto; else photoPreview.style.display = 'none';
     const uploadBtn = document.createElement('label'); uploadBtn.className = 'ef-save-btn'; uploadBtn.style.cssText = 'cursor:pointer;font-size:.6rem;padding:6px 12px;';
-    uploadBtn.textContent = '📷 Fotoğraf Seç';
+    uploadBtn.textContent = window._i18n?.t('prof_photo_btn')||'📷 Fotoğraf Seç';
     const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
     uploadBtn.append(fileInput);
     const photoHint = document.createElement('div'); photoHint.style.cssText = 'font-size:.52rem;color:var(--dim);margin-top:4px;';
-    photoHint.textContent = 'Google fotoğrafın otomatik kullanılır. Değiştirmek için seç.';
+    photoHint.textContent = window._i18n?.t('prof_photo_hint')||'Google fotoğrafın otomatik kullanılır. Değiştirmek için seç.';
     // Hidden field to hold processed data URL
     let _customPhotoData = prof.customPhotoURL || '';
     fileInput.onchange = e => {
@@ -1212,13 +1217,13 @@ async function renderProfile() {
     // Dummy photoInput object to keep save logic working
     const photoInput = { get value() { return _customPhotoData; }, trim() { return _customPhotoData; } };
 
-    const aboutLabel2 = document.createElement('div'); aboutLabel2.className = 'ef-label'; aboutLabel2.textContent = 'Hakkında';
+    const aboutLabel2 = document.createElement('div'); aboutLabel2.className = 'ef-label'; aboutLabel2.textContent = window._i18n?.t('prof_about_label')||'Hakkında';
     editForm.append(aboutLabel2);
     const aboutInput = document.createElement('textarea'); aboutInput.className = 'ef-ta'; aboutInput.maxLength = 300; aboutInput.rows = 4;
-    aboutInput.placeholder = 'Kendinden, müzik tarzından bahset...'; aboutInput.value = prof.about || '';
+    aboutInput.placeholder = window._i18n?.t('prof_about_ph')||'Kendinden, müzik tarzından bahset...'; aboutInput.value = prof.about || '';
     editForm.append(aboutInput);
 
-    const genresLabel = document.createElement('div'); genresLabel.className = 'ef-label'; genresLabel.textContent = 'Genreler';
+    const genresLabel = document.createElement('div'); genresLabel.className = 'ef-label'; genresLabel.textContent = window._i18n?.t('prof_genres_label')||'Genreler';
     editForm.append(genresLabel);
     const genresWrap = document.createElement('div'); genresWrap.className = 'ef-genres-wrap';
     function rebuildGenreChips() {
@@ -1235,7 +1240,7 @@ async function renderProfile() {
 
     const addRow = document.createElement('div'); addRow.className = 'ef-genre-add';
     const gInput = document.createElement('input'); gInput.className = 'ef-genre-input'; gInput.placeholder = 'Techno, House, Ambient...'; gInput.maxLength = 30;
-    const addBtn = document.createElement('button'); addBtn.className = 'ef-genre-add-btn'; addBtn.textContent = '+ Ekle';
+    const addBtn = document.createElement('button'); addBtn.className = 'ef-genre-add-btn'; addBtn.textContent = window._i18n?.t('prof_genres_add')||'+ Ekle';
     addBtn.onclick = () => {
       const v = gInput.value.trim(); if (!v || editGenres.length >= 8) return;
       editGenres.push(v); gInput.value = ''; rebuildGenreChips();
@@ -1267,13 +1272,13 @@ async function renderProfile() {
     mcInput.placeholder = 'https://www.mixcloud.com/kullaniciadi'; mcInput.value = prof.mixcloudUrl || '';
     editForm.append(mcInput);
 
-    const collabLabel = document.createElement('div'); collabLabel.className = 'ef-label'; collabLabel.textContent = 'İşbirliği Durumu';
+    const collabLabel = document.createElement('div'); collabLabel.className = 'ef-label'; collabLabel.textContent = window._i18n?.t('prof_collab_label')||'İşbirliği Durumu';
     editForm.append(collabLabel);
     const collabWrap = document.createElement('div'); collabWrap.style.cssText = 'display:flex;gap:8px;margin-top:4px;';
     const collabOpts = [
-      { val:'open',  icon:'🟢', text:'Projeye Açık' },
-      { val:'busy',  icon:'🔴', text:'Meşgul' },
-      { val:'none',  icon:'⚪', text:'Belirtme' },
+      { val:'open',  icon:'🟢', textKey:'prof_open',        textFallback:'Projeye Açık' },
+      { val:'busy',  icon:'🔴', textKey:'prof_busy',        textFallback:'Meşgul' },
+      { val:'none',  icon:'⚪', textKey:'prof_collab_none', textFallback:'Belirtme' },
     ];
     let selCollab = prof.collabStatus || 'none';
     function rebuildCollabBtns() {
@@ -1281,14 +1286,14 @@ async function renderProfile() {
       collabOpts.forEach(o => {
         const b = document.createElement('button');
         b.style.cssText = `flex:1;padding:6px 4px;border-radius:5px;border:1px solid ${selCollab===o.val?'var(--gold)':'var(--mid)'};background:${selCollab===o.val?'rgba(232,184,75,.1)':'transparent'};color:${selCollab===o.val?'var(--gold)':'var(--dim)'};font-family:'Space Mono',monospace;font-size:.55rem;cursor:pointer;transition:all .15s;`;
-        b.textContent = o.icon + ' ' + o.text;
+        b.textContent = o.icon + ' ' + (window._i18n?.t(o.textKey)||o.textFallback);
         b.onclick = () => { selCollab = o.val; rebuildCollabBtns(); };
         collabWrap.append(b);
       });
     }
     rebuildCollabBtns(); editForm.append(collabWrap);
 
-    const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = '💾 Kaydet';
+    const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = window._i18n?.t('prof_save')||'💾 Kaydet';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
       try {
@@ -1312,8 +1317,8 @@ async function renderProfile() {
           const avWrap = document.querySelector('.profile-avatar-wrap');
           if (avWrap) { const ex = avWrap.querySelector('img'); if (ex) { ex.src = _customPhotoData; } else { avWrap.innerHTML = ''; const ni = document.createElement('img'); ni.className = 'profile-avatar'; ni.src = _customPhotoData; avWrap.append(ni); } }
         }
-        saveBtn.textContent = '✓ Kaydedildi';
-        showToast('✓ Profil güncellendi!');
+        saveBtn.textContent = window._i18n?.t('prof_saved')||'✓ Kaydedildi';
+        showToast(window._i18n?.t('prof_saved_toast')||'✓ Profil güncellendi!');
         setTimeout(async () => {
           // Force server read after save to reflect latest data
           await db.collection('users').doc(uid).get({ source: 'server' }).catch(() => {});
@@ -1321,7 +1326,7 @@ async function renderProfile() {
           // Re-open edit form so user can see saved values
           document.querySelector('.edit-btn')?.click();
         }, 1000);
-      } catch(e) { const c=errId(); console.error('[save]',c,e); saveBtn.disabled=false; saveBtn.textContent=`⚠️ Kayıt başarısız (${c})`; }
+      } catch(e) { const c=errId(); console.error('[save]',c,e); saveBtn.disabled=false; saveBtn.textContent=`${window._i18n?.t('prof_save_err')||'⚠️ Kayıt başarısız'} (${c})`; }
     };
     editForm.append(saveBtn);
 
@@ -1331,17 +1336,17 @@ async function renderProfile() {
     };
 
     // Settings button (own profile)
-    const settingsBtn = document.createElement('button'); settingsBtn.className = 'settings-btn'; settingsBtn.textContent = '⚙ Görünüm Ayarları';
+    const settingsBtn = document.createElement('button'); settingsBtn.className = 'settings-btn'; settingsBtn.textContent = window._i18n?.t('prof_settings_btn')||'⚙ Görünüm Ayarları';
     info.append(settingsBtn);
     const settingsPanel = document.createElement('div'); settingsPanel.className = 'settings-panel';
     // Theme row
-    const themeLabel = document.createElement('div'); themeLabel.className = 'settings-label'; themeLabel.textContent = 'Tema';
+    const themeLabel = document.createElement('div'); themeLabel.className = 'settings-label'; themeLabel.textContent = window._i18n?.t('prof_theme_label')||'Tema';
     const themeRow = document.createElement('div'); themeRow.className = 'settings-row';
     const themeInfo = document.createElement('div'); themeInfo.className = 'settings-row-info';
-    themeInfo.innerHTML = '<div class="settings-row-label">Renk Teması</div><div class="settings-row-sub">Koyu veya açık arka plan</div>';
+    themeInfo.innerHTML = `<div class="settings-row-label">${window._i18n?.t('prof_theme_title')||'Renk Teması'}</div><div class="settings-row-sub">${window._i18n?.t('prof_theme_sub')||'Koyu veya açık arka plan'}</div>`;
     const themeBtns = document.createElement('div'); themeBtns.className = 'theme-btns';
-    const darkBtn = document.createElement('button'); darkBtn.className = 'theme-btn dark-btn'; darkBtn.textContent = '🌑 Koyu';
-    const lightBtn = document.createElement('button'); lightBtn.className = 'theme-btn light-btn'; lightBtn.textContent = '☀️ Açık';
+    const darkBtn = document.createElement('button'); darkBtn.className = 'theme-btn dark-btn'; darkBtn.textContent = window._i18n?.t('prof_dark_btn')||'🌑 Koyu';
+    const lightBtn = document.createElement('button'); lightBtn.className = 'theme-btn light-btn'; lightBtn.textContent = window._i18n?.t('prof_light_btn')||'☀️ Açık';
     const curTheme = localStorage.getItem('site-theme') || 'dark';
     if (curTheme === 'dark') darkBtn.classList.add('active'); else lightBtn.classList.add('active');
     darkBtn.onclick = () => { localStorage.setItem('site-theme','dark'); document.documentElement.classList.remove('theme-light'); darkBtn.classList.add('active'); lightBtn.classList.remove('active'); };
@@ -1350,7 +1355,7 @@ async function renderProfile() {
     // Font clear row
     const fontRow = document.createElement('div'); fontRow.className = 'settings-row';
     const fontInfo = document.createElement('div'); fontInfo.className = 'settings-row-info';
-    fontInfo.innerHTML = '<div class="settings-row-label">Font Netleştir</div><div class="settings-row-sub">Yazıları daha büyük ve okunaklı gösterir</div>';
+    fontInfo.innerHTML = `<div class="settings-row-label">${window._i18n?.t('prof_font_label')||'Font Netleştir'}</div><div class="settings-row-sub">${window._i18n?.t('prof_font_sub')||'Yazıları daha büyük ve okunaklı gösterir'}</div>`;
     const toggleWrap = document.createElement('label'); toggleWrap.className = 'toggle';
     const toggleInput = document.createElement('input'); toggleInput.type = 'checkbox';
     toggleInput.checked = localStorage.getItem('site-font-clear') === '1';
@@ -1362,7 +1367,7 @@ async function renderProfile() {
     };
     toggleWrap.append(toggleInput, toggleTrack, toggleThumb); fontRow.append(fontInfo, toggleWrap);
     settingsPanel.append(themeLabel, themeRow, fontRow);
-    settingsBtn.onclick = () => { settingsPanel.classList.toggle('open'); settingsBtn.textContent = settingsPanel.classList.contains('open') ? '✕ Kapat' : '⚙ Görünüm Ayarları'; };
+    settingsBtn.onclick = () => { settingsPanel.classList.toggle('open'); settingsBtn.textContent = settingsPanel.classList.contains('open') ? ('✕ '+(window._i18n?.t('prof_close')||'Kapat')) : (window._i18n?.t('prof_settings_btn')||'⚙ Görünüm Ayarları'); };
     pCard.append(info, settingsPanel, editForm);
   } else {
     pCard.append(info);
@@ -1377,7 +1382,7 @@ async function renderProfile() {
     TITLES.forEach(t => {
       const btn = document.createElement('button');
       btn.className = 'title-opt' + (selKey === t.key ? ' sel' : '');
-      btn.textContent = (t.icon ? t.icon + ' ' : '') + t.label;
+      btn.textContent = (t.icon ? t.icon + ' ' : '') + t.labelTr;
       btn.onclick = () => {
         selKey = t.key;
         grid.querySelectorAll('.title-opt').forEach(b => b.classList.remove('sel'));
@@ -1553,7 +1558,10 @@ async function renderProfile() {
   console.log('[render] replies.length at render:', replies.length);
   if (replies.length === 0) {
     const e = document.createElement('div'); e.className = 'activity-empty';
-    e.textContent = isOwn ? 'Henüz yorum yapılmamış. Forum\'da ilk yorumunu yaptıktan sonra burada görünür.' : 'Henüz yorum yapılmamış.';
+    const _en = window._i18n?.getLang()==='en';
+    e.textContent = isOwn
+      ? (_en ? 'No replies yet. Forum replies will appear here after your first post.' : 'Henüz yorum yapılmamış. Forum\'da ilk yorumunu yaptıktan sonra burada görünür.')
+      : (window._i18n?.t('prof_no_replies')||'Henüz yanıt verilmemiş.');
     repliesSec.append(e);
   } else {
     replies.forEach(r => {
