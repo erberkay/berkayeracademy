@@ -480,8 +480,6 @@ function makeSnow() {
   const EY='#4e92cc', TE='#b8e4f8';
   const MO='#b85a48';
   const SH='#3d5068', PA='#2a3a50', HD='#2c3c50';
-  const CL='#28293c', CL2='#363750', CLD='#1e1f2e';
-
   function drawGround() {
     for (let x = 0; x < VW; x++) {
       dot(x, 22, SN);
@@ -504,37 +502,39 @@ function makeSnow() {
     for (let x = 12; x <= 20; x++) dot(x, 21, SN);
   }
 
-  function drawClouds(cx, t) {
-    // Cloud 1 — big dark cloud, 3 rows higher
-    const c1x = Math.round(cx - 7 + Math.sin(t * 0.018) * 3);
-    for (let x = 0; x < 15; x++) {
-      dot(c1x+x, 3, x===0||x===14 ? CLD : CL2);
-      dot(c1x+x, 4, CL);
-      dot(c1x+x, 5, x===0||x===14 ? CLD : CL2);
-    }
-    dot(c1x+2,2,CL2); dot(c1x+3,2,CL2); dot(c1x+4,2,CLD);
-    dot(c1x+3,1,CLD);
-    dot(c1x+8,2,CL2); dot(c1x+9,2,CL2); dot(c1x+10,2,CLD);
-    // Cloud 2 — smaller, opposite phase, also higher
-    const c2x = Math.round(cx + 3 + Math.sin(t * 0.018 + Math.PI) * 2);
-    for (let x = 0; x < 10; x++) {
-      dot(c2x+x, 1, x===0||x===9 ? CLD : CL2);
-      dot(c2x+x, 2, CL);
-      dot(c2x+x, 3, x===0||x===9 ? CLD : CL2);
-    }
-    dot(c2x+2,0,CL2); dot(c2x+3,0,CLD);
-    dot(c2x+6,0,CL2); dot(c2x+7,0,CLD);
+  // One professional dark rain cloud
+  // Pixel art: 24 wide × 8 tall, oy = just above tree canopy
+  const CLOUD_OY = 2;  // cloud top row — slightly above tree-top level
+  const CLOUD_ROWS = [
+    '....LLL.....LLL....LLL..',  // bump tips
+    '...LLlll..lLLLLl..LLLll.',  // bumps wider (25→trim: 24)
+    '..llllllllllllllllllll..',  // merge to upper body
+    '.MMMMMMMMMMMMMMMMMMMMMM.',  // body upper
+    'MMMDDDDDDDDDDDDDDDDDDDDM',  // body mid
+    'DDDDDDDDDDDDDDDDDDDDDDD.',  // body lower
+    'DDDDDDDDDDDDDDDDDDDDDDD.',  // body lower 2
+    '.BBBBBBBBBBBBBBBBBBBBB..',  // flat dark base — rain source
+  ];
+  const CLOUD_PAL = { L:'#50537a', l:'#3c3f62', M:'#272a44', D:'#191b2e', B:'#0c0d1a', '.':null };
+
+  function drawStormCloud(cx, t) {
+    const ox = Math.round(cx - 11 + Math.sin(t * 0.018) * 2.5);
+    CLOUD_ROWS.forEach((row, y) => {
+      [...row].forEach((c, x) => {
+        if (CLOUD_PAL[c]) dot(ox + x, CLOUD_OY + y, CLOUD_PAL[c]);
+      });
+    });
   }
 
   function drawRain(cx, t) {
-    const SPREAD = 14, CLOUD_BOT = 6, GROUND = 22;
-    ctx.fillStyle = 'rgba(140,195,230,0.2)';
-    for (let i = 0; i < 11; i++) {
-      const ry = CLOUD_BOT + ((t * 0.55 + i * 1.8) % (GROUND - CLOUD_BOT));
-      const rx = Math.round(cx - SPREAD / 2 + i * (SPREAD / 10));
+    const CLOUD_BOT = CLOUD_OY + CLOUD_ROWS.length;
+    const GROUND = 22, SPREAD = 20;
+    ctx.fillStyle = 'rgba(140,195,230,0.18)';
+    for (let i = 0; i < 13; i++) {
+      const ry = CLOUD_BOT + ((t * 0.55 + i * 1.7) % (GROUND - CLOUD_BOT));
+      const rx = Math.round(cx - SPREAD / 2 + i * (SPREAD / 12));
       if (rx < 1 || rx >= VW - 1) continue;
-      const iry = Math.floor(ry);
-      ctx.fillRect(rx * P, iry * P, Math.max(1, P - 2), P * 2);
+      ctx.fillRect(rx * P, Math.floor(ry) * P, Math.max(1, P - 2), P * 2);
     }
   }
 
@@ -609,7 +609,7 @@ function makeSnow() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawGround();
     drawTree();
-    drawClouds(Math.round(charX), tick);
+    drawStormCloud(Math.round(charX), tick);
     drawRain(Math.round(charX), tick);
     drawCharacter(Math.round(charX), 8, walkFrame, charDir);
     requestAnimationFrame(animate);
