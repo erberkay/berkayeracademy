@@ -41,13 +41,14 @@ body{
 .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:twinkle ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:.1;transform:scale(1)}50%{opacity:.8;transform:scale(1.4)}}
 
-/* ── Floating hearts (ambient) ── */
+/* ── Falling hearts (ambient, top→bottom) ── */
 .hearts{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2}
-.fheart{position:absolute;bottom:-60px;animation:floatUp linear forwards;opacity:0;pointer-events:none;user-select:none}
-@keyframes floatUp{
-  0%{transform:translateY(0) rotate(-15deg) scale(.8);opacity:0}
-  8%{opacity:1}88%{opacity:.7}
-  100%{transform:translateY(-110vh) rotate(25deg) scale(1.3);opacity:0}
+.fheart{position:absolute;top:-60px;animation:fallDown ease-in forwards;opacity:0;pointer-events:none;user-select:none}
+@keyframes fallDown{
+  0%  {transform:translateY(0) rotate(-8deg) scale(.7); opacity:0}
+  10% {opacity:.95}
+  80% {opacity:.85}
+  100%{transform:translateY(112vh) translateX(var(--hdx,0px)) rotate(12deg) scale(1.05); opacity:0}
 }
 
 /* ── Rose petals ── */
@@ -378,8 +379,9 @@ const POEM_LINES = [
   function makeHeart(){
     const h=document.createElement('div'); h.className='fheart';
     h.textContent=items[Math.floor(Math.random()*items.length)];
-    h.style.cssText=`left:${Math.random()*100}%;font-size:${.7+Math.random()*1.8}rem;animation-duration:${5+Math.random()*7}s;animation-delay:${Math.random()*1.5}s`;
-    el.appendChild(h); setTimeout(()=>h.remove(),13000);
+    const dx=(Math.random()-.5)*60;
+    h.style.cssText=`left:${Math.random()*100}%;font-size:${.8+Math.random()*1.6}rem;animation-duration:${6+Math.random()*6}s;animation-delay:${Math.random()*2}s;--hdx:${dx}px`;
+    el.appendChild(h); setTimeout(()=>h.remove(),14000);
   }
   for(let i=0;i<18;i++) setTimeout(makeHeart,i*200);
   setInterval(makeHeart,450);
@@ -445,8 +447,7 @@ const ytFrame  = document.getElementById('ytFrame');
 function makeSnow() {
   const s = document.createElement('div');
   s.className = 'snowflake';
-  const snowItems = ['❄️','❅','❆','·','•','💕','❤️','💗','🤍','✨','💖'];
-  s.textContent = snowItems[Math.floor(Math.random()*snowItems.length)];
+  s.textContent = ['❄️','❅','❆','·','•'][Math.floor(Math.random()*5)];
   const dx = (Math.random()-0.5)*120;
   s.style.cssText = `left:${Math.random()*100}%;font-size:${.6+Math.random()*1.2}rem;animation-duration:${4+Math.random()*5}s;--dx:${dx}px`;
   snowEl.appendChild(s);
@@ -499,10 +500,11 @@ function makeSnow() {
 
   const WD='#5c3b2a', DK='#3a2418';   // tree wood / bark
   const SN='#ddf2fc', SG='#b4d6ec';   // snow / snow-ground
-  const SK='#f0c4a0', HA='#0c0a08';   // skin / near-black hair
-  const EY='#0a0806', TE='#9dd8f0';   // eye / tear
+  const SK='#f0c4a0', HA='#7a4828';   // skin / auburn-brown hair (kumral)
+  const EY='#4e92cc', TE='#b8e4f8';   // blue eyes / tear
   const MO='#b85a48';                  // mouth
-  const SH='#0e0f16', PA='#0a0b12';   // near-black jacket / pants
+  const SH='#3d5068', PA='#2a3a50';   // hoodie blue-grey / dark pants
+  const HD='#2c3c50';                  // hoodie shadow/pocket
 
   // Snow ground (rows 21–25)
   for (let x = 0; x < VW; x++) {
@@ -541,13 +543,13 @@ function makeSnow() {
   const OX = 38, OY = 9;
   function ch(x, y, col) { dot(OX+x, OY+y, col); }
 
-  // Hair top (rows 0–1): near-black, tight on top
-  [1,2,3,4,5,6,7].forEach(x => ch(x, 0, HA));
+  // Hair top (rows 0–1): auburn/kumral, slightly wavy top
+  [2,3,4,5,6].forEach(x => ch(x, 0, HA));
   [0,1,2,3,4,5,6,7,8].forEach(x => ch(x, 1, HA));
 
-  // Hair sides (rows 2–6): dark on outer edges (hair framing face)
-  ch(0, 2, HA); ch(0, 3, HA); ch(0, 4, HA); ch(0, 5, HA); ch(0, 6, HA);
-  ch(8, 2, HA); ch(8, 3, HA); ch(8, 4, HA); ch(8, 5, HA);
+  // Hair sides (rows 2–7): auburn on outer edges, slightly longer at sides
+  ch(0, 2, HA); ch(0, 3, HA); ch(0, 4, HA); ch(0, 5, HA); ch(0, 6, HA); ch(0, 7, HA);
+  ch(8, 2, HA); ch(8, 3, HA); ch(8, 4, HA); ch(8, 5, HA); ch(8, 6, HA);
 
   // Face skin (rows 2–6)
   for (let r = 2; r <= 6; r++) for (let x = 1; x <= 7; x++) ch(x, r, SK);
@@ -572,10 +574,16 @@ function makeSnow() {
   // Neck
   ch(3, 7, SK); ch(4, 7, SK);
 
-  // Very dark jacket (rows 8–10) + hanging arms (rows 8–12)
+  // Hoodie (rows 8–10) + hanging arms (rows 8–12)
   for (let r = 8; r <= 10; r++) for (let x = 1; x <= 7; x++) ch(x, r, SH);
   for (let r = 8; r <= 12; r++) { ch(0, r, SH); ch(8, r, SH); }
   ch(0, 12, SK); ch(8, 12, SK);  // hands
+  // Hood-down detail: slightly wider collar/hood at row 7-8
+  ch(-1, 8, SH); ch(9, 8, SH);
+  // Hoodie kangaroo pocket (row 10, center stripe)
+  ch(3, 10, HD); ch(4, 10, HD); ch(5, 10, HD);
+  // Drawstring (hood string) hanging at row 9, cols 3 & 5
+  ch(3, 9, HD); ch(5, 9, HD);
 
   // Pants (rows 11–12)
   for (let r = 11; r <= 12; r++) for (let x = 1; x <= 7; x++) ch(x, r, PA);
