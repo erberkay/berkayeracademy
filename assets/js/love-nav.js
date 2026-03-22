@@ -2,6 +2,7 @@
 (function () {
   var LOVE_EMAIL  = 'elifaras12@gmail.com';
   var ADMIN_EMAIL = 'berkayer032@gmail.com';
+  var BORA_EMAIL  = 'bora1881aras@gmail.com';
 
   function applyLove(show) {
     var lnav = document.getElementById('lnavLoveBtn');
@@ -13,7 +14,7 @@
   function tryHook() {
     if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
       firebase.auth().onAuthStateChanged(function (user) {
-        var show = !!user && (user.email === LOVE_EMAIL || user.email === ADMIN_EMAIL);
+        var show = !!user && (user.email === LOVE_EMAIL || user.email === ADMIN_EMAIL || user.email === BORA_EMAIL);
         applyLove(show);
       });
     } else {
