@@ -521,7 +521,7 @@ let charObj = null, mixer = null;
 let actions = {}, curAction = null;
 let charState = 'loading';
 let charX = -3.2, charTargetX = -1.8;
-const WALK_SPEED = 0.5; // units/sec
+let WALK_SPEED = 0.5; // units/sec — klip yüklenince güncellenir
 let charStateT = 0;
 let charRotY = Math.PI / 2;       // mevcut rotasyon
 let charTargetRotY = Math.PI / 2; // hedef rotasyon (smooth dönüş için)
@@ -538,6 +538,17 @@ fbxLoader.load('https://storage.googleapis.com/ableton-tutorial-assets/karakter/
   charObj = fbx;
   scene.add(charObj);
 
+  // Walk animasyonu bitince otur (LoopOnce ile garanti 1 tekrar)
+  mixer.addEventListener('finished', (e) => {
+    if (charState === 'walking') {
+      charX = charTargetX;
+      charObj.position.x = charX;
+      charTargetRotY = Math.PI;
+      charState = 'sitting'; charStateT = 0;
+      playAnim('sit', 1.0);
+    }
+  });
+
   const animFiles = {
     walk:    '/karakter/Standard Walk.fbx',
     sadIdle: '/karakter/Sad Idle.fbx',
@@ -549,8 +560,15 @@ fbxLoader.load('https://storage.googleapis.com/ableton-tutorial-assets/karakter/
     fbxLoader.load(path, (animFbx) => {
       if (animFbx.animations[0]) {
         actions[key] = mixer.clipAction(animFbx.animations[0]);
-        actions[key].setLoop(THREE.LoopRepeat);
-        if (key === 'walk') actions[key].timeScale = 0.75; // animasyonu yavaşlat
+        if (key === 'walk') {
+          actions[key].setLoop(THREE.LoopOnce, 1); // sadece 1 kez
+          actions[key].clampWhenFinished = true;
+          actions[key].timeScale = 0.8;
+          // Klip süresine göre hız hesapla — karakter tam 1 döngüde varır
+          WALK_SPEED = (charTargetX - charX) / (animFbx.animations[0].duration / 0.8);
+        } else {
+          actions[key].setLoop(THREE.LoopRepeat);
+        }
       }
       if (++done >= total && charState === 'loading') { charState = 'walking'; playAnim('walk'); }
     }, undefined, () => {
@@ -582,15 +600,10 @@ let simT = 0;
   charRotY += (charTargetRotY - charRotY) * Math.min(dt * 4.0, 1.0);
   if (charObj) charObj.rotation.y = charRotY;
 
-  // Karakter hareketi
+  // Karakter hareketi — geçiş mixer 'finished' event'i ile tetiklenir
   if (charObj && charState === 'walking') {
     charX = Math.min(charX + WALK_SPEED * dt, charTargetX);
     charObj.position.x = charX;
-    if (charX >= charTargetX) {
-      charTargetRotY = Math.PI; // ekrana bak — smooth dönüş
-      charState = 'sitting'; charStateT = 0;
-      playAnim('sit', 1.0);
-    }
   } else if (charState !== 'loading') {
     charStateT += dt;
     // otur → ayağa kalk & sigara iç → üzgün dur → tekrar
