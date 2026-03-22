@@ -211,6 +211,14 @@ body{
 }
 .yt-player.open{display:block}
 .yt-player iframe{display:block;width:100%;height:135px;border:0}
+
+/* ── Clouds ── */
+.cloud-layer{position:fixed;top:0;left:0;right:0;height:160px;pointer-events:none;overflow:hidden;z-index:2}
+.cloud{position:absolute;pointer-events:none;animation:driftCloud linear infinite}
+@keyframes driftCloud{0%{transform:translateX(-260px)}100%{transform:translateX(calc(100vw + 260px))}}
+
+/* ── 8-bit scene bottom ── */
+#bitScene{position:fixed;bottom:0;left:50%;transform:translateX(-50%);pointer-events:none;z-index:4;image-rendering:pixelated;image-rendering:crisp-edges}
 </style>
 </head>
 <body>
@@ -220,6 +228,8 @@ body{
 <div class="hearts" id="heartsEl"></div>
 <div class="petals" id="petalsEl"></div>
 <div class="snow-layer" id="snowEl"></div>
+<div class="cloud-layer" id="cloudLayer"></div>
+<canvas id="bitScene"></canvas>
 
 <a href="/" class="back-link">← Geri</a>
 
@@ -435,12 +445,145 @@ const ytFrame  = document.getElementById('ytFrame');
 function makeSnow() {
   const s = document.createElement('div');
   s.className = 'snowflake';
-  s.textContent = ['❄️','❅','❆','·','•'][Math.floor(Math.random()*5)];
+  const snowItems = ['❄️','❅','❆','·','•','💕','❤️','💗','🤍','✨','💖'];
+  s.textContent = snowItems[Math.floor(Math.random()*snowItems.length)];
   const dx = (Math.random()-0.5)*120;
   s.style.cssText = `left:${Math.random()*100}%;font-size:${.6+Math.random()*1.2}rem;animation-duration:${4+Math.random()*5}s;--dx:${dx}px`;
   snowEl.appendChild(s);
   setTimeout(() => s.remove(), 10000);
 }
+
+// ── Clouds ──
+(function(){
+  const layer = document.getElementById('cloudLayer');
+  const CC = 'rgba(160,185,230,';
+  function mkCloud(top, w, dur, delay) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cloud';
+    wrap.style.top = top + 'px';
+    wrap.style.animationDuration = dur + 's';
+    wrap.style.animationDelay = delay + 's';
+    const h = Math.round(w * 0.26);
+    const body = document.createElement('div');
+    body.style.cssText = `position:relative;width:${w}px;height:${h}px;background:${CC}.08);border-radius:${w}px`;
+    const b1s = Math.round(w * 0.44);
+    const b1 = document.createElement('div');
+    b1.style.cssText = `position:absolute;width:${b1s}px;height:${b1s}px;background:${CC}.08);border-radius:50%;top:${-Math.round(b1s*.52)}px;left:${Math.round(w*.1)}px`;
+    const b2s = Math.round(w * 0.34);
+    const b2 = document.createElement('div');
+    b2.style.cssText = `position:absolute;width:${b2s}px;height:${b2s}px;background:${CC}.08);border-radius:50%;top:${-Math.round(b2s*.44)}px;left:${Math.round(w*.46)}px`;
+    body.appendChild(b1); body.appendChild(b2);
+    wrap.appendChild(body); layer.appendChild(wrap);
+  }
+  mkCloud(10,  95,  52, 0);
+  mkCloud(42, 130,  78, -28);
+  mkCloud(8,   70,  58, -40);
+  mkCloud(60, 105,  90, -55);
+  mkCloud(28,  80,  65, -12);
+})();
+
+// ── 8-bit sad child + bare tree scene ──
+(function(){
+  const canvas = document.getElementById('bitScene');
+  const P = 4;        // screen px per virtual pixel
+  const VW = 96, VH = 26;
+  canvas.width  = VW * P;
+  canvas.height = VH * P;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  function dot(x, y, col) {
+    if (x < 0 || y < 0 || x >= VW || y >= VH) return;
+    ctx.fillStyle = col; ctx.fillRect(x*P, y*P, P, P);
+  }
+
+  const WD='#5c3b2a', DK='#3a2418';   // tree wood / bark
+  const SN='#ddf2fc', SG='#b4d6ec';   // snow / snow-ground
+  const SK='#f6c8a6', HA='#281508';   // skin / hair
+  const EY='#100804', TE='#9dd8f0';   // eye / tear
+  const MO='#c06858';                  // mouth
+  const SH='#1c3d6b', PA='#0e2444';   // shirt / pants
+
+  // Snow ground (rows 21–25)
+  for (let x = 0; x < VW; x++) {
+    dot(x, 21, SN);
+    dot(x, 22, SG); dot(x, 23, SG); dot(x, 24, SG); dot(x, 25, SG);
+  }
+
+  // ── Bare winter tree (trunk center x=15–16) ──
+  for (let y = 5; y <= 20; y++) { dot(15,y,DK); dot(16,y,WD); }  // trunk
+  for (let y = 1; y <= 4;  y++) { dot(15,y,DK); dot(16,y,WD); }  // spire
+
+  // Branch left-1 (rows 8–10, cols 5–14)
+  for (let i = 0; i <= 9; i++) { dot(14-i, 8 + (i>5?1:0) + (i>8?1:0), WD); }
+  dot(5,10,SN); dot(6,9,SN);
+
+  // Branch right-1 (rows 6–8, cols 17–26)
+  for (let i = 0; i <= 8; i++) { dot(17+i, 6 + (i>4?1:0) + (i>7?1:0), WD); }
+  dot(24,8,SN); dot(25,7,SN);
+
+  // Branch left-2 (rows 5–6, cols 7–14)
+  for (let i = 0; i <= 7; i++) { dot(14-i, 5 + (i>4?1:0), WD); }
+  dot(7,5,SN); dot(8,4,SN);
+
+  // Branch right-2 (rows 3–4, cols 17–23)
+  for (let i = 0; i <= 6; i++) { dot(17+i, 3 + (i>3?1:0), WD); }
+  dot(22,3,SN); dot(23,2,SN);
+
+  // Top twig
+  dot(14,1,WD); dot(15,1,WD);
+
+  // Snow pile at trunk base
+  for (let x = 12; x <= 20; x++) dot(x, 20, SN);
+
+  // ── Sad 8-bit child (origin: virtual x=38, y=9) ──
+  // Character: 9 wide × 13 tall pixels
+  const OX = 38, OY = 9;
+  function ch(x, y, col) { dot(OX+x, OY+y, col); }
+
+  // Hair (rows 0–1)
+  [1,2,3,4,5,6].forEach(x => ch(x, 0, HA));
+  [0,1,2,3,4,5,6,7].forEach(x => ch(x, 1, HA));
+
+  // Face skin (rows 2–6)
+  for (let r = 2; r <= 6; r++) for (let x = 1; x <= 7; x++) ch(x, r, SK);
+  // Chin (row 7)
+  [2,3,4,5,6].forEach(x => ch(x, 7, SK));
+
+  // Sad eyebrows: outer high → inner low (furrowed inward)
+  ch(1, 2, HA); ch(2, 3, HA);   // left brow slopes down inward
+  ch(7, 2, HA); ch(6, 3, HA);   // right brow slopes down inward
+
+  // Eyes (row 4) — simple dot eyes
+  ch(2, 4, EY); ch(6, 4, EY);
+
+  // Tears (rows 5–6)
+  ch(2, 5, TE); ch(6, 5, TE);
+  ch(2, 6, TE);                  // left tear drips lower
+
+  // Frown mouth: corners UP, center DOWN = ∩ shape = sad
+  ch(2, 6, MO); ch(6, 6, MO);   // corners (higher row = upper position)
+  ch(3, 7, MO); ch(4, 7, MO); ch(5, 7, MO); // center dips down
+
+  // Neck
+  ch(3, 7, SK); ch(4, 7, SK);
+
+  // Shirt (rows 8–10) + arms hanging beside body (rows 8–12)
+  for (let r = 8; r <= 10; r++) for (let x = 1; x <= 7; x++) ch(x, r, SH);
+  for (let r = 8; r <= 12; r++) { ch(0, r, SH); ch(8, r, SH); }  // hanging arms
+  ch(0, 12, SK); ch(8, 12, SK);  // hands
+
+  // Pants (rows 11–12)
+  for (let r = 11; r <= 12; r++) for (let x = 1; x <= 7; x++) ch(x, r, PA);
+
+  // Legs (rows 13–14)
+  [1,2].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
+  [6,7].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
+
+  // Feet (row 14, slightly wider = hunched posture)
+  [0,1,2,3].forEach(x => ch(x, 14, PA));  // left foot turns inward
+  [5,6,7,8].forEach(x => ch(x, 14, PA));  // right foot turns inward
+})();
 
 musicBtn.addEventListener('click', function() {
   snowActive = !snowActive;
