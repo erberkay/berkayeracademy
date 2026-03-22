@@ -98,7 +98,7 @@
 <script src="assets/js/i18n.js"></script>
 </head>
 <body>
-<a id="homeLogo" href="/" title="Anasayfa">⌂ Anasayfa</a>
+<a id="homeLogo" href="/" title="Anasayfa" data-i18n="home_logo">⌂ Anasayfa</a>
 <div id="authBar"></div>
 <div class="mobile-lang-toggle" style="position:fixed;bottom:66px;right:10px;z-index:499;display:flex;gap:3px;background:rgba(6,6,9,.88);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 6px;backdrop-filter:blur(8px);"><button class="lang-btn" data-lang="tr" onclick="window._i18n?.setLang('tr')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(238,235,230,.4);cursor:pointer;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;padding:3px 7px;border-radius:3px;transition:all .15s;">TR</button><button class="lang-btn" data-lang="en" onclick="window._i18n?.setLang('en')" style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(238,235,230,.4);cursor:pointer;font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.06em;padding:3px 7px;border-radius:3px;transition:all .15s;">EN</button></div>
 
@@ -335,14 +335,14 @@ function toggleSss(btn) {
         img.src = user.photoURL||''; img.alt='';
         img.style.cursor='pointer'; img.onclick=()=>location.href=`profile?uid=${user.uid}`;
         const name = document.createElement('span'); name.className='auth-name';
-        name.textContent = user.email===ADMIN_EMAIL?'⚡ Admin':(user.displayName?.split(' ')[0]||'Öğrenci');
+        name.textContent = user.email===ADMIN_EMAIL?'⚡ Admin':(user.displayName?.split(' ')[0]||(window._i18n?.t('ui_student')||'Öğrenci'));
         name.style.cursor='pointer'; name.onclick=()=>location.href=`profile?uid=${user.uid}`;
         const out = document.createElement('button'); out.className='auth-out-btn'; out.textContent='✕'; out.title='Çıkış yap';
         out.onclick=()=>{_auth.signOut();};
         wrap.append(img, name, out);
         bar.append(wrap);
       } else {
-        const btn=document.createElement('button'); btn.className='auth-sign-btn'; btn.textContent='⬡ Google ile Giriş';
+        const btn=document.createElement('button'); btn.className='auth-sign-btn'; btn.textContent=window._i18n?.t('ui_signin')||'⬡ Google ile Giriş';
         let _sig=false;
         btn.onclick=()=>{if(_sig)return;_sig=true;_auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e=>{console.error(e);}).finally(()=>{_sig=false;});};
         bar.append(btn);
@@ -370,10 +370,10 @@ function toggleSss(btn) {
     // Question buttons (text node before .sss-q-arrow)
     document.querySelectorAll('.sss-q').forEach(function(btn, i) {
       if (!btn._trText) {
-        var nodes = Array.from(btn.childNodes).filter(function(n) { return n.nodeType === 3; });
+        var nodes = Array.from(btn.childNodes).filter(function(n) { return n.nodeType === 3 && n.textContent.trim() !== ''; });
         btn._trText = nodes.map(function(n) { return n.textContent.trim(); }).join('').trim();
       }
-      Array.from(btn.childNodes).filter(function(n) { return n.nodeType === 3; }).forEach(function(n) {
+      Array.from(btn.childNodes).filter(function(n) { return n.nodeType === 3 && n.textContent.trim() !== ''; }).forEach(function(n) {
         if (lang === 'en' && enQuestions[i]) n.textContent = '\n          ' + enQuestions[i] + '\n          ';
         else n.textContent = '\n          ' + btn._trText + '\n          ';
       });

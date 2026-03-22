@@ -1,5 +1,8 @@
 (function () {
   var T = {
+    // ── Common ──
+    home_logo:      { tr: '⌂ Anasayfa', en: '⌂ Home' },
+
     // ── Navigation ──
     nav_home:       { tr: 'Ana Sayfa',   en: 'Home' },
     nav_egitim:     { tr: 'Eğitim',      en: 'Education' },
@@ -172,7 +175,29 @@
     ui_signout:    { tr: 'Çıkış Yap', en: 'Sign Out' },
     ui_notifications: { tr: 'Bildirimler', en: 'Notifications' },
     ui_read_all:   { tr: 'Tümünü Oku', en: 'Mark all read' },
+    ui_no_notifs:  { tr: 'Bildirim yok', en: 'No notifications' },
+    ui_new_notif:  { tr: 'Yeni bildirim', en: 'New notification' },
+    ui_student:    { tr: 'Öğrenci', en: 'Student' },
     ui_booking:    { tr: '📅 Ders Paneli', en: '📅 Lesson Panel' },
+
+    // ── Welcome modal ──
+    ps_welcome_sub:   { tr: 'Platforma üye oldun. Seni neler bekliyor?', en: "You've joined the platform. What's waiting for you?" },
+    ps_edu_title:     { tr: 'Birebir Ableton Eğitimi', en: 'One-on-One Ableton Training' },
+    ps_edu_desc:      { tr: 'Berkay Er ile kişiye özel prodüksiyon dersleri — 1 saat ücretsiz deneme, 500 GB preset paketi dahil. Tercih ettiğin gün ve saati seçerek ders talebini gönder.', en: 'Personalized production lessons with Berkay Er — includes 1 hour free trial and 500 GB preset pack. Select your preferred day and time to send a lesson request.' },
+    ps_edu_link:      { tr: 'Eğitim sayfasına git →', en: 'Go to Education page →' },
+    ps_forum_desc:    { tr: 'Sorularını sor, deneyimlerini paylaş, diğer prodüktörlerle etkileşime geç.', en: 'Ask questions, share experiences, interact with other producers.' },
+    ps_lab_desc:      { tr: 'Synthesizer, Beat Maker, Mixer ve Arrangement Builder ile interaktif prodüksiyon öğren. (Ön koşul: deneme dersi al.)', en: 'Learn production interactively with Synthesizer, Beat Maker, Mixer and Arrangement Builder. (Prerequisite: take a trial lesson.)' },
+    ps_booking_title: { tr: 'Ders Paneli', en: 'Lesson Panel' },
+    ps_booking_desc:  { tr: 'Ders randevusu oluştur, takvimini görüntüle.', en: 'Create a lesson appointment, view your schedule.' },
+    ps_reviews_title: { tr: 'Yorumlar', en: 'Reviews' },
+    ps_reviews_desc:  { tr: 'Anasayfada yorum bırak, eğitim deneyimini diğer üyelerle paylaş.', en: 'Leave a review on the homepage, share your education experience with other members.' },
+    ps_members_desc:  { tr: 'Projeye açık prodüktörleri keşfet, collab bul, sosyal profillere bak.', en: 'Discover producers open to projects, find collabs, browse social profiles.' },
+    ps_profile_desc:  { tr: 'Genre etiketleri ekle, hakkında yaz, collab durumunu belirt.', en: 'Add genre tags, write about yourself, set your collab status.' },
+    ps_message_title: { tr: 'Mesajlaşma', en: 'Messaging' },
+    ps_message_desc:  { tr: 'Üyelerle birebir mesajlaş, anlık bildirim al.', en: 'Message members directly, get instant notifications.' },
+    ps_collab_title:  { tr: 'Collab İsteği', en: 'Collab Request' },
+    ps_collab_desc:   { tr: 'Projeye açık üyelere collab isteği gönder, kabul et ya da reddet.', en: 'Send collab requests to members open to projects, accept or reject.' },
+    ps_start_btn:     { tr: 'Harika, başlayalım →', en: "Awesome, let's get started →" },
 
     // ── Egitim page ──
     eg_hero_label:    { tr: '// Prodüksiyon Eğitimi',  en: '// Production Education' },
@@ -221,11 +246,15 @@
     eg_mod4_level:    { tr: 'Orta',                            en: 'Intermediate' },
     eg_mod4_t1:       { tr: 'Sample seçimi & düzenleme',       en: 'Sample selection & editing' },
     eg_mod4_t2:       { tr: 'Creative resampling teknikleri',  en: 'Creative resampling techniques' },
+    eg_mod4_t3:       { tr: 'Chop, slice & warp',              en: 'Chop, slice & warp' },
     eg_mod4_t4:       { tr: "Loop'tan sahneye taşıma",         en: 'From loop to stage' },
     eg_mod5_title:    { tr: 'Ses Tasarımı & Synthesis',        en: 'Sound Design & Synthesis' },
+    eg_mod5_level:    { tr: 'Orta',                            en: 'Intermediate' },
     eg_mod5_t1:       { tr: 'Oscillator, ADSR, Filter temelleri', en: 'Oscillator, ADSR, Filter basics' },
+    eg_mod5_t2:       { tr: 'Ableton Wavetable & Operator',    en: 'Ableton Wavetable & Operator' },
     eg_mod5_t3:       { tr: 'Serum / VST synthesizer kullanımı', en: 'Serum / VST synthesizer usage' },
     eg_mod5_t4:       { tr: 'Atmospheric pad & texture tasarımı', en: 'Atmospheric pad & texture design' },
+    eg_mod6_level:    { tr: 'Orta — İleri',                    en: 'Intermediate — Advanced' },
     eg_mod6_title:    { tr: 'Mixing & Mastering',              en: 'Mixing & Mastering' },
     eg_mod6_t1:       { tr: 'EQ, Compressor & Sidechain',      en: 'EQ, Compressor & Sidechain' },
     eg_mod6_t2:       { tr: 'Reverb / Delay space tasarımı',   en: 'Reverb / Delay space design' },
