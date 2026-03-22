@@ -9,198 +9,208 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Space+Mono&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden}
-
+html{scroll-behavior:smooth}
 body{
   background:#06000f;
   min-height:100vh;
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:center;
   position:relative;
   font-family:'Playfair Display',serif;
+  overflow-x:hidden;
+  overflow-y:auto;
+  padding:32px 0 60px;
+  cursor:default;
 }
 
 /* ── Gradient background ── */
 .bg-glow{
   position:fixed;inset:0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 60%, rgba(140,10,60,.35) 0%, transparent 70%),
+    radial-gradient(ellipse 80% 60% at 50% 55%, rgba(140,10,60,.35) 0%, transparent 70%),
     radial-gradient(ellipse 50% 50% at 20% 80%, rgba(80,0,120,.25) 0%, transparent 60%),
     radial-gradient(ellipse 50% 50% at 80% 20%, rgba(160,20,60,.2) 0%, transparent 60%);
   animation:bgBreath 5s ease-in-out infinite;
-  pointer-events:none;
+  pointer-events:none;z-index:0;
 }
 @keyframes bgBreath{0%,100%{opacity:1}50%{opacity:.65}}
 
 /* ── Stars ── */
-.stars{position:fixed;inset:0;pointer-events:none;overflow:hidden}
-.star{
-  position:absolute;
-  width:2px;height:2px;
-  background:#fff;
-  border-radius:50%;
-  animation:twinkle ease-in-out infinite;
-}
+.stars{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:1}
+.star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:twinkle ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:.1;transform:scale(1)}50%{opacity:.8;transform:scale(1.4)}}
 
-/* ── Floating hearts ── */
-.hearts{position:fixed;inset:0;pointer-events:none;overflow:hidden}
-.fheart{
-  position:absolute;
-  bottom:-60px;
-  animation:floatUp linear forwards;
-  opacity:0;
-  pointer-events:none;
-  user-select:none;
-}
+/* ── Floating hearts (ambient) ── */
+.hearts{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.fheart{position:absolute;bottom:-60px;animation:floatUp linear forwards;opacity:0;pointer-events:none;user-select:none}
 @keyframes floatUp{
   0%{transform:translateY(0) rotate(-15deg) scale(.8);opacity:0}
-  8%{opacity:1}
-  88%{opacity:.7}
+  8%{opacity:1}88%{opacity:.7}
   100%{transform:translateY(-110vh) rotate(25deg) scale(1.3);opacity:0}
+}
+
+/* ── Rose petals ── */
+.petals{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.petal{position:absolute;top:-40px;animation:petalFall linear forwards;opacity:0;font-size:1.1rem}
+@keyframes petalFall{
+  0%{opacity:0;transform:rotate(0deg) translateX(0)}
+  10%{opacity:.9}90%{opacity:.6}
+  100%{opacity:0;transform:rotate(360deg) translateX(30px) translateY(110vh)}
+}
+
+/* ── Snow ── */
+.snow-layer{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.snowflake{position:absolute;top:-20px;color:#fff;animation:snowFall linear forwards;opacity:0;pointer-events:none}
+@keyframes snowFall{
+  0%{transform:translateY(0) translateX(0) rotate(0deg);opacity:0}
+  5%{opacity:.9}
+  95%{opacity:.7}
+  100%{transform:translateY(105vh) translateX(var(--dx)) rotate(360deg);opacity:0}
+}
+
+/* ── Click hearts ── */
+.click-heart{position:fixed;pointer-events:none;z-index:200;font-size:1.4rem;animation:clickHeartAnim .9s ease-out forwards}
+@keyframes clickHeartAnim{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(.5)}
+  60%{opacity:1;transform:translate(-50%,-120px) scale(1.2)}
+  100%{opacity:0;transform:translate(-50%,-160px) scale(.8)}
+}
+
+/* ── Photo heart burst ── */
+.photo-burst{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:250;pointer-events:none;font-size:6rem;animation:burstHeart .8s ease-out forwards}
+@keyframes burstHeart{
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}
+  40%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}
+  70%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}
 }
 
 /* ── Card ── */
 .card{
-  position:relative;
-  z-index:20;
+  position:relative;z-index:20;
   text-align:center;
-  padding:44px 36px 40px;
-  max-width:440px;
-  width:92vw;
+  padding:40px 36px 36px;
+  max-width:460px;width:93vw;
   animation:cardIn .9s cubic-bezier(.22,1,.36,1) both;
 }
 @keyframes cardIn{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:none}}
 
 /* ── Photo ring ── */
-.photo-wrap{
-  width:170px;height:170px;
-  margin:0 auto 36px;
-  position:relative;
-}
+.photo-wrap{width:170px;height:170px;margin:0 auto 28px;position:relative;cursor:pointer}
 .ring-spin{
-  position:absolute;inset:-8px;
-  border-radius:50%;
-  background:conic-gradient(
-    #e8527a 0deg,
-    #ffb3c6 60deg,
-    #c91a5c 120deg,
-    #ff6b9d 180deg,
-    #e8527a 240deg,
-    #b5006e 300deg,
-    #e8527a 360deg
-  );
+  position:absolute;inset:-8px;border-radius:50%;
+  background:conic-gradient(#e8527a 0deg,#ffb3c6 60deg,#c91a5c 120deg,#ff6b9d 180deg,#e8527a 240deg,#b5006e 300deg,#e8527a 360deg);
   animation:spinRing 3s linear infinite;
 }
 @keyframes spinRing{to{transform:rotate(360deg)}}
-.ring-mask{
-  position:absolute;inset:-4px;
-  border-radius:50%;
-  background:#06000f;
-}
+.ring-mask{position:absolute;inset:-4px;border-radius:50%;background:#06000f}
 .photo-circle{
-  position:absolute;inset:0;
-  border-radius:50%;
-  overflow:hidden;
+  position:absolute;inset:0;border-radius:50%;overflow:hidden;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(232,82,122,.12);
-  font-size:3.8rem;
-  animation:heartbeat 2s ease-in-out infinite;
-  z-index:2;
+  background:rgba(232,82,122,.12);font-size:3.8rem;
+  animation:heartbeat 2s ease-in-out infinite;z-index:2;
 }
 .photo-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 @keyframes heartbeat{
-  0%,100%{transform:scale(1)}
-  15%{transform:scale(1.06)}
-  30%{transform:scale(1)}
-  45%{transform:scale(1.04)}
-  60%{transform:scale(1)}
+  0%,100%{transform:scale(1)}15%{transform:scale(1.06)}
+  30%{transform:scale(1)}45%{transform:scale(1.04)}60%{transform:scale(1)}
 }
 
-/* ── Text ── */
+/* ── Name ── */
 .love-sub-name{
-  font-family:'Space Mono',monospace;
-  font-size:.65rem;
-  letter-spacing:.25em;
-  text-transform:uppercase;
-  color:rgba(232,82,122,.55);
-  margin-bottom:10px;
+  font-family:'Space Mono',monospace;font-size:.65rem;letter-spacing:.25em;
+  text-transform:uppercase;color:rgba(232,82,122,.55);margin-bottom:10px;
   animation:fadeUp .7s .4s ease both;
 }
+
+/* ── Title ── */
 .love-title{
-  font-size:2.4rem;
-  font-weight:700;
-  line-height:1.15;
-  color:#fff;
-  margin-bottom:14px;
-  animation:fadeUp .7s .55s ease both;
+  font-size:2.4rem;font-weight:700;line-height:1.15;color:#fff;
+  margin-bottom:10px;animation:fadeUp .7s .55s ease both;
 }
-.love-title .accent{
-  color:#e8527a;
-  font-style:italic;
-  display:inline-block;
-  animation:pulse 2s ease-in-out infinite;
-}
+.love-title .accent{color:#e8527a;font-style:italic;display:inline-block;animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
-.love-body{
-  font-style:italic;
-  font-size:1.05rem;
-  color:rgba(255,210,220,.65);
-  line-height:1.85;
-  margin-bottom:28px;
-  animation:fadeUp .7s .75s ease both;
+
+/* ── First met ── */
+.first-met{
+  font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.14em;
+  color:rgba(232,82,122,.4);margin-bottom:18px;
+  animation:fadeUp .7s .65s ease both;
 }
+.first-met span{color:rgba(232,82,122,.7)}
+
+/* ── Counter ── */
+.counter{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  margin-bottom:28px;animation:fadeUp .7s .8s ease both;
+  flex-wrap:wrap;
+}
+.counter-block{
+  background:rgba(232,82,122,.07);border:1px solid rgba(232,82,122,.18);
+  border-radius:10px;padding:8px 14px;min-width:54px;
+}
+.counter-num{
+  font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;
+  color:#e8527a;display:block;line-height:1;
+}
+.counter-lbl{
+  font-family:'Space Mono',monospace;font-size:.45rem;letter-spacing:.12em;
+  text-transform:uppercase;color:rgba(232,82,122,.45);display:block;margin-top:3px;
+}
+.counter-sep{color:rgba(232,82,122,.25);font-size:1.2rem;font-family:'Playfair Display',serif;padding-bottom:14px}
+
+/* ── Poem ── */
+.love-body{
+  font-style:italic;font-size:1.02rem;color:rgba(255,210,220,.65);
+  line-height:1.9;margin-bottom:28px;min-height:12em;
+  animation:fadeUp .7s .9s ease both;
+}
+.love-body .typed-line{display:block}
+
+/* ── Forever ── */
 .love-forever{
-  font-family:'Space Mono',monospace;
-  font-size:.6rem;
-  letter-spacing:.18em;
-  color:rgba(232,82,122,.45);
-  text-transform:uppercase;
-  border:1px solid rgba(232,82,122,.2);
-  display:inline-block;
-  padding:7px 22px;
-  border-radius:20px;
-  background:rgba(232,82,122,.04);
+  font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.18em;
+  color:rgba(232,82,122,.45);text-transform:uppercase;
+  border:1px solid rgba(232,82,122,.2);display:inline-block;
+  padding:7px 22px;border-radius:20px;background:rgba(232,82,122,.04);
   animation:fadeUp .7s 1s ease both;
 }
 
-@keyframes fadeUp{
-  from{opacity:0;transform:translateY(16px)}
-  to{opacity:1;transform:none}
-}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 
 /* ── Back ── */
 .back-link{
-  position:fixed;top:16px;left:16px;
-  z-index:100;
-  font-family:'Space Mono',monospace;
-  font-size:.58rem;
-  letter-spacing:.08em;
-  color:rgba(255,255,255,.25);
-  text-decoration:none;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
-  padding:6px 12px;
-  border-radius:5px;
-  transition:all .2s;
+  position:fixed;top:16px;left:16px;z-index:100;
+  font-family:'Space Mono',monospace;font-size:.58rem;letter-spacing:.08em;
+  color:rgba(255,255,255,.25);text-decoration:none;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  padding:6px 12px;border-radius:5px;transition:all .2s;
 }
 .back-link:hover{color:rgba(255,255,255,.7);border-color:rgba(255,255,255,.2)}
 
-/* ── Petal petals ── */
-.petals{position:fixed;inset:0;pointer-events:none;overflow:hidden}
-.petal{
-  position:absolute;top:-40px;
-  animation:petalFall linear forwards;
-  opacity:0;
-  font-size:1.1rem;
+/* ── Music / Snow button ── */
+.music-btn{
+  position:fixed;bottom:24px;right:24px;z-index:100;
+  width:52px;height:52px;border-radius:50%;
+  background:rgba(232,82,122,.12);border:1px solid rgba(232,82,122,.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;cursor:pointer;transition:all .25s;
+  backdrop-filter:blur(8px);
 }
-@keyframes petalFall{
-  0%{opacity:0;transform:rotate(0deg) translateX(0)}
-  10%{opacity:.9}
-  90%{opacity:.6}
-  100%{opacity:0;transform:rotate(360deg) translateX(30px) translateY(110vh)}
+.music-btn:hover{background:rgba(232,82,122,.22);transform:scale(1.08)}
+.music-btn.playing{background:rgba(232,82,122,.25);border-color:rgba(232,82,122,.7);animation:musicPulse 1.5s ease-in-out infinite}
+@keyframes musicPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,82,122,.4)}50%{box-shadow:0 0 0 12px rgba(232,82,122,0)}}
+
+/* ── YouTube mini player ── */
+.yt-player{
+  position:fixed;bottom:90px;right:24px;z-index:101;
+  width:240px;border-radius:12px;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.7);
+  display:none;
 }
+.yt-player.open{display:block}
+.yt-player iframe{display:block;width:100%;height:135px;border:0}
 </style>
 </head>
 <body>
@@ -209,27 +219,48 @@ body{
 <div class="stars" id="starsEl"></div>
 <div class="hearts" id="heartsEl"></div>
 <div class="petals" id="petalsEl"></div>
+<div class="snow-layer" id="snowEl"></div>
 
 <a href="/" class="back-link">← Geri</a>
 
+<!-- Music button -->
+<button class="music-btn" id="musicBtn" title="Müzik & Kar">❄️</button>
+
+<!-- YouTube mini player  ⬇ video ID buraya -->
+<div class="yt-player" id="ytPlayer">
+  <iframe id="ytFrame" allow="autoplay" allowfullscreen></iframe>
+</div>
+
 <div class="card">
-  <div class="photo-wrap">
+  <div class="photo-wrap" id="photoWrap">
     <div class="ring-spin"></div>
     <div class="ring-mask"></div>
-    <div class="photo-circle" id="photoCircle"><img src="eeee.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>
+    <div class="photo-circle" id="photoCircle">
+      <img src="eeee.png" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">
+    </div>
   </div>
+
   <div class="love-sub-name" id="loveName">Elif...</div>
   <div class="love-title">Seni çok <span class="accent">seviyorum</span></div>
-  <div class="love-body">
-    Seni çok özledim...<br>
-    Her an, her yerde aklındasın.<br>
-    Seninle geçen her saniye bir hazine gibiydi.<br><br>
-    Göz yaşlarıma bir ateş gibi düşsen de<br>
-    söndürsen hüznümü —<br>
-    sensiz nefesim eksik.<br><br>
-    Yaşamak, yaşamak...<br>
-    bu kelime eksiliyor hayatımdan.
+
+  <div class="first-met">
+    İlk tanıştığım an — <span>7 Kasım 2020, 11:30</span>
   </div>
+
+  <div class="counter">
+    <div class="counter-block"><span class="counter-num" id="cYears">0</span><span class="counter-lbl">yıl</span></div>
+    <div class="counter-sep">·</div>
+    <div class="counter-block"><span class="counter-num" id="cDays">0</span><span class="counter-lbl">gün</span></div>
+    <div class="counter-sep">·</div>
+    <div class="counter-block"><span class="counter-num" id="cHours">00</span><span class="counter-lbl">saat</span></div>
+    <div class="counter-sep">·</div>
+    <div class="counter-block"><span class="counter-num" id="cMins">00</span><span class="counter-lbl">dakika</span></div>
+    <div class="counter-sep">·</div>
+    <div class="counter-block"><span class="counter-num" id="cSecs">00</span><span class="counter-lbl">saniye</span></div>
+  </div>
+
+  <div class="love-body" id="loveBody"></div>
+
   <div class="love-forever">∞ &nbsp; Sonsuza kadar seveceğim seni &nbsp; ∞</div>
 </div>
 
@@ -239,6 +270,8 @@ body{
 <script>
 const LOVE_EMAIL  = 'elifaras12@gmail.com';
 const ADMIN_EMAIL = 'berkayer032@gmail.com';
+// ⬇ Teoman - Bir Kar Tanesi Ol YouTube video ID — buraya yapıştır
+const YT_VIDEO_ID = 'PtsMi4dtl1o';
 
 firebase.initializeApp({
   apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
@@ -249,65 +282,185 @@ firebase.initializeApp({
   appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
 });
 
-const auth = firebase.auth();
-
-auth.onAuthStateChanged(user => {
+firebase.auth().onAuthStateChanged(user => {
   if (!user || (user.email !== LOVE_EMAIL && user.email !== ADMIN_EMAIL)) {
-    location.replace('/');
-    return;
+    location.replace('/'); return;
   }
-
-  // Name — only update if it's the dedicated user
   if (user.email === LOVE_EMAIL) {
-    const firstName = user.displayName?.trim().split(' ')[0] || '';
-    if (firstName) {
-      document.getElementById('loveName').textContent = firstName + '...';
-    }
+    const n = user.displayName?.trim().split(' ')[0] || '';
+    if (n) document.getElementById('loveName').textContent = n + '...';
   }
 });
 
+// ── Love counter (7 Kasım 2020) ──
+const START = new Date(2020, 10, 7, 11, 30, 0); // month is 0-indexed
+function updateCounter() {
+  const now  = new Date();
+  const diff = now - START;
+  const totalSecs = Math.floor(diff / 1000);
+  const secs  = totalSecs % 60;
+  const mins  = Math.floor(totalSecs / 60) % 60;
+  const hours = Math.floor(totalSecs / 3600) % 24;
+  const totalDays = Math.floor(totalSecs / 86400);
+  const years = Math.floor(totalDays / 365);
+  const days  = totalDays % 365;
+  document.getElementById('cYears').textContent = years;
+  document.getElementById('cDays').textContent  = days;
+  document.getElementById('cHours').textContent = String(hours).padStart(2,'0');
+  document.getElementById('cMins').textContent  = String(mins).padStart(2,'0');
+  document.getElementById('cSecs').textContent  = String(secs).padStart(2,'0');
+}
+updateCounter();
+setInterval(updateCounter, 1000);
+
+// ── Typewriter poem ──
+const POEM_LINES = [
+  'Seni çok özledim...',
+  'Her an, her yerde aklındasın.',
+  'Seninle geçen her saniye bir hazine gibiydi.',
+  '',
+  'Göz yaşlarıma bir ateş gibi düşsen de',
+  'söndürsen hüznümü —',
+  'sensiz nefesim eksik.',
+  '',
+  'Yaşamak, yaşamak...',
+  'bu kelime eksiliyor hayatımdan.'
+];
+(function typePoem() {
+  const el = document.getElementById('loveBody');
+  el.innerHTML = '';
+  let li = 0, ci = 0;
+  const lines = POEM_LINES;
+  function addChar() {
+    if (li >= lines.length) return;
+    const line = lines[li];
+    if (!el.children[li]) {
+      const span = document.createElement('span');
+      span.className = 'typed-line';
+      if (line === '') span.innerHTML = '<br>';
+      el.appendChild(span);
+    }
+    if (line === '') { li++; ci=0; setTimeout(addChar, 80); return; }
+    el.children[li].textContent = (el.children[li].textContent || '') + line[ci];
+    ci++;
+    if (ci >= line.length) { li++; ci=0; setTimeout(addChar, 250); }
+    else { setTimeout(addChar, 45 + Math.random()*30); }
+  }
+  setTimeout(typePoem, 1800);
+  function typePoem() { li=0; ci=0; el.innerHTML=''; addChar(); }
+})();
+
 // ── Stars ──
-(function() {
+(function(){
   const el = document.getElementById('starsEl');
-  for (let i = 0; i < 80; i++) {
-    const s = document.createElement('div');
-    s.className = 'star';
-    s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*4}s`;
+  for(let i=0;i<80;i++){
+    const s=document.createElement('div'); s.className='star';
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;animation-duration:${2+Math.random()*3}s;animation-delay:${Math.random()*4}s`;
     el.appendChild(s);
   }
 })();
 
-// ── Floating hearts ──
-(function() {
-  const el = document.getElementById('heartsEl');
-  const items = ['❤️','💕','💖','💗','💝','🌹','✨','💫','🌸','💞','🫶','💘'];
-  function makeHeart() {
-    const h = document.createElement('div');
-    h.className = 'fheart';
-    h.textContent = items[Math.floor(Math.random() * items.length)];
-    h.style.cssText = `left:${Math.random()*100}%;font-size:${.7+Math.random()*1.8}rem;animation-duration:${5+Math.random()*7}s;animation-delay:${Math.random()*1.5}s`;
-    el.appendChild(h);
-    setTimeout(() => h.remove(), 13000);
+// ── Ambient floating hearts ──
+(function(){
+  const el=document.getElementById('heartsEl');
+  const items=['❤️','💕','💖','💗','💝','🌹','✨','💫','🌸','💞','🫶','💘'];
+  function makeHeart(){
+    const h=document.createElement('div'); h.className='fheart';
+    h.textContent=items[Math.floor(Math.random()*items.length)];
+    h.style.cssText=`left:${Math.random()*100}%;font-size:${.7+Math.random()*1.8}rem;animation-duration:${5+Math.random()*7}s;animation-delay:${Math.random()*1.5}s`;
+    el.appendChild(h); setTimeout(()=>h.remove(),13000);
   }
-  for (let i = 0; i < 18; i++) setTimeout(makeHeart, i * 200);
-  setInterval(makeHeart, 450);
+  for(let i=0;i<18;i++) setTimeout(makeHeart,i*200);
+  setInterval(makeHeart,450);
 })();
 
 // ── Rose petals ──
-(function() {
-  const el = document.getElementById('petalsEl');
-  const items = ['🌸','🌺','🌷'];
-  function makePetal() {
-    const p = document.createElement('div');
-    p.className = 'petal';
-    p.textContent = items[Math.floor(Math.random() * items.length)];
-    p.style.cssText = `left:${Math.random()*100}%;font-size:${.6+Math.random()*.9}rem;animation-duration:${7+Math.random()*6}s;animation-delay:${Math.random()}s`;
-    el.appendChild(p);
-    setTimeout(() => p.remove(), 14000);
+(function(){
+  const el=document.getElementById('petalsEl');
+  const items=['🌸','🌺','🌷'];
+  function makePetal(){
+    const p=document.createElement('div'); p.className='petal';
+    p.textContent=items[Math.floor(Math.random()*items.length)];
+    p.style.cssText=`left:${Math.random()*100}%;font-size:${.6+Math.random()*.9}rem;animation-duration:${7+Math.random()*6}s;animation-delay:${Math.random()}s`;
+    el.appendChild(p); setTimeout(()=>p.remove(),14000);
   }
-  for (let i = 0; i < 8; i++) setTimeout(makePetal, i * 500);
-  setInterval(makePetal, 800);
+  for(let i=0;i<8;i++) setTimeout(makePetal,i*500);
+  setInterval(makePetal,800);
 })();
+
+// ── 2. Click anywhere → heart at cursor ──
+document.addEventListener('click', function(e) {
+  if (e.target.closest('#photoWrap') || e.target.closest('#musicBtn') || e.target.closest('.back-link') || e.target.closest('.yt-player')) return;
+  const h = document.createElement('div');
+  h.className = 'click-heart';
+  h.textContent = ['❤️','💖','💗','💕'][Math.floor(Math.random()*4)];
+  h.style.left = e.clientX + 'px';
+  h.style.top  = e.clientY + 'px';
+  document.body.appendChild(h);
+  setTimeout(() => h.remove(), 950);
+});
+
+// ── 4. Photo click → big heart burst ──
+document.getElementById('photoWrap').addEventListener('click', function() {
+  const b = document.createElement('div');
+  b.className = 'photo-burst';
+  b.textContent = '❤️';
+  document.body.appendChild(b);
+  setTimeout(() => b.remove(), 850);
+  // Also spray hearts around
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => {
+      const rect = this.getBoundingClientRect();
+      const cx = rect.left + rect.width/2;
+      const cy = rect.top + rect.height/2;
+      const h = document.createElement('div');
+      h.className = 'click-heart';
+      h.textContent = ['❤️','💖','💗'][Math.floor(Math.random()*3)];
+      h.style.left = (cx + (Math.random()-0.5)*120) + 'px';
+      h.style.top  = cy + 'px';
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 950);
+    }, i * 80);
+  }
+});
+
+// ── 5. Music button → snow + YouTube ──
+let snowActive = false, snowInterval = null;
+const snowEl   = document.getElementById('snowEl');
+const musicBtn = document.getElementById('musicBtn');
+const ytPlayer = document.getElementById('ytPlayer');
+const ytFrame  = document.getElementById('ytFrame');
+
+function makeSnow() {
+  const s = document.createElement('div');
+  s.className = 'snowflake';
+  s.textContent = ['❄️','❅','❆','·','•'][Math.floor(Math.random()*5)];
+  const dx = (Math.random()-0.5)*120;
+  s.style.cssText = `left:${Math.random()*100}%;font-size:${.6+Math.random()*1.2}rem;animation-duration:${4+Math.random()*5}s;--dx:${dx}px`;
+  snowEl.appendChild(s);
+  setTimeout(() => s.remove(), 10000);
+}
+
+musicBtn.addEventListener('click', function() {
+  snowActive = !snowActive;
+  musicBtn.classList.toggle('playing', snowActive);
+  musicBtn.textContent = snowActive ? '🎵' : '❄️';
+
+  if (snowActive) {
+    for(let i=0;i<20;i++) setTimeout(makeSnow, i*100);
+    snowInterval = setInterval(makeSnow, 250);
+    // Load YouTube if ID is set
+    if (YT_VIDEO_ID) {
+      ytFrame.src = `https://www.youtube.com/embed/${YT_VIDEO_ID}?autoplay=1`;
+      ytPlayer.classList.add('open');
+    }
+  } else {
+    clearInterval(snowInterval);
+    snowEl.innerHTML = '';
+    ytPlayer.classList.remove('open');
+    ytFrame.src = '';
+  }
+});
 </script>
 </body>
 </html>
