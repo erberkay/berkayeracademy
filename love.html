@@ -209,8 +209,8 @@ body{
 .cloud{position:absolute;pointer-events:none;animation:driftCloud linear infinite}
 @keyframes driftCloud{0%{transform:translateX(-260px)}100%{transform:translateX(calc(100vw + 260px))}}
 
-/* ── 8-bit scene bottom-left ── */
-#bitScene{position:fixed;bottom:0;left:0;pointer-events:none;z-index:4;image-rendering:pixelated;image-rendering:crisp-edges}
+/* ── 3D scene bottom-left ── */
+#bitScene{position:fixed;bottom:0;left:0;pointer-events:none;z-index:4;}
 </style>
 </head>
 <body>
@@ -264,6 +264,9 @@ body{
 
   <div class="love-forever">∞ &nbsp; Sonsuza kadar seveceğim seni &nbsp; ∞</div>
 </div>
+
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -459,162 +462,405 @@ function makeSnow() {
   mkCloud(28,  80,  65, -12);
 })();
 
-// ── 8-bit animated scene: sad child walks under dark clouds ──
+// ── 3D animated sad character scene (Three.js) ──
 (function(){
-  const canvas = document.getElementById('bitScene');
-  const P = 5;
-  const VW = 74, VH = 28;
-  canvas.width  = VW * P;
-  canvas.height = VH * P;
-  const ctx = canvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
+  const T = window.THREE;
+  if (!T) return;
 
-  function dot(x, y, col) {
-    if (x < 0 || y < 0 || x >= VW || y >= VH) return;
-    ctx.fillStyle = col; ctx.fillRect(x*P, y*P, P, P);
-  }
+  // Remove old canvas, Three.js creates its own
+  const old = document.getElementById('bitScene');
+  if (old) old.remove();
 
-  const WD='#5c3b2a', DK='#3a2418';
-  const SN='#ddf2fc', SG='#b4d6ec';
-  const SK='#f0c4a0', HA='#7a4828';
-  const EY='#4e92cc', TE='#b8e4f8';
-  const MO='#b85a48';
-  const SH='#3d5068', PA='#2a3a50', HD='#2c3c50';
-  function drawGround() {
-    for (let x = 0; x < VW; x++) {
-      dot(x, 22, SN);
-      dot(x,23,SG); dot(x,24,SG); dot(x,25,SG); dot(x,26,SG); dot(x,27,SG);
-    }
-  }
+  const W = 430, H = 200;
+  const renderer = new T.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(W, H);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = T.PCFSoftShadowMap;
+  renderer.domElement.id = 'bitScene';
+  document.body.appendChild(renderer.domElement);
 
-  function drawTree() {
-    for (let y = 5; y <= 21; y++) { dot(15,y,DK); dot(16,y,WD); }
-    for (let y = 1; y <= 4;  y++) { dot(15,y,DK); dot(16,y,WD); }
-    for (let i = 0; i <= 9; i++) dot(14-i, 8+(i>5?1:0)+(i>8?1:0), WD);
-    dot(5,10,SN); dot(6,9,SN);
-    for (let i = 0; i <= 8; i++) dot(17+i, 6+(i>4?1:0)+(i>7?1:0), WD);
-    dot(24,8,SN); dot(25,7,SN);
-    for (let i = 0; i <= 7; i++) dot(14-i, 5+(i>4?1:0), WD);
-    dot(7,5,SN); dot(8,4,SN);
-    for (let i = 0; i <= 6; i++) dot(17+i, 3+(i>3?1:0), WD);
-    dot(22,3,SN); dot(23,2,SN);
-    dot(14,1,WD); dot(15,1,WD);
-    for (let x = 12; x <= 20; x++) dot(x, 21, SN);
-  }
+  const scene = new T.Scene();
+  const camera = new T.PerspectiveCamera(38, W / H, 0.1, 50);
+  camera.position.set(0, 2.8, 11);
+  camera.lookAt(new T.Vector3(0, 1.3, 0));
 
-  // One professional dark rain cloud
-  // Pixel art: 24 wide × 8 tall, oy = just above tree canopy
-  const CLOUD_OY = 2;  // cloud top row — slightly above tree-top level
-  const CLOUD_ROWS = [
-    '....LLL.....LLL....LLL..',  // bump tips
-    '...LLlll..lLLLLl..LLLll.',  // bumps wider (25→trim: 24)
-    '..llllllllllllllllllll..',  // merge to upper body
-    '.MMMMMMMMMMMMMMMMMMMMMM.',  // body upper
-    'MMMDDDDDDDDDDDDDDDDDDDDM',  // body mid
-    'DDDDDDDDDDDDDDDDDDDDDDD.',  // body lower
-    'DDDDDDDDDDDDDDDDDDDDDDD.',  // body lower 2
-    '.BBBBBBBBBBBBBBBBBBBBB..',  // flat dark base — rain source
-  ];
-  const CLOUD_PAL = { L:'#50537a', l:'#3c3f62', M:'#272a44', D:'#191b2e', B:'#0c0d1a', '.':null };
+  // Lights
+  scene.add(new T.AmbientLight(0x1a2244, 2.2));
+  const moon = new T.DirectionalLight(0x556688, 1.4);
+  moon.position.set(-4, 9, 4);
+  moon.castShadow = true;
+  moon.shadow.mapSize.set(1024, 1024);
+  moon.shadow.camera.left  = -10; moon.shadow.camera.right = 10;
+  moon.shadow.camera.top   =   8; moon.shadow.camera.bottom = -2;
+  scene.add(moon);
+  const fill = new T.PointLight(0x3355aa, 0.45, 18);
+  fill.position.set(3, 4, 5);
+  scene.add(fill);
 
-  function drawStormCloud(cx, t) {
-    const ox = Math.round(cx - 11 + Math.sin(t * 0.018) * 2.5);
-    CLOUD_ROWS.forEach((row, y) => {
-      [...row].forEach((c, x) => {
-        if (CLOUD_PAL[c]) dot(ox + x, CLOUD_OY + y, CLOUD_PAL[c]);
+  // Ground — snowy
+  const gnd = new T.Mesh(
+    new T.PlaneGeometry(24, 7),
+    new T.MeshLambertMaterial({ color: 0xcce8f2 })
+  );
+  gnd.rotation.x = -Math.PI / 2;
+  gnd.receiveShadow = true;
+  scene.add(gnd);
+  const gnd2 = new T.Mesh(
+    new T.PlaneGeometry(24, 6.5),
+    new T.MeshLambertMaterial({ color: 0xb4d6ec, transparent: true, opacity: 0.35 })
+  );
+  gnd2.rotation.x = -Math.PI / 2; gnd2.position.set(0, 0.001, 0.3);
+  scene.add(gnd2);
+
+  // Bare winter trees
+  (function() {
+    const tM = new T.MeshLambertMaterial({ color: 0x3a2418 });
+    [-6, 6].forEach(function(tx) {
+      const tg = new T.Group();
+      const tk = new T.Mesh(new T.BoxGeometry(0.22, 3.2, 0.22), tM);
+      tk.position.y = 1.6; tk.castShadow = true; tg.add(tk);
+      [
+        { y: 2.6, ax: -0.7, bx: 0.7 },
+        { y: 2.0, ax: -0.55, bx: 0.5 },
+        { y: 1.5, ax: -0.45, bx: 0.4 },
+      ].forEach(function(b) {
+        const bL = new T.Mesh(new T.BoxGeometry(0.65, 0.08, 0.08), tM);
+        bL.position.set(-0.45, b.y, 0); bL.rotation.z = b.ax; tg.add(bL);
+        const bR = new T.Mesh(new T.BoxGeometry(0.65, 0.08, 0.08), tM);
+        bR.position.set(0.45, b.y, 0); bR.rotation.z = b.bx; tg.add(bR);
       });
+      tg.position.set(tx, 0, -1.5);
+      scene.add(tg);
     });
+  })();
+
+  // Storm cloud — dark layered boxes
+  const cloudG = new T.Group();
+  var cMats = [
+    new T.MeshLambertMaterial({ color: 0x12142a }),
+    new T.MeshLambertMaterial({ color: 0x1c1e38 }),
+    new T.MeshLambertMaterial({ color: 0x272a44 }),
+    new T.MeshLambertMaterial({ color: 0x353860 }),
+  ];
+  [
+    [4.8, 0.8, 1.5,  0,     0,    0, 0],
+    [2.6, 1.1, 1.2, -1.0,  0.45,  0, 1],
+    [2.0, 0.9, 1.0,  1.0,  0.40,  0, 1],
+    [1.4, 0.75, 0.9, -0.3, 0.90,  0, 2],
+    [1.1, 0.65, 0.8,  0.7, 0.75,  0, 2],
+    [0.8, 0.5,  0.7,  0.1, 1.15,  0, 3],
+  ].forEach(function(d) {
+    var m = new T.Mesh(new T.BoxGeometry(d[0], d[1], d[2]), cMats[d[6]]);
+    m.position.set(d[3], d[4], d[5]);
+    cloudG.add(m);
+  });
+  // 4cm (~half a unit) above character head — character head peaks at ~y=2.8
+  cloudG.position.set(0, 4.4, 0);
+  scene.add(cloudG);
+
+  // Rain
+  const RC = 280;
+  const rP = new Float32Array(RC * 3);
+  for (var i = 0; i < RC; i++) {
+    rP[i*3]   = (Math.random() - 0.5) * 10;
+    rP[i*3+1] = Math.random() * 5.5;
+    rP[i*3+2] = (Math.random() - 0.5) * 4;
+  }
+  const rGeo = new T.BufferGeometry();
+  rGeo.setAttribute('position', new T.BufferAttribute(rP, 3));
+  const rainMesh = new T.Points(rGeo,
+    new T.PointsMaterial({ color: 0x8cc3e6, size: 0.055, transparent: true, opacity: 0.48 })
+  );
+  scene.add(rainMesh);
+
+  // ─── Character ───────────────────────────────────────────────────────
+  const COLS = {
+    SK: 0xf0c4a0,  // skin
+    HA: 0x2a1608,  // dark brown hair
+    HO: 0x3d5068,  // hoodie
+    HP: 0x2c3c50,  // hoodie pocket
+    PA: 0x2a3a50,  // pants
+    EY: 0x2d5a9e,  // blue eyes
+    MO: 0xb05040,  // mouth
+    NS: 0xdba070,  // nose
+    ST: 0xc08060,  // stubble
+    GL: 0xf0f0ff,  // eye glint
+    EB: 0x6a3818,  // eyebrow
+    BT: 0x0f0f1a,  // boots
+    CG: 0xf0e8d0,  // cigarette white
+    CF: 0xe8907a,  // cigarette filter
+    EC: 0xff4a00,  // ember
+  };
+
+  // Direction group (Y rotation = facing direction)
+  const cDir = new T.Group();
+  scene.add(cDir);
+  // Body group (X rotation = fall forward)
+  const cg = new T.Group();
+  cDir.add(cg);
+
+  function bx(w, h, d, col, px, py, pz, par) {
+    px = px || 0; py = py || 0; pz = pz || 0; par = par || cg;
+    var m = new T.Mesh(
+      new T.BoxGeometry(w, h, d),
+      new T.MeshLambertMaterial({ color: col })
+    );
+    m.position.set(px, py, pz);
+    m.castShadow = true;
+    par.add(m);
+    return m;
   }
 
-  function drawRain(cx, t) {
-    const CLOUD_BOT = CLOUD_OY + CLOUD_ROWS.length;
-    const GROUND = 22, SPREAD = 20;
-    ctx.fillStyle = 'rgba(140,195,230,0.18)';
-    for (let i = 0; i < 13; i++) {
-      const ry = CLOUD_BOT + ((t * 0.55 + i * 1.7) % (GROUND - CLOUD_BOT));
-      const rx = Math.round(cx - SPREAD / 2 + i * (SPREAD / 12));
-      if (rx < 1 || rx >= VW - 1) continue;
-      ctx.fillRect(rx * P, Math.floor(ry) * P, Math.max(1, P - 2), P * 2);
+  // Body (hoodie)
+  bx(0.76, 0.98, 0.50, COLS.HO,  0,    1.49,  0);
+  bx(0.40, 0.22, 0.06, COLS.HP,  0,    1.28,  0.27);  // pocket
+  bx(0.07, 0.24, 0.06, COLS.HP, -0.1,  1.57,  0.27);  // drawstring L
+  bx(0.07, 0.24, 0.06, COLS.HP,  0.1,  1.57,  0.27);  // drawstring R
+
+  // Head group (neck pivot for sad droop)
+  var hg = new T.Group();
+  hg.position.set(0, 2.1, 0);
+  cg.add(hg);
+
+  bx(0.65, 0.66, 0.63, COLS.SK,  0,     0.33,  0,    hg);  // head
+  bx(0.70, 0.24, 0.68, COLS.HA,  0,     0.69,  0,    hg);  // hair top
+  bx(0.13, 0.44, 0.65, COLS.HA, -0.37,  0.51,  0,    hg);  // hair side L
+  bx(0.13, 0.44, 0.65, COLS.HA,  0.37,  0.51,  0,    hg);  // hair side R
+  bx(0.68, 0.24, 0.13, COLS.HA,  0,     0.52, -0.31, hg);  // hair back
+  bx(0.65, 0.10, 0.05, COLS.EB,  0,     0.50,  0.33, hg);  // brow bar
+  bx(0.12, 0.10, 0.07, COLS.EY, -0.155, 0.415, 0.33, hg);  // eye L
+  bx(0.12, 0.10, 0.07, COLS.EY,  0.155, 0.415, 0.33, hg);  // eye R
+  bx(0.04, 0.04, 0.04, COLS.GL, -0.135, 0.430, 0.35, hg);  // glint L
+  bx(0.04, 0.04, 0.04, COLS.GL,  0.175, 0.430, 0.35, hg);  // glint R
+  bx(0.09, 0.11, 0.11, COLS.NS,  0,     0.31,  0.34, hg);  // nose
+  bx(0.13, 0.055, 0.04, COLS.MO, -0.08, 0.21,  0.33, hg);  // mouth L (frown)
+  bx(0.13, 0.055, 0.04, COLS.MO,  0.08, 0.195, 0.33, hg);  // mouth R (lower)
+  bx(0.44, 0.15, 0.05, COLS.ST,  0,     0.12,  0.33, hg);  // stubble
+  bx(0.08, 0.20, 0.15, COLS.SK, -0.36,  0.39,  0,    hg);  // ear L
+  bx(0.08, 0.20, 0.15, COLS.SK,  0.36,  0.39,  0,    hg);  // ear R
+
+  // Left arm (upper — pivot at shoulder)
+  var alg = new T.Group(); alg.position.set(-0.46, 1.93, 0); cg.add(alg);
+  bx(0.23, 0.72, 0.24, COLS.HO, 0, -0.34, 0, alg);
+  var al2 = new T.Group(); al2.position.set(0, -0.70, 0); alg.add(al2);
+  bx(0.22, 0.56, 0.22, COLS.HO, 0, -0.27, 0, al2);
+  bx(0.23, 0.23, 0.24, COLS.SK, 0, -0.58, 0, al2);  // left hand
+
+  // Right arm (upper — pivot at shoulder)
+  var arg = new T.Group(); arg.position.set(0.46, 1.93, 0); cg.add(arg);
+  bx(0.23, 0.72, 0.24, COLS.HO, 0, -0.34, 0, arg);
+  var ar2 = new T.Group(); ar2.position.set(0, -0.70, 0); arg.add(ar2);
+  bx(0.22, 0.56, 0.22, COLS.HO, 0, -0.27, 0, ar2);
+  var rHand = bx(0.23, 0.23, 0.24, COLS.SK, 0, -0.58, 0, ar2);  // right hand
+
+  // Cigarette (attached to right hand)
+  var cigG = new T.Group();
+  cigG.position.set(0.12, -0.1, 0.13);
+  rHand.add(cigG);
+  var cigBody = new T.Mesh(
+    new T.CylinderGeometry(0.018, 0.018, 0.30, 7),
+    new T.MeshLambertMaterial({ color: COLS.CG })
+  );
+  cigBody.rotation.z = Math.PI / 2; cigG.add(cigBody);
+  var cigFilt = new T.Mesh(
+    new T.CylinderGeometry(0.021, 0.021, 0.08, 7),
+    new T.MeshLambertMaterial({ color: COLS.CF })
+  );
+  cigFilt.position.x = -0.19; cigFilt.rotation.z = Math.PI / 2; cigG.add(cigFilt);
+  var ember = new T.Mesh(
+    new T.SphereGeometry(0.022, 6, 6),
+    new T.MeshLambertMaterial({ color: COLS.EC, emissive: 0xff2200, emissiveIntensity: 1.0 })
+  );
+  ember.position.x = 0.16; cigG.add(ember);
+  var emberLight = new T.PointLight(0xff4400, 0.3, 1.5);
+  emberLight.position.x = 0.16; cigG.add(emberLight);
+
+  // Pants + boots
+  var llg = new T.Group(); llg.position.set(-0.20, 0.98, 0); cg.add(llg);
+  bx(0.31, 0.72, 0.31, COLS.PA, 0, -0.36, 0, llg);
+  bx(0.33, 0.20, 0.45, COLS.BT, 0, -0.76, 0.07, llg);
+
+  var lrg = new T.Group(); lrg.position.set(0.20, 0.98, 0); cg.add(lrg);
+  bx(0.31, 0.72, 0.31, COLS.PA, 0, -0.36, 0, lrg);
+  bx(0.33, 0.20, 0.45, COLS.BT, 0, -0.76, 0.07, lrg);
+
+  // ─── Smoke particles ──────────────────────────────────────────────────
+  var smokeParts = [];
+  function puffSmoke() {
+    var wx = cDir.position.x + (dir === 1 ? 0.5 : -0.5);
+    var wy = 1.85 + (arg.rotation.x < -0.5 ? 0.55 : 0.05);
+    for (var k = 0; k < 2; k++) {
+      var s = new T.Mesh(
+        new T.SphereGeometry(0.045 + Math.random() * 0.055, 5, 5),
+        new T.MeshLambertMaterial({ color: 0x88889a, transparent: true, opacity: 0.5 })
+      );
+      s.position.set(wx + (Math.random() - 0.5) * 0.12, wy + k * 0.06, 0.4);
+      s.userData = {
+        vy:   0.013 + Math.random() * 0.009,
+        vx:   (Math.random() - 0.5) * 0.007,
+        life: 1.0
+      };
+      scene.add(s);
+      smokeParts.push(s);
     }
   }
 
-  function drawCharacter(OX, OY, frame, dir) {
-    function ch(x, y, col) {
-      dot(OX + (dir === 1 ? x : 8 - x), OY + y, col);
+  // ─── State machine ────────────────────────────────────────────────────
+  var ST = { WALK: 0, SMOKE: 1, SAD: 2, FALL: 3, LIE: 4, GETUP: 5 };
+  var st = ST.WALK, stT = 0, stDur = 8 + Math.random() * 6;
+  var posX = 0, dir = 1;
+  var SPD = 0.005, XR = 4.0;
+  var wPh = 0, smokeT = 0, tick3 = 0;
+  var clk = new T.Clock();
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function eio(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t) * t; }
+
+  function frame(dt) {
+    tick3++;
+    stT += dt;
+
+    // ── State transitions ──
+    if (stT >= stDur) {
+      stT = 0;
+      if (st === ST.WALK || st === ST.SAD) {
+        var r = Math.random();
+        if      (r < 0.28) { st = ST.SMOKE;  stDur = 4 + Math.random() * 3; }
+        else if (r < 0.52) { st = ST.SAD;    stDur = 5 + Math.random() * 5; }
+        else if (r < 0.65) { st = ST.FALL;   stDur = 2.5; }
+        else               { st = ST.WALK;   stDur = 7 + Math.random() * 7; }
+      } else if (st === ST.SMOKE)  { st = ST.WALK;   stDur = 5 + Math.random() * 6; }
+      else if   (st === ST.FALL)   { st = ST.LIE;    stDur = 2 + Math.random() * 2.5; }
+      else if   (st === ST.LIE)    { st = ST.GETUP;  stDur = 2.8; }
+      else if   (st === ST.GETUP)  { st = ST.WALK;   stDur = 6 + Math.random() * 7; }
     }
-    // Hair top
-    [2,3,4,5,6].forEach(x => ch(x, 0, HA));
-    [0,1,2,3,4,5,6,7,8].forEach(x => ch(x, 1, HA));
-    // Hair sides
-    [2,3,4,5,6,7].forEach(r => ch(0, r, HA));
-    [2,3,4,5,6].forEach(r => ch(8, r, HA));
-    // Face
-    for (let r = 2; r <= 6; r++) for (let x = 1; x <= 7; x++) ch(x, r, SK);
-    [2,3,4,5,6].forEach(x => ch(x, 7, SK));
-    // Brows furrowed inward
-    ch(1,2,HA); ch(2,3,HA);
-    ch(7,2,HA); ch(6,3,HA);
-    // Blue eyes
-    ch(2,4,EY); ch(6,4,EY);
-    // Tears
-    ch(2,5,TE); ch(6,5,TE); ch(2,6,TE);
-    // Frown: corners row6, center dips row7
-    ch(2,6,MO); ch(6,6,MO);
-    ch(3,7,MO); ch(5,7,MO);
-    ch(4,7,SK); // neck centre
-    // Hoodie
-    for (let r = 8; r <= 10; r++) for (let x = 1; x <= 7; x++) ch(x, r, SH);
-    ch(-1,8,SH); ch(9,8,SH); // hood collar wider
-    ch(3,10,HD); ch(4,10,HD); ch(5,10,HD); // pocket
-    ch(3,9,HD); ch(5,9,HD); // drawstrings
-    // Arms — natural hang with slight elbow bend outward
-    ch(-1, 8, SH);                    // left shoulder
-    ch(-1, 9, SH);                    // upper arm
-    ch(-2,10,SH); ch(-1,10,SH);       // elbow bends outward
-    ch(-2,11,SH);                     // forearm
-    ch(-2,12,SH);                     // forearm lower
-    ch(-2,13,SK); ch(-1,13,SK);       // hand (skin)
-    ch(9, 8, SH);                     // right shoulder
-    ch(9, 9, SH);
-    ch(9,10,SH);  ch(10,10,SH);
-    ch(10,11,SH);
-    ch(10,12,SH);
-    ch(9,13,SK);  ch(10,13,SK);
-    // Pants
-    for (let r = 11; r <= 12; r++) for (let x = 1; x <= 7; x++) ch(x, r, PA);
-    // Walk frames
-    if (frame === 0) {
-      [1,2].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
-      [6,7].forEach(x => { ch(x,13,PA); ch(x,14,PA); ch(x,15,PA); });
-      [0,1,2,3].forEach(x => ch(x,14,PA));
-      [5,6,7,8].forEach(x => ch(x,15,PA));
-    } else {
-      [1,2].forEach(x => { ch(x,13,PA); ch(x,14,PA); ch(x,15,PA); });
-      [6,7].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
-      [0,1,2,3].forEach(x => ch(x,15,PA));
-      [5,6,7,8].forEach(x => ch(x,14,PA));
+
+    // ── Cloud & rain follow character ──
+    cloudG.position.x = lerp(cloudG.position.x, posX, 0.01);
+    cloudG.position.y = 4.4 + Math.sin(tick3 * 0.018) * 0.09;
+    rainMesh.position.x = lerp(rainMesh.position.x, posX, 0.018);
+
+    // ── Reset transforms ──
+    cg.rotation.set(0, 0, 0);
+    cg.position.set(0, 0, 0);
+    hg.rotation.set(0, 0, 0);
+    alg.rotation.set(0, 0, 0);
+    arg.rotation.set(0, 0, 0);
+    ar2.rotation.set(0, 0, 0);
+    llg.rotation.set(0, 0, 0);
+    lrg.rotation.set(0, 0, 0);
+
+    // ── Facing direction ──
+    cDir.rotation.y = dir === 1 ? 0 : Math.PI;
+
+    // ── Per-state behaviour ──
+    if (st === ST.WALK) {
+      posX += SPD * dir;
+      if (posX >  XR) { posX =  XR; dir = -1; }
+      if (posX < -XR) { posX = -XR; dir =  1; }
+      cDir.position.x = posX;
+
+      wPh += 0.065;
+      var sw = Math.sin(wPh);
+      llg.rotation.x =  sw * 0.35;
+      lrg.rotation.x = -sw * 0.35;
+      alg.rotation.x = -sw * 0.20;
+      arg.rotation.x =  sw * 0.20;
+      cg.position.y  = Math.abs(sw) * 0.032;
+      hg.rotation.x  = sw * 0.015;
+      ember.material.emissiveIntensity = 0.6 + Math.random() * 0.4;
+      if (tick3 % 60 === 0) puffSmoke();
+
+    } else if (st === ST.SMOKE) {
+      cDir.position.x = posX;
+      cg.position.y   = Math.sin(tick3 * 0.04) * 0.012;
+      // Raise right arm to bring cigarette near mouth
+      arg.rotation.x  = -0.95 + Math.sin(tick3 * 0.07) * 0.06;
+      ar2.rotation.x  = -0.28;
+      alg.rotation.x  =  0.08;
+      alg.rotation.z  =  0.12;
+      hg.rotation.x   = -0.1 + Math.sin(tick3 * 0.06) * 0.03;
+      // Flicker ember
+      ember.material.emissiveIntensity = 0.8 + Math.sin(tick3 * 0.3) * 0.3;
+      emberLight.intensity = 0.25 + Math.sin(tick3 * 0.3) * 0.12;
+      // Regular smoke puffs
+      smokeT += dt;
+      if (smokeT > 0.85) { smokeT = 0; puffSmoke(); puffSmoke(); }
+
+    } else if (st === ST.SAD) {
+      posX += SPD * 0.38 * dir;
+      if (posX >  XR) { posX =  XR; dir = -1; }
+      if (posX < -XR) { posX = -XR; dir =  1; }
+      cDir.position.x = posX;
+
+      wPh += 0.030;
+      var ss = Math.sin(wPh);
+      llg.rotation.x =  ss * 0.16;
+      lrg.rotation.x = -ss * 0.16;
+      alg.rotation.x =  0.22; alg.rotation.z =  0.14;
+      arg.rotation.x =  0.22; arg.rotation.z = -0.14;
+      hg.rotation.x  =  0.32 + Math.sin(tick3 * 0.03) * 0.03;
+      cg.position.y  = -0.07 + Math.abs(ss) * 0.018;
+      ember.material.emissiveIntensity = 0.5 + Math.random() * 0.2;
+
+    } else if (st === ST.FALL) {
+      cDir.position.x = posX;
+      var tp = Math.min(stT / stDur, 1.0);
+      var et = eio(tp);
+      cg.rotation.x   =  et * (Math.PI / 1.95);
+      cg.position.y   = -et * 0.90;
+      alg.rotation.x  = -et * 1.10;
+      arg.rotation.x  = -et * 0.70;
+      llg.rotation.x  =  et * 0.20;
+      lrg.rotation.x  =  et * 0.20;
+      hg.rotation.x   = -et * 0.30;
+
+    } else if (st === ST.LIE) {
+      cDir.position.x = posX;
+      cg.rotation.x   = Math.PI / 1.95;
+      cg.position.y   = -0.9 + Math.sin(tick3 * 0.045) * 0.015;
+      hg.rotation.x   = -0.20;
+
+    } else if (st === ST.GETUP) {
+      cDir.position.x = posX;
+      var tp2 = Math.min(stT / stDur, 1.0);
+      var et2 = eio(tp2);
+      cg.rotation.x   = (1 - et2) * (Math.PI / 1.95);
+      cg.position.y   = -(1 - et2) * 0.90;
+    }
+
+    // ── Rain update ──
+    for (var ri = 0; ri < RC; ri++) {
+      rP[ri*3+1] -= 0.14;
+      if (rP[ri*3+1] < -0.4) {
+        rP[ri*3+1] = 5.5;
+        rP[ri*3]   = (Math.random() - 0.5) * 10;
+      }
+    }
+    rGeo.attributes.position.needsUpdate = true;
+
+    // ── Smoke update ──
+    for (var si = smokeParts.length - 1; si >= 0; si--) {
+      var sp = smokeParts[si];
+      sp.userData.life -= dt * 0.36;
+      sp.position.y += sp.userData.vy;
+      sp.position.x += sp.userData.vx;
+      sp.scale.multiplyScalar(1.015);
+      sp.material.opacity = Math.max(0, sp.userData.life * 0.5);
+      if (sp.userData.life <= 0) {
+        scene.remove(sp);
+        sp.geometry.dispose(); sp.material.dispose();
+        smokeParts.splice(si, 1);
+      }
     }
   }
 
-  let charX = 36, charDir = 1, walkFrame = 0, tick = 0;
-  const MIN_X = 22, MAX_X = 56;
-
-  function animate() {
-    tick++;
-    if (tick % 14 === 0) walkFrame = (walkFrame + 1) % 2;
-    charX += 0.1 * charDir;
-    if (charX >= MAX_X) charDir = -1;
-    if (charX <= MIN_X) charDir = 1;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawGround();
-    drawTree();
-    drawStormCloud(Math.round(charX), tick);
-    drawRain(Math.round(charX), tick);
-    drawCharacter(Math.round(charX), 8, walkFrame, charDir);
-    requestAnimationFrame(animate);
-  }
-  animate();
+  (function loop() {
+    requestAnimationFrame(loop);
+    frame(clk.getDelta());
+    renderer.render(scene, camera);
+  })();
 })();
 
 musicBtn.addEventListener('click', function() {
