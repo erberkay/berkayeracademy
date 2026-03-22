@@ -151,7 +151,7 @@ body{
   color:rgba(232,82,122,.45);text-transform:uppercase;
   border:1px solid rgba(232,82,122,.2);display:inline-block;
   padding:7px 22px;border-radius:20px;background:rgba(232,82,122,.04);
-  animation:fadeUp .7s 1s ease both;
+  opacity:0;min-height:2em;
 }
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
@@ -195,6 +195,9 @@ body{
   position:fixed;bottom:0;left:0;
   pointer-events:none;z-index:4;
   display:block;
+}
+@media(max-width:520px){
+  #charCanvas{transform:scale(0.65);transform-origin:bottom left;}
 }
 </style>
 </head>
@@ -242,7 +245,7 @@ body{
   </div>
 
   <div class="love-body" id="loveBody"></div>
-  <div class="love-forever">∞ &nbsp; Sonsuza kadar seveceğim seni &nbsp; ∞</div>
+  <div class="love-forever" id="loveForever"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -297,7 +300,24 @@ const POEM_LINES=['Şimdi sen kalkıp gidiyorsun. Git.','Gözlerin durur mu onla
     if(ci>=line.length){
       li++;ci=0;
       if(li>=POEM_LINES.length){
-        setTimeout(()=>{el.style.transition='opacity 1.2s';el.style.opacity='0';},5000);
+        setTimeout(()=>{
+          el.style.transition='opacity 1.2s';el.style.opacity='0';
+          // love-forever: 1.2s fade bittikten sonra başla
+          setTimeout(()=>{
+            const fe=document.getElementById('loveForever');
+            const txt='∞  Sonsuza kadar seveceğim seni  ∞';
+            fe.textContent='';fe.style.transition='';fe.style.opacity='1';
+            let fi=0;
+            (function typeF(){
+              if(fi>=txt.length){
+                setTimeout(()=>{fe.style.transition='opacity 1.2s';fe.style.opacity='0';},5000);
+                return;
+              }
+              fe.textContent+=txt[fi++];
+              setTimeout(typeF,50+Math.random()*30);
+            })();
+          },1400);
+        },5000);
       } else {
         setTimeout(addChar,250);
       }
