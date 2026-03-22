@@ -209,8 +209,13 @@ body{
 .cloud{position:absolute;pointer-events:none;animation:driftCloud linear infinite}
 @keyframes driftCloud{0%{transform:translateX(-260px)}100%{transform:translateX(calc(100vw + 260px))}}
 
-/* ── 3D scene bottom-left ── */
-#bitScene{position:fixed;bottom:0;left:0;pointer-events:none;z-index:4;}
+/* ── Spline character ── */
+#splineChar{
+  position:fixed;bottom:0;left:0;
+  width:360px;height:360px;
+  pointer-events:none;z-index:4;
+  background:transparent;
+}
 </style>
 </head>
 <body>
@@ -220,7 +225,9 @@ body{
 <div class="petals" id="petalsEl"></div>
 <div class="snow-layer" id="snowEl"></div>
 <div class="cloud-layer" id="cloudLayer"></div>
-<canvas id="bitScene"></canvas>
+<spline-viewer id="splineChar"
+  url="https://prod.spline.design/y8GaEs95IPv1VRaz/scene.splinecode"
+  background="transparent"></spline-viewer>
 
 <a href="/" class="back-link">← Geri</a>
 
@@ -265,8 +272,8 @@ body{
   <div class="love-forever">∞ &nbsp; Sonsuza kadar seveceğim seni &nbsp; ∞</div>
 </div>
 
-<!-- Three.js -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<!-- Spline viewer -->
+<script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.70/build/spline-viewer.js"></script>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -462,449 +469,65 @@ function makeSnow() {
   mkCloud(28,  80,  65, -12);
 })();
 
-// ── 3D animated sad character scene (Three.js) ──
+// ── Spline character colour override ──
 (function(){
-  const T = window.THREE;
-  if (!T) return;
+  // Target colours for the character
+  var HAIR_HEX  = 0x1a0c06;  // near-black / dark brown
+  var EYE_HEX   = 0x1a6fcc;  // blue
+  var SKIN_HEX  = 0xfae0c8;  // fair / white-toned skin
 
-  // Remove old canvas, Three.js creates its own
-  const old = document.getElementById('bitScene');
-  if (old) old.remove();
+  // Keywords to match object names (case-insensitive)
+  var HAIR_KW  = ['hair','strand','curl','braid','saç'];
+  var EYE_KW   = ['eye','iris','pupil','cornea','sclera','eyeball'];
+  var SKIN_KW  = ['skin','face','head','body','torso','arm','hand',
+                  'neck','leg','foot','feet','finger'];
 
-  const W = 430, H = 200;
-  const renderer = new T.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(W, H);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = T.PCFSoftShadowMap;
-  renderer.domElement.id = 'bitScene';
-  document.body.appendChild(renderer.domElement);
+  function matchesAny(name, kws) {
+    var n = name.toLowerCase();
+    return kws.some(function(k){ return n.includes(k); });
+  }
 
-  const scene = new T.Scene();
-  const camera = new T.PerspectiveCamera(38, W / H, 0.1, 50);
-  camera.position.set(0, 2.8, 11);
-  camera.lookAt(new T.Vector3(0, 1.3, 0));
+  function applyColors(app) {
+    var objs = [];
+    try { objs = app.getAllObjects() || []; } catch(e) {}
 
-  // Lights — bright front fill so character is clearly visible
-  scene.add(new T.AmbientLight(0x556677, 3.2));
-  // Front light (camera side) — main character illumination
-  const front = new T.DirectionalLight(0xeeddcc, 2.0);
-  front.position.set(2, 6, 10);
-  front.castShadow = true;
-  front.shadow.mapSize.set(1024, 1024);
-  front.shadow.camera.left  = -10; front.shadow.camera.right = 10;
-  front.shadow.camera.top   =   8; front.shadow.camera.bottom = -2;
-  scene.add(front);
-  // Side/back mood light
-  const moon = new T.DirectionalLight(0x3355aa, 0.7);
-  moon.position.set(-5, 5, -2);
-  scene.add(moon);
-  const fill = new T.PointLight(0x5577bb, 0.5, 20);
-  fill.position.set(3, 4, 6);
-  scene.add(fill);
+    // Log objects once for debugging
+    if (objs.length) {
+      console.log('[Spline] objects:', objs.map(function(o){ return o.name; }));
+    }
 
-  // Ground — snowy
-  const gnd = new T.Mesh(
-    new T.PlaneGeometry(24, 7),
-    new T.MeshLambertMaterial({ color: 0xcce8f2 })
-  );
-  gnd.rotation.x = -Math.PI / 2;
-  gnd.receiveShadow = true;
-  scene.add(gnd);
-  const gnd2 = new T.Mesh(
-    new T.PlaneGeometry(24, 6.5),
-    new T.MeshLambertMaterial({ color: 0xb4d6ec, transparent: true, opacity: 0.35 })
-  );
-  gnd2.rotation.x = -Math.PI / 2; gnd2.position.set(0, 0.001, 0.3);
-  scene.add(gnd2);
+    objs.forEach(function(obj) {
+      if (!obj) return;
+      var n = obj.name || '';
+      var mat = obj.material;
+      if (!mat || !mat.color) return;
 
-  // Bare winter trees
-  (function() {
-    const tM = new T.MeshLambertMaterial({ color: 0x3a2418 });
-    [-6, 6].forEach(function(tx) {
-      const tg = new T.Group();
-      const tk = new T.Mesh(new T.BoxGeometry(0.22, 3.2, 0.22), tM);
-      tk.position.y = 1.6; tk.castShadow = true; tg.add(tk);
-      [
-        { y: 2.6, ax: -0.7, bx: 0.7 },
-        { y: 2.0, ax: -0.55, bx: 0.5 },
-        { y: 1.5, ax: -0.45, bx: 0.4 },
-      ].forEach(function(b) {
-        const bL = new T.Mesh(new T.BoxGeometry(0.65, 0.08, 0.08), tM);
-        bL.position.set(-0.45, b.y, 0); bL.rotation.z = b.ax; tg.add(bL);
-        const bR = new T.Mesh(new T.BoxGeometry(0.65, 0.08, 0.08), tM);
-        bR.position.set(0.45, b.y, 0); bR.rotation.z = b.bx; tg.add(bR);
-      });
-      tg.position.set(tx, 0, -1.5);
-      scene.add(tg);
+      if (matchesAny(n, HAIR_KW)) {
+        mat.color.setHex(HAIR_HEX);
+        if (mat.emissive) mat.emissive.setHex(0x000000);
+      } else if (matchesAny(n, EYE_KW)) {
+        mat.color.setHex(EYE_HEX);
+      } else if (matchesAny(n, SKIN_KW)) {
+        mat.color.setHex(SKIN_HEX);
+      }
     });
-  })();
+  }
 
-  // Storm cloud — dark layered boxes
-  const cloudG = new T.Group();
-  var cMats = [
-    new T.MeshLambertMaterial({ color: 0x12142a }),
-    new T.MeshLambertMaterial({ color: 0x1c1e38 }),
-    new T.MeshLambertMaterial({ color: 0x272a44 }),
-    new T.MeshLambertMaterial({ color: 0x353860 }),
-  ];
-  [
-    [4.8, 0.8, 1.5,  0,     0,    0, 0],
-    [2.6, 1.1, 1.2, -1.0,  0.45,  0, 1],
-    [2.0, 0.9, 1.0,  1.0,  0.40,  0, 1],
-    [1.4, 0.75, 0.9, -0.3, 0.90,  0, 2],
-    [1.1, 0.65, 0.8,  0.7, 0.75,  0, 2],
-    [0.8, 0.5,  0.7,  0.1, 1.15,  0, 3],
-  ].forEach(function(d) {
-    var m = new T.Mesh(new T.BoxGeometry(d[0], d[1], d[2]), cMats[d[6]]);
-    m.position.set(d[3], d[4], d[5]);
-    cloudG.add(m);
+  var viewer = document.getElementById('splineChar');
+  if (!viewer) return;
+
+  // spline-viewer exposes its Application as viewer.spline after load
+  function tryApply() {
+    var app = viewer.spline || viewer._app;
+    if (app) { applyColors(app); return; }
+    setTimeout(tryApply, 400);  // retry until ready
+  }
+
+  // Prefer the load event; fall back to polling
+  viewer.addEventListener('load', function() {
+    setTimeout(tryApply, 100);
   });
-  // Cloud — clearly above character (head peaks ~y=2.8, cloud at y=5.0)
-  cloudG.position.set(0, 5.0, 0);
-  scene.add(cloudG);
-
-  // Rain
-  const RC = 280;
-  const rP = new Float32Array(RC * 3);
-  for (var i = 0; i < RC; i++) {
-    rP[i*3]   = (Math.random() - 0.5) * 10;
-    rP[i*3+1] = Math.random() * 5.5;
-    rP[i*3+2] = (Math.random() - 0.5) * 4;
-  }
-  const rGeo = new T.BufferGeometry();
-  rGeo.setAttribute('position', new T.BufferAttribute(rP, 3));
-  const rainMesh = new T.Points(rGeo,
-    new T.PointsMaterial({ color: 0x8cc3e6, size: 0.055, transparent: true, opacity: 0.48 })
-  );
-  scene.add(rainMesh);
-
-  // ─── Character ───────────────────────────────────────────────────────
-  const COLS = {
-    SK: 0xd4a472,  // warm Mediterranean skin
-    HA: 0x0e0906,  // near-black hair
-    HO: 0x1c1c26,  // black hoodie
-    HP: 0x131318,  // hoodie pocket
-    PA: 0x161620,  // black pants
-    EY: 0x0c0c10,  // sunglass lens dark
-    SF: 0x242432,  // sunglass frame
-    MO: 0xa03828,  // mouth
-    NS: 0xbb8050,  // nose
-    ST: 0x6a4020,  // beard stubble (visible)
-    GL: 0x3a4a66,  // sunglass glint
-    EB: 0x261206,  // eyebrow
-    BT: 0x0a0a12,  // boots
-    CG: 0xf0e8d0,  // cigarette
-    CF: 0xe8907a,  // filter
-    EC: 0xff4a00,  // ember
-  };
-
-  // Direction group (Y rotation = facing direction)
-  const cDir = new T.Group();
-  scene.add(cDir);
-  // Body group (X rotation = fall forward)
-  const cg = new T.Group();
-  cDir.add(cg);
-
-  function bx(w, h, d, col, px, py, pz, par) {
-    px = px || 0; py = py || 0; pz = pz || 0; par = par || cg;
-    var m = new T.Mesh(
-      new T.BoxGeometry(w, h, d),
-      new T.MeshLambertMaterial({ color: col })
-    );
-    m.position.set(px, py, pz);
-    m.castShadow = true;
-    par.add(m);
-    return m;
-  }
-
-  // Body (hoodie)
-  bx(0.76, 0.98, 0.50, COLS.HO,  0,    1.49,  0);
-  bx(0.40, 0.22, 0.06, COLS.HP,  0,    1.28,  0.27);  // pocket
-  bx(0.07, 0.24, 0.06, COLS.HP, -0.1,  1.57,  0.27);  // drawstring L
-  bx(0.07, 0.24, 0.06, COLS.HP,  0.1,  1.57,  0.27);  // drawstring R
-
-  // Head group (neck pivot for sad droop)
-  var hg = new T.Group();
-  hg.position.set(0, 2.1, 0);
-  cg.add(hg);
-
-  bx(0.65, 0.66, 0.63, COLS.SK,  0,     0.33,  0,    hg);  // head
-  // ── Curly/wavy dark hair ──
-  bx(0.72, 0.26, 0.70, COLS.HA,  0,     0.70,  0,    hg);  // hair base
-  bx(0.30, 0.32, 0.28, COLS.HA, -0.18,  0.88,  0.06, hg);  // curl top-L
-  bx(0.26, 0.28, 0.26, COLS.HA,  0.17,  0.90, -0.04, hg);  // curl top-R
-  bx(0.22, 0.26, 0.22, COLS.HA,  0.01,  0.92,  0.10, hg);  // curl top-C
-  bx(0.20, 0.24, 0.20, COLS.HA, -0.30,  0.80,  0.16, hg);  // curl front-L
-  bx(0.18, 0.22, 0.18, COLS.HA,  0.26,  0.78,  0.12, hg);  // curl front-R
-  bx(0.16, 0.50, 0.68, COLS.HA, -0.41,  0.48,  0,    hg);  // hair side L
-  bx(0.16, 0.50, 0.68, COLS.HA,  0.41,  0.48,  0,    hg);  // hair side R
-  bx(0.72, 0.28, 0.16, COLS.HA,  0,     0.54, -0.31, hg);  // hair back
-  bx(0.26, 0.30, 0.20, COLS.HA, -0.16,  0.68, -0.26, hg);  // curl back-L
-  bx(0.22, 0.26, 0.18, COLS.HA,  0.20,  0.70, -0.24, hg);  // curl back-R
-  // ── Eyebrows ──
-  bx(0.60, 0.09, 0.05, COLS.EB,  0,     0.50,  0.33, hg);  // brow bar
-  // ── Sunglasses ──
-  bx(0.50, 0.06, 0.04, COLS.SF,  0,     0.42,  0.34, hg);  // frame bridge
-  bx(0.22, 0.16, 0.07, COLS.EY, -0.155, 0.41,  0.34, hg);  // lens L
-  bx(0.22, 0.16, 0.07, COLS.EY,  0.155, 0.41,  0.34, hg);  // lens R
-  bx(0.07, 0.06, 0.56, COLS.SF, -0.365, 0.41,  0.04, hg);  // arm L
-  bx(0.07, 0.06, 0.56, COLS.SF,  0.365, 0.41,  0.04, hg);  // arm R
-  bx(0.05, 0.04, 0.04, COLS.GL, -0.135, 0.425, 0.38, hg);  // glint L
-  bx(0.05, 0.04, 0.04, COLS.GL,  0.175, 0.425, 0.38, hg);  // glint R
-  // ── Face features ──
-  bx(0.09, 0.11, 0.11, COLS.NS,  0,     0.31,  0.34, hg);  // nose
-  bx(0.13, 0.055, 0.04, COLS.MO, -0.08, 0.21,  0.33, hg);  // mouth L
-  bx(0.13, 0.055, 0.04, COLS.MO,  0.08, 0.195, 0.33, hg);  // mouth R
-  bx(0.46, 0.18, 0.05, COLS.ST,  0,     0.11,  0.33, hg);  // beard/stubble
-  bx(0.08, 0.22, 0.16, COLS.SK, -0.36,  0.38,  0,    hg);  // ear L
-  bx(0.08, 0.22, 0.16, COLS.SK,  0.36,  0.38,  0,    hg);  // ear R
-
-  // Left arm (upper — pivot at shoulder)
-  var alg = new T.Group(); alg.position.set(-0.46, 1.93, 0); cg.add(alg);
-  bx(0.23, 0.72, 0.24, COLS.HO, 0, -0.34, 0, alg);
-  var al2 = new T.Group(); al2.position.set(0, -0.70, 0); alg.add(al2);
-  bx(0.22, 0.56, 0.22, COLS.HO, 0, -0.27, 0, al2);
-  bx(0.23, 0.23, 0.24, COLS.SK, 0, -0.58, 0, al2);  // left hand
-
-  // Right arm (upper — pivot at shoulder)
-  var arg = new T.Group(); arg.position.set(0.46, 1.93, 0); cg.add(arg);
-  bx(0.23, 0.72, 0.24, COLS.HO, 0, -0.34, 0, arg);
-  var ar2 = new T.Group(); ar2.position.set(0, -0.70, 0); arg.add(ar2);
-  bx(0.22, 0.56, 0.22, COLS.HO, 0, -0.27, 0, ar2);
-  var rHand = bx(0.23, 0.23, 0.24, COLS.SK, 0, -0.58, 0, ar2);  // right hand
-
-  // Cigarette (attached to right hand)
-  var cigG = new T.Group();
-  cigG.position.set(0.12, -0.1, 0.13);
-  rHand.add(cigG);
-  var cigBody = new T.Mesh(
-    new T.CylinderGeometry(0.018, 0.018, 0.30, 7),
-    new T.MeshLambertMaterial({ color: COLS.CG })
-  );
-  cigBody.rotation.z = Math.PI / 2; cigG.add(cigBody);
-  var cigFilt = new T.Mesh(
-    new T.CylinderGeometry(0.021, 0.021, 0.08, 7),
-    new T.MeshLambertMaterial({ color: COLS.CF })
-  );
-  cigFilt.position.x = -0.19; cigFilt.rotation.z = Math.PI / 2; cigG.add(cigFilt);
-  var ember = new T.Mesh(
-    new T.SphereGeometry(0.022, 6, 6),
-    new T.MeshLambertMaterial({ color: COLS.EC, emissive: 0xff2200, emissiveIntensity: 1.0 })
-  );
-  ember.position.x = 0.16; cigG.add(ember);
-  var emberLight = new T.PointLight(0xff4400, 0.3, 1.5);
-  emberLight.position.x = 0.16; cigG.add(emberLight);
-
-  // Pants + boots
-  var llg = new T.Group(); llg.position.set(-0.20, 0.98, 0); cg.add(llg);
-  bx(0.31, 0.72, 0.31, COLS.PA, 0, -0.36, 0, llg);
-  bx(0.33, 0.20, 0.45, COLS.BT, 0, -0.76, 0.07, llg);
-
-  var lrg = new T.Group(); lrg.position.set(0.20, 0.98, 0); cg.add(lrg);
-  bx(0.31, 0.72, 0.31, COLS.PA, 0, -0.36, 0, lrg);
-  bx(0.33, 0.20, 0.45, COLS.BT, 0, -0.76, 0.07, lrg);
-
-  // ─── Smoke particles ──────────────────────────────────────────────────
-  var smokeParts = [];
-  function puffSmoke() {
-    var wx = cDir.position.x + (dir === 1 ? 0.5 : -0.5);
-    var wy = 1.85 + (arg.rotation.x < -0.5 ? 0.55 : 0.05);
-    for (var k = 0; k < 2; k++) {
-      var s = new T.Mesh(
-        new T.SphereGeometry(0.045 + Math.random() * 0.055, 5, 5),
-        new T.MeshLambertMaterial({ color: 0x88889a, transparent: true, opacity: 0.5 })
-      );
-      s.position.set(wx + (Math.random() - 0.5) * 0.12, wy + k * 0.06, 0.4);
-      s.userData = {
-        vy:   0.013 + Math.random() * 0.009,
-        vx:   (Math.random() - 0.5) * 0.007,
-        life: 1.0
-      };
-      scene.add(s);
-      smokeParts.push(s);
-    }
-  }
-
-  // ─── State machine ────────────────────────────────────────────────────
-  var ST = { WALK: 0, WALK_SMOKE: 1, SAD: 2, SIT_DOWN: 3, SIT: 4, STANDUP: 5 };
-  var st = ST.WALK, stT = 0, stDur = 8 + Math.random() * 6;
-  var posX = 0, dir = 1;
-  var SPD = 0.005, XR = 4.0;
-  var wPh = 0, smokeT = 0, tick3 = 0;
-  var clk = new T.Clock();
-
-  function lerp(a, b, t) { return a + (b - a) * t; }
-  function eio(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t) * t; }
-
-  function frame(dt) {
-    tick3++;
-    stT += dt;
-
-    // ── State transitions ──
-    if (stT >= stDur) {
-      stT = 0;
-      if (st === ST.WALK || st === ST.SAD) {
-        var r = Math.random();
-        if      (r < 0.30) { st = ST.WALK_SMOKE; stDur = 5 + Math.random() * 4; }
-        else if (r < 0.55) { st = ST.SAD;         stDur = 5 + Math.random() * 5; }
-        else if (r < 0.72) { st = ST.SIT_DOWN;    stDur = 1.4; }
-        else               { st = ST.WALK;         stDur = 7 + Math.random() * 7; }
-      } else if (st === ST.WALK_SMOKE) { st = ST.WALK;    stDur = 6 + Math.random() * 6; }
-      else if   (st === ST.SIT_DOWN)   { st = ST.SIT;     stDur = 6 + Math.random() * 6; }
-      else if   (st === ST.SIT)        { st = ST.STANDUP; stDur = 1.4; }
-      else if   (st === ST.STANDUP)    { st = ST.WALK;    stDur = 6 + Math.random() * 7; }
-    }
-
-    // ── Cloud & rain follow character ──
-    cloudG.position.x = lerp(cloudG.position.x, posX, 0.01);
-    cloudG.position.y = 5.0 + Math.sin(tick3 * 0.018) * 0.09;
-    rainMesh.position.x = lerp(rainMesh.position.x, posX, 0.018);
-
-    // ── Reset transforms ──
-    cg.rotation.set(0, 0, 0);
-    cg.position.set(0, 0, 0);
-    hg.rotation.set(0, 0, 0);
-    alg.rotation.set(0, 0, 0);
-    arg.rotation.set(0, 0, 0);
-    ar2.rotation.set(0, 0, 0);
-    llg.rotation.set(0, 0, 0);
-    lrg.rotation.set(0, 0, 0);
-
-    // ── Facing direction ──
-    cDir.rotation.y = dir === 1 ? 0 : Math.PI;
-
-    // ── Per-state behaviour ──
-    if (st === ST.WALK) {
-      posX += SPD * dir;
-      if (posX >  XR) { posX =  XR; dir = -1; }
-      if (posX < -XR) { posX = -XR; dir =  1; }
-      cDir.position.x = posX;
-
-      wPh += 0.060;
-      var sw = Math.sin(wPh);
-      llg.rotation.x =  sw * 0.35;
-      lrg.rotation.x = -sw * 0.35;
-      alg.rotation.x = -sw * 0.20;
-      arg.rotation.x =  sw * 0.20;
-      cg.position.y  = Math.abs(sw) * 0.030;
-      hg.rotation.x  = sw * 0.012;
-      ember.material.emissiveIntensity = 0.5 + Math.random() * 0.3;
-
-    } else if (st === ST.WALK_SMOKE) {
-      // Walk slowly while smoking
-      posX += SPD * 0.5 * dir;
-      if (posX >  XR) { posX =  XR; dir = -1; }
-      if (posX < -XR) { posX = -XR; dir =  1; }
-      cDir.position.x = posX;
-
-      wPh += 0.035;
-      var wsw = Math.sin(wPh);
-      llg.rotation.x =  wsw * 0.22;
-      lrg.rotation.x = -wsw * 0.22;
-      alg.rotation.x =  0.10; alg.rotation.z = 0.08;
-      // Right arm raised — cig to mouth
-      arg.rotation.x  = -0.90 + Math.sin(tick3 * 0.07) * 0.05;
-      ar2.rotation.x  = -0.25;
-      hg.rotation.x   = -0.08 + Math.sin(tick3 * 0.05) * 0.02;
-      cg.position.y   = Math.abs(wsw) * 0.022;
-      // Ember flicker
-      ember.material.emissiveIntensity = 0.8 + Math.sin(tick3 * 0.3) * 0.3;
-      emberLight.intensity = 0.28 + Math.sin(tick3 * 0.3) * 0.12;
-      smokeT += dt;
-      if (smokeT > 1.2) { smokeT = 0; puffSmoke(); puffSmoke(); }
-
-    } else if (st === ST.SAD) {
-      posX += SPD * 0.35 * dir;
-      if (posX >  XR) { posX =  XR; dir = -1; }
-      if (posX < -XR) { posX = -XR; dir =  1; }
-      cDir.position.x = posX;
-
-      wPh += 0.028;
-      var ss = Math.sin(wPh);
-      llg.rotation.x =  ss * 0.14;
-      lrg.rotation.x = -ss * 0.14;
-      alg.rotation.x =  0.24; alg.rotation.z =  0.16;
-      arg.rotation.x =  0.24; arg.rotation.z = -0.16;
-      hg.rotation.x  =  0.34 + Math.sin(tick3 * 0.03) * 0.03;
-      cg.position.y  = -0.08 + Math.abs(ss) * 0.016;
-      ember.material.emissiveIntensity = 0.4 + Math.random() * 0.2;
-
-    } else if (st === ST.SIT_DOWN) {
-      // Transition: squat down to sitting pose
-      cDir.position.x = posX;
-      var tp = Math.min(stT / stDur, 1.0);
-      var et = eio(tp);
-      // Squat: bend knees forward, lower body
-      llg.rotation.x =  et * 1.55;
-      lrg.rotation.x =  et * 1.55;
-      cg.position.y  = -et * 0.72;
-      // Arms rest on knees
-      alg.rotation.x =  et * 0.6;
-      arg.rotation.x =  et * 0.6;
-      hg.rotation.x  =  et * 0.12;
-
-    } else if (st === ST.SIT) {
-      // Sitting on ground, smoking
-      cDir.position.x = posX;
-      cg.position.y   = -0.72;
-      llg.rotation.x  =  1.55;
-      lrg.rotation.x  =  1.55;
-      // Raise right arm to smoke while seated
-      arg.rotation.x  = -0.75 + Math.sin(tick3 * 0.07) * 0.06;
-      ar2.rotation.x  = -0.22;
-      alg.rotation.x  =  0.55;
-      alg.rotation.z  =  0.18;
-      hg.rotation.x   =  0.08 + Math.sin(tick3 * 0.04) * 0.03;
-      // Ember flicker
-      ember.material.emissiveIntensity = 0.9 + Math.sin(tick3 * 0.25) * 0.3;
-      emberLight.intensity = 0.32 + Math.sin(tick3 * 0.25) * 0.14;
-      smokeT += dt;
-      if (smokeT > 0.80) { smokeT = 0; puffSmoke(); puffSmoke(); }
-
-    } else if (st === ST.STANDUP) {
-      // Transition: stand back up
-      cDir.position.x = posX;
-      var tp2 = Math.min(stT / stDur, 1.0);
-      var et2 = eio(tp2);
-      llg.rotation.x =  (1 - et2) * 1.55;
-      lrg.rotation.x =  (1 - et2) * 1.55;
-      cg.position.y  = -(1 - et2) * 0.72;
-      alg.rotation.x =  (1 - et2) * 0.6;
-      arg.rotation.x =  (1 - et2) * 0.6;
-    }
-
-    // ── Rain update ──
-    for (var ri = 0; ri < RC; ri++) {
-      rP[ri*3+1] -= 0.14;
-      if (rP[ri*3+1] < -0.4) {
-        rP[ri*3+1] = 5.5;
-        rP[ri*3]   = (Math.random() - 0.5) * 10;
-      }
-    }
-    rGeo.attributes.position.needsUpdate = true;
-
-    // ── Smoke update ──
-    for (var si = smokeParts.length - 1; si >= 0; si--) {
-      var sp = smokeParts[si];
-      sp.userData.life -= dt * 0.36;
-      sp.position.y += sp.userData.vy;
-      sp.position.x += sp.userData.vx;
-      sp.scale.multiplyScalar(1.015);
-      sp.material.opacity = Math.max(0, sp.userData.life * 0.5);
-      if (sp.userData.life <= 0) {
-        scene.remove(sp);
-        sp.geometry.dispose(); sp.material.dispose();
-        smokeParts.splice(si, 1);
-      }
-    }
-  }
-
-  (function loop() {
-    requestAnimationFrame(loop);
-    frame(clk.getDelta());
-    renderer.render(scene, camera);
-  })();
+  setTimeout(tryApply, 3000);  // extra fallback
 })();
 
 musicBtn.addEventListener('click', function() {
