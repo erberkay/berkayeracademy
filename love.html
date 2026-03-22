@@ -500,7 +500,8 @@ const drops = Array.from({ length: RN }, () => ({
 let charObj = null, mixer = null;
 let actions = {}, curAction = null;
 let charState = 'loading';
-let charX = -4.5, charTargetX = -1.8;
+let charX = -5.5, charTargetX = -1.8;
+const WALK_SPEED = 0.72; // units/sec — yavaş insan yürüyüş hızı
 let charStateT = 0;
 
 const fbxLoader = new FBXLoader();
@@ -509,13 +510,12 @@ const fbxLoader = new FBXLoader();
 fbxLoader.load('https://storage.googleapis.com/ableton-tutorial-assets/karakter/Ch31_nonPBR.fbx', (fbx) => {
   fbx.scale.setScalar(0.012);
   fbx.position.set(charX, 0, 0);
-  fbx.rotation.y = Math.PI / 2; // face +X walking right
+  fbx.rotation.y = Math.PI / 2; // yürürken sağa bak (+X)
   fbx.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
   mixer = new THREE.AnimationMixer(fbx);
   charObj = fbx;
   scene.add(charObj);
 
-  // Load animations
   const animFiles = {
     walk:    '/karakter/Standard Walk.fbx',
     sadIdle: '/karakter/Sad Idle.fbx',
@@ -536,7 +536,7 @@ fbxLoader.load('https://storage.googleapis.com/ableton-tutorial-assets/karakter/
   });
 }, undefined, err => console.error('[3D] model error:', err));
 
-function playAnim(key, fade = 0.5) {
+function playAnim(key, fade = 0.8) {
   const next = actions[key];
   if (!next || curAction === next) return;
   if (curAction) curAction.fadeOut(fade);
@@ -555,22 +555,21 @@ let simT = 0;
 
   if (mixer) mixer.update(dt);
 
-  // Character movement
+  // Karakter hareketi — sabit hız, insan gibi yavaş
   if (charObj && charState === 'walking') {
-    charX += (charTargetX - charX) * dt * 1.1;
+    charX = Math.min(charX + WALK_SPEED * dt, charTargetX);
     charObj.position.x = charX;
-    if (Math.abs(charX - charTargetX) < 0.08) {
-      charX = charTargetX;
-      charObj.position.x = charX;
-      charObj.rotation.y = Math.PI * 0.85; // face camera
-      charState = 'sadIdle'; charStateT = 0;
-      playAnim('sadIdle');
+    if (charX >= charTargetX) {
+      charObj.rotation.y = Math.PI; // ekrana bak
+      charState = 'sitting'; charStateT = 0;
+      playAnim('sit', 1.0);
     }
   } else if (charState !== 'loading') {
     charStateT += dt;
-    if      (charState === 'sadIdle' && charStateT > 4.5) { charState = 'sitting'; charStateT = 0; playAnim('sit'); }
-    else if (charState === 'sitting' && charStateT > 5.0) { charState = 'smoking'; charStateT = 0; playAnim('smoke'); }
-    else if (charState === 'smoking' && charStateT > 8.0) { charState = 'sadIdle'; charStateT = 0; playAnim('sadIdle'); }
+    // otur → ayağa kalk & sigara iç → üzgün dur → tekrar
+    if      (charState === 'sitting'  && charStateT > 6.0)  { charState = 'smoking'; charStateT = 0; playAnim('smoke', 1.4); }
+    else if (charState === 'smoking'  && charStateT > 10.0) { charState = 'sadIdle'; charStateT = 0; playAnim('sadIdle', 1.2); }
+    else if (charState === 'sadIdle'  && charStateT > 7.0)  { charState = 'sitting'; charStateT = 0; playAnim('sit', 1.0); }
   }
 
   // Cloud follows character
