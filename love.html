@@ -505,25 +505,37 @@ function makeSnow() {
   }
 
   function drawClouds(cx, t) {
-    // Cloud 1 — big dark cloud, slow sine drift
+    // Cloud 1 — big dark cloud, 3 rows higher
     const c1x = Math.round(cx - 7 + Math.sin(t * 0.018) * 3);
     for (let x = 0; x < 15; x++) {
-      dot(c1x+x, 6, x===0||x===14 ? CLD : CL2);
-      dot(c1x+x, 7, CL);
-      dot(c1x+x, 8, x===0||x===14 ? CLD : CL2);
+      dot(c1x+x, 3, x===0||x===14 ? CLD : CL2);
+      dot(c1x+x, 4, CL);
+      dot(c1x+x, 5, x===0||x===14 ? CLD : CL2);
     }
-    dot(c1x+2,5,CL2); dot(c1x+3,5,CL2); dot(c1x+4,5,CLD);
-    dot(c1x+3,4,CLD);
-    dot(c1x+8,5,CL2); dot(c1x+9,5,CL2); dot(c1x+10,5,CLD);
-    // Cloud 2 — smaller, opposite phase
+    dot(c1x+2,2,CL2); dot(c1x+3,2,CL2); dot(c1x+4,2,CLD);
+    dot(c1x+3,1,CLD);
+    dot(c1x+8,2,CL2); dot(c1x+9,2,CL2); dot(c1x+10,2,CLD);
+    // Cloud 2 — smaller, opposite phase, also higher
     const c2x = Math.round(cx + 3 + Math.sin(t * 0.018 + Math.PI) * 2);
     for (let x = 0; x < 10; x++) {
+      dot(c2x+x, 1, x===0||x===9 ? CLD : CL2);
+      dot(c2x+x, 2, CL);
       dot(c2x+x, 3, x===0||x===9 ? CLD : CL2);
-      dot(c2x+x, 4, CL);
-      dot(c2x+x, 5, x===0||x===9 ? CLD : CL2);
     }
-    dot(c2x+2,2,CL2); dot(c2x+3,2,CLD);
-    dot(c2x+6,2,CL2); dot(c2x+7,2,CLD);
+    dot(c2x+2,0,CL2); dot(c2x+3,0,CLD);
+    dot(c2x+6,0,CL2); dot(c2x+7,0,CLD);
+  }
+
+  function drawRain(cx, t) {
+    const SPREAD = 14, CLOUD_BOT = 6, GROUND = 22;
+    ctx.fillStyle = 'rgba(140,195,230,0.2)';
+    for (let i = 0; i < 11; i++) {
+      const ry = CLOUD_BOT + ((t * 0.55 + i * 1.8) % (GROUND - CLOUD_BOT));
+      const rx = Math.round(cx - SPREAD / 2 + i * (SPREAD / 10));
+      if (rx < 1 || rx >= VW - 1) continue;
+      const iry = Math.floor(ry);
+      ctx.fillRect(rx * P, iry * P, Math.max(1, P - 2), P * 2);
+    }
   }
 
   function drawCharacter(OX, OY, frame, dir) {
@@ -555,9 +567,19 @@ function makeSnow() {
     ch(-1,8,SH); ch(9,8,SH); // hood collar wider
     ch(3,10,HD); ch(4,10,HD); ch(5,10,HD); // pocket
     ch(3,9,HD); ch(5,9,HD); // drawstrings
-    // Arms
-    for (let r = 8; r <= 12; r++) { ch(0,r,SH); ch(8,r,SH); }
-    ch(0,12,SK); ch(8,12,SK);
+    // Arms — natural hang with slight elbow bend outward
+    ch(-1, 8, SH);                    // left shoulder
+    ch(-1, 9, SH);                    // upper arm
+    ch(-2,10,SH); ch(-1,10,SH);       // elbow bends outward
+    ch(-2,11,SH);                     // forearm
+    ch(-2,12,SH);                     // forearm lower
+    ch(-2,13,SK); ch(-1,13,SK);       // hand (skin)
+    ch(9, 8, SH);                     // right shoulder
+    ch(9, 9, SH);
+    ch(9,10,SH);  ch(10,10,SH);
+    ch(10,11,SH);
+    ch(10,12,SH);
+    ch(9,13,SK);  ch(10,13,SK);
     // Pants
     for (let r = 11; r <= 12; r++) for (let x = 1; x <= 7; x++) ch(x, r, PA);
     // Walk frames
@@ -588,6 +610,7 @@ function makeSnow() {
     drawGround();
     drawTree();
     drawClouds(Math.round(charX), tick);
+    drawRain(Math.round(charX), tick);
     drawCharacter(Math.round(charX), 8, walkFrame, charDir);
     requestAnimationFrame(animate);
   }
