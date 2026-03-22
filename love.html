@@ -467,13 +467,23 @@ lampSpot.shadow.mapSize.set(512, 512);
 lampGrp.add(lampSpot);
 lampGrp.add(lampSpot.target);
 
-// Görsel ışık konisi (şeffaf silindir)
+// Görsel ışık hüzmesi — dar üst (lambada), geniş alt (yerde)
+// CylinderGeometry(radiusTop, radiusBottom, height, ...)
+// radTop=0.09 (lambada dar), radBottom=1.5 (yerde geniş) — doğru yön
 const coneMesh = new THREE.Mesh(
-  new THREE.CylinderGeometry(1.4, 0.09, 3.78, 20, 1, true),
-  new THREE.MeshBasicMaterial({ color: 0xffee66, transparent: true, opacity: 0.052, side: THREE.DoubleSide, depthWrite: false })
+  new THREE.CylinderGeometry(0.09, 1.5, 3.78, 20, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0xffee55, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false })
 );
 coneMesh.position.set(2.2, 2.39, 0);
 lampGrp.add(coneMesh);
+
+// İç hüzme — daha dar ve parlak
+const innerCone = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.04, 0.65, 3.78, 16, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0xfff5aa, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false })
+);
+innerCone.position.set(2.2, 2.39, 0);
+lampGrp.add(innerCone);
 
 lampGrp.position.set(LAMP_X, -0.5, LAMP_Z);
 scene.add(lampGrp);
@@ -481,21 +491,21 @@ scene.add(lampGrp);
 // ── Rain Cloud ────────────────────────────────────────────────────────────
 const cloudGrp = G();
 const cloudM = new THREE.MeshLambertMaterial({ color: 0x1c2b3a, transparent: true, opacity: 0.94 });
-// radii 1.35x büyütüldü, z=-0.5 ile lambadan önde
+// büyük bulut, z=-1.2 ile direkten çok önde
 [
-  [0,      0,     0,    0.62],
-  [ 0.58, -0.09,  0.06, 0.50],
-  [-0.58, -0.12,  0,    0.43],
-  [ 0.31,  0.32,  0,    0.35],
-  [-0.31,  0.28,  0,    0.31],
-  [ 0.08,  0.44,  0.09, 0.27],
-  [-0.08, -0.26,  0.10, 0.26],
+  [0,      0,     0,    0.72],
+  [ 0.68, -0.10,  0.05, 0.58],
+  [-0.68, -0.13,  0,    0.52],
+  [ 0.36,  0.38,  0,    0.40],
+  [-0.36,  0.33,  0,    0.36],
+  [ 0.09,  0.52,  0.08, 0.30],
+  [-0.09, -0.30,  0.09, 0.28],
 ].forEach(([x,y,z,r]) => {
   const m = M(new THREE.SphereGeometry(r, 14, 10), cloudM);
   m.position.set(x, y, z);
   cloudGrp.add(m);
 });
-cloudGrp.position.set(-5.5, 3.9, -0.5); // biraz yüksek, lambadan önde (z ekseninde)
+cloudGrp.position.set(-5.5, 4.5, -1.2); // yüksek + direkten 1.5 birim önde
 scene.add(cloudGrp);
 
 // ── Rain ──────────────────────────────────────────────────────────────────
@@ -614,7 +624,7 @@ let simT = 0;
 
   // Cloud follows character
   cloudGrp.position.x += (charX - cloudGrp.position.x) * dt * 0.85;
-  cloudGrp.position.y = 3.9 + Math.sin(simT * 0.42) * 0.06;
+  cloudGrp.position.y = 4.5 + Math.sin(simT * 0.42) * 0.06;
 
   // Rain
   const cx = cloudGrp.position.x, cy = cloudGrp.position.y;
