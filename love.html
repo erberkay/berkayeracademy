@@ -484,11 +484,11 @@ function makeSnow() {
   mkCloud(28,  80,  65, -12);
 })();
 
-// ── 8-bit sad child + bare tree scene ──
+// ── 8-bit animated scene: sad child walks under dark clouds ──
 (function(){
   const canvas = document.getElementById('bitScene');
-  const P = 4;        // screen px per virtual pixel
-  const VW = 60, VH = 26;
+  const P = 5;
+  const VW = 74, VH = 28;
   canvas.width  = VW * P;
   canvas.height = VH * P;
   const ctx = canvas.getContext('2d');
@@ -499,103 +499,124 @@ function makeSnow() {
     ctx.fillStyle = col; ctx.fillRect(x*P, y*P, P, P);
   }
 
-  const WD='#5c3b2a', DK='#3a2418';   // tree wood / bark
-  const SN='#ddf2fc', SG='#b4d6ec';   // snow / snow-ground
-  const SK='#f0c4a0', HA='#7a4828';   // skin / auburn-brown hair (kumral)
-  const EY='#4e92cc', TE='#b8e4f8';   // blue eyes / tear
-  const MO='#b85a48';                  // mouth
-  const SH='#3d5068', PA='#2a3a50';   // hoodie blue-grey / dark pants
-  const HD='#2c3c50';                  // hoodie shadow/pocket
+  const WD='#5c3b2a', DK='#3a2418';
+  const SN='#ddf2fc', SG='#b4d6ec';
+  const SK='#f0c4a0', HA='#7a4828';
+  const EY='#4e92cc', TE='#b8e4f8';
+  const MO='#b85a48';
+  const SH='#3d5068', PA='#2a3a50', HD='#2c3c50';
+  const CL='#28293c', CL2='#363750', CLD='#1e1f2e';
 
-  // Snow ground (rows 21–25)
-  for (let x = 0; x < VW; x++) {
-    dot(x, 21, SN);
-    dot(x, 22, SG); dot(x, 23, SG); dot(x, 24, SG); dot(x, 25, SG);
+  function drawGround() {
+    for (let x = 0; x < VW; x++) {
+      dot(x, 22, SN);
+      dot(x,23,SG); dot(x,24,SG); dot(x,25,SG); dot(x,26,SG); dot(x,27,SG);
+    }
   }
 
-  // ── Bare winter tree (trunk center x=15–16) ──
-  for (let y = 5; y <= 20; y++) { dot(15,y,DK); dot(16,y,WD); }  // trunk
-  for (let y = 1; y <= 4;  y++) { dot(15,y,DK); dot(16,y,WD); }  // spire
+  function drawTree() {
+    for (let y = 5; y <= 21; y++) { dot(15,y,DK); dot(16,y,WD); }
+    for (let y = 1; y <= 4;  y++) { dot(15,y,DK); dot(16,y,WD); }
+    for (let i = 0; i <= 9; i++) dot(14-i, 8+(i>5?1:0)+(i>8?1:0), WD);
+    dot(5,10,SN); dot(6,9,SN);
+    for (let i = 0; i <= 8; i++) dot(17+i, 6+(i>4?1:0)+(i>7?1:0), WD);
+    dot(24,8,SN); dot(25,7,SN);
+    for (let i = 0; i <= 7; i++) dot(14-i, 5+(i>4?1:0), WD);
+    dot(7,5,SN); dot(8,4,SN);
+    for (let i = 0; i <= 6; i++) dot(17+i, 3+(i>3?1:0), WD);
+    dot(22,3,SN); dot(23,2,SN);
+    dot(14,1,WD); dot(15,1,WD);
+    for (let x = 12; x <= 20; x++) dot(x, 21, SN);
+  }
 
-  // Branch left-1 (rows 8–10, cols 5–14)
-  for (let i = 0; i <= 9; i++) { dot(14-i, 8 + (i>5?1:0) + (i>8?1:0), WD); }
-  dot(5,10,SN); dot(6,9,SN);
+  function drawClouds(cx, t) {
+    // Cloud 1 — big dark cloud, slow sine drift
+    const c1x = Math.round(cx - 7 + Math.sin(t * 0.018) * 3);
+    for (let x = 0; x < 15; x++) {
+      dot(c1x+x, 6, x===0||x===14 ? CLD : CL2);
+      dot(c1x+x, 7, CL);
+      dot(c1x+x, 8, x===0||x===14 ? CLD : CL2);
+    }
+    dot(c1x+2,5,CL2); dot(c1x+3,5,CL2); dot(c1x+4,5,CLD);
+    dot(c1x+3,4,CLD);
+    dot(c1x+8,5,CL2); dot(c1x+9,5,CL2); dot(c1x+10,5,CLD);
+    // Cloud 2 — smaller, opposite phase
+    const c2x = Math.round(cx + 3 + Math.sin(t * 0.018 + Math.PI) * 2);
+    for (let x = 0; x < 10; x++) {
+      dot(c2x+x, 3, x===0||x===9 ? CLD : CL2);
+      dot(c2x+x, 4, CL);
+      dot(c2x+x, 5, x===0||x===9 ? CLD : CL2);
+    }
+    dot(c2x+2,2,CL2); dot(c2x+3,2,CLD);
+    dot(c2x+6,2,CL2); dot(c2x+7,2,CLD);
+  }
 
-  // Branch right-1 (rows 6–8, cols 17–26)
-  for (let i = 0; i <= 8; i++) { dot(17+i, 6 + (i>4?1:0) + (i>7?1:0), WD); }
-  dot(24,8,SN); dot(25,7,SN);
+  function drawCharacter(OX, OY, frame, dir) {
+    function ch(x, y, col) {
+      dot(OX + (dir === 1 ? x : 8 - x), OY + y, col);
+    }
+    // Hair top
+    [2,3,4,5,6].forEach(x => ch(x, 0, HA));
+    [0,1,2,3,4,5,6,7,8].forEach(x => ch(x, 1, HA));
+    // Hair sides
+    [2,3,4,5,6,7].forEach(r => ch(0, r, HA));
+    [2,3,4,5,6].forEach(r => ch(8, r, HA));
+    // Face
+    for (let r = 2; r <= 6; r++) for (let x = 1; x <= 7; x++) ch(x, r, SK);
+    [2,3,4,5,6].forEach(x => ch(x, 7, SK));
+    // Brows furrowed inward
+    ch(1,2,HA); ch(2,3,HA);
+    ch(7,2,HA); ch(6,3,HA);
+    // Blue eyes
+    ch(2,4,EY); ch(6,4,EY);
+    // Tears
+    ch(2,5,TE); ch(6,5,TE); ch(2,6,TE);
+    // Frown: corners row6, center dips row7
+    ch(2,6,MO); ch(6,6,MO);
+    ch(3,7,MO); ch(5,7,MO);
+    ch(4,7,SK); // neck centre
+    // Hoodie
+    for (let r = 8; r <= 10; r++) for (let x = 1; x <= 7; x++) ch(x, r, SH);
+    ch(-1,8,SH); ch(9,8,SH); // hood collar wider
+    ch(3,10,HD); ch(4,10,HD); ch(5,10,HD); // pocket
+    ch(3,9,HD); ch(5,9,HD); // drawstrings
+    // Arms
+    for (let r = 8; r <= 12; r++) { ch(0,r,SH); ch(8,r,SH); }
+    ch(0,12,SK); ch(8,12,SK);
+    // Pants
+    for (let r = 11; r <= 12; r++) for (let x = 1; x <= 7; x++) ch(x, r, PA);
+    // Walk frames
+    if (frame === 0) {
+      [1,2].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
+      [6,7].forEach(x => { ch(x,13,PA); ch(x,14,PA); ch(x,15,PA); });
+      [0,1,2,3].forEach(x => ch(x,14,PA));
+      [5,6,7,8].forEach(x => ch(x,15,PA));
+    } else {
+      [1,2].forEach(x => { ch(x,13,PA); ch(x,14,PA); ch(x,15,PA); });
+      [6,7].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
+      [0,1,2,3].forEach(x => ch(x,15,PA));
+      [5,6,7,8].forEach(x => ch(x,14,PA));
+    }
+  }
 
-  // Branch left-2 (rows 5–6, cols 7–14)
-  for (let i = 0; i <= 7; i++) { dot(14-i, 5 + (i>4?1:0), WD); }
-  dot(7,5,SN); dot(8,4,SN);
+  let charX = 36, charDir = 1, walkFrame = 0, tick = 0;
+  const MIN_X = 22, MAX_X = 56;
 
-  // Branch right-2 (rows 3–4, cols 17–23)
-  for (let i = 0; i <= 6; i++) { dot(17+i, 3 + (i>3?1:0), WD); }
-  dot(22,3,SN); dot(23,2,SN);
+  function animate() {
+    tick++;
+    if (tick % 14 === 0) walkFrame = (walkFrame + 1) % 2;
+    charX += 0.1 * charDir;
+    if (charX >= MAX_X) charDir = -1;
+    if (charX <= MIN_X) charDir = 1;
 
-  // Top twig
-  dot(14,1,WD); dot(15,1,WD);
-
-  // Snow pile at trunk base
-  for (let x = 12; x <= 20; x++) dot(x, 20, SN);
-
-  // ── Sad 8-bit child (origin: virtual x=38, y=9) ──
-  // Character: 9 wide × 13 tall pixels
-  const OX = 38, OY = 9;
-  function ch(x, y, col) { dot(OX+x, OY+y, col); }
-
-  // Hair top (rows 0–1): auburn/kumral, slightly wavy top
-  [2,3,4,5,6].forEach(x => ch(x, 0, HA));
-  [0,1,2,3,4,5,6,7,8].forEach(x => ch(x, 1, HA));
-
-  // Hair sides (rows 2–7): auburn on outer edges, slightly longer at sides
-  ch(0, 2, HA); ch(0, 3, HA); ch(0, 4, HA); ch(0, 5, HA); ch(0, 6, HA); ch(0, 7, HA);
-  ch(8, 2, HA); ch(8, 3, HA); ch(8, 4, HA); ch(8, 5, HA); ch(8, 6, HA);
-
-  // Face skin (rows 2–6)
-  for (let r = 2; r <= 6; r++) for (let x = 1; x <= 7; x++) ch(x, r, SK);
-  // Chin (row 7)
-  [2,3,4,5,6].forEach(x => ch(x, 7, SK));
-
-  // Sad eyebrows: outer high → inner low (furrowed inward)
-  ch(1, 2, HA); ch(2, 3, HA);   // left brow inner drops
-  ch(7, 2, HA); ch(6, 3, HA);   // right brow inner drops
-
-  // Eyes (row 4) — looking down (sad)
-  ch(2, 4, EY); ch(6, 4, EY);
-
-  // Tears (rows 5–6)
-  ch(2, 5, TE); ch(6, 5, TE);
-  ch(2, 6, TE);                  // left tear drips lower
-
-  // Frown mouth: corners UP, center DOWN = ∩ = sad
-  ch(2, 6, MO); ch(6, 6, MO);
-  ch(3, 7, MO); ch(4, 7, MO); ch(5, 7, MO);
-
-  // Neck
-  ch(3, 7, SK); ch(4, 7, SK);
-
-  // Hoodie (rows 8–10) + hanging arms (rows 8–12)
-  for (let r = 8; r <= 10; r++) for (let x = 1; x <= 7; x++) ch(x, r, SH);
-  for (let r = 8; r <= 12; r++) { ch(0, r, SH); ch(8, r, SH); }
-  ch(0, 12, SK); ch(8, 12, SK);  // hands
-  // Hood-down detail: slightly wider collar/hood at row 7-8
-  ch(-1, 8, SH); ch(9, 8, SH);
-  // Hoodie kangaroo pocket (row 10, center stripe)
-  ch(3, 10, HD); ch(4, 10, HD); ch(5, 10, HD);
-  // Drawstring (hood string) hanging at row 9, cols 3 & 5
-  ch(3, 9, HD); ch(5, 9, HD);
-
-  // Pants (rows 11–12)
-  for (let r = 11; r <= 12; r++) for (let x = 1; x <= 7; x++) ch(x, r, PA);
-
-  // Legs (rows 13–14)
-  [1,2].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
-  [6,7].forEach(x => { ch(x,13,PA); ch(x,14,PA); });
-
-  // Feet (row 14, slightly wider = hunched posture)
-  [0,1,2,3].forEach(x => ch(x, 14, PA));  // left foot turns inward
-  [5,6,7,8].forEach(x => ch(x, 14, PA));  // right foot turns inward
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGround();
+    drawTree();
+    drawClouds(Math.round(charX), tick);
+    drawCharacter(Math.round(charX), 8, walkFrame, charDir);
+    requestAnimationFrame(animate);
+  }
+  animate();
 })();
 
 musicBtn.addEventListener('click', function() {
