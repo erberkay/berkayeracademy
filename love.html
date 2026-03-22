@@ -41,15 +41,6 @@ body{
 .star{position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;animation:twinkle ease-in-out infinite}
 @keyframes twinkle{0%,100%{opacity:.1;transform:scale(1)}50%{opacity:.8;transform:scale(1.4)}}
 
-/* ── Falling hearts (ambient, top→bottom) ── */
-.hearts{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2;transition:opacity 1.8s ease}
-.fheart{position:absolute;top:-60px;animation:fallDown ease-in forwards;opacity:0;pointer-events:none;user-select:none}
-@keyframes fallDown{
-  0%  {transform:translateY(0) rotate(-8deg) scale(.7); opacity:0}
-  10% {opacity:.95}
-  80% {opacity:.85}
-  100%{transform:translateY(112vh) translateX(var(--hdx,0px)) rotate(12deg) scale(1.05); opacity:0}
-}
 
 /* ── Rose petals ── */
 .petals{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:2}
@@ -226,7 +217,6 @@ body{
 
 <div class="bg-glow"></div>
 <div class="stars" id="starsEl"></div>
-<div class="hearts" id="heartsEl"></div>
 <div class="petals" id="petalsEl"></div>
 <div class="snow-layer" id="snowEl"></div>
 <div class="cloud-layer" id="cloudLayer"></div>
@@ -372,21 +362,6 @@ const POEM_LINES = [
   }
 })();
 
-// ── Ambient falling hearts ──
-var heartInterval = null;
-var heartsEl = document.getElementById('heartsEl');
-(function(){
-  const items=['❤️','💕','💖','💗','💝','🌹','✨','💫','🌸','💞','🫶','💘'];
-  function makeHeart(){
-    const h=document.createElement('div'); h.className='fheart';
-    h.textContent=items[Math.floor(Math.random()*items.length)];
-    const dx=(Math.random()-.5)*60;
-    h.style.cssText=`left:${Math.random()*100}%;font-size:${.8+Math.random()*1.6}rem;animation-duration:${6+Math.random()*6}s;animation-delay:${Math.random()*2}s;--hdx:${dx}px`;
-    heartsEl.appendChild(h); setTimeout(()=>h.remove(),14000);
-  }
-  for(let i=0;i<18;i++) setTimeout(makeHeart,i*200);
-  heartInterval = setInterval(makeHeart,450);
-})();
 
 // ── Rose petals ──
 (function(){
@@ -625,28 +600,14 @@ musicBtn.addEventListener('click', function() {
   musicBtn.textContent = snowActive ? '🎵' : '❄️';
 
   if (snowActive) {
-    // Fade out falling hearts smoothly, stop spawning new ones
-    heartsEl.style.opacity = '0';
-    clearInterval(heartInterval);
-    heartInterval = null;
-    for(let i=0;i<20;i++) setTimeout(makeSnow, i*100);
-    snowInterval = setInterval(makeSnow, 250);
+    for(let i=0;i<35;i++) setTimeout(makeSnow, i*60);
+    snowInterval = setInterval(makeSnow, 120);
     if (YT_VIDEO_ID) {
       ytFrame.src = `https://www.youtube.com/embed/${YT_VIDEO_ID}?autoplay=1`;
       ytPlayer.classList.add('open');
     }
   } else {
     clearInterval(snowInterval);
-    // Resume falling hearts
-    heartsEl.style.opacity = '1';
-    const items=['❤️','💕','💖','💗','💝','🌹','✨','💫','🌸','💞','🫶','💘'];
-    heartInterval = setInterval(function(){
-      const h=document.createElement('div'); h.className='fheart';
-      h.textContent=items[Math.floor(Math.random()*items.length)];
-      const dx=(Math.random()-.5)*60;
-      h.style.cssText=`left:${Math.random()*100}%;font-size:${.8+Math.random()*1.6}rem;animation-duration:${6+Math.random()*6}s;--hdx:${dx}px`;
-      heartsEl.appendChild(h); setTimeout(()=>h.remove(),14000);
-    }, 450);
     ytPlayer.classList.remove('open');
     ytFrame.src = '';
   }
