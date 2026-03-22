@@ -338,15 +338,22 @@ musicBtn.addEventListener('click',function(){
 });
 </script>
 
-<!-- Three.js -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<!-- Three.js via importmap (module approach for FBXLoader) -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 
 <!-- ══════════════════════════════════════════════
-     THREE.JS 3D SCENE — procedural character
+     THREE.JS 3D SCENE — FBX character
 ══════════════════════════════════════════════ -->
-<script>
-(function() {
-if (typeof THREE === 'undefined') { console.error('[3D] THREE failed to load'); return; }
+<script type="module">
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
 // ── Renderer ──────────────────────────────────────────────────────────────
 const CW = 460, CH = 520;
@@ -489,324 +496,88 @@ const drops = Array.from({ length: RN }, () => ({
   s: 3.5 + Math.random() * 3.5
 }));
 
-// ── Character materials ───────────────────────────────────────────────────
-const mSkin   = new THREE.MeshLambertMaterial({ color: 0xf5c9a0 });
-const mHair   = new THREE.MeshLambertMaterial({ color: 0x180d04 });
-const mJacket = new THREE.MeshLambertMaterial({ color: 0x1c2638 });
-const mJeans  = new THREE.MeshLambertMaterial({ color: 0x1a2745 });
-const mShoe   = new THREE.MeshLambertMaterial({ color: 0x0f0f12 });
-const mCig    = new THREE.MeshLambertMaterial({ color: 0xf0ede0 });
-const mEmber  = new THREE.MeshLambertMaterial({ color: 0xff3300, emissive: 0xff2200, emissiveIntensity: 1.0 });
-const mEye    = new THREE.MeshLambertMaterial({ color: 0x1a4a8a });
+// ── FBX Character ─────────────────────────────────────────────────────────
+let charObj = null, mixer = null;
+let actions = {}, curAction = null;
+let charState = 'loading';
+let charX = -4.5, charTargetX = -1.8;
+let charStateT = 0;
 
-// ── Character rig ─────────────────────────────────────────────────────────
-// Groups: root → hips → torso → neck → head
-//                hips → lHip/rHip → lKnee/rKnee → lAnk/rAnk
-//                torso → lSh/rSh → lElb/rElb
+const fbxLoader = new FBXLoader();
 
-const c = {
-  root: G(), hips: G(), torso: G(), neck: G(), head: G(),
-  lSh: G(), rSh: G(), lElb: G(), rElb: G(),
-  lHip: G(), rHip: G(), lKnee: G(), rKnee: G(), lAnk: G(), rAnk: G(),
-  cig: G(),
-  x: -4.5, targetX: -1.8, ember: null,
-};
+// Load character mesh
+fbxLoader.load('/karakter/Ch31_nonPBR.fbx', (fbx) => {
+  fbx.scale.setScalar(0.012);
+  fbx.position.set(charX, 0, 0);
+  fbx.rotation.y = Math.PI / 2; // face +X walking right
+  fbx.traverse(child => { if (child.isMesh) child.frustumCulled = false; });
+  mixer = new THREE.AnimationMixer(fbx);
+  charObj = fbx;
+  scene.add(charObj);
 
-// Build hierarchy
-c.root.add(c.hips);
-c.hips.add(c.torso);
-c.torso.add(c.neck);
-c.neck.add(c.head);
-c.torso.add(c.lSh);
-c.torso.add(c.rSh);
-c.lSh.add(c.lElb);
-c.rSh.add(c.rElb);
-c.hips.add(c.lHip);
-c.hips.add(c.rHip);
-c.lHip.add(c.lKnee);
-c.rHip.add(c.rKnee);
-c.lKnee.add(c.lAnk);
-c.rKnee.add(c.rAnk);
+  // Load animations
+  const animFiles = {
+    walk:    '/karakter/Standard Walk.fbx',
+    sadIdle: '/karakter/Sad Idle.fbx',
+    sit:     '/karakter/Sitting Idle.fbx',
+    smoke:   '/karakter/Smoking.fbx',
+  };
+  let done = 0, total = Object.keys(animFiles).length;
+  Object.entries(animFiles).forEach(([key, path]) => {
+    fbxLoader.load(path, (animFbx) => {
+      if (animFbx.animations[0]) {
+        actions[key] = mixer.clipAction(animFbx.animations[0]);
+        actions[key].setLoop(THREE.LoopRepeat);
+      }
+      if (++done >= total) { charState = 'walking'; playAnim('walk'); }
+    }, undefined, () => {
+      if (++done >= total && charState === 'loading') { charState = 'walking'; playAnim('sadIdle'); }
+    });
+  });
+}, undefined, err => console.error('[3D] model error:', err));
 
-// Pivot offsets
-c.hips.position.y  = 0.85;
-c.neck.position.y  = 0.52;
-c.head.position.y  = 0.14;
-c.lSh.position.set(-0.245, 0.44, 0);
-c.rSh.position.set( 0.245, 0.44, 0);
-c.lElb.position.y  = -0.31;
-c.rElb.position.y  = -0.31;
-c.lHip.position.set(-0.11, 0, 0);
-c.rHip.position.set( 0.11, 0, 0);
-c.lKnee.position.y = -0.43;
-c.rKnee.position.y = -0.43;
-c.lAnk.position.y  = -0.39;
-c.rAnk.position.y  = -0.39;
-
-// ── Geometry additions ────────────────────────────────────────────────────
-
-// Torso
-const torsoMesh = M(new THREE.CylinderGeometry(0.16, 0.19, 0.52, 8), mJacket);
-torsoMesh.position.y = 0.26;
-c.torso.add(torsoMesh);
-// Collar
-const collarMesh = M(new THREE.CylinderGeometry(0.13, 0.16, 0.10, 8), mJacket);
-collarMesh.position.y = 0.57;
-c.torso.add(collarMesh);
-
-// Neck
-const neckMesh = M(new THREE.CylinderGeometry(0.065, 0.075, 0.13, 8), mSkin);
-neckMesh.position.y = 0.065;
-c.neck.add(neckMesh);
-
-// Head
-c.head.add(M(new THREE.SphereGeometry(0.17, 14, 10), mSkin));
-const hTop = M(new THREE.SphereGeometry(0.185, 12, 8), mHair);
-hTop.scale.y = 0.54; hTop.position.y = 0.1;
-c.head.add(hTop);
-const hBack = M(new THREE.SphereGeometry(0.195, 12, 8), mHair);
-hBack.scale.set(0.82, 0.60, 0.95); hBack.position.set(0, 0.06, -0.07);
-c.head.add(hBack);
-[-0.065, 0.065].forEach(ex => {
-  const eye = M(new THREE.SphereGeometry(0.024, 8, 6), mEye);
-  eye.position.set(ex, 0.03, 0.163);
-  c.head.add(eye);
-});
-
-// Arms builder
-function buildArm(sh, elb, isRight) {
-  const ua = M(new THREE.CylinderGeometry(0.062, 0.068, 0.31, 6), mJacket);
-  ua.position.y = -0.155;
-  sh.add(ua);
-  elb.add(M(new THREE.SphereGeometry(0.062, 8, 6), mJacket));
-  const la = M(new THREE.CylinderGeometry(0.052, 0.062, 0.27, 6), mJacket);
-  la.position.y = -0.135;
-  elb.add(la);
-  const hand = M(new THREE.SphereGeometry(0.055, 8, 6), mSkin);
-  hand.position.y = -0.28;
-  elb.add(hand);
-  if (isRight) c.rHand = hand;
-}
-buildArm(c.lSh, c.lElb, false);
-buildArm(c.rSh, c.rElb, true);
-
-// Legs builder
-function buildLeg(hip, knee, ank) {
-  const ul = M(new THREE.CylinderGeometry(0.092, 0.098, 0.43, 6), mJeans);
-  ul.position.y = -0.215;
-  hip.add(ul);
-  knee.add(M(new THREE.SphereGeometry(0.090, 8, 6), mJeans));
-  const ll = M(new THREE.CylinderGeometry(0.080, 0.090, 0.39, 6), mJeans);
-  ll.position.y = -0.195;
-  knee.add(ll);
-  ank.add(M(new THREE.SphereGeometry(0.074, 8, 6), mShoe));
-  const shoe = M(new THREE.CylinderGeometry(0.06, 0.07, 0.22, 8), mShoe);
-  shoe.rotation.x = Math.PI / 2; shoe.position.set(0.02, -0.04, 0.08);
-  ank.add(shoe);
-}
-buildLeg(c.lHip, c.lKnee, c.lAnk);
-buildLeg(c.rHip, c.rKnee, c.rAnk);
-
-// Cigarette
-const cigBody = M(new THREE.CylinderGeometry(0.007, 0.007, 0.13, 6), mCig);
-cigBody.rotation.x = Math.PI / 2;
-c.cig.add(cigBody);
-c.ember = M(new THREE.SphereGeometry(0.009, 6, 4), mEmber);
-c.ember.position.z = 0.07;
-c.cig.add(c.ember);
-c.cig.visible = false;
-
-// Place character in scene
-c.root.position.set(c.x, 0, 0);
-c.root.rotation.y = Math.PI / 2; // face +X (walking right)
-scene.add(c.root);
-
-// ── Smoke puffs ───────────────────────────────────────────────────────────
-const puffs = [];
-function spawnPuff() {
-  const wPos = new THREE.Vector3();
-  c.ember.getWorldPosition(wPos);
-  const p = new THREE.Mesh(
-    new THREE.SphereGeometry(0.035 + Math.random() * 0.025, 8, 6),
-    new THREE.MeshBasicMaterial({ color: 0x8899aa, transparent: true, opacity: 0.38, depthWrite: false })
-  );
-  p.position.copy(wPos);
-  p.userData = { vx: (Math.random() - 0.5) * 0.18, vy: 0.22 + Math.random() * 0.18, life: 1.0 };
-  scene.add(p);
-  puffs.push(p);
+function playAnim(key, fade = 0.5) {
+  const next = actions[key];
+  if (!next || curAction === next) return;
+  if (curAction) curAction.fadeOut(fade);
+  next.reset().fadeIn(fade).play();
+  curAction = next;
 }
 
-// ── Animation state ───────────────────────────────────────────────────────
-let state = 'walking';
-let stateT = 0;
-let puffT  = 0;
-let simT   = 0;
-
+// ── Animation loop ────────────────────────────────────────────────────────
 const clock = new THREE.Clock();
+let simT = 0;
 
 (function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(clock.getDelta(), 0.05);
-  simT   += dt;
-  stateT += dt;
+  simT += dt;
 
-  // Lamp warm flicker
-  lampPt.intensity = 3.2 + Math.sin(simT * 4.5) * 0.18 + Math.sin(simT * 12.3) * 0.08;
+  if (mixer) mixer.update(dt);
 
-  // Character update
-  updateChar(dt);
+  // Character movement
+  if (charObj && charState === 'walking') {
+    charX += (charTargetX - charX) * dt * 1.1;
+    charObj.position.x = charX;
+    if (Math.abs(charX - charTargetX) < 0.08) {
+      charX = charTargetX;
+      charObj.position.x = charX;
+      charObj.rotation.y = Math.PI * 0.85; // face camera
+      charState = 'sadIdle'; charStateT = 0;
+      playAnim('sadIdle');
+    }
+  } else if (charState !== 'loading') {
+    charStateT += dt;
+    if      (charState === 'sadIdle' && charStateT > 4.5) { charState = 'sitting'; charStateT = 0; playAnim('sit'); }
+    else if (charState === 'sitting' && charStateT > 5.0) { charState = 'smoking'; charStateT = 0; playAnim('smoke'); }
+    else if (charState === 'smoking' && charStateT > 8.0) { charState = 'sadIdle'; charStateT = 0; playAnim('sadIdle'); }
+  }
 
   // Cloud follows character
-  cloudGrp.position.x = lerp(cloudGrp.position.x, c.root.position.x, dt * 0.85);
+  cloudGrp.position.x += (charX - cloudGrp.position.x) * dt * 0.85;
   cloudGrp.position.y = 4.15 + Math.sin(simT * 0.42) * 0.06;
 
   // Rain
-  updateRain(dt);
-
-  // Smoke puffs
-  updatePuffs(dt);
-
-  renderer.render(scene, cam);
-})();
-
-// ── Character logic ───────────────────────────────────────────────────────
-function updateChar(dt) {
-  if (state === 'walking') {
-    animWalk();
-    c.x = lerp(c.x, c.targetX, dt * 1.1);
-    c.root.position.x = c.x;
-    if (Math.abs(c.x - c.targetX) < 0.07) {
-      c.x = c.targetX;
-      c.root.position.x = c.x;
-      c.root.rotation.y = Math.PI * 0.80;
-      enterState('sadIdle');
-    }
-  } else if (state === 'sadIdle') {
-    animSadIdle();
-    if (stateT > 4.5) enterState('sitting');
-  } else if (state === 'sitting') {
-    animSit();
-    if (stateT > 4.5) enterState('smoking');
-  } else if (state === 'smoking') {
-    animSmoke(dt);
-    if (stateT > 8.5) enterState('sadIdle');
-  }
-}
-
-function enterState(s) {
-  state = s; stateT = 0;
-  if (s !== 'smoking') {
-    c.cig.visible = false;
-    if (c.cig.parent) c.cig.parent.remove(c.cig);
-  }
-}
-
-// Lerp a rotation value toward target
-function lrp(cur, tgt, t) { return cur + (tgt - cur) * t; }
-
-function animWalk() {
-  const t = simT, f = 2.55;
-  const s = Math.sin(t * f), cs = Math.cos(t * f);
-
-  c.hips.position.y = 0.85 + Math.abs(s) * 0.024;
-  c.torso.rotation.x = 0.09;
-  c.torso.rotation.z = lrp(c.torso.rotation.z, s * 0.022, 0.12);
-
-  // Legs
-  c.lHip.rotation.x  = lrp(c.lHip.rotation.x,   s * 0.54, 0.15);
-  c.rHip.rotation.x  = lrp(c.rHip.rotation.x,  -s * 0.54, 0.15);
-  c.lKnee.rotation.x = lrp(c.lKnee.rotation.x, Math.max(0, -s) * 0.60, 0.15);
-  c.rKnee.rotation.x = lrp(c.rKnee.rotation.x, Math.max(0,  s) * 0.60, 0.15);
-
-  // Arms (opposite phase)
-  c.lSh.rotation.x = lrp(c.lSh.rotation.x, -s * 0.30, 0.12);
-  c.rSh.rotation.x = lrp(c.rSh.rotation.x,  s * 0.30, 0.12);
-  c.lSh.rotation.z = lrp(c.lSh.rotation.z,  0, 0.08);
-  c.rSh.rotation.z = lrp(c.rSh.rotation.z,  0, 0.08);
-  c.lElb.rotation.x = lrp(c.lElb.rotation.x, Math.max(0, s) * 0.22, 0.12);
-  c.rElb.rotation.x = lrp(c.rElb.rotation.x, Math.max(0,-s) * 0.22, 0.12);
-
-  // Head slightly down (sad walk)
-  c.head.rotation.x = lrp(c.head.rotation.x, 0.13, 0.05);
-  c.neck.rotation.z = lrp(c.neck.rotation.z, 0, 0.05);
-}
-
-function animSadIdle() {
-  const t = simT;
-  const sway = Math.sin(t * 0.55) * 0.016;
-
-  c.hips.position.y = 0.84 + Math.sin(t * 1.05) * 0.007;
-  c.torso.rotation.x = lrp(c.torso.rotation.x, 0.14, 0.04);
-  c.torso.rotation.z = lrp(c.torso.rotation.z, sway, 0.05);
-
-  c.lHip.rotation.x  = lrp(c.lHip.rotation.x,  0, 0.06);
-  c.rHip.rotation.x  = lrp(c.rHip.rotation.x,  0, 0.06);
-  c.lKnee.rotation.x = lrp(c.lKnee.rotation.x, 0.06, 0.06);
-  c.rKnee.rotation.x = lrp(c.rKnee.rotation.x, 0.06, 0.06);
-
-  c.lSh.rotation.x  = lrp(c.lSh.rotation.x,  0.18, 0.05);
-  c.rSh.rotation.x  = lrp(c.rSh.rotation.x,  0.18, 0.05);
-  c.lSh.rotation.z  = lrp(c.lSh.rotation.z,   0.09, 0.05);
-  c.rSh.rotation.z  = lrp(c.rSh.rotation.z,  -0.09, 0.05);
-  c.lElb.rotation.x = lrp(c.lElb.rotation.x,  0.22, 0.05);
-  c.rElb.rotation.x = lrp(c.rElb.rotation.x,  0.22, 0.05);
-
-  c.head.rotation.x = lrp(c.head.rotation.x, 0.25 + Math.sin(t * 0.38) * 0.04, 0.04);
-  c.neck.rotation.z = lrp(c.neck.rotation.z, Math.sin(t * 0.3) * 0.025, 0.04);
-}
-
-function animSit() {
-  const t = simT;
-
-  c.hips.position.y   = lrp(c.hips.position.y,   0.20, 0.04);
-  c.torso.rotation.x  = lrp(c.torso.rotation.x,  -0.05, 0.04);
-  c.torso.rotation.z  = lrp(c.torso.rotation.z,   Math.sin(t * 0.4) * 0.012, 0.04);
-
-  c.lHip.rotation.x   = lrp(c.lHip.rotation.x,  -1.35, 0.05);
-  c.rHip.rotation.x   = lrp(c.rHip.rotation.x,  -1.35, 0.05);
-  c.lKnee.rotation.x  = lrp(c.lKnee.rotation.x,  1.30, 0.05);
-  c.rKnee.rotation.x  = lrp(c.rKnee.rotation.x,  1.30, 0.05);
-
-  c.lSh.rotation.x    = lrp(c.lSh.rotation.x,   -0.35, 0.04);
-  c.rSh.rotation.x    = lrp(c.rSh.rotation.x,   -0.35, 0.04);
-  c.lSh.rotation.z    = lrp(c.lSh.rotation.z,    0.24, 0.04);
-  c.rSh.rotation.z    = lrp(c.rSh.rotation.z,   -0.24, 0.04);
-  c.lElb.rotation.x   = lrp(c.lElb.rotation.x,   0.52, 0.04);
-  c.rElb.rotation.x   = lrp(c.rElb.rotation.x,   0.52, 0.04);
-
-  c.head.rotation.x   = lrp(c.head.rotation.x,   0.30 + Math.sin(t * 0.35) * 0.03, 0.03);
-  c.neck.rotation.z   = lrp(c.neck.rotation.z,   Math.sin(t * 0.28) * 0.02, 0.03);
-}
-
-function animSmoke(dt) {
-  const t = simT;
-  // Sitting base
-  animSit();
-
-  // Right arm raised for smoking
-  const raise = -1.08 + Math.sin(t * 1.35) * 0.07;
-  c.rSh.rotation.x  = lrp(c.rSh.rotation.x,  raise, 0.06);
-  c.rSh.rotation.z  = lrp(c.rSh.rotation.z,  -0.28, 0.06);
-  c.rElb.rotation.x = lrp(c.rElb.rotation.x,  0.62, 0.06);
-
-  // Attach cigarette to right elbow group (at hand position)
-  if (c.cig.parent !== c.rElb) {
-    c.rElb.add(c.cig);
-    c.cig.position.set(0.04, -0.31, 0.08);
-    c.cig.rotation.set(0, 0, -0.45);
-    c.cig.visible = true;
-  }
-
-  // Emit smoke puffs
-  puffT -= dt;
-  if (puffT <= 0) {
-    puffT = 0.55 + Math.random() * 0.5;
-    spawnPuff();
-  }
-}
-
-// ── Rain update ───────────────────────────────────────────────────────────
-function updateRain(dt) {
   const cx = cloudGrp.position.x, cy = cloudGrp.position.y;
   for (let i = 0; i < RN; i++) {
     const d = drops[i];
@@ -817,31 +588,15 @@ function updateRain(dt) {
       d.z = (Math.random() - 0.5) * 1.0;
     }
     const b = i * 6;
-    rBuf[b]=d.x;   rBuf[b+1]=d.y;    rBuf[b+2]=d.z;
+    rBuf[b]=d.x; rBuf[b+1]=d.y; rBuf[b+2]=d.z;
     rBuf[b+3]=d.x-0.035; rBuf[b+4]=d.y-0.20; rBuf[b+5]=d.z;
   }
   rGeo.attributes.position.needsUpdate = true;
-}
 
-// ── Smoke puff update ─────────────────────────────────────────────────────
-function updatePuffs(dt) {
-  for (let i = puffs.length - 1; i >= 0; i--) {
-    const p = puffs[i];
-    p.position.x += p.userData.vx * dt;
-    p.position.y += p.userData.vy * dt;
-    p.userData.life -= dt * 0.5;
-    p.material.opacity = p.userData.life * 0.38;
-    p.scale.setScalar(1 + (1 - p.userData.life) * 2.8);
-    if (p.userData.life <= 0) {
-      scene.remove(p);
-      p.geometry.dispose();
-      p.material.dispose();
-      puffs.splice(i, 1);
-    }
-  }
-}
+  // Lamp flicker
+  lampPt.intensity = 3.5 + Math.sin(simT * 4.5) * 0.18 + Math.sin(simT * 12.3) * 0.08;
 
-console.log('[3D] scene running, state:', state);
+  renderer.render(scene, cam);
 })();
 </script>
 </body>
