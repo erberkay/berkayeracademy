@@ -1407,15 +1407,7 @@ async function renderDashboard() {
   let lessons = res.lessons || [];
   const today = toDateStr(new Date());
 
-  // Auto-complete past scheduled/rescheduled lessons
-  const needsComplete = lessons.some(l => l.date < today && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen'));
-  if (needsComplete) {
-    lessons = lessons.map(l =>
-      l.date < today && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen') ? { ...l, status: 'completed' } : l
-    );
-    db.collection('reservations').doc(_user.uid).update({ lessons })
-      .catch(e => { const c=errId(); toast(`${window._i18n?.getLang()==='en'?'Lesson status update failed':'Ders durumu güncellenemedi'} (${c}): `+(e.message||e.code), true); });
-  }
+
 
   // Plan ended or all lessons cancelled: show summary only
   const planEnded = res.end_date && res.end_date < today;
