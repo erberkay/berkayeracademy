@@ -2370,6 +2370,7 @@ async function renderAdminPanel() {
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
             ${s.last_reminder_sent ? `<br><span style="color:rgba(255,200,100,.6);font-size:.6rem;">📧 Son hatırlatma: ${new Date(s.last_reminder_sent.toDate ? s.last_reminder_sent.toDate() : s.last_reminder_sent).toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
             ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 Öğrenci notu: "${s.note}"</span>` : ''}
+            ${s.admin_note ? `<br><span style="color:rgba(255,220,100,.65);font-size:.6rem;">📝 ${s.admin_note}</span>` : ''}
           </div>
         </div>`;
       const payWrap = document.createElement('div'); payWrap.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;';
@@ -2667,6 +2668,31 @@ async function renderAdminPanel() {
         };
         row.append(pastToggle, pastDiv);
       }
+
+      // Admin private note
+      const noteWrap = document.createElement('div');
+      noteWrap.style.cssText = 'margin-top:10px;padding:8px 10px;background:rgba(255,220,100,.04);border:1px solid rgba(255,220,100,.1);border-radius:6px;';
+      const noteLabel = document.createElement('div');
+      noteLabel.style.cssText = 'font-family:"Space Mono",monospace;font-size:.55rem;color:rgba(255,220,100,.4);letter-spacing:.07em;margin-bottom:5px;';
+      noteLabel.textContent = '📝 ÖZEL NOT (sadece sen görürsün)';
+      const noteArea = document.createElement('textarea');
+      noteArea.value = s.admin_note || '';
+      noteArea.placeholder = 'Bu öğrenci için not ekle...';
+      noteArea.rows = 2;
+      noteArea.style.cssText = 'width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:4px;color:rgba(255,255,255,.75);font-size:.68rem;font-family:"Space Mono",monospace;padding:6px 8px;resize:vertical;outline:none;box-sizing:border-box;';
+      const noteSaveBtn = document.createElement('button');
+      noteSaveBtn.textContent = 'Kaydet';
+      noteSaveBtn.style.cssText = 'margin-top:5px;background:rgba(255,220,100,.08);border:1px solid rgba(255,220,100,.2);color:rgba(255,220,100,.8);font-family:"Space Mono",monospace;font-size:.57rem;padding:4px 12px;border-radius:4px;cursor:pointer;';
+      noteSaveBtn.onclick = async () => {
+        noteSaveBtn.disabled = true; noteSaveBtn.textContent = '...';
+        try {
+          await db.collection('reservations').doc(studentUid).update({ admin_note: noteArea.value.trim() });
+          noteSaveBtn.textContent = '✓ Kaydedildi';
+          setTimeout(() => { noteSaveBtn.textContent = 'Kaydet'; noteSaveBtn.disabled = false; }, 1500);
+        } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); noteSaveBtn.textContent = 'Kaydet'; noteSaveBtn.disabled = false; }
+      };
+      noteWrap.append(noteLabel, noteArea, noteSaveBtn);
+      row.append(noteWrap);
 
       row.append(cancelPlanBtn);
       studList.append(row);
