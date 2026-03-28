@@ -2889,8 +2889,14 @@ async function adminBulkReschedule(studentUid, idxArr, allLessons) {
 
 async function adminBulkComplete(studentUid, idxArr, allLessons) {
   try {
-    const updated = allLessons.map((l, i) => idxArr.includes(i) ? { ...l, status: 'completed' } : l);
-    await db.collection('reservations').doc(studentUid).update({ lessons: updated });
+    const batch = db.batch();
+    const updated = allLessons.map((l, i) => {
+      if (!idxArr.includes(i)) return l;
+      batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
+      return { ...l, status: 'completed' };
+    });
+    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    await batch.commit();
     toast(`✓ ${idxArr.length} ders tamamlandı olarak işaretlendi.`); renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
 }
