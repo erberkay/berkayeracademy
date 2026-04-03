@@ -2217,30 +2217,30 @@ async function renderAdminPanel() {
   // Sync booked_slots: backfill missing + purge stale (runs once per session)
   if (!window._slotsSynced && studSnap) {
     window._slotsSynced = true;
-    // Build set of valid slot IDs from active lessons
-    const validSlotIds = new Set();
+    // Build map of valid slot IDs → student_uid from active lessons
+    const validSlotMap = new Map(); // id → student_uid
     studSnap.forEach(doc => {
       (doc.data().lessons || []).forEach(l => {
         if ((l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen') && l.date) {
-          validSlotIds.add(l.date + '_' + l.time);
+          validSlotMap.set(l.date + '_' + l.time, doc.id);
         }
       });
     });
     // Fetch all current booked_slots and delete orphans, add missing
-    db.collection('booked_slots').get().then(slotSnap => {
+    db.collection('booked_slots').get().then(async slotSnap => {
       const batch = db.batch();
       let changed = 0;
       slotSnap.forEach(d => {
-        if (!validSlotIds.has(d.id)) { batch.delete(d.ref); changed++; }
+        if (!validSlotMap.has(d.id)) { batch.delete(d.ref); changed++; }
       });
-      validSlotIds.forEach(id => {
+      validSlotMap.forEach((studentUid, id) => {
         const [date, time] = [id.slice(0, 10), id.slice(11)];
         if (!slotSnap.docs.find(d => d.id === id)) {
-          batch.set(db.collection('booked_slots').doc(id), { date, time }, { merge: true });
+          batch.set(db.collection('booked_slots').doc(id), { date, time, student_uid: studentUid }, { merge: true });
           changed++;
         }
       });
-      if (changed > 0) batch.commit().catch(() => {});
+      if (changed > 0) await batch.commit().catch(() => {});
     }).catch(() => {});
   }
 
@@ -3458,14 +3458,14 @@ async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson
   if (!confirm(`${formatDateStr(lesson.date)} ${lesson.time} dersini iptal et?`)) return;
   const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, status: 'cancelled' } : l);
   try {
-    await db.collection('reservations').doc(studentUid).update({ lessons: updated });
-  } catch(e) { const c=errId(); toast(`Hata rezervasyon (${c}): ` + (e.message||e.code), true); return; }
-  try {
-    await db.collection('booked_slots').doc(lesson.date + '_' + lesson.time).delete();
-  } catch(e) { const c=errId(); toast(`Hata slot (${c}): ` + (e.message||e.code), true); return; }
-  toast(`✓ Ders iptal edildi.`);
-  window._slotsSynced = false;
-  renderAdminPanel();
+    const batch = db.batch();
+    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+    await batch.commit();
+    toast(`✓ Ders iptal edildi.`);
+    window._slotsSynced = false;
+    renderAdminPanel();
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
 
 async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
