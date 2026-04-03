@@ -3021,6 +3021,15 @@ async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) 
       const batch = db.batch();
       if (applyAll) {
         const targets = allLessons.filter(l => l.status === 'scheduled' || l.status === 'rescheduled');
+        // Check if any of the new slots conflict with OTHER students
+        const conflictChecks = await Promise.all(
+          targets.map(l => db.collection('booked_slots').doc(l.date + '_' + newTime).get())
+        );
+        const conflicts = conflictChecks.filter(s => s.exists && s.data().student_uid !== studentUid);
+        if (conflicts.length > 0) {
+          const ok = confirm(`${conflicts.length} tarihte ${newTime} başka bir öğrenciye ait. Yine de tüm derslere uygula?`);
+          if (!ok) return;
+        }
         const updated = allLessons.map(l =>
           (l.status === 'scheduled' || l.status === 'rescheduled') ? { ...l, time: newTime } : l
         );
@@ -3037,7 +3046,7 @@ async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) 
         const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, time: newTime } : l);
         batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
         batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-        if (!conflict.exists) batch.set(db.collection('booked_slots').doc(lesson.date + '_' + newTime), { date: lesson.date, time: newTime, student_uid: studentUid });
+        batch.set(db.collection('booked_slots').doc(lesson.date + '_' + newTime), { date: lesson.date, time: newTime, student_uid: studentUid });
         await batch.commit();
         toast(`✓ Saat değiştirildi → ${newTime}`);
       }
@@ -3073,7 +3082,7 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
       const batch = db.batch();
       batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
       batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-      if (!conflict.exists) batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), { date: newDate, time: lesson.time, student_uid: studentUid });
+      batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), { date: newDate, time: lesson.time, student_uid: studentUid });
       await batch.commit();
       toast(`✓ Gün değiştirildi → ${formatDateStr(newDate)}`);
       renderAdminPanel();
@@ -3617,6 +3626,8 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
     end_date:      endDate,
     lessons,
     reschedule_credits,
+    payment_confirmed: false,
+    payment_pending:   false,
     created_at: firebase.firestore.FieldValue.serverTimestamp(),
   });
 
