@@ -534,18 +534,41 @@ const drops = Array.from({ length: RN }, () => ({
   s: 3.5 + Math.random() * 3.5
 }));
 
-// ── Sigara dumanı particles ────────────────────────────────────────────────
-const SMOKE_N = 28;
-const smokeBuf = new Float32Array(SMOKE_N * 3);
-const smokeGeo = new THREE.BufferGeometry();
-smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokeBuf, 3));
-const smokePts = new THREE.Points(smokeGeo,
-  new THREE.PointsMaterial({ color: 0xbbccdd, size: 0.18, transparent: true,
-    opacity: 0.65, depthWrite: false, blending: THREE.AdditiveBlending }));
-scene.add(smokePts);
-smokePts.visible = false;
+// ── Sigara dumanı particles (3 katman: büyük/orta/küçük) ──────────────────
+const SMOKE_N = 50;
 const smokeP = Array.from({ length: SMOKE_N }, () =>
-  ({ x:0, y:0, z:0, vx:0, vy:0, life:0, max:0, active:false }));
+  ({ x:0, y:0, z:0, vx:0, vz:0, vy:0, life:0, max:0, active:false, layer:0 }));
+
+// Katman 0 — büyük, hafif
+const smkGeo0 = new THREE.BufferGeometry();
+const smkBuf0 = new Float32Array(SMOKE_N * 3);
+smkGeo0.setAttribute('position', new THREE.BufferAttribute(smkBuf0, 3));
+const smkPts0 = new THREE.Points(smkGeo0,
+  new THREE.PointsMaterial({ color: 0xd8e8f0, size: 0.38, transparent: true,
+    opacity: 0.28, depthWrite: false, blending: THREE.NormalBlending }));
+scene.add(smkPts0);
+
+// Katman 1 — orta
+const smkGeo1 = new THREE.BufferGeometry();
+const smkBuf1 = new Float32Array(SMOKE_N * 3);
+smkGeo1.setAttribute('position', new THREE.BufferAttribute(smkBuf1, 3));
+const smkPts1 = new THREE.Points(smkGeo1,
+  new THREE.PointsMaterial({ color: 0xc0d4e0, size: 0.20, transparent: true,
+    opacity: 0.45, depthWrite: false, blending: THREE.NormalBlending }));
+scene.add(smkPts1);
+
+// Katman 2 — küçük, kor yanında
+const smkGeo2 = new THREE.BufferGeometry();
+const smkBuf2 = new Float32Array(SMOKE_N * 3);
+smkGeo2.setAttribute('position', new THREE.BufferAttribute(smkBuf2, 3));
+const smkPts2 = new THREE.Points(smkGeo2,
+  new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true,
+    opacity: 0.70, depthWrite: false, blending: THREE.AdditiveBlending }));
+scene.add(smkPts2);
+
+const smokeGeos = [smkGeo0, smkGeo1, smkGeo2];
+const smokeBufs = [smkBuf0, smkBuf1, smkBuf2];
+const smokePtsArr = [smkPts0, smkPts1, smkPts2];
 let smokeT = 0;
 
 // ── Işık parıltısı particles ──────────────────────────────────────────────
@@ -630,26 +653,48 @@ let simT = 0;
   }
 
   // Sigara dumanı
-  smokePts.visible = (charState === 'smoking');
-  if (charState === 'smoking') {
+  const isSmoking = (charState === 'smoking');
+  smokePtsArr.forEach(p => p.visible = isSmoking);
+  if (isSmoking) {
     smokeT += dt;
-    if (smokeT > 0.08) {
+    if (smokeT > 0.06) {
       smokeT = 0;
-      const p = smokeP.find(p => !p.active) || smokeP[0];
-      p.x = charX + 0.22; p.y = 1.55; p.z = 0.1;
-      p.vx = (Math.random() - 0.5) * 0.08;
-      p.vy = 0.35 + Math.random() * 0.2;
-      p.life = 0; p.max = 2.0 + Math.random() * 1.0; p.active = true;
+      // Spawn 2 parçacık aynı anda — kor noktasından
+      for (let s = 0; s < 2; s++) {
+        const p = smokeP.find(p => !p.active) || smokeP[Math.floor(Math.random()*SMOKE_N)];
+        p.x = charX + 0.22 + (Math.random()-0.5)*0.06;
+        p.y = 1.55 + (Math.random()-0.5)*0.04;
+        p.z = 0.12 + (Math.random()-0.5)*0.04;
+        p.vx = (Math.random()-0.5)*0.10 + 0.04;  // hafif sağa doğru
+        p.vz = (Math.random()-0.5)*0.06;
+        p.vy = 0.28 + Math.random()*0.22;
+        p.life = 0; p.max = 2.2 + Math.random()*1.2;
+        p.layer = Math.random() < 0.35 ? 2 : (Math.random() < 0.5 ? 1 : 0);
+        p.active = true;
+      }
     }
   }
+  // Tüm buffer'ları temizle
+  for (let b = 0; b < 3; b++) { for (let i = 0; i < SMOKE_N*3; i++) smokeBufs[b][i] = 999; }
   for (let i = 0; i < SMOKE_N; i++) {
     const p = smokeP[i];
-    if (p.active) { p.life += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy *= 0.97; if (p.life >= p.max) p.active = false; }
-    smokeBuf[i*3]   = p.active ? p.x : 999;
-    smokeBuf[i*3+1] = p.active ? p.y : 999;
-    smokeBuf[i*3+2] = p.active ? p.z : 999;
+    if (p.active) {
+      p.life += dt;
+      const t = p.life / p.max;
+      if (t >= 1) { p.active = false; continue; }
+      // Kıvrılan hareket — yaş arttıkça yavaşlar, vortex gibi döner
+      p.x += p.vx * dt * (1 - t * 0.6);
+      p.y += p.vy * dt * (1 - t * 0.4);
+      p.z += p.vz * dt;
+      p.vx += Math.sin(simT * 1.8 + i) * 0.004;  // hafif sallanma
+      p.vy *= 0.992;
+      const bi = i * 3;
+      // Genç parçacık → küçük katmana, yaşlı → büyük katmana
+      const layer = t < 0.25 ? 2 : (t < 0.6 ? 1 : 0);
+      smokeBufs[layer][bi] = p.x; smokeBufs[layer][bi+1] = p.y; smokeBufs[layer][bi+2] = p.z;
+    }
   }
-  smokeGeo.attributes.position.needsUpdate = true;
+  smokeGeos.forEach(g => g.attributes.position.needsUpdate = true);
 
   // Işık parıltısı (koninin içinde titreşen noktalar)
   for (let i = 0; i < SPARK_N; i++) {
