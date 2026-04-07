@@ -19,6 +19,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -199,7 +200,7 @@ body::before {
   <div class="topnav-left">
     <a href="forum" class="topnav-back">← Forum</a>
     <span class="topnav-sep">|</span>
-    <span class="topnav-brand">Topluluk Üyeleri</span>
+    <span class="topnav-brand" data-i18n="members_community">Topluluk Üyeleri</span>
   </div>
 </nav>
 
@@ -233,7 +234,7 @@ body::before {
     </div>
     <div class="banner-count-wrap" id="memberCountWrap">
       <div class="banner-count" id="memberCount">0</div>
-      <div class="banner-count-lbl">Üye</div>
+      <div class="banner-count-lbl" data-i18n="members_count_lbl">Üye</div>
     </div>
   </div>
 </div>
@@ -242,12 +243,12 @@ body::before {
   <div class="top-row">
     <div class="search-wrap">
       <span class="search-icon">⌕</span>
-      <input class="search-input" id="searchInput" type="text" placeholder="İsim, tür veya araç ara...">
+      <input class="search-input" id="searchInput" type="text" placeholder="İsim, tür veya araç ara..." data-i18n-ph="members_search_ph">
     </div>
     <select class="sort-select" id="sortSelect">
-      <option value="new">Yeni → Eski</option>
-      <option value="old">Eski → Yeni</option>
-      <option value="az">İsim A-Z</option>
+      <option value="new" data-i18n="members_sort_new_old">Yeni → Eski</option>
+      <option value="old" data-i18n="members_sort_old_new">Eski → Yeni</option>
+      <option value="az" data-i18n="members_sort_az">İsim A-Z</option>
     </select>
   </div>
   <div class="filter-bar" id="titleFilter"></div>
@@ -267,6 +268,7 @@ firebase.initializeApp({
   messagingSenderId: "677640687230",
   appId:             "1:677640687230:web:8c6a2dfefbf55c69ffd22f",
 });
+firebase.appCheck().activate(\'6LcTTassAAAAAP73s4ojWT7rMyN9sFx7xQb-LylS\', true);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 let _user = null;
@@ -322,16 +324,16 @@ function updateAuthBar(user) {
       if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
     img.src = user.photoURL || ''; img.alt = '';
     const name = document.createElement('span'); name.className = 'auth-name';
-    name.textContent = user.email === ADMIN_EMAIL ? '⚡ Admin' : (user.displayName?.split(' ')[0] || 'Üye');
+    name.textContent = user.email === ADMIN_EMAIL ? '⚡ Admin' : (user.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye'));
     const out = document.createElement('button'); out.className = 'auth-out-btn';
     out.textContent = '✕'; out.onclick = () => auth.signOut();
     wrap.append(img, name, out);
 
     const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
-    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = 'Bildirimler';
+    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = window._i18n?.t('ui_notifications')||'Bildirimler';
     const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
     _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
-    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all">Tümünü Oku</button></div><div class="notif-list"></div>';
+    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">'+(window._i18n?.t('ui_notifications')||'Bildirimler')+'</span><button class="notif-read-all">'+(window._i18n?.t('ui_read_all')||'Tümünü Oku')+'</button></div><div class="notif-list"></div>';
     _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
     bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
     bellWrap.append(bell, badge, _notifPanelEl);
@@ -339,7 +341,7 @@ function updateAuthBar(user) {
     document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-    btn.textContent = '⬡ Google ile Giriş'; btn.onclick = doSignIn;
+    btn.textContent = window._i18n?.t('ui_signin')||'⬡ Google ile Giriş'; btn.onclick = doSignIn;
     bar.append(btn);
   }
 }
@@ -366,13 +368,14 @@ function _mergeNotifs(uid) {
   if (_notifPanelEl) {
     const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
     list.innerHTML = '';
-    if (!all.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
+    if (!all.length) { list.innerHTML = '<div class="notif-empty">'+(window._i18n?.t('ui_no_notifs')||'Bildirim yok')+'</div>'; return; }
     all.forEach(n => {
       const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
       const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
       const icon = n._t==='a' ? '📢 ' : '';
-      const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-      const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=icon+(n.text||'Yeni bildirim');const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
+      const _loc = window._i18n?.getLang()==='en'?'en-US':'tr-TR';
+      const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString(_loc,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=icon+(n.text||(window._i18n?.t('ui_new_notif')||'Yeni bildirim'));const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
       if (n.postId) item.onclick = () => { location.href = `post?id=${n.postId}`; };
       if (n._id) {
         const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
@@ -549,12 +552,12 @@ function renderGrid() {
     const nameRow = document.createElement('div'); nameRow.className = 'mcard-name-row';
     const nm = document.createElement('div');
     nm.className = 'mcard-name' + (m.email === ADMIN_EMAIL ? ' is-admin' : '');
-    nm.textContent = (m.displayName?.trim() || m.email?.split('@')[0] || 'Üye').split(' ')[0];
+    nm.textContent = (m.displayName?.trim() || m.email?.split('@')[0] || (window._i18n?.t('ui_member')||'Üye')).split(' ')[0];
     nameRow.append(nm);
     if (m.collabStatus === 'open' || m.collabStatus === 'busy') {
       const dot = document.createElement('div');
       dot.className = 'mcard-collab ' + m.collabStatus;
-      dot.title = m.collabStatus === 'open' ? 'Projeye Açık' : 'Meşgul';
+      dot.title = m.collabStatus === 'open' ? (window._i18n?.t('mem_collab_open')||'Projeye Açık') : (window._i18n?.t('mem_collab_busy')||'Meşgul');
       nameRow.append(dot);
     }
     body.append(nameRow);
@@ -625,9 +628,9 @@ function renderGrid() {
     // Footer
     const footer = document.createElement('div'); footer.className = 'mcard-footer';
     const ps = document.createElement('div'); ps.className = 'mcard-stat';
-    ps.innerHTML = `Konu <span>${m.postCount||0}</span>`;
+    ps.innerHTML = `${window._i18n?.t('prof_topics')||'Konu'} <span>${m.postCount||0}</span>`;
     const rs = document.createElement('div'); rs.className = 'mcard-stat';
-    rs.innerHTML = `Yanıt <span>${m.replyCount||0}</span>`;
+    rs.innerHTML = `${window._i18n?.t('prof_replies')||'Yanıt'} <span>${m.replyCount||0}</span>`;
     footer.append(ps, rs); card.append(footer);
 
     grid.append(card);
