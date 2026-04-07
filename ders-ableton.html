@@ -393,7 +393,7 @@ body::before {
 (function() {
   var _fbCfg = {
     apiKey: "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
-    authDomain: "berkayeracademy.com",
+    authDomain: "ableton-tutorial.firebaseapp.com",
     projectId: "ableton-tutorial",
     storageBucket: "ableton-tutorial.firebasestorage.app",
     messagingSenderId: "677640687230",
@@ -404,7 +404,12 @@ body::before {
   var ADMIN_EMAIL = 'berkayer032@gmail.com';
   function isAdmin(u) { return u && u.email === ADMIN_EMAIL; }
   function doSignIn() {
-    _auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+    var _p = new firebase.auth.GoogleAuthProvider();
+    _auth.signInWithPopup(_p).catch(function(e) {
+      if (e.code === 'auth/popup-blocked') { _auth.signInWithRedirect(_p); }
+      else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') { alert((window._i18n?.t('prof_signin_err')||'Giriş hatası:') + ' ' + e.message); }
+    });
+    }
   }
   function updateAuthBar(user) {
     var bar = document.getElementById('authBar');
@@ -431,7 +436,6 @@ body::before {
       bar.append(btn);
     }
   }
-  _auth.getRedirectResult().catch(e => console.error('redirectResult:', e));
   _auth.onAuthStateChanged(function(user) {
     updateAuthBar(user);
     var bAdm = document.getElementById('bnavAdminItem');

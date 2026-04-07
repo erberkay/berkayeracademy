@@ -762,7 +762,7 @@ function getMonths() { return window._i18n?.getLang()==='en' ? MONTHS_EN : MONTH
 
 firebase.initializeApp({
   apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
-  authDomain:        "berkayeracademy.com",
+  authDomain:        "ableton-tutorial.firebaseapp.com",
   projectId:         "ableton-tutorial",
   storageBucket:     "ableton-tutorial.firebasestorage.app",
   messagingSenderId: "677640687230",
@@ -886,7 +886,7 @@ function updateAuthBar(user) {
   if (!user) {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
     btn.textContent = window._i18n?.t('ui_signin')||'⬡ Google ile Giriş';
-    btn.onclick = () => { auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); };
+    btn.onclick = () => { const p = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(p).catch(e => { if (e.code === 'auth/popup-blocked') auth.signInWithRedirect(p); }); };
     bar.append(btn);
   } else {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
@@ -4397,7 +4397,8 @@ async function adminMarkSolved(qId) {
 
 // ─── Event listeners ──────────────────────────────────────
 document.getElementById('signInBtn').onclick = () => {
-  auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+  const p = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(p).catch(e => { if (e.code === 'auth/popup-blocked') auth.signInWithRedirect(p); });
 };
 
 document.getElementById('submitRequestBtn').onclick = () => submitRequest();
