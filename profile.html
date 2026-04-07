@@ -391,20 +391,8 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 let _user = null;
 
-let _signingIn = false;
 function doSignIn() {
-  if (_signingIn) return;
-  _signingIn = true;
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider)
-    .catch(e => {
-      if (e.code === 'auth/popup-blocked') {
-        auth.signInWithRedirect(provider);
-      } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-        alert((window._i18n?.t('prof_signin_err')||'Giriş hatası:') + ' ' + (e.message || e.code || e));
-      }
-    })
-    .finally(() => { _signingIn = false; });
+  auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
 }
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 
