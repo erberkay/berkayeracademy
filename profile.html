@@ -392,7 +392,10 @@ const db   = firebase.firestore();
 let _user = null;
 
 function doSignIn() {
-  auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(e => {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') { auth.signInWithRedirect(provider); }
+  });
 }
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 

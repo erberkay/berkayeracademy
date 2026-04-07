@@ -241,7 +241,10 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 
 function doSignIn() {
-  auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(e => {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') { auth.signInWithRedirect(provider); }
+  });
 }
 window.doSignIn = doSignIn;
 
