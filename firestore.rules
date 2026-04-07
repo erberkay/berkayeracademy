@@ -15,13 +15,11 @@ service cloud.firestore {
       );
     }
 
-    // Kullanıcının yanıt geçmişi (profil sayfası için)
     match /users/{uid}/userReplies/{replyId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == uid;
     }
 
-    // site_1.html — beat ve preset kayıtları
     match /users/{uid}/beats/{beatId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -37,10 +35,8 @@ service cloud.firestore {
 
     match /notifications/{uid}/items/{itemId} {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
-      // Sadece read alanı güncellenebilir
       allow update: if request.auth != null && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      // fromUid zorunlu — sahte gönderici adıyla bildirim oluşturulamaz
       allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid;
     }
 
@@ -54,15 +50,11 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update: if request.auth != null && (
         request.auth.token.email == "berkayer032@gmail.com" ||
-        // Beğeni: herhangi bir üye
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy','likeCount']) ||
-        // Yazarın kendi konusunu düzenlemesi
         (request.auth.uid == resource.data.authorId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','editedAt'])) ||
-        // Çözüldü işareti: sadece konu sahibi veya admin
         (request.auth.uid == resource.data.authorId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['solved'])) ||
-        // Yanıt sayısı: herhangi bir üye (yanıt eklenince/silinince güncellenir)
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount'])
       );
       allow delete: if request.auth != null && request.auth.token.email == "berkayer032@gmail.com";
@@ -105,7 +97,6 @@ service cloud.firestore {
         allow create: if request.auth != null &&
           request.auth.uid == request.resource.data.fromUid &&
           chatId.matches('.*' + request.auth.uid + '.*');
-        // Collab isteğini kabul/reddetmek için (sadece alıcı, sadece status alanı)
         allow update: if request.auth != null &&
           chatId.matches('.*' + request.auth.uid + '.*') &&
           resource.data.type == 'collab_request' &&
@@ -140,30 +131,27 @@ service cloud.firestore {
         request.auth.uid == uid ||
         request.auth.token.email == "berkayer032@gmail.com"
       );
-      // Only admin can create or delete reservations
       allow create, delete: if request.auth != null &&
         request.auth.token.email == "berkayer032@gmail.com";
-      // Admin can update anything; student has limited update paths
       allow update: if request.auth != null && (
         request.auth.token.email == "berkayer032@gmail.com" ||
         (request.auth.uid == uid && (
           // Note-only update
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['note']) ||
-          // Payment request: student can only set payment_pending to true
+          // Payment request
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payment_pending']) &&
             request.resource.data.payment_pending == true) ||
-          // Reschedule: lessons + reschedule_credits updated together
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lessons', 'reschedule_credits'])
+          // Reschedule: lessons + reschedule_credits — ders sayısı artamaz, sadece tarih/saat değişebilir
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lessons', 'reschedule_credits']) &&
+            request.resource.data.lessons.size() == resource.data.lessons.size())
         ))
       );
     }
 
     match /booked_slots/{slotId} {
       allow read: if request.auth != null;
-      // Admin can write anything
       allow write: if request.auth != null &&
         request.auth.token.email == "berkayer032@gmail.com";
-      // Students can create/delete only their own slots (for reschedule)
       allow create: if request.auth != null &&
         request.resource.data.student_uid == request.auth.uid &&
         request.auth.token.email != "berkayer032@gmail.com";
@@ -177,7 +165,6 @@ service cloud.firestore {
         request.auth.uid == resource.data.from_uid ||
         request.auth.token.email == "berkayer032@gmail.com"
       );
-      // Student can only create requests on their own behalf
       allow create: if request.auth != null &&
         request.resource.data.from_uid == request.auth.uid;
       allow update: if request.auth != null && request.auth.token.email == "berkayer032@gmail.com";
@@ -200,10 +187,10 @@ service cloud.firestore {
       );
     }
 
-    // Uygulama girişi köprüsü — kısa ömürlü (5 dk), UUID key ile güvende
+    // UUID key ile güvende — app auth olmadan okur, write için auth gerekli
     match /app_bridge/{key} {
-      allow read: if true;                    // App henüz auth olmadan okur
-      allow write: if request.auth != null;   // Sadece website (Chrome) yazar/siler
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     match /lesson_questions/{qId} {
@@ -223,7 +210,6 @@ service cloud.firestore {
           request.auth.token.email == "berkayer032@gmail.com" ||
           request.auth.uid == get(/databases/$(database)/documents/lesson_questions/$(qId)).data.uid
         );
-        // Admin can write anything; students can only create with fromAdmin == false
         allow create: if request.auth != null && (
           request.auth.token.email == "berkayer032@gmail.com" ||
           request.resource.data.fromAdmin == false
