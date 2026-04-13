@@ -1072,10 +1072,10 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
       ).sort((a,b) => a.date.localeCompare(b.date));
       const updatedCredits = { ...res.reschedule_credits, [monthKey]: credits - 1 };
       const batch = db.batch();
-      batch.update(db.collection('reservations').doc(_user.uid), {
+      batch.set(db.collection('reservations').doc(_user.uid), {
         lessons: updatedLessons,
         reschedule_credits: updatedCredits,
-      });
+      }, {merge:true});
       batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
       batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), {
         date: newDate, time: lesson.time, student_uid: _user.uid,
@@ -1435,7 +1435,7 @@ async function renderDashboard() {
     const val = noteInput.value.trim();
     noteSave.disabled = true; noteSave.textContent = '⏳';
     try {
-      await db.collection('reservations').doc(_user.uid).update({ note: val });
+      await db.collection('reservations').doc(_user.uid).set({ note: val }, {merge:true});
       noteStatus.style.color = 'var(--green)'; noteStatus.textContent = window._i18n?.t('bk_saved')||'✓ Kaydedildi';
       setTimeout(() => { noteStatus.textContent = ''; }, 2500);
     } catch(e) { const c=errId(); noteStatus.style.color='var(--crimson)'; noteStatus.textContent=`⚠ (${c}) `+(e.code||e.message||(window._i18n?.getLang()==='en'?'Error':'Hata')); }
@@ -1477,7 +1477,7 @@ async function renderDashboard() {
       payBtn.disabled = true;
       try {
         const batch = db.batch();
-        batch.update(db.collection('reservations').doc(_user.uid), { payment_pending: true });
+        batch.set(db.collection('reservations').doc(_user.uid), { payment_pending: true }, {merge:true});
         batch.set(db.collection('lesson_requests').doc(), {
           type: 'payment_request',
           from_uid: _user.uid,
@@ -1950,7 +1950,7 @@ async function renderAdminPanel() {
             const existingLessons = resSnap.data().lessons || [];
             const newLesson = { date: r.lesson_date, time: r.lesson_time, status: 'scheduled' };
             const batch = db.batch();
-            batch.update(db.collection('reservations').doc(r.from_uid), { lessons: [...existingLessons, newLesson] });
+            batch.set(db.collection('reservations').doc(r.from_uid), { lessons: [...existingLessons, newLesson] }, {merge:true});
             batch.set(db.collection('booked_slots').doc(r.lesson_date + '_' + r.lesson_time), { date: r.lesson_date, time: r.lesson_time, student_uid: r.from_uid });
             batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
             await batch.commit();
@@ -1988,7 +1988,7 @@ async function renderAdminPanel() {
           approveBtn.disabled = true;
           try {
             const batch = db.batch();
-            batch.update(db.collection('reservations').doc(r.from_uid), { payment_confirmed: true, payment_pending: false });
+            batch.set(db.collection('reservations').doc(r.from_uid), { payment_confirmed: true, payment_pending: false }, {merge:true});
             batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
             await batch.commit();
             toast('✓ Ödeme onaylandı.'); row.remove();
@@ -1999,7 +1999,7 @@ async function renderAdminPanel() {
           rejectBtn.disabled = true;
           try {
             const batch = db.batch();
-            batch.update(db.collection('reservations').doc(r.from_uid), { payment_pending: false });
+            batch.set(db.collection('reservations').doc(r.from_uid), { payment_pending: false }, {merge:true});
             batch.update(doc.ref, { status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
             await batch.commit();
             toast('Ödeme talebi reddedildi.'); row.remove();
@@ -2045,7 +2045,7 @@ async function renderAdminPanel() {
               const li = lessArr.findIndex(l => l.date === r.lesson_date && l.time === r.lesson_time && l.status === 'cancel_requested');
               if (li >= 0) {
                 lessArr[li] = { ...lessArr[li], status: 'scheduled' };
-                await db.collection('reservations').doc(r.from_uid).update({ lessons: lessArr });
+                await db.collection('reservations').doc(r.from_uid).set({ lessons: lessArr }, {merge:true});
               }
             }
             toast('İptal talebi reddedildi.');
@@ -2293,7 +2293,7 @@ async function renderAdminPanel() {
             const fn = firebase.app().functions('europe-west1');
             await fn.httpsCallable('sendPaymentRemindersManual')();
             toast(`✓ Hatırlatma gönderildi → ${name}`);
-            await db.collection('reservations').doc(uid).update({ last_reminder_sent: firebase.firestore.FieldValue.serverTimestamp() });
+            await db.collection('reservations').doc(uid).set({ last_reminder_sent: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
             renderAdminPanel();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); reminderBtn.disabled=false; reminderBtn.textContent='📧 Ödeme Hatırlatma'; }
         };
@@ -2397,7 +2397,7 @@ async function renderAdminPanel() {
         undoLink.onclick = async () => {
           if (!confirm('Ödemeyi geri almak istediğine emin misin?')) return;
           try {
-            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: false });
+            await db.collection('reservations').doc(studentUid).set({ payment_confirmed: false }, {merge:true});
             toast('Ödeme geri alındı.'); renderAdminPanel();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
         };
@@ -2411,7 +2411,7 @@ async function renderAdminPanel() {
         okBtn.onclick = async () => {
           okBtn.disabled = true;
           try {
-            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true, payment_pending: false });
+            await db.collection('reservations').doc(studentUid).set({ payment_confirmed: true, payment_pending: false }, {merge:true});
             toast('✓ Ödeme onaylandı.'); renderAdminPanel();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); okBtn.disabled = false; }
         };
@@ -2419,7 +2419,7 @@ async function renderAdminPanel() {
         noBtn.onclick = async () => {
           noBtn.disabled = true;
           try {
-            await db.collection('reservations').doc(studentUid).update({ payment_pending: false });
+            await db.collection('reservations').doc(studentUid).set({ payment_pending: false }, {merge:true});
             toast('Talep reddedildi.'); renderAdminPanel();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); noBtn.disabled = false; }
         };
@@ -2433,7 +2433,7 @@ async function renderAdminPanel() {
         btn.onclick = async () => {
           btn.disabled = true;
           try {
-            await db.collection('reservations').doc(studentUid).update({ payment_confirmed: true });
+            await db.collection('reservations').doc(studentUid).set({ payment_confirmed: true }, {merge:true});
             toast('✓ Ödeme işaretlendi.'); renderAdminPanel();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); btn.disabled = false; }
         };
@@ -2660,7 +2660,7 @@ async function renderAdminPanel() {
             if (!confirm(`${formatDateStr(lesson.date)} ${lesson.time} kaydını kalıcı olarak sil?`)) return;
             const updated = allLessons.filter((_, i) => i !== lessonIdx);
             try {
-              await db.collection('reservations').doc(studentUid).update({ lessons: updated });
+              await db.collection('reservations').doc(studentUid).set({ lessons: updated }, {merge:true});
               lRow.remove();
               const remaining = pastDiv.querySelectorAll('div').length;
               pastToggle.textContent = `▾ Geçmiş Dersler (${remaining})`;
@@ -2705,7 +2705,7 @@ async function renderAdminPanel() {
       noteSaveBtn.onclick = async () => {
         noteSaveBtn.disabled = true; noteSaveBtn.textContent = '...';
         try {
-          await db.collection('reservations').doc(studentUid).update({ admin_note: noteArea.value.trim() });
+          await db.collection('reservations').doc(studentUid).set({ admin_note: noteArea.value.trim() }, {merge:true});
           noteSaveBtn.textContent = '✓ Kaydedildi';
           setTimeout(() => { noteSaveBtn.textContent = 'Kaydet'; noteSaveBtn.disabled = false; }, 1500);
         } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); noteSaveBtn.textContent = 'Kaydet'; noteSaveBtn.disabled = false; }
@@ -2806,7 +2806,7 @@ async function cancelEntirePlan(lessons, res) {
       l.date >= today && cancelStatuses.includes(l.status) ? { ...l, status: 'cancelled' } : l
     );
     const batch = db.batch();
-    batch.update(db.collection('reservations').doc(_user.uid), { lessons: updated });
+    batch.set(db.collection('reservations').doc(_user.uid), { lessons: updated }, {merge:true});
     lessons.filter(l => l.date >= today && cancelStatuses.includes(l.status)).forEach(l => {
       batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
     });
@@ -2878,10 +2878,10 @@ async function adminEditStudentPrice(studentUid, currentLessonPrice, totalLesson
     if (isNaN(perVal) || perVal < 0 || isNaN(totalVal) || totalVal < 0) return;
     modal.remove();
     try {
-      await db.collection('reservations').doc(studentUid).update({
+      await db.collection('reservations').doc(studentUid).set({
         custom_lesson_price: perVal,
         custom_total_price:  totalVal,
-      });
+      }, {merge:true});
       toast(`✓ Fiyat güncellendi — ${totalVal.toLocaleString('tr-TR')} TL toplam`);
       renderAdminPanel();
     } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
@@ -2900,7 +2900,7 @@ async function adminBulkReschedule(studentUid, idxArr, allLessons) {
       batch.set(db.collection('booked_slots').doc(shifted + '_' + l.time), { date: shifted, time: l.time, student_uid: studentUid });
       return { ...l, date: shifted, status: 'rescheduled' };
     });
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
     await batch.commit();
     toast(`✓ ${idxArr.length} ders 1 hafta ertelendi.`); renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
@@ -2914,7 +2914,7 @@ async function adminBulkComplete(studentUid, idxArr, allLessons) {
       batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
       return { ...l, status: 'completed' };
     });
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
     await batch.commit();
     toast(`✓ ${idxArr.length} ders tamamlandı olarak işaretlendi.`); renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
@@ -2928,7 +2928,7 @@ async function adminBulkCancel(studentUid, idxArr, allLessons) {
       batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
       return { ...l, status: 'cancelled' };
     });
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
     await batch.commit();
     toast(`✓ ${idxArr.length} ders iptal edildi.`); renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
@@ -2970,7 +2970,7 @@ function adminBulkFreezeModal(studentUid, idxArr, allLessons) {
         batch.set(db.collection('booked_slots').doc(shifted + '_' + l.time), { date: shifted, time: l.time, student_uid: studentUid });
         return { ...l, date: shifted, status: 'frozen' };
       });
-      batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+      batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
       await batch.commit();
       modal.remove();
       toast(`✓ ${selectedLessons.length} ders ${resumeDate} tarihinden itibaren planlandı.`); renderAdminPanel();
@@ -2984,7 +2984,7 @@ async function adminCancelLesson(studentUid, lessonIdx, allLessons, lesson) {
       i === lessonIdx ? { ...l, status: 'cancelled' } : l
     );
     const batch = db.batch();
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons });
+    batch.set(db.collection('reservations').doc(studentUid), { lessons: updatedLessons }, {merge:true});
     batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
     await batch.commit();
     toast(`✓ Ders iptal edildi — ${formatDateStr(lesson.date)} ${lesson.time}`);
@@ -3036,7 +3036,7 @@ async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) 
         const updated = allLessons.map(l =>
           (l.status === 'scheduled' || l.status === 'rescheduled') ? { ...l, time: newTime } : l
         );
-        batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+        batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
         targets.forEach(l => {
           batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time));
           batch.set(db.collection('booked_slots').doc(l.date + '_' + newTime), { date: l.date, time: newTime, student_uid: studentUid });
@@ -3047,7 +3047,7 @@ async function adminChangeLessonTime(studentUid, lessonIdx, allLessons, lesson) 
         const conflict = await db.collection('booked_slots').doc(lesson.date + '_' + newTime).get();
         if (conflict.exists) { const ok = confirm(`${lesson.date} ${newTime} dolu. Yine de değiştir?`); if (!ok) return; }
         const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, time: newTime } : l);
-        batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+        batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
         batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
         batch.set(db.collection('booked_slots').doc(lesson.date + '_' + newTime), { date: lesson.date, time: newTime, student_uid: studentUid });
         await batch.commit();
@@ -3083,7 +3083,7 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
       const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, date: newDate } : l)
         .sort((a,b) => a.date.localeCompare(b.date));
       const batch = db.batch();
-      batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+      batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
       batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
       batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), { date: newDate, time: lesson.time, student_uid: studentUid });
       await batch.commit();
@@ -3129,7 +3129,7 @@ async function adminAddLesson(studentUid) {
       const lessons = snap.data().lessons || [];
       const newLesson = { date, time, status: 'scheduled' };
       const batch = db.batch();
-      batch.update(db.collection('reservations').doc(studentUid), { lessons: [...lessons, newLesson] });
+      batch.set(db.collection('reservations').doc(studentUid), { lessons: [...lessons, newLesson] }, {merge:true});
       batch.set(db.collection('booked_slots').doc(date + '_' + time), { date, time, student_uid: studentUid });
       await batch.commit();
       modal.remove();
@@ -3200,7 +3200,7 @@ async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
   if (note === null) return;
   try {
     const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, note: note.trim() || null } : l);
-    await db.collection('reservations').doc(studentUid).update({ lessons: updated });
+    await db.collection('reservations').doc(studentUid).set({ lessons: updated }, {merge:true});
     toast('✓ Not kaydedildi.');
     renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
@@ -3458,7 +3458,7 @@ async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
   try {
     const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, status: 'completed' } : l);
     const batch = db.batch();
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
     batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
     await batch.commit();
     toast('✓ Ders tamamlandı olarak işaretlendi.');
@@ -3471,7 +3471,7 @@ async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson
   const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, status: 'cancelled' } : l);
   try {
     const batch = db.batch();
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updated });
+    batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
     batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
     await batch.commit();
     toast(`✓ Ders iptal edildi.`);
@@ -3529,7 +3529,7 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
   try {
     const updatedCredits = { ...(resData.reschedule_credits || {}), [monthKey]: Math.max(0, credit - 1) };
     const batch = db.batch();
-    batch.update(db.collection('reservations').doc(studentUid), { lessons: updatedLessons, reschedule_credits: updatedCredits });
+    batch.set(db.collection('reservations').doc(studentUid), { lessons: updatedLessons, reschedule_credits: updatedCredits }, {merge:true});
     for (const m of moves) {
       batch.delete(db.collection('booked_slots').doc(m.oldDate + '_' + m.time));
       batch.set(db.collection('booked_slots').doc(m.newDate + '_' + m.time), { date: m.newDate, time: m.time, student_uid: studentUid });
@@ -3580,7 +3580,7 @@ async function acceptTrialRequest(reqId, r) {
     lesson_type: 'trial',
     payment_confirmed: true, // no payment for trial
     created_at: firebase.firestore.FieldValue.serverTimestamp(),
-  });
+  }, {merge:true});
   batch.set(db.collection('booked_slots').doc(r.trial_date + '_' + r.trial_time), {
     date: r.trial_date, time: r.trial_time, student_uid: r.from_uid,
   });
@@ -3632,7 +3632,7 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
     payment_confirmed: false,
     payment_pending:   false,
     created_at: firebase.firestore.FieldValue.serverTimestamp(),
-  });
+  }, {merge:true});
 
   // Book slots
   lessons.forEach(l => {
