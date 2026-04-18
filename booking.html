@@ -3074,18 +3074,80 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
     const newDate = modal.querySelector('#adminDateInput').value;
     if (!newDate || newDate === lesson.date) { modal.remove(); return; }
     modal.remove();
+
+    const today = toDateStr(new Date());
+    const oldWd = dateStrToObj(lesson.date).getDay();
+    const wdNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+    const sameWdLessons = allLessons
+      .map((l,i) => ({...l, idx:i}))
+      .filter(l => l.idx !== lessonIdx
+        && ['scheduled','rescheduled'].includes(l.status)
+        && l.date >= today
+        && dateStrToObj(l.date).getDay() === oldWd);
+
+    let mode = 'single';
+    if (sameWdLessons.length > 0) {
+      const ans = confirm(
+        `Öğrencinin ${sameWdLessons.length} adet gelecek ${wdNames[oldWd]} dersi daha var.\n\n` +
+        `TAMAM → Tüm ${wdNames[oldWd]} dersleri aynı miktarda kaydırılsın (${sameWdLessons.length + 1} ders)\n` +
+        `İPTAL → Sadece bu dersi değiştir`
+      );
+      mode = ans ? 'all' : 'single';
+    }
+
     try {
-      const conflict = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
-      if (conflict.exists) { const ok = confirm(`${newDate} ${lesson.time} dolu. Yine de değiştir?`); if (!ok) return; }
-      const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, date: newDate } : l)
-        .sort((a,b) => a.date.localeCompare(b.date));
-      const batch = db.batch();
-      batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
-      batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-      batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), { date: newDate, time: lesson.time, student_uid: studentUid });
-      await batch.commit();
-      toast(`✓ Gün değiştirildi → ${formatDateStr(newDate)}`);
-      renderAdminPanel();
+      if (mode === 'single') {
+        const conflict = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
+        if (conflict.exists && conflict.data().student_uid !== studentUid) {
+          const ok = confirm(`${formatDateStr(newDate)} ${lesson.time} başka öğrenci için dolu. Yine de değiştir?`);
+          if (!ok) return;
+        }
+        const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, date: newDate } : l)
+          .sort((a,b) => a.date.localeCompare(b.date));
+        const batch = db.batch();
+        batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
+        batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
+        batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), { date: newDate, time: lesson.time, student_uid: studentUid });
+        await batch.commit();
+        toast(`✓ Gün değiştirildi → ${formatDateStr(newDate)}`);
+        renderAdminPanel();
+      } else {
+        const shiftDays = Math.round((dateStrToObj(newDate) - dateStrToObj(lesson.date)) / 86400000);
+        const toMove = [{...lesson, idx: lessonIdx}, ...sameWdLessons];
+        const moves = toMove.map(l => {
+          const d = dateStrToObj(l.date);
+          d.setDate(d.getDate() + shiftDays);
+          return { idx: l.idx, oldDate: l.date, newDate: toDateStr(d), time: l.time };
+        });
+
+        const conflicts = [];
+        for (const m of moves) {
+          const snap = await db.collection('booked_slots').doc(m.newDate + '_' + m.time).get();
+          if (snap.exists && snap.data().student_uid !== studentUid) conflicts.push(m);
+        }
+        if (conflicts.length > 0) {
+          const str = conflicts.map(c => `• ${formatDateStr(c.newDate)} ${c.time}`).join('\n');
+          alert(`Çakışma var — başka öğrencinin dersleri:\n${str}\n\nDeğişiklik iptal edildi.`);
+          return;
+        }
+
+        const preview = moves.map(m => `• ${formatDateStr(m.oldDate)} → ${formatDateStr(m.newDate)} ${m.time}`).join('\n');
+        if (!confirm(`${moves.length} ders taşınacak:\n${preview}\n\nOnaylıyor musun?`)) return;
+
+        const updated = allLessons.map(l => ({...l}));
+        moves.forEach(m => { updated[m.idx] = { ...updated[m.idx], date: m.newDate }; });
+        updated.sort((a,b) => a.date.localeCompare(b.date));
+
+        const batch = db.batch();
+        batch.set(db.collection('reservations').doc(studentUid), { lessons: updated }, {merge:true});
+        moves.forEach(m => {
+          batch.delete(db.collection('booked_slots').doc(m.oldDate + '_' + m.time));
+          batch.set(db.collection('booked_slots').doc(m.newDate + '_' + m.time), { date: m.newDate, time: m.time, student_uid: studentUid });
+        });
+        await batch.commit();
+        toast(`✓ ${moves.length} ders taşındı`);
+        renderAdminPanel();
+      }
     } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
   };
 }
