@@ -849,6 +849,22 @@ function dateStrToObj(s) {
   return new Date(y, m-1, d);
 }
 
+// Deduplicate lessons by date+time; prefer non-cancelled over cancelled
+function dedupLessons(arr) {
+  if (!Array.isArray(arr)) return [];
+  const priority = { scheduled:4, rescheduled:4, frozen:3, cancel_requested:3, completed:2, cancelled:1 };
+  const map = new Map();
+  for (const l of arr) {
+    if (!l || !l.date || !l.time) continue;
+    const key = `${l.date}_${l.time}`;
+    const prev = map.get(key);
+    if (!prev || (priority[l.status]||0) > (priority[prev.status]||0)) {
+      map.set(key, l);
+    }
+  }
+  return Array.from(map.values()).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+}
+
 function yearMonthKey(d) { return d.slice(0,7); }
 
 function getEndTime(time) {
@@ -2162,13 +2178,22 @@ async function renderAdminPanel() {
   if (studSnap && !studSnap.empty) {
     studSnap.docs.forEach(doc => {
       const d = doc.data();
-      const totalNonCancelled = (d.lessons||[]).filter(l => l.status !== 'cancelled').length;
+      // Dedup and lazily heal stored duplicates
+      const rawLessons = d.lessons || [];
+      const cleanLessons = dedupLessons(rawLessons);
+      if (cleanLessons.length !== rawLessons.length) {
+        d.lessons = cleanLessons;
+        db.collection('reservations').doc(doc.id).set({ lessons: cleanLessons }, { merge: true }).catch(()=>{});
+      } else {
+        d.lessons = cleanLessons;
+      }
+      const totalNonCancelled = cleanLessons.filter(l => l.status !== 'cancelled').length;
       // Per-lesson price: custom_total/totalLessons, or custom_lesson_price, or default
       const perLessonPrice = d.custom_total_price
         ? Math.round(d.custom_total_price / Math.max(totalNonCancelled, 1))
         : (d.custom_lesson_price || (d.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE));
       let studentMonthLessons = 0;
-      (d.lessons||[]).forEach(l => {
+      cleanLessons.forEach(l => {
         if (l.status === 'scheduled' || l.status === 'rescheduled')
           calAllLessons.push({ date: l.date, time: l.time, name: (d.student_name||d.student_email||'').split(' ')[0], photo: d.student_photo||'' });
         if (l.date.startsWith(curMonthStr) && l.status !== 'cancelled') {
@@ -2342,7 +2367,8 @@ async function renderAdminPanel() {
     studSnap.docs.forEach(doc => {
       const s = doc.data(); const studentUid = doc.id;
       const today = toDateStr(new Date());
-      const allLessonsArr = s.lessons || [];
+      s.lessons = dedupLessons(s.lessons || []);
+      const allLessonsArr = s.lessons;
       const upcomingLessons = allLessonsArr.filter(l => l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen' || l.status === 'cancel_requested').sort((a,b) => a.date.localeCompare(b.date));
       const totalLessons = allLessonsArr.filter(l => l.status !== 'cancelled').length;
       const curMonthAdmin = today.slice(0, 7);
