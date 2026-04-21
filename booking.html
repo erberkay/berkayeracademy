@@ -475,6 +475,15 @@
         </div>
       </div>
 
+      <div class="field-group" id="freqField">
+        <label class="field-label">Sıklık</label>
+        <input type="hidden" id="reqIntervalWeeks" value="1">
+        <div class="lpm-toggle">
+          <button type="button" class="lpm-btn active" data-iw="1" onclick="setLessonInterval(1)"><span class="lpm-num">Haftalık</span><span class="lpm-sub">HER HAFTA</span></button>
+          <button type="button" class="lpm-btn" data-iw="2" onclick="setLessonInterval(2)"><span class="lpm-num">2 Haftada 1</span><span class="lpm-sub">BI-WEEKLY</span></button>
+        </div>
+      </div>
+
       <div class="field-group" id="startDateField">
         <label class="field-label"><span data-i18n="bk_start_date">Başlangıç Tarihi</span> <span style="color:var(--dim);font-size:.6rem;" data-i18n="bk_optional">(opsiyonel)</span></label>
         <input type="date" class="field-input" id="reqStartDate" style="cursor:pointer;" onchange="updatePriceEstimate()">
@@ -875,8 +884,9 @@ function getEndTime(time) {
 }
 
 // ─── Date Calculation ─────────────────────────────────────
-function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate) {
+function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate, intervalWeeks) {
   if (!lessonsPerMonth) lessonsPerMonth = 4;
+  const step = (intervalWeeks === 2) ? 14 : 7;
   const today = startDate ? new Date(startDate + 'T00:00:00') : new Date();
   today.setHours(0,0,0,0);
   const dates = [];
@@ -885,9 +895,9 @@ function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDa
     // Find the first occurrence of this weekday (startDate included)
     const first = new Date(today);
     while (first.getDay() !== s.dayIndex) first.setDate(first.getDate() + 1);
-    // Generate exactly totalPerDay lessons, each 7 days apart
+    // Generate exactly totalPerDay lessons, each step days apart (7 weekly, 14 bi-weekly)
     for (let i = 0; i < totalPerDay; i++) {
-      const d = new Date(first); d.setDate(d.getDate() + i * 7);
+      const d = new Date(first); d.setDate(d.getDate() + i * step);
       dates.push({ date: toDateStr(d), time: s.time, status: 'scheduled' });
     }
   });
@@ -1143,7 +1153,13 @@ let _reqType = 'monthly'; // 'monthly' | 'single'
 
 function setLpm(n) {
   document.getElementById('reqLessonsPerMonth').value = n;
-  document.querySelectorAll('.lpm-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.lpm) === n));
+  document.querySelectorAll('.lpm-btn[data-lpm]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.lpm) === n));
+  updatePriceEstimate();
+}
+
+function setLessonInterval(n) {
+  document.getElementById('reqIntervalWeeks').value = n;
+  document.querySelectorAll('.lpm-btn[data-iw]').forEach(b => b.classList.toggle('active', parseInt(b.dataset.iw) === n));
   updatePriceEstimate();
 }
 
@@ -1153,6 +1169,7 @@ function setReqType(type) {
   document.getElementById('typeSingle').classList.toggle('active', type === 'single');
   document.getElementById('durationField').style.display = type === 'single' ? 'none' : '';
   document.getElementById('startDateField').style.display = type === 'single' ? 'none' : '';
+  const _freqEl = document.getElementById('freqField'); if (_freqEl) _freqEl.style.display = type === 'single' ? 'none' : '';
   document.getElementById('singleLessonNote').style.display = type === 'single' ? '' : 'none';
   document.getElementById('slotLabel').innerHTML = type === 'single'
     ? (window._i18n?.t('bk_slot_single_hint')||'Gün & Saat Seç <span style="color:var(--dim);font-size:.6rem;">(bir saat seç)</span>')
@@ -1173,10 +1190,11 @@ function updatePriceEstimate() {
   }
   const duration = parseInt(document.getElementById('reqDuration')?.value || '1');
   const lpm = parseInt(document.getElementById('reqLessonsPerMonth')?.value || '4');
+  const interval = parseInt(document.getElementById('reqIntervalWeeks')?.value || '1');
   const startDate = document.getElementById('reqStartDate')?.value || '';
   const raw = [..._selectedSlots].map(k => { const [dow, time] = k.split('_'); return { dayIndex: parseInt(dow), time }; });
   const schedule = adjustSchedule(raw);
-  const totalLessons = calculateLessonDates(schedule, duration, lpm, startDate).length;
+  const totalLessons = calculateLessonDates(schedule, duration, lpm, startDate, interval).length;
   const total = totalLessons * LESSON_PRICE;
   el.style.display = '';
   el.innerHTML = `${window._i18n?.t('bk_price_total_label')||'Tahmini toplam:'} <strong style="color:var(--gold)">${total.toLocaleString('tr-TR')} TL</strong><br><span style="font-size:.7rem;">${totalLessons} ${window._i18n?.t('bk_price_per_lesson')||'ders × '}${LESSON_PRICE.toLocaleString('tr-TR')} ${window._i18n?.t('bk_price_per_slot')||'TL/ders saat'}</span>`;
@@ -1200,6 +1218,7 @@ async function submitRequest() {
   const isSingle = _reqType === 'single';
   const duration = isSingle ? 0 : parseInt(document.getElementById('reqDuration').value);
   const lessonsPerMonth = isSingle ? 1 : parseInt(document.getElementById('reqLessonsPerMonth').value);
+  const intervalWeeks = isSingle ? 1 : parseInt(document.getElementById('reqIntervalWeeks')?.value || '1');
   const preferredStartDate = isSingle ? '' : (document.getElementById('reqStartDate').value || '');
   const rawSlots = [..._selectedSlots].map(k => {
     const [dow, time] = k.split('_');
@@ -1209,7 +1228,7 @@ async function submitRequest() {
   const note = document.getElementById('reqNote').value.trim();
 
   if (!isSingle) {
-    const totalLessons = calculateLessonDates(schedule, duration, lessonsPerMonth, preferredStartDate).length;
+    const totalLessons = calculateLessonDates(schedule, duration, lessonsPerMonth, preferredStartDate, intervalWeeks).length;
     if (totalLessons < 3) {
       errEl.textContent = window._i18n?.t('bk_err_min_lessons')||'En az 3 ders seçilmelidir.';
       errEl.style.display = ''; return;
@@ -1226,6 +1245,7 @@ async function submitRequest() {
       lesson_type: isSingle ? 'single' : 'monthly',
       duration_months: duration,
       lessons_per_month: lessonsPerMonth,
+      interval_weeks: intervalWeeks,
       preferred_start_date: preferredStartDate,
       schedule,
       note,
@@ -1241,7 +1261,7 @@ async function submitRequest() {
       firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: _user.email, toName: _user.displayName || '' }).catch(() => {});
     }
     toast(window._i18n?.t('bk_req_submitted')||'✓ Talebiniz gönderildi!');
-    renderPendingView({ from_uid: _user.uid, from_name: _user.displayName||'', from_email: _user.email||'', lesson_type: isSingle?'single':'monthly', duration_months: duration, lessons_per_month: lessonsPerMonth, preferred_start_date: preferredStartDate, schedule, note, status: 'pending', id: reqRef.id });
+    renderPendingView({ from_uid: _user.uid, from_name: _user.displayName||'', from_email: _user.email||'', lesson_type: isSingle?'single':'monthly', duration_months: duration, lessons_per_month: lessonsPerMonth, interval_weeks: intervalWeeks, preferred_start_date: preferredStartDate, schedule, note, status: 'pending', id: reqRef.id });
   } catch(e) {
     const c = errId();
     errEl.textContent = `${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): ` + (e.message || e.code || (window._i18n?.getLang()==='en'?'Connection error':'Bağlantı hatası'));
@@ -1418,7 +1438,8 @@ async function renderDashboard() {
   const isTrial = res.lesson_type === 'trial';
   const _trialLbl = window._i18n?.t('bk_trial_label')||'Deneme Dersi';
   const daysStr = isTrial ? _trialLbl : (res.schedule||[]).map(s => getDays()[s.dayIndex]).join(' & ');
-  document.getElementById('dashSub').textContent = isTrial ? `🎯 ${_trialLbl}` : `${res.duration_months} ${window._i18n?.getLang()==='en'?'Month':'Aylık'} · ${res.lessons_per_month || 4} ${window._i18n?.getLang()==='en'?'Lessons/Month':'Ders/Ay'} · ${daysStr}`;
+  const _freqTxt = (res.interval_weeks === 2) ? ' · 2 Haftada 1' : '';
+  document.getElementById('dashSub').textContent = isTrial ? `🎯 ${_trialLbl}` : `${res.duration_months} ${window._i18n?.getLang()==='en'?'Month':'Aylık'} · ${res.lessons_per_month || 4} ${window._i18n?.getLang()==='en'?'Lessons/Month':'Ders/Ay'}${_freqTxt} · ${daysStr}`;
 
   let lessons = res.lessons || [];
   const today = toDateStr(new Date());
@@ -2074,7 +2095,9 @@ async function renderAdminPanel() {
       const isTrialReq = r.lesson_type === 'trial';
       const daysText = (r.schedule||[]).map(s => getDays()[s.dayIndex] + ' ' + s.time).join(', ');
       const isSingleReq = r.lesson_type === 'single';
-      const reqLessonCount = isSingleReq ? 1 : (isTrialReq ? 1 : calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date).length);
+      const reqIw = r.interval_weeks || 1;
+      const freqTxt = reqIw === 2 ? '🔁 2 Haftada 1' : '';
+      const reqLessonCount = isSingleReq ? 1 : (isTrialReq ? 1 : calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date, reqIw).length);
       const reqTotalPrice = isTrialReq ? 0 : reqLessonCount * (isSingleReq ? LESSON_PRICE_SINGLE : LESSON_PRICE);
       row.innerHTML = `
         <div class="req-row-body">
@@ -2085,7 +2108,7 @@ async function renderAdminPanel() {
           </div>
           <div class="req-row-detail">
             ${isTrialReq ? `🎯 Deneme Dersi &nbsp;·&nbsp; ${formatDateStr(r.trial_date)} ${r.trial_time}` :
-              isSingleReq ? `🎯 Tek Ders &nbsp;·&nbsp; ${daysText}` : `📅 ${r.duration_months} Ay · ${r.lessons_per_month || 4}/Ay &nbsp;·&nbsp; ${daysText}`}
+              isSingleReq ? `🎯 Tek Ders &nbsp;·&nbsp; ${daysText}` : `📅 ${r.duration_months} Ay · ${r.lessons_per_month || 4}/Ay${freqTxt ? ' · ' + freqTxt : ''} &nbsp;·&nbsp; ${daysText}`}
           </div>
           ${!isTrialReq ? `<div class="req-row-pills">
             <span class="req-row-pill gold">₺ ${reqTotalPrice.toLocaleString('tr-TR')} TL</span>
@@ -2109,9 +2132,10 @@ async function renderAdminPanel() {
           // Normalize params for single lessons (duration_months=0 would generate no dates)
           const _effDur   = isSingleReq ? 1 : r.duration_months;
           const _effLpm   = isSingleReq ? 1 : (r.lessons_per_month || 4);
+          const _effIw    = isSingleReq ? 1 : (r.interval_weeks || 1);
           const _effStart = isSingleReq ? toDateStr(new Date()) : r.preferred_start_date;
           // Check conflicts before accepting
-          const allLessons = calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart);
+          const allLessons = calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart, _effIw);
           const conflicts = await checkConflicts(allLessons, r.from_uid);
           if (conflicts.size > 0) {
             const conflictDates = allLessons
@@ -2128,7 +2152,7 @@ async function renderAdminPanel() {
           }
           // Final conflict re-check right before committing (closes race window)
           const freshConflicts = await checkConflicts(
-            calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart)
+            calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart, _effIw)
               .filter(l => !conflicts.has(l.date + '_' + l.time)),
             r.from_uid
           );
@@ -2385,7 +2409,7 @@ async function renderAdminPanel() {
       const headerDiv = document.createElement('div'); headerDiv.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;';
       headerDiv.innerHTML = `
         <div>
-          <div class="student-row-name">${s.student_name || s.student_email}${isTrial ? ' <span style="font-size:.6rem;color:rgba(74,222,128,.9);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);padding:2px 8px;border-radius:10px;margin-left:4px;font-weight:400;">🎯 Deneme</span>' : ''}</div>
+          <div class="student-row-name">${s.student_name || s.student_email}${isTrial ? ' <span style="font-size:.6rem;color:rgba(74,222,128,.9);background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.25);padding:2px 8px;border-radius:10px;margin-left:4px;font-weight:400;">🎯 Deneme</span>' : ''}${(s.interval_weeks === 2) ? ' <span style="font-size:.6rem;color:rgba(180,120,255,.9);background:rgba(180,120,255,.1);border:1px solid rgba(180,120,255,.25);padding:2px 8px;border-radius:10px;margin-left:4px;font-weight:400;">🔁 2 Haftada 1</span>' : ''}</div>
           <div class="student-row-meta">
             ${isTrial
               ? `<strong style="color:rgba(74,222,128,.9);">Deneme Dersi</strong> · ${formatDateStr(s.start_date)} · <strong style="color:var(--green);">Ücretsiz</strong>`
@@ -2468,6 +2492,14 @@ async function renderAdminPanel() {
       mailBtn.textContent = '✉️ Mail At';
       mailBtn.onclick = () => adminComposeEmail(studentUid, s.student_email||s.from_email||'', s.student_name||s.from_name||'Öğrenci', isTrial);
       payWrap.append(mailBtn);
+      // Frequency toggle — non-trial only
+      if (!isTrial) {
+        const freqBtn = document.createElement('button');
+        freqBtn.style.cssText = 'background:rgba(180,120,255,.07);border:1px solid rgba(180,120,255,.25);color:var(--ice);font-family:"Space Mono",monospace;font-size:.62rem;padding:5px 10px;border-radius:5px;cursor:pointer;width:100%;margin-top:6px;';
+        freqBtn.textContent = (s.interval_weeks === 2) ? '🔁 Haftalık Yap' : '🔁 2 Haftada 1 Yap';
+        freqBtn.onclick = () => adminChangeFrequency(studentUid, s);
+        payWrap.append(freqBtn);
+      }
 
       const payToggle = payWrap; // alias for append below
       const cancelPlanBtn = document.createElement('button');
@@ -3680,8 +3712,9 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
   const isSingle = r.lesson_type === 'single';
   const effDur   = isSingle ? 1 : r.duration_months;
   const effLpm   = isSingle ? 1 : (r.lessons_per_month || 4);
+  const effIw    = isSingle ? 1 : (r.interval_weeks || 1);
   const effStart = isSingle ? toDateStr(new Date()) : r.preferred_start_date;
-  const allLessons = calculateLessonDates(r.schedule, effDur, effLpm, effStart);
+  const allLessons = calculateLessonDates(r.schedule, effDur, effLpm, effStart, effIw);
   // Skip conflicting slots
   const lessons = allLessons.filter(l => !conflicts.has(l.date + '_' + l.time));
   if (lessons.length === 0) { toast('Tüm ders saatleri çakışıyor — talep kabul edilemez.', true); return; }
@@ -3707,6 +3740,7 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
     lesson_type:   r.lesson_type || 'monthly',
     duration_months: r.duration_months,
     lessons_per_month: r.lessons_per_month || 4,
+    interval_weeks: effIw,
     preferred_start_date: r.preferred_start_date || '',
     schedule:      r.schedule,
     note:          r.note || '',
@@ -3733,6 +3767,83 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
   });
 
   await batch.commit();
+}
+
+// ─── Admin: Change Student Frequency (weekly ↔ bi-weekly) ─
+async function adminChangeFrequency(studentUid, resData) {
+  const cur = resData.interval_weeks || 1;
+  const target = cur === 1 ? 2 : 1;
+  const label = target === 2 ? '2 Haftada 1' : 'Haftalık';
+  const newStep = target === 2 ? 14 : 7;
+  const today = toDateStr(new Date());
+
+  const all = (resData.lessons || []).slice();
+  const past = all.filter(l => l.date < today || ['completed','cancelled'].includes(l.status));
+  const future = all
+    .filter(l => l.date >= today && ['scheduled','rescheduled','frozen'].includes(l.status))
+    .sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  if (future.length === 0) {
+    toast('Taşınacak gelecek ders yok.', true);
+    return;
+  }
+
+  // Group by time; for each time, anchor on first future lesson and redistribute with newStep
+  const byTime = {};
+  future.forEach(l => { (byTime[l.time] = byTime[l.time] || []).push(l); });
+
+  const rebuilt = [];
+  const moves = []; // {from:{date,time}, to:{date,time}, status}
+  Object.entries(byTime).forEach(([time, arr]) => {
+    const anchor = dateStrToObj(arr[0].date);
+    arr.forEach((l, i) => {
+      const d = new Date(anchor); d.setDate(d.getDate() + i * newStep);
+      const newDate = toDateStr(d);
+      rebuilt.push({ ...l, date: newDate });
+      if (newDate !== l.date) moves.push({ from: { date: l.date, time: l.time }, to: { date: newDate, time: l.time }, status: l.status });
+    });
+  });
+
+  if (!confirm(`${resData.student_name || resData.student_email} → Sıklık "${label}" olarak değiştirilsin mi?\n\n${future.length} ders yeniden hizalanacak. Geçmiş/tamamlanan dersler aynı kalır.`)) return;
+
+  // Conflict check (against other students' booked_slots)
+  const conflicts = [];
+  for (const m of moves) {
+    const key = m.to.date + '_' + m.to.time;
+    const snap = await db.collection('booked_slots').doc(key).get().catch(() => null);
+    if (snap && snap.exists && snap.data().student_uid !== studentUid) conflicts.push(m);
+  }
+  if (conflicts.length) {
+    alert('Çakışma var (başka öğrenciyle):\n' + conflicts.map(c => `• ${formatDateStr(c.to.date)} ${c.to.time}`).join('\n') + '\n\nDeğişiklik iptal.');
+    return;
+  }
+
+  // Preview
+  if (moves.length > 0) {
+    const preview = moves.slice(0, 20).map(m => `• ${formatDateStr(m.from.date)} ${m.from.time} → ${formatDateStr(m.to.date)} ${m.to.time}`).join('\n');
+    const more = moves.length > 20 ? `\n… ve ${moves.length - 20} ders daha` : '';
+    if (!confirm(`${moves.length} ders taşınacak:\n${preview}${more}\n\nOnaylıyor musun?`)) return;
+  }
+
+  const batch = db.batch();
+  const merged = dedupLessons([...past, ...rebuilt]).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  const newEnd = merged.length ? merged[merged.length-1].date : (resData.end_date || '');
+  batch.set(db.collection('reservations').doc(studentUid),
+    { lessons: merged, interval_weeks: target, end_date: newEnd }, {merge:true});
+
+  // Delete old booked_slots, write new ones
+  moves.forEach(m => batch.delete(db.collection('booked_slots').doc(m.from.date + '_' + m.from.time)));
+  rebuilt.forEach(l => batch.set(db.collection('booked_slots').doc(l.date + '_' + l.time),
+    { date: l.date, time: l.time, student_uid: studentUid }));
+
+  try {
+    await batch.commit();
+    toast(`✓ Sıklık "${label}" olarak güncellendi`);
+    renderAdminPanel();
+  } catch(e) {
+    const c = errId();
+    toast(`Hata (${c}): ` + (e.message || e.code), true);
+  }
 }
 
 // ─── Reservation active check ─────────────────────────────
