@@ -1318,7 +1318,15 @@ async function renderPendingView(reqData) {
     const newBtn = document.createElement('button');
     newBtn.className = 'btn btn-gold';
     newBtn.textContent = isTrialPending ? (window._i18n?.t('bk_retry_btn')||'↺ Yeniden Dene') : (window._i18n?.t('bk_new_request_btn')||'+ Yeni Talep Oluştur');
-    newBtn.onclick = isTrialPending ? () => loadUserState(_user) : () => initRequestForm();
+    newBtn.onclick = isTrialPending
+      ? async () => {
+          newBtn.disabled = true;
+          if (reqData.id && reqData.id !== '_') {
+            try { await db.collection('lesson_requests').doc(reqData.id).delete(); } catch(_) {}
+          }
+          renderAccessView(_user, 'none');
+        }
+      : () => initRequestForm();
     actions.append(newBtn);
   } else {
     // Pending — show a refresh button as fallback if onSnapshot misses the update
