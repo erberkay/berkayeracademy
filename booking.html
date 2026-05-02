@@ -658,6 +658,13 @@
       <div id="adminAvailDaysList"></div>
     </div>
 
+    <!-- Blocked Hours per Day -->
+    <div class="card" id="adminBlockedHoursCard">
+      <div class="section-title">🕐 Kapalı Saatler</div>
+      <div style="font-size:.65rem;color:var(--dim);margin-bottom:12px;">Günlere göre belirli saatleri kapat. Kapalı saatler öğrencilerin grid'inde kırmızı görünür ve seçilemez. Açık günlerin saatleri gösterilir.</div>
+      <div id="adminBlockedHoursList"></div>
+    </div>
+
     <!-- Monthly Stats -->
     <div class="card" id="adminStatsCard">
       <div class="section-title">📊 Aylık İstatistikler</div>
@@ -936,10 +943,13 @@ async function loadAndRenderAvailGrid() {
   const endStr   = toDateStr(end90);
 
   let _availDays = null;
+  let _blockedHours = {};
   try {
     const settingsSnap = await db.collection('settings').doc('global').get();
-    if (settingsSnap && settingsSnap.exists && Array.isArray(settingsSnap.data().available_days)) {
-      _availDays = settingsSnap.data().available_days;
+    if (settingsSnap && settingsSnap.exists) {
+      const _sd = settingsSnap.data();
+      if (Array.isArray(_sd.available_days)) _availDays = _sd.available_days;
+      if (_sd.blocked_hours && typeof _sd.blocked_hours === 'object') _blockedHours = _sd.blocked_hours;
     }
   } catch(e) { /* ignore */ }
 
@@ -952,6 +962,11 @@ async function loadAndRenderAvailGrid() {
       }
     });
   }
+  // Per-day blocked hours
+  Object.entries(_blockedHours).forEach(([dow, times]) => {
+    if (!Array.isArray(times)) return;
+    times.forEach(t => _closedSlots.add(`${dow}_${t}`));
+  });
 
   // Live listener for booked_slots — auto-updates grid when admin cleans up stale slots
   _unsubAvailGrid = db.collection('booked_slots')
@@ -1896,6 +1911,7 @@ async function renderAdminPanel() {
   showView('view-admin');
   loadAdminAccessRequests();
   initAdminAvailDays();
+  initAdminBlockedHours();
   initAdminZoomLink();
   initLessonAnnouncements(true);
   initAdminQA();
@@ -3336,6 +3352,7 @@ async function initAdminAvailDays() {
       setStyle(btn, !isActive);
       try {
         await db.collection('settings').doc('global').set({ available_days: availDays }, { merge: true });
+        if (typeof initAdminBlockedHours === 'function') initAdminBlockedHours();
       } catch(e) { toast('Kayıt hatası: ' + (e.message||e.code), true); }
     };
     wrap.append(btn);
@@ -3371,6 +3388,65 @@ async function initAdminAvailDays() {
     purgeBtn.disabled = false; purgeBtn.textContent = '🧹 Hatalı Slotları Temizle';
     setTimeout(() => purgeStatus.textContent = '', 4000);
   };
+}
+
+// ─── Blocked Hours per Day ────────────────────────────────
+async function initAdminBlockedHours() {
+  const container = document.getElementById('adminBlockedHoursList');
+  if (!container) return;
+  let availDays = [1,2,3,4,5,6,0];
+  let blocked = {}; // { dayIdx: ['HH:MM', ...] }
+  try {
+    const snap = await db.collection('settings').doc('global').get();
+    if (snap.exists) {
+      const d = snap.data();
+      if (Array.isArray(d.available_days)) availDays = d.available_days;
+      if (d.blocked_hours && typeof d.blocked_hours === 'object') blocked = d.blocked_hours;
+    }
+  } catch(e) {}
+
+  function render() {
+    container.innerHTML = '';
+    const openDays = GRID_DAYS.filter(d => availDays.includes(d));
+    if (openDays.length === 0) {
+      container.innerHTML = '<div style="font-size:.7rem;color:var(--dim);">Önce yukarıdan müsait gün seç.</div>';
+      return;
+    }
+    openDays.forEach(dow => {
+      const dayBlock = document.createElement('div');
+      dayBlock.style.cssText = 'margin-bottom:14px;';
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:.72rem;color:var(--white);margin-bottom:6px;letter-spacing:.05em;font-family:"Space Mono",monospace;';
+      label.textContent = getDays()[dow];
+      dayBlock.append(label);
+
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:5px;';
+      const dayBlocked = new Set(Array.isArray(blocked[dow]) ? blocked[dow] : []);
+      GRID_TIMES.forEach(time => {
+        const btn = document.createElement('button');
+        btn.textContent = time;
+        const isBlocked = dayBlocked.has(time);
+        const setBtnStyle = (bl) => {
+          btn.style.cssText = `padding:5px 9px;border-radius:5px;font-family:"Space Mono",monospace;font-size:.62rem;cursor:pointer;border:1px solid ${bl ? 'rgba(184,45,69,.4)' : 'rgba(74,222,128,.3)'};background:${bl ? 'rgba(184,45,69,.12)' : 'rgba(74,222,128,.06)'};color:${bl ? 'rgba(232,120,120,.9)' : '#4ade80'};transition:all .15s;`;
+        };
+        setBtnStyle(isBlocked);
+        btn.onclick = async () => {
+          const cur = new Set(Array.isArray(blocked[dow]) ? blocked[dow] : []);
+          if (cur.has(time)) cur.delete(time); else cur.add(time);
+          if (cur.size === 0) delete blocked[dow]; else blocked[dow] = [...cur].sort();
+          setBtnStyle(cur.has(time));
+          try {
+            await db.collection('settings').doc('global').set({ blocked_hours: blocked }, { merge: true });
+          } catch(e) { toast('Kayıt hatası: ' + (e.message||e.code), true); }
+        };
+        grid.append(btn);
+      });
+      dayBlock.append(grid);
+      container.append(dayBlock);
+    });
+  }
+  render();
 }
 
 // ─── Zoom Link ────────────────────────────────────────────
@@ -3910,7 +3986,21 @@ function renderAccessView(user, state, rejectReason) {
             if (AVAILABLE_TIMES.includes(t)) busyTimes.add(t);
           });
         });
+        // Apply admin-blocked hours for this day-of-week
+        let trialAvailDays = null, trialBlockedHours = {};
+        try {
+          const setSnap = await db.collection('settings').doc('global').get();
+          if (setSnap.exists) {
+            const sd = setSnap.data();
+            if (Array.isArray(sd.available_days)) trialAvailDays = sd.available_days;
+            if (sd.blocked_hours && typeof sd.blocked_hours === 'object') trialBlockedHours = sd.blocked_hours;
+          }
+        } catch(_) {}
+        const trialDow = dateStrToObj(date).getDay();
+        const dayClosed = (trialAvailDays !== null && !trialAvailDays.includes(trialDow));
+        const dayBlocked = new Set(Array.isArray(trialBlockedHours[trialDow]) ? trialBlockedHours[trialDow] : []);
         AVAILABLE_TIMES.forEach(t => {
+          if (dayClosed || dayBlocked.has(t)) return; // hide closed slots entirely
           const btn2 = document.createElement('button');
           const busy = busyTimes.has(t);
           btn2.textContent = t;
