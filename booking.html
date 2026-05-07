@@ -4041,8 +4041,15 @@ function renderAccessView(user, state, rejectReason) {
         const trialDow = dateStrToObj(date).getDay();
         const dayClosed = (trialAvailDays !== null && !trialAvailDays.includes(trialDow));
         const dayBlocked = new Set(Array.isArray(trialBlockedHours[trialDow]) ? trialBlockedHours[trialDow] : []);
+        if (dayClosed) {
+          const dayName = getDays()[trialDow];
+          grid.innerHTML = `<div style="width:100%;padding:14px 12px;background:rgba(184,45,69,.08);border:1px solid rgba(184,45,69,.3);border-radius:7px;color:rgba(232,120,120,.95);font-size:.72rem;text-align:center;">⛔ ${dayName} günü kapalı. Lütfen başka bir gün seçin.</div>`;
+          loading.style.display = 'none';
+          wrap.style.display = '';
+          return;
+        }
         AVAILABLE_TIMES.forEach(t => {
-          if (dayClosed || dayBlocked.has(t)) return; // hide closed slots entirely
+          if (dayBlocked.has(t)) return; // hide blocked slots
           const btn2 = document.createElement('button');
           const busy = busyTimes.has(t);
           btn2.textContent = t;
@@ -4060,6 +4067,10 @@ function renderAccessView(user, state, rejectReason) {
           } else { btn2.disabled = true; }
           grid.append(btn2);
         });
+        // If every slot got filtered (all blocked), show a clear message
+        if (grid.children.length === 0) {
+          grid.innerHTML = `<div style="width:100%;padding:14px 12px;background:rgba(184,45,69,.08);border:1px solid rgba(184,45,69,.3);border-radius:7px;color:rgba(232,120,120,.95);font-size:.72rem;text-align:center;">⛔ Bu günde uygun saat yok. Lütfen başka bir gün seçin.</div>`;
+        }
       } catch(e) { /* show all free on error */ }
       loading.style.display = 'none';
       wrap.style.display = '';
