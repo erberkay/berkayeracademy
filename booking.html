@@ -2717,6 +2717,26 @@ async function renderAdminPanel() {
         } else {
           pastHeaderRow.append(pastToggle);
         }
+        // Bulk delete past lessons
+        const bulkDelBtn = document.createElement('button');
+        bulkDelBtn.textContent = `🗑 Hepsini Sil (${pastLessons.length})`;
+        bulkDelBtn.style.cssText = 'background:rgba(184,45,69,.08);border:1px solid rgba(184,45,69,.3);color:rgba(232,120,120,.9);font-family:"Space Mono",monospace;font-size:.6rem;padding:4px 10px;border-radius:5px;cursor:pointer;';
+        bulkDelBtn.onclick = async (e) => {
+          e.stopPropagation();
+          if (!confirm(`${pastLessons.length} geçmiş ders kaydı (tamamlanmış + iptal) kalıcı olarak silinsin mi?\n\nBu işlem geri alınamaz.`)) return;
+          bulkDelBtn.disabled = true; bulkDelBtn.textContent = '⏳ Siliniyor…';
+          try {
+            const remaining = allLessonsArr.filter(l => l.status !== 'completed' && l.status !== 'cancelled');
+            const batch = db.batch();
+            batch.set(db.collection('reservations').doc(studentUid), { lessons: remaining }, {merge:true});
+            // Defensive: also clear any leftover booked_slots for those past lessons
+            pastLessons.forEach(l => batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time)));
+            await batch.commit();
+            toast(`✓ ${pastLessons.length} geçmiş ders kaydı silindi.`);
+            setTimeout(() => location.reload(), 600);
+          } catch(err) { const c=errId(); toast(`Hata (${c}): ` + (err.message||err.code), true); bulkDelBtn.disabled = false; bulkDelBtn.textContent = `🗑 Hepsini Sil (${pastLessons.length})`; }
+        };
+        pastHeaderRow.append(bulkDelBtn);
         const pastDiv = document.createElement('div');
         pastDiv.style.display = 'none';
         pastDiv.style.cssText = 'display:none;';
