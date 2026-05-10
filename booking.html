@@ -494,6 +494,12 @@
         </div>
         <div class="avail-selected-summary" id="availSummary"></div>
         <div id="priceEstimate" style="display:none;margin-top:10px;padding:12px 16px;background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;font-size:.78rem;color:var(--dim);line-height:1.7;"></div>
+        <!-- Reschedule rights notice -->
+        <div style="margin-top:14px;padding:14px 16px;background:rgba(143,200,232,.07);border:1px solid rgba(143,200,232,.25);border-radius:8px;font-size:.72rem;color:var(--white);line-height:1.7;">
+          <div style="font-weight:700;color:var(--ice);margin-bottom:6px;">🔄 Erteleme Hakkı — Önemli</div>
+          <div style="color:rgba(238,235,230,.8);">Her ay <strong style="color:var(--white);">1 ders erteleme hakkın</strong> var. Erteleme talebi en az <strong style="color:var(--white);">24 saat önceden</strong> yapılmalı; o ayın hakkın bittiğinde aynı ay içinde bir daha erteleyemezsin — ders <strong style="color:rgba(232,120,120,.95);">o tarihte yapılmazsa hakkın yanar</strong>.</div>
+          <div style="margin-top:8px;color:rgba(238,235,230,.65);">Ek hak almak istersen <strong style="color:var(--gold);">500 TL</strong> ödeme ile +1 erteleme hakkı tanımlanır. Detay için Berkay ile iletişime geç.</div>
+        </div>
       </div>
 
       <div class="field-group">
@@ -1564,7 +1570,10 @@ async function renderDashboard() {
   const curMonthKey = yearMonthKey(today);
   const credits = res.reschedule_credits?.[curMonthKey] ?? 0;
   const totalLessonsCount = lessons.filter(l => l.status !== 'cancelled').length;
-  document.getElementById('creditBadge').innerHTML = `🔄 ${window._i18n?.t('bk_credit_month_label')||'Bu ay erteleme hakkı:'} <strong>${credits}</strong>/1 &nbsp;·&nbsp; ${window._i18n?.t('bk_credit_total_label')||'Toplam:'} <strong>${totalLessonsCount} ${window._i18n?.t('bk_credit_lessons_lbl')||'ders'}</strong>`;
+  const _stuName = res.student_name || (_user.displayName || '').trim() || (_user.email||'').split('@')[0] || 'Öğrenci';
+  const _waMsg = encodeURIComponent(`Merhaba Berkay, ben ${_stuName}. ${curMonthKey} ayı için ek erteleme hakkı (500 TL) almak istiyorum. Ödeme bilgilerini paylaşır mısın?`);
+  const _waLink = `https://wa.me/905523070067?text=${_waMsg}`;
+  document.getElementById('creditBadge').innerHTML = `🔄 ${window._i18n?.t('bk_credit_month_label')||'Bu ay erteleme hakkı:'} <strong>${credits}</strong> &nbsp;·&nbsp; ${window._i18n?.t('bk_credit_total_label')||'Toplam:'} <strong>${totalLessonsCount} ${window._i18n?.t('bk_credit_lessons_lbl')||'ders'}</strong> &nbsp;·&nbsp; <a href="${_waLink}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;border-bottom:1px dashed rgba(232,184,75,.4);font-weight:700;">+ Ek Hak Al (500 TL)</a>`;
 
   // Extra lesson purchase button (not for trial)
   const hasFrozenLessons = lessons.some(l => l.status === 'frozen' && l.date >= today);
@@ -2499,6 +2508,12 @@ async function renderAdminPanel() {
         addLessonBtn.textContent = '➕ Ders Ekle';
         addLessonBtn.onclick = () => adminAddLesson(studentUid);
         payWrap.append(addLessonBtn);
+        // Grant extra reschedule credit (admin manually after 500 TL payment)
+        const creditBtn = document.createElement('button');
+        creditBtn.style.cssText = 'background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.25);color:var(--gold);font-family:"Space Mono",monospace;font-size:.62rem;padding:5px 10px;border-radius:5px;cursor:pointer;width:100%;margin-top:6px;';
+        creditBtn.textContent = '🔄 Erteleme Hakkı Ekle';
+        creditBtn.onclick = () => adminGrantRescheduleCredit(studentUid, s);
+        payWrap.append(creditBtn);
       }
 
       const payToggle = payWrap; // alias for append below
@@ -3361,6 +3376,31 @@ async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
     const updated = allLessons.map((l, i) => i === lessonIdx ? { ...l, note: note.trim() || null } : l);
     await db.collection('reservations').doc(studentUid).set({ lessons: updated }, {merge:true});
     toast('✓ Not kaydedildi.');
+    renderAdminPanel();
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+}
+
+// Grant +1 reschedule credit to a student for a chosen month (after 500 TL payment).
+async function adminGrantRescheduleCredit(studentUid, resData) {
+  const today = new Date();
+  const defaultMonthKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  const monthKey = await showInputModal({
+    title: `${resData.student_name || resData.student_email} — Ek Erteleme Hakkı`,
+    placeholder: 'YYYY-MM (örn: 2026-05)',
+    defaultVal: defaultMonthKey
+  });
+  if (monthKey === null) return;
+  const trimmed = (monthKey || '').trim();
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(trimmed)) {
+    toast('Geçersiz ay formatı. YYYY-MM şeklinde gir (örn: 2026-05).', true);
+    return;
+  }
+  if (!confirm(`${resData.student_name || resData.student_email} için ${trimmed} ayına +1 erteleme hakkı ekle?\n\n(500 TL ödemesi alındıysa onayla.)`)) return;
+  try {
+    const cur = (resData.reschedule_credits || {})[trimmed] || 0;
+    const updated = { ...(resData.reschedule_credits || {}), [trimmed]: cur + 1 };
+    await db.collection('reservations').doc(studentUid).set({ reschedule_credits: updated }, {merge:true});
+    toast(`✓ ${trimmed} ayına +1 erteleme hakkı eklendi (toplam ${cur + 1}).`);
     renderAdminPanel();
   } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
 }
