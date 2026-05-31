@@ -140,7 +140,10 @@ service cloud.firestore {
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['note']) ||
           // Payment request
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payment_pending']) &&
-            request.resource.data.payment_pending == true)
+            request.resource.data.payment_pending == true) ||
+          // Rules acceptance (write-once: must not already be set)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rules_accepted_at']) &&
+            !('rules_accepted_at' in resource.data))
           // Lessons: sadece admin güncelleyebilir
         ))
       );
