@@ -2062,6 +2062,14 @@ async function renderDashboard() {
 // ─── Admin Panel ──────────────────────────────────────────
 async function renderAdminPanel() {
   if (!_user || _user.email !== ADMIN_EMAIL) return;
+  // Preserve scroll position across re-renders so admin actions
+  // (cancel/delete/etc.) don't yank the viewport back to the top.
+  const _scrollSnap = window.scrollY;
+  const _restoreScroll = () => window.scrollTo({ top: _scrollSnap, behavior: 'instant' });
+  requestAnimationFrame(_restoreScroll);
+  setTimeout(_restoreScroll, 200);
+  setTimeout(_restoreScroll, 600);
+  setTimeout(_restoreScroll, 1200);
   if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   if (_qaUnsub) { _qaUnsub(); _qaUnsub = null; }
   _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
@@ -2878,7 +2886,7 @@ async function renderAdminPanel() {
               const updated = allLessonsArr.map(l => l.status === 'cancelled' ? { ...l, status: 'completed' } : l);
               await db.collection('reservations').doc(studentUid).set({ lessons: updated }, {merge:true});
               toast(`✓ ${cancelledCount} ders tamamlandı olarak işaretlendi.`);
-              setTimeout(() => location.reload(), 600);
+              renderAdminPanel();
             } catch(err) { const c=errId(); toast(`Hata (${c}): ` + (err.message||err.code), true); bulkBtn.disabled = false; bulkBtn.textContent = `✓ Hepsini Tamamla (${cancelledCount})`; }
           };
           pastHeaderRow.append(pastToggle, bulkBtn);
@@ -2901,7 +2909,7 @@ async function renderAdminPanel() {
             pastLessons.forEach(l => batch.delete(db.collection('booked_slots').doc(l.date + '_' + l.time)));
             await batch.commit();
             toast(`✓ ${pastLessons.length} geçmiş ders kaydı silindi.`);
-            setTimeout(() => location.reload(), 600);
+            renderAdminPanel();
           } catch(err) { const c=errId(); toast(`Hata (${c}): ` + (err.message||err.code), true); bulkDelBtn.disabled = false; bulkDelBtn.textContent = `🗑 Hepsini Sil (${pastLessons.length})`; }
         };
         pastHeaderRow.append(bulkDelBtn);
