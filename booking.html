@@ -885,6 +885,104 @@ function showRulesAcceptanceModal() {
   });
 }
 
+// Modal: buy extra reschedule credits. Quantity selector + payment info card.
+function showExtraCreditModal(studentName, monthKey) {
+  const PRICE_PER = 500;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10002;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px);';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#13131f;border:1px solid rgba(232,184,75,.3);border-radius:14px;padding:22px 20px;width:100%;max-width:440px;font-family:"Space Mono",monospace;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);';
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="font-size:.95rem;color:var(--gold);font-weight:700;">🔄 Ek Erteleme Hakkı Al</div>
+      <button id="ecClose" style="background:none;border:none;color:rgba(238,235,230,.5);font-size:1.1rem;cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+    </div>
+    <div style="font-size:.68rem;color:var(--dim);margin-bottom:14px;line-height:1.7;">Almak istediğin hak sayısını seç. Her ek hak <strong style="color:var(--gold);">500 TL</strong>. Ödeme sonrası WhatsApp'tan bildirince hakkın hesabına tanımlanır.</div>
+
+    <div style="font-size:.62rem;color:var(--dim);letter-spacing:.06em;margin-bottom:6px;">ADET</div>
+    <div id="ecQtyRow" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      ${[1,2,3,4,5].map(n=>`<button type="button" data-qty="${n}" class="ecQty" style="flex:1;min-width:54px;padding:10px;border-radius:7px;border:1px solid rgba(232,184,75,.25);background:rgba(232,184,75,.06);color:var(--gold);font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .12s;">${n}</button>`).join('')}
+    </div>
+
+    <div style="background:rgba(232,184,75,.06);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:.7rem;color:rgba(238,235,230,.65);">Toplam Tutar</span>
+        <strong id="ecTotal" style="font-size:1.05rem;color:var(--gold);">— TL</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:.62rem;color:var(--dim);">Erteleme hakkı bedeli</span>
+        <span id="ecBreakdown" style="font-size:.62rem;color:var(--dim);">500 TL × —</span>
+      </div>
+    </div>
+
+    <div id="ecPayBox" style="display:none;background:rgba(143,200,232,.05);border:1px solid rgba(143,200,232,.2);border-radius:8px;padding:14px 16px;margin-bottom:14px;">
+      <div style="font-size:.72rem;color:var(--ice);font-weight:700;margin-bottom:10px;">📋 Ödeme Bilgileri</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="font-size:.62rem;color:var(--dim);">Banka</span>
+        <span style="font-size:.7rem;color:var(--white);">Garanti Bankası</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="font-size:.62rem;color:var(--dim);">İsim</span>
+        <span style="font-size:.7rem;color:var(--white);">Muhammet Berkay Er</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;gap:8px;">
+        <span style="font-size:.62rem;color:var(--dim);">IBAN</span>
+        <span style="font-size:.66rem;color:var(--white);flex:1;text-align:right;">TR35 0006 2000 6870 0006 8982 06</span>
+        <button id="ecCopy" style="background:rgba(143,200,232,.12);border:1px solid rgba(143,200,232,.3);color:var(--ice);font-family:inherit;font-size:.6rem;padding:4px 9px;border-radius:5px;cursor:pointer;">Kopyala</button>
+      </div>
+      <div style="margin-top:10px;font-size:.62rem;color:rgba(232,184,75,.7);line-height:1.6;">⚠ Açıklama kısmına <strong>hiçbir şey yazmayınız.</strong></div>
+    </div>
+
+    <button id="ecWaBtn" disabled style="width:100%;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.3);color:#25d366;font-family:inherit;font-size:.78rem;font-weight:700;padding:11px;border-radius:8px;cursor:not-allowed;opacity:.5;transition:all .15s;">📱 Ödedim — WhatsApp ile Bildir</button>
+  `;
+  overlay.append(box);
+  document.body.append(overlay);
+
+  let qty = 0;
+  const totalEl = box.querySelector('#ecTotal');
+  const breakdownEl = box.querySelector('#ecBreakdown');
+  const payBox = box.querySelector('#ecPayBox');
+  const waBtn = box.querySelector('#ecWaBtn');
+
+  function syncQty(n) {
+    qty = n;
+    const total = n * PRICE_PER;
+    totalEl.textContent = `${total.toLocaleString('tr-TR')} TL`;
+    breakdownEl.textContent = `500 TL × ${n}`;
+    payBox.style.display = '';
+    waBtn.disabled = false;
+    waBtn.style.cursor = 'pointer';
+    waBtn.style.opacity = '1';
+    waBtn.style.background = 'rgba(37,211,102,.18)';
+    box.querySelectorAll('.ecQty').forEach(b => {
+      const on = parseInt(b.dataset.qty) === n;
+      b.style.background = on ? 'var(--gold)' : 'rgba(232,184,75,.06)';
+      b.style.color = on ? '#060609' : 'var(--gold)';
+      b.style.borderColor = on ? 'var(--gold)' : 'rgba(232,184,75,.25)';
+    });
+  }
+
+  box.querySelectorAll('.ecQty').forEach(b => {
+    b.onclick = () => syncQty(parseInt(b.dataset.qty));
+  });
+
+  box.querySelector('#ecCopy').onclick = function() {
+    navigator.clipboard.writeText('TR350006200068700006898206');
+    this.textContent = '✓';
+    setTimeout(() => this.textContent = 'Kopyala', 1500);
+  };
+
+  waBtn.onclick = () => {
+    if (qty <= 0) return;
+    const total = qty * PRICE_PER;
+    const msg = encodeURIComponent(`Merhaba Berkay, ben ${studentName}. ${monthKey} ayı için ${qty} ek erteleme hakkı (${total.toLocaleString('tr-TR')} TL) almak istiyorum, ödemeyi yaptım. Onaylar mısın?`);
+    window.open(`https://wa.me/905523070067?text=${msg}`, '_blank', 'noopener');
+  };
+
+  box.querySelector('#ecClose').onclick = () => overlay.remove();
+}
+
 function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 
 function toDateStr(date) {
@@ -1627,9 +1725,8 @@ async function renderDashboard() {
   const credits = res.reschedule_credits?.[curMonthKey] ?? 0;
   const totalLessonsCount = lessons.filter(l => l.status !== 'cancelled').length;
   const _stuName = res.student_name || (_user.displayName || '').trim() || (_user.email||'').split('@')[0] || 'Öğrenci';
-  const _waMsg = encodeURIComponent(`Merhaba Berkay, ben ${_stuName}. ${curMonthKey} ayı için ek erteleme hakkı (500 TL) almak istiyorum. Ödeme bilgilerini paylaşır mısın?`);
-  const _waLink = `https://wa.me/905523070067?text=${_waMsg}`;
-  document.getElementById('creditBadge').innerHTML = `🔄 ${window._i18n?.t('bk_credit_month_label')||'Bu ay erteleme hakkı:'} <strong>${credits}</strong> &nbsp;·&nbsp; ${window._i18n?.t('bk_credit_total_label')||'Toplam:'} <strong>${totalLessonsCount} ${window._i18n?.t('bk_credit_lessons_lbl')||'ders'}</strong> &nbsp;·&nbsp; <a href="${_waLink}" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none;border-bottom:1px dashed rgba(232,184,75,.4);font-weight:700;">+ Ek Hak Al (500 TL)</a>`;
+  window._openExtraCreditModal = () => showExtraCreditModal(_stuName, curMonthKey);
+  document.getElementById('creditBadge').innerHTML = `🔄 ${window._i18n?.t('bk_credit_month_label')||'Bu ay erteleme hakkı:'} <strong>${credits}</strong> &nbsp;·&nbsp; ${window._i18n?.t('bk_credit_total_label')||'Toplam:'} <strong>${totalLessonsCount} ${window._i18n?.t('bk_credit_lessons_lbl')||'ders'}</strong> &nbsp;·&nbsp; <button type="button" onclick="window._openExtraCreditModal()" style="background:none;border:none;padding:0;color:var(--gold);cursor:pointer;border-bottom:1px dashed rgba(232,184,75,.4);font-weight:700;font-family:inherit;font-size:inherit;">+ Ek Hak Al (500 TL)</button>`;
 
   // Extra lesson purchase button (not for trial)
   const hasFrozenLessons = lessons.some(l => l.status === 'frozen' && l.date >= today);
