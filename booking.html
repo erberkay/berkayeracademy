@@ -2195,7 +2195,7 @@ async function renderAdminPanel() {
           approveBtn.disabled = true;
           try {
             const batch = db.batch();
-            batch.set(db.collection('reservations').doc(r.from_uid), { payment_confirmed: true, payment_pending: false }, {merge:true});
+            batch.set(db.collection('reservations').doc(r.from_uid), { payment_confirmed: true, payment_pending: false, payment_confirmed_at: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
             batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
             await batch.commit();
             toast('✓ Ödeme onaylandı.'); row.remove();
@@ -2381,10 +2381,12 @@ async function renderAdminPanel() {
       } else {
         d.lessons = cleanLessons;
       }
+      // For lesson counts we still need the original totals
+      const totalLessonsCount = cleanLessons.length; // includes cancelled — package was paid for all
       const totalNonCancelled = cleanLessons.filter(l => l.status !== 'cancelled').length;
-      // Per-lesson price: custom_total/totalLessons, or custom_lesson_price, or default
+      // Per-lesson price (used for revenue fallback below and student-row display)
       const perLessonPrice = d.custom_total_price
-        ? Math.round(d.custom_total_price / Math.max(totalNonCancelled, 1))
+        ? Math.round(d.custom_total_price / Math.max(totalLessonsCount, 1))
         : (d.custom_lesson_price || (d.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE));
       let studentMonthLessons = 0;
       cleanLessons.forEach(l => {
@@ -2394,13 +2396,22 @@ async function renderAdminPanel() {
           statsLessons++; studentMonthLessons++;
         }
       });
-      // Count revenue per student (lessons × per-lesson price; skip trial)
-      if (studentMonthLessons > 0 && d.lesson_type !== 'trial') {
-        const studentRevenue = studentMonthLessons * perLessonPrice;
-        const totalRevenue = d.custom_total_price ?? (totalNonCancelled * perLessonPrice);
-        if (d.payment_confirmed) { statsRevenue += studentRevenue; statsPaidStudents++; }
-        else if (d.payment_pending) { statsPendingStudents++; }
-        statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, totalLessons: totalNonCancelled, revenue: studentRevenue, totalRevenue, paid: !!d.payment_confirmed });
+      // Cash basis: the whole package counts as income in the month payment was confirmed.
+      // payment_confirmed_at is preferred; fall back to start_date so legacy paid students still show somewhere.
+      if (d.lesson_type !== 'trial') {
+        const packagePrice = d.custom_total_price ?? (totalLessonsCount * perLessonPrice);
+        let paidMonthKey = null;
+        if (d.payment_confirmed_at?.toDate) paidMonthKey = toDateStr(d.payment_confirmed_at.toDate()).slice(0,7);
+        else if (d.payment_confirmed) paidMonthKey = (d.start_date || '').slice(0,7) || null;
+        if (d.payment_confirmed && paidMonthKey === curMonthStr) {
+          statsRevenue += packagePrice;
+          statsPaidStudents++;
+        } else if (d.payment_pending) {
+          statsPendingStudents++;
+        }
+        if (studentMonthLessons > 0 || (d.payment_confirmed && paidMonthKey === curMonthStr)) {
+          statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, totalLessons: totalNonCancelled, revenue: (paidMonthKey === curMonthStr ? packagePrice : 0), totalRevenue: packagePrice, paid: !!d.payment_confirmed });
+        }
       }
     });
   }
@@ -2628,7 +2639,7 @@ async function renderAdminPanel() {
         okBtn.onclick = async () => {
           okBtn.disabled = true;
           try {
-            await db.collection('reservations').doc(studentUid).set({ payment_confirmed: true, payment_pending: false }, {merge:true});
+            await db.collection('reservations').doc(studentUid).set({ payment_confirmed: true, payment_pending: false, payment_confirmed_at: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
             toast('✓ Ödeme onaylandı.'); renderAdminPanel();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); okBtn.disabled = false; }
         };
@@ -2650,7 +2661,7 @@ async function renderAdminPanel() {
         btn.onclick = async () => {
           btn.disabled = true;
           try {
-            await db.collection('reservations').doc(studentUid).set({ payment_confirmed: true }, {merge:true});
+            await db.collection('reservations').doc(studentUid).set({ payment_confirmed: true, payment_confirmed_at: firebase.firestore.FieldValue.serverTimestamp() }, {merge:true});
             toast('✓ Ödeme işaretlendi.'); renderAdminPanel();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); btn.disabled = false; }
         };
