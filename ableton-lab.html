@@ -944,13 +944,45 @@ let oscRafId = null;
 
 function stopOsc() { if (oscRafId) { cancelAnimationFrame(oscRafId); oscRafId = null; } }
 
+// Mode: 'wave' = oscilloscope (default), 'spectrum' = FFT bars
+let oscMode = 'wave';
+function setOscMode(m) { oscMode = m; }
+
 function startOsc(canvas) {
     stopOsc();
     const c = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     const oscData = new Uint8Array(2048);
+    const freqData = new Uint8Array(2048);
+    function drawSpectrum() {
+        c.fillStyle = '#060609'; c.fillRect(0, 0, W, H);
+        // Grid: dB lines at -20, -40, -60 dB
+        c.strokeStyle = 'rgba(42,42,69,.35)'; c.lineWidth = 1;
+        [0.25, 0.5, 0.75].forEach(f => {
+            c.beginPath(); c.moveTo(0, H * f); c.lineTo(W, H * f); c.stroke();
+        });
+        if (!analyserNode) return;
+        analyserNode.getByteFrequencyData(freqData);
+        // Logarithmic frequency scale: map bin index to log-scaled x
+        const nyq = (synthCtx && synthCtx.sampleRate ? synthCtx.sampleRate : 44100) / 2;
+        const fMin = 30, fMax = nyq;
+        const logMin = Math.log(fMin), logMax = Math.log(fMax);
+        const binHz = nyq / freqData.length;
+        c.fillStyle = '#e8b84b'; c.shadowColor = '#e8b84b'; c.shadowBlur = 4;
+        // Draw bars by sampling x → freq → bin index
+        const barW = 2;
+        for (let x = 0; x < W; x += barW) {
+            const f  = Math.exp(logMin + (x / W) * (logMax - logMin));
+            const bi = Math.min(freqData.length - 1, Math.max(0, Math.floor(f / binHz)));
+            const mag = freqData[bi] / 255;       // 0..1
+            const bh  = Math.max(1, mag * (H - 4));
+            c.fillRect(x, H - bh, barW - 1, bh);
+        }
+        c.shadowBlur = 0;
+    }
     function draw() {
         oscRafId = requestAnimationFrame(draw);
+        if (oscMode === 'spectrum') { drawSpectrum(); return; }
         c.fillStyle = '#060609'; c.fillRect(0, 0, W, H);
         // Grid lines
         c.strokeStyle = 'rgba(42,42,69,.35)'; c.lineWidth = 1;
@@ -1384,12 +1416,33 @@ function renderModule1() {
     const hdr   = mk('div','synth-header','<h2>🎹 Analog Synthesizer</h2>');
     shell.append(hdr);
 
-    // Oscilloscope
-    const oscWrap = mk('div','oscilloscope-wrap','<span class="oscilloscope-label">OSCILLOSCOPE</span>');
+    // Oscilloscope / Spectrum
+    const oscWrap = mk('div','oscilloscope-wrap');
+    const oscLabel = mk('span','oscilloscope-label','OSCILLOSCOPE');
+    oscWrap.append(oscLabel);
+    // Tab toggle for waveform vs spectrum
+    const oscTabs = mk('div'); oscTabs.style.cssText='position:absolute;top:4px;right:8px;z-index:2;display:flex;gap:4px;';
+    const tabWave = mk('button','wave-btn','🌊'); tabWave.title='Waveform';
+    tabWave.style.cssText='padding:3px 8px;font-size:.7rem;min-width:auto;';
+    const tabSpec = mk('button','wave-btn','🎛'); tabSpec.title='Spectrum';
+    tabSpec.style.cssText='padding:3px 8px;font-size:.7rem;min-width:auto;';
+    if (oscMode === 'wave') tabWave.classList.add('active'); else tabSpec.classList.add('active');
+    tabWave.onclick = () => {
+        setOscMode('wave');
+        oscLabel.textContent = 'OSCILLOSCOPE';
+        tabWave.classList.add('active'); tabSpec.classList.remove('active');
+    };
+    tabSpec.onclick = () => {
+        setOscMode('spectrum');
+        oscLabel.textContent = 'SPECTRUM';
+        tabSpec.classList.add('active'); tabWave.classList.remove('active');
+    };
+    oscTabs.append(tabWave, tabSpec);
+    oscWrap.append(oscTabs);
     const cv = document.createElement('canvas');
     cv.className='oscilloscope'; cv.width=800; cv.height=110;
     cv.setAttribute('role','img');
-    cv.setAttribute('aria-label','Synthesizer waveform visualization');
+    cv.setAttribute('aria-label','Synthesizer waveform/spectrum visualization');
     oscWrap.append(cv); shell.append(oscWrap);
     requestAnimationFrame(() => startOsc(cv));
 
@@ -1669,7 +1722,7 @@ function renderModule1() {
         onChange: v => { state.volume=v; volVal.textContent=(v*100).toFixed(0)+'%'; }}));
     grid.append(volGrp);
 
-    // Filter — type selector + cutoff + resonance + mod env amount
+    // Filter — type selector + response curve + cutoff + resonance + mod env amount
     const filtGrp = mk('div','filter-section');
     filtGrp.innerHTML=`<h3>🎛 Filter — Frekans Filtresi</h3>
     <p style="font-size:.72rem;color:var(--dim);margin-bottom:12px;line-height:1.5">
@@ -1677,6 +1730,55 @@ function renderModule1() {
     <strong>Cutoff</strong>: Kesme frekansı — düşük = koyu ses, yüksek = parlak ses.<br>
     <strong>Resonance</strong>: Cutoff frekansını vurgular — yüksek = "wah" efekti.<br>
     <strong>Env Amount</strong>: ADSR envelope'u cutoff'a uygular — sweep efektleri için.</p>`;
+    // Response curve
+    const respCv = document.createElement('canvas');
+    respCv.width = 600; respCv.height = 80;
+    respCv.style.cssText = 'width:100%;height:64px;background:#060609;border:1px solid var(--mid);border-radius:4px;margin-bottom:12px;display:block;';
+    respCv.setAttribute('role','img');
+    respCv.setAttribute('aria-label','Filter response curve');
+    filtGrp.append(respCv);
+    function _redrawFilter() {
+        const c = respCv.getContext('2d');
+        const W = respCv.width, H = respCv.height;
+        c.fillStyle = '#060609'; c.fillRect(0, 0, W, H);
+        c.strokeStyle = 'rgba(42,42,69,.4)'; c.lineWidth = 1;
+        [0.33, 0.66].forEach(f => { c.beginPath(); c.moveTo(0, H*f); c.lineTo(W, H*f); c.stroke(); });
+        const N = 128, fMin = 30, fMax = 18000;
+        const logMin = Math.log(fMin), logMax = Math.log(fMax);
+        const freqs = new Float32Array(N);
+        for (let i = 0; i < N; i++) freqs[i] = Math.exp(logMin + (i/(N-1))*(logMax-logMin));
+        const mag = new Float32Array(N), phase = new Float32Array(N);
+        if (filterNode && filterNode.getFrequencyResponse) {
+            filterNode.getFrequencyResponse(freqs, mag, phase);
+        } else {
+            // Without a live filterNode (audio context not yet started), draw an
+            // approximate curve using a temporary offline filter so the user
+            // sees the type/cutoff/resonance result before the first note.
+            try {
+                const tmpCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 64, 44100);
+                const tmp = tmpCtx.createBiquadFilter();
+                tmp.type = state.filter.type || 'lowpass';
+                tmp.frequency.value = state.filter.cutoff;
+                tmp.Q.value = state.filter.resonance;
+                tmp.getFrequencyResponse(freqs, mag, phase);
+            } catch { for (let i = 0; i < N; i++) mag[i] = 1; }
+        }
+        c.strokeStyle = '#e8b84b'; c.lineWidth = 2;
+        c.shadowColor = '#e8b84b'; c.shadowBlur = 6;
+        c.beginPath();
+        for (let i = 0; i < N; i++) {
+            const db = 20 * Math.log10(Math.max(1e-4, mag[i]));
+            const y = H - ((db + 36) / 48) * H;
+            const x = (i / (N-1)) * W;
+            if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+        }
+        c.stroke(); c.shadowBlur = 0;
+        const cutX = ((Math.log(state.filter.cutoff) - logMin) / (logMax - logMin)) * W;
+        c.strokeStyle = 'rgba(184,45,69,.7)'; c.setLineDash([3, 3]); c.lineWidth = 1;
+        c.beginPath(); c.moveTo(cutX, 0); c.lineTo(cutX, H); c.stroke();
+        c.setLineDash([]);
+    }
+    _redrawFilter();
     // Type selector
     const typeRow = mk('div','waveform-selector'); typeRow.style.cssText='margin-bottom:14px;';
     [{t:'lowpass',label:'LP',hint:'Yüksek frekansları keser'},
@@ -1690,6 +1792,7 @@ function renderModule1() {
             if (filterNode) filterNode.type = t;
             typeRow.querySelectorAll('.wave-btn').forEach(x => x.classList.remove('active'));
             b.classList.add('active');
+            _redrawFilter();
         };
         typeRow.append(b);
     });
@@ -1702,13 +1805,15 @@ function renderModule1() {
     const cutSlEl=makeSlider({min:80, max:18000, step:10, value:state.filter.cutoff, label:'Filter cutoff frequency in Hertz',
         onChange:v=>{ state.filter.cutoff=v; state.activePreset=null;
             if(filterNode) filterNode.frequency.value=v;
-            cutVal.textContent=v>=1000?(v/1000).toFixed(1)+'kHz':v+'Hz'; }});
+            cutVal.textContent=v>=1000?(v/1000).toFixed(1)+'kHz':v+'Hz';
+            _redrawFilter(); }});
     cutDiv.append(cutLbl, cutSlEl);
     const resDiv=mk('div'); const resLbl=mk('div','slider-label'); resLbl.append(mk('span','','Resonance'), resVal);
     const resSlEl=makeSlider({min:.1, max:20, step:.1, value:state.filter.resonance, label:'Filter resonance Q',
         onChange:v=>{ state.filter.resonance=v; state.activePreset=null;
             if(filterNode) filterNode.Q.value=v;
-            resVal.textContent=v.toFixed(1)+' Q'; }});
+            resVal.textContent=v.toFixed(1)+' Q';
+            _redrawFilter(); }});
     resDiv.append(resLbl, resSlEl);
     // Filter envelope amount
     const envDiv = mk('div');
