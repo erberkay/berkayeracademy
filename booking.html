@@ -135,7 +135,7 @@
     .admin-lesson-paid { font-size:.65rem; margin-left:4px; }
 
     /* ── Credit badge ── */
-    .credit-badge { display:inline-flex; align-items:center; gap:6px; background:rgba(180,120,255,.1); border:1px solid rgba(180,120,255,.3); border-radius:20px; padding:7px 16px; font-size:.78rem; color:var(--purple); margin-bottom:14px; }
+    .credit-badge { display:block; width:100%; background:transparent; border:none; padding:0; margin:0 0 14px 0; font-size:.78rem; color:var(--white); box-sizing:border-box; }
     /* ── Payment box (student) ── */
     .payment-box { display:flex; align-items:center; justify-content:space-between; gap:12px; background:rgba(232,184,75,.06); border:1px solid rgba(232,184,75,.18); border-radius:10px; padding:14px 18px; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
     .payment-box-label { font-size:.72rem; color:var(--dim); line-height:1.6; }
@@ -503,8 +503,8 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label">📱 WhatsApp Numarası <span style="color:var(--crimson);font-size:.62rem;">*</span></label>
-        <input type="tel" class="field-input" id="reqPhone" placeholder="05XX XXX XX XX" style="font-family:'Space Mono',monospace;" inputmode="tel" autocomplete="tel">
+        <label class="field-label">📱 WhatsApp Numarası <span style="color:var(--crimson);font-size:.72rem;font-weight:700;">* Zorunlu</span></label>
+        <input type="tel" class="field-input" id="reqPhone" placeholder="05XX XXX XX XX" style="font-family:'Space Mono',monospace;transition:border-color .2s;" inputmode="tel" autocomplete="tel" required>
         <div style="font-size:.6rem;color:var(--dim);margin-top:4px;line-height:1.5;">Ders hatırlatmaları ve önemli bildirimler bu numaraya WhatsApp ile gönderilir.</div>
       </div>
 
@@ -1403,7 +1403,15 @@ async function submitRequest() {
   const phoneOk = /^(?:90)?5\d{9}$/.test(phoneDigits) || /^5\d{9}$/.test(phoneDigits) || /^05\d{9}$/.test(phoneDigits);
   if (!phoneOk) {
     errEl.textContent = '📱 Geçerli bir cep telefonu numarası gir (örn: 05XX XXX XX XX).';
-    errEl.style.display = ''; return;
+    errEl.style.display = '';
+    const _phEl = document.getElementById('reqPhone');
+    if (_phEl) {
+      _phEl.style.borderColor = 'var(--crimson)';
+      _phEl.focus();
+      _phEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+      _phEl.oninput = () => { _phEl.style.borderColor = ''; _phEl.oninput = null; };
+    }
+    return;
   }
   // Normalize to E.164 without "+" (e.g. 905XXXXXXXXX)
   let phoneE164 = phoneDigits;
@@ -1804,21 +1812,21 @@ async function renderDashboard() {
     const opacity = isPast ? '.45' : '1';
     const highlight = isCurrent ? 'background:rgba(232,184,75,.08);border-left:2px solid var(--gold);padding-left:8px;' : '';
     const remainTxt = remaining > 0 ? `<strong style="color:#4ade80;">${remaining}</strong> hak kaldı` : `<strong style="color:rgba(232,120,120,.85);">0</strong> hak (kullanıldı)`;
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;opacity:${opacity};${highlight}font-size:.72rem;">
-      <span style="color:var(--white);">${dot} &nbsp; ${monthLabel}${isCurrent ? ' <span style="font-size:.55rem;color:var(--gold);background:rgba(232,184,75,.12);padding:1px 6px;border-radius:8px;margin-left:4px;">BU AY</span>' : ''}</span>
-      <span style="color:rgba(238,235,230,.75);">${remainTxt}</span>
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 6px;opacity:${opacity};${highlight}font-size:.74rem;gap:14px;flex-wrap:wrap;">
+      <span style="color:var(--white);display:flex;align-items:center;gap:8px;">${dot} ${monthLabel}${isCurrent ? ' <span style="font-size:.58rem;color:var(--gold);background:rgba(232,184,75,.15);padding:2px 8px;border-radius:10px;letter-spacing:.05em;">BU AY</span>' : ''}</span>
+      <span style="color:rgba(238,235,230,.85);">${remainTxt}</span>
     </div>`;
   }).join('');
 
   document.getElementById('creditBadge').innerHTML = `
-    <div style="background:rgba(143,200,232,.05);border:1px solid rgba(143,200,232,.2);border-radius:10px;padding:12px 14px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div style="font-size:.7rem;color:var(--ice);font-weight:700;letter-spacing:.04em;">🔄 ERTELEME HAKLARIM</div>
-        <div style="font-size:.6rem;color:var(--dim);">Toplam ders: <strong style="color:var(--white);">${totalLessonsCount}</strong></div>
+    <div style="background:rgba(143,200,232,.05);border:1px solid rgba(143,200,232,.2);border-radius:10px;padding:16px 20px;width:100%;box-sizing:border-box;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:.78rem;color:var(--ice);font-weight:700;letter-spacing:.06em;">🔄 ERTELEME HAKLARIM</div>
+        <div style="font-size:.68rem;color:var(--dim);">Toplam ders: <strong style="color:var(--white);">${totalLessonsCount}</strong></div>
       </div>
-      ${_monthRows || `<div style="font-size:.7rem;color:var(--dim);padding:6px 0;">Aktif plan yok.</div>`}
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);text-align:center;">
-        <button type="button" onclick="window._openExtraCreditModal()" style="background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);padding:7px 14px;border-radius:6px;font-family:'Space Mono',monospace;font-size:.66rem;font-weight:700;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(232,184,75,.18)'" onmouseout="this.style.background='rgba(232,184,75,.1)'">+ Ek Hak Al (500 TL)</button>
+      ${_monthRows || `<div style="font-size:.74rem;color:var(--dim);padding:8px 0;text-align:center;">Aktif plan yok.</div>`}
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);text-align:center;">
+        <button type="button" onclick="window._openExtraCreditModal()" style="background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.35);color:var(--gold);padding:9px 18px;border-radius:7px;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(232,184,75,.22)'" onmouseout="this.style.background='rgba(232,184,75,.12)'">+ Ek Hak Al (500 TL)</button>
       </div>
     </div>`;
 
@@ -2700,6 +2708,16 @@ async function renderAdminPanel() {
             })()}<br>
             ${startDateStr} → ${endDateStr}<br>
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
+            ${(() => {
+              if (isTrial) return '';
+              const _ck = curMonthAdmin;
+              const _curC = (s.reschedule_credits || {})[_ck] ?? 0;
+              const _futureCredits = Object.entries(s.reschedule_credits || {})
+                .filter(([k]) => k >= _ck)
+                .reduce((acc, [, v]) => acc + v, 0);
+              const _color = _curC > 0 ? 'rgba(180,120,255,.85)' : 'rgba(232,120,120,.85)';
+              return `<br><span style="color:${_color};font-size:.62rem;">🔄 Erteleme: <strong>${_curC}</strong> bu ay (toplam kalan: ${_futureCredits})</span>`;
+            })()}
             ${s.student_phone ? `<br><span style="color:rgba(37,211,102,.85);font-size:.6rem;">📱 ${s.student_phone}</span>` : ''}
             ${s.last_reminder_sent ? `<br><span style="color:rgba(255,200,100,.6);font-size:.6rem;">📧 Son hatırlatma: ${new Date(s.last_reminder_sent.toDate ? s.last_reminder_sent.toDate() : s.last_reminder_sent).toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
             ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 Öğrenci notu: "${s.note}"</span>` : ''}
@@ -4525,7 +4543,17 @@ function renderAccessView(user, state, rejectReason) {
       if (!time) { errEl.textContent = window._i18n?.t('bk_err_no_time')||'Lütfen bir saat seçin.'; errEl.style.display=''; return; }
       const phoneDigits = phoneRaw.replace(/\D/g, '');
       const phoneOk = /^(?:90)?5\d{9}$/.test(phoneDigits) || /^5\d{9}$/.test(phoneDigits) || /^05\d{9}$/.test(phoneDigits);
-      if (!phoneOk) { errEl.textContent = '📱 Geçerli bir cep telefonu numarası gir (05XX XXX XX XX).'; errEl.style.display=''; return; }
+      if (!phoneOk) {
+        errEl.textContent = '📱 Geçerli bir cep telefonu numarası gir (05XX XXX XX XX).';
+        errEl.style.display = '';
+        const _trPh = card.querySelector('#trialPhone');
+        if (_trPh) {
+          _trPh.style.borderColor = 'rgba(184,45,69,.7)';
+          _trPh.focus();
+          _trPh.oninput = () => { _trPh.style.borderColor = 'rgba(255,255,255,.12)'; _trPh.oninput = null; };
+        }
+        return;
+      }
       let phoneE164 = phoneDigits;
       if (phoneE164.startsWith('0')) phoneE164 = phoneE164.slice(1);
       if (!phoneE164.startsWith('90')) phoneE164 = '90' + phoneE164;
