@@ -571,6 +571,11 @@ setOsc1Wave(state.osc1.wave);
 // AUDIO — SYNTH  (persistent filter + analyser)
 // ═══════════════════════════════════════════════════════════════════
 let synthCtx = null, filterNode = null, analyserNode = null, noiseBuffer = null;
+// Master + FX
+let masterAmp = null, delayNode = null, delayFb = null, delayWetG = null,
+    convolverNode = null, reverbWetG = null;
+// LFO
+let lfoOsc = null, lfoDepthG = null, lfoConnectedTo = null;
 
 // Procedural white-noise buffer reused by every note that has noise enabled.
 function makeNoiseBuffer(ctx) {
@@ -580,9 +585,41 @@ function makeNoiseBuffer(ctx) {
     return buf;
 }
 
+// Procedural impulse response for the convolver (2s exponential decay).
+function makeReverbIR(ctx, durSec = 2, decay = 3) {
+    const rate = ctx.sampleRate;
+    const len = Math.floor(rate * durSec);
+    const ir = ctx.createBuffer(2, len, rate);
+    for (let ch = 0; ch < 2; ch++) {
+        const data = ir.getChannelData(ch);
+        for (let i = 0; i < len; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+        }
+    }
+    return ir;
+}
+
+// Disconnect the LFO from whatever it was last routed to, then re-route per state.lfo.target.
+function rerouteLfo() {
+    if (!lfoDepthG) return;
+    try { lfoDepthG.disconnect(); } catch {}
+    lfoConnectedTo = null;
+    const t = state.lfo.target;
+    if (t === 'cutoff' && filterNode) {
+        lfoDepthG.connect(filterNode.frequency);
+        lfoConnectedTo = 'cutoff';
+    } else if (t === 'volume' && masterAmp) {
+        lfoDepthG.connect(masterAmp.gain);
+        lfoConnectedTo = 'volume';
+    }
+    // 'pitch' target deferred — requires per-voice routing.
+}
+
 function getSynthCtx() {
     if (!synthCtx) {
         synthCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Voice chain → filter → analyser → masterAmp → (dry + delay + reverb) → destination
         filterNode   = synthCtx.createBiquadFilter();
         filterNode.type = state.filter.type || 'lowpass';
         filterNode.frequency.value = state.filter.cutoff;
@@ -590,11 +627,63 @@ function getSynthCtx() {
         analyserNode = synthCtx.createAnalyser();
         analyserNode.fftSize = 4096;
         filterNode.connect(analyserNode);
-        analyserNode.connect(synthCtx.destination);
+
+        masterAmp = synthCtx.createGain();
+        masterAmp.gain.value = 1.0;
+        analyserNode.connect(masterAmp);
+
+        // Dry path — always 1:1 to destination so the synth still plays
+        // even when both FX wets are 0.
+        const dryGain = synthCtx.createGain();
+        dryGain.gain.value = 1.0;
+        masterAmp.connect(dryGain).connect(synthCtx.destination);
+
+        // Delay send → DelayNode + feedback loop → wet gain → destination
+        delayNode = synthCtx.createDelay(1.5);
+        delayNode.delayTime.value = state.fx.delayTime;
+        delayFb = synthCtx.createGain();
+        delayFb.gain.value = state.fx.delayFeedback;
+        delayWetG = synthCtx.createGain();
+        delayWetG.gain.value = state.fx.delayWet;
+        masterAmp.connect(delayNode);
+        delayNode.connect(delayFb);
+        delayFb.connect(delayNode); // feedback loop
+        delayNode.connect(delayWetG).connect(synthCtx.destination);
+
+        // Reverb send → ConvolverNode → wet gain → destination
+        convolverNode = synthCtx.createConvolver();
+        convolverNode.buffer = makeReverbIR(synthCtx, 2.0, 3);
+        reverbWetG = synthCtx.createGain();
+        reverbWetG.gain.value = state.fx.reverbWet;
+        masterAmp.connect(convolverNode);
+        convolverNode.connect(reverbWetG).connect(synthCtx.destination);
+
+        // LFO — persistent oscillator + depth scaler. Routed on demand.
+        lfoOsc = synthCtx.createOscillator();
+        lfoOsc.type = state.lfo.wave === 'sample-hold' ? 'sine' : (state.lfo.wave || 'sine');
+        lfoOsc.frequency.value = state.lfo.rate;
+        lfoDepthG = synthCtx.createGain();
+        // Scale LFO output to a sensible default per target; rerouteLfo() adjusts.
+        lfoDepthG.gain.value = 0;
+        lfoOsc.connect(lfoDepthG);
+        lfoOsc.start();
+        rerouteLfo();
+
         noiseBuffer = makeNoiseBuffer(synthCtx);
     }
     if (synthCtx.state === 'suspended') synthCtx.resume();
     return synthCtx;
+}
+
+// Re-apply LFO depth scaled to target. Cutoff target uses Hz units (so depth
+// of 1 = ~5kHz sweep); volume target uses small linear delta (±0.5 max).
+function applyLfoDepth() {
+    if (!lfoDepthG) return;
+    const d = Math.max(0, Math.min(1, state.lfo.depth || 0));
+    const t = lfoConnectedTo || state.lfo.target;
+    if (t === 'cutoff')      lfoDepthG.gain.value = d * 5000;
+    else if (t === 'volume') lfoDepthG.gain.value = d * 0.5;
+    else                     lfoDepthG.gain.value = 0;
 }
 
 // Convert semitone-octave shift to frequency multiplier.
@@ -1593,6 +1682,98 @@ function renderModule1() {
     envRow.append(envDiv);
     filtGrp.append(envRow);
     grid.append(filtGrp);
+
+    // ── LFO ─────────────────────────────────────────────────
+    const lfoGrp = mk('div','control-group');
+    lfoGrp.innerHTML=`<h3>🌀 LFO — Low Frequency Oscillator</h3>
+    <p style="font-size:.72rem;color:var(--dim);margin-bottom:12px;line-height:1.5">
+    Sürekli salınımla seçilen parametreyi modüle eder. <strong>Cutoff</strong> → wobble bass / filter sweep,
+    <strong>Volume</strong> → tremolo. Rate Hz cinsinden.</p>`;
+    const lfoWaveSel = mk('div','waveform-selector');
+    [{w:'sine',icon:'〜'},{w:'triangle',icon:'△'},{w:'square',icon:'⊓'}]
+    .forEach(({w,icon}) => {
+        const b = mk('button',`wave-btn${(state.lfo.wave||'sine')===w?' active':''}`, `${icon}<br>${w}`);
+        b.style.cssText='font-size:.7rem;padding:8px 0;';
+        b.onclick = () => {
+            state.lfo.wave=w; if (lfoOsc) lfoOsc.type = w;
+            lfoWaveSel.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+            state.activePreset=null;
+        };
+        lfoWaveSel.append(b);
+    });
+    lfoGrp.append(lfoWaveSel);
+    const lfoTargetSel = mk('div','waveform-selector'); lfoTargetSel.style.cssText='margin-top:10px;';
+    [{t:'cutoff',label:'→ Cutoff'},{t:'volume',label:'→ Volume'}].forEach(({t,label}) => {
+        const b = mk('button',`wave-btn${(state.lfo.target||'cutoff')===t?' active':''}`, label);
+        b.style.cssText='font-size:.7rem;padding:6px 12px;';
+        b.onclick = () => {
+            state.lfo.target = t; rerouteLfo(); applyLfoDepth();
+            lfoTargetSel.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+            state.activePreset=null;
+        };
+        lfoTargetSel.append(b);
+    });
+    lfoGrp.append(lfoTargetSel);
+    const lfoRow = mk('div'); lfoRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;';
+    // Rate
+    const lfoRateVal = mk('span','', (state.lfo.rate||5).toFixed(1)+' Hz'); lfoRateVal.style.color='var(--purple)';
+    const lfoRateLbl = mk('div','slider-label'); lfoRateLbl.append(mk('span','','Rate'), lfoRateVal);
+    const lfoRateSl = makeSlider({min:0.1, max:20, step:0.1, value:state.lfo.rate||5, label:'LFO rate in Hertz',
+        onChange:v=>{state.lfo.rate=v; if (lfoOsc) lfoOsc.frequency.value=v; lfoRateVal.textContent=v.toFixed(1)+' Hz'; state.activePreset=null;}});
+    const lfoRateDiv = mk('div'); lfoRateDiv.append(lfoRateLbl, lfoRateSl);
+    // Depth
+    const lfoDepthVal = mk('span','', Math.round((state.lfo.depth||0)*100)+'%'); lfoDepthVal.style.color='var(--purple)';
+    const lfoDepthLbl = mk('div','slider-label'); lfoDepthLbl.append(mk('span','','Depth'), lfoDepthVal);
+    const lfoDepthSl = makeSlider({min:0, max:1, step:0.01, value:state.lfo.depth||0, label:'LFO depth',
+        onChange:v=>{state.lfo.depth=v; applyLfoDepth(); lfoDepthVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    const lfoDepthDiv = mk('div'); lfoDepthDiv.append(lfoDepthLbl, lfoDepthSl);
+    lfoRow.append(lfoRateDiv, lfoDepthDiv);
+    lfoGrp.append(lfoRow);
+    grid.append(lfoGrp);
+
+    // ── FX (Delay + Reverb) ─────────────────────────────────
+    const fxGrp = mk('div','control-group');
+    fxGrp.innerHTML=`<h3>🎚 FX — Delay & Reverb</h3>
+    <p style="font-size:.72rem;color:var(--dim);margin-bottom:12px;line-height:1.5">
+    <strong>Delay</strong>: yankı, dub. <strong>Reverb</strong>: oda hissi, ambient. Wet 0 ise ses kuru gider.</p>`;
+    const fxRow = mk('div'); fxRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:14px;';
+    // Delay column
+    const dCol = mk('div');
+    const dHead = mk('strong','',`DELAY`); dHead.style.cssText='color:var(--gold);font-size:.74rem;display:block;margin-bottom:6px;';
+    dCol.append(dHead);
+    const dTimeVal = mk('span','', (state.fx.delayTime||0.25).toFixed(2)+' s'); dTimeVal.style.color='var(--gold)';
+    const dTimeLbl = mk('div','slider-label'); dTimeLbl.append(mk('span','','Time'), dTimeVal);
+    const dTimeSl = makeSlider({min:0.05, max:1.5, step:0.01, value:state.fx.delayTime||0.25, label:'Delay time in seconds',
+        onChange:v=>{state.fx.delayTime=v; if (delayNode) delayNode.delayTime.value=v; dTimeVal.textContent=v.toFixed(2)+' s'; state.activePreset=null;}});
+    dCol.append(dTimeLbl, dTimeSl);
+    const dFbVal = mk('span','', Math.round((state.fx.delayFeedback||0.3)*100)+'%'); dFbVal.style.color='var(--gold)';
+    const dFbLbl = mk('div','slider-label'); dFbLbl.append(mk('span','','Feedback'), dFbVal);
+    const dFbSl = makeSlider({min:0, max:0.9, step:0.01, value:state.fx.delayFeedback||0.3, label:'Delay feedback',
+        onChange:v=>{state.fx.delayFeedback=v; if (delayFb) delayFb.gain.value=v; dFbVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    dCol.append(dFbLbl, dFbSl);
+    const dWetVal = mk('span','', Math.round((state.fx.delayWet||0)*100)+'%'); dWetVal.style.color='var(--gold)';
+    const dWetLbl = mk('div','slider-label'); dWetLbl.append(mk('span','','Wet'), dWetVal);
+    const dWetSl = makeSlider({min:0, max:1, step:0.01, value:state.fx.delayWet||0, label:'Delay wet level',
+        onChange:v=>{state.fx.delayWet=v; if (delayWetG) delayWetG.gain.value=v; dWetVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    dCol.append(dWetLbl, dWetSl);
+    // Reverb column
+    const rCol = mk('div');
+    const rHead = mk('strong','',`REVERB`); rHead.style.cssText='color:var(--ice);font-size:.74rem;display:block;margin-bottom:6px;';
+    rCol.append(rHead);
+    const rWetVal = mk('span','', Math.round((state.fx.reverbWet||0)*100)+'%'); rWetVal.style.color='var(--ice)';
+    const rWetLbl = mk('div','slider-label'); rWetLbl.append(mk('span','','Wet'), rWetVal);
+    const rWetSl = makeSlider({min:0, max:1, step:0.01, value:state.fx.reverbWet||0, label:'Reverb wet level',
+        onChange:v=>{state.fx.reverbWet=v; if (reverbWetG) reverbWetG.gain.value=v; rWetVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    rCol.append(rWetLbl, rWetSl);
+    const reverbHint = mk('p','','💡 Reverb tek IR (2s exponential) kullanır — basit ama efektli. Daha uzun ambient için Wet'i %50-70 dene.');
+    reverbHint.style.cssText='font-size:.62rem;color:var(--dim);margin-top:14px;line-height:1.6;';
+    rCol.append(reverbHint);
+    fxRow.append(dCol, rCol);
+    fxGrp.append(fxRow);
+    grid.append(fxGrp);
+
     shell.append(grid);
 
     shell.append(theoryCard(
