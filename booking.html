@@ -677,15 +677,27 @@
       <div id="adminBlockedHoursList"></div>
     </div>
 
-    <!-- WhatsApp Test (Twilio sandbox) -->
+    <!-- WhatsApp Chat (full inbox + reply) -->
     <div class="card" id="adminWhatsAppCard">
-      <div class="section-title">💬 WhatsApp Test (Twilio Sandbox)</div>
-      <div style="font-size:.65rem;color:var(--dim);margin-bottom:12px;">Sandbox modu — sadece sandbox'a "join" yapan numaralara mesaj gider. Production öncesi test için.</div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        <input type="tel" id="waTestPhone" placeholder="Telefon (05XXXXXXXXX veya +90...)" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;border-radius:7px;outline:none;">
-        <textarea id="waTestMessage" rows="3" placeholder="Mesaj içeriği…" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;border-radius:7px;resize:vertical;outline:none;line-height:1.6;">Merhaba! Bu Berkay Er Academy WhatsApp test mesajıdır. 🎵</textarea>
-        <button id="waTestSendBtn" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.4);color:#25d366;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;padding:10px;border-radius:7px;cursor:pointer;transition:all .15s;">📱 Gönder</button>
-        <div id="waTestStatus" style="font-size:.65rem;min-height:14px;"></div>
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>💬 WhatsApp Mesajları</span>
+        <span id="waUnreadTotal" style="font-size:.6rem;color:rgba(255,180,60,.85);"></span>
+      </div>
+      <div id="waChatRoot" style="display:flex;gap:10px;height:480px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;overflow:hidden;">
+        <!-- Sidebar: conversation list -->
+        <div id="waChatList" style="width:34%;min-width:180px;border-right:1px solid rgba(255,255,255,.05);overflow-y:auto;background:rgba(0,0,0,.15);">
+          <div id="waChatListEmpty" style="padding:18px;font-size:.65rem;color:var(--dim);text-align:center;">Henüz mesaj yok.</div>
+        </div>
+        <!-- Main: messages -->
+        <div style="flex:1;display:flex;flex-direction:column;">
+          <div id="waChatHeader" style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);font-size:.72rem;color:rgba(238,235,230,.85);min-height:22px;">Sohbet seçin</div>
+          <div id="waChatMessages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:6px;font-size:.74rem;line-height:1.5;"></div>
+          <div id="waChatInputRow" style="display:none;padding:10px;border-top:1px solid rgba(255,255,255,.05);gap:6px;">
+            <textarea id="waChatInput" rows="2" placeholder="Mesaj yaz… (24 saat kuralı: öğrenci son 24 saatte yazmadıysa serbest metin reddedilir)" style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.74rem;padding:8px 10px;border-radius:6px;resize:none;outline:none;line-height:1.5;"></textarea>
+            <button id="waChatSend" style="background:rgba(37,211,102,.18);border:1px solid rgba(37,211,102,.4);color:#25d366;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:0 16px;border-radius:6px;cursor:pointer;">Gönder</button>
+          </div>
+          <div id="waChatStatus" style="font-size:.6rem;color:var(--dim);padding:4px 10px;min-height:14px;"></div>
+        </div>
       </div>
     </div>
 
@@ -3788,31 +3800,127 @@ async function initAdminBlockedHours() {
   render();
 }
 
-// ─── WhatsApp Test (Twilio sandbox) ──────────────────────
+// ─── WhatsApp Chat (admin inbox) ──────────────────────────
+var _waListUnsub = null;
+var _waMsgUnsub = null;
+var _waActivePhone = null;
+
 function initAdminWhatsAppTest() {
-  const sendBtn = document.getElementById('waTestSendBtn');
-  const phoneInput = document.getElementById('waTestPhone');
-  const msgInput = document.getElementById('waTestMessage');
-  const statusEl = document.getElementById('waTestStatus');
-  if (!sendBtn) return;
+  if (!document.getElementById('waChatList')) return;
+  if (_waListUnsub) { _waListUnsub(); _waListUnsub = null; }
+
+  const listEl = document.getElementById('waChatList');
+  const emptyEl = document.getElementById('waChatListEmpty');
+  const unreadTotalEl = document.getElementById('waUnreadTotal');
+
+  _waListUnsub = db.collection('whatsapp_conversations')
+    .orderBy('last_message_at', 'desc').limit(100)
+    .onSnapshot(snap => {
+      listEl.innerHTML = '';
+      let totalUnread = 0;
+      if (!snap || snap.empty) {
+        listEl.appendChild(emptyEl);
+        unreadTotalEl.textContent = '';
+        return;
+      }
+      snap.docs.forEach(doc => {
+        const c = doc.data();
+        totalUnread += (c.unread_count || 0);
+        const row = document.createElement('div');
+        const isActive = doc.id === _waActivePhone;
+        row.style.cssText = `padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:background .12s;background:${isActive ? 'rgba(232,184,75,.08)' : 'transparent'};`;
+        const nameLine = document.createElement('div');
+        nameLine.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:6px;';
+        const name = document.createElement('span');
+        name.style.cssText = `font-size:.7rem;color:var(--white);font-weight:${c.unread_count > 0 ? '700' : '400'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;`;
+        name.textContent = c.student_name || c.phone || doc.id;
+        nameLine.appendChild(name);
+        if (c.unread_count > 0) {
+          const badge = document.createElement('span');
+          badge.style.cssText = 'background:#b82d45;color:#fff;font-size:.55rem;padding:1px 6px;border-radius:8px;flex-shrink:0;';
+          badge.textContent = c.unread_count;
+          nameLine.appendChild(badge);
+        }
+        const preview = document.createElement('div');
+        preview.style.cssText = 'font-size:.62rem;color:rgba(238,235,230,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        preview.textContent = (c.last_direction === 'out' ? '↗ ' : '↘ ') + (c.last_message || '');
+        row.appendChild(nameLine);
+        row.appendChild(preview);
+        row.onclick = () => openWhatsAppConvo(doc.id, c.student_name || c.phone);
+        listEl.appendChild(row);
+      });
+      unreadTotalEl.textContent = totalUnread > 0 ? `${totalUnread} okunmamış` : '';
+    }, e => {
+      const c = errId();
+      listEl.innerHTML = `<div style="padding:18px;font-size:.65rem;color:var(--crimson);">Hata (${c}): ${e.message||e.code}</div>`;
+    });
+}
+
+function openWhatsAppConvo(phone, displayName) {
+  _waActivePhone = phone;
+  document.getElementById('waChatHeader').textContent = (displayName || phone) + ' · ' + phone;
+  document.getElementById('waChatInputRow').style.display = 'flex';
+  document.getElementById('waChatStatus').textContent = '';
+  // Mark as read
+  firebase.app().functions('europe-west1').httpsCallable('markWhatsAppConvoRead')({ phone }).catch(() => {});
+  // Re-trigger list render so highlight updates
+  initAdminWhatsAppTest();
+
+  const msgEl = document.getElementById('waChatMessages');
+  msgEl.innerHTML = '<div style="color:var(--dim);font-size:.65rem;text-align:center;padding:20px;">Yükleniyor…</div>';
+  if (_waMsgUnsub) { _waMsgUnsub(); _waMsgUnsub = null; }
+  _waMsgUnsub = db.collection('whatsapp_conversations').doc(phone)
+    .collection('messages').orderBy('created_at', 'asc').limit(200)
+    .onSnapshot(snap => {
+      msgEl.innerHTML = '';
+      if (!snap || snap.empty) {
+        msgEl.innerHTML = '<div style="color:var(--dim);font-size:.65rem;text-align:center;padding:20px;">Mesaj yok.</div>';
+        return;
+      }
+      snap.docs.forEach(d => {
+        const m = d.data();
+        const isOut = m.direction === 'out';
+        const wrap = document.createElement('div');
+        wrap.style.cssText = `align-self:${isOut ? 'flex-end' : 'flex-start'};max-width:78%;padding:8px 12px;border-radius:10px;background:${isOut ? 'rgba(37,211,102,.16)' : 'rgba(255,255,255,.06)'};border:1px solid ${isOut ? 'rgba(37,211,102,.28)' : 'rgba(255,255,255,.1)'};word-wrap:break-word;white-space:pre-wrap;`;
+        wrap.textContent = m.body || '';
+        const meta = document.createElement('div');
+        meta.style.cssText = 'font-size:.55rem;color:rgba(238,235,230,.35);margin-top:3px;text-align:right;';
+        const ts = m.created_at && m.created_at.toDate ? m.created_at.toDate() : null;
+        meta.textContent = ts ? ts.toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}) : '';
+        wrap.appendChild(meta);
+        msgEl.appendChild(wrap);
+      });
+      msgEl.scrollTop = msgEl.scrollHeight;
+    }, e => {
+      const c = errId();
+      msgEl.innerHTML = `<div style="color:var(--crimson);font-size:.65rem;padding:20px;">Hata (${c}): ${e.message||e.code}</div>`;
+    });
+
+  const input = document.getElementById('waChatInput');
+  const sendBtn = document.getElementById('waChatSend');
+  const statusEl = document.getElementById('waChatStatus');
   sendBtn.onclick = async () => {
-    const toPhone = (phoneInput.value || '').trim();
-    const body = (msgInput.value || '').trim();
-    if (!toPhone) { statusEl.style.color = 'var(--crimson)'; statusEl.textContent = 'Telefon numarası gerekli.'; return; }
-    if (!body)    { statusEl.style.color = 'var(--crimson)'; statusEl.textContent = 'Mesaj boş olamaz.'; return; }
-    sendBtn.disabled = true; sendBtn.textContent = '⏳ Gönderiliyor…';
-    statusEl.style.color = 'var(--dim)'; statusEl.textContent = '';
+    const body = (input.value || '').trim();
+    if (!body) return;
+    sendBtn.disabled = true;
+    statusEl.style.color = 'var(--dim)';
+    statusEl.textContent = 'Gönderiliyor…';
     try {
-      const fn = firebase.app().functions('europe-west1').httpsCallable('sendWhatsAppMessage');
-      const res = await fn({ toPhone, body });
+      const fn = firebase.app().functions('europe-west1').httpsCallable('sendWhatsAppAdmin');
+      await fn({ toPhone: phone, body });
+      input.value = '';
       statusEl.style.color = 'var(--green)';
-      statusEl.textContent = `✓ Gönderildi (status: ${res.data.status || 'queued'}, sid: ${(res.data.sid || '').slice(0,12)}…)`;
+      statusEl.textContent = '✓ Gönderildi';
+      setTimeout(() => { statusEl.textContent = ''; }, 1500);
     } catch(e) {
       const c = errId();
       statusEl.style.color = 'var(--crimson)';
-      statusEl.textContent = `Hata (${c}): ${e.message || e.code || 'gönderilemedi'}`;
+      statusEl.textContent = `Hata (${c}): ${e.message || e.code || 'gönderilemedi'} — 24h kuralı: öğrencinin son 24 saatte sana yazmış olması gerek.`;
     }
-    sendBtn.disabled = false; sendBtn.textContent = '📱 Gönder';
+    sendBtn.disabled = false;
+  };
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendBtn.click(); }
   };
 }
 

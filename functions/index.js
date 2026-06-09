@@ -1,6 +1,7 @@
 const {setGlobalOptions} = require("firebase-functions");
 const {onSchedule} = require("firebase-functions/v2/scheduler");
-const {onCall, HttpsError} = require("firebase-functions/v2/https");
+const {onCall, HttpsError, onRequest} = require("firebase-functions/v2/https");
+const crypto = require("crypto");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const nodemailer = require("nodemailer");
@@ -314,6 +315,169 @@ exports.notifyStudentOnRequestStatus = onDocumentUpdated(
       );
       if (!res.ok) console.error("student notify failed", res.error);
       else console.log(`student notified ${after.status} for`, event.params.reqId);
+    },
+);
+
+// ─── Twilio WhatsApp inbound webhook ────────────────────────
+// Twilio POSTs incoming WA messages here as x-www-form-urlencoded.
+// We validate the signature, then write to:
+//   whatsapp_conversations/{phone}                  (summary doc)
+//   whatsapp_conversations/{phone}/messages/{id}    (full thread)
+// Returns empty TwiML so Twilio doesn't auto-reply.
+function validateTwilioSig(url, params, twilioSig, token) {
+  // Twilio's signature = HMAC-SHA1 of (URL + alphabetized form params concatenated), base64
+  const sorted = Object.keys(params).sort().map((k) => k + params[k]).join("");
+  const expected = crypto.createHmac("sha1", token).update(url + sorted).digest("base64");
+  return expected === twilioSig;
+}
+
+exports.twilioWhatsAppWebhook = onRequest(
+    {region: "europe-west1", cors: false},
+    async (req, res) => {
+      if (req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+      const token = process.env.TWILIO_AUTH_TOKEN;
+      const sig = req.get("X-Twilio-Signature");
+      // Twilio reconstructs the URL from headers + path. Functions v2 sees the
+      // public URL via headers; trust forwarded headers under our region.
+      const proto = req.get("x-forwarded-proto") || "https";
+      const host = req.get("x-forwarded-host") || req.get("host");
+      const url = `${proto}://${host}${req.originalUrl}`;
+      if (token && sig && !validateTwilioSig(url, req.body, sig, token)) {
+        console.warn("Twilio signature mismatch — rejecting", {url});
+        res.status(403).send("Forbidden");
+        return;
+      }
+
+      const from = req.body.From || ""; // "whatsapp:+90555..."
+      const to = req.body.To || "";
+      const body = req.body.Body || "";
+      const msgSid = req.body.MessageSid || req.body.SmsMessageSid || "";
+      const profileName = req.body.ProfileName || "";
+
+      // Strip "whatsapp:" prefix to get the phone number
+      const phone = from.replace(/^whatsapp:/, "");
+      if (!phone) {
+        res.status(200).send("<Response/>");
+        return;
+      }
+
+      const db = getFirestore();
+      // Look up student by phone to enrich the summary doc
+      let studentUid = null;
+      let studentName = profileName || phone;
+      try {
+        const q = await db.collection("reservations").where("student_phone", "==", phone).limit(1).get();
+        if (!q.empty) {
+          studentUid = q.docs[0].id;
+          studentName = q.docs[0].data().student_name || studentName;
+        }
+      } catch (e) {
+        console.warn("student lookup failed", e.message);
+      }
+
+      const convoRef = db.collection("whatsapp_conversations").doc(phone);
+      const msgRef = convoRef.collection("messages").doc(msgSid || `inbound_${Date.now()}`);
+
+      await msgRef.set({
+        direction: "in",
+        from,
+        to,
+        body,
+        sid: msgSid,
+        profile_name: profileName,
+        created_at: FieldValue.serverTimestamp(),
+      });
+      await convoRef.set({
+        phone,
+        student_uid: studentUid,
+        student_name: studentName,
+        last_message: body.slice(0, 200),
+        last_message_at: FieldValue.serverTimestamp(),
+        last_direction: "in",
+        unread_count: FieldValue.increment(1),
+      }, {merge: true});
+
+      // Empty TwiML — no auto-reply
+      res.status(200).type("text/xml").send("<Response/>");
+    },
+);
+
+// Admin-only callable: send WhatsApp + persist to whatsapp_conversations
+exports.sendWhatsAppAdmin = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
+      }
+      const {toPhone, body} = request.data || {};
+      if (!toPhone || !body) throw new HttpsError("invalid-argument", "toPhone ve body gerekli");
+      const result = await sendWhatsApp(toPhone, body);
+      if (!result.ok) {
+        throw new HttpsError("internal", result.error || "send failed");
+      }
+
+      // Normalize phone for conversation key (E.164 with leading +)
+      let phone = String(toPhone).replace(/[^\d+]/g, "");
+      if (phone.startsWith("00")) phone = "+" + phone.slice(2);
+      if (!phone.startsWith("+")) {
+        if (phone.startsWith("0")) phone = "+90" + phone.slice(1);
+        else if (phone.startsWith("90")) phone = "+" + phone;
+        else if (phone.startsWith("5")) phone = "+90" + phone;
+        else phone = "+" + phone;
+      }
+
+      const db = getFirestore();
+      const convoRef = db.collection("whatsapp_conversations").doc(phone);
+      await convoRef.collection("messages").doc(result.sid || `outbound_${Date.now()}`).set({
+        direction: "out",
+        from: process.env.TWILIO_WA_FROM,
+        to: "whatsapp:" + phone,
+        body,
+        sid: result.sid,
+        status: result.status,
+        created_at: FieldValue.serverTimestamp(),
+      });
+
+      // Look up student to enrich convo doc
+      let studentUid = null;
+      let studentName = null;
+      try {
+        const q = await db.collection("reservations").where("student_phone", "==", phone).limit(1).get();
+        if (!q.empty) {
+          studentUid = q.docs[0].id;
+          studentName = q.docs[0].data().student_name || null;
+        }
+      } catch (e) {/* ignore */}
+
+      await convoRef.set({
+        phone,
+        ...(studentUid ? {student_uid: studentUid} : {}),
+        ...(studentName ? {student_name: studentName} : {}),
+        last_message: body.slice(0, 200),
+        last_message_at: FieldValue.serverTimestamp(),
+        last_direction: "out",
+      }, {merge: true});
+
+      return {ok: true, sid: result.sid, status: result.status};
+    },
+);
+
+// Admin-only: mark a conversation as read (zero unread count)
+exports.markWhatsAppConvoRead = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
+      }
+      const {phone} = request.data || {};
+      if (!phone) throw new HttpsError("invalid-argument", "phone gerekli");
+      await getFirestore().collection("whatsapp_conversations").doc(phone).set({
+        unread_count: 0,
+      }, {merge: true});
+      return {ok: true};
     },
 );
 
