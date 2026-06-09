@@ -692,7 +692,24 @@ function octMul(oct) { return Math.pow(2, oct); }
 function playNote(freq, dur = 0.8, velocity = 0.85) {
     const ctx = getSynthCtx();
     const now = ctx.currentTime;
-    const {attack, decay, sustain, release} = state.adsr;
+    const {attack, decay, sustain, release: baseRelease} = state.adsr;
+
+    // Sustain pedal: extend release to a long tail so notes hang on.
+    const release = _sustainPedal ? Math.max(baseRelease, 5) : baseRelease;
+
+    // Mono mode: gracefully fade out any active voices so the new note
+    // takes over without clicks.
+    if (state.poly === 'mono' && _activeVoices.length > 0) {
+        _activeVoices.forEach(v => {
+            try {
+                v.envGain.gain.cancelScheduledValues(now);
+                v.envGain.gain.setValueAtTime(v.envGain.gain.value, now);
+                v.envGain.gain.linearRampToValueAtTime(0.0001, now + 0.02);
+                v.oscs.forEach(o => { try { o.stop(now + 0.05); } catch {} });
+            } catch {}
+        });
+        _activeVoices.length = 0;
+    }
 
     // holdDur: note stays on long enough for A+D to complete
     const holdDur  = Math.max(dur, attack + decay + 0.02);
@@ -708,6 +725,14 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
     envGain.gain.setValueAtTime(peak * sSustain, now + holdDur);
     envGain.gain.exponentialRampToValueAtTime(0.0001, now + totalDur);
     envGain.connect(filterNode || ctx.destination);
+
+    // Track this voice so mono mode + sustain pedal can manage it.
+    const voiceRecord = { oscs: [], envGain, endsAt: now + totalDur + 0.2 };
+    _activeVoices.push(voiceRecord);
+    setTimeout(() => {
+        const idx = _activeVoices.indexOf(voiceRecord);
+        if (idx >= 0) _activeVoices.splice(idx, 1);
+    }, (totalDur + 0.3) * 1000);
 
     // ── Filter envelope (modulates filterNode cutoff if amount > 0) ──
     if (filterNode && state.filterEnv && state.filterEnv.amount > 0) {
@@ -733,6 +758,7 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
         osc.connect(g); g.connect(envGain);
         osc.start(now);
         osc.stop(now + totalDur + 0.1);
+        voiceRecord.oscs.push(osc);
     }
 
     // OSC1 — always on. Sawtooth/square get a tiny implicit unison spread for warmth.
@@ -1326,12 +1352,28 @@ function navigate(mod) {
 // ═══════════════════════════════════════════════════════════════════
 // MODULE 1 — SYNTHESIZER
 // ═══════════════════════════════════════════════════════════════════
-const NOTES = [
-    {freq:261.63, label:'C4', key:'A'}, {freq:293.66, label:'D4', key:'S'},
-    {freq:329.63, label:'E4', key:'D'}, {freq:349.23, label:'F4', key:'F'},
-    {freq:392.00, label:'G4', key:'G'}, {freq:440.00, label:'A4', key:'H'},
-    {freq:493.88, label:'B4', key:'J'}, {freq:523.25, label:'C5', key:'K'},
+// White-key frequencies at C4 reference. Octave shifts these via state.keyboardOctave.
+const _WHITE_KEYS_C4 = [
+    {ratio:1.0,    label:'C', key:'A'}, {ratio:1.122, label:'D', key:'S'},
+    {ratio:1.260,  label:'E', key:'D'}, {ratio:1.335, label:'F', key:'F'},
+    {ratio:1.498,  label:'G', key:'G'}, {ratio:1.682, label:'A', key:'H'},
+    {ratio:1.888,  label:'B', key:'J'}, {ratio:2.0,   label:'C', key:'K'},
 ];
+const _C4_HZ = 261.63;
+
+function getCurrentNotes() {
+    const oct  = state.keyboardOctave ?? 4;
+    const mult = Math.pow(2, oct - 4);
+    return _WHITE_KEYS_C4.map((k, i) => ({
+        freq: _C4_HZ * mult * k.ratio,
+        label: k.label + oct + (i === _WHITE_KEYS_C4.length - 1 ? (oct + 1) : ''), // last key is next-octave C
+        key:  k.key,
+    }));
+}
+
+// Held-key voice registry — used by mono mode + sustain pedal.
+const _activeVoices = []; // {oscs:[], envGain, releaseAt}
+let _sustainPedal = false;
 
 function renderModule1() {
     const root = mk('div','container');
@@ -1782,26 +1824,112 @@ function renderModule1() {
         "Instruments → Analog / Operator / Wavetable → ADSR + Filter"
     ));
 
-    shell.append(mk('div','hint-box','<strong>💡 Klavye:</strong> A S D F G H J K = C4 D4 E4 F4 G4 A4 B4 C5'));
+    // ── Playability control row: octave, mono/poly, sustain ──
+    const playRow = mk('div'); playRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:12px 14px;margin:14px 0 6px;background:rgba(255,255,255,.03);border:1px solid var(--mid);border-radius:6px;';
+    // Octave shifter
+    const octCluster = mk('div'); octCluster.style.cssText='display:flex;align-items:center;gap:6px;';
+    octCluster.append(mk('span','',`OCT:`));
+    octCluster.firstChild.style.cssText='font-size:.62rem;color:var(--dim);letter-spacing:.08em;';
+    const octDn = mk('button','wave-btn','−'); octDn.style.cssText='padding:4px 10px;font-size:.75rem;min-width:auto;';
+    const octVal = mk('strong','', `C${state.keyboardOctave||4}`); octVal.style.cssText='color:var(--gold);font-size:.78rem;min-width:32px;text-align:center;';
+    const octUp = mk('button','wave-btn','+'); octUp.style.cssText='padding:4px 10px;font-size:.75rem;min-width:auto;';
+    octCluster.append(octDn, octVal, octUp);
+    playRow.append(octCluster);
+    // Mono/Poly
+    const polyCluster = mk('div'); polyCluster.style.cssText='display:flex;align-items:center;gap:6px;';
+    polyCluster.append(mk('span','','MODE:'));
+    polyCluster.firstChild.style.cssText='font-size:.62rem;color:var(--dim);letter-spacing:.08em;';
+    const polyBtn = mk('button',`wave-btn${state.poly==='poly'?' active':''}`,'POLY');
+    polyBtn.style.cssText='padding:4px 14px;font-size:.7rem;min-width:auto;';
+    const monoBtn = mk('button',`wave-btn${state.poly==='mono'?' active':''}`,'MONO');
+    monoBtn.style.cssText='padding:4px 14px;font-size:.7rem;min-width:auto;';
+    polyCluster.append(polyBtn, monoBtn);
+    playRow.append(polyCluster);
+    // Sustain indicator
+    const susBadge = mk('span','SUSTAIN ⌃ Space','SUSTAIN — Space');
+    susBadge.textContent = 'SUSTAIN — Space';
+    susBadge.style.cssText='font-size:.62rem;letter-spacing:.08em;color:var(--dim);padding:5px 12px;border-radius:14px;border:1px solid var(--mid);background:rgba(0,0,0,.2);transition:all .15s;';
+    playRow.append(susBadge);
+    shell.append(playRow);
 
-    const kb = mk('div','keyboard');
-    NOTES.forEach((note,i) => {
-        const k = mk('div','key',`<div class="key-label">${note.label}<br><small>${note.key}</small></div>`);
-        k.style.marginRight = i<NOTES.length-1 ? '4px' : '0';
-        k.onpointerdown = () => { playNote(note.freq,.8); k.classList.add('playing'); setTimeout(()=>k.classList.remove('playing'),800); };
-        kb.append(k);
-    });
+    shell.append(mk('div','hint-box','<strong>💡 Klavye:</strong> A S D F G H J K = beyaz tuşlar · Shift+tuş = soft (düşük velocity) · Space basılı tut = sustain'));
+
+    const kb = mk('div','keyboard'); kb.style.touchAction = 'none';
+    let currentNotes = getCurrentNotes();
+    function rebuildKeyboard() {
+        kb.innerHTML = '';
+        currentNotes = getCurrentNotes();
+        currentNotes.forEach((note,i) => {
+            const k = mk('div','key',`<div class="key-label">${note.label}<br><small>${note.key}</small></div>`);
+            k.style.marginRight = i<currentNotes.length-1 ? '4px' : '0';
+            k.onpointerdown = e => {
+                e.preventDefault();
+                // Velocity from vertical touch position: top of key = soft (0.4), bottom = hard (1.0).
+                const r = k.getBoundingClientRect();
+                const yRel = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+                const v = 0.4 + yRel * 0.6;
+                playNote(note.freq, .8, v);
+                k.classList.add('playing');
+                setTimeout(()=>k.classList.remove('playing'), 800);
+            };
+            kb.append(k);
+        });
+        octVal.textContent = `C${state.keyboardOctave||4}`;
+    }
+    rebuildKeyboard();
+    octDn.onclick = () => {
+        state.keyboardOctave = Math.max(2, (state.keyboardOctave||4) - 1);
+        rebuildKeyboard();
+    };
+    octUp.onclick = () => {
+        state.keyboardOctave = Math.min(6, (state.keyboardOctave||4) + 1);
+        rebuildKeyboard();
+    };
+    polyBtn.onclick = () => {
+        state.poly = 'poly';
+        polyBtn.classList.add('active'); monoBtn.classList.remove('active');
+    };
+    monoBtn.onclick = () => {
+        state.poly = 'mono';
+        monoBtn.classList.add('active'); polyBtn.classList.remove('active');
+    };
     shell.append(kb); root.append(shell);
     root.append(makeTaskPanel(1));
 
+    const setSustainVisual = (on) => {
+        susBadge.style.background = on ? 'rgba(232,184,75,.18)' : 'rgba(0,0,0,.2)';
+        susBadge.style.color      = on ? 'var(--gold)' : 'var(--dim)';
+        susBadge.style.borderColor= on ? 'rgba(232,184,75,.5)' : 'var(--mid)';
+    };
+
     const onKey = e => {
+        // Sustain pedal — Space
+        if (e.code === 'Space' && !e.repeat) {
+            e.preventDefault();
+            _sustainPedal = true;
+            setSustainVisual(true);
+            return;
+        }
         if (e.repeat) return;
-        const n = NOTES.find(x=>x.key===e.key.toUpperCase());
+        const n = currentNotes.find(x => x.key === e.key.toUpperCase());
         if (!n) return;
-        playNote(n.freq,.8);
-        kb.querySelectorAll('.key').forEach((k,i)=>{ if(NOTES[i].key===e.key.toUpperCase()){k.classList.add('playing');setTimeout(()=>k.classList.remove('playing'),800);} });
+        const velocity = e.shiftKey ? 0.45 : (e.getModifierState && e.getModifierState('CapsLock') ? 1.0 : 0.75);
+        playNote(n.freq, .8, velocity);
+        kb.querySelectorAll('.key').forEach((k,i)=>{
+            if (currentNotes[i].key === e.key.toUpperCase()) {
+                k.classList.add('playing');
+                setTimeout(()=>k.classList.remove('playing'),800);
+            }
+        });
+    };
+    const onKeyUp = e => {
+        if (e.code === 'Space') {
+            _sustainPedal = false;
+            setSustainVisual(false);
+        }
     };
     window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup',   onKeyUp);
 
     // In-place UI updater — called on preset change to avoid full re-render
     _m1Update = () => {
@@ -1822,7 +1950,13 @@ function renderModule1() {
         adsrSvg();
     };
 
-    _cleanup = () => { window.removeEventListener('keydown', onKey); stopOsc(); _m1Update = null; };
+    _cleanup = () => {
+        window.removeEventListener('keydown', onKey);
+        window.removeEventListener('keyup',   onKeyUp);
+        _sustainPedal = false;
+        stopOsc();
+        _m1Update = null;
+    };
     return root;
 }
 
