@@ -503,6 +503,12 @@
       </div>
 
       <div class="field-group">
+        <label class="field-label">📱 WhatsApp Numarası <span style="color:var(--crimson);font-size:.62rem;">*</span></label>
+        <input type="tel" class="field-input" id="reqPhone" placeholder="05XX XXX XX XX" style="font-family:'Space Mono',monospace;" inputmode="tel" autocomplete="tel">
+        <div style="font-size:.6rem;color:var(--dim);margin-top:4px;line-height:1.5;">Ders hatırlatmaları ve önemli bildirimler bu numaraya WhatsApp ile gönderilir.</div>
+      </div>
+
+      <div class="field-group">
         <label class="field-label"><span data-i18n="bk_note_label">Not</span> <span style="color:var(--dim);font-size:.6rem;" data-i18n="bk_optional">(isteğe bağlı)</span></label>
         <textarea class="field-input" id="reqNote" rows="3" style="resize:vertical;" data-i18n-ph="bk_req_note_ph" placeholder="Tercihleriniz, sorularınız veya eklemek istediğiniz herhangi bir şey…"></textarea>
       </div>
@@ -1377,6 +1383,19 @@ async function submitRequest() {
   });
   const schedule = isSingle ? rawSlots : adjustSchedule(rawSlots);
   const note = document.getElementById('reqNote').value.trim();
+  const phoneRaw = document.getElementById('reqPhone')?.value.trim() || '';
+  // Basic TR phone validation: must have at least 10 digits, start with 5 (after stripping +90/0)
+  const phoneDigits = phoneRaw.replace(/\D/g, '');
+  const phoneOk = /^(?:90)?5\d{9}$/.test(phoneDigits) || /^5\d{9}$/.test(phoneDigits) || /^05\d{9}$/.test(phoneDigits);
+  if (!phoneOk) {
+    errEl.textContent = '📱 Geçerli bir cep telefonu numarası gir (örn: 05XX XXX XX XX).';
+    errEl.style.display = ''; return;
+  }
+  // Normalize to E.164 without "+" (e.g. 905XXXXXXXXX)
+  let phoneE164 = phoneDigits;
+  if (phoneE164.startsWith('0')) phoneE164 = phoneE164.slice(1);
+  if (!phoneE164.startsWith('90')) phoneE164 = '90' + phoneE164;
+  phoneE164 = '+' + phoneE164;
 
   if (!isSingle) {
     const totalLessons = calculateLessonDates(schedule, duration, lessonsPerMonth, preferredStartDate).length;
@@ -1395,6 +1414,7 @@ async function submitRequest() {
       from_uid:    _user.uid,
       from_name:   _user.displayName || '',
       from_email:  _user.email || '',
+      from_phone:  phoneE164,
       from_photo:  _user.photoURL || '',
       lesson_type: isSingle ? 'single' : 'monthly',
       duration_months: duration,
@@ -1406,6 +1426,8 @@ async function submitRequest() {
       rules_accepted_at: firebase.firestore.FieldValue.serverTimestamp(),
       created_at: firebase.firestore.FieldValue.serverTimestamp(),
     });
+    // Persist phone on user doc for future re-use
+    await db.collection('users').doc(_user.uid).set({ phone: phoneE164 }, { merge: true }).catch(() => {});
     // Flag user doc so egitim.html can unlock member content without a collection query
     await db.collection('users').doc(_user.uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {});
     // Welcome email — send only once
@@ -1570,6 +1592,17 @@ function initRequestForm() {
   const _sdEl = document.getElementById('reqStartDate');
   _sdEl.min = toDateStr(new Date());
   _sdEl.value = '';
+  // Pre-fill phone from prior submission if we have it
+  if (_user) {
+    db.collection('users').doc(_user.uid).get().then(snap => {
+      const p = snap.exists ? (snap.data().phone || '') : '';
+      const _ph = document.getElementById('reqPhone');
+      if (_ph && p && !_ph.value) {
+        // Display friendly format: +90 5XX XXX XX XX → 0 5XX XXX XX XX
+        _ph.value = p.replace(/^\+90/, '0').replace(/^90/, '0');
+      }
+    }).catch(() => {});
+  }
   showView('view-request');
   loadAndRenderAvailGrid();
   document.getElementById('reqDuration').onchange = updatePriceEstimate;
@@ -2328,6 +2361,7 @@ async function renderAdminPanel() {
           <div class="req-row-detail">
             ${isTrialReq ? `🎯 Deneme Dersi &nbsp;·&nbsp; ${formatDateStr(r.trial_date)} ${r.trial_time}` :
               isSingleReq ? `🎯 Tek Ders &nbsp;·&nbsp; ${daysText}` : `📅 ${r.duration_months} Ay · ${r.lessons_per_month || 4}/Ay &nbsp;·&nbsp; ${daysText}`}
+            ${r.from_phone ? `<br><span style="font-size:.6rem;color:rgba(37,211,102,.85);">📱 ${r.from_phone}</span>` : ''}
           </div>
           ${!isTrialReq ? `<div class="req-row-pills">
             <span class="req-row-pill gold">₺ ${reqTotalPrice.toLocaleString('tr-TR')} TL</span>
@@ -2652,6 +2686,7 @@ async function renderAdminPanel() {
             })()}<br>
             ${startDateStr} → ${endDateStr}<br>
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
+            ${s.student_phone ? `<br><span style="color:rgba(37,211,102,.85);font-size:.6rem;">📱 ${s.student_phone}</span>` : ''}
             ${s.last_reminder_sent ? `<br><span style="color:rgba(255,200,100,.6);font-size:.6rem;">📧 Son hatırlatma: ${new Date(s.last_reminder_sent.toDate ? s.last_reminder_sent.toDate() : s.last_reminder_sent).toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
             ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 Öğrenci notu: "${s.note}"</span>` : ''}
             ${s.admin_note ? `<br><span style="color:rgba(255,220,100,.65);font-size:.6rem;">📝 ${s.admin_note}</span>` : ''}
@@ -4076,6 +4111,7 @@ async function acceptTrialRequest(reqId, r) {
     student_uid:   r.from_uid,
     student_name:  r.from_name,
     student_email: r.from_email,
+    student_phone: r.from_phone || '',
     student_photo: r.from_photo || '',
     duration_months: 0,
     schedule: [],
@@ -4125,6 +4161,7 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
     student_uid:   r.from_uid,
     student_name:  r.from_name,
     student_email: r.from_email,
+    student_phone: r.from_phone || '',
     student_photo: r.from_photo || '',
     lesson_type:   r.lesson_type || 'monthly',
     duration_months: r.duration_months,
@@ -4279,6 +4316,8 @@ function renderAccessView(user, state, rejectReason) {
           <div id="trialTimeSelected" style="font-size:.7rem;color:var(--gold);margin-bottom:10px;min-height:1.2em;"></div>
         </div>
         <div id="trialTimeLoading" style="display:none;font-size:.7rem;color:var(--dim);margin-bottom:12px;">${_av?.t('bk_avail_loading')||'Müsaitlik yükleniyor…'}</div>
+        <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">📱 WHATSAPP NUMARASI <span style="color:rgba(184,45,69,.9);">*</span></div>
+        <input type="tel" id="trialPhone" placeholder="05XX XXX XX XX" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:'Space Mono',monospace;font-size:.75rem;padding:9px 12px;box-sizing:border-box;margin-bottom:12px;" inputmode="tel" autocomplete="tel">
         <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">${_av?.t('bk_note_label')||'NOT'} <span style="opacity:.5;">${_av?.t('bk_optional')||'(isteğe bağlı)'}</span></div>
         <textarea id="trialNote" rows="2" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:7px;color:var(--white);font-family:inherit;font-size:.75rem;padding:9px 12px;box-sizing:border-box;resize:vertical;margin-bottom:14px;" placeholder="${_av?.t('bk_access_note_ph')||'Seviyeniz, ne öğrenmek istiyorsunuz…'}"></textarea>
         <div id="trialErr" style="font-size:.7rem;color:var(--crimson);margin-bottom:8px;display:none;"></div>
@@ -4370,9 +4409,17 @@ function renderAccessView(user, state, rejectReason) {
       const date = card.querySelector('#trialDate').value;
       const time = _trialSelectedTime;
       const note = card.querySelector('#trialNote').value.trim();
+      const phoneRaw = (card.querySelector('#trialPhone')?.value || '').trim();
       const errEl = card.querySelector('#trialErr');
       if (!date) { errEl.textContent = window._i18n?.t('bk_err_no_date')||'Lütfen bir tarih seçin.'; errEl.style.display=''; return; }
       if (!time) { errEl.textContent = window._i18n?.t('bk_err_no_time')||'Lütfen bir saat seçin.'; errEl.style.display=''; return; }
+      const phoneDigits = phoneRaw.replace(/\D/g, '');
+      const phoneOk = /^(?:90)?5\d{9}$/.test(phoneDigits) || /^5\d{9}$/.test(phoneDigits) || /^05\d{9}$/.test(phoneDigits);
+      if (!phoneOk) { errEl.textContent = '📱 Geçerli bir cep telefonu numarası gir (05XX XXX XX XX).'; errEl.style.display=''; return; }
+      let phoneE164 = phoneDigits;
+      if (phoneE164.startsWith('0')) phoneE164 = phoneE164.slice(1);
+      if (!phoneE164.startsWith('90')) phoneE164 = '90' + phoneE164;
+      phoneE164 = '+' + phoneE164;
       errEl.style.display = 'none';
       btn.disabled = true; btn.textContent = window._i18n?.t('bk_submitting')||'Gönderiliyor…';
       try {
@@ -4380,6 +4427,7 @@ function renderAccessView(user, state, rejectReason) {
           from_uid: user.uid,
           from_name: user.displayName || '',
           from_email: user.email || '',
+          from_phone: phoneE164,
           from_photo: user.photoURL || '',
           lesson_type: 'trial',
           trial_date: date,
@@ -4388,6 +4436,7 @@ function renderAccessView(user, state, rejectReason) {
           status: 'pending',
           created_at: firebase.firestore.FieldValue.serverTimestamp(),
         });
+        await db.collection('users').doc(user.uid).set({ phone: phoneE164 }, { merge: true }).catch(() => {});
         // Welcome email — send only once
         const _wKey2 = 'bk_welcome_mail_' + user.uid;
         if (!localStorage.getItem(_wKey2)) {
