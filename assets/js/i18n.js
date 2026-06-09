@@ -613,6 +613,8 @@
     bk_rule_late_desc:     { tr: 'Derse 10 dakika içinde girilmezse ders yapılmış sayılır.', en: 'If you do not join within 10 minutes the lesson is counted as completed.' },
     bk_rule_absence:       { tr: 'Devamsızlık',         en: 'Absence' },
     bk_rule_absence_desc:  { tr: 'Haber vermeden derse katılmazsanız, ders yapılmış sayılır ve yeniden planlanmaz.', en: 'If you do not attend without notice, the lesson is counted as completed and will not be rescheduled.' },
+    bk_rule_copyright:     { tr: 'Telif Hakkı',          en: 'Copyright' },
+    bk_rule_copyright_desc:{ tr: "Berkay Er'in derste paylaştığı ve yaptığı parçalar/içerikler kendisine aittir. Hiçbir şekilde paylaşılamaz veya dağıtılamaz.", en: "Tracks and content created or shared by Berkay Er during lessons belong to him; they cannot be shared or distributed in any way." },
     bk_rule_cancel_desc:   { tr: 'Alınan dersler iptal edilemez ve başka bir kişiye devir edilemez.', en: 'Purchased lessons cannot be cancelled or transferred to another person.' },
     bk_rule_footer:        { tr: 'Bu kurallar derslerin düzenli ve etkili yapılmasına yardımcı olacaktır. Aylık ders saatlerini ve günlerini belirlemeyen arkadaşlar için ders yapılamayacaktır.', en: 'These rules help ensure lessons are conducted regularly and effectively. Lessons cannot be held for those who do not set their monthly lesson hours and days.' },
     bk_rule_footer2:       { tr: 'Sorularınız olursa bana ulaşmaktan çekinmeyin. Anlayışınız ve işbirliğiniz için teşekkür ederim.', en: 'Do not hesitate to contact me if you have questions. Thank you for your understanding and cooperation.' },
