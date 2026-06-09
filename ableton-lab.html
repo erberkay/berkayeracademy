@@ -464,9 +464,18 @@ async function saveUserPreset(name) {
     if (!currentUser || !_db) return;
     await userDoc().collection('presets').add({
         name,
-        wave: state.waveform,
+        // Legacy fields — older lab versions read these.
+        wave: state.osc1.wave,
         adsr: { ...state.adsr },
         filter: { ...state.filter },
+        // Extended engine fields — ignored by older lab versions.
+        osc1: { ...state.osc1 },
+        osc2: { ...state.osc2 },
+        sub:  { ...state.sub },
+        noise:{ ...state.noise },
+        filterEnv: { ...state.filterEnv },
+        lfo:  { ...state.lfo },
+        fx:   { ...state.fx },
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
 }
@@ -528,10 +537,23 @@ _auth.onAuthStateChanged(async user => {
 // ═══════════════════════════════════════════════════════════════════
 const state = {
     currentModule: null,
+    // Legacy alias — kept in sync with osc1.wave so old presets still load.
     waveform: 'sine',
     adsr: { attack:0.01, decay:0.15, sustain:0.7, release:0.25 },
     volume: 0.3,
-    filter: { cutoff:8000, resonance:1 },
+    filter: { cutoff:8000, resonance:1, type:'lowpass' },
+    // ── Synth (extended engine) ──
+    osc1: { wave:'sine',     octave:0, detune:0,  mix:1.0 },
+    osc2: { enabled:false, wave:'sawtooth', octave:0, detune:7,  mix:0.5 },
+    sub:  { enabled:false, level:0.4 },
+    noise:{ enabled:false, level:0.2 },
+    filterEnv: { amount:0 },               // 0..100, ADSR-driven cutoff sweep
+    lfo:  { rate:5, depth:0, target:'cutoff', wave:'sine' },
+    fx:   { delayTime:0.25, delayFeedback:0.3, delayWet:0, reverbWet:0 },
+    glide:0,
+    poly: 'poly',                            // 'mono' | 'poly'
+    keyboardOctave:4,                        // C4 baseline → -2..+2
+    pitchBend:0, modWheel:0,
     activePreset: null,
     beatPatterns: Array.from({length:5}, () => new Array(16).fill(0)),
     beatVolumes: [80,80,80,80,80],
@@ -541,28 +563,44 @@ const state = {
 };
 try { state.completedTasks = JSON.parse(localStorage.getItem('berkay_tasks') || '{}'); } catch {}
 
+// Keep state.waveform in sync with osc1.wave (legacy alias)
+function setOsc1Wave(w) { state.osc1.wave = w; state.waveform = w; }
+setOsc1Wave(state.osc1.wave);
+
 // ═══════════════════════════════════════════════════════════════════
 // AUDIO — SYNTH  (persistent filter + analyser)
 // ═══════════════════════════════════════════════════════════════════
-let synthCtx = null, filterNode = null, analyserNode = null;
+let synthCtx = null, filterNode = null, analyserNode = null, noiseBuffer = null;
+
+// Procedural white-noise buffer reused by every note that has noise enabled.
+function makeNoiseBuffer(ctx) {
+    const buf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+}
 
 function getSynthCtx() {
     if (!synthCtx) {
         synthCtx = new (window.AudioContext || window.webkitAudioContext)();
         filterNode   = synthCtx.createBiquadFilter();
-        filterNode.type = 'lowpass';
+        filterNode.type = state.filter.type || 'lowpass';
         filterNode.frequency.value = state.filter.cutoff;
         filterNode.Q.value         = state.filter.resonance;
         analyserNode = synthCtx.createAnalyser();
         analyserNode.fftSize = 4096;
         filterNode.connect(analyserNode);
         analyserNode.connect(synthCtx.destination);
+        noiseBuffer = makeNoiseBuffer(synthCtx);
     }
     if (synthCtx.state === 'suspended') synthCtx.resume();
     return synthCtx;
 }
 
-function playNote(freq, dur = 0.8) {
+// Convert semitone-octave shift to frequency multiplier.
+function octMul(oct) { return Math.pow(2, oct); }
+
+function playNote(freq, dur = 0.8, velocity = 0.85) {
     const ctx = getSynthCtx();
     const now = ctx.currentTime;
     const {attack, decay, sustain, release} = state.adsr;
@@ -572,31 +610,81 @@ function playNote(freq, dur = 0.8) {
     const totalDur = holdDur + release;
     const sSustain = Math.max(sustain, 0.0001); // avoid zero for exponential ramp
 
+    // ── Amp envelope (post-filter) ────────────────────────────
     const envGain = ctx.createGain();
+    const peak    = state.volume * Math.max(0.0001, velocity);
     envGain.gain.setValueAtTime(0.0001, now);
-    envGain.gain.linearRampToValueAtTime(state.volume, now + attack);
-    envGain.gain.linearRampToValueAtTime(state.volume * sSustain, now + attack + decay);
-    envGain.gain.setValueAtTime(state.volume * sSustain, now + holdDur);
+    envGain.gain.linearRampToValueAtTime(peak, now + attack);
+    envGain.gain.linearRampToValueAtTime(peak * sSustain, now + attack + decay);
+    envGain.gain.setValueAtTime(peak * sSustain, now + holdDur);
     envGain.gain.exponentialRampToValueAtTime(0.0001, now + totalDur);
     envGain.connect(filterNode || ctx.destination);
 
-    // Unison: 3 detuned voices for sawtooth/square → fat, warm sound
-    const needsUnison = state.waveform === 'sawtooth' || state.waveform === 'square';
-    const voices  = needsUnison ? [-8, 0, 8] : [0];
-    const vScale  = needsUnison ? 0.55 : 1.0;
-    envGain.gain.value; // prevent early GC
+    // ── Filter envelope (modulates filterNode cutoff if amount > 0) ──
+    if (filterNode && state.filterEnv && state.filterEnv.amount > 0) {
+        const baseCut = state.filter.cutoff;
+        const amt     = state.filterEnv.amount / 100;        // 0..1
+        const peakCut = Math.min(18000, baseCut + amt * (18000 - baseCut));
+        const fp = filterNode.frequency;
+        fp.cancelScheduledValues(now);
+        fp.setValueAtTime(baseCut, now);
+        fp.linearRampToValueAtTime(peakCut, now + attack);
+        fp.linearRampToValueAtTime(baseCut + (peakCut - baseCut) * sSustain, now + attack + decay);
+        fp.setValueAtTime(baseCut + (peakCut - baseCut) * sSustain, now + holdDur);
+        fp.linearRampToValueAtTime(baseCut, now + totalDur);
+    }
 
-    voices.forEach(detune => {
+    // ── Helper: spawn an oscillator voice ───────────────────
+    function spawnOsc(wave, baseFreq, detuneCents, octave, mixGain) {
         const osc = ctx.createOscillator();
-        osc.type = state.waveform;
-        osc.frequency.value = freq;
-        osc.detune.value = detune;
-        // Scale each voice so total volume stays consistent
-        const vg = ctx.createGain(); vg.gain.value = vScale;
-        osc.connect(vg); vg.connect(envGain);
+        osc.type = wave;
+        osc.frequency.value = baseFreq * octMul(octave || 0);
+        osc.detune.value    = detuneCents || 0;
+        const g = ctx.createGain(); g.gain.value = mixGain;
+        osc.connect(g); g.connect(envGain);
         osc.start(now);
         osc.stop(now + totalDur + 0.1);
-    });
+    }
+
+    // OSC1 — always on. Sawtooth/square get a tiny implicit unison spread for warmth.
+    const o1 = state.osc1 || { wave: state.waveform, octave:0, detune:0, mix:1 };
+    const o1Wave = o1.wave || state.waveform;
+    const o1Mix  = (typeof o1.mix === 'number') ? o1.mix : 1;
+    const fattenO1 = (o1Wave === 'sawtooth' || o1Wave === 'square');
+    if (fattenO1) {
+        // 3-voice unison around the configured detune
+        [-8, 0, 8].forEach(d => spawnOsc(o1Wave, freq, (o1.detune || 0) + d, o1.octave, o1Mix * 0.55));
+    } else {
+        spawnOsc(o1Wave, freq, o1.detune || 0, o1.octave, o1Mix);
+    }
+
+    // OSC2 — optional. Same fattening rule.
+    if (state.osc2 && state.osc2.enabled) {
+        const o2 = state.osc2;
+        const o2Mix = (typeof o2.mix === 'number') ? o2.mix : 0.5;
+        const fattenO2 = (o2.wave === 'sawtooth' || o2.wave === 'square');
+        if (fattenO2) {
+            [-8, 0, 8].forEach(d => spawnOsc(o2.wave, freq, (o2.detune || 0) + d, o2.octave, o2Mix * 0.55));
+        } else {
+            spawnOsc(o2.wave, freq, o2.detune || 0, o2.octave, o2Mix);
+        }
+    }
+
+    // Sub-oscillator — square one octave below for low-end weight.
+    if (state.sub && state.sub.enabled) {
+        spawnOsc('square', freq, 0, -1, state.sub.level);
+    }
+
+    // Noise — colored white noise, looped buffer source.
+    if (state.noise && state.noise.enabled && noiseBuffer) {
+        const ns = ctx.createBufferSource();
+        ns.buffer = noiseBuffer;
+        ns.loop = true;
+        const ng = ctx.createGain(); ng.gain.value = state.noise.level;
+        ns.connect(ng); ng.connect(envGain);
+        ns.start(now);
+        ns.stop(now + totalDur + 0.1);
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -866,6 +954,32 @@ const SYNTH_PRESETS = [
     {id:'bell',  name:'🔔 Bell',  wave:'sine',     adsr:{attack:.01, decay:.4,  sustain:.3, release:.6},  filter:{cutoff:12000, resonance:1}},
     {id:'organ', name:'🎹 Organ', wave:'square',   adsr:{attack:.05, decay:0,   sustain:1,  release:.05}, filter:{cutoff:3000,  resonance:1}},
 ];
+
+// Load a preset into state. Handles both legacy presets (just wave+adsr+filter)
+// and extended presets (osc1/osc2/sub/noise/filterEnv/lfo/fx). Missing fields
+// fall back to neutral defaults so preset-driven sound is exactly what the
+// legacy preset would have produced.
+function applyPreset(p) {
+    if (!p) return;
+    const w = p.wave || (p.osc1 && p.osc1.wave) || state.osc1.wave;
+    setOsc1Wave(w);
+    if (p.adsr)   state.adsr   = { ...state.adsr,   ...p.adsr };
+    if (p.filter) state.filter = { ...state.filter, ...p.filter, type: (p.filter.type || state.filter.type || 'lowpass') };
+    state.osc1 = { wave:w, octave:0, detune:0, mix:1.0, ...(p.osc1 || {}) };
+    state.osc2 = { enabled:false, wave:'sawtooth', octave:0, detune:7, mix:0.5, ...(p.osc2 || {}) };
+    state.sub  = { enabled:false, level:0.4, ...(p.sub  || {}) };
+    state.noise= { enabled:false, level:0.2, ...(p.noise|| {}) };
+    state.filterEnv = { amount:0, ...(p.filterEnv || {}) };
+    state.lfo  = { rate:5, depth:0, target:'cutoff', wave:'sine', ...(p.lfo || {}) };
+    state.fx   = { delayTime:0.25, delayFeedback:0.3, delayWet:0, reverbWet:0, ...(p.fx || {}) };
+    state.activePreset = p.id || null;
+    // Mirror filter onto live filterNode so the next note hears it instantly.
+    if (filterNode && state.filter) {
+        filterNode.type = state.filter.type || 'lowpass';
+        filterNode.frequency.value = state.filter.cutoff;
+        filterNode.Q.value         = state.filter.resonance;
+    }
+}
 
 const GENRE_TEMPLATES = [
     {name:'🎤 Boom Bap', bpm:90, patterns:[
@@ -1155,11 +1269,10 @@ function renderModule1() {
     SYNTH_PRESETS.forEach(p => {
         const btn = mk('button', `preset-btn${state.activePreset===p.id?' active':''}`, p.name);
         btn.onclick = () => {
-            state.waveform = p.wave; state.adsr = {...p.adsr};
-            state.filter   = {...p.filter}; state.activePreset = p.id;
-            if (filterNode) { filterNode.frequency.value=p.filter.cutoff; filterNode.Q.value=p.filter.resonance; }
+            applyPreset(p);
             playNote(440, 0.8);
-            if (_m1Update) _m1Update(); else navigate(1);
+            // Full re-render so OSC1/OSC2/sub/noise/filter type toggles reflect.
+            navigate(1);
         };
         preRow.append(btn);
     });
@@ -1194,10 +1307,10 @@ function renderModule1() {
                 const wrap=mk('div','saved-item-wrap');
                 const b=mk('button','preset-btn',p.name);
                 b.onclick=()=>{
-                    state.waveform=p.wave; state.adsr={...p.adsr}; state.filter={...p.filter}; state.activePreset=null;
-                    if(filterNode){filterNode.frequency.value=p.filter.cutoff;filterNode.Q.value=p.filter.resonance;}
-                    playNote(440,0.8); if(_m1Update)_m1Update();
+                    applyPreset(p); state.activePreset = null;
+                    playNote(440,0.8);
                     pList.remove(); pList=null;
+                    navigate(1); // Re-render so extended panel reflects loaded preset.
                 };
                 const del=mk('button','saved-del','✕');
                 del.onclick=async()=>{ await deleteUserPreset(p.id); wrap.remove(); };
@@ -1244,23 +1357,156 @@ function renderModule1() {
     // Controls grid
     const grid = mk('div','controls-grid');
 
-    // Waveform
+    // OSC1 — primary oscillator
     const wfGrp = mk('div','control-group');
-    wfGrp.innerHTML=`<h3>🌊 Waveform — Dalga Tipi</h3><p style="font-size:.72rem;color:var(--dim);margin-bottom:10px;line-height:1.5">Her dalga farklı tını üretir. Sine en saf, Sawtooth en zengin harmonikli.</p>`;
+    wfGrp.innerHTML=`<h3>🌊 OSC1 — Birinci Oscillator</h3><p style="font-size:.72rem;color:var(--dim);margin-bottom:10px;line-height:1.5">Birincil dalga tipi. Sine saf, Sawtooth zengin harmoniklidir.</p>`;
     const wfSel = mk('div','waveform-selector');
     [{w:'sine',icon:'〜',desc:'Saf, yuvarlak'},{w:'square',icon:'⊓',desc:'Keskin, elektro'},
      {w:'sawtooth',icon:'⟋',desc:'Zengin, parlak'},{w:'triangle',icon:'△',desc:'Yumuşak, hollow'}]
     .forEach(({w,icon,desc}) => {
-        const b = mk('button',`wave-btn${state.waveform===w?' active':''}`,
+        const b = mk('button',`wave-btn${state.osc1.wave===w?' active':''}`,
             `${icon}<br>${w}<br><small style="font-size:.55rem;opacity:.6">${desc}</small>`);
         b.onclick = () => {
-            state.waveform=w; state.activePreset=null;
+            setOsc1Wave(w); state.activePreset=null;
             wfSel.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
             b.classList.add('active');
         };
         wfSel.append(b);
     });
-    wfGrp.append(wfSel); grid.append(wfGrp);
+    wfGrp.append(wfSel);
+    // OSC1 detune + octave (compact row)
+    const o1Row = mk('div'); o1Row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;';
+    const o1DetVal = mk('span','', (state.osc1.detune||0)+' ct'); o1DetVal.style.color='var(--gold)';
+    const o1DetLbl = mk('div','slider-label'); o1DetLbl.append(mk('span','','Detune'), o1DetVal);
+    const o1DetSl = makeSlider({min:-50, max:50, step:1, value:state.osc1.detune||0, label:'OSC1 detune in cents',
+        onChange: v => { state.osc1.detune=v; o1DetVal.textContent=v+' ct'; state.activePreset=null; }});
+    const o1DetWrap = mk('div'); o1DetWrap.append(o1DetLbl, o1DetSl);
+    const o1OctRow = mk('div');
+    o1OctRow.innerHTML = `<div class="slider-label"><span>Octave</span><span id="o1OctVal" style="color:var(--gold);font-weight:bold;">${state.osc1.octave>=0?'+':''}${state.osc1.octave}</span></div>`;
+    const o1OctBtns = mk('div'); o1OctBtns.style.cssText='display:flex;gap:6px;';
+    [-2,-1,0,1,2].forEach(oct => {
+        const b = mk('button',`wave-btn${state.osc1.octave===oct?' active':''}`, oct>=0?'+'+oct:String(oct));
+        b.style.cssText='flex:1;padding:6px 0;font-size:.7rem;';
+        b.onclick = () => {
+            state.osc1.octave = oct; state.activePreset=null;
+            o1OctBtns.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+            const valEl = o1OctRow.querySelector('#o1OctVal'); if (valEl) valEl.textContent = oct>=0?'+'+oct:String(oct);
+        };
+        o1OctBtns.append(b);
+    });
+    o1OctRow.append(o1OctBtns);
+    o1Row.append(o1DetWrap, o1OctRow);
+    wfGrp.append(o1Row);
+    grid.append(wfGrp);
+
+    // OSC2 — secondary oscillator (toggleable)
+    const o2Grp = mk('div','control-group');
+    const o2Title = mk('div'); o2Title.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
+    o2Title.innerHTML = `<h3 style="margin:0;">🎛 OSC2 — İkinci Oscillator</h3>`;
+    const o2Toggle = mk('button', `wave-btn${state.osc2.enabled?' active':''}`, state.osc2.enabled?'ON':'OFF');
+    o2Toggle.style.cssText='padding:5px 14px;font-size:.7rem;flex-shrink:0;min-width:auto;';
+    o2Toggle.onclick = () => {
+        state.osc2.enabled = !state.osc2.enabled;
+        o2Toggle.textContent = state.osc2.enabled ? 'ON' : 'OFF';
+        o2Toggle.classList.toggle('active', state.osc2.enabled);
+        state.activePreset=null;
+    };
+    o2Title.append(o2Toggle);
+    o2Grp.innerHTML='';
+    o2Grp.append(o2Title);
+    o2Grp.append(mk('p','',''.padEnd(0)));
+    o2Grp.querySelector('p').style.cssText='font-size:.72rem;color:var(--dim);margin-bottom:10px;line-height:1.5;';
+    o2Grp.querySelector('p').textContent='Detune ile fattness, oktav farkıyla bass / brightness ekle.';
+    const o2WfSel = mk('div','waveform-selector');
+    [{w:'sine',icon:'〜'},{w:'square',icon:'⊓'},{w:'sawtooth',icon:'⟋'},{w:'triangle',icon:'△'}]
+    .forEach(({w,icon}) => {
+        const b = mk('button',`wave-btn${state.osc2.wave===w?' active':''}`, `${icon}<br>${w}`);
+        b.style.cssText='font-size:.7rem;padding:8px 0;';
+        b.onclick = () => {
+            state.osc2.wave=w; state.activePreset=null;
+            o2WfSel.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+        };
+        o2WfSel.append(b);
+    });
+    o2Grp.append(o2WfSel);
+    const o2Row = mk('div'); o2Row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;';
+    // Mix
+    const o2MixVal = mk('span','', Math.round((state.osc2.mix||0.5)*100)+'%'); o2MixVal.style.color='var(--gold)';
+    const o2MixLbl = mk('div','slider-label'); o2MixLbl.append(mk('span','','Mix'), o2MixVal);
+    const o2MixSl = makeSlider({min:0, max:1, step:.01, value:state.osc2.mix||0.5, label:'OSC2 mix level',
+        onChange:v=>{state.osc2.mix=v; o2MixVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    const o2MixDiv = mk('div'); o2MixDiv.append(o2MixLbl, o2MixSl);
+    // Detune
+    const o2DetVal = mk('span','', (state.osc2.detune||0)+' ct'); o2DetVal.style.color='var(--gold)';
+    const o2DetLbl = mk('div','slider-label'); o2DetLbl.append(mk('span','','Detune'), o2DetVal);
+    const o2DetSl = makeSlider({min:-50, max:50, step:1, value:state.osc2.detune||0, label:'OSC2 detune in cents',
+        onChange:v=>{state.osc2.detune=v; o2DetVal.textContent=v+' ct'; state.activePreset=null;}});
+    const o2DetDiv = mk('div'); o2DetDiv.append(o2DetLbl, o2DetSl);
+    // Octave (compact)
+    const o2OctDiv = mk('div');
+    o2OctDiv.innerHTML=`<div class="slider-label"><span>Oct</span><span id="o2OctVal" style="color:var(--gold);font-weight:bold;">${state.osc2.octave>=0?'+':''}${state.osc2.octave}</span></div>`;
+    const o2OctBtns = mk('div'); o2OctBtns.style.cssText='display:flex;gap:4px;';
+    [-2,-1,0,1,2].forEach(oct => {
+        const b = mk('button',`wave-btn${state.osc2.octave===oct?' active':''}`, oct>=0?'+'+oct:String(oct));
+        b.style.cssText='flex:1;padding:5px 0;font-size:.6rem;';
+        b.onclick = () => {
+            state.osc2.octave = oct; state.activePreset=null;
+            o2OctBtns.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+            const valEl = o2OctDiv.querySelector('#o2OctVal'); if (valEl) valEl.textContent = oct>=0?'+'+oct:String(oct);
+        };
+        o2OctBtns.append(b);
+    });
+    o2OctDiv.append(o2OctBtns);
+    o2Row.append(o2MixDiv, o2DetDiv, o2OctDiv);
+    o2Grp.append(o2Row);
+    grid.append(o2Grp);
+
+    // Sub + Noise (compact card)
+    const exGrp = mk('div','control-group');
+    exGrp.innerHTML=`<h3>🎵 Sub & Noise — Ek Katmanlar</h3><p style="font-size:.72rem;color:var(--dim);margin-bottom:10px;line-height:1.5">Sub-oscillator bas hissi ekler (-1 oktav square). Noise vurmalı/atak hissini zenginleştirir.</p>`;
+    const exRow = mk('div'); exRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:14px;';
+    // Sub
+    const subBox = mk('div');
+    const subHead = mk('div'); subHead.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
+    subHead.innerHTML = `<strong style="font-size:.74rem;color:var(--ice);">SUB</strong>`;
+    const subToggle = mk('button',`wave-btn${state.sub.enabled?' active':''}`, state.sub.enabled?'ON':'OFF');
+    subToggle.style.cssText='padding:4px 10px;font-size:.62rem;flex-shrink:0;min-width:auto;';
+    subToggle.onclick = () => {
+        state.sub.enabled = !state.sub.enabled;
+        subToggle.textContent = state.sub.enabled ? 'ON' : 'OFF';
+        subToggle.classList.toggle('active', state.sub.enabled);
+        state.activePreset=null;
+    };
+    subHead.append(subToggle);
+    const subVal = mk('span','', Math.round((state.sub.level||0.4)*100)+'%'); subVal.style.color='var(--ice)';
+    const subLbl = mk('div','slider-label'); subLbl.append(mk('span','','Level'), subVal);
+    const subSl = makeSlider({min:0,max:1,step:.01,value:state.sub.level||0.4,label:'Sub oscillator level',
+        onChange:v=>{state.sub.level=v; subVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    subBox.append(subHead, subLbl, subSl);
+    // Noise
+    const nBox = mk('div');
+    const nHead = mk('div'); nHead.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;';
+    nHead.innerHTML = `<strong style="font-size:.74rem;color:var(--crimson);">NOISE</strong>`;
+    const nToggle = mk('button',`wave-btn${state.noise.enabled?' active':''}`, state.noise.enabled?'ON':'OFF');
+    nToggle.style.cssText='padding:4px 10px;font-size:.62rem;flex-shrink:0;min-width:auto;';
+    nToggle.onclick = () => {
+        state.noise.enabled = !state.noise.enabled;
+        nToggle.textContent = state.noise.enabled ? 'ON' : 'OFF';
+        nToggle.classList.toggle('active', state.noise.enabled);
+        state.activePreset=null;
+    };
+    nHead.append(nToggle);
+    const nVal = mk('span','', Math.round((state.noise.level||0.2)*100)+'%'); nVal.style.color='var(--crimson)';
+    const nLbl = mk('div','slider-label'); nLbl.append(mk('span','','Level'), nVal);
+    const nSl = makeSlider({min:0,max:1,step:.01,value:state.noise.level||0.2,label:'Noise level',
+        onChange:v=>{state.noise.level=v; nVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    nBox.append(nHead, nLbl, nSl);
+    exRow.append(subBox, nBox);
+    exGrp.append(exRow);
+    grid.append(exGrp);
 
     // ADSR sliders — track elements for in-place preset updates
     const adsrValMap={}, adsrFmtMap={}, adsrSlMap={};
@@ -1292,12 +1538,31 @@ function renderModule1() {
         onChange: v => { state.volume=v; volVal.textContent=(v*100).toFixed(0)+'%'; }}));
     grid.append(volGrp);
 
-    // Filter
+    // Filter — type selector + cutoff + resonance + mod env amount
     const filtGrp = mk('div','filter-section');
     filtGrp.innerHTML=`<h3>🎛 Filter — Frekans Filtresi</h3>
     <p style="font-size:.72rem;color:var(--dim);margin-bottom:12px;line-height:1.5">
+    <strong>Tip</strong>: Lowpass koyu, Highpass ince, Bandpass dar bant, Notch o frekansı oyar.<br>
     <strong>Cutoff</strong>: Kesme frekansı — düşük = koyu ses, yüksek = parlak ses.<br>
-    <strong>Resonance</strong>: Cutoff frekansını vurgular — yüksek = "wah" efekti.</p>`;
+    <strong>Resonance</strong>: Cutoff frekansını vurgular — yüksek = "wah" efekti.<br>
+    <strong>Env Amount</strong>: ADSR envelope'u cutoff'a uygular — sweep efektleri için.</p>`;
+    // Type selector
+    const typeRow = mk('div','waveform-selector'); typeRow.style.cssText='margin-bottom:14px;';
+    [{t:'lowpass',label:'LP',hint:'Yüksek frekansları keser'},
+     {t:'highpass',label:'HP',hint:'Düşük frekansları keser'},
+     {t:'bandpass',label:'BP',hint:'Sadece dar bandı geçirir'},
+     {t:'notch',label:'NOTCH',hint:'O frekansı oyar'}].forEach(({t,label,hint}) => {
+        const b = mk('button',`wave-btn${(state.filter.type||'lowpass')===t?' active':''}`,
+            `${label}<br><small style="font-size:.55rem;opacity:.6">${hint}</small>`);
+        b.onclick = () => {
+            state.filter.type = t; state.activePreset=null;
+            if (filterNode) filterNode.type = t;
+            typeRow.querySelectorAll('.wave-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+        };
+        typeRow.append(b);
+    });
+    filtGrp.append(typeRow);
     const filtGrid = mk('div','filter-grid');
     const cutVal = mk('span','', state.filter.cutoff>=1000?(state.filter.cutoff/1000).toFixed(1)+'kHz':state.filter.cutoff+'Hz');
     cutVal.style.color='var(--crimson)';
@@ -1314,7 +1579,20 @@ function renderModule1() {
             if(filterNode) filterNode.Q.value=v;
             resVal.textContent=v.toFixed(1)+' Q'; }});
     resDiv.append(resLbl, resSlEl);
-    filtGrid.append(cutDiv, resDiv); filtGrp.append(filtGrid); grid.append(filtGrp);
+    // Filter envelope amount
+    const envDiv = mk('div');
+    const envVal = mk('span','', (state.filterEnv.amount||0)+'%'); envVal.style.color='var(--amber)';
+    const envLbl = mk('div','slider-label'); envLbl.append(mk('span','','Env → Cutoff'), envVal);
+    const envSl = makeSlider({min:0, max:100, step:1, value:state.filterEnv.amount||0, label:'Filter envelope amount',
+        onChange:v=>{ state.filterEnv.amount=v; envVal.textContent=v+'%'; state.activePreset=null; }});
+    envDiv.append(envLbl, envSl);
+    filtGrid.append(cutDiv, resDiv);
+    filtGrp.append(filtGrid);
+    // Mod env as full-width row below
+    const envRow = mk('div'); envRow.style.cssText='margin-top:12px;';
+    envRow.append(envDiv);
+    filtGrp.append(envRow);
+    grid.append(filtGrp);
     shell.append(grid);
 
     shell.append(theoryCard(
@@ -1347,8 +1625,11 @@ function renderModule1() {
     // In-place UI updater — called on preset change to avoid full re-render
     _m1Update = () => {
         preRow.querySelectorAll('.preset-btn').forEach((b,i) => b.classList.toggle('active', SYNTH_PRESETS[i]?.id===state.activePreset));
+        // OSC1 wave + osc2 toggle/wave aren't full-re-rendered here; preset
+        // changes will reflect on next navigate(1). Heavy preset → UI sync
+        // for new fields is deferred to a future pass (Phase 2 polish).
         let wi=0; const waves=['sine','square','sawtooth','triangle'];
-        wfSel.querySelectorAll('.wave-btn').forEach(b => b.classList.toggle('active', waves[wi++]===state.waveform));
+        wfSel.querySelectorAll('.wave-btn').forEach(b => b.classList.toggle('active', waves[wi++]===state.osc1.wave));
         ['attack','decay','sustain','release'].forEach(key => {
             if(adsrSlMap[key]?._sliderObj) adsrSlMap[key]._sliderObj.update(state.adsr[key]);
             if(adsrValMap[key]) adsrValMap[key].textContent=adsrFmtMap[key](state.adsr[key]);
