@@ -1726,7 +1726,42 @@ async function renderDashboard() {
   const totalLessonsCount = lessons.filter(l => l.status !== 'cancelled').length;
   const _stuName = res.student_name || (_user.displayName || '').trim() || (_user.email||'').split('@')[0] || 'Öğrenci';
   window._openExtraCreditModal = () => showExtraCreditModal(_stuName, curMonthKey);
-  document.getElementById('creditBadge').innerHTML = `🔄 ${window._i18n?.t('bk_credit_month_label')||'Bu ay erteleme hakkı:'} <strong>${credits}</strong> &nbsp;·&nbsp; ${window._i18n?.t('bk_credit_total_label')||'Toplam:'} <strong>${totalLessonsCount} ${window._i18n?.t('bk_credit_lessons_lbl')||'ders'}</strong> &nbsp;·&nbsp; <button type="button" onclick="window._openExtraCreditModal()" style="background:none;border:none;padding:0;color:var(--gold);cursor:pointer;border-bottom:1px dashed rgba(232,184,75,.4);font-weight:700;font-family:inherit;font-size:inherit;">+ Ek Hak Al (500 TL)</button>`;
+
+  // Build per-month credit panel for the whole plan (start → end)
+  const _credits = res.reschedule_credits || {};
+  const _planMonths = new Set();
+  if (res.start_date) _planMonths.add(res.start_date.slice(0,7));
+  if (res.end_date)   _planMonths.add(res.end_date.slice(0,7));
+  Object.keys(_credits).forEach(k => _planMonths.add(k));
+  lessons.forEach(l => { if (l.date && l.status !== 'cancelled') _planMonths.add(l.date.slice(0,7)); });
+  const _sortedMonths = Array.from(_planMonths).sort();
+  const _monthRows = _sortedMonths.map(mk => {
+    const remaining = _credits[mk] ?? 0;
+    const isPast = mk < curMonthKey;
+    const isCurrent = mk === curMonthKey;
+    const [y, m] = mk.split('-').map(Number);
+    const monthLabel = MONTHS_TR[m - 1] + ' ' + y;
+    const dot = remaining > 0 ? '<span style="color:#4ade80;">●</span>' : '<span style="color:rgba(184,45,69,.7);">●</span>';
+    const opacity = isPast ? '.45' : '1';
+    const highlight = isCurrent ? 'background:rgba(232,184,75,.08);border-left:2px solid var(--gold);padding-left:8px;' : '';
+    const remainTxt = remaining > 0 ? `<strong style="color:#4ade80;">${remaining}</strong> hak kaldı` : `<strong style="color:rgba(232,120,120,.85);">0</strong> hak (kullanıldı)`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;opacity:${opacity};${highlight}font-size:.72rem;">
+      <span style="color:var(--white);">${dot} &nbsp; ${monthLabel}${isCurrent ? ' <span style="font-size:.55rem;color:var(--gold);background:rgba(232,184,75,.12);padding:1px 6px;border-radius:8px;margin-left:4px;">BU AY</span>' : ''}</span>
+      <span style="color:rgba(238,235,230,.75);">${remainTxt}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('creditBadge').innerHTML = `
+    <div style="background:rgba(143,200,232,.05);border:1px solid rgba(143,200,232,.2);border-radius:10px;padding:12px 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="font-size:.7rem;color:var(--ice);font-weight:700;letter-spacing:.04em;">🔄 ERTELEME HAKLARIM</div>
+        <div style="font-size:.6rem;color:var(--dim);">Toplam ders: <strong style="color:var(--white);">${totalLessonsCount}</strong></div>
+      </div>
+      ${_monthRows || `<div style="font-size:.7rem;color:var(--dim);padding:6px 0;">Aktif plan yok.</div>`}
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);text-align:center;">
+        <button type="button" onclick="window._openExtraCreditModal()" style="background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);padding:7px 14px;border-radius:6px;font-family:'Space Mono',monospace;font-size:.66rem;font-weight:700;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(232,184,75,.18)'" onmouseout="this.style.background='rgba(232,184,75,.1)'">+ Ek Hak Al (500 TL)</button>
+      </div>
+    </div>`;
 
   // Extra lesson purchase button (not for trial)
   const hasFrozenLessons = lessons.some(l => l.status === 'frozen' && l.date >= today);
