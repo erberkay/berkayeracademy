@@ -33,6 +33,26 @@ function toWaNumber(raw) {
  * @return {Promise<{ok:boolean, sid?:string, status?:string, error?:string}>}
  */
 async function sendWhatsApp(toPhone, body) {
+  return sendCore(toPhone, {Body: body});
+}
+
+/**
+ * Send a Twilio content-template message. Works outside the 24h window
+ * once the template is approved by Meta.
+ *
+ * @param {string} toPhone — raw phone (will be normalized)
+ * @param {string} contentSid — HXxxxxxxxx from Content Template Builder
+ * @param {object} variables — { "1": "Ahmet", "2": "14:00", ... }
+ */
+async function sendWhatsAppTemplate(toPhone, contentSid, variables = {}) {
+  const params = {ContentSid: contentSid};
+  if (variables && Object.keys(variables).length > 0) {
+    params.ContentVariables = JSON.stringify(variables);
+  }
+  return sendCore(toPhone, params);
+}
+
+async function sendCore(toPhone, extraParams) {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_WA_FROM;
@@ -40,7 +60,6 @@ async function sendWhatsApp(toPhone, body) {
   if (!sid || !token || !from) {
     return {ok: false, error: "Twilio env vars missing"};
   }
-
   const to = toWaNumber(toPhone);
   if (!to) {
     return {ok: false, error: "invalid_phone: " + toPhone};
@@ -48,7 +67,7 @@ async function sendWhatsApp(toPhone, body) {
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`;
   const auth = Buffer.from(`${sid}:${token}`).toString("base64");
-  const params = new URLSearchParams({From: from, To: to, Body: body});
+  const params = new URLSearchParams({From: from, To: to, ...extraParams});
 
   try {
     const res = await fetch(url, {
@@ -73,4 +92,12 @@ async function sendWhatsApp(toPhone, body) {
   }
 }
 
-module.exports = {sendWhatsApp, toWaNumber};
+// Content Template SIDs from Content Template Builder
+const TEMPLATES = {
+  lesson_reminder_24h: "HX18dd68325569c9cb07e92713c4b3c900",
+  lesson_reminder_1h: "HX3a4c76a7ce11285ea155152409ab45cc",
+  payment_reminder: "HX84bdb474422c1f8d6c78719ff0124294",
+  request_status: "HXe7f08f14c970665e5c19a92042ddd4f2",
+};
+
+module.exports = {sendWhatsApp, sendWhatsAppTemplate, toWaNumber, TEMPLATES};

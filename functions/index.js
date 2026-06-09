@@ -4,7 +4,7 @@ const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const nodemailer = require("nodemailer");
-const {sendWhatsApp} = require("./whatsapp");
+const {sendWhatsApp, sendWhatsAppTemplate, TEMPLATES} = require("./whatsapp");
 
 
 setGlobalOptions({maxInstances: 10, region: "europe-west1"});
@@ -121,6 +121,17 @@ function collectUnpaidStudents(snapshot) {
   return result;
 }
 
+// Compute total package price for a reservation
+function reservationPrice(data) {
+  if (typeof data.custom_total_price === "number") return data.custom_total_price;
+  const totalLessons = (data.lessons || []).length;
+  const unit = data.custom_lesson_price || (data.lesson_type === "single" ? 3000 : 2500);
+  return totalLessons * unit;
+}
+
+const MONTHS_TR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
 // Runs every day at 09:00 Istanbul time
 exports.paymentReminder = onSchedule(
     {schedule: "0 6 * * *", timeZone: "Europe/Istanbul"},
@@ -128,19 +139,181 @@ exports.paymentReminder = onSchedule(
       const db = getFirestore();
       const snapshot = await db.collection("reservations").get();
       const students = collectUnpaidStudents(snapshot);
-      const promises = students.map(({doc, email, name, nextLesson}) => {
+      const promises = students.map(({doc, data, email, name, nextLesson}) => {
         const nextDateFormatted = new Date(nextLesson.date + "T12:00:00")
             .toLocaleDateString("tr-TR", {day: "numeric", month: "long", year: "numeric"});
         const mail = buildReminderMailOptions(name, email, nextLesson, nextDateFormatted);
-        return transporter.sendMail(mail).then(() => {
-          console.log(`Reminder sent to ${email} (${name})`);
+        const tasks = [];
+        // Email branch (existing)
+        tasks.push(transporter.sendMail(mail).then(() => {
+          console.log(`Email reminder sent to ${email} (${name})`);
+        }).catch((e) => console.error("email failed", e.message)));
+        // WhatsApp branch (new)
+        if (data.student_phone) {
+          const monthIdx = new Date().getMonth();
+          const monthName = MONTHS_TR[monthIdx];
+          const total = reservationPrice(data).toLocaleString("tr-TR");
+          tasks.push(sendWhatsAppTemplate(
+              data.student_phone,
+              TEMPLATES.payment_reminder,
+              {"1": name, "2": monthName, "3": total},
+          ).then((r) => {
+            if (!r.ok) console.error("wa payment_reminder failed", r.error);
+            else console.log(`WA payment_reminder → ${data.student_phone}`);
+          }));
+        }
+        return Promise.all(tasks).then(() => {
           return db.collection("reservations").doc(doc.id).update({
             last_reminder_sent: FieldValue.serverTimestamp(),
           });
         });
       });
       await Promise.all(promises);
-      console.log(`Payment reminders done. Sent ${promises.length} emails.`);
+      console.log(`Payment reminders done. Processed ${promises.length} students.`);
+    },
+);
+
+// ─── Lesson reminders ───────────────────────────────────────
+// Build student lookup helpers shared by 24h + 1h crons.
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function toDateStr(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+// Daily at 09:00 TR → notify students whose lesson is the next day
+exports.lessonReminder24h = onSchedule(
+    {schedule: "0 6 * * *", timeZone: "Europe/Istanbul"},
+    async () => {
+      const db = getFirestore();
+      const settings = await db.collection("settings").doc("global").get();
+      const zoomLink = settings.exists ? (settings.data().zoom_link || "") : "";
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = toDateStr(tomorrow);
+
+      const snap = await db.collection("reservations").get();
+      let sent = 0;
+      const tasks = [];
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (!d.student_phone) return;
+        const lessons = d.lessons || [];
+        const match = lessons.find((l) => l.date === tomorrowStr &&
+          (l.status === "scheduled" || l.status === "rescheduled"));
+        if (!match) return;
+        const name = d.student_name || (d.student_email || "").split("@")[0] || "Öğrenci";
+        tasks.push(sendWhatsAppTemplate(
+            d.student_phone,
+            TEMPLATES.lesson_reminder_24h,
+            {"1": name, "2": match.time, "3": zoomLink || "https://berkayeracademy.com/booking"},
+        ).then((r) => {
+          if (r.ok) {
+            sent++;
+            console.log(`WA 24h reminder → ${d.student_phone} (${name})`);
+          } else {
+            console.error("wa lesson_reminder_24h failed", d.student_phone, r.error);
+          }
+        }));
+      });
+      await Promise.all(tasks);
+      console.log(`lessonReminder24h done. Sent ${sent} of ${tasks.length} attempts.`);
+    },
+);
+
+// Hourly check → notify students whose lesson starts in ~1 hour
+exports.lessonReminder1h = onSchedule(
+    {schedule: "0 * * * *", timeZone: "Europe/Istanbul"},
+    async () => {
+      const db = getFirestore();
+      const settings = await db.collection("settings").doc("global").get();
+      const zoomLink = settings.exists ? (settings.data().zoom_link || "") : "";
+
+      // 1 hour from now in Istanbul TZ — schedule runs at minute 0 so target is HH+1:00
+      const now = new Date();
+      const target = new Date(now.getTime() + 60 * 60 * 1000);
+      // Use Istanbul offset by formatting via toLocaleString — safer than UTC math
+      const istanbulDate = new Date(target.toLocaleString("en-US", {timeZone: "Europe/Istanbul"}));
+      const targetDateStr = toDateStr(istanbulDate);
+      const targetTime = `${pad2(istanbulDate.getHours())}:00`;
+
+      const snap = await db.collection("reservations").get();
+      let sent = 0;
+      const tasks = [];
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (!d.student_phone) return;
+        const lessons = d.lessons || [];
+        const match = lessons.find((l) => l.date === targetDateStr && l.time === targetTime &&
+          (l.status === "scheduled" || l.status === "rescheduled"));
+        if (!match) return;
+        const name = d.student_name || (d.student_email || "").split("@")[0] || "Öğrenci";
+        tasks.push(sendWhatsAppTemplate(
+            d.student_phone,
+            TEMPLATES.lesson_reminder_1h,
+            {"1": name, "2": targetTime, "3": zoomLink || "https://berkayeracademy.com/booking"},
+        ).then((r) => {
+          if (r.ok) {
+            sent++;
+            console.log(`WA 1h reminder → ${d.student_phone} (${name})`);
+          } else {
+            console.error("wa lesson_reminder_1h failed", d.student_phone, r.error);
+          }
+        }));
+      });
+      await Promise.all(tasks);
+      console.log(`lessonReminder1h done at target ${targetDateStr} ${targetTime}. Sent ${sent} of ${tasks.length}.`);
+    },
+);
+
+// ─── Firestore triggers for status notifications ────────────
+const {onDocumentCreated, onDocumentUpdated} = require("firebase-functions/v2/firestore");
+
+// New lesson request → notify admin via WhatsApp
+exports.notifyAdminOnNewRequest = onDocumentCreated(
+    {region: "europe-west1", document: "lesson_requests/{reqId}"},
+    async (event) => {
+      const d = event.data && event.data.data();
+      if (!d || d.status !== "pending") return;
+      const adminNum = process.env.WA_ADMIN_NUMBER || "905523070067";
+      const name = d.from_name || d.from_email || "Öğrenci";
+      let detail;
+      if (d.lesson_type === "trial") {
+        detail = `🎯 Deneme · ${d.trial_date} ${d.trial_time}`;
+      } else if (d.lesson_type === "single") {
+        detail = `🎯 Tek Ders`;
+      } else {
+        detail = `📅 ${d.duration_months} Ay · ${d.lessons_per_month || 4}/Ay`;
+      }
+      const body = `🔔 Yeni talep — ${name}\n${detail}\n${d.from_phone || ""}\nberkayeracademy.com/booking`;
+      const res = await sendWhatsApp(adminNum, body);
+      if (!res.ok) console.error("admin notify failed", res.error);
+      else console.log("admin notified for new request", event.params.reqId);
+    },
+);
+
+// Request status change → notify student via WhatsApp template
+exports.notifyStudentOnRequestStatus = onDocumentUpdated(
+    {region: "europe-west1", document: "lesson_requests/{reqId}"},
+    async (event) => {
+      const before = event.data && event.data.before.data();
+      const after = event.data && event.data.after.data();
+      if (!before || !after) return;
+      if (before.status === after.status) return;
+      if (!after.from_phone) return;
+      const name = after.from_name || (after.from_email || "").split("@")[0] || "Öğrenci";
+      let statusLabel = "";
+      if (after.status === "accepted") statusLabel = "onaylandı";
+      else if (after.status === "rejected") statusLabel = "şu an için uygun görülmedi";
+      else return;
+      const res = await sendWhatsAppTemplate(
+          after.from_phone,
+          TEMPLATES.request_status,
+          {"1": name, "2": statusLabel},
+      );
+      if (!res.ok) console.error("student notify failed", res.error);
+      else console.log(`student notified ${after.status} for`, event.params.reqId);
     },
 );
 
