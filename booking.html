@@ -1794,16 +1794,32 @@ async function renderDashboard() {
   const _stuName = res.student_name || (_user.displayName || '').trim() || (_user.email||'').split('@')[0] || 'Öğrenci';
   window._openExtraCreditModal = () => showExtraCreditModal(_stuName, curMonthKey);
 
-  // Build per-month credit panel for the whole plan (start → end)
+  // Build per-month credit panel for the plan window only (start_date..end_date).
+  // Skip months that fall outside the plan even if a stray lesson lands there.
   const _credits = res.reschedule_credits || {};
   const _planMonths = new Set();
-  if (res.start_date) _planMonths.add(res.start_date.slice(0,7));
-  if (res.end_date)   _planMonths.add(res.end_date.slice(0,7));
+  const _startMk = (res.start_date || '').slice(0, 7);
+  const _endMk   = (res.end_date || '').slice(0, 7);
+  if (_startMk) _planMonths.add(_startMk);
+  if (_endMk)   _planMonths.add(_endMk);
+  // Fill any months that have a credit explicitly set, even if outside start/end
   Object.keys(_credits).forEach(k => _planMonths.add(k));
-  lessons.forEach(l => { if (l.date && l.status !== 'cancelled') _planMonths.add(l.date.slice(0,7)); });
+  // Fill months between start and end so a 3-month plan always shows 3 rows
+  if (_startMk && _endMk) {
+    const [sy, sm] = _startMk.split('-').map(Number);
+    const [ey, em] = _endMk.split('-').map(Number);
+    let cy = sy; let cm = sm;
+    while (cy < ey || (cy === ey && cm <= em)) {
+      _planMonths.add(`${cy}-${String(cm).padStart(2,'0')}`);
+      cm++;
+      if (cm > 12) { cm = 1; cy++; }
+    }
+  }
   const _sortedMonths = Array.from(_planMonths).sort();
   const _monthRows = _sortedMonths.map(mk => {
-    const remaining = _credits[mk] ?? 0;
+    // Distinguish "credit was set then consumed" from "no credit ever issued for this month".
+    const creditSet = Object.prototype.hasOwnProperty.call(_credits, mk);
+    const remaining = creditSet ? _credits[mk] : 1; // default plan grants 1/month
     const isPast = mk < curMonthKey;
     const isCurrent = mk === curMonthKey;
     const [y, m] = mk.split('-').map(Number);
@@ -1811,7 +1827,9 @@ async function renderDashboard() {
     const dot = remaining > 0 ? '<span style="color:#4ade80;">●</span>' : '<span style="color:rgba(184,45,69,.7);">●</span>';
     const opacity = isPast ? '.45' : '1';
     const highlight = isCurrent ? 'background:rgba(232,184,75,.08);border-left:2px solid var(--gold);padding-left:8px;' : '';
-    const remainTxt = remaining > 0 ? `<strong style="color:#4ade80;">${remaining}</strong> hak kaldı` : `<strong style="color:rgba(232,120,120,.85);">0</strong> hak (kullanıldı)`;
+    const remainTxt = remaining > 0
+      ? `<strong style="color:#4ade80;">${remaining}</strong> hak ${isPast ? 'kullanılmadı' : 'kaldı'}`
+      : `<strong style="color:rgba(232,120,120,.85);">0</strong> hak ${creditSet ? '(kullanıldı)' : ''}`;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 6px;opacity:${opacity};${highlight}font-size:.74rem;gap:14px;flex-wrap:wrap;">
       <span style="color:var(--white);display:flex;align-items:center;gap:8px;">${dot} ${monthLabel}${isCurrent ? ' <span style="font-size:.58rem;color:var(--gold);background:rgba(232,184,75,.15);padding:2px 8px;border-radius:10px;letter-spacing:.05em;">BU AY</span>' : ''}</span>
       <span style="color:rgba(238,235,230,.85);">${remainTxt}</span>
