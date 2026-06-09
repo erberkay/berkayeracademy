@@ -1549,8 +1549,31 @@ async function renderPendingView(reqData) {
       : () => initRequestForm();
     actions.append(newBtn);
   } else {
-    // Pending — show a refresh button as fallback if onSnapshot misses the update
+    // Pending — show WhatsApp first-message CTA + refresh fallback
     actions.innerHTML = '';
+    const _waStuName = encodeURIComponent((reqData.from_name || _user?.displayName || '').trim() || (_user?.email?.split('@')[0] || 'öğrenci'));
+    const _waMsg = encodeURIComponent(`Merhaba Berkay, ben ${decodeURIComponent(_waStuName)}. Az önce berkayeracademy.com üzerinden ders talebimi gönderdim. WhatsApp üzerinden iletişimi açıyorum, kolay gelsin!`);
+    const _twilioWaNum = '14058514568';
+    const _waLink = `https://wa.me/${_twilioWaNum}?text=${_waMsg}`;
+
+    const waBox = document.createElement('div');
+    waBox.style.cssText = 'background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.35);border-radius:10px;padding:18px 20px;margin-bottom:14px;text-align:left;';
+    waBox.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-size:1.4rem;">💬</span>
+        <strong style="font-size:.85rem;color:#25d366;">Önemli — WhatsApp iletişimini sen başlatmalısın</strong>
+      </div>
+      <div style="font-size:.74rem;color:rgba(238,235,230,.85);line-height:1.7;margin-bottom:14px;">
+        Berkay sana <strong style="color:var(--white);">WhatsApp üzerinden</strong> dönüş yapacak. Ancak WhatsApp politikası gereği <strong style="color:var(--gold);">önce senin kısa bir mesaj atman gerekiyor</strong> — yoksa Berkay sana yazamıyor. Aşağıdaki butona basarak hazır metni gönder, 1 saniyede halledersin.
+      </div>
+      <a href="${_waLink}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#25d366;color:#fff;font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;padding:12px 20px;border-radius:8px;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#1eb656'" onmouseout="this.style.background='#25d366'">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff" aria-hidden="true"><path d="M19.05 4.91A9.82 9.82 0 0012.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91a9.82 9.82 0 00-2.91-7.01zM12.05 20.15h-.01a8.18 8.18 0 01-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 01-1.26-4.39c0-4.54 3.69-8.23 8.23-8.23 2.2 0 4.27.86 5.83 2.41a8.18 8.18 0 012.41 5.83c0 4.54-3.69 8.23-8.24 8.23zm4.51-6.16c-.25-.12-1.46-.72-1.69-.8-.23-.08-.39-.12-.56.12-.16.25-.64.8-.78.97-.14.16-.29.18-.54.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.22-1.46-1.37-1.71-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.23.25-.85.83-.85 2.03 0 1.2.87 2.36.99 2.52.12.16 1.71 2.61 4.14 3.66.58.25 1.03.4 1.38.51.58.18 1.11.16 1.53.1.47-.07 1.46-.6 1.66-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.18-.47-.31z"/></svg>
+        WhatsApp ile mesaj at →
+      </a>
+      <div style="font-size:.6rem;color:var(--dim);margin-top:8px;text-align:center;line-height:1.5;">Buton tıklanınca WhatsApp açılır, mesaj hazır. Sadece "Gönder"e basman yeterli.</div>
+    `;
+    actions.append(waBox);
+
     const refreshBtn = document.createElement('button');
     refreshBtn.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.25);font-family:"Space Mono",monospace;font-size:.62rem;cursor:pointer;padding:4px 0;';
     refreshBtn.textContent = window._i18n?.t('bk_refresh_status')||'↺ Durumu Yenile';
