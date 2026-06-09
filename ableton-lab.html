@@ -1100,6 +1100,37 @@ const SYNTH_PRESETS = [
     {id:'pluck', name:'🎸 Pluck', wave:'triangle', adsr:{attack:.01, decay:.3,  sustain:0,  release:.4},  filter:{cutoff:4000,  resonance:5}},
     {id:'bell',  name:'🔔 Bell',  wave:'sine',     adsr:{attack:.01, decay:.4,  sustain:.3, release:.6},  filter:{cutoff:12000, resonance:1}},
     {id:'organ', name:'🎹 Organ', wave:'square',   adsr:{attack:.05, decay:0,   sustain:1,  release:.05}, filter:{cutoff:3000,  resonance:1}},
+    // ── Extended presets — leverage new engine fields ──
+    {id:'wobble', name:'🌀 Wobble Bass',
+        wave:'square', adsr:{attack:.01, decay:.1, sustain:.8, release:.15},
+        filter:{cutoff:600, resonance:6, type:'lowpass'},
+        osc1:{wave:'square', octave:-1, detune:0, mix:1.0},
+        sub:{enabled:true, level:0.5},
+        lfo:{rate:4, depth:0.85, target:'cutoff', wave:'sine'},
+        fx:{delayWet:0, reverbWet:0}
+    },
+    {id:'strings', name:'🎻 Strings',
+        wave:'sawtooth', adsr:{attack:.5, decay:.3, sustain:.85, release:1.2},
+        filter:{cutoff:5000, resonance:1.5, type:'lowpass'},
+        osc1:{wave:'sawtooth', octave:0, detune:-7, mix:0.8},
+        osc2:{enabled:true, wave:'sawtooth', octave:0, detune:7, mix:0.8},
+        lfo:{rate:5.5, depth:0.18, target:'volume', wave:'sine'},
+        fx:{delayWet:0.15, reverbWet:0.55}
+    },
+    {id:'acid', name:'⚡ Acid Lead',
+        wave:'sawtooth', adsr:{attack:.005, decay:.3, sustain:.2, release:.2},
+        filter:{cutoff:900, resonance:9, type:'lowpass'},
+        osc1:{wave:'sawtooth', octave:0, detune:0, mix:1.0},
+        filterEnv:{amount:75},
+        fx:{delayWet:0.2, reverbWet:0.15}
+    },
+    {id:'ambient', name:'🔮 Ambient',
+        wave:'sine', adsr:{attack:.6, decay:.4, sustain:.6, release:2.0},
+        filter:{cutoff:7000, resonance:1, type:'lowpass'},
+        osc1:{wave:'sine', octave:0, detune:0, mix:0.7},
+        osc2:{enabled:true, wave:'triangle', octave:1, detune:3, mix:0.4},
+        fx:{delayTime:0.45, delayFeedback:0.55, delayWet:0.4, reverbWet:0.7}
+    },
 ];
 
 // Load a preset into state. Handles both legacy presets (just wave+adsr+filter)
@@ -1166,6 +1197,12 @@ const TASKS = {
         {id:3, text:"Sustain'i %0'a indir, Decay'i 0.3s'ye ayarla — nota tutunca sesin nasıl kesildiğini dinle"},
         {id:4, text:"Release'i 2s'nin üzerine çıkar, bir nota bas ve bırak — sesin yavaşça söndüğünü duymalısın"},
         {id:5, text:"Bass preset'ini yükle, Cutoff'u 200Hz'e düşür — sesin nasıl karardığını duyumsa"},
+        // Extended-engine tasks
+        {id:6, text:"OSC2'yi aç, farklı bir dalga seç ve detune'u ±7 cent yap — 'fat' hissi duy"},
+        {id:7, text:"Filter tipini Lowpass'tan Highpass'a değiştir, cutoff'u sweep et — sesin nasıl açıldığını dinle"},
+        {id:8, text:"LFO'yu cutoff'a yönlendir, depth 0.7 → wobble bass yap (Square dalga + sub osc önerilir)"},
+        {id:9, text:"Env → Cutoff amount'ı %80'e çıkar, Decay 0.4s — klassik acid sweep'i dinle"},
+        {id:10, text:"Pad preset'inde Reverb wet'i %60'a çıkar — ses derinleşsin, ambient hisset"},
     ],
     2:[
         {id:1, text:"4/4 kick paterni: Kick satırında 1., 5., 9. ve 13. kutulara tıkla"},
@@ -1925,8 +1962,22 @@ function renderModule1() {
 
     shell.append(theoryCard(
         "Synthesizer — Ableton'da Nerede?",
-        "Ableton'da her MIDI track'e bir <strong>instrument</strong> (Analog, Operator, Wavetable) yüklenir. Bu instrumentlerin hepsinde ADSR zarfı ve filter bulunur. <strong>Analog</strong> bu subtractive synthesizer'ın birebir karşılığıdır. Cutoff ve Resonance → instrumentin kendi filter sekmesinde.",
-        "Instruments → Analog / Operator / Wavetable → ADSR + Filter"
+        `Ableton'da her MIDI track'e bir <strong>instrument</strong> (Analog, Operator, Wavetable) yüklenir.
+        Bu instrumentlerin hepsinde ADSR zarfı ve filter bulunur. <strong>Analog</strong> bu subtractive synthesizer'ın
+        birebir karşılığıdır. Buradaki <strong>OSC1 + OSC2</strong> Ableton Analog'daki Osc1/Osc2 kontrolüne, <strong>Sub</strong>
+        ise Operator'ün düşük partial katmanına eşdeğer.
+        <br><br>
+        <strong>Filter tipleri</strong> (LP/HP/BP/Notch) Ableton'da her EQ ve Auto Filter device'ında aynı isimle bulunur.
+        <strong>LFO</strong> Ableton'da iki yere yerleşir: instrument içindeki LFO (Operator/Analog) ve global LFO MIDI Effect.
+        Burada Cutoff veya Volume hedeflerine yönlendirebileceğin LFO, Ableton'da bir Auto Filter device'ı + LFO MIDI Effect
+        kombinasyonunun yaptığını yapıyor.
+        <br><br>
+        <strong>Env → Cutoff</strong> (Filter Envelope Amount) sayesinde ADSR envelope'u doğrudan filter cutoff'a uygulayabilirsin —
+        Ableton Analog'da bu, F1/F2 envelope routing'inin karşılığı; klassik analog acid lead'ler ve filter sweep'lerin temeli.
+        <br><br>
+        <strong>Delay ve Reverb</strong> burada master FX bus'tan geçer (her ikisi de Send/Wet mantığında). Ableton'da bunlar
+        Return tracklerine kurulur ve trackten Send knob'ları ile beslenir — burada bir track olduğu için doğrudan master'da gösteriyoruz.`,
+        "Instruments → Analog / Operator / Wavetable + Audio Effects → Auto Filter, Simple/Ping Delay, Reverb"
     ));
 
     // ── Playability control row: octave, mono/poly, sustain ──
