@@ -1591,8 +1591,11 @@ function renderModule1() {
     const bk = mk('button','back-btn','← Ana Menü'); bk.onclick = ()=>navigate(null); root.append(bk);
 
     const shell = mk('div','synth-container');
-    const hdr   = mk('div','synth-header','<h2>🎹 Analog Synthesizer</h2>');
+    const hdr   = mk('div','synth-header','<h2>🎹 Synthesizer</h2>');
     shell.append(hdr);
+    // Refresh closures pushed by each section render; called by _m1Update to
+    // sync UI to state in place (no DOM rebuild, no scroll jump).
+    const m1Refresh = [];
 
     // Oscilloscope / Spectrum
     const oscWrap = mk('div','oscilloscope-wrap');
@@ -1633,8 +1636,8 @@ function renderModule1() {
         btn.onclick = () => {
             applyPreset(p);
             playNote(440, 0.8);
-            // Full re-render so OSC1/OSC2/sub/noise/filter type toggles reflect.
-            navigate(1);
+            // Sync UI in place — scroll position preserved, no flash.
+            _m1Update && _m1Update();
         };
         preRow.append(btn);
     });
@@ -1672,7 +1675,7 @@ function renderModule1() {
                     applyPreset(p); state.activePreset = null;
                     playNote(440,0.8);
                     pList.remove(); pList=null;
-                    navigate(1); // Re-render so extended panel reflects loaded preset.
+                    _m1Update && _m1Update();
                 };
                 const del=mk('button','saved-del','✕');
                 del.onclick=async()=>{ await deleteUserPreset(p.id); wrap.remove(); };
@@ -1770,6 +1773,14 @@ function renderModule1() {
     o1OctRow.append(o1OctBtns);
     o1Row.append(o1DetWrap, o1OctRow);
     wfGrp.append(o1Row);
+    m1Refresh.push(() => {
+        if (o1DetSl._sliderObj) o1DetSl._sliderObj.update(state.osc1.detune || 0);
+        o1DetVal.textContent = (state.osc1.detune || 0) + ' ct';
+        const _o1Octs = [-2,-1,0,1,2];
+        o1OctBtns.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _o1Octs[i] === state.osc1.octave));
+        const _o1OctValEl = o1OctRow.querySelector('#o1OctVal');
+        if (_o1OctValEl) _o1OctValEl.textContent = (state.osc1.octave>=0?'+':'') + state.osc1.octave;
+    });
     grid.append(wfGrp);
 
     // OSC2 — secondary oscillator (toggleable, amber accent)
@@ -1836,6 +1847,21 @@ function renderModule1() {
     o2Row.append(o2MixDiv, o2DetDiv, o2OctDiv);
     o2Grp.append(o2Row);
     grid.append(o2Grp);
+    m1Refresh.push(() => {
+        o2Toggle.classList.toggle('on', state.osc2.enabled);
+        o2Toggle.textContent = state.osc2.enabled ? 'ON' : 'OFF';
+        o2Toggle.setAttribute('aria-pressed', String(!!state.osc2.enabled));
+        const _waves = ['sine','square','sawtooth','triangle'];
+        o2WfSel.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _waves[i] === state.osc2.wave));
+        if (o2MixSl._sliderObj) o2MixSl._sliderObj.update(state.osc2.mix ?? 0.5);
+        o2MixVal.textContent = Math.round((state.osc2.mix ?? 0.5) * 100) + '%';
+        if (o2DetSl._sliderObj) o2DetSl._sliderObj.update(state.osc2.detune || 0);
+        o2DetVal.textContent = (state.osc2.detune || 0) + ' ct';
+        const _o2Octs = [-2,-1,0,1,2];
+        o2OctBtns.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _o2Octs[i] === state.osc2.octave));
+        const _o2OctValEl = o2OctDiv.querySelector('#o2OctVal');
+        if (_o2OctValEl) _o2OctValEl.textContent = (state.osc2.octave>=0?'+':'') + state.osc2.octave;
+    });
 
     // Sub + Noise (ice accent)
     const exGrp = mk('div','control-group');
@@ -1885,6 +1911,18 @@ function renderModule1() {
     exRow.append(subBox, nBox);
     exGrp.append(exRow);
     grid.append(exGrp);
+    m1Refresh.push(() => {
+        subToggle.classList.toggle('on', state.sub.enabled);
+        subToggle.textContent = state.sub.enabled ? 'ON' : 'OFF';
+        subToggle.setAttribute('aria-pressed', String(!!state.sub.enabled));
+        if (subSl._sliderObj) subSl._sliderObj.update(state.sub.level || 0.4);
+        subVal.textContent = Math.round((state.sub.level || 0.4) * 100) + '%';
+        nToggle.classList.toggle('on', state.noise.enabled);
+        nToggle.textContent = state.noise.enabled ? 'ON' : 'OFF';
+        nToggle.setAttribute('aria-pressed', String(!!state.noise.enabled));
+        if (nSl._sliderObj) nSl._sliderObj.update(state.noise.level || 0.2);
+        nVal.textContent = Math.round((state.noise.level || 0.2) * 100) + '%';
+    });
 
     // ADSR sliders — track elements for in-place preset updates
     const adsrValMap={}, adsrFmtMap={}, adsrSlMap={};
@@ -2027,6 +2065,14 @@ function renderModule1() {
     envRow.append(envDiv);
     filtGrp.append(envRow);
     grid.append(filtGrp);
+    m1Refresh.push(() => {
+        const _types = ['lowpass','highpass','bandpass','notch'];
+        typeRow.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _types[i] === (state.filter.type || 'lowpass')));
+        if (filterNode) filterNode.type = state.filter.type || 'lowpass';
+        if (envSl._sliderObj) envSl._sliderObj.update(state.filterEnv.amount || 0);
+        envVal.textContent = (state.filterEnv.amount || 0) + '%';
+        _redrawFilter();
+    });
 
     // ── LFO (purple accent) ─────────────────────────────────
     const lfoGrp = mk('div','control-group');
@@ -2076,6 +2122,19 @@ function renderModule1() {
     lfoRow.append(lfoRateDiv, lfoDepthDiv);
     lfoGrp.append(lfoRow);
     grid.append(lfoGrp);
+    m1Refresh.push(() => {
+        const _lWaves = ['sine','triangle','square'];
+        lfoWaveSel.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _lWaves[i] === (state.lfo.wave || 'sine')));
+        if (lfoOsc) lfoOsc.type = (state.lfo.wave === 'sample-hold') ? 'sine' : (state.lfo.wave || 'sine');
+        const _lTargets = ['cutoff','volume'];
+        lfoTargetSel.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _lTargets[i] === (state.lfo.target || 'cutoff')));
+        try { rerouteLfo(); applyLfoDepth(); } catch {}
+        if (lfoRateSl._sliderObj) lfoRateSl._sliderObj.update(state.lfo.rate || 5);
+        lfoRateVal.textContent = (state.lfo.rate || 5).toFixed(1) + ' Hz';
+        if (lfoOsc) lfoOsc.frequency.value = state.lfo.rate || 5;
+        if (lfoDepthSl._sliderObj) lfoDepthSl._sliderObj.update(state.lfo.depth || 0);
+        lfoDepthVal.textContent = Math.round((state.lfo.depth || 0) * 100) + '%';
+    });
 
     // ── FX (Delay + Reverb) — green accent ─────────────────
     const fxGrp = mk('div','control-group');
@@ -2117,6 +2176,20 @@ function renderModule1() {
     fxRow.append(dCol, rCol);
     fxGrp.append(fxRow);
     grid.append(fxGrp);
+    m1Refresh.push(() => {
+        if (dTimeSl._sliderObj) dTimeSl._sliderObj.update(state.fx.delayTime || 0.25);
+        dTimeVal.textContent = (state.fx.delayTime || 0.25).toFixed(2) + ' s';
+        if (delayNode) delayNode.delayTime.value = state.fx.delayTime || 0.25;
+        if (dFbSl._sliderObj) dFbSl._sliderObj.update(state.fx.delayFeedback || 0.3);
+        dFbVal.textContent = Math.round((state.fx.delayFeedback || 0.3) * 100) + '%';
+        if (delayFb) delayFb.gain.value = state.fx.delayFeedback || 0.3;
+        if (dWetSl._sliderObj) dWetSl._sliderObj.update(state.fx.delayWet || 0);
+        dWetVal.textContent = Math.round((state.fx.delayWet || 0) * 100) + '%';
+        if (delayWetG) delayWetG.gain.value = state.fx.delayWet || 0;
+        if (rWetSl._sliderObj) rWetSl._sliderObj.update(state.fx.reverbWet || 0);
+        rWetVal.textContent = Math.round((state.fx.reverbWet || 0) * 100) + '%';
+        if (reverbWetG) reverbWetG.gain.value = state.fx.reverbWet || 0;
+    });
 
     shell.append(grid);
 
@@ -2250,9 +2323,6 @@ function renderModule1() {
     // In-place UI updater — called on preset change to avoid full re-render
     _m1Update = () => {
         preRow.querySelectorAll('.preset-btn').forEach((b,i) => b.classList.toggle('active', SYNTH_PRESETS[i]?.id===state.activePreset));
-        // OSC1 wave + osc2 toggle/wave aren't full-re-rendered here; preset
-        // changes will reflect on next navigate(1). Heavy preset → UI sync
-        // for new fields is deferred to a future pass (Phase 2 polish).
         let wi=0; const waves=['sine','square','sawtooth','triangle'];
         wfSel.querySelectorAll('.wave-btn').forEach(b => b.classList.toggle('active', waves[wi++]===state.osc1.wave));
         ['attack','decay','sustain','release'].forEach(key => {
@@ -2264,6 +2334,10 @@ function renderModule1() {
         cutVal.textContent=state.filter.cutoff>=1000?(state.filter.cutoff/1000).toFixed(1)+'kHz':state.filter.cutoff+'Hz';
         resVal.textContent=state.filter.resonance.toFixed(1)+' Q';
         adsrSvg();
+        // Refresh every extended-section UI in place (OSC1 extras / OSC2 / Sub
+        // / Noise / Filter type+env / LFO / FX). Each closure is wrapped in
+        // try/catch so one bad section can't take the rest down.
+        m1Refresh.forEach(fn => { try { fn(); } catch (e) { console.error('m1Refresh err', e); } });
     };
 
     _cleanup = () => {
