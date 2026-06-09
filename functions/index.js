@@ -4,6 +4,7 @@ const {onCall, HttpsError} = require("firebase-functions/v2/https");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore, FieldValue} = require("firebase-admin/firestore");
 const nodemailer = require("nodemailer");
+const {sendWhatsApp} = require("./whatsapp");
 
 
 setGlobalOptions({maxInstances: 10, region: "europe-west1"});
@@ -522,5 +523,25 @@ exports.sendPromoEmailSingle = onCall(
       const mail = buildPromoMailOptions(toName || toEmail.split("@")[0], toEmail);
       await transporter.sendMail(mail);
       return {ok: true};
+    },
+);
+
+// ─── WhatsApp (Twilio) ──────────────────────────────────────────────
+// Admin-only callable to send a WhatsApp message to any phone.
+// In sandbox, the recipient must have joined first.
+exports.sendWhatsAppMessage = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
+      }
+      const {toPhone, body} = request.data || {};
+      if (!toPhone) throw new HttpsError("invalid-argument", "toPhone gerekli");
+      if (!body) throw new HttpsError("invalid-argument", "body gerekli");
+      const result = await sendWhatsApp(toPhone, body);
+      if (!result.ok) {
+        throw new HttpsError("internal", result.error || "send failed");
+      }
+      return {ok: true, sid: result.sid, status: result.status};
     },
 );

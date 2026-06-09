@@ -670,6 +670,18 @@
       <div id="adminBlockedHoursList"></div>
     </div>
 
+    <!-- WhatsApp Test (Twilio sandbox) -->
+    <div class="card" id="adminWhatsAppCard">
+      <div class="section-title">💬 WhatsApp Test (Twilio Sandbox)</div>
+      <div style="font-size:.65rem;color:var(--dim);margin-bottom:12px;">Sandbox modu — sadece sandbox'a "join" yapan numaralara mesaj gider. Production öncesi test için.</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <input type="tel" id="waTestPhone" placeholder="Telefon (05XXXXXXXXX veya +90...)" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;border-radius:7px;outline:none;">
+        <textarea id="waTestMessage" rows="3" placeholder="Mesaj içeriği…" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;border-radius:7px;resize:vertical;outline:none;line-height:1.6;">Merhaba! Bu Berkay Er Academy WhatsApp test mesajıdır. 🎵</textarea>
+        <button id="waTestSendBtn" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.4);color:#25d366;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;padding:10px;border-radius:7px;cursor:pointer;transition:all .15s;">📱 Gönder</button>
+        <div id="waTestStatus" style="font-size:.65rem;min-height:14px;"></div>
+      </div>
+    </div>
+
     <!-- Monthly Stats -->
     <div class="card" id="adminStatsCard">
       <div class="section-title">📊 Aylık İstatistikler</div>
@@ -2117,6 +2129,7 @@ async function renderAdminPanel() {
   loadAdminAccessRequests();
   initAdminAvailDays();
   initAdminBlockedHours();
+  initAdminWhatsAppTest();
   initAdminZoomLink();
   initLessonAnnouncements(true);
   initAdminQA();
@@ -3736,6 +3749,34 @@ async function initAdminBlockedHours() {
     });
   }
   render();
+}
+
+// ─── WhatsApp Test (Twilio sandbox) ──────────────────────
+function initAdminWhatsAppTest() {
+  const sendBtn = document.getElementById('waTestSendBtn');
+  const phoneInput = document.getElementById('waTestPhone');
+  const msgInput = document.getElementById('waTestMessage');
+  const statusEl = document.getElementById('waTestStatus');
+  if (!sendBtn) return;
+  sendBtn.onclick = async () => {
+    const toPhone = (phoneInput.value || '').trim();
+    const body = (msgInput.value || '').trim();
+    if (!toPhone) { statusEl.style.color = 'var(--crimson)'; statusEl.textContent = 'Telefon numarası gerekli.'; return; }
+    if (!body)    { statusEl.style.color = 'var(--crimson)'; statusEl.textContent = 'Mesaj boş olamaz.'; return; }
+    sendBtn.disabled = true; sendBtn.textContent = '⏳ Gönderiliyor…';
+    statusEl.style.color = 'var(--dim)'; statusEl.textContent = '';
+    try {
+      const fn = firebase.app().functions('europe-west1').httpsCallable('sendWhatsAppMessage');
+      const res = await fn({ toPhone, body });
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = `✓ Gönderildi (status: ${res.data.status || 'queued'}, sid: ${(res.data.sid || '').slice(0,12)}…)`;
+    } catch(e) {
+      const c = errId();
+      statusEl.style.color = 'var(--crimson)';
+      statusEl.textContent = `Hata (${c}): ${e.message || e.code || 'gönderilemedi'}`;
+    }
+    sendBtn.disabled = false; sendBtn.textContent = '📱 Gönder';
+  };
 }
 
 // ─── Zoom Link ────────────────────────────────────────────
