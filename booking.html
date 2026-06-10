@@ -42,8 +42,7 @@
 
     /* ── Layout ── */
     .page { padding: 80px 20px 80px; max-width:1020px; margin:0 auto; }
-    .dash-layout { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
-    @media(max-width:700px) { .dash-layout { grid-template-columns:1fr; } }
+    .dash-layout { display:grid; grid-template-columns:1fr; gap:16px; align-items:start; }
 
     /* ── Views ── */
     .view { display:none; }
@@ -184,6 +183,22 @@
     .admin-pay-toggle.paid { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:var(--green); }
     .admin-pay-toggle.pending { background:rgba(232,184,75,.1); border:1px solid rgba(232,184,75,.5); color:var(--gold); animation:pulse-gold .9s ease-in-out infinite alternate; }
     @keyframes pulse-gold { from { box-shadow:0 0 0 0 rgba(232,184,75,.0); } to { box-shadow:0 0 0 4px rgba(232,184,75,.2); } }
+
+    /* ── Accordion cards — öğrenci panelini yalınlaştırır: ikincil içerik
+       tek satırlık başlık altında kapalı durur, tıklayınca açılır ── */
+    details.acc { padding:0; overflow:hidden; }
+    details.acc summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:16px 20px; font-family:'Space Mono',monospace; font-size:.74rem; letter-spacing:.05em; color:var(--white); user-select:none; transition:background .15s; }
+    details.acc summary:hover { background:rgba(255,255,255,.03); }
+    details.acc summary::-webkit-details-marker { display:none; }
+    details.acc summary .acc-arr { margin-left:auto; color:var(--dim); font-size:.7rem; transition:transform .2s; flex-shrink:0; }
+    details.acc[open] summary .acc-arr { transform:rotate(180deg); }
+    details.acc summary .acc-hint { font-size:.62rem; color:var(--dim); font-weight:400; letter-spacing:0; }
+    details.acc .acc-body { padding:2px 20px 18px; }
+    @media (max-width:600px) {
+      details.acc summary { padding:13px 14px; font-size:.68rem; }
+      details.acc .acc-body { padding:2px 14px 14px; }
+      details.acc summary .acc-hint { display:none; }
+    }
 
     /* ── Rules card ── */
     .rules-card { background:rgba(232,184,75,.04); border:1px solid rgba(232,184,75,.18); border-radius:10px; padding:18px 20px; }
@@ -549,94 +564,90 @@
       <div class="credit-badge" id="creditBadge"></div>
       <div id="extraLessonBox"></div>
       <button class="cancel-plan-btn" id="cancelPlanBtn" style="display:none;">✕ Planı İptal Et</button>
-      <div id="studentNoteSection" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.05);">
-        <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--dim);letter-spacing:.06em;margin-bottom:8px;" data-i18n="bk_my_note_label">💬 NOTUM</div>
+      <details id="studentNoteSection" class="acc" style="display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,.05);">
+        <summary style="padding:12px 0;"><span data-i18n="bk_my_note_label">💬 NOTUM</span><span class="acc-hint" data-i18n="bk_note_hint">tercih / istek bırak</span><span class="acc-arr">▾</span></summary>
+        <div class="acc-body" style="padding:0 0 6px;">
         <div style="display:flex;gap:8px;align-items:flex-start;">
           <textarea id="studentNoteInput" rows="2" style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--white);font-size:.78rem;font-family:inherit;padding:8px 10px;resize:vertical;outline:none;line-height:1.55;transition:border-color .2s;" data-i18n-ph="bk_note_ph" placeholder="Tercihleriniz, sorularınız veya eklemek istediğiniz herhangi bir şey…" onfocus="this.style.borderColor='rgba(143,200,232,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
           <button id="studentNoteSave" style="background:rgba(143,200,232,.12);border:1px solid rgba(143,200,232,.3);color:var(--ice);font-family:'Space Mono',monospace;font-size:.65rem;font-weight:bold;letter-spacing:.04em;padding:8px 14px;border-radius:5px;cursor:pointer;white-space:nowrap;transition:background .2s;" onmouseover="this.style.background='rgba(143,200,232,.22)'" onmouseout="this.style.background='rgba(143,200,232,.12)'" data-i18n="bk_save">Kaydet</button>
         </div>
         <div id="studentNoteStatus" style="font-size:.62rem;margin-top:5px;height:14px;"></div>
-      </div>
+        </div>
+      </details>
     </div>
 
     <!-- Lesson Panel Announcements (student view) -->
   <div id="lessonAnnDisplay" style="display:none;max-width:860px;margin:0 auto 0;padding:16px 0 0;"></div>
 
-  <!-- Ableton Lab prerequisite banner (shown once per user) -->
-  <div id="labBanner" style="display:none;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.35);border-radius:8px;padding:16px 18px;margin:16px 0;position:relative;">
-    <button onclick="document.getElementById('labBanner').style.display='none';localStorage.setItem('lab_banner_seen','1');" style="position:absolute;top:8px;right:10px;background:none;border:none;color:rgba(238,235,230,.35);font-size:.9rem;cursor:pointer;line-height:1;padding:2px 4px;" title="Kapat">✕</button>
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-      <div style="font-size:1.6rem;flex-shrink:0;">🎛️</div>
-      <div style="flex:1;min-width:200px;">
-        <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:#c084fc;font-weight:bold;letter-spacing:.06em;margin-bottom:4px;" data-i18n="bk_lab_before">ÖNCE ABLETON LAB'I TAMAMLA</div>
-        <div style="font-size:.73rem;color:var(--dim);line-height:1.7;"><strong style="color:var(--white);" data-i18n="bk_lab_before_strong">Derse başlamadan önce</strong> <span data-i18n="bk_lab_before_desc">Ableton Lab'ı tamamlaman gerekiyor. Synthesizer, Beat Maker, Mixer ve Arrangement araçlarını keşfet — bu temel olmadan dersler çok daha zor olacak.</span></div>
-      </div>
-      <a href="ableton-lab" style="display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.5);color:#c084fc;font-family:'Space Mono',monospace;font-size:.68rem;font-weight:bold;letter-spacing:.06em;padding:9px 18px;border-radius:4px;text-decoration:none;white-space:nowrap;transition:background .2s;" onmouseover="this.style.background='rgba(168,85,247,.28)'" onmouseout="this.style.background='rgba(168,85,247,.15)'" data-i18n="bk_lab_btn2">Lab'a Git →</a>
+  <!-- Ableton Lab prerequisite banner (shown once per user) — tek satır, yalın -->
+  <div id="labBanner" style="display:none;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.35);border-radius:8px;padding:10px 34px 10px 14px;margin:14px 0;position:relative;">
+    <button onclick="document.getElementById('labBanner').style.display='none';localStorage.setItem('lab_banner_seen','1');" style="position:absolute;top:6px;right:8px;background:none;border:none;color:rgba(238,235,230,.35);font-size:.85rem;cursor:pointer;line-height:1;padding:2px 4px;" title="Kapat">✕</button>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="flex-shrink:0;">🎛️</span>
+      <span style="flex:1;min-width:160px;font-size:.72rem;color:var(--dim);line-height:1.5;"><strong style="color:#c084fc;" data-i18n="bk_lab_before">Derse başlamadan önce Ableton Lab'ı tamamla</strong></span>
+      <a href="ableton-lab" style="display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.5);color:#c084fc;font-family:'Space Mono',monospace;font-size:.65rem;font-weight:bold;letter-spacing:.04em;padding:7px 14px;border-radius:4px;text-decoration:none;white-space:nowrap;" data-i18n="bk_lab_btn2">Lab'a Git →</a>
     </div>
   </div>
   <script>if (!localStorage.getItem('lab_banner_seen')) document.getElementById('labBanner').style.display = 'block';</script>
 
   <div class="dash-layout">
-      <!-- Left: lesson calendar -->
+      <!-- Lesson calendar — öğrencinin ana ekranı, tam genişlik -->
       <div class="card" style="margin-bottom:0;">
         <div class="section-title" data-i18n="bk_my_schedule">Ders Takvimim</div>
         <div id="lessonList"></div>
       </div>
-
-      <!-- Right: rules -->
-      <div class="card" style="margin-bottom:0;">
-        <div class="rules-card">
-          <div class="rules-title" data-i18n="bk_rules_title">📋 Ders Kuralları</div>
-          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_reschedule">Erteleme Hakkı</strong>: <span data-i18n="bk_rule_reschedule_desc">Her ay 1 ders erteleme hakkı vardır. Ek hak <strong style="color:var(--gold);">500 TL</strong> ödeme ile alınır.</span></span></div>
-          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_notice">Erteleme Bildirimi</strong>: <span data-i18n="bk_rule_notice_desc">En az 24 saat öncesinden talep edilmelidir. Ertelenen ders aynı ay içinde yapılmalıdır.</span></span></div>
-          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_limit">Erteleme Sınırı</strong>: <span data-i18n="bk_rule_limit_desc">Süresinde kullanılmazsa hak yanar.</span></span></div>
-          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_late">Derse Geç Kalma</strong>: <span data-i18n="bk_rule_late_desc">Derse 10 dakika içinde girilmezse ders yapılmış sayılır.</span></span></div>
-          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_absence">Devamsızlık</strong>: <span data-i18n="bk_rule_absence_desc">Haber vermeden derse katılmazsanız, ders yapılmış sayılır ve yeniden planlanmaz.</span></span></div>
-          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_copyright">Telif Hakkı</strong>: <span data-i18n="bk_rule_copyright_desc">Berkay Er'in derste paylaştığı ve yaptığı parçalar/içerikler kendisine aittir. Hiçbir şekilde paylaşılamaz veya dağıtılamaz.</span></span></div>
-          <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_cancel">İptal ve Devir</strong>: <span data-i18n="bk_rule_cancel_desc">Alınan dersler iptal edilemez ve başka bir kişiye devir edilemez.</span></span></div>
-          <div style="font-size:.65rem;color:var(--dim);margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05);line-height:1.7;"><span data-i18n="bk_rule_footer">Bu kurallar derslerin düzenli ve etkili yapılmasına yardımcı olacaktır. Aylık ders saatlerini ve günlerini belirlemeyen arkadaşlar için ders yapılamayacaktır.</span><br><br><span data-i18n="bk_rule_footer2">Sorularınız olursa bana ulaşmaktan çekinmeyin. Anlayışınız ve işbirliğiniz için teşekkür ederim.</span></div>
-        </div>
-      </div>
     </div>
+
+    <!-- ── İkincil içerik: tek satırlık akordeonlar — ilk ekran yalın kalır ── -->
 
     <!-- Drive: Sample & Preset paketi -->
-    <div class="card" style="margin-top:16px;margin-bottom:0;">
-      <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
-        <div style="flex-shrink:0;font-size:1.8rem;line-height:1;">📦</div>
-        <div style="flex:1;min-width:200px;">
-          <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--ice);font-weight:bold;letter-spacing:.06em;margin-bottom:6px;" data-i18n="bk_samples_title">DERS İÇERİĞİ — Sample & Serum Presetler</div>
-          <div style="font-size:.75rem;color:var(--dim);line-height:1.7;margin-bottom:10px;" data-i18n="bk_samples_desc">Derslerde kullanılan tüm sample paketleri ve Serum presetleri bu klasörde bulunmaktadır. Mac kullanıcıları için VST dosyaları da hazır şekilde eklenmiştir.</div>
-          <div style="background:rgba(184,45,69,.1);border:1px solid rgba(184,45,69,.35);border-radius:5px;padding:9px 13px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
-            <span>⚠️</span>
-            <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:#e88;line-height:1.5;" data-i18n="bk_samples_warn">Ders başlamadan önce sample ve presetlerin kurulumu yapılmalıdır.</span>
-          </div>
-          <a href="https://drive.google.com/drive/folders/1TtDljp-lnzl8GOoTafiFfQlwPWZ2CrJX" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(26,90,136,.15);border:1px solid rgba(26,90,136,.45);color:var(--ice);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:bold;letter-spacing:.06em;padding:9px 18px;border-radius:4px;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(26,90,136,.28)'" onmouseout="this.style.background='rgba(26,90,136,.15)'" data-i18n="bk_samples_btn">📂 Drive'ı Aç →</a>
+    <details class="card acc" style="margin-top:14px;margin-bottom:0;">
+      <summary><span>📦</span><span data-i18n="bk_samples_title">Sample & Serum Presetleri</span><span class="acc-hint" data-i18n="bk_samples_hint">ders öncesi kurulum gerekli</span><span class="acc-arr">▾</span></summary>
+      <div class="acc-body">
+        <div style="font-size:.75rem;color:var(--dim);line-height:1.7;margin-bottom:10px;" data-i18n="bk_samples_desc">Derslerde kullanılan tüm sample paketleri ve Serum presetleri bu klasörde bulunmaktadır. Mac kullanıcıları için VST dosyaları da hazır şekilde eklenmiştir.</div>
+        <div style="background:rgba(184,45,69,.1);border:1px solid rgba(184,45,69,.35);border-radius:5px;padding:9px 13px;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+          <span>⚠️</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:#e88;line-height:1.5;" data-i18n="bk_samples_warn">Ders başlamadan önce sample ve presetlerin kurulumu yapılmalıdır.</span>
         </div>
+        <a href="https://drive.google.com/drive/folders/1TtDljp-lnzl8GOoTafiFfQlwPWZ2CrJX" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(26,90,136,.15);border:1px solid rgba(26,90,136,.45);color:var(--ice);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:bold;letter-spacing:.06em;padding:9px 18px;border-radius:4px;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(26,90,136,.28)'" onmouseout="this.style.background='rgba(26,90,136,.15)'" data-i18n="bk_samples_btn">📂 Drive'ı Aç →</a>
       </div>
-    </div>
+    </details>
 
     <!-- Plugin Listesi -->
-    <div class="card" style="margin-top:16px;margin-bottom:0;">
-      <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
-        <div style="flex-shrink:0;font-size:1.8rem;line-height:1;">🔌</div>
-        <div style="flex:1;min-width:200px;">
-          <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--ice);font-weight:bold;letter-spacing:.06em;margin-bottom:6px;" data-i18n="bk_plugins_title">PLUGIN LİSTESİ — Derslerde Kullanılan Araçlar</div>
-          <div style="font-size:.75rem;color:var(--dim);line-height:1.7;margin-bottom:14px;" data-i18n="bk_plugins_desc">Derslerde kullanılan tüm VST plugin'lerin listesine aşağıdan ulaşabilirsiniz. Hangi araçların gerekli olduğunu görmek ve kurulum planlaması yapmak için listeyi inceleyin.</div>
-          <a href="https://docs.google.com/document/d/1RtBM2GeM00sl8dCz6kSep6nBsxqZ6-g9YFr8jG-p4U8/edit" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(26,90,136,.15);border:1px solid rgba(26,90,136,.45);color:var(--ice);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:bold;letter-spacing:.06em;padding:9px 18px;border-radius:4px;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(26,90,136,.28)'" onmouseout="this.style.background='rgba(26,90,136,.15)'" data-i18n="bk_plugins_btn">📄 Plugin Listesini Gör →</a>
-        </div>
+    <details class="card acc" style="margin-top:14px;margin-bottom:0;">
+      <summary><span>🔌</span><span data-i18n="bk_plugins_title">Plugin Listesi</span><span class="acc-hint" data-i18n="bk_plugins_hint">derslerde kullanılan araçlar</span><span class="acc-arr">▾</span></summary>
+      <div class="acc-body">
+        <div style="font-size:.75rem;color:var(--dim);line-height:1.7;margin-bottom:14px;" data-i18n="bk_plugins_desc">Derslerde kullanılan tüm VST plugin'lerin listesine aşağıdan ulaşabilirsiniz. Hangi araçların gerekli olduğunu görmek ve kurulum planlaması yapmak için listeyi inceleyin.</div>
+        <a href="https://docs.google.com/document/d/1RtBM2GeM00sl8dCz6kSep6nBsxqZ6-g9YFr8jG-p4U8/edit" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:rgba(26,90,136,.15);border:1px solid rgba(26,90,136,.45);color:var(--ice);font-family:'Space Mono',monospace;font-size:.68rem;font-weight:bold;letter-spacing:.06em;padding:9px 18px;border-radius:4px;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(26,90,136,.28)'" onmouseout="this.style.background='rgba(26,90,136,.15)'" data-i18n="bk_plugins_btn">📄 Plugin Listesini Gör →</a>
       </div>
-    </div>
+    </details>
 
     <!-- Q&A: Soru Sor -->
-    <div class="card" id="studentQACard" style="margin-top:16px;margin-bottom:0;display:none;">
-      <div class="section-title" data-i18n="bk_qa_title">❓ Soru Sor</div>
-      <div style="font-size:.68rem;color:var(--dim);margin-bottom:14px;line-height:1.7;" data-i18n="bk_qa_desc">Ders hakkında aklına takılan soruları buradan sorabilirsin. Berkay Er yanıtlayacak.</div>
-      <div id="studentQAList" style="margin-bottom:12px;"></div>
-      <div style="display:flex;gap:8px;align-items:flex-end;">
-        <textarea id="studentQAInput" class="qa-reply-input" rows="2" data-i18n-ph="bk_qa_input_ph" placeholder="Sorunuzu yazın…" style="flex:1;"></textarea>
-        <button id="studentQASend" class="qa-reply-btn" data-i18n="bk_qa_send_btn">→ Gönder</button>
+    <details class="card acc" id="studentQACard" style="margin-top:14px;margin-bottom:0;display:none;">
+      <summary><span>❓</span><span data-i18n="bk_qa_title">Soru Sor</span><span class="acc-hint" data-i18n="bk_qa_hint">Berkay Er yanıtlar</span><span class="acc-arr">▾</span></summary>
+      <div class="acc-body">
+        <div id="studentQAList" style="margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;">
+          <textarea id="studentQAInput" class="qa-reply-input" rows="2" data-i18n-ph="bk_qa_input_ph" placeholder="Sorunuzu yazın…" style="flex:1;"></textarea>
+          <button id="studentQASend" class="qa-reply-btn" data-i18n="bk_qa_send_btn">→ Gönder</button>
+        </div>
       </div>
-    </div>
+    </details>
+
+    <!-- Ders Kuralları -->
+    <details class="card acc" style="margin-top:14px;margin-bottom:0;">
+      <summary><span>📋</span><span data-i18n="bk_rules_title">Ders Kuralları</span><span class="acc-hint" data-i18n="bk_rules_hint">erteleme, devamsızlık, iptal</span><span class="acc-arr">▾</span></summary>
+      <div class="acc-body">
+        <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_reschedule">Erteleme Hakkı</strong>: <span data-i18n="bk_rule_reschedule_desc">Paketteki her ay için 1 erteleme hakkı vardır (1 aylık paket = 1 hak, 2 aylık = 2 hak). Dersler sonraki aya sarksa bile hak sayısı değişmez. Ek hak 500 TL ödeme ile alınır.</span></span></div>
+        <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_notice">Erteleme Bildirimi</strong>: <span data-i18n="bk_rule_notice_desc">En az 24 saat öncesinden talep edilmelidir. Ertelenen ders aynı ay içinde yapılmalıdır.</span></span></div>
+        <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_limit">Erteleme Sınırı</strong>: <span data-i18n="bk_rule_limit_desc">Süresinde kullanılmazsa hak yanar.</span></span></div>
+        <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_late">Derse Geç Kalma</strong>: <span data-i18n="bk_rule_late_desc">Derse 10 dakika içinde girilmezse ders yapılmış sayılır.</span></span></div>
+        <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_absence">Devamsızlık</strong>: <span data-i18n="bk_rule_absence_desc">Haber vermeden derse katılmazsanız, ders yapılmış sayılır ve yeniden planlanmaz.</span></span></div>
+        <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_copyright">Telif Hakkı</strong>: <span data-i18n="bk_rule_copyright_desc">Berkay Er'in derste paylaştığı ve yaptığı parçalar/içerikler kendisine aittir. Hiçbir şekilde paylaşılamaz veya dağıtılamaz.</span></span></div>
+        <div class="rule-item"><span class="rule-dot">▸</span><span><strong style="color:var(--white)" data-i18n="bk_rule_cancel">İptal ve Devir</strong>: <span data-i18n="bk_rule_cancel_desc">Alınan dersler iptal edilemez ve başka bir kişiye devir edilemez.</span></span></div>
+        <div style="font-size:.65rem;color:var(--dim);margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05);line-height:1.7;"><span data-i18n="bk_rule_footer">Bu kurallar derslerin düzenli ve etkili yapılmasına yardımcı olacaktır. Aylık ders saatlerini ve günlerini belirlemeyen arkadaşlar için ders yapılamayacaktır.</span><br><br><span data-i18n="bk_rule_footer2">Sorularınız olursa bana ulaşmaktan çekinmeyin. Anlayışınız ve işbirliğiniz için teşekkür ederim.</span></div>
+      </div>
+    </details>
   </div>
 
   <!-- ── View: Admin Panel ── -->
@@ -1053,6 +1064,25 @@ function dedupLessons(arr) {
 
 function yearMonthKey(d) { return d.slice(0,7); }
 
+// ─── Erteleme hakları PAKET bazlıdır (havuz mantığı) ─────────────
+// N aylık paket = toplam N hak. Dersin hangi takvim ayına düştüğü önemsiz:
+// 1 aylık paketin dersleri ertesi aya sarksa bile hak 1'dir.
+// Firestore'daki reschedule_credits {'YYYY-MM': n} map'i korunur (admin ek hak
+// araçları ay anahtarıyla çalışmaya devam eder); kullanılabilir hak = değerlerin toplamı.
+function totalRescheduleCredits(res) {
+  return Object.values(res?.reschedule_credits || {}).reduce((a, v) => a + Math.max(0, v || 0), 0);
+}
+// Havuzdan 1 hak düşülmüş yeni map döndürür: önce dersin ayından, yoksa en
+// erken dolu aydan düşer. Hak yoksa map değişmeden döner.
+function consumeRescheduleCredit(res, lessonDate) {
+  const credits = { ...(res?.reschedule_credits || {}) };
+  const mk = yearMonthKey(lessonDate);
+  if ((credits[mk] || 0) > 0) { credits[mk] -= 1; return credits; }
+  const k = Object.keys(credits).sort().find(key => (credits[key] || 0) > 0);
+  if (k) credits[k] -= 1;
+  return credits;
+}
+
 function getEndTime(time) {
   const [h, m] = time.split(':').map(Number);
   const total = h * 60 + m + 60;
@@ -1227,9 +1257,9 @@ function toggleSlot(key, cell) {
 
 // ─── Reschedule Lesson ────────────────────────────────────
 async function rescheduleLesson(lesson, idx, allLessons, res) {
-  const monthKey = yearMonthKey(lesson.date);
-  const credits = res.reschedule_credits?.[monthKey] ?? 0;
-  if (credits <= 0) { toast(window._i18n?.t('bk_reschedule_no_credit')||'Bu ay için erteleme hakkınız kalmadı.', true); return; }
+  // Paket havuzu: dersin takvim ayına bakılmaz, toplam hak yeterli mi diye bakılır.
+  const credits = totalRescheduleCredits(res);
+  if (credits <= 0) { toast(window._i18n?.t('bk_reschedule_no_credit')||'Erteleme hakkınız kalmadı.', true); return; }
 
   // 24-hour check
   const now = new Date();
@@ -1245,19 +1275,23 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
   newDateObj.setDate(newDateObj.getDate() + 7);
   const newDate = toDateStr(newDateObj);
 
+  // Firestore kuralları ders satırlarını yalnızca admine açar — öğrenci doğrudan
+  // yazamaz. Bu yüzden erteleme bir TALEP olarak lesson_requests'e düşer;
+  // Berkay onaylayınca takvim admin akışıyla güncellenir.
   const modal = Object.assign(document.createElement('div'), { innerHTML: `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
       <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:320px;font-family:'Space Mono',monospace;">
         <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:12px;">${window._i18n?.t('bk_reschedule_modal_title')||'↺ Ders Ertele'}</div>
-        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;margin-bottom:20px;">
+        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;margin-bottom:14px;">
           <div style="font-size:.65rem;color:#888;margin-bottom:4px;">${window._i18n?.t('bk_reschedule_current')||'MEVCUT'}</div>
           <div style="font-size:.82rem;color:#fff;">${formatDateStr(lesson.date)} ${lesson.time}</div>
           <div style="font-size:.65rem;color:rgba(232,184,75,.6);margin:8px 0 4px;">${window._i18n?.t('bk_reschedule_next_week')||'→ 1 HAFTA SONRA'}</div>
           <div style="font-size:.82rem;color:var(--gold);font-weight:700;">${formatDateStr(newDate)} ${lesson.time}</div>
         </div>
+        <div style="font-size:.62rem;color:#888;line-height:1.6;margin-bottom:18px;">${window._i18n?.t('bk_resched_req_note')||'Talebin Berkay Er\'e iletilir — onaylayınca takvimin güncellenir ve sana bildirim gelir.'}</div>
         <div style="display:flex;gap:8px;">
           <button id="reschCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;">${window._i18n?.t('bk_cancel')||'İptal'}</button>
-          <button id="reschSave" style="flex:1;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">${window._i18n?.t('bk_reschedule')||'↺ Ertele'}</button>
+          <button id="reschSave" style="flex:1;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">${window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder'}</button>
         </div>
       </div>
     </div>` });
@@ -1269,29 +1303,29 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
     const saveBtn = modal.querySelector('#reschSave');
     saveBtn.disabled = true; saveBtn.textContent = '⏳';
     try {
+      // UX ön kontrolü: hedef saat doluysa hiç talep oluşturma.
       const conflict = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
-      if (conflict.exists) {
-        saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_reschedule')||'↺ Ertele';
+      if (conflict.exists && conflict.data().student_uid !== _user.uid) {
+        saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder';
         toast(`${formatDateStr(newDate)} ${lesson.time} ${window._i18n?.t('bk_slot_busy_err')||'saati dolu, lütfen admin ile iletişime geçin.'}`, true); return;
       }
-      const updatedLessons = allLessons.map((l, i) =>
-        i === idx ? { ...l, date: newDate, status: 'rescheduled' } : l
-      ).sort((a,b) => a.date.localeCompare(b.date));
-      const updatedCredits = { ...res.reschedule_credits, [monthKey]: credits - 1 };
-      const batch = db.batch();
-      batch.set(db.collection('reservations').doc(_user.uid), {
-        lessons: updatedLessons,
-        reschedule_credits: updatedCredits,
-      }, {merge:true});
-      batch.delete(db.collection('booked_slots').doc(lesson.date + '_' + lesson.time));
-      batch.set(db.collection('booked_slots').doc(newDate + '_' + lesson.time), {
-        date: newDate, time: lesson.time, student_uid: _user.uid,
+      await db.collection('lesson_requests').add({
+        type: 'reschedule_request',
+        from_uid: _user.uid,
+        from_name: res.student_name || (_user.displayName || '').trim() || '',
+        from_email: _user.email || '',
+        from_phone: res.student_phone || '',
+        lesson_date: lesson.date,
+        lesson_time: lesson.time,
+        new_date: newDate,
+        status: 'pending',
+        created_at: firebase.firestore.FieldValue.serverTimestamp(),
       });
-      await batch.commit();
       modal.remove();
-      toast(`${window._i18n?.t('bk_reschedule_done')||'✓ Ders ertelendi →'} ${formatDateStr(newDate)} ${lesson.time}`);
+      document.removeEventListener('keydown', _reschEsc);
+      toast(window._i18n?.t('bk_resched_req_sent')||'✓ Erteleme talebi gönderildi — onaylanınca takvimin güncellenir.');
       renderDashboard();
-    } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_reschedule')||'↺ Ertele'; }
+    } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder'; }
   };
 }
 
@@ -1816,64 +1850,35 @@ async function renderDashboard() {
   }
 
   const curMonthKey = yearMonthKey(today);
-  const credits = res.reschedule_credits?.[curMonthKey] ?? 0;
   const totalLessonsCount = lessons.filter(l => l.status !== 'cancelled').length;
   const _stuName = res.student_name || (_user.displayName || '').trim() || (_user.email||'').split('@')[0] || 'Öğrenci';
   window._openExtraCreditModal = () => showExtraCreditModal(_stuName, curMonthKey);
 
-  // Build per-month credit panel for the plan window only (start_date..end_date).
-  // Skip months that fall outside the plan even if a stray lesson lands there.
-  const _credits = res.reschedule_credits || {};
-  const _planMonths = new Set();
-  const _startMk = (res.start_date || '').slice(0, 7);
-  const _endMk   = (res.end_date || '').slice(0, 7);
-  if (_startMk) _planMonths.add(_startMk);
-  if (_endMk)   _planMonths.add(_endMk);
-  // Fill any months that have a credit explicitly set, even if outside start/end
-  Object.keys(_credits).forEach(k => _planMonths.add(k));
-  // Fill months between start and end so a 3-month plan always shows 3 rows
-  if (_startMk && _endMk) {
-    const [sy, sm] = _startMk.split('-').map(Number);
-    const [ey, em] = _endMk.split('-').map(Number);
-    let cy = sy; let cm = sm;
-    while (cy < ey || (cy === ey && cm <= em)) {
-      _planMonths.add(`${cy}-${String(cm).padStart(2,'0')}`);
-      cm++;
-      if (cm > 12) { cm = 1; cy++; }
-    }
-  }
-  const _sortedMonths = Array.from(_planMonths).sort();
-  const _monthRows = _sortedMonths.map(mk => {
-    // Distinguish "credit was set then consumed" from "no credit ever issued for this month".
-    const creditSet = Object.prototype.hasOwnProperty.call(_credits, mk);
-    const remaining = creditSet ? _credits[mk] : 1; // default plan grants 1/month
-    const isPast = mk < curMonthKey;
-    const isCurrent = mk === curMonthKey;
-    const [y, m] = mk.split('-').map(Number);
-    const monthLabel = MONTHS_TR[m - 1] + ' ' + y;
-    const dot = remaining > 0 ? '<span style="color:#4ade80;">●</span>' : '<span style="color:rgba(184,45,69,.7);">●</span>';
-    const opacity = isPast ? '.45' : '1';
-    const highlight = isCurrent ? 'background:rgba(232,184,75,.08);border-left:2px solid var(--gold);padding-left:8px;' : '';
-    const remainTxt = remaining > 0
-      ? `<strong style="color:#4ade80;">${remaining}</strong> hak ${isPast ? 'kullanılmadı' : 'kaldı'}`
-      : `<strong style="color:rgba(232,120,120,.85);">0</strong> hak ${creditSet ? '(kullanıldı)' : ''}`;
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 6px;opacity:${opacity};${highlight}font-size:.74rem;gap:14px;flex-wrap:wrap;">
-      <span style="color:var(--white);display:flex;align-items:center;gap:8px;">${dot} ${monthLabel}${isCurrent ? ' <span style="font-size:.58rem;color:var(--gold);background:rgba(232,184,75,.15);padding:2px 8px;border-radius:10px;letter-spacing:.05em;">BU AY</span>' : ''}</span>
-      <span style="color:rgba(238,235,230,.85);">${remainTxt}</span>
-    </div>`;
-  }).join('');
-
+  // Erteleme hakkı PAKET bazlı havuzdur: N aylık paket = N hak, dersin hangi
+  // takvim ayına sarktığı önemsiz. Tek satır özet her zaman görünür; açıklama
+  // ve "Ek Hak Al" akordeonun içinde durur (öğrenci paneli sadeleştirmesi).
+  const _remaining = totalRescheduleCredits(res);
+  const _pkgMonths = res.duration_months || 1;
+  const _curSummary = _remaining > 0
+    ? `<strong style="color:#4ade80;">${_remaining} hak</strong> kaldı`
+    : `<strong style="color:rgba(232,120,120,.85);">hak kalmadı</strong>`;
   document.getElementById('creditBadge').innerHTML = `
-    <div style="background:rgba(143,200,232,.05);border:1px solid rgba(143,200,232,.2);border-radius:10px;padding:16px 20px;width:100%;box-sizing:border-box;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.06);">
-        <div style="font-size:.78rem;color:var(--ice);font-weight:700;letter-spacing:.06em;">🔄 ERTELEME HAKLARIM</div>
-        <div style="font-size:.68rem;color:var(--dim);">Toplam ders: <strong style="color:var(--white);">${totalLessonsCount}</strong></div>
+    <details class="acc" style="background:rgba(143,200,232,.05);border:1px solid rgba(143,200,232,.2);border-radius:10px;">
+      <summary style="padding:13px 16px;">
+        <span>🔄</span><span style="color:var(--ice);font-weight:700;">Erteleme Hakkı</span>
+        <span style="font-size:.72rem;color:rgba(238,235,230,.85);font-weight:400;">— ${_curSummary}</span>
+        <span class="acc-arr">▾</span>
+      </summary>
+      <div class="acc-body" style="padding:2px 16px 14px;">
+        <div style="font-size:.72rem;color:rgba(238,235,230,.85);line-height:1.7;margin-bottom:4px;">
+          Paketin: <strong style="color:var(--white);">${_pkgMonths} aylık</strong> → toplam <strong style="color:var(--white);">${_pkgMonths} erteleme hakkı</strong> · Kalan: <strong style="color:${_remaining > 0 ? '#4ade80' : 'rgba(232,120,120,.85)'};">${_remaining}</strong>
+        </div>
+        <div style="font-size:.65rem;color:var(--dim);line-height:1.7;margin-bottom:10px;">Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong style="color:var(--white);">${totalLessonsCount}</strong>.</div>
+        <div style="padding-top:12px;border-top:1px solid rgba(255,255,255,.06);text-align:center;">
+          <button type="button" onclick="window._openExtraCreditModal()" style="background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.35);color:var(--gold);padding:9px 18px;border-radius:7px;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(232,184,75,.22)'" onmouseout="this.style.background='rgba(232,184,75,.12)'">+ Ek Hak Al (500 TL)</button>
+        </div>
       </div>
-      ${_monthRows || `<div style="font-size:.74rem;color:var(--dim);padding:8px 0;text-align:center;">Aktif plan yok.</div>`}
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);text-align:center;">
-        <button type="button" onclick="window._openExtraCreditModal()" style="background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.35);color:var(--gold);padding:9px 18px;border-radius:7px;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(232,184,75,.22)'" onmouseout="this.style.background='rgba(232,184,75,.12)'">+ Ek Hak Al (500 TL)</button>
-      </div>
-    </div>`;
+    </details>`;
 
   // Extra lesson purchase button (not for trial)
   const hasFrozenLessons = lessons.some(l => l.status === 'frozen' && l.date >= today);
@@ -2049,6 +2054,16 @@ async function renderDashboard() {
     extraBox.append(extraBtn);
   }
 
+  // Bekleyen erteleme talepleri — ilgili derste butonu "onay bekliyor"a çevirir.
+  const _pendingResched = new Set();
+  try {
+    const _prq = await db.collection('lesson_requests')
+      .where('from_uid', '==', _user.uid)
+      .where('type', '==', 'reschedule_request')
+      .where('status', '==', 'pending').get();
+    _prq.forEach(d => { const x = d.data(); _pendingResched.add(x.lesson_date + '_' + x.lesson_time); });
+  } catch {}
+
   const list = document.getElementById('lessonList');
   list.innerHTML = '';
   const curMonth = today.slice(0, 7);
@@ -2093,10 +2108,17 @@ async function renderDashboard() {
         </div>
         <div class="lesson-status ${sc}">${statusLabel}</div>`;
       if (!isPast && l.status === 'scheduled') {
-        const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = window._i18n?.t('bk_reschedule')||'↺ Ertele';
-        if (!isPaid) { rBtn.disabled = true; rBtn.title = window._i18n?.t('bk_reschedule_disabled')||'Ödeme yapılmadan ders ertelenemez.'; rBtn.style.opacity = '.4'; rBtn.style.cursor = 'not-allowed'; }
-        else rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
-        item.append(rBtn);
+        if (_pendingResched.has(l.date + '_' + l.time)) {
+          const pend = document.createElement('span');
+          pend.style.cssText = 'font-size:.62rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);padding:6px 12px;border-radius:6px;white-space:nowrap;';
+          pend.textContent = '⏳ ' + (window._i18n?.t('bk_resched_pending')||'Erteleme onayı bekliyor');
+          item.append(pend);
+        } else {
+          const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = window._i18n?.t('bk_reschedule')||'↺ Ertele';
+          if (!isPaid) { rBtn.disabled = true; rBtn.title = window._i18n?.t('bk_reschedule_disabled')||'Ödeme yapılmadan ders ertelenemez.'; rBtn.style.opacity = '.4'; rBtn.style.cursor = 'not-allowed'; }
+          else rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
+          item.append(rBtn);
+        }
       }
       if (!isPast && l.status === 'frozen') {
         const frozenNote = document.createElement('div');
@@ -2277,7 +2299,55 @@ async function renderAdminPanel() {
       const isCancelReq = r.type === 'cancel_request';
       const isPaymentReq = r.type === 'payment_request';
       const isExtraReq = r.type === 'extra_lesson';
+      const isReschedReq = r.type === 'reschedule_request';
       const row = document.createElement('div'); row.className = 'req-row';
+
+      if (isReschedReq) {
+        row.style.borderColor = 'rgba(232,184,75,.3)';
+        row.style.background = 'rgba(232,184,75,.03)';
+        row.innerHTML = `
+          <div class="req-row-body">
+            <div class="req-row-name" style="color:var(--gold)">↺ Erteleme Talebi</div>
+            <div class="req-row-detail">${r.from_name || r.from_email}</div>
+            <div class="req-row-pills">
+              <span class="req-row-pill dim">${formatDateStr(r.lesson_date)} ${r.lesson_time}</span>
+              <span class="req-row-pill gold">→ ${formatDateStr(r.new_date)} ${r.lesson_time}</span>
+            </div>
+          </div>`;
+        const actions = document.createElement('div'); actions.className = 'req-actions';
+        const approveBtn = document.createElement('button'); approveBtn.className = 'req-approve'; approveBtn.textContent = '✓ Onayla & Ertele';
+        approveBtn.onclick = async () => {
+          approveBtn.disabled = true;
+          try {
+            const resSnap = await db.collection('reservations').doc(r.from_uid).get();
+            if (!resSnap.exists) { toast('Rezervasyon bulunamadı.', true); approveBtn.disabled = false; return; }
+            const resLessons = resSnap.data().lessons || [];
+            const li = resLessons.findIndex(l => l.date === r.lesson_date && l.time === r.lesson_time &&
+              (l.status === 'scheduled' || l.status === 'rescheduled'));
+            if (li < 0) {
+              toast('Ders bulunamadı (taşınmış veya iptal edilmiş olabilir).', true);
+              approveBtn.disabled = false; return;
+            }
+            // Mevcut admin erteleme akışı: +7 gün, çakışma cascade'i, hak düşümü.
+            const ok = await adminRescheduleLesson(r.from_uid, li, resLessons, resLessons[li]);
+            if (!ok) { approveBtn.disabled = false; return; }
+            await doc.ref.update({ status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); approveBtn.disabled = false; }
+        };
+        const rejectBtn = document.createElement('button'); rejectBtn.className = 'req-reject'; rejectBtn.textContent = '✕ Reddet';
+        rejectBtn.onclick = async () => {
+          rejectBtn.disabled = true;
+          try {
+            await doc.ref.update({ status: 'rejected', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+            toast('Erteleme talebi reddedildi.'); row.remove();
+          } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); rejectBtn.disabled = false; }
+        };
+        actions.append(approveBtn, rejectBtn);
+        row.append(actions);
+        reqList.append(row);
+        return;
+      }
 
       if (isExtraReq) {
         row.style.borderColor = 'rgba(143,200,232,.3)';
@@ -2755,15 +2825,18 @@ async function renderAdminPanel() {
             Yaklaşan: ${upcomingLessons.length} · Bu ay: ${thisMonthCount} ders
             ${(() => {
               if (isTrial) return '';
-              const _ck = curMonthAdmin;
-              const _curC = (s.reschedule_credits || {})[_ck] ?? 0;
-              const _futureCredits = Object.entries(s.reschedule_credits || {})
-                .filter(([k]) => k >= _ck)
-                .reduce((acc, [, v]) => acc + v, 0);
-              const _color = _curC > 0 ? 'rgba(180,120,255,.85)' : 'rgba(232,120,120,.85)';
-              return `<br><span style="color:${_color};font-size:.62rem;">🔄 Erteleme: <strong>${_curC}</strong> bu ay (toplam kalan: ${_futureCredits})</span>`;
+              // Paket havuzu: kalan hak = tüm ay anahtarlarının toplamı.
+              const _total = totalRescheduleCredits(s);
+              const _color = _total > 0 ? 'rgba(180,120,255,.85)' : 'rgba(232,120,120,.85)';
+              return `<br><span style="color:${_color};font-size:.62rem;">🔄 Erteleme hakkı: <strong>${_total}</strong> kalan (${s.duration_months || 1} aylık paket)</span>`;
             })()}
-            ${s.student_phone ? `<br><span style="color:rgba(37,211,102,.85);font-size:.6rem;">📱 ${s.student_phone}</span>` : ''}
+            <br><span style="color:${s.student_phone ? 'rgba(37,211,102,.85)' : 'rgba(255,255,255,.35)'};font-size:.6rem;">📱 ${s.student_phone || 'Numara yok'}</span>
+              <button onclick="window.adminEditStudentPhone(this.dataset.uid, decodeURIComponent(this.dataset.phone||''), decodeURIComponent(this.dataset.name||''))"
+                      data-uid="${studentUid}"
+                      data-phone="${encodeURIComponent(s.student_phone || '')}"
+                      data-name="${encodeURIComponent(s.student_name || s.student_email || '')}"
+                      title="Numara düzenle"
+                      style="background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);font-size:.55rem;padding:1px 6px;margin-left:6px;border-radius:8px;cursor:pointer;font-family:'Space Mono',monospace;">✏️ düzenle</button>
             ${s.last_reminder_sent ? `<br><span style="color:rgba(255,200,100,.6);font-size:.6rem;">📧 Son hatırlatma: ${new Date(s.last_reminder_sent.toDate ? s.last_reminder_sent.toDate() : s.last_reminder_sent).toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>` : ''}
             ${s.note ? `<br><span style="color:rgba(180,120,255,.75);font-style:italic;">💬 Öğrenci notu: "${s.note}"</span>` : ''}
             ${s.admin_note ? `<br><span style="color:rgba(255,220,100,.65);font-size:.6rem;">📝 ${s.admin_note}</span>` : ''}
@@ -3919,6 +3992,47 @@ function initAdminWhatsAppTest() {
     });
 }
 
+// Admin: edit a student's WhatsApp number, then optionally jump to the WA
+// chat panel with that number pre-loaded so admin can send the first message.
+window.adminEditStudentPhone = async function(studentUid, currentPhone, studentName) {
+  if (!studentUid) return;
+  const fresh = prompt(
+    'Öğrencinin WhatsApp numarasını gir (boş bırakırsan silinir):\n\nKabul edilen formatlar:\n5XX XXX XX XX  ·  05XX XXX XX XX  ·  +90 5XX XXX XX XX',
+    currentPhone || ''
+  );
+  if (fresh === null) return; // cancelled
+  const cleaned = (fresh || '').replace(/\D/g, '');
+  if (cleaned && !/^(5\d{9}|05\d{9}|905\d{9})$/.test(cleaned)) {
+    if (typeof toast === 'function') toast('Geçersiz numara. Örn: 5XX XXX XX XX', true);
+    else alert('Geçersiz numara. Örn: 5XX XXX XX XX');
+    return;
+  }
+  try {
+    const update = cleaned
+      ? { student_phone: cleaned }
+      : { student_phone: firebase.firestore.FieldValue.delete() };
+    await db.collection('reservations').doc(studentUid).set(update, { merge: true });
+    if (typeof toast === 'function') {
+      toast(cleaned ? `📱 Numara güncellendi: ${cleaned}` : '📱 Numara silindi.');
+    }
+    if (typeof renderAdminPanel === 'function') renderAdminPanel();
+    // After save: offer to send a fresh WhatsApp message via the admin chat.
+    if (cleaned && confirm(`Numara kaydedildi. Yeni numaraya WhatsApp mesajı göndermek için sohbet panelini açayım mı?`)) {
+      const waCard = document.getElementById('adminWhatsAppCard');
+      if (waCard) waCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (typeof openWhatsAppConvo === 'function') {
+        // Slight delay so the panel is visible before the conversation streams in.
+        setTimeout(() => openWhatsAppConvo(cleaned, studentName || ''), 280);
+      }
+    }
+  } catch (e) {
+    const c = typeof errId === 'function' ? errId() : '';
+    const msg = e.message || e.code || 'kaydedilemedi';
+    if (typeof toast === 'function') toast(`Hata (${c}): ${msg}`, true);
+    else alert(`Hata (${c}): ${msg}`);
+  }
+};
+
 function openWhatsAppConvo(phone, displayName) {
   _waActivePhone = phone;
   document.getElementById('waChatHeader').textContent = (displayName || phone) + ' · ' + phone;
@@ -4196,13 +4310,12 @@ async function adminCancelSingleLesson(studentUid, lessonIdx, allLessons, lesson
 }
 
 async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) {
-  // Check student's reschedule credit for this lesson's month
+  // Paket havuzu: öğrencinin toplam erteleme hakkına bakılır (ay bağımsız).
   const resSnap = await db.collection('reservations').doc(studentUid).get().catch(() => null);
   const resData = resSnap?.data() || {};
-  const monthKey = yearMonthKey(lesson.date);
-  const credit = resData.reschedule_credits?.[monthKey] ?? 0;
+  const credit = totalRescheduleCredits(resData);
   if (credit <= 0) {
-    if (!confirm(`Bu öğrencinin ${monthKey} ayı için erteleme hakkı kalmadı. Yine de ertele?`)) return;
+    if (!confirm(`Bu öğrencinin erteleme hakkı kalmadı. Yine de ertele?`)) return false;
   }
 
   const addWeek = dateStr => { const d = dateStrToObj(dateStr); d.setDate(d.getDate() + 7); return toDateStr(d); };
@@ -4239,10 +4352,10 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
   updatedLessons.sort((a, b) => a.date.localeCompare(b.date));
 
   const moveStr = moves.map(m => `• ${formatDateStr(m.oldDate)} → ${formatDateStr(m.newDate)}`).join('\n');
-  if (!confirm(`${moves.length} ders ertelenecek:\n${moveStr}\n\nOnaylıyor musun?`)) return;
+  if (!confirm(`${moves.length} ders ertelenecek:\n${moveStr}\n\nOnaylıyor musun?`)) return false;
 
   try {
-    const updatedCredits = { ...(resData.reschedule_credits || {}), [monthKey]: Math.max(0, credit - 1) };
+    const updatedCredits = consumeRescheduleCredit(resData, lesson.date);
     const batch = db.batch();
     batch.set(db.collection('reservations').doc(studentUid), { lessons: updatedLessons, reschedule_credits: updatedCredits }, {merge:true});
     for (const m of moves) {
@@ -4253,7 +4366,8 @@ async function adminRescheduleLesson(studentUid, lessonIdx, allLessons, lesson) 
     toast(`✓ ${moves.length} ders ertelendi → ${formatDateStr(moves[0].newDate)}`);
     window._slotsSynced = false;
     renderAdminPanel();
-  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); }
+    return true;
+  } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); return false; }
 }
 
 // ─── Conflict Check ───────────────────────────────────────
