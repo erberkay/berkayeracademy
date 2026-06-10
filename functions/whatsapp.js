@@ -98,12 +98,9 @@ const TEMPLATES = {
   lesson_reminder_1h: "HX3a4c76a7ce11285ea155152409ab45cc",
   payment_reminder: "HX84bdb474422c1f8d6c78719ff0124294",
   request_status: "HXe7f08f14c970665e5c19a92042ddd4f2",
-  // Ders sonu takip mesajı — Twilio Content Template Builder'da oluşturulup
-  // Meta onayı alındıktan sonra HX SID'i buraya yazılmalı. Önerilen gövde:
-  //   "Merhaba {{1}}! 🎉 Bugünkü dersimiz tamamlandı, emeğin için teşekkürler.
-  //    📅 Bir sonraki dersin: {{2}}. Soruların olursa buradan yazabilirsin 🙌"
-  // Boş kaldığı sürece lessonEndFollowUp serbest metin dener (24s penceresi gerekir).
-  lesson_completed: "",
+  // Paket sonu mesajı — öğrencinin paketindeki son ders bittikten sonra
+  // lessonEndFollowUp cron'u tarafından kullanılır. Variable: {{1}} = öğrenci adı.
+  package_completed: "HX9e04ca80fe8860a5b897b1a9b4946d9d",
 };
 
 module.exports = {sendWhatsApp, sendWhatsAppTemplate, toWaNumber, TEMPLATES};
