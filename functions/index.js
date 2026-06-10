@@ -268,11 +268,17 @@ exports.lessonReminder1h = onSchedule(
     },
 );
 
-// Her saat :05'te → bu saat başında biten dersin (1 saatlik, bir önceki saat
-// başında başlamış) öğrencisine WhatsApp takip mesajı gönder.
-// Onaylı "lesson_completed" şablonu varsa onu kullanır (24 saat penceresi
-// dışında da ulaşır); yoksa serbest metin dener (öğrenci son 24 saatte
-// yazdıysa ulaşır, aksi halde Twilio reddeder ve log'a düşer).
+// Her saat :05'te → bu saat başında biten ders ÖĞRENCİNİN PAKETİNDEKİ SON ders
+// ise (yani bundan sonra scheduled/rescheduled hiçbir ders kalmadıysa) öğrenciye
+// "paketin tamamlandı" WhatsApp mesajı gönder. Ara derslerde mesaj gitmez.
+//
+// Onaylı "package_completed" şablonu varsa onu kullanır (24 saat penceresi
+// dışında da ulaşır); yoksa serbest metin dener (öğrenci son 24 saatte yazdıysa
+// ulaşır, aksi halde Twilio reddeder ve log'a düşer).
+//
+// Aynı dersten dolayı tekrar tetiklenmemek için biten ders objesine
+// package_complete_sent: true bayrağı yazılır. Öğrenci yeni paket alırsa son
+// ders değişir, yeni son derste tekrar gönderilir.
 exports.lessonEndFollowUp = onSchedule(
     {schedule: "5 * * * *", timeZone: "Europe/Istanbul"},
     async () => {
@@ -290,37 +296,48 @@ exports.lessonEndFollowUp = onSchedule(
         const d = doc.data();
         if (!d.student_phone) return;
         const lessons = d.lessons || [];
-        const match = lessons.find((l) => l.date === dateStr && l.time === timeStr &&
+
+        // 1) Bu saat başında biten dersi bul.
+        const matchIdx = lessons.findIndex((l) => l.date === dateStr && l.time === timeStr &&
           (l.status === "scheduled" || l.status === "rescheduled" || l.status === "completed"));
-        if (!match) return;
+        if (matchIdx < 0) return;
+        const match = lessons[matchIdx];
+        if (match.package_complete_sent) return; // zaten gönderildi
+
+        // 2) Bu dersten sonra paket içinde scheduled/rescheduled ders var mı?
+        const hasMore = lessons.some((l, i) => {
+          if (i === matchIdx) return false;
+          if (l.status !== "scheduled" && l.status !== "rescheduled") return false;
+          return l.date > dateStr || (l.date === dateStr && l.time > timeStr);
+        });
+        if (hasMore) return; // ara ders — bu cron'dan mesaj yok
+
+        // 3) Son ders. Paket-bitti mesajı gönder.
         const name = d.student_name || (d.student_email || "").split("@")[0] || "Öğrenci";
-        // Sıradaki ders (varsa) mesaja eklenir.
-        const next = lessons
-            .filter((l) => (l.status === "scheduled" || l.status === "rescheduled") &&
-              (l.date > dateStr || (l.date === dateStr && l.time > timeStr)))
-            .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0];
-        const nextTxt = next ? `${next.date.split("-").reverse().join(".")} ${next.time}` : "";
         tasks.push((async () => {
           let r;
-          if (TEMPLATES.lesson_completed) {
-            r = await sendWhatsAppTemplate(d.student_phone, TEMPLATES.lesson_completed,
-                {"1": name, "2": nextTxt || "henüz planlanmadı"});
+          if (TEMPLATES.package_completed) {
+            r = await sendWhatsAppTemplate(d.student_phone, TEMPLATES.package_completed, {"1": name});
           } else {
-            const body = `Merhaba ${name}! 🎉 Bugünkü dersimiz tamamlandı, emeğin için teşekkürler.` +
-              (nextTxt ? `\n📅 Bir sonraki dersin: ${nextTxt}.` : "") +
-              `\nDers hakkında soruların olursa buradan yazabilirsin 🙌`;
+            const body = `Merhaba ${name}! 🎉\n\nPaketindeki son dersi de bitirdik — ` +
+              `eline sağlık, çok güzel bir yolculuktu.\n\n` +
+              `Devam etmek istersen yeni paket için bana buradan yazabilirsin 🎵`;
             r = await sendWhatsApp(d.student_phone, body);
           }
           if (r.ok) {
             sent++;
-            console.log(`WA lesson-end follow-up → ${d.student_phone} (${name})`);
+            // Bayrağı koy, kaydet.
+            const updated = lessons.slice();
+            updated[matchIdx] = Object.assign({}, match, {package_complete_sent: true});
+            await doc.ref.set({lessons: updated}, {merge: true});
+            console.log(`WA package-end → ${d.student_phone} (${name})`);
           } else {
-            console.error("wa lesson_end failed", d.student_phone, r.error);
+            console.error("wa package_end failed", d.student_phone, r.error);
           }
         })());
       });
       await Promise.all(tasks);
-      console.log(`lessonEndFollowUp done for ${dateStr} ${timeStr}. Sent ${sent} of ${tasks.length}.`);
+      console.log(`lessonEndFollowUp (package-end) done for ${dateStr} ${timeStr}. Sent ${sent} of ${tasks.length}.`);
     },
 );
 
