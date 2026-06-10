@@ -323,6 +323,34 @@
         .oscilloscope-label { position:absolute; top:6px; left:10px; font-size:.58rem; letter-spacing:.12em; color:rgba(232,184,75,.4); text-transform:uppercase; pointer-events:none; z-index:1; }
         canvas.oscilloscope { display:block; width:100%; height:80px; background:#060609; }
 
+        /* ── Playground görünümü — Learning Synths tarzı kompakt tek ekran ──
+           .synth-compact shell'e eklenir; açıklamalar/teori kartları gizlenir,
+           grid 5 kolona sıkışır, slider ve butonlar küçülür. */
+        .synth-compact .controls-grid { grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px; margin:12px auto; max-width:none; }
+        @media (min-width:1400px) { .synth-compact .controls-grid { grid-template-columns:repeat(5,1fr); } }
+        @media (min-width:1100px) and (max-width:1399px) { .synth-compact .controls-grid { grid-template-columns:repeat(4,1fr); } }
+        @media (max-width:768px) { .synth-compact .controls-grid { grid-template-columns:repeat(2,1fr); } }
+        .synth-compact .control-group { padding:12px 12px 10px; }
+        .synth-compact .synth-section-title { font-size:.92rem; margin-bottom:6px; gap:6px; }
+        .synth-compact .synth-section-title .section-emoji { font-size:.78rem; }
+        .synth-compact .synth-section-title::before { height:14px; }
+        .synth-compact .synth-section-sub { display:none; }
+        .synth-compact .slider-label { font-size:.6rem; margin-bottom:3px; }
+        .synth-compact .adsr-track { height:17px; margin:2px 0; }
+        .synth-compact .wave-btn { padding:6px 4px; font-size:.6rem; }
+        .synth-compact .wave-btn small { display:none; }
+        .synth-compact canvas.oscilloscope { height:54px; }
+        .synth-compact .preset-row { gap:5px; margin:2px 0 10px; }
+        .synth-compact .preset-btn { padding:6px 11px; font-size:.62rem; }
+        .synth-compact .adsr-explanation, .synth-compact .theory-card, .synth-compact .hint-box { display:none; }
+        .synth-compact .filter-grid { gap:8px; }
+        /* Filter playground'daki gibi normal kolon olsun; tip butonları 4'lü sıraya insin */
+        .synth-compact .filter-section { grid-column:auto; }
+        .synth-compact .filter-section .waveform-selector { grid-template-columns:repeat(4,1fr); gap:4px; }
+        .synth-compact .filter-section canvas { height:44px !important; margin-bottom:8px !important; }
+        .synth-compact .fx-hint { display:none; }
+        .synth-compact .xy-pad { height:150px !important; }
+
         /* ── Preset buttons ── */
         .preset-row { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 16px; }
         .preset-btn {
@@ -616,7 +644,9 @@ async function saveUserPreset(name) {
         noise:{ ...state.noise },
         filterEnv: { ...state.filterEnv },
         lfo:  { ...state.lfo },
+        modEnv: { ...state.modEnv },
         fx:   { ...state.fx },
+        glide: state.glide || 0,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
 }
@@ -682,15 +712,19 @@ const state = {
     waveform: 'sine',
     adsr: { attack:0.01, decay:0.15, sustain:0.7, release:0.25 },
     volume: 0.3,
-    filter: { cutoff:8000, resonance:1, type:'lowpass' },
+    filter: { cutoff:8000, resonance:1, type:'lowpass', slope:12, drive:0 },
     // ── Synth (extended engine) ──
-    osc1: { wave:'sine',     octave:0, detune:0,  mix:1.0 },
-    osc2: { enabled:false, wave:'sawtooth', octave:0, detune:7,  mix:0.5 },
+    osc1: { wave:'sine',     octave:0, detune:0,  mix:1.0, unison:3, uniDetune:8, uniWidth:0.5 },
+    osc2: { enabled:false, wave:'sawtooth', octave:0, detune:7,  mix:0.5, unison:3, uniDetune:8, uniWidth:0.5 },
     sub:  { enabled:false, level:0.4 },
     noise:{ enabled:false, level:0.2 },
-    filterEnv: { amount:0 },               // 0..100, ADSR-driven cutoff sweep
-    lfo:  { rate:5, depth:0, target:'cutoff', wave:'sine' },
-    fx:   { delayTime:0.25, delayFeedback:0.3, delayWet:0, reverbWet:0 },
+    filterEnv: { amount:0 },               // 0..100, Mod Env-driven cutoff sweep
+    // LFO — Learning Synths yapısı: tek hedef yerine her hedefe ayrı amount.
+    lfo:  { rate:5, wave:'sine', cutoffAmt:0, volumeAmt:0, pitchAmt:0 },
+    // Mod Envelope — amp ADSR'den bağımsız ikinci zarf (cutoff + pitch hedefleri).
+    modEnv: { attack:0.01, decay:0.25, sustain:0.3, release:0.25, pitchAmount:0 },
+    // delaySync: nota değeri ('1/4','1/8'…) BPM'e kilitlenir; null ise delayTime (saniye) serbest.
+    fx:   { delayTime:0.25, delaySync:'1/8', delayFeedback:0.3, delayWet:0, reverbWet:0 },
     glide:0,
     poly: 'poly',                            // 'mono' | 'poly'
     keyboardOctave:4,                        // C4 baseline → -2..+2
@@ -712,11 +746,17 @@ setOsc1Wave(state.osc1.wave);
 // AUDIO — SYNTH  (persistent filter + analyser)
 // ═══════════════════════════════════════════════════════════════════
 let synthCtx = null, filterNode = null, analyserNode = null, noiseBuffer = null;
+// Filter stage 2 (24dB cascade) + drive shaper + voice giriş noktası
+let filterNode2 = null, driveShaper = null, synthInput = null;
 // Master + FX
 let masterAmp = null, delayNode = null, delayFb = null, delayWetG = null,
-    convolverNode = null, reverbWetG = null;
-// LFO
-let lfoOsc = null, lfoDepthG = null, lfoConnectedTo = null;
+    convolverNode = null, reverbWetG = null, masterBus = null, softClipNode = null;
+// LFO — tek osilatör, üç hedef gain'i (cutoff Hz / volume / pitch cents)
+let lfoOsc = null, lfoCutG = null, lfoVolG = null, lfoPitchG = null;
+// Glide — mono modda son çalınan notanın frekansı
+let _lastGlideFreq = null;
+// XY pad sürüklenirken cutoff'u geçici olarak bu değer yönetir (state'e yazılmaz).
+let _padCutoff = null;
 
 // Procedural white-noise buffer reused by every note that has noise enabled.
 function makeNoiseBuffer(ctx) {
@@ -740,48 +780,131 @@ function makeReverbIR(ctx, durSec = 2, decay = 3) {
     return ir;
 }
 
-// Disconnect the LFO from whatever it was last routed to, then re-route per state.lfo.target.
-function rerouteLfo() {
-    if (!lfoDepthG) return;
-    try { lfoDepthG.disconnect(); } catch {}
-    lfoConnectedTo = null;
-    const t = state.lfo.target;
-    if (t === 'cutoff' && filterNode) {
-        lfoDepthG.connect(filterNode.frequency);
-        lfoConnectedTo = 'cutoff';
-    } else if (t === 'volume' && masterAmp) {
-        lfoDepthG.connect(masterAmp.gain);
-        lfoConnectedTo = 'volume';
+// ── Tempo-synced delay ──────────────────────────────────────────────
+// Nota değeri → beat sayısı (1 beat = çeyrek nota). Noktalı ×1.5, triplet ×2/3.
+const DELAY_DIVS = {
+    '1/2':2, '1/4':1, '1/4.':1.5, '1/8':0.5, '1/8.':0.75, '1/8T':1/3, '1/16':0.25, '1/32':0.125
+};
+function currentDelaySeconds() {
+    if (state.fx.delaySync && DELAY_DIVS[state.fx.delaySync] != null) {
+        return Math.min(1.95, DELAY_DIVS[state.fx.delaySync] * 60 / (state.bpm || 125));
     }
-    // 'pitch' target deferred — requires per-voice routing.
+    return Math.min(1.95, state.fx.delayTime || 0.25);
+}
+// BPM veya sync değeri değiştiğinde delay süresini ve UI okumasını tazeler.
+function refreshDelayTime() {
+    const secs = currentDelaySeconds();
+    if (delayNode) delayNode.delayTime.value = secs;
+    const el = document.getElementById('delay-sync-readout');
+    if (el) el.textContent = (state.fx.delaySync || 'serbest') + ' = ' + secs.toFixed(2) + 's @ ' + (state.bpm || 125) + ' BPM';
+}
+
+// ── Filter drive (pre-filter saturation) ────────────────────────────
+// drive 0 → null curve (bypass). Artan drive tanh saturasyonu; tepe 1.0'a normalize.
+function makeDriveCurve(drive) {
+    const d = Math.max(0, Math.min(1, drive || 0));
+    if (d <= 0) return null;
+    const k = 1 + d * 9, n = 1024, curve = new Float32Array(n);
+    const norm = Math.tanh(k);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        curve[i] = Math.tanh(k * x) / norm;
+    }
+    return curve;
+}
+function applyDrive() {
+    if (driveShaper) driveShaper.curve = makeDriveCurve(state.filter.drive);
+}
+
+// Master soft clip — unison/rezonans tepe noktalarını yumuşakça sınırlar.
+// tanh(x): normal seviyede birim kazanç, sıcak sinyalde nazik sıkıştırma.
+function makeSoftClipCurve() {
+    const n = 1024, curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        curve[i] = Math.tanh(x);
+    }
+    return curve;
+}
+
+// ── Filter cascade (12/24 dB) ───────────────────────────────────────
+// Her iki biquad'ı state.filter ile eşitler. 2. kademe rezonansı sabit tutar
+// (LP/HP'de 0 dB, BP/Notch'ta hafif) — tek rezonans tepesiyle 24dB eğim.
+function syncFilterNodes() {
+    if (!filterNode) return;
+    const t = state.filter.type || 'lowpass';
+    filterNode.type = t;
+    filterNode.frequency.value = state.filter.cutoff;
+    filterNode.Q.value         = state.filter.resonance;
+    if (filterNode2) {
+        filterNode2.type = t;
+        filterNode2.frequency.value = state.filter.cutoff;
+        filterNode2.Q.value = (t === 'bandpass' || t === 'notch') ? 1 : 0;
+    }
+}
+function applyFilterSlope() {
+    if (!filterNode || !analyserNode) return;
+    try { filterNode.disconnect(); } catch {}
+    if (filterNode2) { try { filterNode2.disconnect(); } catch {} }
+    if ((state.filter.slope || 12) >= 24 && filterNode2) {
+        filterNode.connect(filterNode2);
+        filterNode2.connect(analyserNode);
+    } else {
+        filterNode.connect(analyserNode);
+    }
+}
+
+// LFO amount'larını hedef gain'lerine uygular. Üç hedef aynı anda aktif
+// olabilir (Learning Synths'teki per-parametre LFO Amount yapısı).
+// cutoff: Hz sweep (amt 1 = ±5kHz), volume: tremolo (±0.5), pitch: vibrato (±100 cent).
+function applyLfoAmounts() {
+    if (!lfoCutG) return;
+    lfoCutG.gain.value   = (state.lfo.cutoffAmt || 0) * 5000;
+    lfoVolG.gain.value   = (state.lfo.volumeAmt || 0) * 0.5;
+    lfoPitchG.gain.value = (state.lfo.pitchAmt  || 0) * 100;
 }
 
 function getSynthCtx() {
     if (!synthCtx) {
         synthCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Voice chain → filter → analyser → masterAmp → (dry + delay + reverb) → destination
+        // Voice chain → synthInput → drive → filter (12/24dB cascade) → analyser
+        //             → masterAmp → (dry + delay + reverb) → masterBus → softclip → destination
+        synthInput = synthCtx.createGain();
+        synthInput.gain.value = 1.0;
+        driveShaper = synthCtx.createWaveShaper();
+        driveShaper.oversample = '2x';
+        driveShaper.curve = makeDriveCurve(state.filter.drive);
+        synthInput.connect(driveShaper);
+
         filterNode   = synthCtx.createBiquadFilter();
-        filterNode.type = state.filter.type || 'lowpass';
-        filterNode.frequency.value = state.filter.cutoff;
-        filterNode.Q.value         = state.filter.resonance;
+        filterNode2  = synthCtx.createBiquadFilter();
         analyserNode = synthCtx.createAnalyser();
         analyserNode.fftSize = 4096;
-        filterNode.connect(analyserNode);
+        driveShaper.connect(filterNode);
+        syncFilterNodes();
+        applyFilterSlope(); // filterNode → (filterNode2) → analyserNode
 
         masterAmp = synthCtx.createGain();
         masterAmp.gain.value = 1.0;
         analyserNode.connect(masterAmp);
 
-        // Dry path — always 1:1 to destination so the synth still plays
-        // even when both FX wets are 0.
+        // Master bus + soft clipper — tüm yollar buradan çıkışa gider.
+        masterBus = synthCtx.createGain();
+        masterBus.gain.value = 1.0;
+        softClipNode = synthCtx.createWaveShaper();
+        softClipNode.oversample = '2x';
+        softClipNode.curve = makeSoftClipCurve();
+        masterBus.connect(softClipNode).connect(synthCtx.destination);
+
+        // Dry path — always 1:1 so the synth still plays when both FX wets are 0.
         const dryGain = synthCtx.createGain();
         dryGain.gain.value = 1.0;
-        masterAmp.connect(dryGain).connect(synthCtx.destination);
+        masterAmp.connect(dryGain).connect(masterBus);
 
-        // Delay send → DelayNode + feedback loop → wet gain → destination
-        delayNode = synthCtx.createDelay(1.5);
-        delayNode.delayTime.value = state.fx.delayTime;
+        // Delay send → DelayNode + feedback loop → wet gain → masterBus
+        delayNode = synthCtx.createDelay(2.0);
+        delayNode.delayTime.value = currentDelaySeconds();
         delayFb = synthCtx.createGain();
         delayFb.gain.value = state.fx.delayFeedback;
         delayWetG = synthCtx.createGain();
@@ -789,42 +912,36 @@ function getSynthCtx() {
         masterAmp.connect(delayNode);
         delayNode.connect(delayFb);
         delayFb.connect(delayNode); // feedback loop
-        delayNode.connect(delayWetG).connect(synthCtx.destination);
+        delayNode.connect(delayWetG).connect(masterBus);
 
-        // Reverb send → ConvolverNode → wet gain → destination
+        // Reverb send → ConvolverNode → wet gain → masterBus
         convolverNode = synthCtx.createConvolver();
         convolverNode.buffer = makeReverbIR(synthCtx, 2.0, 3);
         reverbWetG = synthCtx.createGain();
         reverbWetG.gain.value = state.fx.reverbWet;
         masterAmp.connect(convolverNode);
-        convolverNode.connect(reverbWetG).connect(synthCtx.destination);
+        convolverNode.connect(reverbWetG).connect(masterBus);
 
-        // LFO — persistent oscillator + depth scaler. Routed on demand.
+        // LFO — kalıcı osilatör; üç hedefe (cutoff/volume/pitch) ayrı gain ile dağılır.
         lfoOsc = synthCtx.createOscillator();
         lfoOsc.type = state.lfo.wave === 'sample-hold' ? 'sine' : (state.lfo.wave || 'sine');
         lfoOsc.frequency.value = state.lfo.rate;
-        lfoDepthG = synthCtx.createGain();
-        // Scale LFO output to a sensible default per target; rerouteLfo() adjusts.
-        lfoDepthG.gain.value = 0;
-        lfoOsc.connect(lfoDepthG);
+        lfoCutG   = synthCtx.createGain();
+        lfoVolG   = synthCtx.createGain();
+        lfoPitchG = synthCtx.createGain();
+        lfoCutG.gain.value = 0; lfoVolG.gain.value = 0; lfoPitchG.gain.value = 0;
+        lfoOsc.connect(lfoCutG); lfoOsc.connect(lfoVolG); lfoOsc.connect(lfoPitchG);
+        lfoCutG.connect(filterNode.frequency);
+        lfoCutG.connect(filterNode2.frequency);
+        lfoVolG.connect(masterAmp.gain);
+        // lfoPitchG çıkışı her voice spawn'ında osc.detune'a bağlanır.
         lfoOsc.start();
-        rerouteLfo();
+        applyLfoAmounts();
 
         noiseBuffer = makeNoiseBuffer(synthCtx);
     }
     if (synthCtx.state === 'suspended') synthCtx.resume();
     return synthCtx;
-}
-
-// Re-apply LFO depth scaled to target. Cutoff target uses Hz units (so depth
-// of 1 = ~5kHz sweep); volume target uses small linear delta (±0.5 max).
-function applyLfoDepth() {
-    if (!lfoDepthG) return;
-    const d = Math.max(0, Math.min(1, state.lfo.depth || 0));
-    const t = lfoConnectedTo || state.lfo.target;
-    if (t === 'cutoff')      lfoDepthG.gain.value = d * 5000;
-    else if (t === 'volume') lfoDepthG.gain.value = d * 0.5;
-    else                     lfoDepthG.gain.value = 0;
 }
 
 // Convert semitone-octave shift to frequency multiplier.
@@ -865,7 +982,7 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
     envGain.gain.linearRampToValueAtTime(peak * sSustain, now + attack + decay);
     envGain.gain.setValueAtTime(peak * sSustain, now + holdDur);
     envGain.gain.exponentialRampToValueAtTime(0.0001, now + totalDur);
-    envGain.connect(filterNode || ctx.destination);
+    envGain.connect(synthInput || filterNode || ctx.destination);
 
     // Track this voice so mono mode + sustain pedal can manage it.
     const voiceRecord = { oscs: [], envGain, endsAt: now + totalDur + 0.2 };
@@ -875,55 +992,101 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
         if (idx >= 0) _activeVoices.splice(idx, 1);
     }, (totalDur + 0.3) * 1000);
 
-    // ── Filter envelope (modulates filterNode cutoff if amount > 0) ──
+    // ── Filter envelope — Mod Envelope şekliyle (amp ADSR'den bağımsız),
+    //    cascade'in iki kademesine de uygulanır. XY pad sürüklenirken
+    //    baz cutoff pad'in Y konumundan gelir.
+    const mE = state.modEnv || state.adsr;
     if (filterNode && state.filterEnv && state.filterEnv.amount > 0) {
-        const baseCut = state.filter.cutoff;
+        const baseCut = (_padCutoff != null) ? _padCutoff : state.filter.cutoff;
         const amt     = state.filterEnv.amount / 100;        // 0..1
         const peakCut = Math.min(18000, baseCut + amt * (18000 - baseCut));
-        const fp = filterNode.frequency;
-        fp.cancelScheduledValues(now);
-        fp.setValueAtTime(baseCut, now);
-        fp.linearRampToValueAtTime(peakCut, now + attack);
-        fp.linearRampToValueAtTime(baseCut + (peakCut - baseCut) * sSustain, now + attack + decay);
-        fp.setValueAtTime(baseCut + (peakCut - baseCut) * sSustain, now + holdDur);
-        fp.linearRampToValueAtTime(baseCut, now + totalDur);
+        const mS      = Math.max(mE.sustain ?? 0.3, 0.0001);
+        [filterNode, filterNode2].forEach(fn => {
+            if (!fn) return;
+            const fp = fn.frequency;
+            fp.cancelScheduledValues(now);
+            fp.setValueAtTime(baseCut, now);
+            fp.linearRampToValueAtTime(peakCut, now + (mE.attack || 0.01));
+            fp.linearRampToValueAtTime(baseCut + (peakCut - baseCut) * mS, now + (mE.attack || 0.01) + (mE.decay || 0.01));
+            fp.setValueAtTime(baseCut + (peakCut - baseCut) * mS, now + holdDur);
+            fp.linearRampToValueAtTime(baseCut, now + totalDur);
+        });
     }
 
-    // ── Helper: spawn an oscillator voice ───────────────────
-    function spawnOsc(wave, baseFreq, detuneCents, octave, mixGain) {
+    // Glide (portamento) — mono modda önceki notadan hedef frekansa kayar.
+    const glideFrom = (state.poly === 'mono' && state.glide > 0 && _lastGlideFreq && _lastGlideFreq !== freq)
+        ? _lastGlideFreq : null;
+    _lastGlideFreq = freq;
+
+    // Mod Env → Pitch: yarım ton cinsinden zarf, cent'e çevrilip detune'a yazılır.
+    const pitchEnvCents = (mE.pitchAmount || 0) * 100;
+
+    // ── Helper: spawn an oscillator voice (pan = -1..1 stereo konum) ──
+    function spawnOsc(wave, baseFreq, detuneCents, octave, mixGain, pan) {
         const osc = ctx.createOscillator();
         osc.type = wave;
-        osc.frequency.value = baseFreq * octMul(octave || 0);
-        osc.detune.value    = detuneCents || 0;
+        const target = baseFreq * octMul(octave || 0);
+        if (glideFrom) {
+            osc.frequency.setValueAtTime(glideFrom * octMul(octave || 0), now);
+            osc.frequency.exponentialRampToValueAtTime(target, now + state.glide);
+        } else {
+            osc.frequency.value = target;
+        }
+        const baseDet = detuneCents || 0;
+        if (pitchEnvCents) {
+            const mS = Math.max(mE.sustain ?? 0.3, 0.0001);
+            osc.detune.setValueAtTime(baseDet, now);
+            osc.detune.linearRampToValueAtTime(baseDet + pitchEnvCents, now + (mE.attack || 0.01));
+            osc.detune.linearRampToValueAtTime(baseDet + pitchEnvCents * mS, now + (mE.attack || 0.01) + (mE.decay || 0.01));
+            osc.detune.setValueAtTime(baseDet + pitchEnvCents * mS, now + holdDur);
+            osc.detune.linearRampToValueAtTime(baseDet, now + totalDur);
+        } else {
+            osc.detune.value = baseDet;
+        }
+        // LFO → Pitch (vibrato): kalıcı LFO gain'i bu voice'un detune'una eklenir.
+        if (lfoPitchG) lfoPitchG.connect(osc.detune);
         const g = ctx.createGain(); g.gain.value = mixGain;
-        osc.connect(g); g.connect(envGain);
+        osc.connect(g);
+        if (pan && ctx.createStereoPanner) {
+            const p = ctx.createStereoPanner();
+            p.pan.value = Math.max(-1, Math.min(1, pan));
+            g.connect(p); p.connect(envGain);
+        } else {
+            g.connect(envGain);
+        }
         osc.start(now);
         osc.stop(now + totalDur + 0.1);
         voiceRecord.oscs.push(osc);
     }
 
-    // OSC1 — always on. Sawtooth/square get a tiny implicit unison spread for warmth.
-    const o1 = state.osc1 || { wave: state.waveform, octave:0, detune:0, mix:1 };
-    const o1Wave = o1.wave || state.waveform;
-    const o1Mix  = (typeof o1.mix === 'number') ? o1.mix : 1;
-    const fattenO1 = (o1Wave === 'sawtooth' || o1Wave === 'square');
-    if (fattenO1) {
-        // 3-voice unison around the configured detune
-        [-8, 0, 8].forEach(d => spawnOsc(o1Wave, freq, (o1.detune || 0) + d, o1.octave, o1Mix * 0.55));
-    } else {
-        spawnOsc(o1Wave, freq, o1.detune || 0, o1.octave, o1Mix);
+    // ── Helper: Serum tarzı unison — n kopya, detune yelpazesi, stereo genişlik ──
+    function spawnUnison(oscCfg, baseFreq) {
+        const wave   = oscCfg.wave;
+        const mix    = (typeof oscCfg.mix === 'number') ? oscCfg.mix : 1;
+        const n      = Math.max(1, Math.min(8, oscCfg.unison || 1));
+        const spread = oscCfg.uniDetune || 0;
+        const width  = Math.max(0, Math.min(1, oscCfg.uniWidth || 0));
+        if (n === 1 || spread === 0) {
+            spawnOsc(wave, baseFreq, oscCfg.detune || 0, oscCfg.octave, mix, 0);
+            return;
+        }
+        // Sesler -1..+1 arasına eşit dağılır; toplam enerji 1/sqrt(n) ile dengelenir.
+        const norm = mix / Math.sqrt(n);
+        for (let i = 0; i < n; i++) {
+            const pos = (i / (n - 1)) * 2 - 1;                 // -1..1
+            const det = (oscCfg.detune || 0) + pos * spread;
+            const lvl = norm * (Math.abs(pos) > 0.9 ? 0.85 : 1); // dış sesler hafif kısık
+            spawnOsc(wave, baseFreq, det, oscCfg.octave, lvl, pos * width);
+        }
     }
 
-    // OSC2 — optional. Same fattening rule.
+    // OSC1 — always on.
+    const o1 = state.osc1 || { wave: state.waveform, octave:0, detune:0, mix:1 };
+    spawnUnison({ ...o1, wave: o1.wave || state.waveform }, freq);
+
+    // OSC2 — optional.
     if (state.osc2 && state.osc2.enabled) {
-        const o2 = state.osc2;
-        const o2Mix = (typeof o2.mix === 'number') ? o2.mix : 0.5;
-        const fattenO2 = (o2.wave === 'sawtooth' || o2.wave === 'square');
-        if (fattenO2) {
-            [-8, 0, 8].forEach(d => spawnOsc(o2.wave, freq, (o2.detune || 0) + d, o2.octave, o2Mix * 0.55));
-        } else {
-            spawnOsc(o2.wave, freq, o2.detune || 0, o2.octave, o2Mix);
-        }
+        spawnUnison(state.osc2, freq);
     }
 
     // Sub-oscillator — square one octave below for low-end weight.
@@ -1242,10 +1405,17 @@ const SYNTH_PRESETS = [
     {id:'bell',  name:'🔔 Bell',  wave:'sine',     adsr:{attack:.01, decay:.4,  sustain:.3, release:.6},  filter:{cutoff:12000, resonance:1}},
     {id:'organ', name:'🎹 Organ', wave:'square',   adsr:{attack:.05, decay:0,   sustain:1,  release:.05}, filter:{cutoff:3000,  resonance:1}},
     // ── Extended presets — leverage new engine fields ──
+    {id:'supersaw', name:'🔥 Supersaw',
+        wave:'sawtooth', adsr:{attack:.01, decay:.15, sustain:.85, release:.35},
+        filter:{cutoff:9000, resonance:1.5, type:'lowpass', slope:12, drive:0.15},
+        osc1:{wave:'sawtooth', octave:0, detune:0, mix:1.0, unison:7, uniDetune:18, uniWidth:1.0},
+        osc2:{enabled:true, wave:'sawtooth', octave:-1, detune:0, mix:0.45, unison:3, uniDetune:10, uniWidth:0.7},
+        fx:{delaySync:'1/8', delayFeedback:0.3, delayWet:0.18, reverbWet:0.25}
+    },
     {id:'wobble', name:'🌀 Wobble Bass',
         wave:'square', adsr:{attack:.01, decay:.1, sustain:.8, release:.15},
-        filter:{cutoff:600, resonance:6, type:'lowpass'},
-        osc1:{wave:'square', octave:-1, detune:0, mix:1.0},
+        filter:{cutoff:600, resonance:6, type:'lowpass', slope:24, drive:0.3},
+        osc1:{wave:'square', octave:-1, detune:0, mix:1.0, unison:1},
         sub:{enabled:true, level:0.5},
         lfo:{rate:4, depth:0.85, target:'cutoff', wave:'sine'},
         fx:{delayWet:0, reverbWet:0}
@@ -1253,24 +1423,25 @@ const SYNTH_PRESETS = [
     {id:'strings', name:'🎻 Strings',
         wave:'sawtooth', adsr:{attack:.5, decay:.3, sustain:.85, release:1.2},
         filter:{cutoff:5000, resonance:1.5, type:'lowpass'},
-        osc1:{wave:'sawtooth', octave:0, detune:-7, mix:0.8},
-        osc2:{enabled:true, wave:'sawtooth', octave:0, detune:7, mix:0.8},
+        osc1:{wave:'sawtooth', octave:0, detune:-7, mix:0.8, unison:5, uniDetune:10, uniWidth:0.85},
+        osc2:{enabled:true, wave:'sawtooth', octave:0, detune:7, mix:0.8, unison:5, uniDetune:10, uniWidth:0.85},
         lfo:{rate:5.5, depth:0.18, target:'volume', wave:'sine'},
-        fx:{delayWet:0.15, reverbWet:0.55}
+        fx:{delaySync:'1/4', delayWet:0.15, reverbWet:0.55}
     },
     {id:'acid', name:'⚡ Acid Lead',
         wave:'sawtooth', adsr:{attack:.005, decay:.3, sustain:.2, release:.2},
-        filter:{cutoff:900, resonance:9, type:'lowpass'},
-        osc1:{wave:'sawtooth', octave:0, detune:0, mix:1.0},
+        filter:{cutoff:900, resonance:9, type:'lowpass', slope:24, drive:0.4},
+        osc1:{wave:'sawtooth', octave:0, detune:0, mix:1.0, unison:1},
         filterEnv:{amount:75},
-        fx:{delayWet:0.2, reverbWet:0.15}
+        glide:0.06,
+        fx:{delaySync:'1/16', delayWet:0.2, reverbWet:0.15}
     },
     {id:'ambient', name:'🔮 Ambient',
         wave:'sine', adsr:{attack:.6, decay:.4, sustain:.6, release:2.0},
         filter:{cutoff:7000, resonance:1, type:'lowpass'},
-        osc1:{wave:'sine', octave:0, detune:0, mix:0.7},
+        osc1:{wave:'sine', octave:0, detune:0, mix:0.7, unison:3, uniDetune:6, uniWidth:0.8},
         osc2:{enabled:true, wave:'triangle', octave:1, detune:3, mix:0.4},
-        fx:{delayTime:0.45, delayFeedback:0.55, delayWet:0.4, reverbWet:0.7}
+        fx:{delaySync:'1/4.', delayFeedback:0.55, delayWet:0.4, reverbWet:0.7}
     },
 ];
 
@@ -1283,21 +1454,51 @@ function applyPreset(p) {
     const w = p.wave || (p.osc1 && p.osc1.wave) || state.osc1.wave;
     setOsc1Wave(w);
     if (p.adsr)   state.adsr   = { ...state.adsr,   ...p.adsr };
-    if (p.filter) state.filter = { ...state.filter, ...p.filter, type: (p.filter.type || state.filter.type || 'lowpass') };
-    state.osc1 = { wave:w, octave:0, detune:0, mix:1.0, ...(p.osc1 || {}) };
-    state.osc2 = { enabled:false, wave:'sawtooth', octave:0, detune:7, mix:0.5, ...(p.osc2 || {}) };
+    if (p.filter) state.filter = { slope:12, drive:0, ...state.filter, ...p.filter, type: (p.filter.type || state.filter.type || 'lowpass') };
+    if (p.filter && p.filter.slope == null) state.filter.slope = 12;
+    if (p.filter && p.filter.drive == null) state.filter.drive = 0;
+    state.osc1 = { wave:w, octave:0, detune:0, mix:1.0, unison:3, uniDetune:8, uniWidth:0.5, ...(p.osc1 || {}) };
+    state.osc2 = { enabled:false, wave:'sawtooth', octave:0, detune:7, mix:0.5, unison:3, uniDetune:8, uniWidth:0.5, ...(p.osc2 || {}) };
     state.sub  = { enabled:false, level:0.4, ...(p.sub  || {}) };
     state.noise= { enabled:false, level:0.2, ...(p.noise|| {}) };
     state.filterEnv = { amount:0, ...(p.filterEnv || {}) };
-    state.lfo  = { rate:5, depth:0, target:'cutoff', wave:'sine', ...(p.lfo || {}) };
-    state.fx   = { delayTime:0.25, delayFeedback:0.3, delayWet:0, reverbWet:0, ...(p.fx || {}) };
-    state.activePreset = p.id || null;
-    // Mirror filter onto live filterNode so the next note hears it instantly.
-    if (filterNode && state.filter) {
-        filterNode.type = state.filter.type || 'lowpass';
-        filterNode.frequency.value = state.filter.cutoff;
-        filterNode.Q.value         = state.filter.resonance;
+    // LFO — yeni format (cutoffAmt/volumeAmt/pitchAmt). Eski presetlerin
+    // {target, depth} ikilisi ilgili amount'a çevrilir, ses aynı kalır.
+    const lf = { rate:5, wave:'sine', cutoffAmt:0, volumeAmt:0, pitchAmt:0 };
+    if (p.lfo) {
+        lf.rate = p.lfo.rate ?? 5;
+        lf.wave = p.lfo.wave || 'sine';
+        if (p.lfo.cutoffAmt != null || p.lfo.volumeAmt != null || p.lfo.pitchAmt != null) {
+            lf.cutoffAmt = p.lfo.cutoffAmt || 0;
+            lf.volumeAmt = p.lfo.volumeAmt || 0;
+            lf.pitchAmt  = p.lfo.pitchAmt  || 0;
+        } else if (p.lfo.target && p.lfo.depth) {
+            if (p.lfo.target === 'cutoff') lf.cutoffAmt = p.lfo.depth;
+            else if (p.lfo.target === 'volume') lf.volumeAmt = p.lfo.depth;
+        }
     }
+    state.lfo = lf;
+    // Mod Envelope — eski presetler filter sweep'i amp ADSR ile yapıyordu;
+    // modEnv verilmemişse amp ADSR'yi aynala ki preset aynı sesi versin.
+    state.modEnv = p.modEnv
+        ? { attack:0.01, decay:0.25, sustain:0.3, release:0.25, pitchAmount:0, ...p.modEnv }
+        : { attack:state.adsr.attack, decay:state.adsr.decay, sustain:state.adsr.sustain, release:state.adsr.release, pitchAmount:0 };
+    state.fx   = { delayTime:0.25, delaySync:'1/8', delayFeedback:0.3, delayWet:0, reverbWet:0, ...(p.fx || {}) };
+    // Eski preset delayTime (saniye) kaydetmiş ama sync bilmiyorsa → serbest moda al,
+    // böylece preset'in orijinal sesi korunur.
+    if (p.fx && ('delayTime' in p.fx) && !('delaySync' in p.fx)) state.fx.delaySync = null;
+    state.glide = p.glide || 0;
+    state.activePreset = p.id || null;
+    // Mirror onto live nodes so the next note hears it instantly.
+    syncFilterNodes();
+    applyFilterSlope();
+    applyDrive();
+    refreshDelayTime();
+    if (lfoOsc) {
+        lfoOsc.type = state.lfo.wave === 'sample-hold' ? 'sine' : (state.lfo.wave || 'sine');
+        lfoOsc.frequency.value = state.lfo.rate || 5;
+    }
+    applyLfoAmounts();
 }
 
 const GENRE_TEMPLATES = [
@@ -1341,7 +1542,7 @@ const TASKS = {
         // Extended-engine tasks
         {id:6, text:"OSC2'yi aç, farklı bir dalga seç ve detune'u ±7 cent yap — 'fat' hissi duy"},
         {id:7, text:"Filter tipini Lowpass'tan Highpass'a değiştir, cutoff'u sweep et — sesin nasıl açıldığını dinle"},
-        {id:8, text:"LFO'yu cutoff'a yönlendir, depth 0.7 → wobble bass yap (Square dalga + sub osc önerilir)"},
+        {id:8, text:"LFO'nun → Cutoff amount'unu %70 yap → wobble bass (Square dalga + sub osc önerilir)"},
         {id:9, text:"Env → Cutoff amount'ı %80'e çıkar, Decay 0.4s — klassik acid sweep'i dinle"},
         {id:10, text:"Pad preset'inde Reverb wet'i %60'a çıkar — ses derinleşsin, ambient hisset"},
     ],
@@ -1592,6 +1793,25 @@ function renderModule1() {
 
     const shell = mk('div','synth-container');
     const hdr   = mk('div','synth-header','<h2>🎹 Synthesizer</h2>');
+    hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;';
+    // Görünüm anahtarı — Kompakt (Learning Synths tarzı tek ekran) / Detaylı (ders açıklamaları)
+    const viewBtn = mk('button','wave-btn');
+    viewBtn.style.cssText = 'padding:6px 14px;font-size:.64rem;min-width:auto;';
+    const applyViewMode = () => {
+        const compact = localStorage.getItem('berkay_synth_view') !== 'detail';
+        shell.classList.toggle('synth-compact', compact);
+        viewBtn.textContent = compact ? '📖 Detaylı Görünüm' : '⚡ Kompakt Görünüm';
+        viewBtn.title = compact
+            ? 'Açıklamaları ve teori kartlarını göster'
+            : 'Learning Synths tarzı tek ekran görünümü';
+    };
+    viewBtn.onclick = () => {
+        const compact = localStorage.getItem('berkay_synth_view') !== 'detail';
+        localStorage.setItem('berkay_synth_view', compact ? 'detail' : 'compact');
+        applyViewMode();
+    };
+    hdr.append(viewBtn);
+    applyViewMode();
     shell.append(hdr);
     // Refresh closures pushed by each section render; called by _m1Update to
     // sync UI to state in place (no DOM rebuild, no scroll jump).
@@ -1781,6 +2001,35 @@ function renderModule1() {
     o1OctRow.append(o1OctBtns);
     o1Row.append(o1DetWrap, o1OctRow);
     wfGrp.append(o1Row);
+    // ── OSC1 Unison (Serum tarzı: voices / detune yelpazesi / stereo width) ──
+    const u1Row = mk('div'); u1Row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--mid);';
+    const u1VoxDiv = mk('div');
+    u1VoxDiv.innerHTML = `<div class="slider-label"><span>Unison</span><span id="u1VoxVal" style="color:var(--gold);font-weight:bold;">${state.osc1.unison||1}x</span></div>`;
+    const u1VoxBtns = mk('div'); u1VoxBtns.style.cssText='display:flex;gap:4px;';
+    [1,2,3,5,7].forEach(n => {
+        const b = mk('button',`wave-btn${(state.osc1.unison||1)===n?' active':''}`, String(n));
+        b.style.cssText='flex:1;padding:5px 0;font-size:.62rem;min-width:auto;';
+        b.onclick = () => {
+            state.osc1.unison = n; state.activePreset=null;
+            u1VoxBtns.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+            const v = u1VoxDiv.querySelector('#u1VoxVal'); if (v) v.textContent = n+'x';
+        };
+        u1VoxBtns.append(b);
+    });
+    u1VoxDiv.append(u1VoxBtns);
+    const u1DetVal = mk('span','', (state.osc1.uniDetune||0)+' ct'); u1DetVal.style.color='var(--gold)';
+    const u1DetLbl = mk('div','slider-label'); u1DetLbl.append(mk('span','','Uni Detune'), u1DetVal);
+    const u1DetSl = makeSlider({min:0, max:50, step:1, value:state.osc1.uniDetune||0, label:'OSC1 unison detune spread in cents',
+        onChange:v=>{state.osc1.uniDetune=v; u1DetVal.textContent=v+' ct'; state.activePreset=null;}});
+    const u1DetDiv = mk('div'); u1DetDiv.append(u1DetLbl, u1DetSl);
+    const u1WidVal = mk('span','', Math.round((state.osc1.uniWidth||0)*100)+'%'); u1WidVal.style.color='var(--gold)';
+    const u1WidLbl = mk('div','slider-label'); u1WidLbl.append(mk('span','','Width'), u1WidVal);
+    const u1WidSl = makeSlider({min:0, max:1, step:.01, value:state.osc1.uniWidth||0, label:'OSC1 unison stereo width',
+        onChange:v=>{state.osc1.uniWidth=v; u1WidVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    const u1WidDiv = mk('div'); u1WidDiv.append(u1WidLbl, u1WidSl);
+    u1Row.append(u1VoxDiv, u1DetDiv, u1WidDiv);
+    wfGrp.append(u1Row);
     m1Refresh.push(() => {
         if (o1DetSl._sliderObj) o1DetSl._sliderObj.update(state.osc1.detune || 0);
         o1DetVal.textContent = (state.osc1.detune || 0) + ' ct';
@@ -1788,6 +2037,14 @@ function renderModule1() {
         o1OctBtns.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _o1Octs[i] === state.osc1.octave));
         const _o1OctValEl = o1OctRow.querySelector('#o1OctVal');
         if (_o1OctValEl) _o1OctValEl.textContent = (state.osc1.octave>=0?'+':'') + state.osc1.octave;
+        const _u1Vox = [1,2,3,5,7];
+        u1VoxBtns.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _u1Vox[i] === (state.osc1.unison||1)));
+        const _u1VoxValEl = u1VoxDiv.querySelector('#u1VoxVal');
+        if (_u1VoxValEl) _u1VoxValEl.textContent = (state.osc1.unison||1)+'x';
+        if (u1DetSl._sliderObj) u1DetSl._sliderObj.update(state.osc1.uniDetune || 0);
+        u1DetVal.textContent = (state.osc1.uniDetune || 0) + ' ct';
+        if (u1WidSl._sliderObj) u1WidSl._sliderObj.update(state.osc1.uniWidth || 0);
+        u1WidVal.textContent = Math.round((state.osc1.uniWidth || 0) * 100) + '%';
     });
     grid.append(wfGrp);
 
@@ -1854,6 +2111,35 @@ function renderModule1() {
     o2OctDiv.append(o2OctBtns);
     o2Row.append(o2MixDiv, o2DetDiv, o2OctDiv);
     o2Grp.append(o2Row);
+    // ── OSC2 Unison ──
+    const u2Row = mk('div'); u2Row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;padding-top:10px;border-top:1px dashed var(--mid);';
+    const u2VoxDiv = mk('div');
+    u2VoxDiv.innerHTML = `<div class="slider-label"><span>Unison</span><span id="u2VoxVal" style="color:var(--gold);font-weight:bold;">${state.osc2.unison||1}x</span></div>`;
+    const u2VoxBtns = mk('div'); u2VoxBtns.style.cssText='display:flex;gap:3px;';
+    [1,2,3,5,7].forEach(n => {
+        const b = mk('button',`wave-btn${(state.osc2.unison||1)===n?' active':''}`, String(n));
+        b.style.cssText='flex:1;padding:4px 0;font-size:.58rem;min-width:auto;';
+        b.onclick = () => {
+            state.osc2.unison = n; state.activePreset=null;
+            u2VoxBtns.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+            const v = u2VoxDiv.querySelector('#u2VoxVal'); if (v) v.textContent = n+'x';
+        };
+        u2VoxBtns.append(b);
+    });
+    u2VoxDiv.append(u2VoxBtns);
+    const u2DetVal = mk('span','', (state.osc2.uniDetune||0)+' ct'); u2DetVal.style.color='var(--gold)';
+    const u2DetLbl = mk('div','slider-label'); u2DetLbl.append(mk('span','','Uni Det'), u2DetVal);
+    const u2DetSl = makeSlider({min:0, max:50, step:1, value:state.osc2.uniDetune||0, label:'OSC2 unison detune spread in cents',
+        onChange:v=>{state.osc2.uniDetune=v; u2DetVal.textContent=v+' ct'; state.activePreset=null;}});
+    const u2DetDiv = mk('div'); u2DetDiv.append(u2DetLbl, u2DetSl);
+    const u2WidVal = mk('span','', Math.round((state.osc2.uniWidth||0)*100)+'%'); u2WidVal.style.color='var(--gold)';
+    const u2WidLbl = mk('div','slider-label'); u2WidLbl.append(mk('span','','Width'), u2WidVal);
+    const u2WidSl = makeSlider({min:0, max:1, step:.01, value:state.osc2.uniWidth||0, label:'OSC2 unison stereo width',
+        onChange:v=>{state.osc2.uniWidth=v; u2WidVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
+    const u2WidDiv = mk('div'); u2WidDiv.append(u2WidLbl, u2WidSl);
+    u2Row.append(u2VoxDiv, u2DetDiv, u2WidDiv);
+    o2Grp.append(u2Row);
     grid.append(o2Grp);
     m1Refresh.push(() => {
         o2Toggle.classList.toggle('on', state.osc2.enabled);
@@ -1869,6 +2155,14 @@ function renderModule1() {
         o2OctBtns.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _o2Octs[i] === state.osc2.octave));
         const _o2OctValEl = o2OctDiv.querySelector('#o2OctVal');
         if (_o2OctValEl) _o2OctValEl.textContent = (state.osc2.octave>=0?'+':'') + state.osc2.octave;
+        const _u2Vox = [1,2,3,5,7];
+        u2VoxBtns.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _u2Vox[i] === (state.osc2.unison||1)));
+        const _u2VoxValEl = u2VoxDiv.querySelector('#u2VoxVal');
+        if (_u2VoxValEl) _u2VoxValEl.textContent = (state.osc2.unison||1)+'x';
+        if (u2DetSl._sliderObj) u2DetSl._sliderObj.update(state.osc2.uniDetune || 0);
+        u2DetVal.textContent = (state.osc2.uniDetune || 0) + ' ct';
+        if (u2WidSl._sliderObj) u2WidSl._sliderObj.update(state.osc2.uniWidth || 0);
+        u2WidVal.textContent = Math.round((state.osc2.uniWidth || 0) * 100) + '%';
     });
 
     // Sub + Noise (ice accent)
@@ -1932,38 +2226,36 @@ function renderModule1() {
         nVal.textContent = Math.round((state.noise.level || 0.2) * 100) + '%';
     });
 
-    // ADSR sliders — track elements for in-place preset updates
+    // Amplitude Envelope — Learning Synths tarzı tek panel: A/D/S/R üst üste
+    // kompakt satırlar + Volume. (Detaylı anlatım üstteki ADSR kartında.)
     const adsrValMap={}, adsrFmtMap={}, adsrSlMap={};
+    const ampGrp = mk('div','control-group');
+    ampGrp.style.setProperty('--accent', 'var(--gold)');
+    ampGrp.innerHTML=`<div class="synth-section-title"><span class="section-emoji">📊</span> Amplitude Envelope</div>
+    <div class="synth-section-sub"><strong>A</strong>: yükseliş, <strong>D</strong>: düşüş, <strong>S</strong>: tutunma seviyesi, <strong>R</strong>: bırakınca sönüş. Eğriyi üstteki ADSR kartında izleyebilirsin.</div>`;
     [
-        {key:'attack',  h:'⚡ Attack — Yükseliş', hint:'Sesin 0\'dan tam seviyeye çıkma süresi.', min:.01, max:2, step:.01, fmt:v=>v.toFixed(2)+'s', color:'var(--gold)'},
-        {key:'decay',   h:'📉 Decay — Düşüş',    hint:'Zirveden sustain seviyesine iniş süresi.', min:.01, max:2, step:.01, fmt:v=>v.toFixed(2)+'s', color:'var(--amber)'},
-        {key:'sustain', h:'🎚️ Sustain — Tutunma', hint:'Basılı tutulduğunda sesin kaldığı seviye.', min:0,   max:1, step:.01, fmt:v=>(v*100).toFixed(0)+'%', color:'var(--gold)'},
-        {key:'release', h:'🔚 Release — Sönüş',  hint:'Bıraktıktan sonra sesin kapanma süresi.', min:.01, max:3, step:.01, fmt:v=>v.toFixed(2)+'s', color:'var(--ice)'},
+        {key:'attack',  label:'Attack',  min:.01, max:2, step:.01, fmt:v=>v.toFixed(2)+'s',          color:'var(--gold)'},
+        {key:'decay',   label:'Decay',   min:.01, max:2, step:.01, fmt:v=>v.toFixed(2)+'s',          color:'var(--amber)'},
+        {key:'sustain', label:'Sustain', min:0,   max:1, step:.01, fmt:v=>(v*100).toFixed(0)+'%',    color:'var(--gold)'},
+        {key:'release', label:'Release', min:.01, max:3, step:.01, fmt:v=>v.toFixed(2)+'s',          color:'var(--ice)'},
     ].forEach(p => {
-        const grp   = mk('div','control-group');
-        grp.style.setProperty('--accent', p.color);
-        const val   = mk('span','',p.fmt(state.adsr[p.key])); val.style.cssText=`color:${p.color};font-weight:bold`;
+        const val = mk('span','',p.fmt(state.adsr[p.key])); val.style.cssText=`color:${p.color};font-weight:bold`;
         adsrValMap[p.key]=val; adsrFmtMap[p.key]=p.fmt;
-        const lbl   = mk('div','slider-label'); lbl.append(mk('span','','←'), val, mk('span','','→'));
-        const [emoji, ...rest] = p.h.split(' ');
-        const titleText = rest.join(' ');
-        grp.innerHTML=`<div class="synth-section-title"><span class="section-emoji">${emoji}</span> ${titleText}</div><div class="synth-section-sub">${p.hint}</div>`;
-        grp.append(lbl);
+        const lbl = mk('div','slider-label'); lbl.append(mk('span','',p.label), val);
         const slEl = makeSlider({min:p.min, max:p.max, step:p.step, value:state.adsr[p.key], label:`ADSR ${p.key}`,
             onChange: v => { state.adsr[p.key]=v; state.activePreset=null; val.textContent=p.fmt(v); adsrSvg(); }});
         adsrSlMap[p.key]=slEl;
-        grp.append(slEl);
-        grid.append(grp);
+        const row = mk('div'); row.append(lbl, slEl);
+        ampGrp.append(row);
     });
-
-    // Volume
-    const volGrp = mk('div','control-group');
+    // Volume — playground'daki Amplitude paneli gibi zarfın altında
     const volVal = mk('span','', (state.volume*100).toFixed(0)+'%'); volVal.style.color='var(--gold)';
-    const volLbl = mk('div','slider-label'); volLbl.append(mk('span','','Sessiz'), volVal, mk('span','','Yüksek'));
-    volGrp.innerHTML='<h3>🔊 Volume</h3>';
-    volGrp.append(volLbl, makeSlider({min:0, max:1, step:.01, value:state.volume, label:'Synth volume',
+    const volLbl = mk('div','slider-label'); volLbl.append(mk('span','','🔊 Volume'), volVal);
+    const volRow = mk('div'); volRow.style.cssText='margin-top:8px;padding-top:8px;border-top:1px dashed var(--mid);';
+    volRow.append(volLbl, makeSlider({min:0, max:1, step:.01, value:state.volume, label:'Synth volume',
         onChange: v => { state.volume=v; volVal.textContent=(v*100).toFixed(0)+'%'; }}));
-    grid.append(volGrp);
+    ampGrp.append(volRow);
+    grid.append(ampGrp);
 
     // Filter — type selector + response curve + cutoff + resonance + mod env amount (crimson accent)
     const filtGrp = mk('div','control-group filter-section');
@@ -1971,8 +2263,10 @@ function renderModule1() {
     filtGrp.innerHTML=`<div class="synth-section-title"><span class="section-emoji">🎛</span> Filter — Frekans Filtresi</div>
     <div class="synth-section-sub">
     <strong>Tip</strong>: Lowpass koyu, Highpass ince, Bandpass dar bant, Notch o frekansı oyar.<br>
+    <strong>Slope</strong>: 12 dB yumuşak, 24 dB dik kesim — Serum/analog synth karakteri.<br>
     <strong>Cutoff</strong>: Kesme frekansı — düşük = koyu ses, yüksek = parlak ses.<br>
     <strong>Resonance</strong>: Cutoff frekansını vurgular — yüksek = "wah" efekti.<br>
+    <strong>Drive</strong>: Filtre öncesi saturasyon — sıcaklık ve agresiflik katar.<br>
     <strong>Env Amount</strong>: ADSR envelope'u cutoff'a uygular — sweep efektleri için.</div>`;
     // Response curve
     const respCv = document.createElement('canvas');
@@ -1992,19 +2286,36 @@ function renderModule1() {
         const freqs = new Float32Array(N);
         for (let i = 0; i < N; i++) freqs[i] = Math.exp(logMin + (i/(N-1))*(logMax-logMin));
         const mag = new Float32Array(N), phase = new Float32Array(N);
+        const is24 = (state.filter.slope || 12) >= 24;
         if (filterNode && filterNode.getFrequencyResponse) {
             filterNode.getFrequencyResponse(freqs, mag, phase);
+            // 24dB: ikinci kademenin yanıtını çarp — gerçek cascade eğimi.
+            if (is24 && filterNode2) {
+                const mag2 = new Float32Array(N);
+                filterNode2.getFrequencyResponse(freqs, mag2, phase);
+                for (let i = 0; i < N; i++) mag[i] *= mag2[i];
+            }
         } else {
             // Without a live filterNode (audio context not yet started), draw an
             // approximate curve using a temporary offline filter so the user
             // sees the type/cutoff/resonance result before the first note.
             try {
                 const tmpCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 64, 44100);
+                const t = state.filter.type || 'lowpass';
                 const tmp = tmpCtx.createBiquadFilter();
-                tmp.type = state.filter.type || 'lowpass';
+                tmp.type = t;
                 tmp.frequency.value = state.filter.cutoff;
                 tmp.Q.value = state.filter.resonance;
                 tmp.getFrequencyResponse(freqs, mag, phase);
+                if (is24) {
+                    const tmp2 = tmpCtx.createBiquadFilter();
+                    tmp2.type = t;
+                    tmp2.frequency.value = state.filter.cutoff;
+                    tmp2.Q.value = (t === 'bandpass' || t === 'notch') ? 1 : 0;
+                    const mag2 = new Float32Array(N);
+                    tmp2.getFrequencyResponse(freqs, mag2, phase);
+                    for (let i = 0; i < N; i++) mag[i] *= mag2[i];
+                }
             } catch { for (let i = 0; i < N; i++) mag[i] = 1; }
         }
         c.strokeStyle = '#e8b84b'; c.lineWidth = 2;
@@ -2033,7 +2344,7 @@ function renderModule1() {
             `${label}<br><small style="font-size:.55rem;opacity:.6">${hint}</small>`);
         b.onclick = () => {
             state.filter.type = t; state.activePreset=null;
-            if (filterNode) filterNode.type = t;
+            syncFilterNodes();
             typeRow.querySelectorAll('.wave-btn').forEach(x => x.classList.remove('active'));
             b.classList.add('active');
             _redrawFilter();
@@ -2041,6 +2352,23 @@ function renderModule1() {
         typeRow.append(b);
     });
     filtGrp.append(typeRow);
+    // Slope selector — 12 dB (tek biquad) / 24 dB (cascade)
+    const slopeRow = mk('div'); slopeRow.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:14px;';
+    const slopeTag = mk('span','','SLOPE:'); slopeTag.style.cssText='font-size:.62rem;color:var(--dim);letter-spacing:.08em;';
+    slopeRow.append(slopeTag);
+    [12, 24].forEach(s => {
+        const b = mk('button',`wave-btn${(state.filter.slope||12)===s?' active':''}`, s+' dB');
+        b.style.cssText='padding:5px 16px;font-size:.68rem;min-width:auto;';
+        b.onclick = () => {
+            state.filter.slope = s; state.activePreset=null;
+            syncFilterNodes(); applyFilterSlope();
+            slopeRow.querySelectorAll('.wave-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+            _redrawFilter();
+        };
+        slopeRow.append(b);
+    });
+    filtGrp.append(slopeRow);
     const filtGrid = mk('div','filter-grid');
     const cutVal = mk('span','', state.filter.cutoff>=1000?(state.filter.cutoff/1000).toFixed(1)+'kHz':state.filter.cutoff+'Hz');
     cutVal.style.color='var(--crimson)';
@@ -2048,17 +2376,24 @@ function renderModule1() {
     const cutDiv=mk('div'); const cutLbl=mk('div','slider-label'); cutLbl.append(mk('span','','Cutoff'), cutVal);
     const cutSlEl=makeSlider({min:80, max:18000, step:10, value:state.filter.cutoff, label:'Filter cutoff frequency in Hertz',
         onChange:v=>{ state.filter.cutoff=v; state.activePreset=null;
-            if(filterNode) filterNode.frequency.value=v;
+            syncFilterNodes();
             cutVal.textContent=v>=1000?(v/1000).toFixed(1)+'kHz':v+'Hz';
             _redrawFilter(); }});
     cutDiv.append(cutLbl, cutSlEl);
     const resDiv=mk('div'); const resLbl=mk('div','slider-label'); resLbl.append(mk('span','','Resonance'), resVal);
     const resSlEl=makeSlider({min:.1, max:20, step:.1, value:state.filter.resonance, label:'Filter resonance Q',
         onChange:v=>{ state.filter.resonance=v; state.activePreset=null;
-            if(filterNode) filterNode.Q.value=v;
+            syncFilterNodes();
             resVal.textContent=v.toFixed(1)+' Q';
             _redrawFilter(); }});
     resDiv.append(resLbl, resSlEl);
+    // Drive — filtre öncesi tanh saturasyonu
+    const drvDiv = mk('div');
+    const drvVal = mk('span','', Math.round((state.filter.drive||0)*100)+'%'); drvVal.style.color='var(--crimson)';
+    const drvLbl = mk('div','slider-label'); drvLbl.append(mk('span','','Drive'), drvVal);
+    const drvSl = makeSlider({min:0, max:1, step:.01, value:state.filter.drive||0, label:'Filter drive saturation',
+        onChange:v=>{ state.filter.drive=v; applyDrive(); drvVal.textContent=Math.round(v*100)+'%'; state.activePreset=null; }});
+    drvDiv.append(drvLbl, drvSl);
     // Filter envelope amount
     const envDiv = mk('div');
     const envVal = mk('span','', (state.filterEnv.amount||0)+'%'); envVal.style.color='var(--amber)';
@@ -2068,27 +2403,35 @@ function renderModule1() {
     envDiv.append(envLbl, envSl);
     filtGrid.append(cutDiv, resDiv);
     filtGrp.append(filtGrid);
-    // Mod env as full-width row below
-    const envRow = mk('div'); envRow.style.cssText='margin-top:12px;';
-    envRow.append(envDiv);
+    // Drive + Mod env row below
+    const envRow = mk('div'); envRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;';
+    envRow.append(drvDiv, envDiv);
     filtGrp.append(envRow);
     grid.append(filtGrp);
     m1Refresh.push(() => {
         const _types = ['lowpass','highpass','bandpass','notch'];
         typeRow.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _types[i] === (state.filter.type || 'lowpass')));
-        if (filterNode) filterNode.type = state.filter.type || 'lowpass';
+        const _slopes = [12, 24];
+        slopeRow.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _slopes[i] === (state.filter.slope || 12)));
+        syncFilterNodes(); applyFilterSlope(); applyDrive();
+        if (cutSlEl._sliderObj) cutSlEl._sliderObj.update(state.filter.cutoff);
+        cutVal.textContent = state.filter.cutoff>=1000?(state.filter.cutoff/1000).toFixed(1)+'kHz':state.filter.cutoff+'Hz';
+        if (resSlEl._sliderObj) resSlEl._sliderObj.update(state.filter.resonance);
+        resVal.textContent = state.filter.resonance.toFixed(1)+' Q';
+        if (drvSl._sliderObj) drvSl._sliderObj.update(state.filter.drive || 0);
+        drvVal.textContent = Math.round((state.filter.drive || 0) * 100) + '%';
         if (envSl._sliderObj) envSl._sliderObj.update(state.filterEnv.amount || 0);
         envVal.textContent = (state.filterEnv.amount || 0) + '%';
         _redrawFilter();
     });
 
-    // ── LFO (purple accent) ─────────────────────────────────
+    // ── LFO (purple accent) — Learning Synths yapısı: her hedefe ayrı amount ──
     const lfoGrp = mk('div','control-group');
     lfoGrp.style.setProperty('--accent', 'var(--purple)');
     lfoGrp.innerHTML=`<div class="synth-section-title"><span class="section-emoji">🌀</span> LFO — Low Frequency Oscillator</div>
-    <div class="synth-section-sub">Sürekli salınımla seçilen parametreyi modüle eder. <strong>Cutoff</strong> → wobble bass / filter sweep, <strong>Volume</strong> → tremolo. Rate Hz cinsinden.</div>`;
+    <div class="synth-section-sub">Üç hedefi aynı anda modüle edebilir (Learning Synths yapısı): <strong>Cutoff</strong> → wobble/sweep, <strong>Volume</strong> → tremolo, <strong>Pitch</strong> → vibrato. Rate Hz cinsinden.</div>`;
     const lfoWaveSel = mk('div','waveform-selector');
-    [{w:'sine',icon:'〜'},{w:'triangle',icon:'△'},{w:'square',icon:'⊓'}]
+    [{w:'sine',icon:'〜'},{w:'triangle',icon:'△'},{w:'square',icon:'⊓'},{w:'sawtooth',icon:'⟋'}]
     .forEach(({w,icon}) => {
         const b = mk('button',`wave-btn${(state.lfo.wave||'sine')===w?' active':''}`, `${icon}<br>${w}`);
         b.style.cssText='font-size:.7rem;padding:8px 0;';
@@ -2101,64 +2444,113 @@ function renderModule1() {
         lfoWaveSel.append(b);
     });
     lfoGrp.append(lfoWaveSel);
-    const lfoTargetSel = mk('div','waveform-selector'); lfoTargetSel.style.cssText='margin-top:10px;';
-    [{t:'cutoff',label:'→ Cutoff'},{t:'volume',label:'→ Volume'}].forEach(({t,label}) => {
-        const b = mk('button',`wave-btn${(state.lfo.target||'cutoff')===t?' active':''}`, label);
-        b.style.cssText='font-size:.7rem;padding:6px 12px;';
-        b.onclick = () => {
-            state.lfo.target = t; rerouteLfo(); applyLfoDepth();
-            lfoTargetSel.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-            state.activePreset=null;
-        };
-        lfoTargetSel.append(b);
-    });
-    lfoGrp.append(lfoTargetSel);
-    const lfoRow = mk('div'); lfoRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;';
     // Rate
     const lfoRateVal = mk('span','', (state.lfo.rate||5).toFixed(1)+' Hz'); lfoRateVal.style.color='var(--purple)';
     const lfoRateLbl = mk('div','slider-label'); lfoRateLbl.append(mk('span','','Rate'), lfoRateVal);
     const lfoRateSl = makeSlider({min:0.1, max:20, step:0.1, value:state.lfo.rate||5, label:'LFO rate in Hertz',
         onChange:v=>{state.lfo.rate=v; if (lfoOsc) lfoOsc.frequency.value=v; lfoRateVal.textContent=v.toFixed(1)+' Hz'; state.activePreset=null;}});
-    const lfoRateDiv = mk('div'); lfoRateDiv.append(lfoRateLbl, lfoRateSl);
-    // Depth
-    const lfoDepthVal = mk('span','', Math.round((state.lfo.depth||0)*100)+'%'); lfoDepthVal.style.color='var(--purple)';
-    const lfoDepthLbl = mk('div','slider-label'); lfoDepthLbl.append(mk('span','','Depth'), lfoDepthVal);
-    const lfoDepthSl = makeSlider({min:0, max:1, step:0.01, value:state.lfo.depth||0, label:'LFO depth',
-        onChange:v=>{state.lfo.depth=v; applyLfoDepth(); lfoDepthVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    const lfoDepthDiv = mk('div'); lfoDepthDiv.append(lfoDepthLbl, lfoDepthSl);
-    lfoRow.append(lfoRateDiv, lfoDepthDiv);
-    lfoGrp.append(lfoRow);
+    const lfoRateDiv = mk('div'); lfoRateDiv.style.cssText='margin-top:12px;'; lfoRateDiv.append(lfoRateLbl, lfoRateSl);
+    lfoGrp.append(lfoRateDiv);
+    // Per-target amounts — Cutoff / Volume / Pitch
+    const lfoAmtRow = mk('div'); lfoAmtRow.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;';
+    const _lfoAmtCtrls = {};
+    [
+        {key:'cutoffAmt', label:'→ Cutoff', fmt:v=>Math.round(v*100)+'%'},
+        {key:'volumeAmt', label:'→ Volume', fmt:v=>Math.round(v*100)+'%'},
+        {key:'pitchAmt',  label:'→ Pitch',  fmt:v=>Math.round(v*100)+' ct'},
+    ].forEach(({key,label,fmt}) => {
+        const val = mk('span','', fmt(state.lfo[key]||0)); val.style.color='var(--purple)';
+        const lbl = mk('div','slider-label'); lbl.append(mk('span','',label), val);
+        const sl = makeSlider({min:0, max:1, step:0.01, value:state.lfo[key]||0, label:'LFO amount '+label,
+            onChange:v=>{state.lfo[key]=v; applyLfoAmounts(); val.textContent=fmt(v); state.activePreset=null;}});
+        const div = mk('div'); div.append(lbl, sl);
+        lfoAmtRow.append(div);
+        _lfoAmtCtrls[key] = {sl, val, fmt};
+    });
+    lfoGrp.append(lfoAmtRow);
     grid.append(lfoGrp);
     m1Refresh.push(() => {
-        const _lWaves = ['sine','triangle','square'];
+        const _lWaves = ['sine','triangle','square','sawtooth'];
         lfoWaveSel.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _lWaves[i] === (state.lfo.wave || 'sine')));
         if (lfoOsc) lfoOsc.type = (state.lfo.wave === 'sample-hold') ? 'sine' : (state.lfo.wave || 'sine');
-        const _lTargets = ['cutoff','volume'];
-        lfoTargetSel.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', _lTargets[i] === (state.lfo.target || 'cutoff')));
-        try { rerouteLfo(); applyLfoDepth(); } catch {}
         if (lfoRateSl._sliderObj) lfoRateSl._sliderObj.update(state.lfo.rate || 5);
         lfoRateVal.textContent = (state.lfo.rate || 5).toFixed(1) + ' Hz';
         if (lfoOsc) lfoOsc.frequency.value = state.lfo.rate || 5;
-        if (lfoDepthSl._sliderObj) lfoDepthSl._sliderObj.update(state.lfo.depth || 0);
-        lfoDepthVal.textContent = Math.round((state.lfo.depth || 0) * 100) + '%';
+        Object.entries(_lfoAmtCtrls).forEach(([key, c]) => {
+            if (c.sl._sliderObj) c.sl._sliderObj.update(state.lfo[key] || 0);
+            c.val.textContent = c.fmt(state.lfo[key] || 0);
+        });
+        try { applyLfoAmounts(); } catch {}
+    });
+
+    // ── Mod Envelope (amber accent) — Learning Synths'teki 2. envelope ──
+    const meGrp = mk('div','control-group');
+    meGrp.style.setProperty('--accent', 'var(--amber)');
+    meGrp.innerHTML=`<div class="synth-section-title"><span class="section-emoji">📈</span> Mod Envelope — Modülasyon Zarfı</div>
+    <div class="synth-section-sub">Amp ADSR'den bağımsız ikinci zarf. <strong>Env → Cutoff</strong> (Filter bölümünde) bu zarfın şeklini kullanır; <strong>→ Pitch</strong> nota başına perde zarfı ekler (pluck/drop efektleri).</div>`;
+    const meRow = mk('div'); meRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;';
+    const _meCtrls = {};
+    [
+        {key:'attack',  label:'Attack',  min:.005, max:2, step:.005, fmt:v=>v.toFixed(2)+'s'},
+        {key:'decay',   label:'Decay',   min:.01,  max:2, step:.01,  fmt:v=>v.toFixed(2)+'s'},
+        {key:'sustain', label:'Sustain', min:0,    max:1, step:.01,  fmt:v=>(v*100).toFixed(0)+'%'},
+        {key:'release', label:'Release', min:.01,  max:3, step:.01,  fmt:v=>v.toFixed(2)+'s'},
+    ].forEach(({key,label,min,max,step,fmt}) => {
+        const val = mk('span','', fmt(state.modEnv[key])); val.style.color='var(--amber)';
+        const lbl = mk('div','slider-label'); lbl.append(mk('span','',label), val);
+        const sl = makeSlider({min, max, step, value:state.modEnv[key], label:'Mod envelope '+key,
+            onChange:v=>{state.modEnv[key]=v; val.textContent=fmt(v); state.activePreset=null;}});
+        const div = mk('div'); div.append(lbl, sl);
+        meRow.append(div);
+        _meCtrls[key] = {sl, val, fmt};
+    });
+    meGrp.append(meRow);
+    // Env → Pitch amount (yarım ton)
+    const mePitchVal = mk('span','', (state.modEnv.pitchAmount||0)+' st'); mePitchVal.style.color='var(--amber)';
+    const mePitchLbl = mk('div','slider-label'); mePitchLbl.append(mk('span','','Env → Pitch'), mePitchVal);
+    const mePitchSl = makeSlider({min:-12, max:12, step:1, value:state.modEnv.pitchAmount||0, label:'Mod envelope to pitch amount in semitones',
+        onChange:v=>{state.modEnv.pitchAmount=v; mePitchVal.textContent=v+' st'; state.activePreset=null;}});
+    const mePitchDiv = mk('div'); mePitchDiv.style.cssText='margin-top:12px;';
+    mePitchDiv.append(mePitchLbl, mePitchSl);
+    meGrp.append(mePitchDiv);
+    grid.append(meGrp);
+    m1Refresh.push(() => {
+        Object.entries(_meCtrls).forEach(([key, c]) => {
+            if (c.sl._sliderObj) c.sl._sliderObj.update(state.modEnv[key]);
+            c.val.textContent = c.fmt(state.modEnv[key]);
+        });
+        if (mePitchSl._sliderObj) mePitchSl._sliderObj.update(state.modEnv.pitchAmount || 0);
+        mePitchVal.textContent = (state.modEnv.pitchAmount || 0) + ' st';
     });
 
     // ── FX (Delay + Reverb) — green accent ─────────────────
     const fxGrp = mk('div','control-group');
     fxGrp.style.setProperty('--accent', 'var(--green)');
     fxGrp.innerHTML=`<div class="synth-section-title"><span class="section-emoji">🎚</span> FX — Delay & Reverb</div>
-    <div class="synth-section-sub"><strong>Delay</strong>: yankı, dub. <strong>Reverb</strong>: oda hissi, ambient. Wet 0 ise ses kuru gider.</div>`;
+    <div class="synth-section-sub"><strong>Delay</strong>: yankı, dub — Time BPM'e kilitli nota değerleriyle seçilir (Ableton'daki Sync modu). <strong>Reverb</strong>: oda hissi, ambient. Wet 0 ise ses kuru gider.</div>`;
     const fxRow = mk('div'); fxRow.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:14px;';
     // Delay column
     const dCol = mk('div');
     const dHead = mk('strong','',`DELAY`); dHead.style.cssText='color:var(--gold);font-size:.74rem;display:block;margin-bottom:6px;';
     dCol.append(dHead);
-    const dTimeVal = mk('span','', (state.fx.delayTime||0.25).toFixed(2)+' s'); dTimeVal.style.color='var(--gold)';
-    const dTimeLbl = mk('div','slider-label'); dTimeLbl.append(mk('span','','Time'), dTimeVal);
-    const dTimeSl = makeSlider({min:0.05, max:1.5, step:0.01, value:state.fx.delayTime||0.25, label:'Delay time in seconds',
-        onChange:v=>{state.fx.delayTime=v; if (delayNode) delayNode.delayTime.value=v; dTimeVal.textContent=v.toFixed(2)+' s'; state.activePreset=null;}});
-    dCol.append(dTimeLbl, dTimeSl);
+    // Time — BPM-synced nota değerleri ("." = noktalı ×1.5, "T" = triplet ×⅔)
+    const dSyncReadout = mk('span',''); dSyncReadout.id='delay-sync-readout'; dSyncReadout.style.color='var(--gold)';
+    const dTimeLbl = mk('div','slider-label'); dTimeLbl.append(mk('span','','Time'), dSyncReadout);
+    dCol.append(dTimeLbl);
+    const dSyncRow = mk('div'); dSyncRow.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px;';
+    const DELAY_SYNC_OPTS = ['1/2','1/4','1/4.','1/8','1/8.','1/8T','1/16','1/32'];
+    DELAY_SYNC_OPTS.forEach(div => {
+        const b = mk('button',`wave-btn${state.fx.delaySync===div?' active':''}`, div);
+        b.style.cssText='padding:5px 0;font-size:.6rem;min-width:auto;';
+        b.onclick = () => {
+            state.fx.delaySync = div; state.activePreset=null;
+            refreshDelayTime();
+            dSyncRow.querySelectorAll('.wave-btn').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+        };
+        dSyncRow.append(b);
+    });
+    dCol.append(dSyncRow);
     const dFbVal = mk('span','', Math.round((state.fx.delayFeedback||0.3)*100)+'%'); dFbVal.style.color='var(--gold)';
     const dFbLbl = mk('div','slider-label'); dFbLbl.append(mk('span','','Feedback'), dFbVal);
     const dFbSl = makeSlider({min:0, max:0.9, step:0.01, value:state.fx.delayFeedback||0.3, label:'Delay feedback',
@@ -2178,16 +2570,17 @@ function renderModule1() {
     const rWetSl = makeSlider({min:0, max:1, step:0.01, value:state.fx.reverbWet||0, label:'Reverb wet level',
         onChange:v=>{state.fx.reverbWet=v; if (reverbWetG) reverbWetG.gain.value=v; rWetVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
     rCol.append(rWetLbl, rWetSl);
-    const reverbHint = mk('p','',`💡 Reverb tek IR (2s exponential) kullanır — basit ama efektli. Daha uzun ambient için Wet'i %50-70 dene.`);
+    const reverbHint = mk('p','fx-hint',`💡 Reverb tek IR (2s exponential) kullanır — basit ama efektli. Daha uzun ambient için Wet'i %50-70 dene.`);
     reverbHint.style.cssText='font-size:.62rem;color:var(--dim);margin-top:14px;line-height:1.6;';
     rCol.append(reverbHint);
     fxRow.append(dCol, rCol);
     fxGrp.append(fxRow);
     grid.append(fxGrp);
+    dSyncReadout.textContent = (state.fx.delaySync || 'serbest') + ' = ' + currentDelaySeconds().toFixed(2) + 's @ ' + (state.bpm || 125) + ' BPM';
     m1Refresh.push(() => {
-        if (dTimeSl._sliderObj) dTimeSl._sliderObj.update(state.fx.delayTime || 0.25);
-        dTimeVal.textContent = (state.fx.delayTime || 0.25).toFixed(2) + ' s';
-        if (delayNode) delayNode.delayTime.value = state.fx.delayTime || 0.25;
+        dSyncRow.querySelectorAll('.wave-btn').forEach((b, i) => b.classList.toggle('active', DELAY_SYNC_OPTS[i] === state.fx.delaySync));
+        refreshDelayTime();
+        dSyncReadout.textContent = (state.fx.delaySync || 'serbest') + ' = ' + currentDelaySeconds().toFixed(2) + 's @ ' + (state.bpm || 125) + ' BPM';
         if (dFbSl._sliderObj) dFbSl._sliderObj.update(state.fx.delayFeedback || 0.3);
         dFbVal.textContent = Math.round((state.fx.delayFeedback || 0.3) * 100) + '%';
         if (delayFb) delayFb.gain.value = state.fx.delayFeedback || 0.3;
@@ -2222,7 +2615,7 @@ function renderModule1() {
     ));
 
     // ── Playability control row: octave, mono/poly, sustain ──
-    const playRow = mk('div'); playRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:12px 14px;margin:14px 0 6px;background:rgba(255,255,255,.03);border:1px solid var(--mid);border-radius:6px;';
+    const playRow = mk('div'); playRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:12px;align-items:center;';
     // Octave shifter
     const octCluster = mk('div'); octCluster.style.cssText='display:flex;align-items:center;gap:6px;';
     octCluster.append(mk('span','',`OCT:`));
@@ -2242,12 +2635,107 @@ function renderModule1() {
     monoBtn.style.cssText='padding:4px 14px;font-size:.7rem;min-width:auto;';
     polyCluster.append(polyBtn, monoBtn);
     playRow.append(polyCluster);
+    // Glide (portamento) — mono modda notalar arası kayma süresi
+    const glideCluster = mk('div'); glideCluster.style.cssText='display:flex;align-items:center;gap:6px;';
+    glideCluster.title = 'Glide sadece MONO modda çalışır — notalar arası pitch kayması';
+    glideCluster.append(mk('span','','GLIDE:'));
+    glideCluster.firstChild.style.cssText='font-size:.62rem;color:var(--dim);letter-spacing:.08em;';
+    const glideInput = document.createElement('input');
+    glideInput.type='range'; glideInput.min=0; glideInput.max=500; glideInput.step=5;
+    glideInput.value = Math.round((state.glide||0)*1000);
+    glideInput.id = 'glide-input';
+    glideInput.style.cssText='width:90px;accent-color:var(--gold)';
+    const glideVal = mk('span','', Math.round((state.glide||0)*1000)+'ms');
+    glideVal.id = 'glide-val';
+    glideVal.style.cssText='color:var(--gold);font-size:.68rem;min-width:42px;';
+    glideInput.oninput = () => { state.glide = (+glideInput.value)/1000; glideVal.textContent = glideInput.value+'ms'; state.activePreset=null; };
+    glideCluster.append(glideInput, glideVal);
+    playRow.append(glideCluster);
+    m1Refresh.push(() => {
+        glideInput.value = Math.round((state.glide||0)*1000);
+        glideVal.textContent = Math.round((state.glide||0)*1000)+'ms';
+    });
     // Sustain indicator
     const susBadge = mk('span','SUSTAIN ⌃ Space','SUSTAIN — Space');
     susBadge.textContent = 'SUSTAIN — Space';
     susBadge.style.cssText='font-size:.62rem;letter-spacing:.08em;color:var(--dim);padding:5px 12px;border-radius:14px;border:1px solid var(--mid);background:rgba(0,0,0,.2);transition:all .15s;';
     playRow.append(susBadge);
-    shell.append(playRow);
+    // Çalım kontrolleri grid'de kendi paneline — 2. satırın son hücresini doldurur.
+    const perfGrp = mk('div','control-group');
+    perfGrp.style.setProperty('--accent', 'var(--ice)');
+    perfGrp.innerHTML = `<div class="synth-section-title"><span class="section-emoji">🎹</span> Performans — Çalım</div>
+    <div class="synth-section-sub">Oktav, mono/poly mod, glide (portamento) ve sustain durumu.</div>`;
+    perfGrp.append(playRow);
+    grid.append(perfGrp);
+
+    // ── XY Perform Pad — Learning Synths'teki Perform alanı ──
+    // X = nota (C majör pentatonik, 2 oktav), Y = parlaklık (filter cutoff).
+    const padWrap = mk('div','control-group');
+    padWrap.style.setProperty('--accent', 'var(--green)');
+    padWrap.innerHTML = `<div class="synth-section-title"><span class="section-emoji">🎮</span> Perform — XY Pad</div>
+    <div class="synth-section-sub">Sürükle: <strong>X</strong> = nota (pentatonik skala — hangi notaya basarsan bas uyumlu), <strong>Y</strong> = parlaklık (cutoff). MONO + Glide ile Learning Synths hissi.</div>`;
+    const pad = mk('div','xy-pad');
+    pad.style.cssText = 'position:relative;height:180px;background:#060609;border:1px solid var(--mid);border-radius:6px;cursor:crosshair;touch-action:none;overflow:hidden;';
+    pad.setAttribute('role','application');
+    pad.setAttribute('aria-label','XY performance pad: X selects note, Y controls filter brightness');
+    // Skala çizgileri (nota bölgeleri)
+    const PAD_SCALE = [0,2,4,7,9,12,14,16,19,21,24]; // C maj pentatonik, 2 oktav
+    const PAD_NAMES = ['C','D','E','G','A','C','D','E','G','A','C'];
+    for (let i = 1; i < PAD_SCALE.length; i++) {
+        const ln = mk('div');
+        ln.style.cssText = `position:absolute;top:0;bottom:0;left:${(i/(PAD_SCALE.length-1)*100).toFixed(2)}%;width:1px;background:rgba(255,255,255,.05);pointer-events:none;`;
+        pad.append(ln);
+    }
+    const padDot = mk('div');
+    padDot.style.cssText = 'position:absolute;width:18px;height:18px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green);transform:translate(-50%,-50%);pointer-events:none;display:none;';
+    const padLabel = mk('div');
+    padLabel.style.cssText = 'position:absolute;top:8px;right:10px;font-size:.7rem;color:var(--green);font-family:"Space Mono",monospace;pointer-events:none;opacity:.85;';
+    pad.append(padDot, padLabel);
+    let _padLastIdx = -1, _padActive = false;
+    function padNoteAt(xRel) {
+        const base = 12 * ((state.keyboardOctave || 4) + 1); // C4 → MIDI 60
+        const idx  = Math.max(0, Math.min(PAD_SCALE.length - 1, Math.round(xRel * (PAD_SCALE.length - 1))));
+        const midi = base + PAD_SCALE[idx];
+        return { idx, midi, freq: 440 * Math.pow(2, (midi - 69) / 12), name: PAD_NAMES[idx] };
+    }
+    function padHandle(e, isDown) {
+        const r = pad.getBoundingClientRect();
+        const xRel = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+        const yRel = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
+        // Y → cutoff: üst = parlak (log eşleme 150 Hz – 14 kHz)
+        const cut = Math.round(Math.exp(Math.log(150) + (1 - yRel) * (Math.log(14000) - Math.log(150))));
+        _padCutoff = cut;
+        if (filterNode && !(state.filterEnv && state.filterEnv.amount > 0)) {
+            filterNode.frequency.value = cut;
+            if (filterNode2) filterNode2.frequency.value = cut;
+        }
+        padDot.style.left = (xRel * 100) + '%';
+        padDot.style.top  = (yRel * 100) + '%';
+        padDot.style.display = 'block';
+        const n = padNoteAt(xRel);
+        padLabel.textContent = n.name + ' · ' + (cut >= 1000 ? (cut/1000).toFixed(1) + 'kHz' : cut + 'Hz');
+        if (isDown || n.idx !== _padLastIdx) {
+            _padLastIdx = n.idx;
+            playNote(n.freq, .5, .85);
+        }
+    }
+    pad.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        pad.setPointerCapture(e.pointerId);
+        _padActive = true;
+        padHandle(e, true);
+    });
+    pad.addEventListener('pointermove', e => { if (_padActive) padHandle(e, false); });
+    const padEnd = () => {
+        _padActive = false; _padLastIdx = -1; _padCutoff = null;
+        padDot.style.display = 'none'; padLabel.textContent = '';
+        syncFilterNodes(); // cutoff'u slider değerine geri al
+    };
+    pad.addEventListener('pointerup', padEnd);
+    pad.addEventListener('pointercancel', padEnd);
+    padWrap.append(pad);
+    // FX panelinin yanına, controls grid'in son hücresine yerleşir.
+    grid.append(padWrap);
 
     shell.append(mk('div','hint-box','<strong>💡 Klavye:</strong> A S D F G H J K = beyaz tuşlar · Shift+tuş = soft (düşük velocity) · Space basılı tut = sustain'));
 
@@ -2388,6 +2876,7 @@ function renderModule2() {
             state.bpm = g.bpm;
             if (bpmInput) bpmInput.value = g.bpm;
             if (bpmSpan)  bpmSpan.textContent = g.bpm;
+            refreshDelayTime();
             renderGrid();
             if (beatPlaying) { stopBeat(true); startBeat(); }
         };
@@ -2404,7 +2893,7 @@ function renderModule2() {
     bpmInput = document.createElement('input');
     bpmInput.type='range'; bpmInput.min=60; bpmInput.max=200; bpmInput.value=state.bpm;
     bpmInput.style.cssText='width:120px;accent-color:var(--gold)'; bpmInput.id='beat-bpm-input';
-    bpmInput.oninput = () => { state.bpm=+bpmInput.value; bpmSpan.textContent=state.bpm; if(beatPlaying){stopBeat();startBeat();} };
+    bpmInput.oninput = () => { state.bpm=+bpmInput.value; bpmSpan.textContent=state.bpm; refreshDelayTime(); if(beatPlaying){stopBeat();startBeat();} };
     bpmDiv.append(mk('span','','BPM: '), bpmInput, bpmSpan);
 
     const swRow = mk('div','swing-row');
@@ -2455,6 +2944,7 @@ function renderModule2() {
                     state.bpm=b.bpm; state.swing=b.swing||0;
                     if(bpmInput) bpmInput.value=state.bpm;
                     if(bpmSpan)  bpmSpan.textContent=state.bpm;
+                    refreshDelayTime();
                     renderGrid();
                     if(beatPlaying){ stopBeat(true); startBeat(); }
                     bList.remove(); bList=null;
@@ -2982,6 +3472,7 @@ function buildMixerSection() {
         if(_prevBpm!==null){ state.bpm=_prevBpm; _prevBpm=null;
             const bi=document.querySelector('#beat-bpm-input'); if(bi) bi.value=state.bpm;
             const bs=document.querySelector('#beat-bpm-span'); if(bs) bs.textContent=state.bpm;
+            refreshDelayTime();
         }
         eqCanvases.forEach(({cv})=>{ const c=cv.getContext('2d'); if(c) c.clearRect(0,0,cv.width,cv.height); });
         playBtn.textContent='▶ MIX ÇAL'; playBtn.classList.remove('active');
@@ -3043,6 +3534,7 @@ function buildMixerSection() {
         _prevBpm=state.bpm; state.bpm=125;
         const bi=document.querySelector('#beat-bpm-input'); if(bi) bi.value=125;
         const bs=document.querySelector('#beat-bpm-span'); if(bs) bs.textContent=125;
+        refreshDelayTime();
 
         // Drum kanalları: beat engine başlat (mevcut pattern + gerçek wav dosyaları)
         if(!beatPlaying) startBeat();

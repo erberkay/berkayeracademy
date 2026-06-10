@@ -3992,8 +3992,9 @@ function initAdminWhatsAppTest() {
     });
 }
 
-// Admin: edit a student's WhatsApp number, then optionally jump to the WA
-// chat panel with that number pre-loaded so admin can send the first message.
+// Admin: edit a student's WhatsApp number. After save, an inline modal
+// pops up with a pre-filled welcome message and a Send button. Send →
+// modal closes automatically.
 window.adminEditStudentPhone = async function(studentUid, currentPhone, studentName) {
   if (!studentUid) return;
   const fresh = prompt(
@@ -4016,14 +4017,9 @@ window.adminEditStudentPhone = async function(studentUid, currentPhone, studentN
       toast(cleaned ? `📱 Numara güncellendi: ${cleaned}` : '📱 Numara silindi.');
     }
     if (typeof renderAdminPanel === 'function') renderAdminPanel();
-    // After save: offer to send a fresh WhatsApp message via the admin chat.
-    if (cleaned && confirm(`Numara kaydedildi. Yeni numaraya WhatsApp mesajı göndermek için sohbet panelini açayım mı?`)) {
-      const waCard = document.getElementById('adminWhatsAppCard');
-      if (waCard) waCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      if (typeof openWhatsAppConvo === 'function') {
-        // Slight delay so the panel is visible before the conversation streams in.
-        setTimeout(() => openWhatsAppConvo(cleaned, studentName || ''), 280);
-      }
+    // After save: open inline WhatsApp send modal for the new number.
+    if (cleaned) {
+      window.openAdminWaSendModal(cleaned, studentName || '');
     }
   } catch (e) {
     const c = typeof errId === 'function' ? errId() : '';
@@ -4031,6 +4027,88 @@ window.adminEditStudentPhone = async function(studentUid, currentPhone, studentN
     if (typeof toast === 'function') toast(`Hata (${c}): ${msg}`, true);
     else alert(`Hata (${c}): ${msg}`);
   }
+};
+
+// Inline modal: lets admin send a one-off WhatsApp message to a freshly
+// edited phone. Closes itself on successful send. Uses the existing
+// sendWhatsAppAdmin callable, which means the same 24h freeform window
+// rule applies — outside the window Twilio rejects and the error shows
+// inline.
+window.openAdminWaSendModal = function(phone, displayName) {
+  // Tear down any previous instance.
+  const prev = document.getElementById('adminWaSendModal');
+  if (prev) prev.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'adminWaSendModal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);animation:fadeIn .15s ease;';
+
+  const card = document.createElement('div');
+  card.style.cssText = 'background:#0f0f14;border:1px solid rgba(37,211,102,.35);border-radius:12px;padding:22px;max-width:480px;width:100%;box-shadow:0 16px 60px rgba(0,0,0,.6);font-family:"Space Mono",monospace;color:var(--white);';
+
+  const safeName = (displayName || 'arkadaş').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+  const safePhone = phone.replace(/[<>&"]/g, '');
+  const defaultBody = `Selam ${displayName || ''}! 👋\n\nBerkay Er Academy iletişim hattı bu numaraya bağlandı. Buradan ders hatırlatmaları ve hocadan mesajlar gelecek.\n\nSorun olursa direkt buraya yazabilirsin. 🎵`;
+
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:.62rem;color:rgba(37,211,102,.85);letter-spacing:.08em;margin-bottom:4px;">📱 WHATSAPP MESAJI GÖNDER</div>
+        <div style="font-size:.85rem;color:var(--white);font-weight:700;">${safeName}</div>
+        <div style="font-size:.7rem;color:var(--dim);margin-top:2px;">+${safePhone}</div>
+      </div>
+      <button id="adminWaSendClose" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.4rem;cursor:pointer;padding:0;line-height:1;">×</button>
+    </div>
+    <textarea id="adminWaSendBody" rows="6"
+      style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.74rem;padding:10px 12px;border-radius:6px;resize:vertical;outline:none;line-height:1.5;box-sizing:border-box;"></textarea>
+    <div id="adminWaSendStatus" style="font-size:.62rem;color:var(--dim);margin-top:8px;min-height:14px;line-height:1.5;"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;">
+      <button id="adminWaSendCancel" style="background:none;border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.7);font-family:'Space Mono',monospace;font-size:.7rem;padding:8px 16px;border-radius:6px;cursor:pointer;">İptal</button>
+      <button id="adminWaSendGo" style="background:rgba(37,211,102,.2);border:1px solid rgba(37,211,102,.5);color:#25d366;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:8px 18px;border-radius:6px;cursor:pointer;">Gönder</button>
+    </div>
+    <div style="margin-top:10px;font-size:.58rem;color:rgba(255,255,255,.35);line-height:1.5;">
+      ⚠️ Twilio 24 saat kuralı: öğrenci son 24 saatte sana yazmadıysa serbest metin reddedilir — onaylı bir template SID'i gerek. Reddedilirse alttaki status'ta görürsün.
+    </div>
+  `;
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  const bodyEl   = card.querySelector('#adminWaSendBody');
+  const statusEl = card.querySelector('#adminWaSendStatus');
+  const sendBtn  = card.querySelector('#adminWaSendGo');
+  const cancel   = card.querySelector('#adminWaSendCancel');
+  const closeBtn = card.querySelector('#adminWaSendClose');
+
+  bodyEl.value = defaultBody;
+  setTimeout(() => { bodyEl.focus(); bodyEl.setSelectionRange(bodyEl.value.length, bodyEl.value.length); }, 30);
+
+  const close = () => overlay.remove();
+  cancel.onclick = close;
+  closeBtn.onclick = close;
+  overlay.onclick = e => { if (e.target === overlay) close(); };
+
+  sendBtn.onclick = async () => {
+    const body = (bodyEl.value || '').trim();
+    if (!body) { statusEl.style.color = 'var(--crimson)'; statusEl.textContent = 'Mesaj boş olamaz.'; return; }
+    sendBtn.disabled = true;
+    cancel.disabled = true;
+    statusEl.style.color = 'var(--dim)';
+    statusEl.textContent = 'Gönderiliyor…';
+    try {
+      const fn = firebase.app().functions('europe-west1').httpsCallable('sendWhatsAppAdmin');
+      await fn({ toPhone: phone, body });
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = '✓ Gönderildi. Pencere kapanıyor…';
+      if (typeof toast === 'function') toast('✓ WhatsApp mesajı gönderildi.');
+      setTimeout(close, 900);
+    } catch (e) {
+      const c = typeof errId === 'function' ? errId() : '';
+      statusEl.style.color = 'var(--crimson)';
+      statusEl.textContent = `Hata (${c}): ${e.message || e.code || 'gönderilemedi'} — 24h kuralı: öğrenci son 24 saatte sana yazmış olması gerek.`;
+      sendBtn.disabled = false;
+      cancel.disabled = false;
+    }
+  };
 };
 
 function openWhatsAppConvo(phone, displayName) {
