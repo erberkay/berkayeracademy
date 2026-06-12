@@ -11,6 +11,7 @@
     nav_lab:        { tr: 'Lab',         en: 'Lab' },
     nav_sss:        { tr: 'SSS',         en: 'FAQ' },
     nav_lessons:    { tr: 'Ders Paneli', en: 'Lessons' },
+    nav_trial_lesson: { tr: 'Deneme Dersi', en: 'Trial Lesson' },
     nav_profile:    { tr: 'Profil',      en: 'Profile' },
 
     // ── Auth ──
