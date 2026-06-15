@@ -1303,12 +1303,26 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
     const saveBtn = modal.querySelector('#reschSave');
     saveBtn.disabled = true; saveBtn.textContent = '⏳';
     try {
-      // UX ön kontrolü: hedef saat doluysa hiç talep oluşturma.
-      const conflict = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
-      if (conflict.exists && conflict.data().student_uid !== _user.uid) {
-        saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder';
-        toast(`${formatDateStr(newDate)} ${lesson.time} ${window._i18n?.t('bk_slot_busy_err')||'saati dolu, lütfen admin ile iletişime geçin.'}`, true); return;
-      }
+      // Bilgilendirme: hedef saat doluysa öğrenciye haber ver ama bloke etme —
+      // admin onay sırasında cascade ile çakışmayı zaten kendi çözüyor.
+      // Eski blocking pre-check öğrencileri gereksiz yere durduruyordu, üstelik
+      // eski booked_slots'ta arta kalmış yamuk kayıtlarda yanlış pozitif veriyordu.
+      try {
+        const conflictSnap = await db.collection('booked_slots')
+          .doc(newDate + '_' + lesson.time).get();
+        if (conflictSnap.exists && conflictSnap.data().student_uid !== _user.uid) {
+          const proceed = confirm(
+            `Hedef saat (${formatDateStr(newDate)} ${lesson.time}) takvimde dolu görünüyor.\n\n` +
+            `Sorun yok — admin onaylarken seninki cascade ile bir hafta sonraya kayacak.\n\n` +
+            `Yine de talebi göndereyim mi?`
+          );
+          if (!proceed) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder';
+            return;
+          }
+        }
+      } catch (_) { /* Slot okumadıysak da request'i gönder. */ }
       await db.collection('lesson_requests').add({
         type: 'reschedule_request',
         from_uid: _user.uid,
