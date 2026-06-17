@@ -110,7 +110,9 @@ function collectUnpaidStudents(snapshot) {
   snapshot.forEach((doc) => {
     const data = doc.data();
     if (data.lesson_type === "trial" || data.payment_confirmed) return;
-    const upcoming = (data.lessons || [])
+    // Dedupe before picking the earliest upcoming so leftover duplicate rows
+    // from older buggy reschedule paths can't masquerade as the "next" lesson.
+    const upcoming = dedupLessons(data.lessons || [])
         .filter((l) => l.date >= today && (l.status === "scheduled" || l.status === "rescheduled"))
         .sort((a, b) => (a.date > b.date ? 1 : -1));
     if (!upcoming.length) return;
@@ -183,6 +185,29 @@ function toDateStr(d) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
+// Mirrors client-side dedupLessons (booking.html). Older reschedule paths
+// could leave duplicate {date,time} rows in reservations.lessons; the client
+// hides them at render time but cron jobs see the raw array and would pick
+// the older copy as "earliest upcoming", sending reminders for the original
+// (pre-reschedule) date. We dedupe by (date,time) and keep the higher-status
+// entry (priority: scheduled/rescheduled > frozen/cancel_requested >
+// completed > cancelled), then sort by (date,time).
+function dedupLessons(arr) {
+  if (!Array.isArray(arr)) return [];
+  const priority = {scheduled: 4, rescheduled: 4, frozen: 3, cancel_requested: 3, completed: 2, cancelled: 1};
+  const map = new Map();
+  for (const l of arr) {
+    if (!l || !l.date || !l.time) continue;
+    const key = `${l.date}_${l.time}`;
+    const prev = map.get(key);
+    if (!prev || (priority[l.status] || 0) > (priority[prev.status] || 0)) {
+      map.set(key, l);
+    }
+  }
+  return Array.from(map.values()).sort((a, b) =>
+    a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+}
+
 // Daily at 09:00 TR → notify students whose lesson is the next day
 exports.lessonReminder24h = onSchedule(
     {schedule: "0 6 * * *", timeZone: "Europe/Istanbul"},
@@ -200,7 +225,7 @@ exports.lessonReminder24h = onSchedule(
       snap.forEach((doc) => {
         const d = doc.data();
         if (!d.student_phone) return;
-        const lessons = d.lessons || [];
+        const lessons = dedupLessons(d.lessons || []);
         const match = lessons.find((l) => l.date === tomorrowStr &&
           (l.status === "scheduled" || l.status === "rescheduled"));
         if (!match) return;
@@ -245,7 +270,7 @@ exports.lessonReminder1h = onSchedule(
       snap.forEach((doc) => {
         const d = doc.data();
         if (!d.student_phone) return;
-        const lessons = d.lessons || [];
+        const lessons = dedupLessons(d.lessons || []);
         const match = lessons.find((l) => l.date === targetDateStr && l.time === targetTime &&
           (l.status === "scheduled" || l.status === "rescheduled"));
         if (!match) return;
@@ -295,7 +320,7 @@ exports.lessonEndFollowUp = onSchedule(
       snap.forEach((doc) => {
         const d = doc.data();
         if (!d.student_phone) return;
-        const lessons = d.lessons || [];
+        const lessons = dedupLessons(d.lessons || []);
 
         // 1) Bu saat başında biten dersi bul.
         const matchIdx = lessons.findIndex((l) => l.date === dateStr && l.time === timeStr &&
