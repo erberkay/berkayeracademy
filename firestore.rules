@@ -143,7 +143,12 @@ service cloud.firestore {
             request.resource.data.payment_pending == true) ||
           // Rules acceptance (write-once: must not already be set)
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rules_accepted_at']) &&
-            !('rules_accepted_at' in resource.data))
+            !('rules_accepted_at' in resource.data)) ||
+          // Student adds/updates own WhatsApp number. Format kontrolü:
+          // 5XXXXXXXXX | 05XXXXXXXXX | 905XXXXXXXXX (Türk hat formatları)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['student_phone']) &&
+            request.resource.data.student_phone is string &&
+            request.resource.data.student_phone.matches('^(5[0-9]{9}|05[0-9]{9}|905[0-9]{9})$'))
           // Lessons: sadece admin güncelleyebilir
         ))
       );

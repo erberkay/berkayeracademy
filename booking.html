@@ -562,6 +562,17 @@
       <div id="zoomJoinBox"></div>
       <div id="paymentBox"></div>
       <div class="credit-badge" id="creditBadge"></div>
+      <div id="studentPhonePrompt" style="display:none;margin:14px 0;background:rgba(37,211,102,.07);border:1px solid rgba(37,211,102,.3);border-radius:10px;padding:14px 16px;">
+        <div style="font-size:.7rem;color:rgba(37,211,102,.85);letter-spacing:.06em;font-weight:700;margin-bottom:8px;">📱 WhatsApp Numarası Eksik</div>
+        <div style="font-size:.72rem;color:rgba(238,235,230,.78);line-height:1.55;margin-bottom:12px;">
+          Numaranı ekle, sonra <strong>WhatsApp bilgilendirme botumuz</strong> sana ulaşabilsin — ders hatırlatmaları ve hocadan mesajlar buradan gelecek.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input id="studentPhoneInput" type="tel" inputmode="tel" placeholder="5XX XXX XX XX" style="flex:1;min-width:160px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--white);font-family:'Space Mono',monospace;font-size:.78rem;padding:9px 12px;border-radius:6px;outline:none;" />
+          <button id="studentPhoneSave" style="background:rgba(37,211,102,.18);border:1px solid rgba(37,211,102,.4);color:#25d366;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px 16px;border-radius:6px;cursor:pointer;white-space:nowrap;">Kaydet</button>
+        </div>
+        <div id="studentPhoneStatus" style="font-size:.62rem;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.5;min-height:14px;"></div>
+      </div>
       <div id="extraLessonBox"></div>
       <button class="cancel-plan-btn" id="cancelPlanBtn" style="display:none;">✕ Planı İptal Et</button>
       <details id="studentNoteSection" class="acc" style="display:none;margin-top:14px;border-top:1px solid rgba(255,255,255,.05);">
@@ -1761,6 +1772,69 @@ async function renderDashboard() {
   }
   document.getElementById('creditBadge').style.display = '';
   document.querySelector('.dash-layout').style.display = '';
+
+  // WhatsApp phone prompt — only when reservation has no student_phone.
+  // Lets the student self-populate it so the cron reminders can reach them
+  // (templates) AND so the first inbound WA they then send opens Twilio's
+  // 24h conversation window for freeform admin messages.
+  (function () {
+    const promptBox = document.getElementById('studentPhonePrompt');
+    const input     = document.getElementById('studentPhoneInput');
+    const saveBtn   = document.getElementById('studentPhoneSave');
+    const statusEl  = document.getElementById('studentPhoneStatus');
+    if (!promptBox || !input || !saveBtn || !statusEl) return;
+    if (res.student_phone) { promptBox.style.display = 'none'; return; }
+    promptBox.style.display = '';
+    statusEl.textContent = '';
+    input.value = '';
+    saveBtn.onclick = async () => {
+      const raw = (input.value || '').replace(/\D/g, '');
+      if (!/^(5\d{9}|05\d{9}|905\d{9})$/.test(raw)) {
+        statusEl.style.color = 'var(--crimson)';
+        statusEl.textContent = '⚠️ Geçersiz numara. Örn: 5XX XXX XX XX';
+        return;
+      }
+      saveBtn.disabled = true;
+      statusEl.style.color = 'var(--dim)';
+      statusEl.textContent = 'Kaydediliyor…';
+      try {
+        await db.collection('reservations').doc(_user.uid).set(
+          { student_phone: raw }, { merge: true }
+        );
+        promptBox.style.display = 'none';
+        // After save, instruct the student to send the first WA message so
+        // Twilio's 24h conversation window opens. wa.me deep-link to our
+        // Twilio number — opens WhatsApp directly with pre-filled text.
+        const greeting = encodeURIComponent(
+          `Merhaba! Ben ${(_user.displayName || res.student_name || 'öğrencin')}, ` +
+          `WhatsApp numaramı sisteme ekledim. 🎵`
+        );
+        const waUrl = `https://wa.me/14058514568?text=${greeting}`;
+        const modal = Object.assign(document.createElement('div'), { innerHTML: `
+          <div style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(4px);">
+            <div style="background:#101015;border:1px solid rgba(37,211,102,.4);border-radius:12px;padding:22px 22px 18px;max-width:380px;width:100%;font-family:'Space Mono',monospace;color:var(--white);">
+              <div style="font-size:.65rem;color:rgba(37,211,102,.85);letter-spacing:.08em;margin-bottom:4px;">📱 SON ADIM</div>
+              <div style="font-size:.95rem;font-weight:700;margin-bottom:10px;">Numaran kaydedildi ✓</div>
+              <div style="font-size:.72rem;color:var(--dim);line-height:1.6;margin-bottom:16px;">
+                Şimdi WhatsApp'tan bize bir kez mesaj at ki <strong>hatırlatma botumuz</strong> sana mesaj yollayabilsin (WhatsApp kuralı gereği).<br><br>
+                Aşağıdaki butona bas → WhatsApp açılır → hazır metni gönder, hepsi bu.
+              </div>
+              <a href="${waUrl}" target="_blank" rel="noopener" id="studentWaFirstSend" style="display:block;text-align:center;background:linear-gradient(135deg,#25d366,#128c7e);border:none;color:#fff;font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;letter-spacing:.06em;padding:12px;border-radius:8px;text-decoration:none;margin-bottom:8px;">💬 WhatsApp'ı Aç ve Mesaj At</a>
+              <button id="studentWaSkip" style="display:block;width:100%;background:transparent;border:none;color:rgba(255,255,255,.4);font-family:'Space Mono',monospace;font-size:.62rem;padding:6px;cursor:pointer;">Daha sonra hatırlat</button>
+            </div>
+          </div>
+        ` });
+        document.body.append(modal);
+        modal.querySelector('#studentWaSkip').onclick = () => modal.remove();
+        modal.querySelector('#studentWaFirstSend').onclick = () => setTimeout(() => modal.remove(), 400);
+      } catch (e) {
+        const c = errId();
+        statusEl.style.color = 'var(--crimson)';
+        statusEl.textContent = `Hata (${c}): ${e.message || e.code || 'kaydedilemedi'}`;
+        saveBtn.disabled = false;
+      }
+    };
+  })();
 
   // Note section
   const noteSection = document.getElementById('studentNoteSection');
