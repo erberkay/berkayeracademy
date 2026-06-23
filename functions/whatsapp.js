@@ -95,7 +95,7 @@ async function sendCore(toPhone, extraParams) {
 // Content Template SIDs from Content Template Builder
 const TEMPLATES = {
   lesson_reminder_24h: "HX18dd68325569c9cb07e92713c4b3c900",
-  lesson_reminder_1h: "HX3a4c76a7ce11285ea155152409ab45cc",
+  lesson_reminder_1h: "HX41ab774a0cd5c081d941a6ae06f44ee9",
   payment_reminder: "HX84bdb474422c1f8d6c78719ff0124294",
   request_status: "HXe7f08f14c970665e5c19a92042ddd4f2",
   // Paket sonu mesajı — öğrencinin paketindeki son ders bittikten sonra
