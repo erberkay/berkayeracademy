@@ -151,16 +151,19 @@ exports.paymentReminder = onSchedule(
         tasks.push(transporter.sendMail(mail).then(() => {
           console.log(`Email reminder sent to ${email} (${name})`);
         }).catch((e) => console.error("email failed", e.message)));
-        // WhatsApp branch (new)
+        // WhatsApp branch (new) — sendAndPersistWA also writes to
+        // whatsapp_conversations so this shows up in the admin chat panel.
         if (data.student_phone) {
           const monthIdx = new Date().getMonth();
           const monthName = MONTHS_TR[monthIdx];
           const total = reservationPrice(data).toLocaleString("tr-TR");
-          tasks.push(sendWhatsAppTemplate(
-              data.student_phone,
-              TEMPLATES.payment_reminder,
-              {"1": name, "2": monthName, "3": total},
-          ).then((r) => {
+          tasks.push(sendAndPersistWA({
+            toPhone: data.student_phone,
+            contentSid: TEMPLATES.payment_reminder,
+            variables: {"1": name, "2": monthName, "3": total},
+            displayBody: `💳 Ödeme hatırlatma — ${name}, ${monthName} ayı için ${total} TL ödemeni unutma.`,
+            source: "cron:payment_reminder",
+          }).then((r) => {
             if (!r.ok) console.error("wa payment_reminder failed", r.error);
             else console.log(`WA payment_reminder → ${data.student_phone}`);
           }));
@@ -175,6 +178,83 @@ exports.paymentReminder = onSchedule(
       console.log(`Payment reminders done. Processed ${promises.length} students.`);
     },
 );
+
+// ─── Shared WhatsApp send helpers ───────────────────────────
+// Normalizes a stored phone (digits-only or already E.164) into the
+// "+90XXXXXXXXXX" key we use in whatsapp_conversations/{phone}. Same
+// branches as sendWhatsAppAdmin so the conversation key is identical
+// no matter who's sending — cron, admin panel, etc.
+function normalizeConvoPhone(toPhone) {
+  let phone = String(toPhone || "").replace(/[^\d+]/g, "");
+  if (phone.startsWith("00")) phone = "+" + phone.slice(2);
+  if (!phone.startsWith("+")) {
+    if (phone.startsWith("0")) phone = "+90" + phone.slice(1);
+    else if (phone.startsWith("90")) phone = "+" + phone;
+    else if (phone.startsWith("5")) phone = "+90" + phone;
+    else phone = "+" + phone;
+  }
+  return phone;
+}
+
+// Wraps sendWhatsApp / sendWhatsAppTemplate and (on Twilio acceptance)
+// persists the outbound message to whatsapp_conversations so the admin
+// WhatsApp panel renders it alongside human-sent messages. Pass a
+// displayBody for templates so the panel shows readable text instead of
+// "[Template HX…]".
+async function sendAndPersistWA({toPhone, body, contentSid, variables, displayBody, source}) {
+  let result;
+  if (contentSid) {
+    result = await sendWhatsAppTemplate(toPhone, contentSid, variables);
+  } else {
+    result = await sendWhatsApp(toPhone, body);
+  }
+  if (!result.ok) return result;
+  const phone = normalizeConvoPhone(toPhone);
+  if (!phone || phone === "+") return result; // unrecoverable phone — bail on persistence
+
+  const db = getFirestore();
+  const convoRef = db.collection("whatsapp_conversations").doc(phone);
+  const renderedBody = contentSid ?
+    (displayBody || `[Template ${contentSid}]`) :
+    (body || "");
+
+  try {
+    await convoRef.collection("messages").doc(result.sid || `outbound_${Date.now()}`).set({
+      direction: "out",
+      from: process.env.TWILIO_WA_FROM,
+      to: "whatsapp:" + phone,
+      body: renderedBody,
+      template_sid: contentSid || null,
+      template_variables: variables || null,
+      sid: result.sid,
+      status: result.status,
+      source: source || "cron",
+      created_at: FieldValue.serverTimestamp(),
+    });
+
+    let studentUid = null;
+    let studentName = null;
+    try {
+      const q = await db.collection("reservations").where("student_phone", "==", phone.replace(/^\+/, "")).limit(1).get();
+      if (!q.empty) {
+        studentUid = q.docs[0].id;
+        studentName = q.docs[0].data().student_name || null;
+      }
+    } catch (_) {/* lookup failure ok */}
+
+    await convoRef.set({
+      phone,
+      ...(studentUid ? {student_uid: studentUid} : {}),
+      ...(studentName ? {student_name: studentName} : {}),
+      last_message: renderedBody.slice(0, 200),
+      last_message_at: FieldValue.serverTimestamp(),
+      last_direction: "out",
+    }, {merge: true});
+  } catch (e) {
+    console.error("sendAndPersistWA: persist failed for " + phone + ":", e.message || e);
+  }
+  return result;
+}
 
 // ─── Lesson reminders ───────────────────────────────────────
 // Build student lookup helpers shared by 24h + 1h crons.
@@ -230,11 +310,13 @@ exports.lessonReminder24h = onSchedule(
           (l.status === "scheduled" || l.status === "rescheduled"));
         if (!match) return;
         const name = d.student_name || (d.student_email || "").split("@")[0] || "Öğrenci";
-        tasks.push(sendWhatsAppTemplate(
-            d.student_phone,
-            TEMPLATES.lesson_reminder_24h,
-            {"1": name, "2": match.time, "3": zoomLink || "https://berkayeracademy.com/booking"},
-        ).then((r) => {
+        tasks.push(sendAndPersistWA({
+          toPhone: d.student_phone,
+          contentSid: TEMPLATES.lesson_reminder_24h,
+          variables: {"1": name, "2": match.time, "3": zoomLink || "https://berkayeracademy.com/booking"},
+          displayBody: `⏰ 24 saat hatırlatma — ${name}, yarın ${match.time} dersin var.`,
+          source: "cron:lesson_reminder_24h",
+        }).then((r) => {
           if (r.ok) {
             sent++;
             console.log(`WA 24h reminder → ${d.student_phone} (${name})`);
@@ -275,11 +357,13 @@ exports.lessonReminder1h = onSchedule(
           (l.status === "scheduled" || l.status === "rescheduled"));
         if (!match) return;
         const name = d.student_name || (d.student_email || "").split("@")[0] || "Öğrenci";
-        tasks.push(sendWhatsAppTemplate(
-            d.student_phone,
-            TEMPLATES.lesson_reminder_1h,
-            {"1": name, "2": targetTime, "3": zoomLink || "https://berkayeracademy.com/booking"},
-        ).then((r) => {
+        tasks.push(sendAndPersistWA({
+          toPhone: d.student_phone,
+          contentSid: TEMPLATES.lesson_reminder_1h,
+          variables: {"1": name, "2": targetTime, "3": zoomLink || "https://berkayeracademy.com/booking"},
+          displayBody: `⏰ 1 saat hatırlatma — ${name}, 1 saat sonra ${targetTime} dersin var.`,
+          source: "cron:lesson_reminder_1h",
+        }).then((r) => {
           if (r.ok) {
             sent++;
             console.log(`WA 1h reminder → ${d.student_phone} (${name})`);
@@ -340,18 +424,28 @@ exports.lessonEndFollowUp = onSchedule(
         // 3) Son ders. Paket-bitti mesajı gönder.
         const name = d.student_name || (d.student_email || "").split("@")[0] || "Öğrenci";
         tasks.push((async () => {
+          const displayBody = `🎉 Paket tamamlandı — ${name}, paketindeki son dersi de bitirdik. Eline sağlık!`;
           let r;
           if (TEMPLATES.package_completed) {
-            r = await sendWhatsAppTemplate(d.student_phone, TEMPLATES.package_completed, {"1": name});
+            r = await sendAndPersistWA({
+              toPhone: d.student_phone,
+              contentSid: TEMPLATES.package_completed,
+              variables: {"1": name},
+              displayBody,
+              source: "cron:package_completed",
+            });
           } else {
             const body = `Merhaba ${name}! 🎉\n\nPaketindeki son dersi de bitirdik — ` +
               `eline sağlık, çok güzel bir yolculuktu.\n\n` +
               `Devam etmek istersen yeni paket için bana buradan yazabilirsin 🎵`;
-            r = await sendWhatsApp(d.student_phone, body);
+            r = await sendAndPersistWA({
+              toPhone: d.student_phone,
+              body,
+              source: "cron:package_completed_freeform",
+            });
           }
           if (r.ok) {
             sent++;
-            // Bayrağı koy, kaydet.
             const updated = lessons.slice();
             updated[matchIdx] = Object.assign({}, match, {package_complete_sent: true});
             await doc.ref.set({lessons: updated}, {merge: true});
@@ -515,7 +609,8 @@ exports.twilioWhatsAppWebhook = onRequest(
     },
 );
 
-// Admin-only callable: send WhatsApp + persist to whatsapp_conversations
+// Admin-only callable: send WhatsApp via shared helper so freeform admin
+// messages land in the same whatsapp_conversations thread as cron sends.
 exports.sendWhatsAppAdmin = onCall(
     {region: "europe-west1"},
     async (request) => {
@@ -524,53 +619,10 @@ exports.sendWhatsAppAdmin = onCall(
       }
       const {toPhone, body} = request.data || {};
       if (!toPhone || !body) throw new HttpsError("invalid-argument", "toPhone ve body gerekli");
-      const result = await sendWhatsApp(toPhone, body);
+      const result = await sendAndPersistWA({toPhone, body, source: "admin_panel"});
       if (!result.ok) {
         throw new HttpsError("internal", result.error || "send failed");
       }
-
-      // Normalize phone for conversation key (E.164 with leading +)
-      let phone = String(toPhone).replace(/[^\d+]/g, "");
-      if (phone.startsWith("00")) phone = "+" + phone.slice(2);
-      if (!phone.startsWith("+")) {
-        if (phone.startsWith("0")) phone = "+90" + phone.slice(1);
-        else if (phone.startsWith("90")) phone = "+" + phone;
-        else if (phone.startsWith("5")) phone = "+90" + phone;
-        else phone = "+" + phone;
-      }
-
-      const db = getFirestore();
-      const convoRef = db.collection("whatsapp_conversations").doc(phone);
-      await convoRef.collection("messages").doc(result.sid || `outbound_${Date.now()}`).set({
-        direction: "out",
-        from: process.env.TWILIO_WA_FROM,
-        to: "whatsapp:" + phone,
-        body,
-        sid: result.sid,
-        status: result.status,
-        created_at: FieldValue.serverTimestamp(),
-      });
-
-      // Look up student to enrich convo doc
-      let studentUid = null;
-      let studentName = null;
-      try {
-        const q = await db.collection("reservations").where("student_phone", "==", phone).limit(1).get();
-        if (!q.empty) {
-          studentUid = q.docs[0].id;
-          studentName = q.docs[0].data().student_name || null;
-        }
-      } catch (e) {/* ignore */}
-
-      await convoRef.set({
-        phone,
-        ...(studentUid ? {student_uid: studentUid} : {}),
-        ...(studentName ? {student_name: studentName} : {}),
-        last_message: body.slice(0, 200),
-        last_message_at: FieldValue.serverTimestamp(),
-        last_direction: "out",
-      }, {merge: true});
-
       return {ok: true, sid: result.sid, status: result.status};
     },
 );
