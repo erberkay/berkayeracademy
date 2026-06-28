@@ -492,6 +492,183 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
     },
 );
 
+// ─── Auto-approve lesson_requests (no admin click required) ──────
+// Server-side port of booking.html#acceptRequest / acceptTrialRequest.
+// Triggers right after the student submits a request: creates the
+// reservation, books slots, and marks the request accepted — atomically.
+// Re-/payment/extra-lesson types still go to the admin; only INITIAL
+// lesson bookings (trial + monthly + single) are auto-approved.
+function dateStrFromDateObj(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate) {
+  if (!lessonsPerMonth) lessonsPerMonth = 4;
+  const today = startDate ? new Date(startDate + "T00:00:00") : new Date();
+  today.setHours(0, 0, 0, 0);
+  const dates = [];
+  const totalPerDay = durationMonths * lessonsPerMonth;
+  (schedule || []).forEach((s) => {
+    const first = new Date(today);
+    while (first.getDay() !== s.dayIndex) first.setDate(first.getDate() + 1);
+    for (let i = 0; i < totalPerDay; i++) {
+      const d = new Date(first); d.setDate(d.getDate() + i * 7);
+      dates.push({date: dateStrFromDateObj(d), time: s.time, status: "scheduled"});
+    }
+  });
+  dates.sort((a, b) => a.date.localeCompare(b.date));
+  return dates;
+}
+
+exports.autoApproveLessonRequest = onDocumentCreated(
+    {region: "europe-west1", document: "lesson_requests/{reqId}"},
+    async (event) => {
+      const snap = event.data;
+      if (!snap) return;
+      const d = snap.data();
+      if (!d || d.status !== "pending") return;
+      // Only auto-approve initial bookings. Reschedule / payment / extra
+      // lesson requests still go through the admin "Onayla" flow.
+      const t = d.type;
+      const lt = d.lesson_type;
+      const isInitialBooking =
+        (!t || t === "initial_request" || t === "trial_request") &&
+        (lt === "trial" || lt === "monthly" || lt === "single");
+      if (!isInitialBooking) return;
+
+      const db = getFirestore();
+      try {
+        const batch = db.batch();
+        const reqRef = snap.ref;
+
+        if (lt === "trial") {
+          // Trial: single date+time picked client-side. Direct create.
+          if (!d.trial_date || !d.trial_time || !d.from_uid) {
+            console.warn("autoApprove: trial missing fields", event.params.reqId);
+            return;
+          }
+          const lesson = {date: d.trial_date, time: d.trial_time, status: "scheduled"};
+          batch.set(db.collection("reservations").doc(d.from_uid), {
+            student_uid: d.from_uid,
+            student_name: d.from_name || "",
+            student_email: d.from_email || "",
+            student_phone: d.from_phone || "",
+            student_photo: d.from_photo || "",
+            duration_months: 0,
+            schedule: [],
+            note: d.note || "",
+            start_date: d.trial_date,
+            end_date: d.trial_date,
+            lessons: [lesson],
+            reschedule_credits: {},
+            lesson_type: "trial",
+            payment_confirmed: true,
+            created_at: FieldValue.serverTimestamp(),
+          }, {merge: true});
+          batch.set(db.collection("booked_slots").doc(d.trial_date + "_" + d.trial_time), {
+            date: d.trial_date, time: d.trial_time, student_uid: d.from_uid,
+          });
+        } else {
+          // Monthly / single — recompute lessons from schedule.
+          if (!d.from_uid || !Array.isArray(d.schedule) || d.schedule.length === 0) {
+            console.warn("autoApprove: monthly missing schedule", event.params.reqId);
+            return;
+          }
+          const isSingle = lt === "single";
+          const effDur = isSingle ? 1 : (d.duration_months || 0);
+          const effLpm = isSingle ? 1 : (d.lessons_per_month || 4);
+          const effStart = d.preferred_start_date ||
+            dateStrFromDateObj(new Date());
+          if (!effDur) {
+            console.warn("autoApprove: zero duration_months", event.params.reqId);
+            return;
+          }
+
+          const allLessons = calculateLessonDates(d.schedule, effDur, effLpm, effStart);
+          if (allLessons.length === 0) {
+            console.warn("autoApprove: no lessons computed", event.params.reqId);
+            return;
+          }
+
+          // Check conflicts with existing booked_slots — skip clashing dates
+          // so we don't override someone else's confirmed booking.
+          const accepted = [];
+          const skipped = [];
+          for (const l of allLessons) {
+            const slotKey = l.date + "_" + l.time;
+            try {
+              const slotSnap = await db.collection("booked_slots").doc(slotKey).get();
+              if (slotSnap.exists && slotSnap.data().student_uid !== d.from_uid) {
+                skipped.push(l);
+                continue;
+              }
+            } catch (_) {/* read failure → optimistically accept */}
+            accepted.push(l);
+          }
+
+          if (accepted.length === 0) {
+            console.warn("autoApprove: all lessons clash, leaving request pending for admin");
+            return; // fall through to admin
+          }
+
+          // Reschedule credit: 1 per month, keyed by YYYY-MM
+          const rescheduleCredits = {};
+          const startObj = new Date(effStart + "T00:00:00");
+          for (let i = 0; i < effDur; i++) {
+            const m = new Date(startObj.getFullYear(), startObj.getMonth() + i, 1);
+            const key = `${m.getFullYear()}-${String(m.getMonth()+1).padStart(2, "0")}`;
+            rescheduleCredits[key] = 1;
+          }
+          const endDate = accepted[accepted.length-1].date;
+
+          batch.set(db.collection("reservations").doc(d.from_uid), {
+            student_uid: d.from_uid,
+            student_name: d.from_name || "",
+            student_email: d.from_email || "",
+            student_phone: d.from_phone || "",
+            student_photo: d.from_photo || "",
+            lesson_type: lt || "monthly",
+            duration_months: d.duration_months || 1,
+            lessons_per_month: d.lessons_per_month || 4,
+            preferred_start_date: d.preferred_start_date || "",
+            schedule: d.schedule,
+            note: d.note || "",
+            start_date: d.preferred_start_date || dateStrFromDateObj(new Date()),
+            end_date: endDate,
+            lessons: accepted,
+            reschedule_credits: rescheduleCredits,
+            payment_confirmed: false,
+            payment_pending: false,
+            rules_accepted_at: d.rules_accepted_at || FieldValue.serverTimestamp(),
+            created_at: FieldValue.serverTimestamp(),
+          }, {merge: true});
+
+          accepted.forEach((l) => {
+            batch.set(db.collection("booked_slots").doc(l.date + "_" + l.time), {
+              date: l.date, time: l.time, student_uid: d.from_uid,
+            });
+          });
+          if (skipped.length > 0) {
+            console.log(`autoApprove: skipped ${skipped.length} clashing lessons for`, d.from_uid);
+          }
+        }
+
+        // Flip request → accepted so the existing student-notification
+        // trigger fires and the admin panel reflects the state.
+        batch.update(reqRef, {
+          status: "accepted",
+          updated_at: FieldValue.serverTimestamp(),
+          auto_approved: true,
+        });
+
+        await batch.commit();
+        console.log("autoApprove: created reservation for", d.from_uid, "(req", event.params.reqId, ")");
+      } catch (e) {
+        console.error("autoApprove failed", event.params.reqId, e.message || e);
+        // Leave request pending so admin can manually resolve.
+      }
+    },
+);
+
 // Request status change → notify student via WhatsApp template
 exports.notifyStudentOnRequestStatus = onDocumentUpdated(
     {region: "europe-west1", document: "lesson_requests/{reqId}"},

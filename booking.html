@@ -1521,7 +1521,7 @@ async function submitRequest() {
       localStorage.setItem(_wKey, '1');
       firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: _user.email, toName: _user.displayName || '' }).catch(() => {});
     }
-    toast(window._i18n?.t('bk_req_submitted')||'✓ Talebiniz gönderildi!');
+    toast(window._i18n?.t('bk_req_submitted')||'✓ Talebiniz alındı, dersleriniz oluşturuluyor…');
     renderPendingView({ from_uid: _user.uid, from_name: _user.displayName||'', from_email: _user.email||'', lesson_type: isSingle?'single':'monthly', duration_months: duration, lessons_per_month: lessonsPerMonth, preferred_start_date: preferredStartDate, schedule, note, status: 'pending', id: reqRef.id });
   } catch(e) {
     const c = errId();
@@ -1547,11 +1547,15 @@ async function renderPendingView(reqData) {
   const isRejected = reqData.status === 'rejected';
 
   if (isPending) {
+    // Auto-approve runs as a Cloud Function trigger right after this
+    // request is created — usually completes in 1-2 seconds. The status
+    // listener below will flip the view to the dashboard as soon as that
+    // happens, so this text is the brief in-between message.
     statusBox.innerHTML = `
       <div class="status-box pending">
         <div class="status-icon">⏳</div>
-        <div class="status-title">${window._i18n?.t('bk_pending_status')||'Talep Beklemede'}</div>
-        <div class="status-desc">${window._i18n?.t('bk_pending_desc')||'Berkay Er talebinizi inceleyecek ve onaylayacak.<br>Onaylandıktan sonra ders takviminiz burada görünecek.'}</div>
+        <div class="status-title">${window._i18n?.t('bk_pending_status')||'Dersleriniz Hazırlanıyor'}</div>
+        <div class="status-desc">${window._i18n?.t('bk_pending_desc')||'Talebiniz alındı, ders takviminiz birkaç saniye içinde otomatik olarak oluşturulacak.<br>Bu sayfa yenilenmezse, sayfayı 5 saniye sonra yenileyebilirsiniz.'}</div>
       </div>`;
   } else if (isRejected) {
     statusBox.innerHTML = `
