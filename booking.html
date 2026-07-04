@@ -1694,6 +1694,15 @@ function initRequestForm() {
   document.getElementById('submitRequestBtn').disabled = true;
   const priceEl = document.getElementById('priceEstimate');
   if (priceEl) priceEl.style.display = 'none';
+  // Carry over the intro-screen note (from the "Ders Paketi" panel) into
+  // the schedule form's note textarea so the student doesn't retype it.
+  try {
+    if (window._accessInitialNote) {
+      const _rn = document.getElementById('reqNote');
+      if (_rn && !_rn.value) _rn.value = window._accessInitialNote;
+      window._accessInitialNote = null;
+    }
+  } catch (_) {}
   document.getElementById('typeMonthly').classList.add('active');
   document.getElementById('typeSingle').classList.remove('active');
   document.getElementById('durationField').style.display = '';
@@ -4798,50 +4807,15 @@ function isReservationActive(data) {
 
 
 // ─── Load user state ──────────────────────────────────────
+// Access gating (booking_access_requests) removed per user request:
+// signed-in students go straight to the booking flow. Existing pending
+// access-request docs are ignored on read; they'll be dropped by the
+// admin panel's cleanup path over time.
 async function loadUserState(user) {
   if (!user) { showView('view-signin'); return; }
   if (user.email === ADMIN_EMAIL) { renderAdminPanel(); return; }
 
   // Check active reservation first
-  // ── Step 1: Check booking access ──────────────────────
-  let accessSnap = null;
-  try { accessSnap = await db.collection('booking_access_requests').doc(user.uid).get(); }
-  catch(e) {
-    const c = errId();
-    showView('view-signin');
-    const _em=document.createElement('div');_em.style.cssText='margin-top:12px;font-size:.7rem;color:var(--crimson);text-align:center;';_em.textContent=`${window._i18n?.getLang()==='en'?'Connection error':'Bağlantı hatası'} (${c}): ${e.message||e.code} — ${window._i18n?.getLang()==='en'?'Please refresh the page.':'Sayfayı yenileyin.'}`;document.getElementById('view-signin').append(_em);
-    return;
-  }
-
-  if (!accessSnap || !accessSnap.exists) {
-    // Even without an access request doc, check if they already have a reservation
-    let earlyResSnap = null;
-    try { earlyResSnap = await db.collection('reservations').doc(user.uid).get(); } catch(e) {}
-    if (earlyResSnap && earlyResSnap.exists) {
-      const rd = earlyResSnap.data();
-      if (isReservationActive(rd)) { renderDashboard(); return; }
-      if (rd.lesson_type === 'trial') { renderAccessView(user, 'none'); return; }
-      initRequestForm(); return;
-    }
-
-    // Check if they have a pending trial lesson request
-    let trialSnap = null;
-    try { trialSnap = await db.collection('lesson_requests').where('from_uid','==',user.uid).where('lesson_type','==','trial').get(); } catch(e) {}
-    if (trialSnap && !trialSnap.empty) {
-      const latestTrial = trialSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
-      const req = latestTrial.data();
-      if (req.status === 'pending') { renderPendingView({ ...req, id: latestTrial.id }); return; }
-      if (req.status === 'accepted') { renderAccessView(user, 'none'); return; }
-      // status === 'rejected' → fall through to access view so user can submit again
-    }
-    renderAccessView(user, 'none'); return;
-  }
-  const accessStatus = accessSnap.data().status;
-  if (accessStatus === 'pending') { renderAccessView(user, 'pending'); return; }
-  if (accessStatus === 'rejected') { renderAccessView(user, 'rejected', accessSnap.data().reject_reason || ''); return; }
-  // accessStatus === 'approved' → fall through to normal flow
-
-  // ── Step 2: Normal reservation/request flow ────────────
   let resSnap = null;
   try { resSnap = await db.collection('reservations').doc(user.uid).get(); }
   catch(e) {
@@ -4853,11 +4827,26 @@ async function loadUserState(user) {
   if (resSnap && resSnap.exists) {
     const rd = resSnap.data();
     if (isReservationActive(rd)) { renderDashboard(); return; }
+    // Reservation exists but not active (trial done / plan ended) —
+    // show the picker screen (trial vs package) so they can book again.
     if (rd.lesson_type === 'trial') { renderAccessView(user, 'none'); return; }
     initRequestForm(); return;
   }
 
-  // Check for pending or recently rejected lesson request (monthly/single)
+  // Check for pending trial (auto-approve should have flipped it fast, but
+  // if the network dropped between submit and trigger, briefly show the
+  // pending view so the listener catches the flip).
+  let trialSnap = null;
+  try { trialSnap = await db.collection('lesson_requests').where('from_uid','==',user.uid).where('lesson_type','==','trial').get(); } catch(e) {}
+  if (trialSnap && !trialSnap.empty) {
+    const latestTrial = trialSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
+    const req = latestTrial.data();
+    if (req.status === 'pending') { renderPendingView({ ...req, id: latestTrial.id }); return; }
+    if (req.status === 'accepted') { renderAccessView(user, 'none'); return; }
+    // status === 'rejected' → fall through to picker so they can submit again
+  }
+
+  // Check for pending or recently rejected monthly/single request
   let pendingReqSnap = null, rejectedReqSnap = null;
   try {
     const qs = await db.collection('lesson_requests').where('from_uid', '==', user.uid).get();
@@ -4870,7 +4859,8 @@ async function loadUserState(user) {
   if (pendingReqSnap)  { renderPendingView({ ...pendingReqSnap.data(),  id: pendingReqSnap.id  }); return; }
   if (rejectedReqSnap) { renderPendingView({ ...rejectedReqSnap.data(), id: rejectedReqSnap.id }); return; }
 
-  initRequestForm();
+  // No reservation, no pending request → show the picker (trial vs package).
+  renderAccessView(user, 'none');
 }
 
 // ─── Booking Access View ───────────────────────────────────
@@ -4891,12 +4881,12 @@ function renderAccessView(user, state, rejectReason) {
         <div id="trialPanel" style="background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2);border-radius:12px;padding:18px 16px;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('trialForm').style.display='';document.getElementById('packageForm').style.display='none';this.style.borderColor='rgba(74,222,128,.5)';document.getElementById('packagePanel').style.borderColor='rgba(255,255,255,.08)';">
           <div style="font-size:1.2rem;margin-bottom:8px;">🎯</div>
           <div style="font-size:.8rem;color:var(--green);font-weight:700;margin-bottom:4px;">${_av?.t('bk_access_trial_title')||'Deneme Dersi'}</div>
-          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_trial_desc')||'Ücretsiz deneme dersi için tarih ve saat seç. Onay sonrası derse başlarsın.'}</div>
+          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_trial_desc')||'Ücretsiz deneme dersi için tarih ve saat seç. Anında takvimine eklenir.'}</div>
         </div>
         <div id="packagePanel" style="background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.2);border-radius:12px;padding:18px 16px;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('packageForm').style.display='';document.getElementById('trialForm').style.display='none';this.style.borderColor='rgba(232,184,75,.5)';document.getElementById('trialPanel').style.borderColor='rgba(255,255,255,.08)';">
           <div style="font-size:1.2rem;margin-bottom:8px;">📦</div>
           <div style="font-size:.8rem;color:var(--gold);font-weight:700;margin-bottom:4px;">${_av?.t('bk_access_pkg_title')||'Ders Paketi'}</div>
-          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_pkg_desc')||'Aylık ders paketi için erişim talebi gönder. Berkay Er inceleyip onaylayacak.'}</div>
+          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_pkg_desc')||'Aylık ders paketi seç ve takvimini kur. Talebin anında oluşturulur.'}</div>
         </div>
       </div>
 
@@ -4922,7 +4912,7 @@ function renderAccessView(user, state, rejectReason) {
         <div style="font-size:.62rem;color:var(--dim);letter-spacing:.08em;margin-bottom:5px;">${_av?.t('bk_access_msg_lbl')||'MESAJINIZ'} <span style="opacity:.5;">${_av?.t('bk_optional')||'(isteğe bağlı)'}</span></div>
         <textarea class="field-input" id="accessMsg" rows="3" placeholder="${_av?.t('bk_access_msg_ph')||'Kendinizden kısaca bahsedin, ne öğrenmek istiyorsunuz…'}" style="margin-bottom:12px;"></textarea>
         <div id="accessErr" style="font-size:.7rem;color:var(--crimson);margin-bottom:10px;display:none;"></div>
-        <button class="btn btn-gold" id="accessSendBtn" style="width:100%;">${_av?.t('bk_access_send_btn')||'Erişim Talebi Gönder →'}</button>
+        <button class="btn btn-gold" id="accessSendBtn" style="width:100%;">${_av?.t('bk_access_send_btn')||'Ders Paketi Seç →'}</button>
       </div>`;
 
     let _trialSelectedTime = null;
@@ -5051,21 +5041,13 @@ function renderAccessView(user, state, rejectReason) {
       } catch(e) { const c=errId(); errEl.textContent=`${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): `+(e.message||e.code); errEl.style.display=''; btn.disabled=false; btn.textContent=window._i18n?.t('bk_access_trial_btn')||'Deneme Dersi İste →'; }
     };
 
-    card.querySelector('#accessSendBtn').onclick = async () => {
-      const btn = card.querySelector('#accessSendBtn');
+    // Ders Paketi button: no more admin-approved access gating — this now
+    // jumps straight to the schedule form (initRequestForm). The message
+    // typed above is carried as the initial note.
+    card.querySelector('#accessSendBtn').onclick = () => {
       const msg = card.querySelector('#accessMsg').value.trim();
-      const errEl = card.querySelector('#accessErr');
-      btn.disabled = true; btn.textContent = window._i18n?.t('bk_submitting')||'Gönderiliyor…';
-      try {
-        await db.collection('booking_access_requests').doc(user.uid).set({
-          uid: user.uid, name: user.displayName||'', email: user.email||'', photo: user.photoURL||'',
-          message: msg, status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-        renderAccessView(user, 'pending');
-      } catch(e) {
-        const c = errId(); errEl.textContent=`${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): `+(e.message||e.code); errEl.style.display='';
-        btn.disabled=false; btn.textContent=window._i18n?.t('bk_access_send_btn')||'Erişim Talebi Gönder →';
-      }
+      if (msg) { try { window._accessInitialNote = msg; } catch(_) {} }
+      initRequestForm();
     };
     return;
   }
