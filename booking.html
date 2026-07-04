@@ -1517,7 +1517,7 @@ async function submitRequest() {
       localStorage.setItem(_wKey, '1');
       firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: _user.email, toName: _user.displayName || '' }).catch(() => {});
     }
-    toast(window._i18n?.t('bk_req_submitted')||'✓ Talebiniz alındı, dersleriniz oluşturuluyor…');
+    toast(window._i18n?.t('bk_req_submitted')||'✓ Talebiniz gönderildi!');
     renderPendingView({ from_uid: _user.uid, from_name: _user.displayName||'', from_email: _user.email||'', lesson_type: isSingle?'single':'monthly', duration_months: duration, lessons_per_month: lessonsPerMonth, preferred_start_date: preferredStartDate, schedule, note, status: 'pending', id: reqRef.id });
   } catch(e) {
     const c = errId();
@@ -1543,15 +1543,11 @@ async function renderPendingView(reqData) {
   const isRejected = reqData.status === 'rejected';
 
   if (isPending) {
-    // Auto-approve runs as a Cloud Function trigger right after this
-    // request is created — usually completes in 1-2 seconds. The status
-    // listener below will flip the view to the dashboard as soon as that
-    // happens, so this text is the brief in-between message.
     statusBox.innerHTML = `
       <div class="status-box pending">
         <div class="status-icon">⏳</div>
-        <div class="status-title">${window._i18n?.t('bk_pending_status')||'Dersleriniz Hazırlanıyor'}</div>
-        <div class="status-desc">${window._i18n?.t('bk_pending_desc')||'Talebiniz alındı, ders takviminiz birkaç saniye içinde otomatik olarak oluşturulacak.<br>Bu sayfa yenilenmezse, sayfayı 5 saniye sonra yenileyebilirsiniz.'}</div>
+        <div class="status-title">${window._i18n?.t('bk_pending_status')||'Talep Beklemede'}</div>
+        <div class="status-desc">${window._i18n?.t('bk_pending_desc')||'Berkay Er talebinizi inceleyecek ve onaylayacak.<br>Onaylandıktan sonra ders takviminiz burada görünecek.'}</div>
       </div>`;
   } else if (isRejected) {
     statusBox.innerHTML = `
@@ -4877,12 +4873,12 @@ function renderAccessView(user, state, rejectReason) {
         <div id="trialPanel" style="background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2);border-radius:12px;padding:18px 16px;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('trialForm').style.display='';document.getElementById('packageForm').style.display='none';this.style.borderColor='rgba(74,222,128,.5)';document.getElementById('packagePanel').style.borderColor='rgba(255,255,255,.08)';">
           <div style="font-size:1.2rem;margin-bottom:8px;">🎯</div>
           <div style="font-size:.8rem;color:var(--green);font-weight:700;margin-bottom:4px;">${_av?.t('bk_access_trial_title')||'Deneme Dersi'}</div>
-          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_trial_desc')||'Ücretsiz deneme dersi için tarih ve saat seç. Anında takvimine eklenir.'}</div>
+          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_trial_desc')||'Ücretsiz deneme dersi için tarih ve saat seç. Berkay Er onaylayınca derse başlarsın.'}</div>
         </div>
         <div id="packagePanel" style="background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.2);border-radius:12px;padding:18px 16px;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('packageForm').style.display='';document.getElementById('trialForm').style.display='none';this.style.borderColor='rgba(232,184,75,.5)';document.getElementById('trialPanel').style.borderColor='rgba(255,255,255,.08)';">
           <div style="font-size:1.2rem;margin-bottom:8px;">📦</div>
           <div style="font-size:.8rem;color:var(--gold);font-weight:700;margin-bottom:4px;">${_av?.t('bk_access_pkg_title')||'Ders Paketi'}</div>
-          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_pkg_desc')||'Aylık ders paketi seç ve takvimini kur. Talebin anında oluşturulur.'}</div>
+          <div style="font-size:.65rem;color:var(--dim);line-height:1.6;">${_av?.t('bk_access_pkg_desc')||'Aylık ders paketi seç, günleri ve saatleri belirle. Berkay Er onaylayınca takvimine işlenir.'}</div>
         </div>
       </div>
 
