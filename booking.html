@@ -2881,12 +2881,21 @@ async function renderAdminPanel() {
   if (!studSnap || studSnap.empty) {
     studList.innerHTML = `<div class="empty-state">${window._i18n?.t('bk_no_students')||'Henüz öğrenci yok.'}</div>`;
   } else {
+    let _hiddenFinished = 0;
     studSnap.docs.forEach(doc => {
       const s = doc.data(); const studentUid = doc.id;
       const today = toDateStr(new Date());
       s.lessons = dedupLessons(s.lessons || []);
       const allLessonsArr = s.lessons;
       const upcomingLessons = allLessonsArr.filter(l => l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen' || l.status === 'cancel_requested').sort((a,b) => a.date.localeCompare(b.date));
+      // Paket biten öğrenciyi listeden gizle: hiçbir upcoming ders kalmadı
+      // ve tüm dersler tamamlandı/iptal edildi. Firestore'daki kayıt
+      // korunur (raporlama için), sadece bu aktif listede gizlenir.
+      const hasAnyLiveLesson = allLessonsArr.some(l => l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen' || l.status === 'cancel_requested');
+      if (!hasAnyLiveLesson && allLessonsArr.length > 0) {
+        _hiddenFinished++;
+        return;
+      }
       const totalLessons = allLessonsArr.filter(l => l.status !== 'cancelled').length;
       const curMonthAdmin = today.slice(0, 7);
       const thisMonthCount = allLessonsArr.filter(l => l.date.startsWith(curMonthAdmin) && (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen' || l.status === 'completed')).length;
@@ -3326,6 +3335,13 @@ async function renderAdminPanel() {
       row.append(cancelPlanBtn);
       studList.append(row);
     });
+    // Paketi biten öğrenci sayısı bilgisi (gizli ama sayılan kayıtlar)
+    if (_hiddenFinished > 0) {
+      const info = document.createElement('div');
+      info.style.cssText = 'margin-top:12px;padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;font-size:.66rem;color:var(--dim);text-align:center;';
+      info.textContent = `✓ ${_hiddenFinished} öğrencinin paketi tamamlandı — listeden gizlendi.`;
+      studList.append(info);
+    }
   }
   }, e => { const c=errId(); studList.innerHTML = `<div class="empty-state" style="color:var(--crimson)">Öğrenciler yüklenemedi (${c}): ${e.message||e.code}</div>`; });
 }
@@ -5020,10 +5036,15 @@ function renderAccessView(user, state, rejectReason) {
       const errEl = card.querySelector('#trialErr');
       if (!date) { errEl.textContent = window._i18n?.t('bk_err_no_date')||'Lütfen bir tarih seçin.'; errEl.style.display=''; return; }
       if (!time) { errEl.textContent = window._i18n?.t('bk_err_no_time')||'Lütfen bir saat seçin.'; errEl.style.display=''; return; }
+      // Kabul edilen formatlar: Türk numarası (5XX XXX XX XX, 05XX..., 90...)
+      // veya uluslararası E.164 (+ ile başlar, ülke kodu dahil 8-15 rakam).
+      const isPlusPrefixed = phoneRaw.trim().startsWith('+');
       const phoneDigits = phoneRaw.replace(/\D/g, '');
-      const phoneOk = /^(?:90)?5\d{9}$/.test(phoneDigits) || /^5\d{9}$/.test(phoneDigits) || /^05\d{9}$/.test(phoneDigits);
+      const isTrValid = /^5\d{9}$/.test(phoneDigits) || /^05\d{9}$/.test(phoneDigits) || /^905\d{9}$/.test(phoneDigits);
+      const isIntlValid = isPlusPrefixed && /^\d{8,15}$/.test(phoneDigits);
+      const phoneOk = isTrValid || isIntlValid;
       if (!phoneOk) {
-        errEl.textContent = '📱 Geçerli bir cep telefonu numarası gir (05XX XXX XX XX).';
+        errEl.textContent = '📱 Geçerli bir cep telefonu numarası gir (TR: 05XX XXX XX XX · Uluslararası: +ülke kodu ile başlat, örn +1 617 388 4403).';
         errEl.style.display = '';
         const _trPh = card.querySelector('#trialPhone');
         if (_trPh) {
@@ -5033,10 +5054,17 @@ function renderAccessView(user, state, rejectReason) {
         }
         return;
       }
-      let phoneE164 = phoneDigits;
-      if (phoneE164.startsWith('0')) phoneE164 = phoneE164.slice(1);
-      if (!phoneE164.startsWith('90')) phoneE164 = '90' + phoneE164;
-      phoneE164 = '+' + phoneE164;
+      // E.164 normalize: TR şekilleri +90'la başlar, uluslararası ise +
+      // olduğu gibi.
+      let phoneE164;
+      if (isTrValid) {
+        let digits = phoneDigits;
+        if (digits.startsWith('0')) digits = digits.slice(1);
+        if (!digits.startsWith('90')) digits = '90' + digits;
+        phoneE164 = '+' + digits;
+      } else {
+        phoneE164 = '+' + phoneDigits;
+      }
       errEl.style.display = 'none';
       btn.disabled = true; btn.textContent = window._i18n?.t('bk_submitting')||'Gönderiliyor…';
       try {
