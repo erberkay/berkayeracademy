@@ -5040,16 +5040,42 @@ function renderAccessView(user, state, rejectReason) {
       errEl.style.display = 'none';
       btn.disabled = true; btn.textContent = window._i18n?.t('bk_submitting')||'Gönderiliyor…';
       try {
+        // Anti-abuse: deneme dersi sadece bir kere. Email + telefon + IP
+        // ayrı ayrı kontrol edilir — biri eşleşirse ikinci alım engellenir.
+        let elig;
+        try {
+          const _fn = firebase.app().functions('europe-west1').httpsCallable('checkTrialEligibility');
+          const _resp = await _fn({ phone: phoneE164 });
+          elig = _resp.data || {};
+        } catch (e) {
+          const c = errId();
+          errEl.textContent = `Doğrulama hatası (${c}). Lütfen tekrar dene.`;
+          errEl.style.display = '';
+          btn.disabled = false; btn.textContent = window._i18n?.t('bk_access_trial_btn')||'Deneme Dersi İste →';
+          return;
+        }
+        if (!elig.ok) {
+          const reasonMap = {
+            email: 'Bu e-posta adresi ile daha önce bir deneme dersi alınmış. Deneme dersi kişi başı yalnızca 1 kere alınabilir. Aylık paket almak için WhatsApp üzerinden iletişime geçebilirsin.',
+            phone: 'Bu telefon numarası ile daha önce bir deneme dersi alınmış. Deneme dersi kişi başı yalnızca 1 kere alınabilir. Aylık paket almak için WhatsApp üzerinden iletişime geçebilirsin.',
+            ip:    'Bu cihaz / bağlantı üzerinden daha önce bir deneme dersi alınmış. Deneme dersi kişi başı yalnızca 1 kere alınabilir. Aylık paket almak için WhatsApp üzerinden iletişime geçebilirsin.'
+          };
+          errEl.textContent = reasonMap[elig.reason] || 'Deneme dersi daha önce alınmış.';
+          errEl.style.display = '';
+          btn.disabled = false; btn.textContent = window._i18n?.t('bk_access_trial_btn')||'Deneme Dersi İste →';
+          return;
+        }
         await db.collection('lesson_requests').add({
           from_uid: user.uid,
           from_name: user.displayName || '',
-          from_email: user.email || '',
+          from_email: (user.email || '').toLowerCase(),
           from_phone: phoneE164,
           from_photo: user.photoURL || '',
           lesson_type: 'trial',
           trial_date: date,
           trial_time: time,
           note,
+          client_ip: elig.ip || null,
           status: 'pending',
           created_at: firebase.firestore.FieldValue.serverTimestamp(),
         });

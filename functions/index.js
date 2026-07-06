@@ -492,7 +492,50 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
     },
 );
 
-// ─── (autoApproveLessonRequest removed — admin still reviews times) ──
+// ─── Trial-lesson eligibility check ────────────────────────────
+// Trial ders sadece 1 kere alınabilir. Aynı email / telefon / IP'den
+// ikinci bir deneme dersi denemesi engellenir. Her kontrol AYRI ayrı:
+// biri eşleşirse yeter — email değiştirilse bile telefon veya IP
+// yakalar (kullanıcının anti-abuse isteği).
+exports.checkTrialEligibility = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth) {
+        throw new HttpsError("unauthenticated", "Auth gerekli");
+      }
+      const email = (request.auth.token.email || "").toLowerCase();
+      const rawPhone = String((request.data && request.data.phone) || "");
+      const phone = rawPhone.replace(/[^\d+]/g, ""); // normalize
+      const rr = request.rawRequest || {};
+      const hdrs = rr.headers || {};
+      const forwarded = String(hdrs["x-forwarded-for"] || "").split(",")[0].trim();
+      const clientIp = rr.ip || forwarded || null;
+
+      const db = getFirestore();
+
+      async function hasPriorTrialBy(field, value) {
+        if (!value) return false;
+        const snap = await db.collection("lesson_requests")
+            .where(field, "==", value)
+            .where("lesson_type", "==", "trial")
+            .limit(1)
+            .get();
+        return !snap.empty;
+      }
+
+      if (await hasPriorTrialBy("from_email", email)) {
+        return {ok: false, reason: "email", ip: clientIp};
+      }
+      if (phone && await hasPriorTrialBy("from_phone", phone)) {
+        return {ok: false, reason: "phone", ip: clientIp};
+      }
+      if (clientIp && await hasPriorTrialBy("client_ip", clientIp)) {
+        return {ok: false, reason: "ip", ip: clientIp};
+      }
+      return {ok: true, ip: clientIp};
+    },
+);
+
 // Request status change → notify student via WhatsApp template
 exports.notifyStudentOnRequestStatus = onDocumentUpdated(
     {region: "europe-west1", document: "lesson_requests/{reqId}"},
