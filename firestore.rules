@@ -141,8 +141,10 @@ service cloud.firestore {
           // Payment request
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payment_pending']) &&
             request.resource.data.payment_pending == true) ||
-          // Rules acceptance (write-once: must not already be set)
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rules_accepted_at']) &&
+          // Rules acceptance (write-once: must not already be set). rules_accepted_at
+          // stays the write-once gate; rules_accepted_detail (per-rule timestamps) and
+          // rules_version ride along in the same one-time write.
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rules_accepted_at', 'rules_accepted_detail', 'rules_version']) &&
             !('rules_accepted_at' in resource.data)) ||
           // Student adds/updates own WhatsApp number. Format kontrolü:
           // 5XXXXXXXXX | 05XXXXXXXXX | 905XXXXXXXXX (Türk hat formatları)

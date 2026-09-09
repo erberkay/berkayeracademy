@@ -1779,9 +1779,11 @@ async function renderDashboard() {
   if (!res.rules_accepted_at && res.lesson_type !== 'trial' && !window._rulesAcceptInFlight) {
     window._rulesAcceptInFlight = true;
     try {
-      await showRulesAcceptanceModal();
+      const rulesConsent = await showRulesAcceptanceModal();
       await db.collection('reservations').doc(_user.uid).set({
-        rules_accepted_at: firebase.firestore.FieldValue.serverTimestamp()
+        rules_accepted_at: firebase.firestore.FieldValue.serverTimestamp(),
+        rules_accepted_detail: rulesConsent.items,
+        rules_version: rulesConsent.version,
       }, { merge: true });
     } catch(_) {}
     window._rulesAcceptInFlight = false;
