@@ -71,7 +71,7 @@
     idx_cta_line1:        { tr: 'Kafandaki Müziği Artık',      en: 'The Music In Your Head —' },
     idx_cta_line2:        { tr: 'Sahneye Taşımanın Zamanı',    en: "It's Time to Take It to the Stage" },
     idx_cta_desc:         { tr: '1 saatlik ücretsiz deneme dersini ayırt, eğitim tarzını yerinde gör. Ödeme yok, bağlayıcılık yok — sadece seninle sesin arasındaki mesafeyi ölçelim.', en: 'Book your 1-hour free trial lesson and see the teaching style firsthand. No payment, no commitment — let\'s just measure the distance between you and your sound.' },
-    idx_cta_btn:          { tr: 'ÜCRETSİZ DENEME DERSİNİ AYIRT →', en: 'BOOK YOUR FREE TRIAL LESSON →' },
+    idx_cta_btn:          { tr: 'Ücretsiz deneme dersini ayırt →', en: 'Book your free trial lesson →' },
     idx_cta_sub:          { tr: '500 GB preset paketi · Kişiye özel müfredat · Sıfırdan ileri seviye', en: '500 GB preset pack · Custom curriculum · Zero to advanced' },
     idx_edu_title:        { tr: 'Prodüksiyon Eğitimi',      en: 'Production Education' },
     idx_edu_box_title:    { tr: 'Ableton Live ile Elektronik Müzik Prodüksiyonu', en: 'Electronic Music Production with Ableton Live' },
