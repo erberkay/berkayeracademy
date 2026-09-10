@@ -6,6 +6,10 @@
     // ── Navigation ──
     nav_home:       { tr: 'Ana Sayfa',   en: 'Home' },
     nav_egitim:     { tr: 'Eğitim',      en: 'Education' },
+    nav_egitmen:    { tr: 'Eğitmen',     en: 'Instructor' },
+    nav_egitmen_long: { tr: 'Eğitmeni tanı', en: 'Meet the instructor' },
+    ui_theme_dark:  { tr: 'Koyu',        en: 'Dark' },
+    ui_theme_light: { tr: 'Açık',        en: 'Light' },
     nav_forum:      { tr: 'Forum',       en: 'Forum' },
     nav_members:    { tr: 'Üyeler',      en: 'Members' },
     nav_lab:        { tr: 'Lab',         en: 'Lab' },
