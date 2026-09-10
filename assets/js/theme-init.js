@@ -105,6 +105,14 @@
     document.body.insertBefore(bar, document.body.firstChild);
     html.classList.add('has-topbar');
   }
+  function buildDrawerClose(nav) {
+    if (nav.querySelector('.drawer-close')) return;
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'drawer-close'; b.setAttribute('aria-label', 'Menüyü kapat');
+    b.innerHTML = '<span></span><span></span>';
+    b.addEventListener('click', function () { setDrawer(false); });
+    nav.insertBefore(b, nav.firstChild);
+  }
   function buildBackdrop() {
     if (document.querySelector('.drawer-backdrop')) return;
     var d = document.createElement('div'); d.className = 'drawer-backdrop';
@@ -113,7 +121,7 @@
   }
 
   function init() {
-    ensureLeftNav();
+    buildDrawerClose(ensureLeftNav());
     buildTopBar();
     buildBackdrop();
     document.querySelectorAll('.lnav-lang, .mobile-lang-toggle').forEach(function (host) {
