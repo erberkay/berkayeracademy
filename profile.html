@@ -475,7 +475,7 @@ async function _sendMsg(fromUid, fromName, fromPhoto, toUid, toName, toPhoto, te
   });
   await batch.commit();
   db.collection('notifications').doc(toUid).collection('items').add({
-    text:`💬 ${fromName}: ${text.slice(0,60)}${text.length>60?'…':''}`,
+    text:`${fromName}: ${text.slice(0,60)}${text.length>60?'…':''}`,
     read:false, fromUid,
     createdAt:firebase.firestore.FieldValue.serverTimestamp(),
   }).catch(()=>{});
@@ -502,7 +502,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
   if (_user && otherId && otherId !== _user.uid) {
     const collabHdrBtn = document.createElement('button');
     collabHdrBtn.style.cssText = 'margin-left:auto;flex-shrink:0;background:rgba(180,120,255,.1);border:1px solid rgba(180,120,255,.35);color:#b478ff;font-family:"Space Mono",monospace;font-size:.6rem;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .15s;white-space:nowrap;';
-    collabHdrBtn.textContent = '🤝 Collab';
+    collabHdrBtn.textContent = 'Collab';
     collabHdrBtn.title = window._i18n?.t('prof_collab_tooltip')||'Collab isteği gönder';
     collabHdrBtn.onmouseenter = () => collabHdrBtn.style.background = 'rgba(180,120,255,.2)';
     collabHdrBtn.onmouseleave = () => collabHdrBtn.style.background = 'rgba(180,120,255,.1)';
@@ -516,28 +516,28 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         const existingSnap = await chatRef.collection('messages').where('type','==','collab_request').where('status','==','pending').limit(1).get();
         if (!existingSnap.empty) {
           showToast(window._i18n?.t('prof_collab_exists')||'Zaten bekleyen bir collab isteği var.', 'info');
-          collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab';
+          collabHdrBtn.disabled = false; collabHdrBtn.textContent = 'Collab';
           return;
         }
         const batch = db.batch();
         batch.set(chatRef, {
           participants:[_user.uid, otherId], names:{[_user.uid]:fromName,[otherId]:otherName},
           photos:{[_user.uid]:fromPhoto,[otherId]:otherPhoto||''},
-          lastMessage:'🤝 Collab isteği', lastAt:firebase.firestore.FieldValue.serverTimestamp(),
+          lastMessage:'Collab isteği', lastAt:firebase.firestore.FieldValue.serverTimestamp(),
           unreadBy:firebase.firestore.FieldValue.arrayUnion(otherId),
         }, { merge:true });
         const msgRef = chatRef.collection('messages').doc();
-        batch.set(msgRef, { fromUid:_user.uid, type:'collab_request', status:'pending', text:'🤝 Collab isteği gönderdi', createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+        batch.set(msgRef, { fromUid:_user.uid, type:'collab_request', status:'pending', text:'Collab isteği gönderdi', createdAt:firebase.firestore.FieldValue.serverTimestamp() });
         await batch.commit();
         db.collection('notifications').doc(otherId).collection('items').add({
           text:`${fromName} sana collab isteği gönderdi`, fromUid:_user.uid, type:'collab', read:false,
           createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         }).catch(()=>{});
         collabHdrBtn.textContent = '✓ '+(window._i18n?.getLang()==='en'?'Sent':'Gönderildi');
-        setTimeout(() => { collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab'; }, 4000);
+        setTimeout(() => { collabHdrBtn.disabled = false; collabHdrBtn.textContent = 'Collab'; }, 4000);
       } catch(e) {
         const c=errId(); showToast(`${window._i18n?.t('prof_collab_send_err')||'Gönderilemedi'} (${c}): `+(e.message||e.code), 'error');
-        collabHdrBtn.disabled = false; collabHdrBtn.textContent = '🤝 Collab';
+        collabHdrBtn.disabled = false; collabHdrBtn.textContent = 'Collab';
       }
     };
     hdr.append(collabHdrBtn);
@@ -574,7 +574,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         if (m.type === 'collab_request') {
           const card = document.createElement('div'); card.className = 'collab-req-card';
           const label = document.createElement('div'); label.className = 'collab-req-card-label';
-          label.textContent = myMsg ? (window._i18n?.t('prof_collab_req_sent')||'🤝 Collab isteği gönderdin') : (window._i18n?.t('prof_collab_req_recv')||'🤝 Collab isteği aldın');
+          label.textContent = myMsg ? (window._i18n?.t('prof_collab_req_sent')||'Collab isteği gönderdin') : (window._i18n?.t('prof_collab_req_recv')||'Collab isteği aldın');
           card.append(label);
           if (m.status === 'pending' && !myMsg) {
             const btns = document.createElement('div'); btns.className = 'collab-req-card-btns';
@@ -714,7 +714,7 @@ function initChatPanel(user) {
         item.append(_mkAvEl(u.photo, u.name, 'chat-thread-av'));
         const info = document.createElement('div'); info.className = 'chat-thread-info';
         const nm = document.createElement('div'); nm.className = 'chat-thread-name'; nm.textContent = u.name;
-        const sub = document.createElement('div'); sub.className = 'chat-thread-prev'; sub.textContent = window._i18n?.t('prof_msg_hint')||'💬 Mesaj gönder';
+        const sub = document.createElement('div'); sub.className = 'chat-thread-prev'; sub.textContent = window._i18n?.t('prof_msg_hint')||'Mesaj gönder';
         info.append(nm, sub); item.append(info);
         item.onclick = () => { const cid = _chatId(user.uid, uid); panel._openThread(cid, uid, u.name, u.photo); if (window.innerWidth<=1000) { panel.classList.add('mobile-open'); mobileBtn.style.display='none'; } };
         _chatThreadsEl.append(item);
@@ -834,13 +834,13 @@ function updateAuthBar(user) {
       if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
     img.src = user.photoURL || ''; img.alt = '';
     const name = document.createElement('span'); name.className = 'auth-name';
-    name.textContent = isAdmin(user) ? '⚡ Admin' : (user.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye'));
+    name.textContent = isAdmin(user) ? 'Admin' : (user.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye'));
     const out = document.createElement('button'); out.className = 'auth-out-btn';
     out.textContent = '✕'; out.onclick = () => auth.signOut();
     wrap.append(img, name, out);
 
     const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
-    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '🔔'; bell.title = 'Bildirimler';
+    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.textContent = '\u25CB'; bell.title = 'Bildirimler';
     const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
     _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
     _notifPanelEl.innerHTML = `<div class="notif-panel-head"><span class="notif-panel-title">${window._i18n?.t('ui_notifications')||'Bildirimler'}</span><button class="notif-read-all">${window._i18n?.t('ui_read_all')||'Tümünü Oku'}</button></div><div class="notif-list"></div>`;
@@ -1054,25 +1054,25 @@ async function renderProfile() {
     if (prof.instagram) {
       const igLink = document.createElement('a'); igLink.className = 'profile-social-link profile-social-ig';
       igLink.href = prof.instagram; igLink.target = '_blank'; igLink.rel = 'noopener';
-      igLink.textContent = '📷 Instagram';
+      igLink.textContent = 'Instagram';
       socialsDiv.append(igLink);
     }
     if (prof.spotify) {
       const spLink = document.createElement('a'); spLink.className = 'profile-social-link profile-social-sp';
       spLink.href = prof.spotify; spLink.target = '_blank'; spLink.rel = 'noopener';
-      spLink.textContent = '🎵 Spotify';
+      spLink.textContent = 'Spotify';
       socialsDiv.append(spLink);
     }
     if (prof.soundcloudUrl) {
       const scLink = document.createElement('a'); scLink.className = 'profile-social-link profile-social-sc';
       scLink.href = prof.soundcloudUrl; scLink.target = '_blank'; scLink.rel = 'noopener';
-      scLink.textContent = '☁️ SoundCloud';
+      scLink.textContent = 'SoundCloud';
       socialsDiv.append(scLink);
     }
     if (prof.mixcloudUrl) {
       const mcLink = document.createElement('a'); mcLink.className = 'profile-social-link profile-social-mc';
       mcLink.href = prof.mixcloudUrl; mcLink.target = '_blank'; mcLink.rel = 'noopener';
-      mcLink.textContent = '🎙️ Mixcloud';
+      mcLink.textContent = 'Mixcloud';
       socialsDiv.append(mcLink);
     }
     info.append(socialsDiv);
@@ -1082,7 +1082,7 @@ async function renderProfile() {
   if (prof.collabStatus && prof.collabStatus !== 'none') {
     const csDiv = document.createElement('div');
     csDiv.style.cssText = 'display:inline-flex;align-items:center;gap:5px;font-size:.58rem;color:var(--dim);margin-bottom:10px;';
-    csDiv.textContent = prof.collabStatus === 'open' ? (window._i18n?.t('prof_open')||'🟢 Projeye Açık') : (window._i18n?.t('prof_busy')||'🔴 Meşgul');
+    csDiv.textContent = prof.collabStatus === 'open' ? (window._i18n?.t('prof_open')||'Projeye Açık') : (window._i18n?.t('prof_busy')||'Meşgul');
     info.append(csDiv);
   }
 
@@ -1090,7 +1090,7 @@ async function renderProfile() {
 
   // Message + follow buttons (other people's profiles)
   if (!isOwn && _user) {
-    const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = window._i18n?.t('prof_msg_btn')||'💬 Mesaj Gönder';
+    const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = window._i18n?.t('prof_msg_btn')||'Mesaj Gönder';
     msgBtn.onclick = e => { e.stopPropagation(); openChatWith(uid, displayName.split(' ')[0]||(window._i18n?.t('ui_member')||'Üye'), photoURL); };
     info.append(msgBtn);
 
@@ -1120,7 +1120,7 @@ async function renderProfile() {
     {
       const collabReqBtn = document.createElement('button');
       collabReqBtn.className = 'collab-req-btn';
-      collabReqBtn.textContent = window._i18n?.t('prof_collab')||'🤝 Collab İsteği Gönder';
+      collabReqBtn.textContent = window._i18n?.t('prof_collab')||'Collab İsteği Gönder';
       collabReqBtn.onclick = async () => {
         collabReqBtn.disabled = true;
         collabReqBtn.textContent = window._i18n?.t('prof_collab_sending')||'Gönderiliyor…';
@@ -1133,7 +1133,7 @@ async function renderProfile() {
           participants: [_user.uid, uid],
           names: { [_user.uid]: fromName, [uid]: displayName.split(' ')[0]||(window._i18n?.t('ui_member')||'Üye') },
           photos: { [_user.uid]: fromPhoto, [uid]: photoURL||'' },
-          lastMessage: '🤝 Collab isteği',
+          lastMessage: 'Collab isteği',
           lastAt: firebase.firestore.FieldValue.serverTimestamp(),
           unreadBy: firebase.firestore.FieldValue.arrayUnion(uid),
         }, { merge: true });
@@ -1141,7 +1141,7 @@ async function renderProfile() {
           fromUid: _user.uid,
           type: 'collab_request',
           status: 'pending',
-          text: '🤝 Collab isteği gönderdi',
+          text: 'Collab isteği gönderdi',
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         }).catch(console.error);
         await db.collection('notifications').doc(uid).collection('items').add({
@@ -1152,7 +1152,7 @@ async function renderProfile() {
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         }).catch(console.error);
         collabReqBtn.textContent = window._i18n?.t('prof_collab_sent')||'✓ İstek Gönderildi';
-        setTimeout(() => { collabReqBtn.disabled = false; collabReqBtn.textContent = window._i18n?.t('prof_collab')||'🤝 Collab İsteği Gönder'; }, 5000);
+        setTimeout(() => { collabReqBtn.disabled = false; collabReqBtn.textContent = window._i18n?.t('prof_collab')||'Collab İsteği Gönder'; }, 5000);
       };
       info.append(collabReqBtn);
     }
@@ -1162,10 +1162,10 @@ async function renderProfile() {
   if (isOwn) {
     const bookingLink = document.createElement('a'); bookingLink.href = 'booking';
     bookingLink.className = 'booking-profile-btn';
-    bookingLink.textContent = window._i18n?.t('prof_booking_btn')||'📅 Ders Paneli';
+    bookingLink.textContent = window._i18n?.t('prof_booking_btn')||'Ders Paneli';
     info.append(bookingLink);
 
-    const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = window._i18n?.t('prof_edit_btn')||'✏️ Profili Düzenle';
+    const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = window._i18n?.t('prof_edit_btn')||'Profili Düzenle';
     info.append(editBtn);
 
     // Edit form
@@ -1180,7 +1180,7 @@ async function renderProfile() {
     const photoPreview = document.createElement('img'); photoPreview.style.cssText = 'width:52px;height:52px;border-radius:50%;border:2px solid var(--mid);object-fit:cover;background:var(--mid);';
     if (curPhoto) photoPreview.src = curPhoto; else photoPreview.style.display = 'none';
     const uploadBtn = document.createElement('label'); uploadBtn.className = 'ef-save-btn'; uploadBtn.style.cssText = 'cursor:pointer;font-size:.6rem;padding:6px 12px;';
-    uploadBtn.textContent = window._i18n?.t('prof_photo_btn')||'📷 Fotoğraf Seç';
+    uploadBtn.textContent = window._i18n?.t('prof_photo_btn')||'Fotoğraf Seç';
     const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
     uploadBtn.append(fileInput);
     const photoHint = document.createElement('div'); photoHint.style.cssText = 'font-size:.52rem;color:var(--dim);margin-top:4px;';
@@ -1285,7 +1285,7 @@ async function renderProfile() {
     }
     rebuildCollabBtns(); editForm.append(collabWrap);
 
-    const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = window._i18n?.t('prof_save')||'💾 Kaydet';
+    const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = window._i18n?.t('prof_save')||'Kaydet';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
       try {
@@ -1318,17 +1318,17 @@ async function renderProfile() {
           // Re-open edit form so user can see saved values
           document.querySelector('.edit-btn')?.click();
         }, 1000);
-      } catch(e) { const c=errId(); console.error('[save]',c,e); saveBtn.disabled=false; saveBtn.textContent=`${window._i18n?.t('prof_save_err')||'⚠️ Kayıt başarısız'} (${c})`; }
+      } catch(e) { const c=errId(); console.error('[save]',c,e); saveBtn.disabled=false; saveBtn.textContent=`${window._i18n?.t('prof_save_err')||'Kayıt başarısız'} (${c})`; }
     };
     editForm.append(saveBtn);
 
     editBtn.onclick = () => {
       editForm.classList.toggle('open');
-      editBtn.textContent = editForm.classList.contains('open') ? '✕ '+(window._i18n?.t('post_cancel')||'Kapat') : (window._i18n?.t('prof_edit_btn')||'✏️ Profili Düzenle');
+      editBtn.textContent = editForm.classList.contains('open') ? '✕ '+(window._i18n?.t('post_cancel')||'Kapat') : (window._i18n?.t('prof_edit_btn')||'Profili Düzenle');
     };
 
     // Settings button (own profile)
-    const settingsBtn = document.createElement('button'); settingsBtn.className = 'settings-btn'; settingsBtn.textContent = window._i18n?.t('prof_settings_btn')||'⚙ Görünüm Ayarları';
+    const settingsBtn = document.createElement('button'); settingsBtn.className = 'settings-btn'; settingsBtn.textContent = window._i18n?.t('prof_settings_btn')||'Görünüm Ayarları';
     info.append(settingsBtn);
     const settingsPanel = document.createElement('div'); settingsPanel.className = 'settings-panel';
     // Theme row
@@ -1337,8 +1337,8 @@ async function renderProfile() {
     const themeInfo = document.createElement('div'); themeInfo.className = 'settings-row-info';
     themeInfo.innerHTML = `<div class="settings-row-label">${window._i18n?.t('prof_theme_title')||'Renk Teması'}</div><div class="settings-row-sub">${window._i18n?.t('prof_theme_sub')||'Koyu veya açık arka plan'}</div>`;
     const themeBtns = document.createElement('div'); themeBtns.className = 'theme-btns';
-    const darkBtn = document.createElement('button'); darkBtn.className = 'theme-btn dark-btn'; darkBtn.textContent = window._i18n?.t('prof_dark_btn')||'🌑 Koyu';
-    const lightBtn = document.createElement('button'); lightBtn.className = 'theme-btn light-btn'; lightBtn.textContent = window._i18n?.t('prof_light_btn')||'☀️ Açık';
+    const darkBtn = document.createElement('button'); darkBtn.className = 'theme-btn dark-btn'; darkBtn.textContent = window._i18n?.t('prof_dark_btn')||'Koyu';
+    const lightBtn = document.createElement('button'); lightBtn.className = 'theme-btn light-btn'; lightBtn.textContent = window._i18n?.t('prof_light_btn')||'Açık';
     const curTheme = localStorage.getItem('site-theme') || 'dark';
     if (curTheme === 'dark') darkBtn.classList.add('active'); else lightBtn.classList.add('active');
     darkBtn.onclick = () => { localStorage.setItem('site-theme','dark'); document.documentElement.classList.remove('theme-light'); darkBtn.classList.add('active'); lightBtn.classList.remove('active'); };
@@ -1359,7 +1359,7 @@ async function renderProfile() {
     };
     toggleWrap.append(toggleInput, toggleTrack, toggleThumb); fontRow.append(fontInfo, toggleWrap);
     settingsPanel.append(themeLabel, themeRow, fontRow);
-    settingsBtn.onclick = () => { settingsPanel.classList.toggle('open'); settingsBtn.textContent = settingsPanel.classList.contains('open') ? ('✕ '+(window._i18n?.t('prof_close')||'Kapat')) : (window._i18n?.t('prof_settings_btn')||'⚙ Görünüm Ayarları'); };
+    settingsBtn.onclick = () => { settingsPanel.classList.toggle('open'); settingsBtn.textContent = settingsPanel.classList.contains('open') ? ('✕ '+(window._i18n?.t('prof_close')||'Kapat')) : (window._i18n?.t('prof_settings_btn')||'Görünüm Ayarları'); };
     pCard.append(info, settingsPanel, editForm);
   } else {
     pCard.append(info);
@@ -1368,7 +1368,7 @@ async function renderProfile() {
   // Admin title assignment panel (visible when admin views other profiles)
   if (isAdmin(_user) && !isOwn) {
     const panel = document.createElement('div'); panel.className = 'admin-title-panel';
-    const lbl = document.createElement('div'); lbl.className = 'admin-title-label'; lbl.textContent = '⚡ Ünvan Ata';
+    const lbl = document.createElement('div'); lbl.className = 'admin-title-label'; lbl.textContent = 'Ünvan Ata';
     const grid = document.createElement('div'); grid.className = 'title-grid';
     let selKey = prof.title || 'none';
     TITLES.forEach(t => {
@@ -1383,7 +1383,7 @@ async function renderProfile() {
       grid.append(btn);
     });
     const saveBtn = document.createElement('button'); saveBtn.className = 'title-save-btn';
-    saveBtn.textContent = '💾 Ünvanı Kaydet';
+    saveBtn.textContent = 'Ünvanı Kaydet';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '⏳';
       try {
@@ -1391,16 +1391,16 @@ async function renderProfile() {
         showToast('✓ Ünvan güncellendi');
         renderProfile();
       } catch(e) {
-        showToast('⚠️ Kayıt başarısız: ' + (e.code || e.message || 'Bilinmeyen hata'), 'error');
+        showToast('Kayıt başarısız: ' + (e.code || e.message || 'Bilinmeyen hata'), 'error');
       }
-      saveBtn.disabled = false; saveBtn.textContent = '💾 Ünvanı Kaydet';
+      saveBtn.disabled = false; saveBtn.textContent = 'Ünvanı Kaydet';
     };
     panel.append(lbl, grid, saveBtn);
     pCard.append(panel);
 
     // Admin email panel
     const emailPanel = document.createElement('div'); emailPanel.className = 'admin-announce-panel';
-    const emailLbl = document.createElement('div'); emailLbl.className = 'admin-title-label'; emailLbl.textContent = '✉️ Mail Gönder';
+    const emailLbl = document.createElement('div'); emailLbl.className = 'admin-title-label'; emailLbl.textContent = 'Mail Gönder';
     const emailSubject = document.createElement('input'); emailSubject.type = 'text';
     emailSubject.style.cssText = 'width:100%;background:var(--mid2);border:1px solid var(--mid);border-radius:8px;color:var(--white);font-family:"Space Mono",monospace;font-size:.85rem;padding:8px 12px;outline:none;margin-top:8px;transition:border-color .15s;';
     emailSubject.placeholder = 'Konu (opsiyonel)';
@@ -1409,13 +1409,13 @@ async function renderProfile() {
     const emailTa = document.createElement('textarea'); emailTa.className = 'admin-announce-ta';
     emailTa.placeholder = 'Mesaj içeriği...';
     const emailRow = document.createElement('div'); emailRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;';
-    const emailSend = document.createElement('button'); emailSend.className = 'admin-announce-send'; emailSend.textContent = '✉️ Gönder';
+    const emailSend = document.createElement('button'); emailSend.className = 'admin-announce-send'; emailSend.textContent = 'Gönder';
     const emailStatus = document.createElement('span'); emailStatus.style.cssText = 'font-size:.58rem;color:var(--dim);width:100%;';
     emailSend.onclick = async () => {
       const msg = emailTa.value.trim();
       if (!msg) { emailTa.focus(); return; }
       const toEmail = prof.email;
-      if (!toEmail) { emailStatus.style.color='var(--crimson)'; emailStatus.textContent='⚠ Bu üyenin email adresi bulunamadı'; return; }
+      if (!toEmail) { emailStatus.style.color='var(--crimson)'; emailStatus.textContent='Bu üyenin email adresi bulunamadı'; return; }
       emailSend.disabled = true; emailSend.textContent = '⏳';
       try {
         const fn = firebase.app().functions('europe-west1').httpsCallable('sendCustomEmail');
@@ -1424,9 +1424,9 @@ async function renderProfile() {
         emailStatus.style.color = 'var(--green)'; emailStatus.textContent = '✓ Mail gönderildi: ' + toEmail;
         setTimeout(() => { emailStatus.textContent = ''; }, 4000);
       } catch(e) {
-        emailStatus.style.color = 'var(--crimson)'; emailStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+        emailStatus.style.color = 'var(--crimson)'; emailStatus.textContent = 'Hata: ' + (e.code || e.message);
       }
-      emailSend.disabled = false; emailSend.textContent = '✉️ Gönder';
+      emailSend.disabled = false; emailSend.textContent = 'Gönder';
     };
     emailRow.append(emailSend, emailStatus);
     emailPanel.append(emailLbl, emailSubject, emailTa, emailRow);
@@ -1436,14 +1436,14 @@ async function renderProfile() {
   // Admin announcement panel (own profile only)
   if (isAdmin(_user) && isOwn) {
     const annPanel = document.createElement('div'); annPanel.className = 'admin-announce-panel';
-    const annLbl = document.createElement('div'); annLbl.className = 'admin-title-label'; annLbl.textContent = '📢 Tüm Üyelere Duyuru Gönder';
+    const annLbl = document.createElement('div'); annLbl.className = 'admin-title-label'; annLbl.textContent = 'Tüm Üyelere Duyuru Gönder';
     const annTa = document.createElement('textarea'); annTa.className = 'admin-announce-ta';
     annTa.placeholder = 'Yeni özellik, güncelleme veya duyuru metni...';
     const annRow = document.createElement('div'); annRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;';
-    const annSend = document.createElement('button'); annSend.className = 'admin-announce-send'; annSend.textContent = '📢 Gönder';
+    const annSend = document.createElement('button'); annSend.className = 'admin-announce-send'; annSend.textContent = 'Gönder';
     const annDelAll = document.createElement('button'); annDelAll.className = 'admin-announce-send';
     annDelAll.style.cssText = 'background:rgba(184,45,69,.15);border:1px solid rgba(184,45,69,.35);color:var(--crimson);';
-    annDelAll.textContent = '🗑 Tümünü Sil';
+    annDelAll.textContent = 'Tümünü Sil';
     const annStatus = document.createElement('span'); annStatus.style.cssText = 'font-size:.58rem;color:var(--dim);width:100%;';
     annSend.onclick = async () => {
       const txt = annTa.value.trim();
@@ -1460,9 +1460,9 @@ async function renderProfile() {
         annStatus.style.color = 'var(--green)'; annStatus.textContent = '✓ Duyuru gönderildi';
         setTimeout(() => { annStatus.textContent = ''; }, 3000);
       } catch(e) {
-        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = 'Hata: ' + (e.code || e.message);
       }
-      annSend.disabled = false; annSend.textContent = '📢 Gönder';
+      annSend.disabled = false; annSend.textContent = 'Gönder';
     };
     annDelAll.onclick = async () => {
       if (!confirm('Tüm duyuruları silmek istediğine emin misin?')) return;
@@ -1475,9 +1475,9 @@ async function renderProfile() {
         annStatus.style.color = 'var(--green)'; annStatus.textContent = '✓ Tüm duyurular silindi';
         setTimeout(() => { annStatus.textContent = ''; }, 3000);
       } catch(e) {
-        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = 'Hata: ' + (e.code || e.message);
       }
-      annDelAll.disabled = false; annDelAll.textContent = '🗑 Tümünü Sil';
+      annDelAll.disabled = false; annDelAll.textContent = 'Tümünü Sil';
     };
     annRow.append(annSend, annDelAll, annStatus);
     annPanel.append(annLbl, annTa, annRow);
@@ -1486,10 +1486,10 @@ async function renderProfile() {
     // Delete all chats panel
     const msgPanel = document.createElement('div'); msgPanel.className = 'admin-announce-panel';
     msgPanel.style.borderTop = '1px solid rgba(184,45,69,.18)';
-    const msgLbl = document.createElement('div'); msgLbl.className = 'admin-title-label'; msgLbl.textContent = '💬 Mesaj Yönetimi';
+    const msgLbl = document.createElement('div'); msgLbl.className = 'admin-title-label'; msgLbl.textContent = 'Mesaj Yönetimi';
     const msgDelAll = document.createElement('button'); msgDelAll.className = 'admin-announce-send';
     msgDelAll.style.cssText = 'background:rgba(184,45,69,.15);border:1px solid rgba(184,45,69,.35);color:var(--crimson);margin-top:8px;';
-    msgDelAll.textContent = '🗑 Tüm Mesajları Sil';
+    msgDelAll.textContent = 'Tüm Mesajları Sil';
     const msgStatus = document.createElement('span'); msgStatus.style.cssText = 'font-size:.58rem;color:var(--dim);display:block;margin-top:6px;';
     msgDelAll.onclick = async () => {
       if (!confirm('Tüm sohbet mesajlarını silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
@@ -1506,9 +1506,9 @@ async function renderProfile() {
         msgStatus.style.color = 'var(--green)'; msgStatus.textContent = '✓ Tüm mesajlar silindi (' + chatSnap.size + ' sohbet)';
         setTimeout(() => { msgStatus.textContent = ''; }, 4000);
       } catch(e) {
-        msgStatus.style.color = 'var(--crimson)'; msgStatus.textContent = '⚠ Hata: ' + (e.code || e.message);
+        msgStatus.style.color = 'var(--crimson)'; msgStatus.textContent = 'Hata: ' + (e.code || e.message);
       }
-      msgDelAll.disabled = false; msgDelAll.textContent = '🗑 Tüm Mesajları Sil';
+      msgDelAll.disabled = false; msgDelAll.textContent = 'Tüm Mesajları Sil';
     };
     msgPanel.append(msgLbl, msgDelAll, msgStatus);
     pCard.append(msgPanel);
@@ -1535,7 +1535,7 @@ async function renderProfile() {
       t.textContent = p.title || (p.text?.slice(0,60)+'…') || '';
       const m = document.createElement('div'); m.className = 'activity-item-meta';
       const dateEl = document.createElement('span'); dateEl.textContent = fmtDate(p.createdAt);
-      const rcEl   = document.createElement('span'); rcEl.textContent = `💬 ${p.replyCount||0}`;
+      const rcEl   = document.createElement('span'); rcEl.textContent = `${p.replyCount||0}`;
       m.append(dateEl, rcEl);
       item.append(t, m); postsSec.append(item);
     });
