@@ -65,7 +65,8 @@
         c.className = 'lnav-item' + (a.classList.contains('active') ? ' active' : '');
         c.removeAttribute('id');
         c.querySelectorAll('[id]').forEach(function (el) { el.removeAttribute('id'); });
-        var ic = c.querySelector('.bnav-icon, .bnav-profile-av'); if (ic) ic.className = 'lnav-icon';
+        var ic = c.querySelector('.bnav-icon, .bnav-profile-av');
+        if (ic) ic.className = ic.classList.contains('bnav-profile-av') ? 'lnav-profile-av' : 'lnav-icon';
         var lb = c.querySelector('.bnav-label'); if (lb) lb.className = '';
         if (a.style.display === 'none') c.style.display = 'none';
         items.appendChild(c);
