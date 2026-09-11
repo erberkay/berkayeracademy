@@ -83,15 +83,17 @@ Conversations are persisted to Firestore at `whatsapp_conversations/{phone}` wit
 
 ## Shared assets
 
-Loaded by most pages via `<script src="/assets/js/X.js">` and `<link href="/assets/css/X.css">`:
+Loaded by most pages via `<script src="/assets/js/X.js">` and `<link href="/assets/css/X.css">`. Order in every `<head>`: Google Fonts → `ui.css` → [`style.css`] → `theme-init.js` → `themes.css` → page `<style>`. Bump the shared `?v=` stamp on all pages in the same commit when a shared asset changes.
 
-- `assets/css/style.css` — base styles, brand palette
-- `assets/css/themes.css` — light mode via `html.theme-light` class; values flip CSS variables. Persisted in `localStorage['site-theme']`.
-- `assets/js/theme-init.js` — applies stored theme **before** body renders to avoid flash.
-- `assets/js/i18n.js` — `data-i18n` attribute-based string swapping. Stored in `localStorage['site-lang']` (`tr` | `en`).
-- `assets/js/love-nav.js` — shared top + bottom nav rendering.
+- `assets/css/ui.css` — **design system** (every page). Tokens on `html:root`: legacy palette names plus semantic aliases (`--bg --surface --surface-2 --line --fg --fg-2 --fg-3 --accent --accent-ink --ok --warn --err --info --*-soft`), type scale (`--fs-display/h2/h3/body/small/label/micro/input`), control scale (`--ctl-sm/md/lg` = 32/40/48px with matching `--ctl-px-*`/`--fs-ctl-*`), spacing `--s1..--s9`, `--radius:0`, `--nav-w`, `--topbar-h`, z-index tokens. Light palette flips on `html:root.theme-light`. Components: `.btn` (+`-primary/-ghost/-danger/-ok/-sm/-lg/-icon/-block`), `.input/.select/.textarea`, `.field-label`, `.seg/.seg-btn`, `.card`, `.badge`, `.modal*`, `.toast`, `.ava*`, `.icon`. Alias groups map legacy per-page button/input classes onto the same scale — a page must not redeclare geometry (height/padding/font) for an aliased class; override colour/width through a descendant selector instead. Selectors are `html`-prefixed (0,1,1) so they win over page CSS without `!important`. Breakpoints are 600 / 900 / 1024 only. Mobile hit area comes from `.btn::after` at ≤600px; the visible box is identical on mobile and desktop.
+- `assets/css/style.css` — landing-page components only (index, egitim, egitmen, sss). App pages do **not** load it.
+- `assets/css/themes.css` — nav shell (sidebar ≥1024, top bar + drawer <1024, markup built by `theme-init.js`), the shared auth-bar/notification block, and the remaining light-mode + flattening patches for the Ableton Lab **module internals** (not tokenized yet). Theme persisted in `localStorage['site-theme']`.
+- `assets/js/theme-init.js` — applies the stored theme before paint, builds the mobile top bar/drawer (or mounts the hamburger into a page's own `.topnav`) and the theme switch.
+- `assets/js/i18n.js` — `data-i18n` attribute-based string swapping. Stored in `localStorage['_lang']` (`tr` | `en`).
+- `assets/js/love-nav.js` — toggles the admin / love nav items and the trial-lesson hint on the existing nav markup; it does not render the nav.
+- `assets/img/icons.svg` — icon sprite: `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-NAME"/></svg>`. UI chrome uses these, never emoji.
 
-When changing top-level layout, edit `love-nav.js` once instead of each page.
+When changing the nav shell, edit `theme-init.js` / `themes.css` once instead of each page. New page CSS: tokens only — no `!important`, no px `border-radius`, no gradients, no `backdrop-filter`; inline `style=""` only for runtime state (`display:none`, widths computed from data).
 
 ## Critical: Cross-Script Variable Sharing
 
@@ -138,6 +140,7 @@ Because of this, the student "↺ Ertele" button does **not** write lessons dire
 - **Reschedule credits:** package-based pool — an N-month package grants N credits total (1-month = 1 credit even if lessons spill into the next calendar month). Stored as `reservations.reschedule_credits {'YYYY-MM': n}`; available = sum of values (`totalRescheduleCredits()`), consumption via `consumeRescheduleCredit()` decrements the lesson's month key if positive, else the earliest positive key. Buying an extra credit costs **500 TL** via the in-panel modal (admin adds +1 to a month key).
 - **Rules acceptance:** modal shown once after first lesson purchase; writes `rules_accepted_at` (write-once). Re-shown only if the field is missing.
 - **Closed slots:** admin can mark whole days or single hours red; those appear blocked but visible in the trial-lesson day grid.
+- **24h rule:** `calculateLessonDates()` pushes a weekday series one week forward while its first slot starts less than 24h from now (or is already past), so a request made Sunday 11:00 for Monday 10:00 begins with the other selected day. The extra-lesson picker disables such days/times via `slotStartsTooSoon()`; the same function feeds the request preview, the min-lesson check and admin `acceptRequest`.
 
 These flows live almost entirely inside `booking.html` (~5300 lines) — single source of truth for the panel UX.
 

@@ -117,7 +117,9 @@ Producer.School/
 ├── ders-ableton.html
 ├── assets/
 │   ├── css/
-│   │   └── style.css              # Global stiller (index, forum, profil sayfaları)
+│   │   ├── ui.css                 # Tasarım sistemi: token'lar, .btn/.input/.modal, alias grupları (her sayfa)
+│   │   ├── style.css              # Landing bileşenleri (index, egitim, egitmen, sss)
+│   │   └── themes.css             # Nav kabuğu, auth/bildirim bloğu, Lab modül-içi yamaları
 │   ├── img/
 │   │   ├── DSC00141.jpg           # Profil fotoğrafı
 │   │   ├── og-logo.png            # OG paylaşım görseli
@@ -143,7 +145,7 @@ Producer.School/
 ## Teknoloji
 
 - **Frontend:** Vanilla HTML/CSS/JS — framework yok
-- **Font:** Bebas Neue + Space Mono (Google Fonts)
+- **Font:** Instrument Serif (başlık) + Instrument Sans (metin, arayüz) + Space Mono (etiket) — Google Fonts
 - **Backend:** Firebase (Firestore + Auth) — compat SDK v10.12.2
 - **Hosting:** GitHub Pages
 - **Tasarım:** Koyu tema, grain noise doku, altın/kırmızı/amber renk paleti
