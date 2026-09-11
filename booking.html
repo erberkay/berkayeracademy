@@ -130,7 +130,6 @@
     details.acc summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px var(--s5); font-family:var(--ff); font-weight:600; font-size:var(--fs-body); color:var(--fg); user-select:none; }
     details.acc summary:hover { color:var(--accent); }
     details.acc summary::-webkit-details-marker { display:none; }
-    details.acc summary > span:first-child:not([data-i18n]) { display:none; }
     details.acc summary .acc-arr { margin-left:auto; color:var(--fg-3); font-family:var(--ff-mono); font-size:10px; transition:transform .2s; flex-shrink:0; }
     details.acc[open] summary .acc-arr { transform:rotate(180deg); }
     details.acc summary .acc-hint { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; text-transform:uppercase; color:var(--fg-3); font-weight:400; }
@@ -389,6 +388,51 @@
     .zoom-chip-ok { border-color:var(--ok); color:var(--ok); background:var(--ok-soft); }
     .zoom-chip-sub { font-size:var(--fs-micro); opacity:.75; }
     @media (max-width:600px) { .choice-grid { grid-template-columns:1fr; } }
+
+    /* ── Dashboard JS surfaces: pending view, credit accordion, extra-lesson calendar, lesson rows ── */
+    .badge-row { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+    .wa-notice { margin:0 0 14px; text-align:left; }
+    .wa-notice-text { margin-bottom:14px; }
+    .wa-cta { margin-bottom:8px; }
+    .wa-svg { width:18px; height:18px; fill:currentColor; flex-shrink:0; }
+    .refresh-btn { margin-top:8px; }
+    .payment-box-pending { color:var(--accent); border-color:var(--accent); }
+    .credit-acc { margin-bottom:14px; border:1px solid var(--line); border-left:2px solid var(--info); background:var(--surface-2); }
+    .credit-acc summary { padding:12px 16px; font-size:var(--fs-small); }
+    .credit-title { color:var(--info); font-weight:600; }
+    .credit-summary { color:var(--fg-2); font-weight:400; }
+    .credit-acc .acc-body { padding:0 16px 14px; }
+    .credit-text { font-size:var(--fs-small); color:var(--fg-2); line-height:1.7; margin-bottom:4px; }
+    .credit-text strong { color:var(--fg); }
+    .credit-note { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); line-height:1.6; margin-bottom:10px; }
+    .credit-note strong { color:var(--fg-2); }
+    .credit-actions { padding-top:12px; border-top:1px solid var(--line); text-align:center; }
+    .btn.extra-lesson-btn { margin-top:10px; justify-content:flex-start; border-color:var(--info); color:var(--info); }
+    .btn.extra-lesson-btn:hover { background:var(--info-soft); }
+    .cal-modal { max-width:340px; }
+    .cal-nav-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .cal-month-label { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+    .cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:4px; }
+    .cal-dow { text-align:center; font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); padding-bottom:3px; }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:14px; }
+    .cal-cell { text-align:center; padding:6px 2px; font-size:var(--fs-small); color:var(--fg); cursor:pointer; border:1px solid transparent; position:relative; }
+    .cal-cell:hover { border-color:var(--line); }
+    .cal-cell.is-past, .cal-cell.is-full { color:var(--fg-3); cursor:default; }
+    .cal-cell.is-past:hover, .cal-cell.is-full:hover { border-color:transparent; }
+    .cal-cell.is-full { background:var(--err-soft); }
+    .cal-cell.is-sel { background:var(--accent); color:var(--accent-ink); font-weight:700; cursor:default; }
+    .cal-cell-dot { width:3px; height:3px; background:var(--accent); border-radius:50%; margin:1px auto 0; }
+    .cal-modal .select { margin-bottom:14px; }
+    .cal-modal .modal-actions { margin-top:0; }
+    .cal-modal .modal-actions .btn { flex:1; }
+    .frozen-banner { margin:0 0 14px; }
+    .month-info { font-size:var(--fs-small); color:var(--fg-2); margin-bottom:14px; padding:8px 12px; background:var(--surface-2); border:1px solid var(--line); }
+    .month-info strong { color:var(--fg); }
+    .lesson-reschedule:disabled { opacity:.45; cursor:not-allowed; }
+    .lesson-frozen-note { width:100%; font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--info); margin-top:6px; padding:5px 10px; background:var(--info-soft); line-height:1.5; }
+    .lesson-zoom-area { width:100%; margin-top:8px; }
+    .past-toggle { display:block; width:100%; text-align:left; background:none; border:0; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; text-transform:uppercase; cursor:pointer; padding:14px 0 4px; }
+    .past-toggle:hover { color:var(--fg); }
 
     /* ── Desktop: sidebar nav replaces the page header bar ── */
     @media (min-width:1024px) {
@@ -1623,9 +1667,9 @@ async function renderPendingView(reqData) {
         <strong>${_isEn2?'Days':'Günler'}:</strong> ${daysText || '—'}<br>
         ${reqData.note ? `<strong>${_isEn2?'Note':'Not'}:</strong> ${reqData.note}<br>` : ''}
       </div>
-      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-        <span style="font-size:.75rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.25);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">₺ ${pendingTotal.toLocaleString('tr-TR')} TL</span>
-        <span style="font-size:.75rem;color:rgba(238,235,230,.6);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);padding:5px 14px;border-radius:10px;font-family:'Space Mono',monospace;">${pendingLessonCount} ${_isEn2?'lesson slots':'ders saati'}</span>
+      <div class="badge-row">
+        <span class="badge accent">${pendingTotal.toLocaleString('tr-TR')} TL</span>
+        <span class="badge">${pendingLessonCount} ${_isEn2?'lesson slots':'ders saati'}</span>
       </div>`;
   }
 
@@ -1634,7 +1678,7 @@ async function renderPendingView(reqData) {
   if (isRejected) {
     actions.innerHTML = '';
     const newBtn = document.createElement('button');
-    newBtn.className = 'btn btn-gold';
+    newBtn.className = 'btn btn-primary';
     newBtn.textContent = isTrialPending ? (window._i18n?.t('bk_retry_btn')||'↺ Yeniden Dene') : (window._i18n?.t('bk_new_request_btn')||'+ Yeni Talep Oluştur');
     newBtn.onclick = isTrialPending
       ? async () => {
@@ -1655,25 +1699,22 @@ async function renderPendingView(reqData) {
     const _waLink = `https://wa.me/${_twilioWaNum}?text=${_waMsg}`;
 
     const waBox = document.createElement('div');
-    waBox.style.cssText = 'background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.35);border-radius:10px;padding:18px 20px;margin-bottom:14px;text-align:left;';
+    waBox.className = 'notice notice-ok wa-notice';
     waBox.innerHTML = `
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <span style="font-size:1.4rem;">💬</span>
-        <strong style="font-size:.85rem;color:#25d366;">Önemli — WhatsApp iletişimini sen başlatmalısın</strong>
+      <div class="notice-title">Önemli — WhatsApp iletişimini sen başlatmalısın</div>
+      <div class="notice-text wa-notice-text">
+        Sana <strong>WhatsApp üzerinden</strong> dönüş yapılacak. Ancak WhatsApp politikası gereği <strong class="text-accent">önce senin kısa bir mesaj atman gerekiyor</strong> — aksi halde sana cevap yazılamıyor. Aşağıdaki butona basarak hazır metni gönder, 1 saniyede halledersin.
       </div>
-      <div style="font-size:.74rem;color:rgba(238,235,230,.85);line-height:1.7;margin-bottom:14px;">
-        Sana <strong style="color:var(--white);">WhatsApp üzerinden</strong> dönüş yapılacak. Ancak WhatsApp politikası gereği <strong style="color:var(--gold);">önce senin kısa bir mesaj atman gerekiyor</strong> — aksi halde sana cevap yazılamıyor. Aşağıdaki butona basarak hazır metni gönder, 1 saniyede halledersin.
-      </div>
-      <a href="${_waLink}" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#25d366;color:#fff;font-family:'Space Mono',monospace;font-size:.78rem;font-weight:700;padding:12px 20px;border-radius:8px;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#1eb656'" onmouseout="this.style.background='#25d366'">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff" aria-hidden="true"><path d="M19.05 4.91A9.82 9.82 0 0012.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91a9.82 9.82 0 00-2.91-7.01zM12.05 20.15h-.01a8.18 8.18 0 01-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 01-1.26-4.39c0-4.54 3.69-8.23 8.23-8.23 2.2 0 4.27.86 5.83 2.41a8.18 8.18 0 012.41 5.83c0 4.54-3.69 8.23-8.24 8.23zm4.51-6.16c-.25-.12-1.46-.72-1.69-.8-.23-.08-.39-.12-.56.12-.16.25-.64.8-.78.97-.14.16-.29.18-.54.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.22-1.46-1.37-1.71-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.23.25-.85.83-.85 2.03 0 1.2.87 2.36.99 2.52.12.16 1.71 2.61 4.14 3.66.58.25 1.03.4 1.38.51.58.18 1.11.16 1.53.1.47-.07 1.46-.6 1.66-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.18-.47-.31z"/></svg>
+      <a href="${_waLink}" target="_blank" rel="noopener" class="btn btn-ok btn-block wa-cta">
+        <svg class="wa-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.05 4.91A9.82 9.82 0 0012.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 004.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91a9.82 9.82 0 00-2.91-7.01zM12.05 20.15h-.01a8.18 8.18 0 01-4.17-1.14l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 01-1.26-4.39c0-4.54 3.69-8.23 8.23-8.23 2.2 0 4.27.86 5.83 2.41a8.18 8.18 0 012.41 5.83c0 4.54-3.69 8.23-8.24 8.23zm4.51-6.16c-.25-.12-1.46-.72-1.69-.8-.23-.08-.39-.12-.56.12-.16.25-.64.8-.78.97-.14.16-.29.18-.54.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.22-1.46-1.37-1.71-.14-.25-.02-.39.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.16.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.23.25-.85.83-.85 2.03 0 1.2.87 2.36.99 2.52.12.16 1.71 2.61 4.14 3.66.58.25 1.03.4 1.38.51.58.18 1.11.16 1.53.1.47-.07 1.46-.6 1.66-1.18.21-.58.21-1.07.14-1.18-.06-.11-.22-.18-.47-.31z"/></svg>
         WhatsApp ile mesaj at →
       </a>
-      <div style="font-size:.6rem;color:var(--dim);margin-top:8px;text-align:center;line-height:1.5;">Buton tıklanınca WhatsApp açılır, mesaj hazır. Sadece "Gönder"e basman yeterli.</div>
+      <div class="form-status center">Buton tıklanınca WhatsApp açılır, mesaj hazır. Sadece "Gönder"e basman yeterli.</div>
     `;
     actions.append(waBox);
 
     const refreshBtn = document.createElement('button');
-    refreshBtn.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.25);font-family:"Space Mono",monospace;font-size:.62rem;cursor:pointer;padding:4px 0;';
+    refreshBtn.className = 'btn btn-sm btn-ghost refresh-btn';
     refreshBtn.textContent = window._i18n?.t('bk_refresh_status')||'↺ Durumu Yenile';
     refreshBtn.onclick = () => loadUserState(_user);
     actions.append(refreshBtn);
@@ -1927,8 +1968,8 @@ async function renderDashboard() {
     pbox.append(badge);
   } else if (isPending) {
     const pendingBadge = document.createElement('span');
-    pendingBadge.style.cssText = 'font-size:.72rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);padding:8px 14px;border-radius:6px;white-space:nowrap;';
-    pendingBadge.textContent = '⏳ '+(window._i18n?.t('bk_pending_approval')||'Onay Bekliyor');
+    pendingBadge.className = 'payment-box-paid payment-box-pending';
+    pendingBadge.textContent = (window._i18n?.t('bk_pending_approval')||'Onay Bekliyor');
     pbox.append(pendingBadge);
   } else {
     const payBtn = document.createElement('button'); payBtn.className = 'payment-box-btn'; payBtn.textContent = window._i18n?.t('bk_pay_btn')||'₺ Ödeme Yaptım';
@@ -1996,22 +2037,22 @@ async function renderDashboard() {
   const _remaining = totalRescheduleCredits(res);
   const _pkgMonths = res.duration_months || 1;
   const _curSummary = _remaining > 0
-    ? `<strong style="color:#4ade80;">${_remaining} hak</strong> kaldı`
-    : `<strong style="color:rgba(232,120,120,.85);">hak kalmadı</strong>`;
+    ? `<strong class="text-ok">${_remaining} hak</strong> kaldı`
+    : `<strong class="text-err">hak kalmadı</strong>`;
   document.getElementById('creditBadge').innerHTML = `
-    <details class="acc" style="background:rgba(143,200,232,.05);border:1px solid rgba(143,200,232,.2);border-radius:10px;">
-      <summary style="padding:13px 16px;">
-        <span>🔄</span><span style="color:var(--ice);font-weight:700;">Erteleme Hakkı</span>
-        <span style="font-size:.72rem;color:rgba(238,235,230,.85);font-weight:400;">— ${_curSummary}</span>
+    <details class="acc credit-acc">
+      <summary>
+        <span class="credit-title">Erteleme Hakkı</span>
+        <span class="credit-summary">— ${_curSummary}</span>
         <span class="acc-arr">▾</span>
       </summary>
-      <div class="acc-body" style="padding:2px 16px 14px;">
-        <div style="font-size:.72rem;color:rgba(238,235,230,.85);line-height:1.7;margin-bottom:4px;">
-          Paketin: <strong style="color:var(--white);">${_pkgMonths} aylık</strong> → toplam <strong style="color:var(--white);">${_pkgMonths} erteleme hakkı</strong> · Kalan: <strong style="color:${_remaining > 0 ? '#4ade80' : 'rgba(232,120,120,.85)'};">${_remaining}</strong>
+      <div class="acc-body">
+        <div class="credit-text">
+          Paketin: <strong>${_pkgMonths} aylık</strong> → toplam <strong>${_pkgMonths} erteleme hakkı</strong> · Kalan: <strong class="${_remaining > 0 ? 'text-ok' : 'text-err'}">${_remaining}</strong>
         </div>
-        <div style="font-size:.65rem;color:var(--dim);line-height:1.7;margin-bottom:10px;">Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong style="color:var(--white);">${totalLessonsCount}</strong>.</div>
-        <div style="padding-top:12px;border-top:1px solid rgba(255,255,255,.06);text-align:center;">
-          <button type="button" onclick="window._openExtraCreditModal()" style="background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.35);color:var(--gold);padding:9px 18px;border-radius:7px;font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='rgba(232,184,75,.22)'" onmouseout="this.style.background='rgba(232,184,75,.12)'">+ Ek Hak Al (500 TL)</button>
+        <div class="credit-note">Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong>${totalLessonsCount}</strong>.</div>
+        <div class="credit-actions">
+          <button type="button" class="btn btn-sm btn-ghost" onclick="window._openExtraCreditModal()">+ Ek Hak Al (500 TL)</button>
         </div>
       </div>
     </details>`;
@@ -2021,13 +2062,12 @@ async function renderDashboard() {
   const extraBox = document.getElementById('extraLessonBox');
   if (extraBox && !isTrial) {
     const extraBtn = document.createElement('button');
+    extraBtn.className = 'btn btn-ghost btn-block extra-lesson-btn';
     if (hasFrozenLessons) {
-      extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.04);border:1px solid rgba(143,200,232,.15);color:rgba(143,200,232,.45);font-family:"Space Mono",monospace;font-size:.72rem;padding:10px 16px;border-radius:8px;cursor:not-allowed;text-align:left;opacity:.6;';
-      extraBtn.innerHTML = '❄️ '+(window._i18n?.t('bk_frozen')||'Plan donduruldu — ek ders talep edilemez');
+      extraBtn.textContent = (window._i18n?.t('bk_frozen')||'Plan donduruldu — ek ders talep edilemez');
       extraBtn.disabled = true;
     } else {
-      extraBtn.style.cssText = 'width:100%;margin-top:10px;background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.25);color:var(--ice);font-family:"Space Mono",monospace;font-size:.72rem;font-weight:700;padding:10px 16px;border-radius:8px;cursor:pointer;text-align:left;';
-      extraBtn.innerHTML = '➕ '+(window._i18n?.t('bk_extra_lesson')||'Ek Ders Satın Al');
+      extraBtn.textContent = (window._i18n?.t('bk_extra_lesson')||'Ek Ders Satın Al');
     }
     extraBtn.onclick = async () => {
       // Fetch booked_slots (readable by all authenticated users)
@@ -2050,11 +2090,11 @@ async function renderDashboard() {
       let calMonth = new Date().getMonth();
 
       const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+      overlay.className = 'modal-overlay';
       const _xcEsc = e => { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', _xcEsc); } };
       overlay.onclick = e => { if (e.target === overlay) { overlay.remove(); document.removeEventListener('keydown', _xcEsc); } };
       const box = document.createElement('div');
-      box.style.cssText = 'background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:20px 18px;width:100%;max-width:320px;font-family:"Space Mono",monospace;';
+      box.className = 'modal modal-sm cal-modal';
       overlay.append(box);
       document.body.append(overlay);
       document.addEventListener('keydown', _xcEsc);
@@ -2063,18 +2103,17 @@ async function renderDashboard() {
         box.innerHTML = '';
         // Title row
         const title = document.createElement('div');
-        title.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;';
-        title.innerHTML = `<div style="font-size:.85rem;color:#fff;font-weight:700;">${window._i18n?.t('bk_extra_lesson_title')||'Ek Ders Talebi'}</div>`
-          + '<button id="xcClose" style="background:none;border:none;color:#666;font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>';
+        title.innerHTML = `<div class="modal-title">${window._i18n?.t('bk_extra_lesson_title')||'Ek Ders Talebi'}</div>`
+          + '<button id="xcClose" class="modal-close" aria-label="Kapat">✕</button>';
         box.append(title);
         title.querySelector('#xcClose').onclick = () => overlay.remove();
 
         // Month nav
         const nav = document.createElement('div');
-        nav.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;';
-        nav.innerHTML = '<button id="xcPrev" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:.9rem;">‹</button>'
-          + `<span style="font-size:.72rem;color:#e8b84b;font-weight:700;">${getMonths()[calMonth]} ${calYear}</span>`
-          + '<button id="xcNext" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:.9rem;">›</button>';
+        nav.className = 'cal-nav-row';
+        nav.innerHTML = '<button id="xcPrev" class="btn btn-sm btn-icon btn-ghost" aria-label="Önceki ay">‹</button>'
+          + `<span class="cal-month-label">${getMonths()[calMonth]} ${calYear}</span>`
+          + '<button id="xcNext" class="btn btn-sm btn-icon btn-ghost" aria-label="Sonraki ay">›</button>';
         box.append(nav);
         nav.querySelector('#xcPrev').onclick = () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } drawCal(); };
         nav.querySelector('#xcNext').onclick = () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } drawCal(); };
@@ -2082,17 +2121,17 @@ async function renderDashboard() {
         // Weekday headers
         const _xcDayHdrNames = window._i18n?.getLang()==='en' ? ['Mo','Tu','We','Th','Fr','Sa','Su'] : ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
         const dayHdr = document.createElement('div');
-        dayHdr.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;';
+        dayHdr.className = 'cal-dow-row';
         _xcDayHdrNames.forEach(d => {
           const c = document.createElement('div');
-          c.style.cssText = 'text-align:center;font-size:.55rem;color:rgba(255,255,255,.25);padding-bottom:3px;';
+          c.className = 'cal-dow';
           c.textContent = d; dayHdr.append(c);
         });
         box.append(dayHdr);
 
         // Day grid
         const grid = document.createElement('div');
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:14px;';
+        grid.className = 'cal-grid';
         const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // Mon=0
         const lastDate = new Date(calYear, calMonth + 1, 0).getDate();
         for (let i = 0; i < firstDow; i++) grid.append(document.createElement('div'));
@@ -2103,19 +2142,14 @@ async function renderDashboard() {
           const isFull = busy.length >= AVAILABLE_TIMES.length;
           const isSel = ds === selDate;
           const cell = document.createElement('div');
-          cell.style.cssText = 'text-align:center;border-radius:6px;padding:5px 2px;font-size:.72rem;position:relative;'
-            + (isSel ? 'background:#e8b84b;color:#060609;font-weight:700;cursor:default;'
-              : isPast || isFull ? 'color:rgba(255,255,255,.2);cursor:default;' + (isFull && !isPast ? 'background:rgba(200,50,50,.06);' : '')
-              : 'color:#eeebe6;cursor:pointer;');
+          cell.className = 'cal-cell' + (isSel ? ' is-sel' : isPast ? ' is-past' : isFull ? ' is-full' : '');
           cell.textContent = d;
           if (busy.length > 0 && !isFull && !isPast && !isSel) {
             const dot = document.createElement('div');
-            dot.style.cssText = 'width:3px;height:3px;background:#e8b84b;border-radius:50%;margin:1px auto 0;';
+            dot.className = 'cal-cell-dot';
             cell.append(dot);
           }
           if (!isPast && !isFull) {
-            cell.onmouseenter = () => { if (ds !== selDate) cell.style.background = 'rgba(255,255,255,.08)'; };
-            cell.onmouseleave = () => { if (ds !== selDate) cell.style.background = ''; };
             cell.onclick = () => { selDate = ds; drawCal(); };
           }
           grid.append(cell);
@@ -2126,12 +2160,12 @@ async function renderDashboard() {
         if (selDate) {
           const busyT = busySlots[selDate] || [];
           const timeLbl = document.createElement('div');
-          timeLbl.style.cssText = 'font-size:.6rem;color:var(--dim);margin-bottom:5px;letter-spacing:.06em;';
+          timeLbl.className = 'field-label';
           timeLbl.textContent = window._i18n?.t('bk_time_label')||'SAAT';
           box.append(timeLbl);
           const sel = document.createElement('select');
           sel.id = 'xcTime';
-          sel.style.cssText = 'background:#111;border:1px solid rgba(255,255,255,.2);color:#fff;font-size:.8rem;padding:8px 10px;border-radius:7px;width:100%;box-sizing:border-box;margin-bottom:14px;';
+          sel.className = 'select';
           const firstFree = AVAILABLE_TIMES.find(t => !busyT.includes(t));
           AVAILABLE_TIMES.forEach(t => {
             const o = document.createElement('option');
@@ -2145,20 +2179,20 @@ async function renderDashboard() {
 
         // Buttons
         const btnRow = document.createElement('div');
-        btnRow.style.cssText = 'display:flex;gap:8px;';
+        btnRow.className = 'modal-actions';
         const cancelBtn = document.createElement('button');
-        cancelBtn.style.cssText = 'flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:"Space Mono",monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;';
+        cancelBtn.className = 'btn btn-ghost';
         cancelBtn.textContent = window._i18n?.t('ui_cancel')||'İptal';
         cancelBtn.onclick = () => overlay.remove();
         const sendBtn = document.createElement('button');
-        sendBtn.style.cssText = 'flex:1;background:rgba(143,200,232,.12);border:1px solid rgba(143,200,232,.3);color:var(--ice);font-family:"Space Mono",monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;';
-        sendBtn.textContent = '✓ '+(window._i18n?.t('bk_submit_btn')||'Talep Gönder');
-        if (!selDate) { sendBtn.disabled = true; sendBtn.style.opacity = '.4'; }
+        sendBtn.className = 'btn btn-primary';
+        sendBtn.textContent = (window._i18n?.t('bk_submit_btn')||'Talep Gönder');
+        if (!selDate) sendBtn.disabled = true;
         btnRow.append(cancelBtn, sendBtn);
         box.append(btnRow);
 
         const statusEl = document.createElement('div');
-        statusEl.style.cssText = 'font-size:.62rem;margin-top:10px;text-align:center;';
+        statusEl.className = 'form-status center';
         box.append(statusEl);
 
         sendBtn.onclick = async () => {
@@ -2181,7 +2215,7 @@ async function renderDashboard() {
             statusEl.style.color = 'var(--green)';
             statusEl.textContent = window._i18n?.t('bk_request_sent')||'✓ Talep gönderildi, eğitmeniniz onaylayacak.';
             setTimeout(() => overlay.remove(), 2500);
-          } catch(e) { const c=errId(); statusEl.style.color='var(--crimson)'; statusEl.textContent=`${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): `+(e.message||e.code); sendBtn.disabled=false; sendBtn.textContent='✓ '+(window._i18n?.t('bk_submit_btn')||'Talep Gönder'); }
+          } catch(e) { const c=errId(); statusEl.style.color='var(--crimson)'; statusEl.textContent=`${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): `+(e.message||e.code); sendBtn.disabled=false; sendBtn.textContent=(window._i18n?.t('bk_submit_btn')||'Talep Gönder'); }
         };
       }
       drawCal();
@@ -2208,14 +2242,14 @@ async function renderDashboard() {
 
   if (hasFrozenLessons && !isTrial) {
     const frozenBanner = document.createElement('div');
-    frozenBanner.style.cssText = 'margin-bottom:14px;padding:10px 14px;background:rgba(143,200,232,.06);border:1px solid rgba(143,200,232,.25);border-radius:8px;font-size:.72rem;color:rgba(143,200,232,.8);line-height:1.6;';
-    frozenBanner.innerHTML = '❄️ <strong style="color:rgba(143,200,232,.95);">' + (window._i18n?.t('bk_frozen_banner')||'Ders planınız dondurulmuştur.') + '</strong> ' + (window._i18n?.t('bk_frozen_reminder')||'Yeni tarihler belirlendiğinde bildirim alacaksınız. Sorularınız için eğitmeninizle iletişime geçebilirsiniz.');
+    frozenBanner.className = 'notice notice-info frozen-banner';
+    frozenBanner.innerHTML = '<strong>' + (window._i18n?.t('bk_frozen_banner')||'Ders planınız dondurulmuştur.') + '</strong> ' + (window._i18n?.t('bk_frozen_reminder')||'Yeni tarihler belirlendiğinde bildirim alacaksınız. Sorularınız için eğitmeninizle iletişime geçebilirsiniz.');
     list.append(frozenBanner);
   }
   if (thisMonthLessons.length > 0) {
     const monthInfo = document.createElement('div');
-    monthInfo.style.cssText = 'font-size:.65rem;color:var(--dim);margin-bottom:14px;padding:8px 12px;background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.12);border-radius:8px;';
-    monthInfo.innerHTML = `${window._i18n?.t('bk_this_month')||'Bu ay'}: <strong style="color:var(--white)">${thisMonthDone}/${thisMonthLessons.length} ${window._i18n?.t('bk_lessons')||'ders'}</strong> · <span style="color:var(--gold)">${thisMonthLessons.length - thisMonthDone} ${window._i18n?.t('bk_lessons_left')||'kaldı'}</span>`;
+    monthInfo.className = 'month-info';
+    monthInfo.innerHTML = `${window._i18n?.t('bk_this_month')||'Bu ay'}: <strong>${thisMonthDone}/${thisMonthLessons.length} ${window._i18n?.t('bk_lessons')||'ders'}</strong> · <span class="text-accent">${thisMonthLessons.length - thisMonthDone} ${window._i18n?.t('bk_lessons_left')||'kaldı'}</span>`;
     list.append(monthInfo);
   }
 
@@ -2246,19 +2280,19 @@ async function renderDashboard() {
       if (!isPast && l.status === 'scheduled') {
         if (_pendingResched.has(l.date + '_' + l.time)) {
           const pend = document.createElement('span');
-          pend.style.cssText = 'font-size:.62rem;color:var(--gold);background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);padding:6px 12px;border-radius:6px;white-space:nowrap;';
-          pend.textContent = '⏳ ' + (window._i18n?.t('bk_resched_pending')||'Erteleme onayı bekliyor');
+          pend.className = 'lesson-status ls-rescheduled';
+          pend.textContent = (window._i18n?.t('bk_resched_pending')||'Erteleme onayı bekliyor');
           item.append(pend);
         } else {
           const rBtn = document.createElement('button'); rBtn.className = 'lesson-reschedule'; rBtn.textContent = window._i18n?.t('bk_reschedule')||'↺ Ertele';
-          if (!isPaid) { rBtn.disabled = true; rBtn.title = window._i18n?.t('bk_reschedule_disabled')||'Ödeme yapılmadan ders ertelenemez.'; rBtn.style.opacity = '.4'; rBtn.style.cursor = 'not-allowed'; }
+          if (!isPaid) { rBtn.disabled = true; rBtn.title = window._i18n?.t('bk_reschedule_disabled')||'Ödeme yapılmadan ders ertelenemez.'; }
           else rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
           item.append(rBtn);
         }
       }
       if (!isPast && l.status === 'frozen') {
         const frozenNote = document.createElement('div');
-        frozenNote.style.cssText = 'width:100%;font-size:.62rem;color:rgba(143,200,232,.55);margin-top:6px;padding:5px 10px;background:rgba(143,200,232,.04);border-radius:5px;line-height:1.5;';
+        frozenNote.className = 'lesson-frozen-note';
         frozenNote.textContent = `${window._i18n?.t('bk_frozen_note')||'Ders donduruldu — Yeni tarih:'} ${formatDateStr(l.date)} ${l.time}`;
         item.append(frozenNote);
       }
@@ -2268,7 +2302,6 @@ async function renderDashboard() {
         za.className = 'lesson-zoom-area';
         za.dataset.date = l.date;
         za.dataset.time = l.time;
-        za.style.cssText = 'width:100%;margin-top:8px;';
         item.append(za);
       }
       return item;
@@ -2282,7 +2315,7 @@ async function renderDashboard() {
 
     if (pastItems.length > 0) {
       const pastToggle = document.createElement('button');
-      pastToggle.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.3);font-size:.65rem;cursor:pointer;padding:14px 0 4px;font-family:"Space Mono",monospace;display:block;width:100%;text-align:left;';
+      pastToggle.className = 'past-toggle';
       pastToggle.textContent = `▸ ${window._i18n?.t('bk_past_lessons')||'Geçmiş Dersler'} (${pastItems.length})`;
       const pastSection = document.createElement('div');
       pastSection.style.display = 'none';
