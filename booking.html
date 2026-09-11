@@ -1320,7 +1320,16 @@ function getEndTime(time) {
 }
 
 // ─── Date Calculation ─────────────────────────────────────
-function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate) {
+// 24 saat kuralı: bir ders saati, hesaplama anına 24 saatten az kaldıysa
+// (ör. Pazar 11:00'de Pazartesi 10:00 seçildi) o hafta atlanır; seri bir
+// sonraki haftadan başlar, öğrencinin ilk dersi diğer seçili güne kayar.
+const MIN_LEAD_MS = 24 * 60 * 60 * 1000;
+function slotStartsTooSoon(dateObj, time, now) {
+  const [h, m] = String(time || '00:00').split(':').map(Number);
+  const start = new Date(dateObj); start.setHours(h || 0, m || 0, 0, 0);
+  return start.getTime() < now.getTime() + MIN_LEAD_MS;
+}
+function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate, now = new Date()) {
   if (!lessonsPerMonth) lessonsPerMonth = 4;
   const today = startDate ? new Date(startDate + 'T00:00:00') : new Date();
   today.setHours(0,0,0,0);
@@ -1330,6 +1339,8 @@ function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDa
     // Find the first occurrence of this weekday (startDate included)
     const first = new Date(today);
     while (first.getDay() !== s.dayIndex) first.setDate(first.getDate() + 1);
+    // 24h rule: push the series a week while the first slot is under 24h away (or already past)
+    while (slotStartsTooSoon(first, s.time, now)) first.setDate(first.getDate() + 7);
     // Generate exactly totalPerDay lessons, each 7 days apart
     for (let i = 0; i < totalPerDay; i++) {
       const d = new Date(first); d.setDate(d.getDate() + i * 7);
@@ -2276,9 +2287,11 @@ async function renderDashboard() {
         const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7; // Mon=0
         const lastDate = new Date(calYear, calMonth + 1, 0).getDate();
         for (let i = 0; i < firstDow; i++) grid.append(document.createElement('div'));
+        const _latestTime = AVAILABLE_TIMES.reduce((a, b) => (a > b ? a : b), '00:00');
         for (let d = 1; d <= lastDate; d++) {
           const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-          const isPast = ds < today;
+          // 24 saat kuralı: günün son saati bile 24 saatten yakınsa gün seçilemez
+          const isPast = ds < today || slotStartsTooSoon(new Date(calYear, calMonth, d), _latestTime, new Date());
           const busy = busySlots[ds] || [];
           const isFull = busy.length >= AVAILABLE_TIMES.length;
           const isSel = ds === selDate;
@@ -2307,11 +2320,15 @@ async function renderDashboard() {
           const sel = document.createElement('select');
           sel.id = 'xcTime';
           sel.className = 'select';
-          const firstFree = AVAILABLE_TIMES.find(t => !busyT.includes(t));
+          const _selDay = dateStrToObj(selDate);
+          const tooSoon = t => slotStartsTooSoon(_selDay, t, new Date()); // 24 saat kuralı
+          const firstFree = AVAILABLE_TIMES.find(t => !busyT.includes(t) && !tooSoon(t));
           AVAILABLE_TIMES.forEach(t => {
             const o = document.createElement('option');
-            o.value = t; o.textContent = busyT.includes(t) ? `${t} ${window._i18n?.t('bk_slot_full_label')||'(dolu)'}` : t;
-            if (busyT.includes(t)) o.disabled = true;
+            o.value = t;
+            o.textContent = busyT.includes(t) ? `${t} ${window._i18n?.t('bk_slot_full_label')||'(dolu)'}`
+              : tooSoon(t) ? `${t} ${window._i18n?.t('bk_slot_too_soon')||'(24 saatten az)'}` : t;
+            if (busyT.includes(t) || tooSoon(t)) o.disabled = true;
             sel.append(o);
           });
           if (firstFree) sel.value = firstFree;
