@@ -434,6 +434,38 @@
     .past-toggle { display:block; width:100%; text-align:left; background:none; border:0; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; text-transform:uppercase; cursor:pointer; padding:14px 0 4px; }
     .past-toggle:hover { color:var(--fg); }
 
+    /* ── Reschedule modal, welcome popup, announcements, student Q&A ── */
+    .resch-box { background:var(--surface-2); border:1px solid var(--line); border-left:2px solid var(--accent); padding:14px 16px; margin-bottom:14px; }
+    .resch-val { font-size:var(--fs-body); color:var(--fg); font-weight:600; }
+    .resch-next { margin-top:10px; }
+    .resch-modal .modal-actions .btn { flex:1; }
+    .welcome-modal { max-width:400px; }
+    .welcome-sub { margin-bottom:16px; }
+    .welcome-list { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+    .welcome-item { background:var(--surface-2); border:1px solid var(--line); border-left:2px solid var(--fg-3); padding:12px 14px; }
+    .welcome-ok { border-left-color:var(--ok); }
+    .welcome-accent { border-left-color:var(--accent); }
+    .welcome-info { border-left-color:var(--info); }
+    .welcome-item-title { font-size:var(--fs-small); font-weight:600; color:var(--fg); margin-bottom:3px; }
+    .welcome-ok .welcome-item-title { color:var(--ok); }
+    .welcome-accent .welcome-item-title { color:var(--accent); }
+    .welcome-info .welcome-item-title { color:var(--info); }
+    .welcome-item-desc { font-size:var(--fs-small); color:var(--fg-2); line-height:1.6; }
+    .ann-empty { font-size:var(--fs-small); color:var(--fg-3); padding:4px 0; }
+    .ann-item { border:1px solid var(--line); background:var(--surface-2); padding:10px 12px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+    .ann-text { font-size:var(--fs-small); color:var(--fg); line-height:1.55; margin-bottom:3px; }
+    .ann-time { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); }
+    .ann-del { background:none; border:0; color:var(--fg-3); font-size:16px; cursor:pointer; padding:0 4px; flex-shrink:0; line-height:1; }
+    .ann-del:hover { color:var(--err); }
+    .ann-card { background:var(--surface-2); border:1px solid var(--line); border-left:2px solid var(--accent); padding:12px 16px; margin-bottom:8px; }
+    .ann-label { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-bottom:4px; }
+    .ann-body { font-size:var(--fs-small); color:var(--fg); line-height:1.6; }
+    .qa-empty { font-size:var(--fs-small); color:var(--fg-3); margin-bottom:8px; }
+    .qa-closed-note { font-size:var(--fs-micro); color:var(--fg-3); font-style:italic; margin-top:4px; }
+    .qa-del-row { text-align:right; margin-top:4px; }
+    .qa-del-btn { background:none; border:0; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-micro); cursor:pointer; padding:2px 0; }
+    .qa-del-btn:hover { color:var(--err); }
+
     /* ── Desktop: sidebar nav replaces the page header bar ── */
     @media (min-width:1024px) {
       .topnav { display:none !important; }
@@ -1367,19 +1399,19 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
   // yazamaz. Bu yüzden erteleme bir TALEP olarak lesson_requests'e düşer;
   // Berkay onaylayınca takvim admin akışıyla güncellenir.
   const modal = Object.assign(document.createElement('div'), { innerHTML: `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;">
-      <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:26px 24px;width:100%;max-width:320px;font-family:'Space Mono',monospace;">
-        <div style="font-size:.88rem;color:#fff;font-weight:700;margin-bottom:12px;">${window._i18n?.t('bk_reschedule_modal_title')||'↺ Ders Ertele'}</div>
-        <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:14px 16px;margin-bottom:14px;">
-          <div style="font-size:.65rem;color:#888;margin-bottom:4px;">${window._i18n?.t('bk_reschedule_current')||'MEVCUT'}</div>
-          <div style="font-size:.82rem;color:#fff;">${formatDateStr(lesson.date)} ${lesson.time}</div>
-          <div style="font-size:.65rem;color:rgba(232,184,75,.6);margin:8px 0 4px;">${window._i18n?.t('bk_reschedule_next_week')||'→ 1 HAFTA SONRA'}</div>
-          <div style="font-size:.82rem;color:var(--gold);font-weight:700;">${formatDateStr(newDate)} ${lesson.time}</div>
+    <div class="modal-overlay">
+      <div class="modal modal-sm resch-modal">
+        <div class="modal-title">${window._i18n?.t('bk_reschedule_modal_title')||'Ders Ertele'}</div>
+        <div class="resch-box">
+          <div class="field-label">${window._i18n?.t('bk_reschedule_current')||'Mevcut'}</div>
+          <div class="resch-val">${formatDateStr(lesson.date)} ${lesson.time}</div>
+          <div class="field-label resch-next">${window._i18n?.t('bk_reschedule_next_week')||'1 hafta sonra'}</div>
+          <div class="resch-val text-accent">${formatDateStr(newDate)} ${lesson.time}</div>
         </div>
-        <div style="font-size:.62rem;color:#888;line-height:1.6;margin-bottom:18px;">${window._i18n?.t('bk_resched_req_note')||'Talebin Berkay Er\'e iletilir — onaylayınca takvimin güncellenir ve sana bildirim gelir.'}</div>
-        <div style="display:flex;gap:8px;">
-          <button id="reschCancel" style="flex:1;background:transparent;border:1px solid rgba(255,255,255,.1);color:#888;font-family:'Space Mono',monospace;font-size:.7rem;padding:9px;border-radius:7px;cursor:pointer;">${window._i18n?.t('bk_cancel')||'İptal'}</button>
-          <button id="reschSave" style="flex:1;background:rgba(232,184,75,.1);border:1px solid rgba(232,184,75,.3);color:var(--gold);font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;padding:9px;border-radius:7px;cursor:pointer;">${window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder'}</button>
+        <div class="modal-body">${window._i18n?.t('bk_resched_req_note')||'Talebin Berkay Er\'e iletilir — onaylayınca takvimin güncellenir ve sana bildirim gelir.'}</div>
+        <div class="modal-actions">
+          <button id="reschCancel" class="btn btn-ghost">${window._i18n?.t('bk_cancel')||'İptal'}</button>
+          <button id="reschSave" class="btn btn-primary">${window._i18n?.t('bk_resched_req_btn')||'Talep Gönder'}</button>
         </div>
       </div>
     </div>` });
@@ -1406,7 +1438,7 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
           );
           if (!proceed) {
             saveBtn.disabled = false;
-            saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder';
+            saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'Talep Gönder';
             return;
           }
         }
@@ -1427,7 +1459,7 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
       document.removeEventListener('keydown', _reschEsc);
       toast(window._i18n?.t('bk_resched_req_sent')||'✓ Erteleme talebi gönderildi — onaylanınca takvimin güncellenir.');
       renderDashboard();
-    } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'→ Talep Gönder'; }
+    } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'Talep Gönder'; }
   };
 }
 
@@ -2338,54 +2370,39 @@ async function renderDashboard() {
     localStorage.setItem(_bkKey, _bkStartDate);
     setTimeout(() => {
       const ov = document.createElement('div');
-      ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .2s ease;';
+      ov.className = 'modal-overlay';
       ov.onclick = e => { if(e.target===ov) ov.remove(); };
       const _wi = window._i18n;
       ov.innerHTML = `
-        <div style="background:#1c1c22;border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:28px 24px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto;font-family:'Space Mono',monospace;position:relative;">
-          <button onclick="this.closest('div[style]').parentElement.remove()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(255,255,255,.35);font-size:1rem;cursor:pointer;line-height:1;">✕</button>
-          <div style="font-size:.95rem;font-weight:700;color:#fff;margin-bottom:6px;">${_wi?.t('bk_welcome_title')||'Ders Panelinize Hoş Geldiniz 📅'}</div>
-          <div style="font-size:.62rem;color:rgba(255,255,255,.4);margin-bottom:20px;letter-spacing:.04em;">${_wi?.t('bk_welcome_subtitle')||'Birkaç önemli bilgi:'}</div>
+        <div class="modal welcome-modal">
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" aria-label="Kapat">✕</button>
+          <div class="modal-title">${_wi?.t('bk_welcome_title')||'Ders panelinize hoş geldiniz'}</div>
+          <div class="field-label welcome-sub">${_wi?.t('bk_welcome_subtitle')||'Birkaç önemli bilgi:'}</div>
 
-          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:22px;">
-            <div style="background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.2);border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;">
-              <div style="font-size:1.2rem;flex-shrink:0;">🎥</div>
-              <div>
-                <div style="font-size:.68rem;color:#4ade80;font-weight:700;margin-bottom:3px;">${_wi?.t('bk_welcome_zoom_title')||'Derse Katıl Butonu'}</div>
-                <div style="font-size:.62rem;color:rgba(255,255,255,.55);line-height:1.6;">${_wi?.t('bk_welcome_zoom_desc')||'Ödeme onaylandıktan sonra aktifleşir. Ödeme yapılmadığı sürece <span style="color:rgba(239,68,68,.7);font-weight:700;">Ödeme Yapılmadı</span> olarak görünür ve derse katılamazsınız.'}</div>
-              </div>
+          <div class="welcome-list">
+            <div class="welcome-item welcome-ok">
+              <div class="welcome-item-title">${_wi?.t('bk_welcome_zoom_title')||'Derse Katıl Butonu'}</div>
+              <div class="welcome-item-desc">${_wi?.t('bk_welcome_zoom_desc')||'Ödeme onaylandıktan sonra aktifleşir. Ödeme yapılmadığı sürece <strong class="text-err">Ödeme Yapılmadı</strong> olarak görünür ve derse katılamazsınız.'}</div>
             </div>
-            <div style="background:rgba(232,184,75,.07);border:1px solid rgba(232,184,75,.2);border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;">
-              <div style="font-size:1.2rem;flex-shrink:0;">₺</div>
-              <div>
-                <div style="font-size:.68rem;color:#e8b84b;font-weight:700;margin-bottom:3px;">${_wi?.t('bk_welcome_pay_title')||'Ödeme Nasıl Yapılır?'}</div>
-                <div style="font-size:.62rem;color:rgba(255,255,255,.55);line-height:1.6;">${_wi?.t('bk_welcome_pay_desc')||'Garanti Bankası IBAN\'ına havale yapın, ardından aşağıdaki <span style="color:#e8b84b;">₺ Ödeme Yaptım</span> butonuna basın. Admin onaylayınca buton aktifleşir.'}</div>
-              </div>
+            <div class="welcome-item welcome-accent">
+              <div class="welcome-item-title">${_wi?.t('bk_welcome_pay_title')||'Ödeme Nasıl Yapılır?'}</div>
+              <div class="welcome-item-desc">${_wi?.t('bk_welcome_pay_desc')||'Garanti Bankası IBAN\'ına havale yapın, ardından aşağıdaki <strong class="text-accent">Ödeme Yaptım</strong> butonuna basın. Admin onaylayınca buton aktifleşir.'}</div>
             </div>
-            <div style="background:rgba(99,179,237,.07);border:1px solid rgba(99,179,237,.2);border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;">
-              <div style="font-size:1.2rem;flex-shrink:0;">📅</div>
-              <div>
-                <div style="font-size:.68rem;color:#63b3ed;font-weight:700;margin-bottom:3px;">${_wi?.t('bk_welcome_resch_title')||'Ders Erteleme'}</div>
-                <div style="font-size:.62rem;color:rgba(255,255,255,.55);line-height:1.6;">${_wi?.t('bk_welcome_resch_desc')||'Dersinizi <span style="color:#63b3ed;font-weight:700;">en az 24 saat öncesinden</span> erteleyebilirsiniz. Ders kartındaki <span style="color:#63b3ed;">↺ Ertele</span> butonunu kullanın — yeni tarih seçtikten sonra admin onayına gönderilir.'}</div>
-              </div>
+            <div class="welcome-item welcome-info">
+              <div class="welcome-item-title">${_wi?.t('bk_welcome_resch_title')||'Ders Erteleme'}</div>
+              <div class="welcome-item-desc">${_wi?.t('bk_welcome_resch_desc')||'Dersinizi <strong class="text-info">en az 24 saat öncesinden</strong> erteleyebilirsiniz. Ders kartındaki <strong class="text-info">Ertele</strong> butonunu kullanın — yeni tarih seçtikten sonra admin onayına gönderilir.'}</div>
             </div>
-            <div style="background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;">
-              <div style="font-size:1.2rem;flex-shrink:0;">💬</div>
-              <div>
-                <div style="font-size:.68rem;color:#a855f7;font-weight:700;margin-bottom:3px;">${_wi?.t('bk_welcome_qa_title')||'Soru & Cevap'}</div>
-                <div style="font-size:.62rem;color:rgba(255,255,255,.55);line-height:1.6;">${_wi?.t('bk_welcome_qa_desc')||'Panelin altındaki <span style="color:#a855f7;font-weight:700;">Soru Sor</span> alanından doğrudan mesaj atabilirsiniz. Ders dışı sorular, teknik konular — her şey için kullanabilirsiniz.'}</div>
-              </div>
+            <div class="welcome-item welcome-accent">
+              <div class="welcome-item-title">${_wi?.t('bk_welcome_qa_title')||'Soru & Cevap'}</div>
+              <div class="welcome-item-desc">${_wi?.t('bk_welcome_qa_desc')||'Panelin altındaki <strong class="text-accent">Soru Sor</strong> alanından doğrudan mesaj atabilirsiniz. Ders dışı sorular, teknik konular — her şey için kullanabilirsiniz.'}</div>
             </div>
-            <div style="background:rgba(232,184,75,.04);border:1px solid rgba(232,184,75,.15);border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;">
-              <div style="font-size:1.2rem;flex-shrink:0;">🔗</div>
-              <div>
-                <div style="font-size:.68rem;color:#e8b84b;font-weight:700;margin-bottom:3px;">${_wi?.t('bk_welcome_lab_title')||'Ableton Lab & Forum'}</div>
-                <div style="font-size:.62rem;color:rgba(255,255,255,.55);line-height:1.6;">${_wi?.t('bk_welcome_lab_desc')||'Ders dışında da öğrenmeye devam edin — <span style="color:#e8b84b;font-weight:700;">Ableton Lab</span>\'da interaktif synthesizer, beat maker ve mixer araçları var. <span style="color:#e8b84b;font-weight:700;">Forum</span>\'da diğer öğrencilerle fikir paylaşın.'}</div>
-              </div>
+            <div class="welcome-item welcome-accent">
+              <div class="welcome-item-title">${_wi?.t('bk_welcome_lab_title')||'Ableton Lab & Forum'}</div>
+              <div class="welcome-item-desc">${_wi?.t('bk_welcome_lab_desc')||'Ders dışında da öğrenmeye devam edin — <strong class="text-accent">Ableton Lab</strong>\'da interaktif synthesizer, beat maker ve mixer araçları var. <strong class="text-accent">Forum</strong>\'da diğer öğrencilerle fikir paylaşın.'}</div>
             </div>
           </div>
 
-          <button onclick="this.closest('div[style]').parentElement.remove()" style="width:100%;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.35);color:#e8b84b;font-family:'Space Mono',monospace;font-size:.72rem;font-weight:700;padding:11px;border-radius:8px;cursor:pointer;">${_wi?.t('bk_welcome_ok')||'Anladım →'}</button>
+          <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">${_wi?.t('bk_welcome_ok')||'Anladım'}</button>
         </div>`;
       document.body.append(ov);
     }, 700);
@@ -5336,16 +5353,16 @@ function initLessonAnnouncements(isAdmin) {
 
     _lessonAnnUnsub = query.onSnapshot(snap => {
       list.innerHTML = '';
-      if (snap.empty) { list.innerHTML = '<div style="font-size:.65rem;color:var(--dim);">Henüz duyuru yok.</div>'; return; }
+      if (snap.empty) { list.innerHTML = '<div class="ann-empty">Henüz duyuru yok.</div>'; return; }
       const sorted = snap.docs.slice().sort((a,b) => (b.data().createdAt?.seconds||0) - (a.data().createdAt?.seconds||0));
       sorted.forEach(d => {
         const ann = d.data();
         const item = document.createElement('div');
-        item.style.cssText = 'background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:5px;padding:10px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;';
+        item.className = 'ann-item';
         const timeStr = ann.createdAt ? ann.createdAt.toDate().toLocaleDateString('tr-TR', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-        const _at=document.createElement('div');const _at1=document.createElement('div');_at1.style.cssText='font-size:.75rem;color:var(--white);line-height:1.55;margin-bottom:3px;';_at1.textContent=ann.text;const _at2=document.createElement('div');_at2.style.cssText='font-size:.58rem;color:var(--dim);';_at2.textContent=timeStr;_at.append(_at1,_at2);item.append(_at);
+        const _at=document.createElement('div');const _at1=document.createElement('div');_at1.className='ann-text';_at1.textContent=ann.text;const _at2=document.createElement('div');_at2.className='ann-time';_at2.textContent=timeStr;_at.append(_at1,_at2);item.append(_at);
         const del = document.createElement('button');
-        del.textContent = '×'; del.style.cssText = 'background:none;border:none;color:rgba(238,235,230,.3);font-size:1rem;cursor:pointer;padding:0 3px;flex-shrink:0;';
+        del.textContent = '×'; del.className = 'ann-del'; del.setAttribute('aria-label', 'Duyuruyu sil');
         del.onclick = async () => {
           if (!confirm('Bu duyuruyu silmek istediğine emin misin?')) return;
           try { await d.ref.delete(); }
@@ -5354,7 +5371,7 @@ function initLessonAnnouncements(isAdmin) {
         item.append(del);
         list.append(item);
       });
-    }, (e) => { const c=errId(); list.innerHTML = `<div style="font-size:.65rem;color:var(--crimson);">Duyurular yüklenemedi (${c})</div>`; });
+    }, (e) => { const c=errId(); list.innerHTML = `<div class="form-error">Duyurular yüklenemedi (${c})</div>`; });
 
     if (sendBtn) sendBtn.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) { ta.focus(); return; }
@@ -5392,13 +5409,13 @@ function initLessonAnnouncements(isAdmin) {
       display.innerHTML = sortedDocs.map(d => {
         const ann = d.data();
         const timeStr = ann.createdAt ? ann.createdAt.toDate().toLocaleDateString(_annLoc, {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-        return `<div style="background:rgba(232,184,75,.05);border:1px solid rgba(232,184,75,.2);border-left:3px solid var(--gold);border-radius:6px;padding:12px 16px;margin-bottom:8px;">
-          <div style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace;letter-spacing:.08em;margin-bottom:4px;">${window._i18n?.t('bk_ann_label')||'DERS PANELİ DUYURUSU'}</div>
-          <div style="font-size:.8rem;color:var(--white);line-height:1.6;">${ann.text}</div>
-          <div style="font-size:.58rem;color:var(--dim);margin-top:5px;">${timeStr}</div>
+        return `<div class="ann-card">
+          <div class="ann-label">${window._i18n?.t('bk_ann_label')||'Ders paneli duyurusu'}</div>
+          <div class="ann-body">${ann.text}</div>
+          <div class="ann-time">${timeStr}</div>
         </div>`;
       }).join('');
-    }, e => { const c=errId(); display.style.display=''; display.innerHTML=`<div style="font-size:.65rem;color:var(--crimson);padding:8px;">${window._i18n?.getLang()==='en'?'Announcements could not be loaded':'Duyurular yüklenemedi'} (${c}): ${e.code||e.message}</div>`; });
+    }, e => { const c=errId(); display.style.display=''; display.innerHTML=`<div class="form-error">${window._i18n?.getLang()==='en'?'Announcements could not be loaded':'Duyurular yüklenemedi'} (${c}): ${e.code||e.message}</div>`; });
   }
 }
 
@@ -5426,7 +5443,7 @@ function initStudentQA(uid, user) {
       _qaAnswerUnsubs.forEach(u => u()); _qaAnswerUnsubs = [];
       list.innerHTML = '';
       if (snap.empty) {
-        list.innerHTML = `<div style="font-size:.72rem;color:var(--dim);margin-bottom:10px;">${window._i18n?.t('bk_qa_no_questions')||'Henüz soru sormadınız.'}</div>`;
+        list.innerHTML = `<div class="qa-empty">${window._i18n?.t('bk_qa_no_questions')||'Henüz soru sormadınız.'}</div>`;
         return;
       }
       const sortedQDocs = snap.docs.slice().sort((a,b) => (b.data().createdAt?.seconds||0) - (a.data().createdAt?.seconds||0));
@@ -5441,24 +5458,24 @@ function initStudentQA(uid, user) {
         el.className = 'qa-question' + (isSolved ? ' solved' : '');
         el.innerHTML = `
           <div class="qa-q-header">
-            <span style="font-size:.65rem;color:var(--gold);font-weight:700;">${_qi?.t('bk_qa_my_question')||'Sorum'}</span>
+            <span class="qa-q-name">${_qi?.t('bk_qa_my_question')||'Sorum'}</span>
             ${isSolved
-              ? `<span class="qa-solved-badge">${_qi?.t('bk_qa_solved')||'✓ Çözüldü'}</span>`
-              : `<span style="font-size:.62rem;color:rgba(143,200,232,.7);background:rgba(143,200,232,.08);border:1px solid rgba(143,200,232,.2);padding:2px 8px;border-radius:10px;">${_qi?.t('bk_qa_open')||'Açık'}</span>`}
+              ? `<span class="qa-solved-badge">${_qi?.t('bk_qa_solved')||'Çözüldü'}</span>`
+              : `<span class="badge info">${_qi?.t('bk_qa_open')||'Açık'}</span>`}
             <span class="qa-q-time">${timeStr}</span>
           </div>
           <div class="qa-q-text">${q.question}</div>
           <div class="qa-answers" id="qaAns_${doc.id}">
-            <div style="font-size:.65rem;color:var(--dim);">${_qi?.t('bk_loading')||'Yükleniyor...'}</div>
+            <div class="qa-empty">${_qi?.t('bk_loading')||'Yükleniyor...'}</div>
           </div>
           ${!isSolved
             ? `<div class="qa-reply-row">
                 <textarea class="qa-reply-input" id="qaFollowup_${doc.id}" rows="2" placeholder="${_qi?.t('bk_qa_followup_ph')||'Takip sorusu ekle…'}"></textarea>
                 <button class="qa-reply-btn" onclick="submitStudentAnswer('${doc.id}')">→ ${_qi?.getLang()==='en'?'Add':'Ekle'}</button>
               </div>`
-            : `<div style="font-size:.62rem;color:var(--dim);font-style:italic;margin-top:4px;">${_qi?.t('bk_qa_solved_closed')||'Bu soru çözüldü, yeni mesaj eklenemez.'}</div>`}
-          <div style="text-align:right;margin-top:4px;">
-            <button onclick="deleteStudentQuestion('${doc.id}')" style="background:none;border:none;color:rgba(255,255,255,.2);font-size:.6rem;cursor:pointer;font-family:'Space Mono',monospace;">${_qi?.t('bk_qa_delete')||'✕ Soruyu Sil'}</button>
+            : `<div class="qa-closed-note">${_qi?.t('bk_qa_solved_closed')||'Bu soru çözüldü, yeni mesaj eklenemez.'}</div>`}
+          <div class="qa-del-row">
+            <button class="qa-del-btn" onclick="deleteStudentQuestion('${doc.id}')">${_qi?.t('bk_qa_delete')||'Soruyu sil'}</button>
           </div>`;
 
         list.append(el);
@@ -5468,7 +5485,7 @@ function initStudentQA(uid, user) {
           .orderBy('createdAt','asc').limit(50)
           .onSnapshot(aSnap => {
             answersEl.innerHTML = '';
-            if (aSnap.empty) { answersEl.innerHTML = `<div style="font-size:.65rem;color:var(--dim);">${window._i18n?.t('bk_qa_no_answers')||'Henüz yanıt yok.'}</div>`; return; }
+            if (aSnap.empty) { answersEl.innerHTML = `<div class="qa-empty">${window._i18n?.t('bk_qa_no_answers')||'Henüz yanıt yok.'}</div>`; return; }
             aSnap.docs.forEach(ad => {
               const a = ad.data();
               const _aloc = window._i18n?.getLang()==='en' ? 'en-US' : 'tr-TR';
@@ -5476,16 +5493,16 @@ function initStudentQA(uid, user) {
               const div = document.createElement('div');
               div.className = 'qa-answer' + (a.fromAdmin ? ' from-admin' : '');
               div.innerHTML = `<div class="qa-ans-bubble">
-                <div class="qa-ans-who">${a.fromAdmin ? '👨‍🏫 Berkay Er' : `${window._i18n?.t('bk_qa_me')||'Sen'}`}</div>
+                <div class="qa-ans-who">${a.fromAdmin ? 'Berkay Er' : `${window._i18n?.t('bk_qa_me')||'Sen'}`}</div>
                 <div class="qa-ans-text">${a.text}</div>
                 <div class="qa-ans-time">${aTime}</div>
               </div>`;
               answersEl.append(div);
             });
-          }, e => { const c=errId(); answersEl.innerHTML=`<div style="font-size:.62rem;color:var(--crimson);">${window._i18n?.getLang()==='en'?'Answers could not be loaded':'Yanıtlar yüklenemedi'} (${c}): ${e.code||e.message}</div>`; });
+          }, e => { const c=errId(); answersEl.innerHTML=`<div class="form-error">${window._i18n?.getLang()==='en'?'Answers could not be loaded':'Yanıtlar yüklenemedi'} (${c}): ${e.code||e.message}</div>`; });
         _qaAnswerUnsubs.push(unsub);
       });
-    }, e => { const c=errId(); list.innerHTML=`<div style="font-size:.72rem;color:var(--crimson);">${window._i18n?.getLang()==='en'?'Questions could not be loaded':'Sorular yüklenemedi'} (${c}): ${e.code||e.message}</div>`; });
+    }, e => { const c=errId(); list.innerHTML=`<div class="form-error">${window._i18n?.getLang()==='en'?'Questions could not be loaded':'Sorular yüklenemedi'} (${c}): ${e.code||e.message}</div>`; });
 
   if (sendBtn) sendBtn.onclick = async () => {
     const text = input.value.trim();
