@@ -385,6 +385,8 @@
     .zoom-join:hover { background:var(--ok-soft); }
     .zoom-chip { display:inline-flex; align-items:center; gap:8px; height:var(--ctl-sm); padding:0 12px; font-family:var(--ff-mono); font-size:var(--fs-label); border:1px solid var(--line); color:var(--fg-2); text-decoration:none; white-space:nowrap; }
     .zoom-chip-err { border-color:var(--err); color:var(--err); cursor:not-allowed; opacity:.85; }
+    /* Saati gelmemis normal ders "hata" gibi gorunmesin: notr bekleme rozeti */
+    .zoom-chip-wait { border-color:var(--line); color:var(--fg-3); cursor:default; }
     .zoom-chip-ok { border-color:var(--ok); color:var(--ok); background:var(--ok-soft); }
     .zoom-chip-sub { font-size:var(--fs-micro); opacity:.75; }
     @media (max-width:600px) { .choice-grid { grid-template-columns:1fr; } }
@@ -514,6 +516,12 @@
     .check-glyph { font-size:14px; }
     .bulk-bar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 10px; background:var(--accent-soft); border:1px solid var(--accent); margin-bottom:8px; }
     .bulk-label { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--accent); flex:1; min-width:60px; }
+    /* Cubugun altin tonlu zemininde --line kenarlik kayboluyordu: butonlar opak zeminde durur */
+    .bulk-bar .btn { background:var(--bg); }
+    .bulk-bar .btn.btn-ghost { border-color:var(--fg-3); color:var(--fg); }
+    .bulk-bar .btn.btn-ghost:hover { border-color:var(--fg); }
+    .bulk-bar .text-btn { color:var(--fg-2); }
+    .bulk-bar .text-btn:hover { color:var(--fg); }
     .admin-lesson-row { cursor:pointer; }
     .admin-lesson-main { display:flex; align-items:center; gap:8px; }
     .bulk-check { width:22px; height:22px; border:1px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--accent-ink); }
@@ -3296,9 +3304,9 @@ async function renderAdminPanel() {
         bulkBar.className = 'bulk-bar'; bulkBar.style.display = 'none';
         const bulkLabel = document.createElement('span');
         bulkLabel.className = 'bulk-label';
-        const mkBulkBtn = (label, fn) => {
+        const mkBulkBtn = (label, fn, variant) => {
           const b = document.createElement('button');
-          b.className = 'btn btn-sm btn-ghost';
+          b.className = 'btn btn-sm ' + (variant || 'btn-ghost');
           b.textContent = label; b.onclick = fn; return b;
         };
         const cancelSelBtn = document.createElement('button');
@@ -3325,17 +3333,17 @@ async function renderAdminPanel() {
           const idxArr = [...selectedIdxs];
           if (!confirm(`${idxArr.length} dersi 1'er hafta ertele?`)) return;
           await adminBulkReschedule(studentUid, idxArr, allLessons);
-        });
+        }, 'btn-accent');
         const bulkCompleteBtn = mkBulkBtn('✓ Tamamla', async () => {
           const idxArr = [...selectedIdxs];
           if (!confirm(`${idxArr.length} dersi tamamlandı olarak işaretle?`)) return;
           await adminBulkComplete(studentUid, idxArr, allLessons);
-        });
+        }, 'btn-ok');
         const bulkCancelBtn = mkBulkBtn('✕ İptal Et', async () => {
           const idxArr = [...selectedIdxs];
           if (!confirm(`${idxArr.length} dersi iptal et?`)) return;
           await adminBulkCancel(studentUid, idxArr, allLessons);
-        });
+        }, 'btn-danger');
         const bulkFreezeBtn = mkBulkBtn('Dondur', () => {
           const _today = toDateStr(new Date());
           const allUpcomingIdxs = allLessons
@@ -4748,13 +4756,13 @@ async function initZoomJoinBox(lessons, today, isPaid, isPending) {
       }
 
       if (lessonDate > nowDateStr) {
-        // Future date — red disabled, show date+time
+        // Future date — neutral disabled chip, show date+time
         const [y, mo, d] = lessonDate.split('-').map(Number);
         const dateObj = new Date(y, mo - 1, d);
         const dayLabel = `${d} ${getMonths()[mo-1]} ${getDays()[dateObj.getDay()]}`;
         const hh = String(ch).padStart(2,'0'), mm2 = String(cm).padStart(2,'0');
         const _cai = window._i18n; const _caen = _cai?.getLang()==='en';
-        area.innerHTML = `<span class="zoom-chip zoom-chip-err">${_cai?.t('bk_zoom_join')||'Derse Katıl'} <span class="zoom-chip-sub">${dayLabel} ${hh}:${mm2}${_caen?' · active':"'de aktif"}</span></span>`;
+        area.innerHTML = `<span class="zoom-chip zoom-chip-wait">${_cai?.t('bk_zoom_join')||'Derse Katıl'} <span class="zoom-chip-sub">${dayLabel} ${hh}:${mm2}${_caen?' · active':"'de aktif"}</span></span>`;
         return;
       }
 
@@ -4773,9 +4781,9 @@ async function initZoomJoinBox(lessons, today, isPaid, isPending) {
         const _za2=document.createElement('a');_za2.target='_blank';_za2.rel='noopener';_za2.className='zoom-chip zoom-chip-ok';if(zoomLink&&(zoomLink.startsWith('https://')||zoomLink.startsWith('http://')))_za2.href=zoomLink;_za2.textContent=(_szi?.t('bk_zoom_join_active')||'Derse Katıl')+' ';const _zs=document.createElement('span');_zs.className='zoom-chip-sub';_zs.textContent=sub;_za2.append(_zs);area.innerHTML='';area.append(_za2);
       } else if (within60) {
         const mm = Math.floor(secsLeft/60), ss = secsLeft%60;
-        area.innerHTML = `<span class="zoom-chip zoom-chip-err">${_szi?.t('bk_zoom_join')||'Derse Katıl'} <span class="zoom-chip-sub">${mm}:${String(ss).padStart(2,'0')} ${_szi?.t('bk_zoom_left')||'kaldı'}</span></span>`;
+        area.innerHTML = `<span class="zoom-chip zoom-chip-wait">${_szi?.t('bk_zoom_join')||'Derse Katıl'} <span class="zoom-chip-sub">${mm}:${String(ss).padStart(2,'0')} ${_szi?.t('bk_zoom_left')||'kaldı'}</span></span>`;
       } else {
-        area.innerHTML = `<span class="zoom-chip zoom-chip-err">${_szi?.t('bk_zoom_join')||'Derse Katıl'} <span class="zoom-chip-sub">${hh}:${mm2}${_szen?' · will be active':"'de aktif olacak"}</span></span>`;
+        area.innerHTML = `<span class="zoom-chip zoom-chip-wait">${_szi?.t('bk_zoom_join')||'Derse Katıl'} <span class="zoom-chip-sub">${hh}:${mm2}${_szen?' · will be active':"'de aktif olacak"}</span></span>`;
       }
     });
   };
