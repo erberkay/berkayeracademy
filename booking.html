@@ -734,9 +734,11 @@
 
       <div class="field-group">
         <label class="field-label">WhatsApp Numarası <span class="field-req">* Zorunlu</span></label>
-        <input type="tel" class="field-input input-mono" id="reqPhone" placeholder="05XX XXX XX XX" inputmode="tel" autocomplete="tel" required>
+        <input type="tel" class="field-input input-mono" id="reqPhone" placeholder="05XX XXX XX XX veya +1 617 388 4403" inputmode="tel" autocomplete="tel" required>
         <div class="field-help">
           Ders hatırlatmaları ve önemli bildirimler bu numaraya WhatsApp ile gönderilir.
+          <br>
+          Yurt dışındaysan numaranı <strong>+</strong> ile ülke koduyla yaz (örn. <strong>+1 617 388 4403</strong>).
           <br>
           <span class="text-ok">Talebi gönderdikten sonra <strong>WhatsApp ile mesaj at</strong> butonuna basıp hazır metni göndermen gerekiyor — yoksa WhatsApp bilgilendirme botumuz sana ulaşamaz :(</span>
         </div>
@@ -783,7 +785,7 @@
           Numaranı ekle, sonra <strong>WhatsApp bilgilendirme botumuz</strong> sana ulaşabilsin — ders hatırlatmaları ve hocadan mesajlar buradan gelecek.
         </div>
         <div class="inline-form">
-          <input id="studentPhoneInput" class="input input-mono" type="tel" inputmode="tel" placeholder="5XX XXX XX XX" />
+          <input id="studentPhoneInput" class="input input-mono" type="tel" inputmode="tel" placeholder="5XX XXX XX XX veya +1 617 388 4403" />
           <button id="studentPhoneSave" class="btn btn-ok">Kaydet</button>
         </div>
         <div id="studentPhoneStatus" class="form-status"></div>
@@ -1677,6 +1679,30 @@ function updatePriceEstimate() {
   el.innerHTML = `${window._i18n?.t('bk_price_total_label')||'Tahmini toplam:'} <strong class="text-accent">${total.toLocaleString('tr-TR')} TL</strong><br><span class="hint-sub">${totalLessons} ${window._i18n?.t('bk_price_per_lesson')||'ders × '}${LESSON_PRICE.toLocaleString('tr-TR')} ${window._i18n?.t('bk_price_per_slot')||'TL/ders saat'}</span>`;
 }
 
+// ─── Phone parsing (shared by request form, WhatsApp self-prompt, admin edit) ──
+// Turkish numbers: any common shape (5XXXXXXXXX, 05XXXXXXXXX, 905XXXXXXXXX, +905XXXXXXXXX)
+// all normalize the same way — this must keep matching existing stored records exactly as
+// before. International numbers: must start with "+" (E.164), 8-15 digits total — an
+// explicit "+" is the only thing that distinguishes "new, non-TR number" from old bare-digit
+// TR records, so it's also how we choose the storage shape below (never ambiguous with what's
+// already in Firestore, since no legacy student_phone value has ever started with "+").
+function parsePhoneInput(raw) {
+  const trimmed = (raw || '').trim();
+  const hasPlus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+  let trCore = digits;
+  if (trCore.startsWith('90') && trCore.length === 12) trCore = trCore.slice(2);
+  else if (trCore.startsWith('0') && trCore.length === 11) trCore = trCore.slice(1);
+  if (/^5\d{9}$/.test(trCore)) {
+    return { ok: true, e164: '+90' + trCore, bare: '90' + trCore, isTr: true };
+  }
+  if (hasPlus && /^\d{8,15}$/.test(digits)) {
+    return { ok: true, e164: '+' + digits, bare: '+' + digits, isTr: false };
+  }
+  return { ok: false };
+}
+const PHONE_HELP_TEXT = 'TR: 05XX XXX XX XX · Yurt dışı: + ile başlayan numara (örn: +1 617 388 4403)';
+
 // ─── Submit Request ───────────────────────────────────────
 async function submitRequest() {
   const btn = document.getElementById('submitRequestBtn');
@@ -1703,11 +1729,9 @@ async function submitRequest() {
   const schedule = isSingle ? rawSlots : adjustSchedule(rawSlots);
   const note = document.getElementById('reqNote').value.trim();
   const phoneRaw = document.getElementById('reqPhone')?.value.trim() || '';
-  // Basic TR phone validation: must have at least 10 digits, start with 5 (after stripping +90/0)
-  const phoneDigits = phoneRaw.replace(/\D/g, '');
-  const phoneOk = /^(?:90)?5\d{9}$/.test(phoneDigits) || /^5\d{9}$/.test(phoneDigits) || /^05\d{9}$/.test(phoneDigits);
-  if (!phoneOk) {
-    errEl.textContent = 'Geçerli bir cep telefonu numarası gir (örn: 05XX XXX XX XX).';
+  const _phoneParsed = parsePhoneInput(phoneRaw);
+  if (!_phoneParsed.ok) {
+    errEl.textContent = 'Geçerli bir cep telefonu numarası gir (' + PHONE_HELP_TEXT + ').';
     errEl.style.display = '';
     const _phEl = document.getElementById('reqPhone');
     if (_phEl) {
@@ -1718,11 +1742,7 @@ async function submitRequest() {
     }
     return;
   }
-  // Normalize to E.164 without "+" (e.g. 905XXXXXXXXX)
-  let phoneE164 = phoneDigits;
-  if (phoneE164.startsWith('0')) phoneE164 = phoneE164.slice(1);
-  if (!phoneE164.startsWith('90')) phoneE164 = '90' + phoneE164;
-  phoneE164 = '+' + phoneE164;
+  const phoneE164 = _phoneParsed.e164;
 
   if (!isSingle) {
     const totalLessons = calculateLessonDates(schedule, duration, lessonsPerMonth, preferredStartDate).length;
@@ -2040,12 +2060,13 @@ async function renderDashboard() {
     statusEl.textContent = '';
     input.value = '';
     saveBtn.onclick = async () => {
-      const raw = (input.value || '').replace(/\D/g, '');
-      if (!/^(5\d{9}|05\d{9}|905\d{9})$/.test(raw)) {
+      const _parsed = parsePhoneInput(input.value || '');
+      if (!_parsed.ok) {
         statusEl.style.color = 'var(--crimson)';
-        statusEl.textContent = 'Geçersiz numara. Örn: 5XX XXX XX XX';
+        statusEl.textContent = 'Geçersiz numara. ' + PHONE_HELP_TEXT;
         return;
       }
+      const raw = _parsed.bare;
       saveBtn.disabled = true;
       statusEl.style.color = 'var(--dim)';
       statusEl.textContent = 'Kaydediliyor…';
@@ -4420,15 +4441,19 @@ function initAdminWhatsAppTest() {
 window.adminEditStudentPhone = async function(studentUid, currentPhone, studentName) {
   if (!studentUid) return;
   const fresh = prompt(
-    'Öğrencinin WhatsApp numarasını gir (boş bırakırsan silinir):\n\nKabul edilen formatlar:\n5XX XXX XX XX  ·  05XX XXX XX XX  ·  +90 5XX XXX XX XX',
+    'Öğrencinin WhatsApp numarasını gir (boş bırakırsan silinir):\n\nKabul edilen formatlar:\n5XX XXX XX XX  ·  05XX XXX XX XX  ·  +90 5XX XXX XX XX  ·  Yurt dışı: +1 617 388 4403 gibi',
     currentPhone || ''
   );
   if (fresh === null) return; // cancelled
-  const cleaned = (fresh || '').replace(/\D/g, '');
-  if (cleaned && !/^(5\d{9}|05\d{9}|905\d{9})$/.test(cleaned)) {
-    if (typeof toast === 'function') toast('Geçersiz numara. Örn: 5XX XXX XX XX', true);
-    else alert('Geçersiz numara. Örn: 5XX XXX XX XX');
-    return;
+  let cleaned = '';
+  if ((fresh || '').trim()) {
+    const _parsed = parsePhoneInput(fresh);
+    if (!_parsed.ok) {
+      if (typeof toast === 'function') toast('Geçersiz numara. ' + PHONE_HELP_TEXT, true);
+      else alert('Geçersiz numara. ' + PHONE_HELP_TEXT);
+      return;
+    }
+    cleaned = _parsed.bare;
   }
   try {
     const update = cleaned
@@ -4469,14 +4494,16 @@ window.openAdminWaSendModal = function(phone, displayName) {
   card.className = 'modal';
 
   const safeName = (displayName || 'arkadaş').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-  const safePhone = phone.replace(/[<>&"]/g, '');
+  // `phone` may be a bare TR digit string (no +, e.g. "905551234567") or an international
+  // number that already carries a "+" (e.g. "+16173884403") — normalize to exactly one "+".
+  const safePhone = '+' + phone.replace(/[<>&"]/g, '').replace(/^\+/, '');
   const defaultBody = `Selam ${displayName || ''}! 👋\n\nBerkay Er Academy iletişim hattı bu numaraya bağlandı. Buradan ders hatırlatmaları ve hocadan mesajlar gelecek.\n\nSorun olursa direkt buraya yazabilirsin. 🎵`;
 
   card.innerHTML = `
     <div class="field-label text-ok">WhatsApp mesajı gönder</div>
     <div class="modal-title">${safeName}</div>
     <button id="adminWaSendClose" class="modal-close" aria-label="Kapat">✕</button>
-    <div class="dlg-sub mono-sm">+${safePhone}</div>
+    <div class="dlg-sub mono-sm">${safePhone}</div>
     <textarea id="adminWaSendBody" rows="6" class="textarea"></textarea>
     <div id="adminWaSendStatus" class="dlg-status dlg-status-left"></div>
     <div class="modal-actions">

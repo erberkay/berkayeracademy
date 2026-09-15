@@ -9,14 +9,23 @@
  */
 
 /**
- * Normalize a TR phone number into Twilio's whatsapp:+E.164 format.
- * Accepts "05XX...", "5XX...", "+90...", "905..." — returns "whatsapp:+90...".
+ * Normalize a phone number into Twilio's whatsapp:+E.164 format.
+ * Turkish shapes: "05XX...", "5XX...", "+90...", "905..." — all resolve the same way they
+ * always have (existing stored numbers use these bare, unprefixed digit shapes).
+ * International: any other number, as long as it's given with an explicit leading "+" and
+ * 8-15 digits total — the "+" is what disambiguates "new, non-TR number" from a bare TR
+ * digit string, so it must be present (client code only ever stores non-TR numbers with it).
  * Returns null if input can't be parsed.
  */
 function toWaNumber(raw) {
   if (!raw) return null;
-  let s = String(raw).replace(/[^\d+]/g, "");
-  if (s.startsWith("+")) s = s.slice(1);
+  const s0 = String(raw).replace(/[^\d+]/g, "");
+  if (s0.startsWith("+")) {
+    const digits = s0.slice(1);
+    if (/^\d{8,15}$/.test(digits)) return "whatsapp:+" + digits;
+    return null;
+  }
+  let s = s0;
   if (s.startsWith("00")) s = s.slice(2);
   if (s.startsWith("0")) s = "90" + s.slice(1);
   if (/^5\d{9}$/.test(s)) s = "90" + s;

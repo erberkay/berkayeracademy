@@ -196,6 +196,16 @@ function normalizeConvoPhone(toPhone) {
   return phone;
 }
 
+// reservations.student_phone is stored two ways depending on when/how it was written:
+// bare digits for Turkish numbers (legacy convention, e.g. "905551234567") or with an
+// explicit leading "+" for international ones (e.g. "+16173884403"). A lookup keyed off
+// a single shape misses the other, so callers should query both candidate shapes.
+function phoneLookupCandidates(phone) {
+  const bare = String(phone || "").replace(/^\+/, "");
+  const withPlus = "+" + bare;
+  return bare === withPlus ? [bare] : [bare, withPlus];
+}
+
 // Wraps sendWhatsApp / sendWhatsAppTemplate and (on Twilio acceptance)
 // persists the outbound message to whatsapp_conversations so the admin
 // WhatsApp panel renders it alongside human-sent messages. Pass a
@@ -235,7 +245,7 @@ async function sendAndPersistWA({toPhone, body, contentSid, variables, displayBo
     let studentUid = null;
     let studentName = null;
     try {
-      const q = await db.collection("reservations").where("student_phone", "==", phone.replace(/^\+/, "")).limit(1).get();
+      const q = await db.collection("reservations").where("student_phone", "in", phoneLookupCandidates(phone)).limit(1).get();
       if (!q.empty) {
         studentUid = q.docs[0].id;
         studentName = q.docs[0].data().student_name || null;
@@ -617,7 +627,7 @@ exports.twilioWhatsAppWebhook = onRequest(
       let studentUid = null;
       let studentName = profileName || phone;
       try {
-        const q = await db.collection("reservations").where("student_phone", "==", phone).limit(1).get();
+        const q = await db.collection("reservations").where("student_phone", "in", phoneLookupCandidates(phone)).limit(1).get();
         if (!q.empty) {
           studentUid = q.docs[0].id;
           studentName = q.docs[0].data().student_name || studentName;
