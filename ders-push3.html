@@ -42,34 +42,46 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 .p3-game-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:var(--s2) var(--s3); position:relative; overflow:hidden; background:var(--bg); }
 .p3-device-wrap {
   position:relative; z-index:1; width:100%; height:100%;
-  /* Single drop-shadow only — a chained triple drop-shadow here was measured (CDP trace) to
-     roughly double the outer-filter's raster cost for a barely-visible rim-light; one grounding
-     shadow reads the same at normal viewing distance. */
+  /* This element (and only this element) carries the CSS filter, and it now holds ONLY the
+     static, never-mutated device SVG — the interactive hotspot/highlight layer below is a
+     SIBLING, not a descendant, so hover/click never forces this filtered subtree to
+     re-rasterize. Before this split, every interaction repainted the whole filtered SVG at
+     its rendered pixel size — cheap on a small phone screen, expensive on a wide desktop
+     window, which is exactly the "faster on phone than PC" symptom this fixes. */
   filter:drop-shadow(0 16px 34px rgba(0,0,0,.55));
 }
 .p3-device-wrap svg { width:100%; height:100%; display:block; -webkit-user-select:none; user-select:none; }
 
-/* Hotspot rects are real <rect> siblings injected inside the live SVG (see script below),
-   positioned with getBBox() of the actual named Figma layers — no coordinate guessing. */
-.p3-hotspot {
-  fill:transparent; stroke:transparent; stroke-width:3; cursor:pointer; pointer-events:all;
-  transition:fill .15s, stroke .15s;
-}
-.p3-hotspot:hover { stroke:rgba(236,236,234,.35); }
+/* Interactive layer: plain HTML divs positioned over the (unfiltered) device image via
+   percentages derived from each control's real SVG bbox (svgRoot.getScreenCTM()) — see
+   script below. All visual feedback here animates opacity/transform only (GPU compositing,
+   no paint of the SVG, no layout). */
+.p3-hotspot-layer { position:absolute; z-index:2; pointer-events:none; }
+.p3-hotspot { position:absolute; pointer-events:auto; cursor:pointer; }
 .p3-hotspot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.p3-hotspot.correct { stroke:var(--ok); fill:color-mix(in srgb, var(--ok) 32%, transparent); }
-.p3-hotspot.wrong { stroke:var(--err); fill:color-mix(in srgb, var(--err) 34%, transparent); animation:p3shake .3s; }
-.p3-hotspot.hint { stroke:var(--accent); animation:p3pulse 1s ease-in-out infinite; }
-@keyframes p3shake { 0%,100%{transform:translate(0,0);} 25%{transform:translate(-6px,0);} 75%{transform:translate(6px,0);} }
-@keyframes p3pulse { 0%,100%{opacity:.55;} 50%{opacity:1;} }
+.p3-hl { position:absolute; inset:0; border-radius:3px; opacity:0; pointer-events:none; transform:scale(1); transition:opacity .18s ease; }
+.p3-hotspot:hover .p3-hl:not(.target):not(.correct):not(.wrong) { opacity:.22; background:rgba(236,236,234,.9); }
+.p3-hl.target { background:color-mix(in srgb, var(--ok) 14%, transparent); box-shadow:inset 0 0 0 2px var(--ok); opacity:.45; animation:p3TargetPulse 1.8s ease-in-out infinite; }
+.p3-hl.correct { background:color-mix(in srgb, var(--accent) 35%, transparent); box-shadow:inset 0 0 0 3px var(--accent); animation:p3CorrectFlash .5s ease-out; }
+.p3-hl.wrong { background:var(--err); animation:p3WrongFlash .35s ease-out; }
+@keyframes p3TargetPulse { 0%,100%{opacity:.4;} 50%{opacity:.8;} }
+@keyframes p3CorrectFlash { 0%{opacity:0; transform:scale(1);} 30%{opacity:1; transform:scale(1.06);} 100%{opacity:0; transform:scale(1.06);} }
+@keyframes p3WrongFlash { 0%{opacity:.6; transform:translate(0,0);} 25%{transform:translate(-6px,0);} 75%{transform:translate(6px,0);} 100%{opacity:0; transform:translate(0,0);} }
 
-.p3-game-feedback { flex:0 0 auto; min-height:40px; display:flex; align-items:center; justify-content:center; padding:6px var(--s5); font-size:var(--fs-small); text-align:center; line-height:1.35; color:var(--fg-3); }
+.p3-game-bottom { flex:0 0 auto; }
+.p3-game-feedback { align-items:center; justify-content:center; padding:6px var(--s5); font-size:var(--fs-small); text-align:center; line-height:1.35; color:var(--fg-3); min-height:40px; }
+.p3-game-feedback:not([hidden]) { display:flex; }
 @media (max-width:600px) {
   .p3-game-taskbar { padding:10px var(--s3); gap:var(--s2); }
   .p3-game-feedback { padding:6px var(--s4); font-size:12px; }
 }
 .p3-game-feedback.ok { color:var(--ok); }
 .p3-game-feedback.err { color:var(--err); }
+
+.p3-explain-panel:not([hidden]) { display:flex; flex-direction:column; align-items:center; gap:var(--s3); padding:var(--s4) var(--s5); background:var(--surface); border-top:1px solid var(--line); animation:p3PanelIn .2s ease-out; }
+.p3-explain-text { max-width:64ch; font-size:var(--fs-small); color:var(--fg-2); line-height:1.55; text-align:center; margin:0; }
+@media (min-width:600px) { .p3-explain-text { font-size:var(--fs-body); } }
+@keyframes p3PanelIn { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
 
 .p3-attribution { position:absolute; bottom:2px; right:8px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.02em; color:var(--fg-3); opacity:.55; z-index:1; pointer-events:auto; }
 .p3-attribution a { color:inherit; }
@@ -92,18 +104,28 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     <a href="egitim" class="btn btn-ghost btn-icon btn-sm" aria-label="Eğitime dön"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg></a>
     <span class="badge accent p3-game-progress" id="p3Progress">1 / 26</span>
     <div class="p3-game-task" id="p3TaskText" aria-live="polite">Yükleniyor…</div>
-    <button type="button" class="btn btn-ghost btn-icon btn-sm" id="p3HintBtn" aria-label="İpucu göster"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg></button>
+    <button type="button" class="btn btn-ghost btn-icon btn-sm" id="p3HintBtn" aria-pressed="true" aria-label="İpucunu gizle"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg></button>
   </div>
 
   <div class="p3-game-stage">
-    <div class="p3-device-wrap" id="p3DeviceWrap" role="img" aria-label="Ableton Push 3 cihazı — göreve göre doğru kontrole dokun">
-      <!-- Real push3-device.svg is fetched and injected here at runtime (see script) so JS can
-           bind hotspots directly to the actual named Figma layers (getElementById + getBBox). -->
+    <div class="p3-device-wrap" id="p3DeviceWrap" role="img" aria-label="Ableton Push 3 cihazı">
+      <!-- Real push3-device.svg is fetched and injected here at runtime (see script), untouched
+           after that — it never changes, so its CSS filter never has to re-rasterize. -->
+    </div>
+    <div class="p3-hotspot-layer" id="p3HotspotLayer">
+      <!-- Plain HTML hit-target divs, positioned over the SVG above via getScreenCTM() math
+           (see script). Sibling of #p3DeviceWrap, not a child of the SVG — see CSS comment. -->
     </div>
     <p class="p3-attribution">Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
   </div>
 
-  <div class="p3-game-feedback" id="p3Feedback" aria-live="assertive">Cihaz üzerinde göreve uyan kontrole dokun.</div>
+  <div class="p3-game-bottom">
+    <div class="p3-game-feedback" id="p3Feedback" aria-live="assertive">Cihaz üzerinde göreve uyan kontrole dokun.</div>
+    <div class="p3-explain-panel" id="p3ExplainPanel" aria-live="polite" hidden>
+      <p class="p3-explain-text" id="p3ExplainText"></p>
+      <button type="button" class="btn btn-primary btn-sm" id="p3ContinueBtn">Devam →</button>
+    </div>
+  </div>
 </main>
 
 <div class="p3-win" id="p3Win" hidden>
@@ -190,22 +212,22 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     { svgId:'Pads',           label:'Pad ızgarası',  task:'8×8 pad ızgarasına dokun.', explain:'Pad ızgarası nota çalma, step sequencing ve clip tetikleme için kullanılır — moda göre davranışı değişir.' },
     { svgId:'TopKnobs',       label:'Encoder\'lar',  task:'8 encoder\'dan birine dokun.', explain:'8 dokunmatik encoder, ekrandaki parametreleri kontrol eder — dokunmak bile ekranda değerini gösterir.' },
     { svgId:'Knob_11',        label:'Jog Wheel',     task:'Jog Wheel\'i bul.', explain:'Jog Wheel, menülerde ve listelerde gezinmeni sağlar; basarak seçimi onaylarsın.' },
-    { svgId:'TouchSlider',    label:'Touch Slider',  task:'Touch Slider\'ı bul.', explain:'Touch Slider, pitch bend / mod wheel görevi gören dokunmatik şerittir (bu illüstrasyonda dikey bir fader olarak çizilmiş).' },
+    { svgId:'TouchSlider',    label:'Touch Slider',  task:'Touch Slider\'ı bul.', explain:'Touch Slider, pitch bend veya mod wheel işlevi görür — parmağını şerit üzerinde kaydırarak sesi gerçek zamanlı büker.' },
     { svgId:'ButtonBigPlay',  label:'Play',          task:'Play düğmesini bul.', explain:'Play/Stop, transport\'un temelidir — çalmayı başlatır veya durdurur.' },
     { svgId:'RecordControls', label:'Record',        split:'y', half:'bottom', frac:0.57, task:'Record düğmesini bul.', explain:'Record, çaldığın veya step\'lediğin notaları bir clip\'e kaydeder.' },
     { svgId:'RecordControls', label:'New',           split:'y', half:'top',    frac:0.57, task:'New düğmesini bul.', explain:'New, yeni bir clip veya sahne (scene) oluşturur.' },
     { svgId:'NoteSettings',   label:'Fixed Length',  task:'Fixed Length\'i bul.', explain:'Fixed Length açıkken yeni bir clip her zaman belirlediğin sabit uzunlukta kaydedilir.' },
     { svgId:'Tempo',          label:'Tap Tempo',     split:'y', half:'top',    frac:0.45, task:'Tap Tempo\'yu bul.', explain:'Tap Tempo\'ya art arda dokunarak tempoyu kulağınla ayarlarsın.' },
     { svgId:'Tempo',          label:'Quantize',      split:'y', half:'bottom', frac:0.45, task:'Quantize\'ı bul.', explain:'Quantize açıkken çaldığın notalar en yakın grid çizgisine hizalanır.' },
-    { svgId:'mute',           label:'Mute',          task:'Mute (M) düğmesini bul.', explain:'Mute, seçili track\'i geçici olarak susturur.' },
+    { svgId:'mute',           label:'Mute',          task:'Mute (M) düğmesini bul.', explain:'Mute, seçili track\'i geçici olarak susturur — miksaj yaparken bir sesi anlık kapatıp açarak karşılaştırma yapmak için kullanışlıdır.' },
     { svgId:'solo',           label:'Solo',          task:'Solo (S) düğmesini bul.', explain:'Solo, seçili track\'i tek başına çalar, diğerlerini susturur.' },
     { svgId:'LayoutScale',    label:'Scale',         split:'x', half:'left',  task:'Scale düğmesini bul.', explain:'Scale, pad ızgarasının tonunu ve gam türünü değiştirir.' },
     { svgId:'LayoutScale',    label:'Layout',        split:'x', half:'right', task:'Layout düğmesini bul.', explain:'Layout, pad dizilimini 4ths / 3rds / Sequential seçenekleri arasında değiştirir.' },
     { svgId:'RepeatAccent',   label:'Repeat',        split:'x', half:'left',  task:'Repeat\'i bul.', explain:'Repeat açıkken bir pad\'e basılı tutmak notayı otomatik olarak tekrar tetikler.' },
     { svgId:'RepeatAccent',   label:'Accent',        split:'x', half:'right', task:'Accent\'i bul.', explain:'Accent basılıyken çalınan notalar tam vuruş şiddetinde (velocity) kaydedilir.' },
-    { svgId:'LoopingSection', label:'Double Loop',   split:'quad', half:'top-left',     task:'Double Loop\'u bul.', explain:'Double Loop, sequencer sayfasının uzunluğunu ikiye katlar.' },
+    { svgId:'LoopingSection', label:'Double Loop',   split:'quad', half:'top-left',     task:'Double Loop\'u bul.', explain:'Double Loop, sequencer sayfasının uzunluğunu ikiye katlar — kısa bir fikri büyütüp üstüne yeni katmanlar eklemek istediğinde işine yarar.' },
     { svgId:'LoopingSection', label:'Duplicate',     split:'quad', half:'top-right',    task:'Duplicate\'i bul.', explain:'Duplicate, seçili sayfa veya clip içeriğini başka bir sayfaya kopyalar.' },
-    { svgId:'LoopingSection', label:'Convert',       split:'quad', half:'bottom-left',  task:'Convert\'i bul.', explain:'Convert, bağlama göre değişen bir dönüştürme komutudur — örneğin cihazları bir Rack\'e gruplar.' },
+    { svgId:'LoopingSection', label:'Convert',       split:'quad', half:'bottom-left',  task:'Convert\'i bul.', explain:'Convert, seçili öğeye göre değişen bir dönüştürme komutudur — örneğin birden fazla cihazı tek bir Rack\'e gruplar.' },
     { svgId:'LoopingSection', label:'Delete',        split:'quad', half:'bottom-right', task:'Delete\'i bul.', explain:'Delete, seçili adımı, notayı veya clip\'i siler.' },
     { svgId:'JogControls',    label:'Octave ↑',      task:'Octave ↑ (yukarı) düğmesini bul.', explain:'Octave ↑, pad ızgarasında görünen nota aralığını bir oktav yukarı kaydırır.' },
     { svgId:'JogControls_2',  label:'Octave ↓',      task:'Octave ↓ (aşağı) düğmesini bul.', explain:'Octave ↓, görünen nota aralığını bir oktav aşağı kaydırır.' },
@@ -218,18 +240,23 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   TASKS.forEach(function(t, i) { t.key = t.svgId + '__' + i; });
 
   var wrap = document.getElementById('p3DeviceWrap');
+  var hotspotLayer = document.getElementById('p3HotspotLayer');
   var progressEl = document.getElementById('p3Progress');
   var taskEl = document.getElementById('p3TaskText');
   var feedbackEl = document.getElementById('p3Feedback');
+  var explainPanel = document.getElementById('p3ExplainPanel');
+  var explainTextEl = document.getElementById('p3ExplainText');
+  var continueBtn = document.getElementById('p3ContinueBtn');
   var hintBtn = document.getElementById('p3HintBtn');
   var winEl = document.getElementById('p3Win');
   var winCountEl = document.getElementById('p3WinCount');
   var restartBtn = document.getElementById('p3RestartBtn');
   winCountEl.textContent = TASKS.length;
 
-  var hotspotEls = {};
+  var hotspotEls = {}; // key -> outer hit-target div
+  var hlEls = {};      // key -> inner highlight div (opacity/transform only)
   var svgRoot = null;
-  var state = { idx: 0, wrong: 0, advancing: false };
+  var state = { idx: 0, advancing: false, hintsOn: true };
 
   function rectFor(t) {
     var el = svgRoot.getElementById(t.svgId);
@@ -253,45 +280,93 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     };
   }
 
+  // Maps an SVG user-space point to a percentage position within #p3HotspotLayer, using the
+  // browser's own current SVG->screen transform (accounts for preserveAspectRatio letterboxing
+  // automatically, unlike a manual viewBox percentage calc would).
+  function svgPointToLayerPct(x, y) {
+    var pt = svgRoot.createSVGPoint();
+    pt.x = x; pt.y = y;
+    var screenPt = pt.matrixTransform(svgRoot.getScreenCTM());
+    var layerRect = hotspotLayer.getBoundingClientRect();
+    return {
+      xPct: (screenPt.x - layerRect.left) / layerRect.width * 100,
+      yPct: (screenPt.y - layerRect.top) / layerRect.height * 100
+    };
+  }
+
+  // #p3HotspotLayer is a sibling of #p3DeviceWrap (not a descendant — see CSS comment), so it
+  // must be aligned to the wrap's actual rendered box by measurement rather than CSS inset:0,
+  // which would resolve against the stage's padding box (bigger than the wrap's own box).
+  function alignHotspotLayer() {
+    var wrapRect = wrap.getBoundingClientRect();
+    var parentRect = hotspotLayer.offsetParent.getBoundingClientRect();
+    hotspotLayer.style.left = (wrapRect.left - parentRect.left) + 'px';
+    hotspotLayer.style.top = (wrapRect.top - parentRect.top) + 'px';
+    hotspotLayer.style.width = wrapRect.width + 'px';
+    hotspotLayer.style.height = wrapRect.height + 'px';
+  }
+
+  function positionHotspots() {
+    if (!svgRoot) return;
+    alignHotspotLayer();
+    TASKS.forEach(function(t) {
+      var el = hotspotEls[t.key];
+      var r = rectFor(t);
+      if (!el || !r) return;
+      var p1 = svgPointToLayerPct(r.x, r.y);
+      var p2 = svgPointToLayerPct(r.x + r.w, r.y + r.h);
+      el.style.left = p1.xPct + '%';
+      el.style.top = p1.yPct + '%';
+      el.style.width = (p2.xPct - p1.xPct) + '%';
+      el.style.height = (p2.yPct - p1.yPct) + '%';
+    });
+  }
+
   function buildHotspots() {
-    var SVG_NS = 'http://www.w3.org/2000/svg';
-    var group = document.createElementNS(SVG_NS, 'g');
-    group.setAttribute('id', 'p3HotspotLayer');
-    svgRoot.appendChild(group);
     TASKS.forEach(function(t) {
       var r = rectFor(t);
       if (!r) { console.warn('Push3 game: missing SVG id', t.svgId); return; }
-      var rect = document.createElementNS(SVG_NS, 'rect');
-      rect.setAttribute('x', r.x); rect.setAttribute('y', r.y);
-      rect.setAttribute('width', r.w); rect.setAttribute('height', r.h);
-      rect.setAttribute('class', 'p3-hotspot');
-      rect.setAttribute('tabindex', '0');
-      rect.setAttribute('role', 'button');
-      rect.setAttribute('aria-label', t.label);
-      rect.addEventListener('click', function() { onHotspotClick(t.key); });
-      rect.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHotspotClick(t.key); } });
-      group.appendChild(rect);
-      hotspotEls[t.key] = rect;
+      var el = document.createElement('div');
+      el.className = 'p3-hotspot';
+      el.tabIndex = 0;
+      el.setAttribute('role', 'button');
+      el.setAttribute('aria-label', t.label);
+      var hl = document.createElement('div');
+      hl.className = 'p3-hl';
+      el.appendChild(hl);
+      el.addEventListener('click', function() { onHotspotClick(t.key); });
+      el.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHotspotClick(t.key); } });
+      hotspotLayer.appendChild(el);
+      hotspotEls[t.key] = el;
+      hlEls[t.key] = hl;
+    });
+    positionHotspots();
+    var resizeTimer = null;
+    window.addEventListener('resize', function() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(positionHotspots, 120);
     });
   }
 
   function clearStates() {
-    TASKS.forEach(function(t) { hotspotEls[t.key].classList.remove('correct', 'wrong', 'hint'); });
+    TASKS.forEach(function(t) { hlEls[t.key].classList.remove('correct', 'wrong', 'target'); });
+  }
+
+  function applyTargetHighlight() {
+    TASKS.forEach(function(t) { hlEls[t.key].classList.remove('target'); });
+    if (state.hintsOn) hlEls[TASKS[state.idx].key].classList.add('target');
   }
 
   function renderTask() {
     var t = TASKS[state.idx];
     progressEl.textContent = (state.idx + 1) + ' / ' + TASKS.length;
     taskEl.textContent = t.task;
+    explainPanel.hidden = true;
+    feedbackEl.hidden = false;
     feedbackEl.textContent = 'Cihaz üzerinde göreve uyan kontrole dokun.';
     feedbackEl.className = 'p3-game-feedback';
-    state.wrong = 0;
     clearStates();
-  }
-
-  function showHint() {
-    var t = TASKS[state.idx];
-    hotspotEls[t.key].classList.add('hint');
+    applyTargetHighlight();
   }
 
   function next() {
@@ -306,31 +381,42 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     var t = TASKS[state.idx];
     if (key === t.key) {
       state.advancing = true;
-      hotspotEls[key].classList.add('correct');
-      feedbackEl.textContent = t.explain;
-      feedbackEl.className = 'p3-game-feedback ok';
-      setTimeout(next, 1500);
+      hlEls[key].classList.remove('target');
+      hlEls[key].classList.add('correct');
+      feedbackEl.hidden = true;
+      explainTextEl.textContent = t.explain;
+      continueBtn.textContent = (state.idx + 1 >= TASKS.length) ? 'Bitir' : 'Devam →';
+      explainPanel.hidden = false;
+      continueBtn.focus();
     } else {
-      state.wrong++;
-      var wrongEl = hotspotEls[key];
-      wrongEl.classList.remove('wrong'); void wrongEl.getBBox(); wrongEl.classList.add('wrong');
+      var wrongEl = hlEls[key];
+      wrongEl.classList.remove('wrong'); void wrongEl.offsetWidth; wrongEl.classList.add('wrong');
       var wrongTask = TASKS.filter(function(x) { return x.key === key; })[0];
       feedbackEl.textContent = 'Hayır, o ' + wrongTask.label + '. Aradığın: ' + t.label + '.';
       feedbackEl.className = 'p3-game-feedback err';
-      if (state.wrong >= 2) showHint();
     }
   }
 
   function showWin() {
+    explainPanel.hidden = true;
+    feedbackEl.hidden = false;
     winEl.hidden = false;
   }
   function restart() {
     winEl.hidden = true;
-    state.idx = 0; state.wrong = 0; state.advancing = false;
+    state.idx = 0; state.advancing = false;
     renderTask();
   }
 
-  hintBtn.addEventListener('click', showHint);
+  function toggleHint() {
+    state.hintsOn = !state.hintsOn;
+    hintBtn.setAttribute('aria-pressed', String(state.hintsOn));
+    hintBtn.setAttribute('aria-label', state.hintsOn ? 'İpucunu gizle' : 'İpucunu göster');
+    applyTargetHighlight();
+  }
+
+  hintBtn.addEventListener('click', toggleHint);
+  continueBtn.addEventListener('click', next);
   restartBtn.addEventListener('click', restart);
 
   fetch('assets/img/push3-device.svg')
