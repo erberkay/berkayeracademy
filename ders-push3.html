@@ -42,24 +42,25 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 .p3-game-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:var(--s2) var(--s3); position:relative; overflow:hidden; background:var(--bg); }
 .p3-game-stage::before {
   content:''; position:absolute; inset:-5%; z-index:0;
-  background-image:url('assets/img/push3-device.webp'); background-size:cover; background-position:center;
+  background-image:url('assets/img/push3-device.svg'); background-size:cover; background-position:center;
   filter:blur(48px) brightness(.42) saturate(1.25); transform:scale(1.1);
 }
-.p3-device-wrap { position:relative; z-index:1; width:100%; height:100%; }
-.p3-device-img { width:100%; height:100%; object-fit:contain; display:block; -webkit-user-select:none; user-select:none; filter:drop-shadow(0 18px 60px rgba(0,0,0,.55)); }
+.p3-device-wrap { position:relative; z-index:1; width:100%; height:100%; filter:drop-shadow(0 18px 60px rgba(0,0,0,.55)); }
+.p3-device-wrap svg { width:100%; height:100%; display:block; -webkit-user-select:none; user-select:none; }
 
+/* Hotspot rects are real <rect> siblings injected inside the live SVG (see script below),
+   positioned with getBBox() of the actual named Figma layers — no coordinate guessing. */
 .p3-hotspot {
-  position:absolute; transform:translate(-50%,-50%); translate:0 0;
-  border:1px solid transparent; background:transparent; border-radius:0; padding:0; cursor:pointer;
-  transition:border-color .15s, background .15s;
+  fill:transparent; stroke:transparent; stroke-width:3; cursor:pointer; pointer-events:all;
+  transition:fill .15s, stroke .15s;
 }
-.p3-hotspot:hover { border-color:rgba(236,236,234,.22); }
+.p3-hotspot:hover { stroke:rgba(236,236,234,.35); }
 .p3-hotspot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.p3-hotspot.correct { border-color:var(--ok); background:color-mix(in srgb, var(--ok) 30%, transparent); }
-.p3-hotspot.wrong { border-color:var(--err); background:color-mix(in srgb, var(--err) 32%, transparent); animation:p3shake .3s; }
-.p3-hotspot.hint { border-color:var(--accent); animation:p3pulse 1s ease-in-out infinite; }
-@keyframes p3shake { 0%,100%{translate:0 0;} 25%{translate:-4px 0;} 75%{translate:4px 0;} }
-@keyframes p3pulse { 0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent);} 50%{box-shadow:0 0 0 8px transparent;} }
+.p3-hotspot.correct { stroke:var(--ok); fill:color-mix(in srgb, var(--ok) 32%, transparent); }
+.p3-hotspot.wrong { stroke:var(--err); fill:color-mix(in srgb, var(--err) 34%, transparent); animation:p3shake .3s; }
+.p3-hotspot.hint { stroke:var(--accent); animation:p3pulse 1s ease-in-out infinite; }
+@keyframes p3shake { 0%,100%{transform:translate(0,0);} 25%{transform:translate(-6px,0);} 75%{transform:translate(6px,0);} }
+@keyframes p3pulse { 0%,100%{opacity:.55;} 50%{opacity:1;} }
 
 .p3-game-feedback { flex:0 0 auto; min-height:40px; display:flex; align-items:center; justify-content:center; padding:6px var(--s5); font-size:var(--fs-small); text-align:center; line-height:1.35; color:var(--fg-3); }
 @media (max-width:600px) {
@@ -94,8 +95,9 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   </div>
 
   <div class="p3-game-stage">
-    <div class="p3-device-wrap" id="p3DeviceWrap">
-      <img class="p3-device-img" id="p3DeviceImg" src="assets/img/push3-device.webp" alt="Ableton Push 3 cihazı — göreve göre doğru kontrole dokun" draggable="false">
+    <div class="p3-device-wrap" id="p3DeviceWrap" role="img" aria-label="Ableton Push 3 cihazı — göreve göre doğru kontrole dokun">
+      <!-- Real push3-device.svg is fetched and injected here at runtime (see script) so JS can
+           bind hotspots directly to the actual named Figma layers (getElementById + getBBox). -->
     </div>
     <p class="p3-attribution">Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
   </div>
@@ -176,40 +178,45 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 
 <script>
 (function() {
-  // Hotspot boxes are % of the device image's own box (center x/y, width, height) —
-  // independent of container letterboxing; layoutHotspots() converts them to px
-  // against the image's actual rendered rect (accounts for object-fit:contain).
+  // Hotspots are bound directly to the real named layers exported from the Figma file
+  // (assets/img/push3-device.svg, "Include 'id' attribute" export option). No coordinate
+  // guessing: each target's rect comes from getBBox() on the actual SVG element at runtime.
+  // A few Figma groups hold two/four buttons together (e.g. "LayoutScale" = Scale + Layout);
+  // for those, `split` cuts that group's real bbox in half/quarters using the exact divider
+  // position measured from the group's own child separators.
   var TASKS = [
-    { id:'screen',      label:'Ekran',        cx:49.75, cy:28.77, w:51.13, h:11.12, task:'Ekrana dokun.', explain:'Ekran, seçili cihazın 8 parametresini gösterir — her biri altındaki dokunmatik encoder\'la eşleşir.' },
-    { id:'padgrid',      label:'Pad ızgarası', cx:49.94, cy:66.38, w:51.44, h:46.40, task:'8×8 pad ızgarasına dokun.', explain:'Pad ızgarası nota çalma, step sequencing ve clip tetikleme için kullanılır — moda göre davranışı değişir.' },
-    { id:'play',         label:'Play',         cx:12.78, cy:85.45, w:5.98,  h:5.03,  task:'Play düğmesini bul.', explain:'Play/Stop, transport\'un temelidir — çalmayı başlatır veya durdurur.' },
-    { id:'record',       label:'Record',       cx:12.78, cy:79.89, w:5.98,  h:5.03,  task:'Record düğmesini bul.', explain:'Record, çaldığın veya step\'lediğin notaları bir clip\'e kaydeder.' },
-    { id:'encoders',     label:'Encoder\'lar', cx:50.08, cy:13.41, w:50.47, h:5.30,  task:'8 encoder\'dan birine dokun.', explain:'8 dokunmatik encoder, ekrandaki parametreleri kontrol eder — dokunmak bile ekranda değerini gösterir.' },
-    { id:'jogwheel',     label:'Jog Wheel',    cx:86.98, cy:29.47, w:9.38,  h:10.59, task:'Jog Wheel\'i bul.', explain:'Jog Wheel, menülerde ve listelerde gezinmeni sağlar; basarak seçimi onaylarsın.' },
-    { id:'mute',         label:'Mute',         cx:17.81, cy:39.19, w:2.50,  h:2.87,  task:'Mute (M) düğmesini bul.', explain:'Mute, seçili track\'i geçici olarak susturur.' },
-    { id:'solo',         label:'Solo',         cx:20.31, cy:39.19, w:2.50,  h:2.87,  task:'Solo (S) düğmesini bul.', explain:'Solo, seçili track\'i tek başına çalar, diğerlerini susturur.' },
-    { id:'scale',        label:'Scale',        cx:84.28, cy:54.11, w:6.86,  h:8.99,  task:'Scale düğmesini bul.', explain:'Scale, pad ızgarasının tonunu ve gam türünü değiştirir.' },
-    { id:'layout',       label:'Layout',       cx:91.15, cy:54.11, w:6.88,  h:8.99,  task:'Layout düğmesini bul.', explain:'Layout, pad dizilimini 4ths / 3rds / Sequential seçenekleri arasında değiştirir.' },
-    { id:'taptempo',     label:'Tap Tempo',    cx:12.67, cy:51.72, w:6.20,  h:5.83,  task:'Tap Tempo\'yu bul.', explain:'Tap Tempo\'ya art arda dokunarak tempoyu kulağınla ayarlarsın.' },
-    { id:'quantize',     label:'Quantize',     cx:12.67, cy:56.60, w:6.20,  h:3.94,  task:'Quantize\'ı bul.', explain:'Quantize açıkken çaldığın notalar en yakın grid çizgisine hizalanır.' },
-    { id:'new',          label:'New',          cx:12.78, cy:73.93, w:5.98,  h:4.24,  task:'New düğmesini bul.', explain:'New, yeni bir clip veya sahne (scene) oluşturur.' },
-    { id:'fixedlength',  label:'Fixed Length', cx:12.78, cy:63.47, w:5.98,  h:9.80,  task:'Fixed Length\'i bul.', explain:'Fixed Length açıkken yeni bir clip her zaman belirlediğin sabit uzunlukta kaydedilir.' },
-    { id:'octaveup',     label:'Octave ↑',     cx:85.73, cy:77.14, w:8.62,  h:4.74,  task:'Octave ↑ (yukarı) düğmesini bul.', explain:'Octave ↑, pad ızgarasında görünen nota aralığını bir oktav yukarı kaydırır.' },
-    { id:'octavedown',   label:'Octave ↓',     cx:85.73, cy:83.13, w:8.62,  h:3.99,  task:'Octave ↓ (aşağı) düğmesini bul.', explain:'Octave ↓, görünen nota aralığını bir oktav aşağı kaydırır.' },
-    { id:'pageleft',     label:'Page ◀',       cx:83.57, cy:80.32, w:4.31,  h:1.62,  task:'Page ◀ (sol) düğmesini bul.', explain:'Page ◀, sequencer sayfaları arasında geriye gezinir.' },
-    { id:'pageright',    label:'Page ▶',       cx:87.89, cy:80.32, w:4.31,  h:1.62,  task:'Page ▶ (sağ) düğmesini bul.', explain:'Page ▶, sequencer sayfaları arasında ileriye gezinir.' },
-    { id:'repeat',       label:'Repeat',       cx:83.57, cy:62.85, w:4.31,  h:5.16,  task:'Repeat\'i bul.', explain:'Repeat açıkken bir pad\'e basılı tutmak notayı otomatik olarak tekrar tetikler.' },
-    { id:'accent',       label:'Accent',       cx:87.89, cy:62.85, w:4.31,  h:5.16,  task:'Accent\'i bul.', explain:'Accent basılıyken çalınan notalar tam vuruş şiddetinde (velocity) kaydedilir.' },
-    { id:'doubleloop',   label:'Double Loop',  cx:83.57, cy:67.98, w:4.31,  h:3.86,  task:'Double Loop\'u bul.', explain:'Double Loop, sequencer sayfasının uzunluğunu ikiye katlar.' },
-    { id:'duplicate',    label:'Duplicate',    cx:87.89, cy:67.98, w:4.31,  h:3.86,  task:'Duplicate\'i bul.', explain:'Duplicate, seçili sayfa veya clip içeriğini başka bir sayfaya kopyalar.' },
-    { id:'convert',      label:'Convert',      cx:83.57, cy:71.91, w:4.31,  h:3.99,  task:'Convert\'i bul.', explain:'Convert, bağlama göre değişen bir dönüştürme komutudur — örneğin cihazları bir Rack\'e gruplar.' },
-    { id:'delete',       label:'Delete',       cx:87.89, cy:71.91, w:4.31,  h:3.99,  task:'Delete\'i bul.', explain:'Delete, seçili adımı, notayı veya clip\'i siler.' },
-    { id:'shift',        label:'Shift',        cx:83.57, cy:87.24, w:4.31,  h:2.49,  task:'Shift\'i bul.', explain:'Shift, diğer düğmelerin ikincil (alternatif) işlevini açan bir modifier\'dır.' },
-    { id:'select',       label:'Select',       cx:87.89, cy:87.24, w:4.31,  h:2.49,  task:'Select\'i bul.', explain:'Select, bir adımı veya clip\'i tetiklemeden seçmeni sağlar.' }
+    { svgId:'LCD Display',    label:'Ekran',         task:'Ekrana dokun.', explain:'Ekran, seçili cihazın 8 parametresini gösterir — her biri altındaki dokunmatik encoder\'la eşleşir.' },
+    { svgId:'Pads',           label:'Pad ızgarası',  task:'8×8 pad ızgarasına dokun.', explain:'Pad ızgarası nota çalma, step sequencing ve clip tetikleme için kullanılır — moda göre davranışı değişir.' },
+    { svgId:'TopKnobs',       label:'Encoder\'lar',  task:'8 encoder\'dan birine dokun.', explain:'8 dokunmatik encoder, ekrandaki parametreleri kontrol eder — dokunmak bile ekranda değerini gösterir.' },
+    { svgId:'Knob_11',        label:'Jog Wheel',     task:'Jog Wheel\'i bul.', explain:'Jog Wheel, menülerde ve listelerde gezinmeni sağlar; basarak seçimi onaylarsın.' },
+    { svgId:'TouchSlider',    label:'Touch Slider',  task:'Touch Slider\'ı bul.', explain:'Touch Slider, pitch bend / mod wheel görevi gören dokunmatik şerittir (bu illüstrasyonda dikey bir fader olarak çizilmiş).' },
+    { svgId:'ButtonBigPlay',  label:'Play',          task:'Play düğmesini bul.', explain:'Play/Stop, transport\'un temelidir — çalmayı başlatır veya durdurur.' },
+    { svgId:'RecordControls', label:'Record',        split:'y', half:'bottom', frac:0.57, task:'Record düğmesini bul.', explain:'Record, çaldığın veya step\'lediğin notaları bir clip\'e kaydeder.' },
+    { svgId:'RecordControls', label:'New',           split:'y', half:'top',    frac:0.57, task:'New düğmesini bul.', explain:'New, yeni bir clip veya sahne (scene) oluşturur.' },
+    { svgId:'NoteSettings',   label:'Fixed Length',  task:'Fixed Length\'i bul.', explain:'Fixed Length açıkken yeni bir clip her zaman belirlediğin sabit uzunlukta kaydedilir.' },
+    { svgId:'Tempo',          label:'Tap Tempo',     split:'y', half:'top',    frac:0.45, task:'Tap Tempo\'yu bul.', explain:'Tap Tempo\'ya art arda dokunarak tempoyu kulağınla ayarlarsın.' },
+    { svgId:'Tempo',          label:'Quantize',      split:'y', half:'bottom', frac:0.45, task:'Quantize\'ı bul.', explain:'Quantize açıkken çaldığın notalar en yakın grid çizgisine hizalanır.' },
+    { svgId:'mute',           label:'Mute',          task:'Mute (M) düğmesini bul.', explain:'Mute, seçili track\'i geçici olarak susturur.' },
+    { svgId:'solo',           label:'Solo',          task:'Solo (S) düğmesini bul.', explain:'Solo, seçili track\'i tek başına çalar, diğerlerini susturur.' },
+    { svgId:'LayoutScale',    label:'Scale',         split:'x', half:'left',  task:'Scale düğmesini bul.', explain:'Scale, pad ızgarasının tonunu ve gam türünü değiştirir.' },
+    { svgId:'LayoutScale',    label:'Layout',        split:'x', half:'right', task:'Layout düğmesini bul.', explain:'Layout, pad dizilimini 4ths / 3rds / Sequential seçenekleri arasında değiştirir.' },
+    { svgId:'RepeatAccent',   label:'Repeat',        split:'x', half:'left',  task:'Repeat\'i bul.', explain:'Repeat açıkken bir pad\'e basılı tutmak notayı otomatik olarak tekrar tetikler.' },
+    { svgId:'RepeatAccent',   label:'Accent',        split:'x', half:'right', task:'Accent\'i bul.', explain:'Accent basılıyken çalınan notalar tam vuruş şiddetinde (velocity) kaydedilir.' },
+    { svgId:'LoopingSection', label:'Double Loop',   split:'quad', half:'top-left',     task:'Double Loop\'u bul.', explain:'Double Loop, sequencer sayfasının uzunluğunu ikiye katlar.' },
+    { svgId:'LoopingSection', label:'Duplicate',     split:'quad', half:'top-right',    task:'Duplicate\'i bul.', explain:'Duplicate, seçili sayfa veya clip içeriğini başka bir sayfaya kopyalar.' },
+    { svgId:'LoopingSection', label:'Convert',       split:'quad', half:'bottom-left',  task:'Convert\'i bul.', explain:'Convert, bağlama göre değişen bir dönüştürme komutudur — örneğin cihazları bir Rack\'e gruplar.' },
+    { svgId:'LoopingSection', label:'Delete',        split:'quad', half:'bottom-right', task:'Delete\'i bul.', explain:'Delete, seçili adımı, notayı veya clip\'i siler.' },
+    { svgId:'JogControls',    label:'Octave ↑',      task:'Octave ↑ (yukarı) düğmesini bul.', explain:'Octave ↑, pad ızgarasında görünen nota aralığını bir oktav yukarı kaydırır.' },
+    { svgId:'JogControls_2',  label:'Octave ↓',      task:'Octave ↓ (aşağı) düğmesini bul.', explain:'Octave ↓, görünen nota aralığını bir oktav aşağı kaydırır.' },
+    { svgId:'JogControls_3',  label:'Page ◀',        task:'Page ◀ (sol) düğmesini bul.', explain:'Page ◀, sequencer sayfaları arasında geriye gezinir.' },
+    { svgId:'JogControls_4',  label:'Page ▶',        task:'Page ▶ (sağ) düğmesini bul.', explain:'Page ▶, sequencer sayfaları arasında ileriye gezinir.' },
+    { svgId:'NoteSelection',  label:'Shift',         split:'x', half:'left',  task:'Shift\'i bul.', explain:'Shift, diğer düğmelerin ikincil (alternatif) işlevini açan bir modifier\'dır.' },
+    { svgId:'NoteSelection',  label:'Select',        split:'x', half:'right', task:'Select\'i bul.', explain:'Select, bir adımı veya clip\'i tetiklemeden seçmeni sağlar.' }
   ];
+  // unique key per task (two tasks can share the same svgId, e.g. Scale/Layout)
+  TASKS.forEach(function(t, i) { t.key = t.svgId + '__' + i; });
 
   var wrap = document.getElementById('p3DeviceWrap');
-  var img = document.getElementById('p3DeviceImg');
   var progressEl = document.getElementById('p3Progress');
   var taskEl = document.getElementById('p3TaskText');
   var feedbackEl = document.getElementById('p3Feedback');
@@ -217,48 +224,58 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   var winEl = document.getElementById('p3Win');
   var winCountEl = document.getElementById('p3WinCount');
   var restartBtn = document.getElementById('p3RestartBtn');
-
-  var hotspotEls = {};
-  TASKS.forEach(function(t) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'p3-hotspot';
-    b.setAttribute('aria-label', t.label);
-    b.addEventListener('click', function() { onHotspotClick(t.id); });
-    wrap.appendChild(b);
-    hotspotEls[t.id] = b;
-  });
   winCountEl.textContent = TASKS.length;
 
+  var hotspotEls = {};
+  var svgRoot = null;
   var state = { idx: 0, wrong: 0, advancing: false };
 
-  function layoutHotspots() {
-    var cw = wrap.clientWidth, ch = wrap.clientHeight;
-    if (!cw || !ch) return;
-    var nw = img.naturalWidth || 4800, nh = img.naturalHeight || 4012;
-    var cRatio = cw / ch, iRatio = nw / nh;
-    var rw, rh, ox, oy;
-    if (iRatio > cRatio) { rw = cw; rh = cw / iRatio; ox = 0; oy = (ch - rh) / 2; }
-    else { rh = ch; rw = ch * iRatio; oy = 0; ox = (cw - rw) / 2; }
-    TASKS.forEach(function(t) {
-      var el = hotspotEls[t.id];
-      var w = Math.max((t.w / 100) * rw, 44);
-      var h = Math.max((t.h / 100) * rh, 44);
-      el.style.left = (ox + (t.cx / 100) * rw) + 'px';
-      el.style.top = (oy + (t.cy / 100) * rh) + 'px';
-      el.style.width = w + 'px';
-      el.style.height = h + 'px';
-    });
+  function rectFor(t) {
+    var el = svgRoot.getElementById(t.svgId);
+    if (!el) return null;
+    var b = el.getBBox();
+    if (!t.split) return { x: b.x, y: b.y, w: b.width, h: b.height };
+    if (t.split === 'x') {
+      var w = b.width * (t.frac || 0.5);
+      return t.half === 'left' ? { x: b.x, y: b.y, w: w, h: b.height } : { x: b.x + w, y: b.y, w: b.width - w, h: b.height };
+    }
+    if (t.split === 'y') {
+      var h = b.height * (t.frac || 0.5);
+      return t.half === 'top' ? { x: b.x, y: b.y, w: b.width, h: h } : { x: b.x, y: b.y + h, w: b.width, h: b.height - h };
+    }
+    // quad
+    var hw = b.width / 2, hh = b.height / 2;
+    return {
+      x: b.x + (t.half.indexOf('right') >= 0 ? hw : 0),
+      y: b.y + (t.half.indexOf('bottom') >= 0 ? hh : 0),
+      w: hw, h: hh
+    };
   }
-  window.addEventListener('resize', layoutHotspots);
-  window.addEventListener('orientationchange', function() { setTimeout(layoutHotspots, 200); });
-  if (img.complete) layoutHotspots(); else img.addEventListener('load', layoutHotspots);
-  if (window.ResizeObserver) {
-    new ResizeObserver(layoutHotspots).observe(wrap);
+
+  function buildHotspots() {
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var group = document.createElementNS(SVG_NS, 'g');
+    group.setAttribute('id', 'p3HotspotLayer');
+    svgRoot.appendChild(group);
+    TASKS.forEach(function(t) {
+      var r = rectFor(t);
+      if (!r) { console.warn('Push3 game: missing SVG id', t.svgId); return; }
+      var rect = document.createElementNS(SVG_NS, 'rect');
+      rect.setAttribute('x', r.x); rect.setAttribute('y', r.y);
+      rect.setAttribute('width', r.w); rect.setAttribute('height', r.h);
+      rect.setAttribute('class', 'p3-hotspot');
+      rect.setAttribute('tabindex', '0');
+      rect.setAttribute('role', 'button');
+      rect.setAttribute('aria-label', t.label);
+      rect.addEventListener('click', function() { onHotspotClick(t.key); });
+      rect.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHotspotClick(t.key); } });
+      group.appendChild(rect);
+      hotspotEls[t.key] = rect;
+    });
   }
 
   function clearStates() {
-    TASKS.forEach(function(t) { hotspotEls[t.id].classList.remove('correct', 'wrong', 'hint'); });
+    TASKS.forEach(function(t) { hotspotEls[t.key].classList.remove('correct', 'wrong', 'hint'); });
   }
 
   function renderTask() {
@@ -273,7 +290,7 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 
   function showHint() {
     var t = TASKS[state.idx];
-    hotspotEls[t.id].classList.add('hint');
+    hotspotEls[t.key].classList.add('hint');
   }
 
   function next() {
@@ -283,20 +300,20 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     renderTask();
   }
 
-  function onHotspotClick(id) {
+  function onHotspotClick(key) {
     if (state.advancing) return;
     var t = TASKS[state.idx];
-    if (id === t.id) {
+    if (key === t.key) {
       state.advancing = true;
-      hotspotEls[id].classList.add('correct');
+      hotspotEls[key].classList.add('correct');
       feedbackEl.textContent = t.explain;
       feedbackEl.className = 'p3-game-feedback ok';
       setTimeout(next, 1500);
     } else {
       state.wrong++;
-      var wrongEl = hotspotEls[id];
-      wrongEl.classList.remove('wrong'); void wrongEl.offsetWidth; wrongEl.classList.add('wrong');
-      var wrongTask = TASKS.filter(function(x) { return x.id === id; })[0];
+      var wrongEl = hotspotEls[key];
+      wrongEl.classList.remove('wrong'); void wrongEl.getBBox(); wrongEl.classList.add('wrong');
+      var wrongTask = TASKS.filter(function(x) { return x.key === key; })[0];
       feedbackEl.textContent = 'Hayır, o ' + wrongTask.label + '. Aradığın: ' + t.label + '.';
       feedbackEl.className = 'p3-game-feedback err';
       if (state.wrong >= 2) showHint();
@@ -315,7 +332,20 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   hintBtn.addEventListener('click', showHint);
   restartBtn.addEventListener('click', restart);
 
-  renderTask();
+  fetch('assets/img/push3-device.svg')
+    .then(function(r) { return r.text(); })
+    .then(function(svgText) {
+      wrap.innerHTML = svgText;
+      svgRoot = wrap.querySelector('svg');
+      svgRoot.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      buildHotspots();
+      renderTask();
+    })
+    .catch(function(err) {
+      feedbackEl.textContent = 'Cihaz görseli yüklenemedi. Sayfayı yenilemeyi dene.';
+      feedbackEl.className = 'p3-game-feedback err';
+      console.error(err);
+    });
 })();
 </script>
 
