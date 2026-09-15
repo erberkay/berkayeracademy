@@ -57,8 +57,22 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
    script below. All visual feedback here animates opacity/transform only (GPU compositing,
    no paint of the SVG, no layout). */
 .p3-hotspot-layer { position:absolute; z-index:2; pointer-events:none; }
-.p3-hotspot { position:absolute; pointer-events:auto; cursor:pointer; }
+.p3-hotspot { position:absolute; pointer-events:auto; cursor:pointer; touch-action:none; }
 .p3-hotspot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.p3-hotspot.draggable { cursor:ns-resize; }
+
+/* Level 2 "live screen" — a flat, always-mounted overlay positioned over the LCD Display
+   control the same way hotspots are (getScreenCTM math), just with real content instead of
+   an invisible hit target. Reveal/updates are opacity/transform only — no filter, no blur. */
+.p3-lcd { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:#0a0f0d; opacity:0; transform:scale(.97); transition:opacity .25s ease, transform .25s ease; pointer-events:none; overflow:hidden; }
+.p3-lcd.visible { opacity:1; transform:scale(1); }
+.p3-lcd-label { font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--ok); opacity:.75; }
+.p3-lcd-value { font-family:var(--ff-mono); font-size:clamp(13px, 2.6vw, 26px); font-weight:700; color:var(--ok); line-height:1; }
+.p3-lcd-sub { font-family:var(--ff-mono); font-size:8px; letter-spacing:.04em; color:rgba(255,255,255,.4); }
+@media (min-width:900px) {
+  .p3-lcd-label { font-size:11px; }
+  .p3-lcd-sub { font-size:9px; }
+}
 .p3-hl { position:absolute; inset:0; border-radius:3px; opacity:0; pointer-events:none; transform:scale(1); transition:opacity .18s ease; }
 .p3-hotspot:hover .p3-hl:not(.target):not(.correct):not(.wrong) { opacity:.22; background:rgba(236,236,234,.9); }
 .p3-hl.target { background:color-mix(in srgb, var(--ok) 14%, transparent); box-shadow:inset 0 0 0 2px var(--ok); opacity:.45; animation:p3TargetPulse 1.8s ease-in-out infinite; }
@@ -115,6 +129,11 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     <div class="p3-hotspot-layer" id="p3HotspotLayer">
       <!-- Plain HTML hit-target divs, positioned over the SVG above via getScreenCTM() math
            (see script). Sibling of #p3DeviceWrap, not a child of the SVG — see CSS comment. -->
+      <div class="p3-lcd" id="p3Lcd" aria-hidden="true">
+        <div class="p3-lcd-label" id="p3LcdLabel"></div>
+        <div class="p3-lcd-value" id="p3LcdValue"></div>
+        <div class="p3-lcd-sub" id="p3LcdSub"></div>
+      </div>
     </div>
     <p class="p3-attribution">Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
   </div>
@@ -131,7 +150,7 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 <div class="p3-win" id="p3Win" hidden>
   <div class="p3-win-card">
     <h1 class="h2">Tebrikler! 🎉</h1>
-    <p>Push 3'ün <strong id="p3WinCount">26</strong> kontrolünü tek tek buldun. Artık cihazı elinde tutunca ne yapacağını biliyorsun.</p>
+    <p>Push 3'ün <strong id="p3WinCount">26</strong> kontrolünü tek tek buldun ve birkaç gerçek görevle kullanmayı da denedin. Artık cihazı elinde tutunca ne yapacağını biliyorsun.</p>
     <div class="p3-win-actions">
       <button type="button" class="btn btn-primary btn-block" id="p3RestartBtn">Baştan Başla</button>
     </div>
@@ -256,7 +275,85 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   var hotspotEls = {}; // key -> outer hit-target div
   var hlEls = {};      // key -> inner highlight div (opacity/transform only)
   var svgRoot = null;
-  var state = { idx: 0, advancing: false, hintsOn: true };
+  var state = { idx: 0, advancing: false, hintsOn: true, level: 1, simIdx: 0, simDone: false, dragKey: null, dragStartY: 0, dragStartValue: 0 };
+
+  function findTaskByLabel(label) { return TASKS.filter(function(t) { return t.label === label; })[0]; }
+
+  // Level 2: same 27 hotspots, same highlight layer — just a different click/drag handler and
+  // a live LCD readout instead of "find the control". Facts here match real Ableton behavior
+  // (Live's tempo range, tap-tempo-from-interval, one octave per press, scale/root selection,
+  // swing as a percentage, mute/record as simple toggles) — simplified screen graphics, real logic.
+  var lcdEl = document.getElementById('p3Lcd');
+  var lcdLabelEl = document.getElementById('p3LcdLabel');
+  var lcdValueEl = document.getElementById('p3LcdValue');
+  var lcdSubEl = document.getElementById('p3LcdSub');
+
+  var SIM_TASKS = [
+    {
+      hotspotKey: findTaskByLabel('Tap Tempo').key, type: 'tap', lcdLabel: 'TEMPO', sub: 'Hedef: 128 BPM',
+      task: 'Tempoyu 128 BPM\'e ayarla — Tap Tempo\'ya birkaç kez, düzenli aralıklarla dokun.',
+      explain: 'Tap Tempo\'ya art arda dokunduğunda Live, dokunuşlar arasındaki süreye bakarak tempoyu hesaplar — kulağınla yakaladığın bir ritme Live\'ı böyle uydurursun.',
+      init: function(s) { s.taps = []; s.bpm = 120; },
+      onTap: function(s) {
+        s.taps.push(performance.now());
+        if (s.taps.length > 5) s.taps.shift();
+        if (s.taps.length >= 2) {
+          var sum = 0;
+          for (var i = 1; i < s.taps.length; i++) sum += s.taps[i] - s.taps[i - 1];
+          var avgMs = sum / (s.taps.length - 1);
+          s.bpm = Math.max(20, Math.min(999, 60000 / avgMs));
+        }
+      },
+      isDone: function(s) { return s.taps.length >= 3 && Math.abs(s.bpm - 128) <= 2; },
+      displayValue: function(s) { return s.bpm.toFixed(1) + ' BPM'; }
+    },
+    {
+      hotspotKey: findTaskByLabel('Octave ↑').key, type: 'press', lcdLabel: 'OCTAVE', sub: 'Hedef: +2',
+      task: 'Oktavı 2 kademe yukarı çıkar — Octave ↑\'a arka arkaya bas.',
+      explain: 'Octave ↑/↓, pad ızgarasında çalabildiğin nota aralığını bir oktav kaydırır — her basışta ekrandaki gösterge anında değişir.',
+      init: function(s) { s.offset = 0; },
+      onTap: function(s) { s.offset = Math.min(4, s.offset + 1); },
+      isDone: function(s) { return s.offset === 2; },
+      displayValue: function(s) { return (s.offset >= 0 ? '+' : '') + s.offset; }
+    },
+    {
+      hotspotKey: findTaskByLabel('Scale').key, type: 'cycle', lcdLabel: 'SCALE', sub: 'Hedef: D Minor',
+      task: 'Ölçeği D Minor yap — Scale\'e arka arkaya dokunarak listede ilerle.',
+      explain: 'Scale, pad ızgarasını seçtiğin gam ve kök notaya sınırlar — sahnede yanlış nota basma korkusu olmadan çalmanı sağlar.',
+      list: ['C Major', 'G Major', 'A Minor', 'D Minor', 'E Minor'],
+      init: function(s) { s.idx = 0; },
+      onTap: function(s) { s.idx = (s.idx + 1) % s.list.length; },
+      isDone: function(s) { return s.list[s.idx] === 'D Minor'; },
+      displayValue: function(s) { return s.list[s.idx]; }
+    },
+    {
+      hotspotKey: findTaskByLabel('Encoder\'lar').key, type: 'drag', lcdLabel: 'SWING', sub: 'Hedef: %58',
+      task: 'Swing\'i %58\'e getir — encoder\'ı yukarı/aşağı sürükle.',
+      explain: 'Swing, çift vuruşları geciktirerek gruv katar — encoder\'ı sürükleyip bırakman, ekrandaki değeri gerçek zamanlı böyle değiştirir.',
+      min: 0, max: 100, sensitivity: 0.6,
+      init: function(s) { s.value = 50; },
+      isDone: function(s) { return Math.abs(s.value - 58) <= 2; },
+      displayValue: function(s) { return Math.round(s.value) + '%'; }
+    },
+    {
+      hotspotKey: findTaskByLabel('Mute').key, type: 'toggle', lcdLabel: 'TRACK 2', sub: 'Hedef: Mute',
+      task: 'Track 2\'yi sustur — Mute\'a bas.',
+      explain: 'Mute, seçili track\'i anında susturur — miksaj yaparken diğer track\'leri geçici kapatıp karşılaştırma yapmak için kullanışlıdır.',
+      init: function(s) { s.muted = false; },
+      onTap: function(s) { s.muted = !s.muted; },
+      isDone: function(s) { return s.muted === true; },
+      displayValue: function(s) { return s.muted ? 'MUTE' : 'AKTİF'; }
+    },
+    {
+      hotspotKey: findTaskByLabel('Record').key, type: 'toggle', lcdLabel: 'TRANSPORT', sub: 'Hedef: Kaydı başlat',
+      task: 'Kaydı başlat — Record\'a bas.',
+      explain: 'Record, çaldığın veya step\'lediğin notaları seçili clip\'e kaydeder — canlı bir fikri ilk kez buradan kalıcı hale getirirsin.',
+      init: function(s) { s.recording = false; },
+      onTap: function(s) { s.recording = true; },
+      isDone: function(s) { return s.recording === true; },
+      displayValue: function(s) { return s.recording ? '● REC' : 'HAZIR'; }
+    }
+  ];
 
   function rectFor(t) {
     var el = svgRoot.getElementById(t.svgId);
@@ -320,6 +417,16 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
       el.style.width = (p2.xPct - p1.xPct) + '%';
       el.style.height = (p2.yPct - p1.yPct) + '%';
     });
+    // LCD overlay tracks the same "LCD Display" bbox as the Ekran hotspot (TASKS[0]).
+    var lr = rectFor(TASKS[0]);
+    if (lr) {
+      var lp1 = svgPointToLayerPct(lr.x, lr.y);
+      var lp2 = svgPointToLayerPct(lr.x + lr.w, lr.y + lr.h);
+      lcdEl.style.left = lp1.xPct + '%';
+      lcdEl.style.top = lp1.yPct + '%';
+      lcdEl.style.width = (lp2.xPct - lp1.xPct) + '%';
+      lcdEl.style.height = (lp2.yPct - lp1.yPct) + '%';
+    }
   }
 
   function buildHotspots() {
@@ -334,8 +441,17 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
       var hl = document.createElement('div');
       hl.className = 'p3-hl';
       el.appendChild(hl);
-      el.addEventListener('click', function() { onHotspotClick(t.key); });
-      el.addEventListener('keydown', function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHotspotClick(t.key); } });
+      el.addEventListener('click', function() {
+        if (state.level === 2) onSimClick(t.key);
+        else if (state.level === 1) onHotspotClick(t.key);
+      });
+      el.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        if (state.level === 2) onSimClick(t.key);
+        else if (state.level === 1) onHotspotClick(t.key);
+      });
+      el.addEventListener('pointerdown', function(e) { onSimPointerDown(t.key, e); });
       hotspotLayer.appendChild(el);
       hotspotEls[t.key] = el;
       hlEls[t.key] = hl;
@@ -372,7 +488,7 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   function next() {
     state.advancing = false;
     state.idx++;
-    if (state.idx >= TASKS.length) { showWin(); return; }
+    if (state.idx >= TASKS.length) { startLevel2Intro(); return; }
     renderTask();
   }
 
@@ -397,14 +513,104 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     }
   }
 
+  // ── Level 2: simulation ──────────────────────────────────────────────────
+  function renderLcd(sim) {
+    lcdLabelEl.textContent = sim.lcdLabel;
+    lcdValueEl.textContent = sim.displayValue(sim);
+    lcdSubEl.textContent = sim.sub;
+  }
+
+  function simSuccess(sim) {
+    state.simDone = true;
+    hlEls[sim.hotspotKey].classList.remove('target');
+    hlEls[sim.hotspotKey].classList.add('correct');
+    feedbackEl.hidden = true;
+    explainTextEl.textContent = sim.explain;
+    continueBtn.textContent = (state.simIdx + 1 >= SIM_TASKS.length) ? 'Bitir' : 'Devam →';
+    explainPanel.hidden = false;
+    continueBtn.focus();
+  }
+
+  function onSimClick(key) {
+    if (state.level !== 2 || state.simDone) return;
+    var sim = SIM_TASKS[state.simIdx];
+    if (!sim || sim.hotspotKey !== key || sim.type === 'drag') return;
+    sim.onTap(sim);
+    renderLcd(sim);
+    if (sim.isDone(sim)) simSuccess(sim);
+  }
+
+  function onSimPointerDown(key, e) {
+    if (state.level !== 2 || state.simDone) return;
+    var sim = SIM_TASKS[state.simIdx];
+    if (!sim || sim.hotspotKey !== key || sim.type !== 'drag') return;
+    state.dragKey = key;
+    state.dragStartY = e.clientY;
+    state.dragStartValue = sim.value;
+    e.preventDefault();
+  }
+  window.addEventListener('pointermove', function(e) {
+    if (!state.dragKey) return;
+    var sim = SIM_TASKS[state.simIdx];
+    var dy = state.dragStartY - e.clientY;
+    sim.value = Math.max(sim.min, Math.min(sim.max, state.dragStartValue + dy * sim.sensitivity));
+    renderLcd(sim);
+  });
+  window.addEventListener('pointerup', function() {
+    if (!state.dragKey) return;
+    state.dragKey = null;
+    var sim = SIM_TASKS[state.simIdx];
+    if (sim.isDone(sim)) simSuccess(sim);
+  });
+
+  function renderSimTask() {
+    var sim = SIM_TASKS[state.simIdx];
+    state.simDone = false;
+    sim.init(sim);
+    progressEl.textContent = 'Seviye 2 · ' + (state.simIdx + 1) + ' / ' + SIM_TASKS.length;
+    taskEl.textContent = sim.task;
+    explainPanel.hidden = true;
+    feedbackEl.hidden = false;
+    feedbackEl.textContent = 'Cihaz üzerinde göreve uyan kontrole dokun.';
+    feedbackEl.className = 'p3-game-feedback';
+    clearStates();
+    TASKS.forEach(function(t) { hotspotEls[t.key].classList.toggle('draggable', state.level === 2 && t.key === sim.hotspotKey && sim.type === 'drag'); });
+    if (state.hintsOn) hlEls[sim.hotspotKey].classList.add('target');
+    renderLcd(sim);
+  }
+
+  function nextSim() {
+    state.simIdx++;
+    if (state.simIdx >= SIM_TASKS.length) { showWin(); return; }
+    renderSimTask();
+  }
+
+  function startLevel2Intro() {
+    state.level = 'transition';
+    explainPanel.hidden = true;
+    feedbackEl.hidden = false;
+    feedbackEl.textContent = '';
+    progressEl.textContent = 'Seviye 2';
+    taskEl.textContent = 'Tebrikler, kontrolleri öğrendin! Şimdi kullanmayı deneyelim.';
+    clearStates();
+    explainTextEl.textContent = 'Artık cihazın kontrollerini biliyorsun. Şimdi onları gerçekten kullanarak birkaç görev tamamlayacaksın — ekran, dokunduğun kontrole göre canlı değişecek.';
+    continueBtn.textContent = 'Başla →';
+    explainPanel.hidden = false;
+    continueBtn.focus();
+  }
+
   function showWin() {
     explainPanel.hidden = true;
     feedbackEl.hidden = false;
+    lcdEl.classList.remove('visible');
+    lcdEl.setAttribute('aria-hidden', 'true');
     winEl.hidden = false;
   }
   function restart() {
     winEl.hidden = true;
-    state.idx = 0; state.advancing = false;
+    state.idx = 0; state.advancing = false; state.level = 1; state.simIdx = 0; state.simDone = false; state.dragKey = null;
+    lcdEl.classList.remove('visible');
+    lcdEl.setAttribute('aria-hidden', 'true');
     renderTask();
   }
 
@@ -412,11 +618,26 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
     state.hintsOn = !state.hintsOn;
     hintBtn.setAttribute('aria-pressed', String(state.hintsOn));
     hintBtn.setAttribute('aria-label', state.hintsOn ? 'İpucunu gizle' : 'İpucunu göster');
-    applyTargetHighlight();
+    if (state.level === 2) {
+      TASKS.forEach(function(t) { hlEls[t.key].classList.remove('target'); });
+      if (state.hintsOn) hlEls[SIM_TASKS[state.simIdx].hotspotKey].classList.add('target');
+    } else {
+      applyTargetHighlight();
+    }
   }
 
   hintBtn.addEventListener('click', toggleHint);
-  continueBtn.addEventListener('click', next);
+  continueBtn.addEventListener('click', function() {
+    if (state.level === 1) next();
+    else if (state.level === 'transition') {
+      state.level = 2; state.simIdx = 0;
+      lcdEl.classList.add('visible');
+      lcdEl.setAttribute('aria-hidden', 'false');
+      renderSimTask();
+    } else {
+      nextSim();
+    }
+  });
   restartBtn.addEventListener('click', restart);
 
   fetch('assets/img/push3-device.svg')
