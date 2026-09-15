@@ -166,7 +166,7 @@ These flows live almost entirely inside `booking.html` (~5300 lines) — single 
 | profile.html | /profile?uid= | |
 | ableton-lab.html | /ableton-lab | Interactive lab — multiple Web Audio modules |
 | ders-ableton.html | /ders-ableton | Lesson content |
-| ders-push3.html | /ders-push3 | Ableton Push 3 interactive "find the control" game (26 hotspots on assets/img/push3-device.webp), not linked from nav yet |
+| ders-push3.html | /ders-push3 | Ableton Push 3 interactive "find the control" game — 27 hotspots bound to named layers in assets/img/push3-device.svg (fetched + injected, background removed); linked from egitim.html curriculum grid |
 | sss.html | /sss | FAQ |
 | app-bridge.html | /app-bridge | UUID-keyed cross-app data bridge UI |
 
