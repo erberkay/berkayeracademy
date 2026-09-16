@@ -1682,10 +1682,16 @@ function updatePriceEstimate() {
 // ─── Phone parsing (shared by request form, WhatsApp self-prompt, admin edit) ──
 // Turkish numbers: any common shape (5XXXXXXXXX, 05XXXXXXXXX, 905XXXXXXXXX, +905XXXXXXXXX)
 // all normalize the same way — this must keep matching existing stored records exactly as
-// before. International numbers: must start with "+" (E.164), 8-15 digits total — an
-// explicit "+" is the only thing that distinguishes "new, non-TR number" from old bare-digit
-// TR records, so it's also how we choose the storage shape below (never ambiguous with what's
-// already in Firestore, since no legacy student_phone value has ever started with "+").
+// before.
+//
+// International numbers: real users overwhelmingly do NOT type a leading "+" (confirmed via
+// live testing — typing "1 617 388 4403" or "16173884403" is far more common than "+1 617 388
+// 4403"), so requiring it as a hard gate rejected almost every real international number even
+// after this was "fixed" once. A "+" is accepted when present, but a bare digit string is now
+// ALSO accepted as international as long as it can't be a Turkish number missing its prefix —
+// i.e. anything that ISN'T exactly 10 digits starting with "5" (that one specific shape stays
+// Turkish-by-default, matching this site's overwhelmingly Turkish audience; it's the only
+// genuinely ambiguous case and was already resolved this way before this fix).
 function parsePhoneInput(raw) {
   const trimmed = (raw || '').trim();
   const hasPlus = trimmed.startsWith('+');
@@ -1696,7 +1702,7 @@ function parsePhoneInput(raw) {
   if (/^5\d{9}$/.test(trCore)) {
     return { ok: true, e164: '+90' + trCore, bare: '90' + trCore, isTr: true };
   }
-  if (hasPlus && /^\d{8,15}$/.test(digits)) {
+  if (/^\d{8,15}$/.test(digits) && (hasPlus || !/^5\d{9}$/.test(digits))) {
     return { ok: true, e164: '+' + digits, bare: '+' + digits, isTr: false };
   }
   return { ok: false };
