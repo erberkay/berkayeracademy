@@ -21,9 +21,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609160010">
-<script src="assets/js/theme-init.js?v=202609160010"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609160010">
+<link rel="stylesheet" href="assets/css/ui.css?v=202609190010">
+<script src="assets/js/theme-init.js?v=202609190010"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609190010">
+<script src="assets/js/auth-ui.js?v=202609190010"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
@@ -166,12 +167,12 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   <a class="bnav-item" id="bnavAdminItem" href="booking" data-page="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label" data-i18n="nav_lessons">Ders Paneli</span></a>
   <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label" data-i18n="nav_profile">Profil</span></a>
 </nav>
-<script src="assets/js/i18n.js?v=202609160010"></script>
+<script src="assets/js/i18n.js?v=202609190010"></script>
 <script>
 (function() {
   var _fbCfg = {
     apiKey: "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
-    authDomain: "ableton-tutorial.firebaseapp.com",
+    authDomain: "berkayeracademy.com",
     projectId: "ableton-tutorial",
     storageBucket: "ableton-tutorial.firebasestorage.app",
     messagingSenderId: "677640687230",
@@ -181,10 +182,7 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
   var _auth = firebase.auth();
   var ADMIN_EMAIL = 'berkayer032@gmail.com';
   function isAdmin(u) { return u && u.email === ADMIN_EMAIL; }
-  function doSignIn() {
-    var _p = new firebase.auth.GoogleAuthProvider();
-    _auth.signInWithPopup(_p).catch(function(e) { if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') _auth.signInWithRedirect(_p); });
-  }
+  function doSignIn() { window.bkAuth.openLogin(); }
   function updateAuthBar(user) {
     var bar = document.getElementById('authBar');
     if (!bar) return;
@@ -206,10 +204,11 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
       if (av && user.photoURL) { var _pi=document.createElement('img');_pi.src=user.photoURL;_pi.alt='';av.innerHTML='';av.appendChild(_pi); }
     } else {
       var btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-      btn.textContent = window._i18n?.t('auth_signin')||'Google ile Giriş Yap'; btn.onclick = doSignIn;
+      btn.textContent = window._i18n?.t('auth_signin')||'Giriş Yap'; btn.onclick = doSignIn;
       bar.append(btn);
     }
   }
+  window.bkAuth.handleRedirectResult();
   _auth.onAuthStateChanged(function(user) {
     updateAuthBar(user);
     var bAdm = document.getElementById('bnavAdminItem');

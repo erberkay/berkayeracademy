@@ -17,9 +17,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-    <link rel="stylesheet" href="assets/css/ui.css?v=202609160010">
-    <script src="assets/js/theme-init.js?v=202609160010"></script>
-    <link rel="stylesheet" href="assets/css/themes.css?v=202609160010">
+    <link rel="stylesheet" href="assets/css/ui.css?v=202609190010">
+    <script src="assets/js/theme-init.js?v=202609190010"></script>
+    <link rel="stylesheet" href="assets/css/themes.css?v=202609190010">
+    <script src="assets/js/auth-ui.js?v=202609190010"></script>
     <style>
         /* ── Lab kabuğu: kontroller ui.css'ten, nav kabuğu themes.css'ten gelir.
            Modül içleri (synth, beat maker, mixer, arrangement, mastering) aşağıda
@@ -459,7 +460,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="assets/js/i18n.js?v=202609160010"></script>
+<script src="assets/js/i18n.js?v=202609190010"></script>
 </head>
 <body>
 <div id="scrollProgress"></div>
@@ -505,7 +506,7 @@
 // ═══════════════════════════════════════════════════════════════════
 const firebaseConfig = {
     apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
-    authDomain:        "ableton-tutorial.firebaseapp.com",
+    authDomain:        "berkayeracademy.com",
     projectId:         "ableton-tutorial",
     storageBucket:     "ableton-tutorial.firebasestorage.app",
     messagingSenderId: "677640687230",
@@ -526,8 +527,7 @@ let currentUser = null;
 // ── Auth ────────────────────────────────────────────────────────────
 function signInWithGoogle() {
     if (!_fbReady) return;
-    const _p = new firebase.auth.GoogleAuthProvider();
-    _auth.signInWithPopup(_p).catch(e => { if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') _auth.signInWithRedirect(_p); });
+    window.bkAuth.openLogin();
 }
 function signOut() { _auth?.signOut(); }
 
@@ -627,13 +627,13 @@ function updateAuthBar() {
     } else {
         bar.innerHTML = '';
         const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-        btn.textContent = 'Google ile Giriş'; btn.onclick = signInWithGoogle;
+        btn.textContent = window._i18n?.t('ui_signin')||'Giriş Yap'; btn.onclick = signInWithGoogle;
         bar.append(btn);
     }
 }
 
 if (_fbReady) {
-    _auth.getRedirectResult().catch(e => console.error("redirectResult:", e));
+    window.bkAuth.handleRedirectResult();
 _auth.onAuthStateChanged(async user => {
         currentUser = user;
         updateAuthBar();

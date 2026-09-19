@@ -17,9 +17,10 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609160010">
-<script src="assets/js/theme-init.js?v=202609160010"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609160010">
+<link rel="stylesheet" href="assets/css/ui.css?v=202609190010">
+<script src="assets/js/theme-init.js?v=202609190010"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609190010">
+<script src="assets/js/auth-ui.js?v=202609190010"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
@@ -150,8 +151,8 @@
 }
 @media (min-width:1024px) { .banner { padding-top:var(--s6); } }
 </style>
-<script src="assets/js/i18n.js?v=202609160010"></script>
-<script src="assets/js/love-nav.js?v=202609160010"></script>
+<script src="assets/js/i18n.js?v=202609190010"></script>
+<script src="assets/js/love-nav.js?v=202609190010"></script>
 </head>
 <body>
 
@@ -200,7 +201,7 @@
   <div id="feed">
     <div class="login-wall">
       <p data-i18n="forum_signin_msg">Topluluğa katılmak için giriş yap.</p>
-      <button class="login-wall-btn" onclick="doSignIn()" data-i18n="forum_login_btn">Google ile Giriş Yap</button>
+      <button class="login-wall-btn" onclick="doSignIn()" data-i18n="forum_login_btn">Giriş Yap</button>
     </div>
   </div>
 
@@ -239,7 +240,7 @@ const ADMIN_EMAIL = 'berkayer032@gmail.com';
 
 firebase.initializeApp({
   apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
-  authDomain:        "ableton-tutorial.firebaseapp.com",
+  authDomain:        "berkayeracademy.com",
   projectId:         "ableton-tutorial",
   storageBucket:     "ableton-tutorial.firebasestorage.app",
   messagingSenderId: "677640687230",
@@ -251,12 +252,7 @@ const db   = firebase.firestore();
 let _user = null;
 const _unsubReplyMap = {};
 
-function doSignIn() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(e => {
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') { auth.signInWithRedirect(provider); }
-  });
-}
+function doSignIn() { window.bkAuth.openLogin(); }
 window.doSignIn = doSignIn;
 
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
@@ -316,7 +312,7 @@ function updateAuthBar(user) {
     document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-    btn.textContent = window._i18n?.t('ui_signin')||'Google ile Giriş'; btn.onclick = doSignIn;
+    btn.textContent = window._i18n?.t('ui_signin')||'Giriş Yap'; btn.onclick = doSignIn;
     bar.append(btn);
   }
 }
@@ -430,7 +426,7 @@ async function renderFeed() {
   const feed = document.getElementById('feed');
   feed.innerHTML = '';
   if (!_user) {
-    feed.innerHTML = `<div class="login-wall"><p>${window._i18n?.t('forum_signin_msg')||'Topluluğa katılmak için giriş yap.'}</p><button class="login-wall-btn" onclick="doSignIn()">${window._i18n?.t('forum_login_btn')||'Google ile Giriş Yap'}</button></div>`;
+    feed.innerHTML = `<div class="login-wall"><p>${window._i18n?.t('forum_signin_msg')||'Topluluğa katılmak için giriş yap.'}</p><button class="login-wall-btn" onclick="doSignIn()">${window._i18n?.t('forum_login_btn')||'Giriş Yap'}</button></div>`;
     return;
   }
 
@@ -818,7 +814,7 @@ window._forumRenderFeed = () => renderFeed();
 window._forumLoadSidebar = () => loadMembersSidebar();
 window._forumUpdateAuth = () => updateAuthBar(_user);
 
-auth.getRedirectResult().catch(e => console.error("redirectResult:", e));
+window.bkAuth.handleRedirectResult();
 auth.onAuthStateChanged(async user => {
   _user = user;
   if (!user) {

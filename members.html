@@ -14,9 +14,10 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609160010">
-<script src="assets/js/theme-init.js?v=202609160010"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609160010">
+<link rel="stylesheet" href="assets/css/ui.css?v=202609190010">
+<script src="assets/js/theme-init.js?v=202609190010"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609190010">
+<script src="assets/js/auth-ui.js?v=202609190010"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
@@ -102,8 +103,8 @@
 }
 @media (min-width:1024px) { .banner { padding-top:var(--s6); } }
 </style>
-<script src="assets/js/i18n.js?v=202609160010"></script>
-<script src="assets/js/love-nav.js?v=202609160010"></script>
+<script src="assets/js/i18n.js?v=202609190010"></script>
+<script src="assets/js/love-nav.js?v=202609190010"></script>
 </head>
 <body>
 
@@ -174,7 +175,7 @@ const ADMIN_EMAIL = 'berkayer032@gmail.com';
 
 firebase.initializeApp({
   apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
-  authDomain:        "ableton-tutorial.firebaseapp.com",
+  authDomain:        "berkayeracademy.com",
   projectId:         "ableton-tutorial",
   storageBucket:     "ableton-tutorial.firebasestorage.app",
   messagingSenderId: "677640687230",
@@ -186,12 +187,7 @@ let _user = null;
 
 function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 const ic = n => '<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-' + n + '"/></svg>';
-function doSignIn() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(e => {
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') { auth.signInWithRedirect(provider); }
-  });
-}
+function doSignIn() { window.bkAuth.openLogin(); }
 
 const TITLES = {
   acemi:   { label: window._i18n?.t('mem_acemi')||'Acemi',                 icon:'seed',       color:'var(--ok)' },
@@ -243,7 +239,7 @@ function updateAuthBar(user) {
     document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-    btn.textContent = window._i18n?.t('ui_signin')||'Google ile Giriş'; btn.onclick = doSignIn;
+    btn.textContent = window._i18n?.t('ui_signin')||'Giriş Yap'; btn.onclick = doSignIn;
     bar.append(btn);
   }
 }
@@ -578,7 +574,7 @@ document.getElementById('sortSelect').onchange = e => {
   renderGrid();
 };
 
-auth.getRedirectResult().catch(e => console.error("redirectResult:", e));
+window.bkAuth.handleRedirectResult();
 auth.onAuthStateChanged(user => {
   _user = user;
   updateAuthBar(user);

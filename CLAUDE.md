@@ -83,7 +83,7 @@ Conversations are persisted to Firestore at `whatsapp_conversations/{phone}` wit
 
 ## Shared assets
 
-Loaded by most pages via `<script src="/assets/js/X.js">` and `<link href="/assets/css/X.css">`. Order in every `<head>`: Google Fonts → `ui.css` → [`style.css`] → `theme-init.js` → `themes.css` → page `<style>`. Bump the shared `?v=` stamp on all pages in the same commit when a shared asset changes.
+Loaded by most pages via `<script src="/assets/js/X.js">` and `<link href="/assets/css/X.css">`. Order in every `<head>`: Google Fonts → `ui.css` → [`style.css`] → `theme-init.js` → `themes.css` → [`auth-ui.js`] → page `<style>`. Bump the shared `?v=` stamp on all pages in the same commit when a shared asset changes.
 
 - `assets/css/ui.css` — **design system** (every page). Tokens on `html:root`: legacy palette names plus semantic aliases (`--bg --surface --surface-2 --line --fg --fg-2 --fg-3 --accent --accent-ink --ok --warn --err --info --*-soft`), type scale (`--fs-display/h2/h3/body/small/label/micro/input`), control scale (`--ctl-sm/md/lg` = 32/40/48px with matching `--ctl-px-*`/`--fs-ctl-*`), spacing `--s1..--s9`, `--radius:0`, `--nav-w`, `--topbar-h`, z-index tokens. Light palette flips on `html:root.theme-light`. Components: `.btn` (+`-primary/-ghost/-danger/-ok/-sm/-lg/-icon/-block`), `.input/.select/.textarea`, `.field-label`, `.seg/.seg-btn`, `.card`, `.badge`, `.modal*`, `.toast`, `.ava*`, `.icon`. Alias groups map legacy per-page button/input classes onto the same scale — a page must not redeclare geometry (height/padding/font) for an aliased class; override colour/width through a descendant selector instead. Selectors are `html`-prefixed (0,1,1) so they win over page CSS without `!important`. Breakpoints are 600 / 900 / 1024 only. Mobile hit area comes from `.btn::after` at ≤600px; the visible box is identical on mobile and desktop.
 - `assets/css/style.css` — landing-page components only (index, egitim, egitmen, sss). App pages do **not** load it.
@@ -91,6 +91,7 @@ Loaded by most pages via `<script src="/assets/js/X.js">` and `<link href="/asse
 - `assets/js/theme-init.js` — applies the stored theme before paint, builds the mobile top bar/drawer (or mounts the hamburger into a page's own `.topnav`) and the theme switch.
 - `assets/js/i18n.js` — `data-i18n` attribute-based string swapping. Stored in `localStorage['_lang']` (`tr` | `en`).
 - `assets/js/love-nav.js` — toggles the admin / love nav items and the trial-lesson hint on the existing nav markup; it does not render the nav.
+- `assets/js/auth-ui.js` — shared sign-in modal (Google + e-posta/şifre: giriş, kayıt, şifre sıfırlama), exposed as `window.bkAuth` (`openLogin`, `signInGoogle`, `handleRedirectResult`, `isEmbeddedBrowser`, `errorMessage`). Plain `<script>` in `<head>` before the Firebase SDK — it only calls `firebase.auth()` lazily. Every page with a sign-in button loads it (not `app-bridge.html`).
 - `assets/img/icons.svg` — icon sprite: `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-NAME"/></svg>`. UI chrome uses these, never emoji.
 
 When changing the nav shell, edit `theme-init.js` / `themes.css` once instead of each page. New page CSS: tokens only — no `!important`, no px `border-radius`, no gradients, no `backdrop-filter`; inline `style=""` only for runtime state (`display:none`, widths computed from data).
@@ -146,7 +147,9 @@ These flows live almost entirely inside `booking.html` (~5300 lines) — single 
 
 ## Auth Patterns
 
-- Google Sign-In via `signInWithPopup` (redirect not used — cross-origin cookie issue).
+- `authDomain` is `berkayeracademy.com` (same-origin `/__/auth/handler`; the cross-origin `firebaseapp.com` handler broke on iOS Safari / in-app browsers with "missing initial state"). The OAuth client must list `https://berkayeracademy.com/__/auth/handler` as a redirect URI.
+- Sign-in buttons call `window.bkAuth.openLogin()`; never call `signInWithPopup`/`signInWithRedirect` from a page (exception: `app-bridge.html`, which needs a real Google ID token). `signInGoogle()` tries the popup first and falls back to redirect only on `auth/popup-blocked` / `auth/internal-error`, never inside an in-app browser (Instagram/Facebook/TikTok WebViews — Google rejects OAuth there, so the modal leads with e-posta).
+- Pages call `window.bkAuth.handleRedirectResult()` instead of `getRedirectResult()` so redirect failures are shown to the user, not swallowed in the console.
 - `displayName` may be empty for email/password users — always fall back:
   ```js
   user.displayName?.trim() || user.email?.split('@')[0] || ''

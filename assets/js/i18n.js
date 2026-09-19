@@ -19,7 +19,7 @@
     nav_profile:    { tr: 'Profil',      en: 'Profile' },
 
     // ── Auth ──
-    auth_signin:  { tr: 'Google ile Giriş Yap', en: 'Sign in with Google' },
+    auth_signin:  { tr: 'Giriş Yap', en: 'Sign in' },
     auth_signout: { tr: 'Çıkış',                  en: 'Sign Out' },
 
     // ── Index ──
@@ -183,7 +183,7 @@
     ui_loading:    { tr: 'Yükleniyor...', en: 'Loading...' },
     ui_error:      { tr: 'Hata',    en: 'Error' },
     ui_success:    { tr: 'Başarılı', en: 'Success' },
-    ui_signin:     { tr: 'Google ile Giriş Yap', en: 'Sign in with Google' },
+    ui_signin:     { tr: 'Giriş Yap', en: 'Sign in' },
     ui_signout:    { tr: 'Çıkış Yap', en: 'Sign Out' },
     ui_notifications: { tr: 'Bildirimler', en: 'Notifications' },
     ui_read_all:   { tr: 'Tümünü Oku', en: 'Mark all read' },
@@ -381,7 +381,7 @@
     forum_stat_replies: { tr: 'Yanıt',                        en: 'Replies' },
     forum_stat_total: { tr: 'Toplam Yanıt',                   en: 'Total Replies' },
     forum_login_msg:  { tr: 'Topluluğa katılmak için giriş yap.', en: 'Sign in to join the community.' },
-    forum_login_btn:  { tr: 'Google ile Giriş Yap',           en: 'Sign in with Google' },
+    forum_login_btn:  { tr: 'Giriş Yap',                      en: 'Sign in' },
     forum_desc2:      { tr: 'Elektronik müzik üretimi, Ableton ve prodüksiyon hakkında sor, yanıtla, paylaş.', en: 'Ask, answer and share about electronic music production, Ableton and production.' },
     forum_new_topic:  { tr: '+ Yeni Konu',                    en: '+ New Topic' },
     forum_loading:    { tr: 'Yükleniyor...',                  en: 'Loading...' },
@@ -613,7 +613,7 @@
     bk_request_sent:       { tr: '✓ Talep gönderildi, eğitmeniniz onaylayacak.', en: '✓ Request sent, your instructor will approve.' },
     bk_lessons_left:       { tr: 'kaldı',               en: 'remaining' },
     bk_book_title:         { tr: 'Ders Rezervasyonu',   en: 'Lesson Booking' },
-    bk_book_signin_desc:   { tr: 'Ders talebi oluşturmak veya takvimini görmek için Google hesabınla giriş yap.', en: 'Sign in with Google to create a lesson request or view your schedule.' },
+    bk_book_signin_desc:   { tr: 'Ders talebi oluşturmak veya takvimini görmek için Google hesabınla ya da e-posta adresinle giriş yap.', en: 'Sign in with Google or your email to create a lesson request or view your schedule.' },
     bk_my_schedule:        { tr: 'Ders Takvimim',       en: 'My Lesson Schedule' },
     bk_rules_title:        { tr: 'Ders Kuralları',      en: 'Lesson Rules' },
     bk_rules_hint:         { tr: 'erteleme, devamsızlık, iptal', en: 'rescheduling, absence, cancellation' },

@@ -15,9 +15,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609160010">
-  <script src="assets/js/theme-init.js?v=202609160010"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609160010">
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609190010">
+  <script src="assets/js/theme-init.js?v=202609190010"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609190010">
+  <script src="assets/js/auth-ui.js?v=202609190010"></script>
   <style>
     /* booking.html — page layout only. Tokens, controls, cards, modals, toasts
        and the nav shell come from ui.css + themes.css. Class names are load-
@@ -618,8 +619,8 @@
       .lpm-btn .lpm-num { font-size:20px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609160010"></script>
-<script src="assets/js/love-nav.js?v=202609160010"></script>
+<script src="assets/js/i18n.js?v=202609190010"></script>
+<script src="assets/js/love-nav.js?v=202609190010"></script>
 </head>
 <body>
 
@@ -660,8 +661,8 @@
   <div class="view active" id="view-signin">
     <div class="card hero-card">
       <div class="view-title" data-i18n="bk_book_title">Ders Rezervasyonu</div>
-      <div class="view-sub" data-i18n="bk_book_signin_desc">Ders talebi oluşturmak veya takvimini görmek için Google hesabınla giriş yap.</div>
-      <button class="btn btn-primary btn-lg" id="signInBtn" data-i18n="ui_signin">⬡ Google ile Giriş Yap</button>
+      <div class="view-sub" data-i18n="bk_book_signin_desc">Ders talebi oluşturmak veya takvimini görmek için Google hesabınla ya da e-posta adresinle giriş yap.</div>
+      <button class="btn btn-primary btn-lg" id="signInBtn" data-i18n="ui_signin">Giriş Yap</button>
     </div>
   </div>
 
@@ -1042,7 +1043,7 @@ function getMonths() { return window._i18n?.getLang()==='en' ? MONTHS_EN : MONTH
 
 firebase.initializeApp({
   apiKey:            "AIzaSyDX8AkwDejrkh5L4xUXQcmzKq-DYvc2E8A",
-  authDomain:        "ableton-tutorial.firebaseapp.com",
+  authDomain:        "berkayeracademy.com",
   projectId:         "ableton-tutorial",
   storageBucket:     "ableton-tutorial.firebasestorage.app",
   messagingSenderId: "677640687230",
@@ -1372,8 +1373,8 @@ function updateAuthBar(user) {
   bar.innerHTML = '';
   if (!user) {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-    btn.textContent = window._i18n?.t('ui_signin')||'⬡ Google ile Giriş';
-    btn.onclick = () => { const _p = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(_p).catch(e => { if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') auth.signInWithRedirect(_p); }); };
+    btn.textContent = window._i18n?.t('ui_signin')||'Giriş Yap';
+    btn.onclick = () => window.bkAuth.openLogin();
     bar.append(btn);
   } else {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
@@ -5868,16 +5869,14 @@ async function adminMarkSolved(qId) {
 }
 
 // ─── Event listeners ──────────────────────────────────────
-document.getElementById('signInBtn').onclick = () => {
-  const _p = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(_p).catch(e => { if (e.code === 'auth/popup-blocked' || e.code === 'auth/internal-error') auth.signInWithRedirect(_p); });
-};
+document.getElementById('signInBtn').onclick = () => window.bkAuth.openLogin();
 
 document.getElementById('submitRequestBtn').onclick = () => submitRequest();
 
 document.addEventListener('click', () => { document.querySelectorAll('.lesson-options-menu').forEach(m => m.style.display = 'none'); });
 
 // ─── Auth state ───────────────────────────────────────────
-auth.getRedirectResult().catch(e => console.error('redirectResult:', e));
+window.bkAuth.handleRedirectResult();
 auth.onAuthStateChanged(user => {
   _user = user;
   updateAuthBar(user);
