@@ -1952,7 +1952,10 @@ async function renderPendingView(reqData) {
 
   // Auto-refresh: watch lesson_request status
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
-  if (isPending && reqData.id) {
+  // '_' was a placeholder for "no id yet". Listening to a doc that does not exist trips the
+  // lesson_requests read rule (it dereferences resource.data.from_uid) and Firestore answers
+  // permission-denied, which used to reach the student as a raw error toast.
+  if (isPending && reqData.id && reqData.id !== '_') {
     _pendingListenUnsub = db.collection('lesson_requests').doc(reqData.id)
       .onSnapshot(snap => {
         if (!snap.exists) { if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; } loadUserState(_user); return; }
@@ -1974,6 +1977,13 @@ async function renderPendingView(reqData) {
             if (st === 'rejected') { renderPendingView({ ...snap.data(), id: snap.id }); return; }
           }
         } catch(_) {}
+        // Request doc gone or unreadable (deleted after approval, stale id): re-evaluate
+        // where the student belongs instead of showing a raw permission error.
+        if (e.code === 'permission-denied' || e.code === 'not-found') {
+          if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
+          loadUserState(_user);
+          return;
+        }
         const c=errId(); toast(`${window._i18n?.getLang()==='en'?'Connection error':'Bağlantı hatası'} (${c}): ${e.code||e.message}`, true);
       });
   }
@@ -5358,7 +5368,7 @@ function renderAccessView(user, state, rejectReason) {
           btn.disabled = false; btn.textContent = window._i18n?.t('bk_access_trial_btn')||'Deneme Dersi İste →';
           return;
         }
-        await db.collection('lesson_requests').add({
+        const trialRef = await db.collection('lesson_requests').add({
           from_uid: user.uid,
           from_name: user.displayName || '',
           from_email: (user.email || '').toLowerCase(),
@@ -5379,7 +5389,7 @@ function renderAccessView(user, state, rejectReason) {
           localStorage.setItem(_wKey2, '1');
           firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: user.email, toName: user.displayName || '' }).catch(() => {});
         }
-        renderPendingView({ lesson_type:'trial', trial_date:date, trial_time:time, note, status:'pending', id:'_' });
+        renderPendingView({ lesson_type:'trial', trial_date:date, trial_time:time, note, status:'pending', id: trialRef.id });
       } catch(e) { const c=errId(); errEl.textContent=`${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): `+(e.message||e.code); errEl.style.display=''; btn.disabled=false; btn.textContent=window._i18n?.t('bk_access_trial_btn')||'Deneme Dersi İste →'; }
     };
 
