@@ -15,10 +15,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609190010">
-  <script src="assets/js/theme-init.js?v=202609190010"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609190010">
-  <script src="assets/js/auth-ui.js?v=202609190010"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609200010">
+  <script src="assets/js/theme-init.js?v=202609200010"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609200010">
+  <script src="assets/js/auth-ui.js?v=202609200010"></script>
   <style>
     /* booking.html — page layout only. Tokens, controls, cards, modals, toasts
        and the nav shell come from ui.css + themes.css. Class names are load-
@@ -619,8 +619,8 @@
       .lpm-btn .lpm-num { font-size:20px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609190010"></script>
-<script src="assets/js/love-nav.js?v=202609190010"></script>
+<script src="assets/js/i18n.js?v=202609200010"></script>
+<script src="assets/js/love-nav.js?v=202609200010"></script>
 </head>
 <body>
 
@@ -684,6 +684,15 @@
 
       <div id="singleLessonNote" class="single-lesson-note" style="display:none;">
         <span id="singleLessonNoteText" data-i18n-html="bk_single_note">Aylık ders alan öğrencilerin ders saati değişiklikleri ile çakıştığında <strong>aylık ders alan öğrencilerin öncelikleri vardır</strong>. Bu nedenle seçtiğiniz saat iptal edilebilir.</span>
+      </div>
+
+      <!-- Tek ders seçiliyken aylık plandaki ders başı farkı (rakamlar LESSON_PRICE* sabitlerinden türetilir) -->
+      <div id="singleUpsell" class="notice notice-accent field-group" style="display:none;">
+        <div class="notice-title" data-i18n="bk_upsell_title">Aylık planda ders başı daha uygun</div>
+        <div class="notice-text" id="singleUpsellText"></div>
+        <div class="btn-row notice-text-2">
+          <button type="button" class="btn btn-sm btn-primary" onclick="setReqType('monthly')" data-i18n="bk_upsell_btn">Aylık Plana Geç</button>
+        </div>
       </div>
 
       <div class="field-group field-row" id="durationField">
@@ -1652,12 +1661,31 @@ function setReqType(type) {
   document.getElementById('durationField').style.display = type === 'single' ? 'none' : '';
   document.getElementById('startDateField').style.display = type === 'single' ? 'none' : '';
   document.getElementById('singleLessonNote').style.display = type === 'single' ? '' : 'none';
+  renderSingleUpsell();
   document.getElementById('slotLabel').innerHTML = type === 'single'
     ? (window._i18n?.t('bk_slot_single_hint')||'Gün & Saat Seç <span class="hint-sub">(bir saat seç)</span>')
     : (window._i18n?.t('bk_slot_multi_hint')||'Gün & Saat Seç <span class="hint-sub">(birden fazla seçebilirsin)</span>');
   _selectedSlots.clear();
   renderAvailGrid();
   updatePriceEstimate();
+}
+
+// Tek ders seçiliyken aylık plandaki ders başı farkını gösterir. Tutarlar
+// LESSON_PRICE / LESSON_PRICE_SINGLE'dan hesaplanır — fiyat değişirse not da değişir.
+function renderSingleUpsell() {
+  const box = document.getElementById('singleUpsell');
+  if (!box) return;
+  const save = LESSON_PRICE_SINGLE - LESSON_PRICE;
+  if (_reqType !== 'single' || save <= 0) { box.style.display = 'none'; return; }
+  const tl = n => n.toLocaleString('tr-TR') + ' TL';
+  const pct = Math.round((save / LESSON_PRICE_SINGLE) * 100);
+  document.getElementById('singleUpsellText').innerHTML =
+    (window._i18n?.t('bk_upsell_text') || 'Aylık planda ders başı {monthly}. Tek derse göre her derste {save} (%{pct}) tasarruf edersin.')
+      .replace('{monthly}', `<strong class="text-accent">${tl(LESSON_PRICE)}</strong>`)
+      .replace('{single}', `<strong>${tl(LESSON_PRICE_SINGLE)}</strong>`)
+      .replace('{save}', `<strong class="text-accent">${tl(save)}</strong>`)
+      .replace('{pct}', pct);
+  box.style.display = '';
 }
 
 function updatePriceEstimate() {
@@ -1972,6 +2000,7 @@ function initRequestForm() {
   document.getElementById('durationField').style.display = '';
   document.getElementById('startDateField').style.display = '';
   document.getElementById('singleLessonNote').style.display = 'none';
+  renderSingleUpsell();
   document.getElementById('reqDuration').value = '1';
   setLpm(4);
   const _sdEl = document.getElementById('reqStartDate');
@@ -5903,6 +5932,7 @@ auth.onAuthStateChanged(user => {
       window._i18n.setLang=function(l){
         _orig(l);
         updateDurationOptions(l);
+        if(typeof renderSingleUpsell==='function') renderSingleUpsell();
         if(typeof updateAuthBar==='function') updateAuthBar(typeof _user!=='undefined'?_user:null);
         if(typeof loadUserState==='function' && typeof _user!=='undefined' && _user) loadUserState(_user);
       };

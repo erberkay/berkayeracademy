@@ -137,7 +137,7 @@ Because of this, the student "↺ Ertele" button does **not** write lessons dire
 
 ## Booking domain model (high level)
 
-- **Pricing:** monthly per-lesson **2500 TL**, single one-off **3000 TL**.
+- **Pricing:** monthly per-lesson **2500 TL**, single one-off **3000 TL** (`LESSON_PRICE` / `LESSON_PRICE_SINGLE` in `booking.html`). Picking "Tek Ders" in the request form shows an upsell note (`renderSingleUpsell()`, `#singleUpsell`) with a one-click switch to the monthly plan; its figures are derived from those two constants, so changing a price updates the note too.
 - **Reschedule credits:** package-based pool — an N-month package grants N credits total (1-month = 1 credit even if lessons spill into the next calendar month). Stored as `reservations.reschedule_credits {'YYYY-MM': n}`; available = sum of values (`totalRescheduleCredits()`), consumption via `consumeRescheduleCredit()` decrements the lesson's month key if positive, else the earliest positive key. Buying an extra credit costs **500 TL** via the in-panel modal (admin adds +1 to a month key).
 - **Rules acceptance:** modal shown once after first lesson purchase; writes `rules_accepted_at` (write-once). Re-shown only if the field is missing.
 - **Closed slots:** admin can mark whole days or single hours red; those appear blocked but visible in the trial-lesson day grid.
