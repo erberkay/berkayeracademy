@@ -762,8 +762,8 @@
     // ── Seviye belirleme sınavı ──
     bk_pt_title:           { tr: `Seviye Belirleme Sınavı`, en: `Placement Test` },
     bk_pt_required:        { tr: `Zorunlu`, en: `Required` },
-    bk_pt_desc:            { tr: `Dersin sana göre kurgulanması için bu kısa sınavı çözmen gerekiyor: 12 soru, yaklaşık 5 dakika.`,
-                             en: `Please take this short test so your lessons can be tailored to you: 12 questions, about 5 minutes.` },
+    bk_pt_desc:            { tr: `Dersin sana göre kurgulanması için bu kısa sınavı çözmen gerekiyor: 20 soru, yaklaşık 8 dakika.`,
+                             en: `Please take this short test so your lessons can be tailored to you: 20 questions, about 8 minutes.` },
     bk_pt_intro:           { tr: `Bilmediğin soruda tahmin etme, “Bilmiyorum” seç — amaç seni doğru seviyeden başlatmak.`,
                              en: `Don't guess — pick “Not sure” when you don't know. The goal is to start you at the right level.` },
     bk_pt_start:           { tr: `Sınava Başla`, en: `Start the test` },

@@ -15,11 +15,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609210020">
-  <script src="assets/js/theme-init.js?v=202609210020"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609210020">
-  <script src="assets/js/auth-ui.js?v=202609210020"></script>
-  <script src="assets/js/placement-quiz.js?v=202609210020"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609210030">
+  <script src="assets/js/theme-init.js?v=202609210030"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609210030">
+  <script src="assets/js/auth-ui.js?v=202609210030"></script>
+  <script src="assets/js/placement-quiz.js?v=202609210030"></script>
   <style>
     /* booking.html — page layout only. Tokens, controls, cards, modals, toasts
        and the nav shell come from ui.css + themes.css. Class names are load-
@@ -635,8 +635,8 @@
       .lpm-btn .lpm-num { font-size:20px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609210020"></script>
-<script src="assets/js/love-nav.js?v=202609210020"></script>
+<script src="assets/js/i18n.js?v=202609210030"></script>
+<script src="assets/js/love-nav.js?v=202609210030"></script>
 </head>
 <body>
 
@@ -1915,7 +1915,13 @@ function ptOpenAdminDetail(uid) {
   }
 
   const when = d.completed_at?.toDate ? d.completed_at.toDate().toLocaleString('tr-TR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
-  const rows = (window.bkQuiz?.questions || []).map((q, i) => {
+  // Sınav büyüyebilir: eski sonuçlarda sadece o gün sorulan sorular listelenir,
+  // sonradan eklenen sorular "bilmiyorum" gibi görünmesin.
+  const askedQs = (window.bkQuiz?.questions || []).filter(q => d.answers && Object.prototype.hasOwnProperty.call(d.answers, q.id));
+  const verNote = (d.quiz_version && window.bkQuiz && d.quiz_version !== window.bkQuiz.VERSION)
+    ? `<div class="notice-text notice-text-2">Bu sonuç sınavın ${d.quiz_version}. sürümüyle alındı (${d.total} soru).</div>`
+    : '';
+  const rows = (askedQs.length ? askedQs : (window.bkQuiz?.questions || [])).map((q, i) => {
     const given = d.answers ? d.answers[q.id] : undefined;
     const isUnknown = given === (window.bkQuiz?.UNKNOWN ?? -1) || given == null;
     const isRight = !isUnknown && given === q.answer;
@@ -1933,6 +1939,7 @@ function ptOpenAdminDetail(uid) {
       <div class="notice notice-accent">
         <div class="notice-title">${d.level_tr} · ${d.score}/100</div>
         <div class="notice-text">${d.correct}/${d.total} doğru · ${d.unknown || 0} "bilmiyorum" · ${when}</div>
+        ${verNote}
       </div>
       ${rows}
       <div class="pt-foot">
@@ -1998,7 +2005,7 @@ async function initPlacementTest(slotId, nagIfMissing, autoOpen) {
   const box = document.createElement('div');
   box.className = 'notice notice-accent';
   box.innerHTML = `<div class="notice-title">${ptT('bk_pt_title','Seviye Belirleme Sınavı')} <span class="badge accent">${ptT('bk_pt_required','Zorunlu')}</span></div>
-    <div class="notice-text">${ptT('bk_pt_desc','Dersin sana göre kurgulanması için bu kısa sınavı çözmen gerekiyor: 12 soru, yaklaşık 5 dakika.')}</div>`;
+    <div class="notice-text">${ptT('bk_pt_desc','Dersin sana göre kurgulanması için bu kısa sınavı çözmen gerekiyor: 20 soru, yaklaşık 8 dakika.')}</div>`;
   const startBtn = document.createElement('button');
   startBtn.className = 'btn btn-primary notice-text-2';
   startBtn.textContent = ptT('bk_pt_start','Sınava Başla');

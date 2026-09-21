@@ -11,9 +11,9 @@
 (function () {
   'use strict';
 
-  var VERSION = 1;
+  var VERSION = 2;
 
-  // Kolaydan zora sıralı. İlk üç soru Ableton'u hiç açmamış biri için.
+  // Kolaydan zora sıralı, 20 soru. İlk sorular Ableton'u hiç açmamış biri için.
   var QUESTIONS = [
     {
       id: 'q1', topic: { tr: 'Temel', en: 'Basics' },
@@ -22,6 +22,14 @@
       en: { q: 'Song speed is measured in "BPM". What does BPM mean?',
             options: ['How loud the song plays', 'The speed: how many beats fit in one minute', 'How many channels the project has'] },
       answer: 1
+    },
+    {
+      id: 'q13', topic: { tr: 'Temel', en: 'Basics' },
+      tr: { q: 'Ableton, FL Studio gibi müzik yapım programlarına genel olarak ne denir?',
+            options: ['DAW, yani müzik yapım programı', 'Ekran kartı', 'Ses kartı kablosu'] },
+      en: { q: 'Music-making programs like Ableton or FL Studio are generally called what?',
+            options: ['A DAW — music production software', 'A graphics card', 'A sound card cable'] },
+      answer: 0
     },
     {
       id: 'q2', topic: { tr: 'Ableton arayüzü', en: 'Ableton interface' },
@@ -40,6 +48,14 @@
       answer: 2
     },
     {
+      id: 'q14', topic: { tr: 'Temel', en: 'Basics' },
+      tr: { q: 'Kulaklıkta bazı seslerin sağdan, bazılarının soldan gelmesine ne denir?',
+            options: ['Tempo', 'Stereo', 'Mono'] },
+      en: { q: 'In headphones, some sounds come from the right and some from the left. What is that called?',
+            options: ['Tempo', 'Stereo', 'Mono'] },
+      answer: 1
+    },
+    {
       id: 'q4', topic: { tr: 'Ritim', en: 'Rhythm' },
       tr: { q: 'Pop, rock ve elektronik müziğin çoğu "4/4\'lük" ritim düzeniyle yazılır. Bu düzende bir ölçüde kaç vuruş vardır?',
             options: ['8', '4', '2'] },
@@ -56,11 +72,27 @@
       answer: 2
     },
     {
+      id: 'q15', topic: { tr: 'Temel üretim', en: 'Production basics' },
+      tr: { q: 'Programda her enstrüman için ayrı bir şerit açarsın. Bu şeritlerin her birine ne denir?',
+            options: ['Klasör', 'Kanal (track)', 'Efekt'] },
+      en: { q: 'In the software each instrument gets its own lane. What is one of those lanes called?',
+            options: ['A folder', 'A channel (track)', 'An effect'] },
+      answer: 1
+    },
+    {
       id: 'q6', topic: { tr: 'Aranjman', en: 'Arrangement' },
       tr: { q: 'Müzikte "loop" ne demektir?',
             options: ['Dönüp dönüp tekrar eden kısa bir bölüm', 'Şarkının en yüksek sesli anı', 'Şarkının son akoru'] },
       en: { q: 'What does "loop" mean in music?',
             options: ['A short section that keeps repeating', 'The loudest moment of the song', 'The final chord of the song'] },
+      answer: 0
+    },
+    {
+      id: 'q16', topic: { tr: 'Temel üretim', en: 'Production basics' },
+      tr: { q: 'Kayıt yaparken tempoyu şaşırmayasın diye kulaklıktan gelen düzenli tık sesine ne denir?',
+            options: ['Metronom', 'Reverb', 'Limiter'] },
+      en: { q: 'While recording, a steady click plays in your headphones so you stay in time. What is it called?',
+            options: ['A metronome', 'Reverb', 'A limiter'] },
       answer: 0
     },
     {
@@ -70,6 +102,14 @@
       en: { q: 'You drag an audio file into Ableton. What does the "Warp" feature do to it?',
             options: ['Makes it louder automatically', 'Matches its speed to the project\'s tempo', 'Spreads it across the left and right speakers'] },
       answer: 1
+    },
+    {
+      id: 'q17', topic: { tr: 'Mix', en: 'Mixing' },
+      tr: { q: '"Reverb" efekti sese ne katar?',
+            options: ['Sesi hızlandırır', 'Notaları düzeltir', 'Sese oda, salon gibi bir mekânda çalıyormuş hissi katar'] },
+      en: { q: 'What does a "reverb" effect add to a sound?',
+            options: ['It speeds the sound up', 'It corrects the notes', 'It makes the sound feel like it is playing in a room or hall'] },
+      answer: 2
     },
     {
       id: 'q8', topic: { tr: 'Mix', en: 'Mixing' },
@@ -88,6 +128,14 @@
       answer: 0
     },
     {
+      id: 'q18', topic: { tr: 'Mix', en: 'Mixing' },
+      tr: { q: 'Bir şarkıda enstrümanların ses seviyelerini birbirine göre ayarlama işine ne denir?',
+            options: ['Sampling', 'Mixing, yani miks', 'Mastering'] },
+      en: { q: 'Balancing the levels of the instruments against each other is called what?',
+            options: ['Sampling', 'Mixing', 'Mastering'] },
+      answer: 1
+    },
+    {
       id: 'q10', topic: { tr: 'İleri', en: 'Advanced' },
       tr: { q: '"Sidechain" yöntemi genellikle ne için kullanılır?',
             options: ['Şarkıya yankı (reverb) eklemek için', 'Bas davul her vurduğunda bas sesini kısacık kısmak için', 'Notaları ritme oturtmak için'] },
@@ -96,12 +144,28 @@
       answer: 1
     },
     {
+      id: 'q19', topic: { tr: 'İleri', en: 'Advanced' },
+      tr: { q: 'Synth\'lerde geçen "LFO" ne işe yarar?',
+            options: ['Sesi kaydeder', 'Notaları otomatik akort eder', 'Bir ayarı kendi kendine, düzenli biçimde gidip getirir'] },
+      en: { q: 'What does an "LFO" do on a synth?',
+            options: ['It records the sound', 'It auto-tunes the notes', 'It moves a setting up and down by itself, over and over'] },
+      answer: 2
+    },
+    {
       id: 'q11', topic: { tr: 'İleri', en: 'Advanced' },
       tr: { q: '"Send / Return" kanalı ne işe yarar?',
             options: ['Bir kanalın birebir kopyasını çıkarır', 'Ana çıkıştaki sesin seviyesini sınırlar', 'Tek bir efekti (ör. reverb) birden fazla kanalın ortak kullanmasını sağlar'] },
       en: { q: 'What is a "send / return" channel for?',
             options: ['It makes an exact copy of a channel', 'It limits the level of the main output', 'It lets several channels share one effect, e.g. a reverb'] },
       answer: 2
+    },
+    {
+      id: 'q20', topic: { tr: 'İleri', en: 'Advanced' },
+      tr: { q: '"Limiter" ne yapar?',
+            options: ['Sesin belirlediğin üst sınırı aşmasını engeller', 'Sesi kalınlaştırır', 'Şarkının temposunu ölçer'] },
+      en: { q: 'What does a "limiter" do?',
+            options: ['It stops the sound from going above the ceiling you set', 'It makes the sound thicker', 'It measures the song\'s tempo'] },
+      answer: 0
     },
     {
       id: 'q12', topic: { tr: 'İleri', en: 'Advanced' },
