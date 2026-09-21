@@ -15,10 +15,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609200020">
-  <script src="assets/js/theme-init.js?v=202609200020"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609200020">
-  <script src="assets/js/auth-ui.js?v=202609200020"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609210010">
+  <script src="assets/js/theme-init.js?v=202609210010"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609210010">
+  <script src="assets/js/auth-ui.js?v=202609210010"></script>
+  <script src="assets/js/placement-quiz.js?v=202609210010"></script>
   <style>
     /* booking.html — page layout only. Tokens, controls, cards, modals, toasts
        and the nav shell come from ui.css + themes.css. Class names are load-
@@ -214,6 +215,21 @@
     .toast-wrap .toast.err { border-left-color:var(--err); }
 
     /* ── Q&A ── */
+    /* ── Seviye belirleme sınavı ── */
+    .pt-q { padding:var(--s4) 0; border-bottom:1px solid var(--line); }
+    .pt-q:last-of-type { border-bottom:0; }
+    .pt-q-head { display:flex; gap:10px; align-items:center; margin-bottom:6px; }
+    .pt-q-num, .pt-progress { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-3); }
+    .pt-q-text { color:var(--fg); line-height:1.5; margin-bottom:10px; }
+    .pt-opt { display:flex; gap:10px; align-items:flex-start; padding:7px 0; cursor:pointer; color:var(--fg-2); line-height:1.45; }
+    .pt-opt:hover { color:var(--fg); }
+    .pt-opt input { margin-top:4px; flex:0 0 auto; accent-color:var(--accent); }
+    .pt-opt-unknown { color:var(--fg-3); }
+    .pt-foot { display:flex; gap:var(--s3); align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:var(--s4); }
+    .pt-review-row { padding:10px 0; border-bottom:1px solid var(--line); font-size:var(--fs-small); }
+    .pt-review-row:last-child { border-bottom:0; }
+    .pt-review-a { color:var(--fg-2); }
+    @media (max-width:600px) { .pt-foot { flex-direction:column; align-items:stretch; } .pt-foot .btn { width:100%; } }
     .qa-question { border:1px solid var(--line); background:var(--surface); padding:14px 16px; margin-bottom:10px; }
     .qa-question.solved { border-left:2px solid var(--ok); }
     .qa-q-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
@@ -619,8 +635,8 @@
       .lpm-btn .lpm-num { font-size:20px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609200020"></script>
-<script src="assets/js/love-nav.js?v=202609200020"></script>
+<script src="assets/js/i18n.js?v=202609210010"></script>
+<script src="assets/js/love-nav.js?v=202609210010"></script>
 </head>
 <body>
 
@@ -772,6 +788,7 @@
       <div class="section-title" data-i18n="bk_your_request">Talebiniz</div>
       <div id="pendingReqSummary"></div>
     </div>
+    <div id="ptSlotPending"></div>
     <div class="center" id="pendingActions"></div>
   </div>
 
@@ -786,6 +803,7 @@
         </div>
       </div>
       <div class="stats-row" id="dashStats"></div>
+      <div id="ptSlotDash"></div>
       <div id="zoomJoinBox"></div>
       <div id="paymentBox"></div>
       <div class="credit-badge" id="creditBadge"></div>
@@ -1840,6 +1858,262 @@ async function submitRequest() {
   }
 }
 
+// ─── Seviye belirleme sınavı (admin görünümü) ─────────────
+// Sonuçlar canlı dinlenir; satırlardaki rozetler yerinde güncellenir.
+var _ptMap = {};              // uid -> sonuç
+var _ptAdminUnsub = null;
+
+function ptWatchAll() {
+  if (_ptAdminUnsub) { _ptAdminUnsub(); _ptAdminUnsub = null; }
+  return new Promise(resolve => {
+    let first = true;
+    _ptAdminUnsub = db.collection('placement_tests').onSnapshot(snap => {
+      _ptMap = {};
+      snap.forEach(d => { _ptMap[d.id] = d.data(); });
+      ptRefreshBadges();
+      if (first) { first = false; resolve(); }
+    }, e => { console.warn('[placement admin]', e); if (first) { first = false; resolve(); } });
+  });
+}
+
+// Satırlara gömülen rozet: <span class="badge ..." data-pt-uid="UID">
+function ptBadgeHtml(uid) {
+  const d = _ptMap[uid];
+  if (!d) return `<span class="badge warn name-badge" data-pt-uid="${uid}" title="Seviye belirleme sınavı henüz çözülmedi">Sınav bekleniyor</span>`;
+  const tone = d.score >= 76 ? 'accent' : d.score >= 51 ? 'info' : d.score >= 26 ? 'ok' : '';
+  return `<span class="badge ${tone} name-badge" data-pt-uid="${uid}" title="Detay için tıkla">${d.level_tr} · ${d.score}/100</span>`;
+}
+
+function ptRefreshBadges() {
+  document.querySelectorAll('[data-pt-uid]').forEach(el => {
+    const uid = el.getAttribute('data-pt-uid');
+    const tmp = document.createElement('div');
+    tmp.innerHTML = ptBadgeHtml(uid);
+    const fresh = tmp.firstElementChild;
+    el.className = fresh.className;
+    el.textContent = fresh.textContent;
+    el.title = fresh.title;
+  });
+}
+
+function ptOpenAdminDetail(uid) {
+  const d = _ptMap[uid];
+  const overlay = document.createElement('div'); overlay.className = 'modal-overlay';
+  const modal = document.createElement('div'); modal.className = 'modal modal-lg';
+  overlay.append(modal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+  if (!d) {
+    modal.innerHTML = `<button class="modal-close" aria-label="Kapat">✕</button>
+      <div class="modal-title">Seviye Belirleme</div>
+      <div class="modal-body">Bu öğrenci sınavı henüz çözmedi.</div>`;
+    modal.querySelector('.modal-close').onclick = () => overlay.remove();
+    document.body.append(overlay);
+    return;
+  }
+
+  const when = d.completed_at?.toDate ? d.completed_at.toDate().toLocaleString('tr-TR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+  const rows = (window.bkQuiz?.questions || []).map((q, i) => {
+    const given = d.answers ? d.answers[q.id] : undefined;
+    const isUnknown = given === (window.bkQuiz?.UNKNOWN ?? -1) || given == null;
+    const isRight = !isUnknown && given === q.answer;
+    const givenText = isUnknown ? 'Bilmiyorum' : (q.tr.options[given] ?? '—');
+    const mark = isRight ? '<span class="text-ok">doğru</span>' : (isUnknown ? '<span class="text-info">bilmiyorum</span>' : '<span class="text-err">yanlış</span>');
+    return `<div class="pt-review-row">
+        <div><strong>${i+1}.</strong> ${q.tr.q} — ${mark}</div>
+        <div class="pt-review-a">Cevabı: ${givenText}${isRight ? '' : ` &nbsp;·&nbsp; Doğrusu: ${q.tr.options[q.answer]}`}</div>
+      </div>`;
+  }).join('');
+
+  modal.innerHTML = `<button class="modal-close" aria-label="Kapat">✕</button>
+    <div class="modal-title">Seviye Belirleme — ${d.student_name || d.student_email || uid}</div>
+    <div class="modal-body">
+      <div class="notice notice-accent">
+        <div class="notice-title">${d.level_tr} · ${d.score}/100</div>
+        <div class="notice-text">${d.correct}/${d.total} doğru · ${d.unknown || 0} "bilmiyorum" · ${when}</div>
+      </div>
+      ${rows}
+      <div class="pt-foot">
+        <button class="btn btn-danger btn-sm" id="ptResetBtn">Sınavı Sıfırla</button>
+        <button class="btn btn-ghost" id="ptDetailClose">Kapat</button>
+      </div>
+    </div>`;
+  modal.querySelector('.modal-close').onclick = () => overlay.remove();
+  modal.querySelector('#ptDetailClose').onclick = () => overlay.remove();
+  modal.querySelector('#ptResetBtn').onclick = async () => {
+    if (!confirm('Bu öğrencinin sınav sonucu silinsin mi? Öğrenci sınavı yeniden çözebilir.')) return;
+    try {
+      await db.collection('placement_tests').doc(uid).delete();
+      toast('✓ Sınav sıfırlandı, öğrenci yeniden çözebilir.');
+      overlay.remove();
+    } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); }
+  };
+  document.body.append(overlay);
+}
+
+// Rozet tıklaması — satırlar innerHTML ile kurulduğu için delege ediyoruz
+document.addEventListener('click', e => {
+  const el = e.target.closest?.('[data-pt-uid]');
+  if (!el) return;
+  e.stopPropagation();
+  ptOpenAdminDetail(el.getAttribute('data-pt-uid'));
+});
+
+// ─── Seviye belirleme sınavı (öğrenci) ────────────────────
+// Talebini gönderen ve henüz ödemesi tamamlanmamış (derse başlamamış) öğrenciye
+// zorunlu olarak açılır. Sonuç placement_tests/{uid}: öğrenci bir kez çözer,
+// admin sıfırlayabilir. Sorular assets/js/placement-quiz.js içinde.
+var _ptModalShown = false;   // aynı sayfa açılışında modal bir kez kendiliğinden açılır
+var _ptDashNag = false;      // panelde hatırlatma gösterilsin mi (ödeme tamamlanmadıysa)
+
+function ptLang() { return window._i18n?.getLang() === 'en' ? 'en' : 'tr'; }
+function ptT(key, fallback) { return window._i18n?.t(key) || fallback; }
+
+async function ptLoadOwn() {
+  if (!_user) return null;
+  try {
+    const snap = await db.collection('placement_tests').doc(_user.uid).get();
+    return snap.exists ? snap.data() : null;
+  } catch(e) { console.warn('[placement]', e); return null; }
+}
+
+async function initPlacementTest(slotId, nagIfMissing) {
+  const slot = document.getElementById(slotId);
+  if (!slot || !_user || !window.bkQuiz) return;
+  const data = await ptLoadOwn();
+  slot.innerHTML = '';
+  if (data) {
+    const lvl = ptLang() === 'en' ? (data.level_en || data.level_tr) : data.level_tr;
+    const done = document.createElement('div');
+    done.className = 'notice notice-ok';
+    done.innerHTML = `<div class="notice-title">${ptT('bk_pt_done_title','Seviye belirleme tamamlandı')}</div>
+      <div class="notice-text">${ptT('bk_pt_result_prefix','Seviyen:')} <strong class="text-accent">${lvl}</strong> · ${data.score}/100</div>`;
+    slot.append(done);
+    return;
+  }
+  if (!nagIfMissing) return;
+  const box = document.createElement('div');
+  box.className = 'notice notice-accent';
+  box.innerHTML = `<div class="notice-title">${ptT('bk_pt_title','Seviye Belirleme Sınavı')} <span class="badge accent">${ptT('bk_pt_required','Zorunlu')}</span></div>
+    <div class="notice-text">${ptT('bk_pt_desc','Dersin sana göre kurgulanması için bu kısa sınavı çözmen gerekiyor: 12 soru, yaklaşık 5 dakika.')}</div>`;
+  const startBtn = document.createElement('button');
+  startBtn.className = 'btn btn-primary notice-text-2';
+  startBtn.textContent = ptT('bk_pt_start','Sınava Başla');
+  startBtn.onclick = () => openPlacementModal();
+  box.append(startBtn);
+  slot.append(box);
+  if (!_ptModalShown) { _ptModalShown = true; openPlacementModal(); }
+}
+
+function refreshPtSlots() {
+  initPlacementTest('ptSlotPending', true);
+  initPlacementTest('ptSlotDash', _ptDashNag);
+}
+
+async function ptSubmit(answers) {
+  const r = window.bkQuiz.score(answers);
+  await db.collection('placement_tests').doc(_user.uid).set({
+    uid: _user.uid,
+    student_name: _user.displayName || '',
+    student_email: _user.email || '',
+    score: r.score, correct: r.correct, unknown: r.unknown, total: r.total,
+    level_key: r.level.key, level_tr: r.level.tr, level_en: r.level.en,
+    answers: answers,
+    quiz_version: window.bkQuiz.VERSION,
+    completed_at: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  return r;
+}
+
+function closePlacementModal() {
+  const el = document.getElementById('ptOverlay');
+  if (el) el.remove();
+}
+
+function openPlacementModal() {
+  if (!window.bkQuiz || !_user || document.getElementById('ptOverlay')) return;
+  const lang = ptLang();
+  const qs = window.bkQuiz.questions;
+  const answers = {};
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay'; overlay.id = 'ptOverlay';
+  const modal = document.createElement('div');
+  modal.className = 'modal modal-lg';
+  modal.innerHTML = `<button class="modal-close" id="ptClose" aria-label="${ptT('bk_pt_later','Daha sonra')}">✕</button>
+    <div class="modal-title">${ptT('bk_pt_title','Seviye Belirleme Sınavı')}</div>
+    <div class="modal-body" id="ptBody"></div>`;
+  overlay.append(modal);
+
+  const body = modal.querySelector('#ptBody');
+  body.innerHTML = `<div class="notice notice-info"><div class="notice-text">${ptT('bk_pt_intro','Bilmediğin soruda tahmin etme, "Bilmiyorum" seç — amaç seni doğru seviyeden başlatmak.')}</div></div>`;
+
+  qs.forEach((q, i) => {
+    const t = q[lang] || q.tr;
+    const el = document.createElement('div'); el.className = 'pt-q';
+    el.innerHTML = `<div class="pt-q-head"><span class="pt-q-num">${i+1}/${qs.length}</span><span class="badge">${q.topic[lang] || q.topic.tr}</span></div>
+      <div class="pt-q-text">${t.q}</div>`;
+    t.options.forEach((opt, oi) => {
+      const lab = document.createElement('label'); lab.className = 'pt-opt';
+      lab.innerHTML = `<input type="radio" name="pt_${q.id}" value="${oi}"><span>${opt}</span>`;
+      el.append(lab);
+    });
+    const unk = document.createElement('label'); unk.className = 'pt-opt pt-opt-unknown';
+    unk.innerHTML = `<input type="radio" name="pt_${q.id}" value="${window.bkQuiz.UNKNOWN}"><span>${ptT('bk_pt_unknown','Bilmiyorum')}</span>`;
+    el.append(unk);
+    body.append(el);
+  });
+
+  const foot = document.createElement('div'); foot.className = 'pt-foot';
+  const prog = document.createElement('div'); prog.className = 'pt-progress';
+  const submit = document.createElement('button'); submit.className = 'btn btn-primary'; submit.disabled = true;
+  submit.textContent = ptT('bk_pt_submit','Sınavı Bitir');
+  foot.append(prog, submit); body.append(foot);
+
+  const sync = () => {
+    const n = Object.keys(answers).length;
+    prog.textContent = `${ptT('bk_pt_progress','Cevaplanan')}: ${n}/${qs.length}`;
+    submit.disabled = n < qs.length;
+  };
+  body.addEventListener('change', e => {
+    const t = e.target;
+    if (!t.name || t.name.indexOf('pt_') !== 0) return;
+    answers[t.name.slice(3)] = parseInt(t.value, 10);
+    sync();
+  });
+  sync();
+
+  submit.onclick = async () => {
+    submit.disabled = true; submit.textContent = ptT('bk_pt_saving','Kaydediliyor…');
+    try {
+      const r = await ptSubmit(answers);
+      body.innerHTML = `<div class="notice notice-ok">
+          <div class="notice-title">${ptT('bk_pt_result_title','Sonucun')}</div>
+          <div class="notice-text">${ptT('bk_pt_result_prefix','Seviyen:')} <strong class="text-accent">${lang === 'en' ? r.level.en : r.level.tr}</strong> · ${r.score}/100 (${r.correct}/${r.total})</div>
+          <div class="notice-text notice-text-2">${ptT('bk_pt_result_desc','Sonucu eğitmenin görecek, ilk dersin buna göre planlanacak.')}</div>
+        </div>`;
+      const okBtn = document.createElement('button');
+      okBtn.className = 'btn btn-primary'; okBtn.textContent = ptT('bk_pt_close','Kapat');
+      okBtn.onclick = () => { closePlacementModal(); refreshPtSlots(); };
+      body.append(okBtn);
+    } catch(e) {
+      const c = errId();
+      toast(`${ptT('bk_pt_save_err','Sınav kaydedilemedi')} (${c}): ` + (e.message || e.code), true);
+      submit.disabled = false; submit.textContent = ptT('bk_pt_submit','Sınavı Bitir');
+    }
+  };
+
+  // Zorunlu ama erteleyebilir: kapatınca ısrarla hatırlatıyoruz, kart yerinde kalıyor.
+  const later = () => {
+    closePlacementModal();
+    toast(ptT('bk_pt_later_hint','Sınav zorunlu — en kısa sürede çözmeni öneririz, dersin buna göre planlanıyor.'));
+  };
+  modal.querySelector('#ptClose').onclick = later;
+  overlay.addEventListener('click', e => { if (e.target === overlay) later(); });
+
+  document.body.append(overlay);
+}
+
 // ─── Pending View ─────────────────────────────────────────
 async function renderPendingView(reqData) {
   // If a reservation already exists (e.g. admin accepted but listener missed it), go straight to dashboard
@@ -1950,6 +2224,9 @@ async function renderPendingView(reqData) {
     actions.append(refreshBtn);
   }
 
+  // Seviye belirleme sınavı — talep beklerken zorunlu
+  initPlacementTest('ptSlotPending', true);
+
   // Auto-refresh: watch lesson_request status
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
   // '_' was a placeholder for "no id yet". Listening to a doc that does not exist trips the
@@ -2058,6 +2335,11 @@ async function renderDashboard() {
     .onSnapshot(async (snap) => {
   if (!snap || !snap.exists) { initRequestForm(); return; }
   const res = snap.data();
+
+  // Seviye belirleme sınavı: ödemesi tamamlanmamış (henüz başlamamış) öğrenciye
+  // zorunlu olarak hatırlatılır; çözdüyse sonucu görür.
+  _ptDashNag = !res.payment_confirmed;
+  initPlacementTest('ptSlotDash', _ptDashNag);
 
   // Backfill: existing students who haven't accepted rules yet must do so now.
   // Trial reservations are skipped (no rules step yet).
@@ -2661,6 +2943,7 @@ async function renderAdminPanel() {
   // Load pending requests (real-time listener)
   const reqList = document.getElementById('adminRequestsList');
   reqList.innerHTML = '<div class="empty-state">' + (window._i18n?.t('bk_loading')||'Yükleniyor…') + '</div>';
+  await ptWatchAll();   // seviye sonuçları: rozetler için
 
   // Auto-migrate: set hasLessonRequest:true for existing requesters (runs once per session)
   if (!window._migrationDone) {
@@ -2893,6 +3176,7 @@ async function renderAdminPanel() {
             ${r.from_name || r.from_email}
             ${isTrialReq ? '<span class="badge ok name-badge">Deneme</span>' :
               isSingleReq ? '<span class="badge info name-badge">Tek Ders</span>' : ''}
+            ${r.from_uid ? ptBadgeHtml(r.from_uid) : ''}
           </div>
           <div class="req-row-detail">
             ${isTrialReq ? `Deneme Dersi &nbsp;·&nbsp; ${formatDateStr(r.trial_date)} ${r.trial_time}` :
@@ -3217,7 +3501,7 @@ async function renderAdminPanel() {
       const headerDiv = document.createElement('div'); headerDiv.className = 'student-head';
       headerDiv.innerHTML = `
         <div>
-          <div class="student-row-name">${s.student_name || s.student_email}${isTrial ? ' <span class="badge ok name-badge">Deneme</span>' : ''}</div>
+          <div class="student-row-name">${s.student_name || s.student_email}${isTrial ? ' <span class="badge ok name-badge">Deneme</span>' : ''} ${ptBadgeHtml(studentUid)}</div>
           <div class="student-row-meta">
             ${isTrial
               ? `<strong class="text-ok">Deneme Dersi</strong> · ${formatDateStr(s.start_date)} · <strong class="text-ok">Ücretsiz</strong>`

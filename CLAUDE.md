@@ -91,6 +91,7 @@ Loaded by most pages via `<script src="/assets/js/X.js">` and `<link href="/asse
 - `assets/js/theme-init.js` — applies the stored theme before paint, builds the mobile top bar/drawer (or mounts the hamburger into a page's own `.topnav`) and the theme switch.
 - `assets/js/i18n.js` — `data-i18n` attribute-based string swapping. Stored in `localStorage['_lang']` (`tr` | `en`).
 - `assets/js/love-nav.js` — toggles the admin / love nav items and the trial-lesson hint on the existing nav markup; it does not render the nav.
+- `assets/js/placement-quiz.js` — seviye belirleme sınavının soru bankası + puanlama (`window.bkQuiz`). Sadece `booking.html` yükler. Soruları/eşikleri değiştirmek için tek düzenlenecek yer burası; soru seti değişirse dosyadaki `VERSION` artırılır.
 - `assets/js/auth-ui.js` — shared sign-in modal (Google + e-posta/şifre: giriş, kayıt, şifre sıfırlama), exposed as `window.bkAuth` (`openLogin`, `signInGoogle`, `handleRedirectResult`, `isEmbeddedBrowser`, `errorMessage`). Plain `<script>` in `<head>` before the Firebase SDK — it only calls `firebase.auth()` lazily. Every page with a sign-in button loads it (not `app-bridge.html`).
 - `assets/img/icons.svg` — icon sprite: `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-NAME"/></svg>`. UI chrome uses these, never emoji.
 
@@ -121,6 +122,7 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 | `announcements` | Site-wide announcements (admin write, auth read) |
 | `testimonials` | Student testimonials (public read, auth create) |
 | `app_bridge` | UUID-keyed cross-app data bridge (publicly readable) |
+| `placement_tests/{uid}` | Seviye belirleme sınavı sonucu (skor, seviye, cevaplar). Öğrenci bir kez `create` eder ve sadece kendi dokümanını okur; admin hepsini okur, sıfırlamak için siler. |
 | `userSettings/{uid}` | Per-user preferences |
 | `follows` | Profile follow edges |
 
@@ -142,6 +144,8 @@ Because of this, the student "↺ Ertele" button does **not** write lessons dire
 - **Rules acceptance:** modal shown once after first lesson purchase; writes `rules_accepted_at` (write-once). Re-shown only if the field is missing.
 - **Closed slots:** admin can mark whole days or single hours red; those appear blocked but visible in the trial-lesson day grid.
 - **24h rule:** `calculateLessonDates()` pushes a weekday series one week forward while its first slot starts less than 24h from now (or is already past), so a request made Sunday 11:00 for Monday 10:00 begins with the other selected day. The extra-lesson picker disables such days/times via `slotStartsTooSoon()`; the same function feeds the request preview, the min-lesson check and admin `acceptRequest`.
+
+- **Seviye belirleme sınavı:** talebi bekleyen ve ödemesi onaylanmamış (henüz başlamamış) her öğrenciye zorunlu olarak açılır — deneme dersi dahil. `initPlacementTest(slotId, nag)` bekleme ekranına (`#ptSlotPending`) ve panele (`#ptSlotDash`) basar, modal sayfa başına bir kez kendiliğinden açılır; öğrenci erteleyebilir ama kart ve hatırlatma kalır. Admin tarafında sonuç, talep ve öğrenci satırlarındaki `[data-pt-uid]` rozetinde görünür (canlı dinlenir), rozete tıklayınca soru bazlı detay ve "Sınavı Sıfırla" açılır.
 
 These flows live almost entirely inside `booking.html` (~5300 lines) — single source of truth for the panel UX.
 
