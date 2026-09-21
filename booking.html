@@ -684,11 +684,13 @@
 
   <!-- ── View: Booking Access ── -->
   <div class="view" id="view-access">
+    <div id="ptSlotAccess"></div>
     <div class="card hero-card access-card" id="accessCard"></div>
   </div>
 
   <!-- ── View: Request Form ── -->
   <div class="view" id="view-request">
+    <div id="ptSlotRequest"></div>
     <div class="card">
       <div class="card-title" data-i18n="bk_req_title">Ders Talebi Oluştur</div>
       <div class="card-sub" data-i18n="bk_req_sub">Tercihlerini belirt, Berkay Er inceleyip onaylayacak.</div>
@@ -1977,7 +1979,8 @@ async function ptLoadOwn() {
   } catch(e) { console.warn('[placement]', e); return null; }
 }
 
-async function initPlacementTest(slotId, nagIfMissing) {
+async function initPlacementTest(slotId, nagIfMissing, autoOpen) {
+  if (autoOpen === undefined) autoOpen = true;
   const slot = document.getElementById(slotId);
   if (!slot || !_user || !window.bkQuiz) return;
   const data = await ptLoadOwn();
@@ -2002,12 +2005,14 @@ async function initPlacementTest(slotId, nagIfMissing) {
   startBtn.onclick = () => openPlacementModal();
   box.append(startBtn);
   slot.append(box);
-  if (!_ptModalShown) { _ptModalShown = true; openPlacementModal(); }
+  if (autoOpen && !_ptModalShown) { _ptModalShown = true; openPlacementModal(); }
 }
 
 function refreshPtSlots() {
   initPlacementTest('ptSlotPending', true);
   initPlacementTest('ptSlotDash', _ptDashNag);
+  initPlacementTest('ptSlotRequest', true);
+  initPlacementTest('ptSlotAccess', true, false);
 }
 
 async function ptSubmit(answers) {
@@ -2278,6 +2283,9 @@ async function renderPendingView(reqData) {
 }
 
 function initRequestForm() {
+  // Aktif ödemesi olmayan (paketi bitmiş ya da henüz ödemesi onaylanmamış)
+  // öğrenci de seviye belirleme kapsamında.
+  initPlacementTest('ptSlotRequest', true);
   _selectedSlots.clear();
   _reqType = 'monthly';
   document.getElementById('submitRequestBtn').disabled = true;
@@ -5470,6 +5478,9 @@ async function loadUserState(user) {
 // ─── Booking Access View ───────────────────────────────────
 function renderAccessView(user, state, rejectReason) {
   showView('view-access');
+  // Kart burada da dursun (deneme dersi biten / aboneliği olmayan öğrenci),
+  // ama ilk ekranda modalı zorla açmıyoruz.
+  initPlacementTest('ptSlotAccess', true, false);
   const card = document.getElementById('accessCard');
 
   if (state === 'none') {
