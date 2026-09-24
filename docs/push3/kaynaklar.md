@@ -1,0 +1,169 @@
+# Kaynaklar (arastirma bulgularindaki tum URL'ler)
+
+Konu etiketleri hangi arastirmada kullanildigini gosterir. Birincil kaynaklar: Push 3 kilavuzu, Live 12 kilavuzu, Live 12 MIDI Remote Scripts, Live 12 Suite 12.4.6 Push3.app script'leri (yerelde salt okunur cozuldu, siteye kopyalanmaz).
+
+- https://www.ableton.com/en/push/manual/ — ekran, kod, modlar, ogretim, scale, wavetable-cihaz, web
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/custom_bank_definitions.py — dsp, ekran, ogretim, wavetable-cihaz
+- https://www.ableton.com/en/manual/using-push-2/ — donanim, ekran, modlar, scale
+- https://www.ableton.com/en/packs/wavetable/ — dsp, ekran, ogretim, wavetable-cihaz
+- https://cdn-resources.ableton.com/resources/pdfs/push-manual/3/2024-11-05/push3-manual-en.pdf — ekran, scale, web
+- https://github.com/Ableton/push-interface/blob/main/doc/AbletonPush2MIDIDisplayInterface.asc — ekran, modlar, wavetable-cihaz
+- https://github.com/Ableton/push-interface/blob/master/doc/AbletonPush2MIDIDisplayInterface.asc — donanim, ogretim, scale
+- https://www.ableton.com/en/push/tech-specs/ — donanim, ekran, web
+- https://www.soundonsound.com/reviews/ableton-push-3 — donanim, ekran, wavetable-cihaz
+- https://cdn-resources.ableton.com/resources/pdfs/push-manual/3/2025-08-20/push3-manual-en.pdf — ogretim, web
+- https://cdn-resources.ableton.com/resources/pdfs/push-manual/3/2025-09-17/push3-manual-en.pdf — donanim, modlar
+- https://docs.cycling74.com/apiref/lom/song/ — modlar, scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/scales_component.py — ekran, scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/skin_default.py — ogretim, scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/fixed_length.py — modlar, ogretim
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/grid_resolution.py — modlar, scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/melodic_pattern.py — ogretim, scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/push_base.py — modlar, scale
+- https://help.ableton.com/hc/en-us/articles/360000036930-Managing-CPU-load-when-using-Wavetable — dsp, wavetable-cihaz
+- https://www.ableton.com/en/manual/live-instrument-reference/ — dsp, ogretim
+- https://www.ableton.com/en/release-notes/push-12/ — ogretim, scale
+- https://www.earlevel.com/main/2012/05/25/a-wavetable-oscillator-the-code/ — dsp, wavetable-cihaz
+- https://www.musicradar.com/news/10-tips-ableton-push-3 — modlar, ogretim
+- https://www.soundonsound.com/techniques/wavetable-abletons-new-synth — dsp, wavetable-cihaz
+- https://ableton-production.imgix.net/push-manual/device-parameter-tabs.png — wavetable-cihaz
+- https://blog.karimratib.me/2022/04/23/firefox-webmidi.html — web
+- https://bugs.webkit.org/show_bug.cgi?id=237322 — web
+- https://bugzilla.mozilla.org/show_bug.cgi?id=1805582 — web
+- https://caniuse.com/css-touch-action — web
+- https://caniuse.com/fullscreen — web
+- https://caniuse.com/mdn-api_audiocontext_audiocontext_options_latencyhint_parameter — web
+- https://caniuse.com/mdn-api_audioworklet — web
+- https://caniuse.com/mdn-api_navigator_audiosession — web
+- https://caniuse.com/mdn-api_screenorientation_lock — web
+- https://caniuse.com/midi — web
+- https://caniuse.com/pointer — web
+- https://caniuse.com/vibration — web
+- https://caniuse.com/viewport-unit-variants — web
+- https://cprimozic.net/blog/buliding-a-wavetable-synthesizer-with-rust-wasm-and-webaudio/ — dsp
+- https://dafx.de/paper-archive/2016/dafxpapers/20-DAFx-16_paper_41-PN.pdf — dsp
+- https://dev.to/sendotltd/reading-apple-pencil-pressure-in-the-browser-pointerevent-getcoalescedevents-and-the-2e23 — web
+- https://developer.chrome.com/blog/audio-worklet-design-pattern — dsp
+- https://developer.chrome.com/blog/web-midi-permission-prompt — web
+- https://developer.chrome.com/release-notes/153 — dsp
+- https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/AudioContext — web
+- https://developer.mozilla.org/en-US/docs/Web/API/AudioSession — dsp
+- https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet — web
+- https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletGlobalScope — dsp
+- https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode/AudioWorkletNode — dsp
+- https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletProcessor/process — dsp
+- https://developer.mozilla.org/en-US/docs/Web/API/Element/setPointerCapture — web
+- https://developer.mozilla.org/en-US/docs/Web/API/Element/wheel_event — web
+- https://developer.mozilla.org/en-US/docs/Web/API/Keyboard/getLayoutMap — web
+- https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code — web
+- https://developer.mozilla.org/en-US/docs/Web/API/PointerEvent/getCoalescedEvents — web
+- https://developer.mozilla.org/en-US/docs/Web/API/ScreenOrientation/lock — web
+- https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices — web
+- https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API — web
+- https://developer.mozilla.org/en-US/docs/Web/CSS/-webkit-touch-callout — web
+- https://developer.mozilla.org/en-US/docs/Web/CSS/touch-action — web
+- https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer — dsp
+- https://docs.cycling74.com/apiref/lom/clip/ — modlar
+- https://docs.cycling74.com/apiref/lom/wavetabledevice/ — wavetable-cihaz
+- https://docs.juce.com/master/classjuce_1_1Synthesiser.html — dsp
+- https://en.wikipedia.org/wiki/Force_Touch — web
+- https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32015L2436 — web
+- https://faustlibraries.grame.fr/libs/aanl/ — dsp
+- https://firebase.google.com/docs/hosting/quickstart — web
+- https://forum.ableton.com/viewtopic.php?t=226313 — donanim
+- https://gist.github.com/iicaras/f63dc9fcc3f9a83ccaf2de3fbc9fbb5a — dsp
+- https://github.com/Ameobea/web-synth — dsp
+- https://github.com/GoogleChromeLabs/web-audio-samples — dsp
+- https://github.com/WebAudio/web-audio-api/issues/2585 — web
+- https://github.com/gluon/AbletonLive11_MIDIRemoteScripts/blob/main/Push2/visualisation_settings.py — ekran
+- https://github.com/gluon/AbletonLive11_MIDIRemoteScripts/blob/main/Push2/wavetable.py — ekran
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/colors.py — ekran
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/device_component.py — ekran
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/device_parameter_icons.py — ekran
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/model/__init__.py — ekran
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/note_settings.py — modlar
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/push2.py — scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/Push2/session_component.py — modlar
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/ableton/v2/control_surface/banking_util.py — ekran
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/ableton/v2/control_surface/components/slide.py — scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/ableton/v2/control_surface/defaults.py — modlar
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/ableton/v2/control_surface/wavetable_decoration.py — dsp
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/ableton/v3/control_surface/default_bank_definitions.py — wavetable-cihaz
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/instrument_component.py — scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/loop_selector_component.py — modlar
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/melodic_component.py — scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/note_editor_component.py — modlar
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/note_layout_switcher.py — scale
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/note_repeat_component.py — modlar
+- https://github.com/gluon/AbletonLive12_MIDIRemoteScripts/blob/main/pushbase/quantization_component.py — modlar
+- https://github.com/gluon/AbletonLive9_RemoteScripts/blob/master/Push/consts.py — scale
+- https://github.com/indutny/fft.js — dsp
+- https://github.com/martinfinke/PolyBLEP/blob/master/PolyBLEP.cpp — dsp
+- https://github.com/mtytel/vital — dsp
+- https://github.com/tolgazafer/TonalityFinder — scale
+- https://github.com/zitongcharliedeng/gridinstruments — web
+- https://help.ableton.com/hc/en-us/articles/209071249-Push-User-Mode-for-custom-MIDI-mappings — web
+- https://help.ableton.com/hc/en-us/articles/360002719179-User-Wavetables — wavetable-cihaz
+- https://html.spec.whatwg.org/multipage/interaction.html#user-activation-processing-model — web
+- https://intro.novationmusic.com/viral-hiphop?overlay=qwerty-support — web
+- https://learningmusic.ableton.com/make-beats/make-beats.html — web
+- https://learningmusic.ableton.com/notes-and-scales/play-with-notes-and-scales.html — ogretim
+- https://learningsynths.ableton.com/content/lessons/en/synthesis/lesson.json — ogretim
+- https://learningsynths.ableton.com/en/playground — web
+- https://learningsynths.ableton.com/js/musiclab.js — web
+- https://lettersfromsweden.se/ableton/ — ekran
+- https://midi.org/midi-polyphonic-expression-mpe-specification-adopted — web
+- https://noisehack.com/research/VAFilterDesign_1.0.3.pdf — dsp
+- https://performodule.com/2025/02/21/push-3-user-mode-free-template/ — modlar
+- https://raw.githubusercontent.com/federico-pepe/ableton-push-hack/main/core/display/geometry.go — donanim
+- https://raw.githubusercontent.com/federico-pepe/ableton-push-hack/main/core/push3/buttons.go — donanim
+- https://raw.githubusercontent.com/federico-pepe/ableton-push-hack/main/core/push3/encoder.go — donanim
+- https://synthanatomy.com/2021/02/ableton-live-11-is-out-with-comping-mpe-new-devices-more.html — web
+- https://w3c.github.io/audio-session/ — web
+- https://web.dev/articles/audio-scheduling — dsp
+- https://webaudio.github.io/web-audio-api/ — dsp
+- https://webkit.org/blog/11648/new-webkit-features-in-safari-14-1/ — dsp
+- https://www.ableton.com/en/blog/new-in-learning-synths-export-to-live-record-your-creations-and-more/ — web
+- https://www.ableton.com/en/help/learn-push-2/ — ogretim
+- https://www.ableton.com/en/legal/branding-trademark-guidelines/ — web
+- https://www.ableton.com/en/legal/trademark-list/ — web
+- https://www.ableton.com/en/live-manual/12/live-instrument-reference/#wavetable — wavetable-cihaz
+- https://www.ableton.com/en/live-manual/12/live-keyboard-shortcuts/ — web
+- https://www.ableton.com/en/live-manual/12/using-push-2/ — web
+- https://www.ableton.com/en/live/all-new-features/ — scale
+- https://www.ableton.com/en/manual/midi-and-key-remote-control/ — web
+- https://www.ableton.com/en/manual/recording-new-clips/ — modlar
+- https://www.ableton.com/en/push/learn-push/ — ogretim
+- https://www.ableton.com/en/release-notes/live-11/ — wavetable-cihaz
+- https://www.ableton.com/en/release-notes/live-12/ — wavetable-cihaz
+- https://www.ableton.com/en/release-notes/push-11/ — wavetable-cihaz
+- https://www.adamszabo.com/internet/adam_szabo_how_to_emulate_the_super_saw.pdf — dsp
+- https://www.cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf — dsp
+- https://www.earlevel.com/main/2012/05/08/a-wavetable-oscillator%E2%80%94part-2/ — dsp
+- https://www.earlevel.com/main/2012/05/09/a-wavetable-oscillator-part-3/ — dsp
+- https://www.earlevel.com/main/2012/12/15/a-one-pole-filter/ — dsp
+- https://www.earlevel.com/main/2013/06/03/envelope-generators-adsr-code/ — dsp
+- https://www.earlevel.com/main/2019/04/19/floating-point-denormals/ — dsp
+- https://www.earlevel.com/main/2020/01/04/further-thoughts-on-wave-table-oscillators/ — dsp
+- https://www.fon.hum.uva.nl/praat/manual/Create_formant_table__Peterson___Barney_1952_.html — dsp
+- https://www.lexpera.com.tr/mevzuat/kanunlar/sinai-mulkiyet-kanunu-6769-1 — web
+- https://www.mattmontag.com/web/unlock-web-audio-in-safari-for-ios-and-macos — web
+- https://www.mslinn.com/av_studio/ableton-push-standalone.html — donanim
+- https://www.musicradar.com/reviews/ableton-push-3 — ekran
+- https://www.research.ed.ac.uk/en/publications/virtual-analog-model-of-the-lockhart-and-serge-wave-folders/ — dsp
+- https://www.studiobrootle.com/ableton-wavetable-tutorial/ — wavetable-cihaz
+- https://www.subaqueousmusic.com/making-your-own-epic-custom-wavetables-in-live/ — dsp
+- https://www.w3.org/TR/pointerevents3/ — web
+- https://www.w3.org/WAI/ARIA/apg/patterns/grid/ — web
+- https://www.w3.org/WAI/ARIA/apg/patterns/slider/ — web
+- https://www.w3.org/WAI/WCAG22/Understanding/character-key-shortcuts.html — web
+- https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html — web
+- https://www.youtube.com/watch?v=TjC5CjRGPOg — ogretim
+- https://www.youtube.com/watch?v=Yvglc2AqBRc — ogretim
+
+## DSP literaturu (elestiri A5)
+- Cytomic (Andrew Simper), SvfLinearTrapOptimised2.pdf — https://cytomic.com/files/dsp/SvfLinearTrapOptimised2.pdf
+- Olli Niemitalo, Polynomial Interpolators for High-Quality Resampling of Oversampled Audio — http://yehar.com/blog/wp-content/uploads/2009/08/deip.pdf
+- Parker, Zavalishin, Le Bivic, Reducing the Aliasing of Nonlinear Waveshaping Using Continuous-Time Convolution (ADAA), DAFx 2016
+- Valimaki & Huovilainen, Antialiasing Oscillators in Subtractive Synthesis (PolyBLEP), IEEE SPM 2007
+- EarLevel Engineering, Wavetable oscillator serisi — https://www.earlevel.com/main/2012/05/03/a-wavetable-oscillator%E2%80%94introduction/
