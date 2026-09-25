@@ -25,7 +25,11 @@
  *    sürerken true döner ki pad LED'leri açılışta gri yanıp sönmesin.
  *  - load() bitince P3.bus.emit('drums', {ready:true, failed:[pad…]}) — LED/LCD
  *    başarısız pad'i griye çekebilsin diye.
- *  - panic() (bus 'panic' olayı da) ileriye planlanmış sesleri de iptal eder.
+ *  - panic() ileriye planlanmış sesleri de iptal eder (seq'in Stop'u bunu kullanır). bus 'panic' (A11: asılı
+ *    canlı nota; overlay, blur, mod değişimi) yalnız canlı pad seslerini keser: trigger(pad, vel, when, 'seq')
+ *    ile planlanan sequencer sesleri çalmayı sürdürür.
+ *  - Yüklenemeyen sample'lar bir sonraki load() çağrısında yeniden denenir (motor her unlock'ta çağırır):
+ *    en çok RETRY_MAX kez, en az RETRY_MS arayla. Deneme sürerken hasSound true döner.
  *  - Aynı anda en fazla MAX_VOICES drum sesi; aşılırsa en eski ses choke edilir.
  */
 (function () {
@@ -66,7 +70,9 @@
   var failed = {};             // pad → true (yüklenemedi, sessiz)
   var noise = null;            // paylaşılan beyaz gürültü (mono)
   var voices = [];             // çalan veya planlanmış sesler
-  var loading = null;          // load() tek sefer çalışsın
+  var loading = null;          // son yükleme; bitmeden yeni yükleme başlamaz
+  var settled = false, tries = 0, lastTry = 0;
+  var RETRY_MAX = 3, RETRY_MS = 5000;
   var offPanic = null;
 
   function ctxNow() { return P3.audio && P3.audio.ctx; }
@@ -115,12 +121,12 @@
 
   /* ---------- ses kaydı (voice) ---------- */
 
-  function newVoice(ctx, pad, vel, when) {
+  function newVoice(ctx, pad, vel, when, seq) {
     var out = ctx.createGain();
     var g = padGain(vel);
     out.gain.value = g;
     out.connect(output(ctx));
-    var v = { pad: pad, t0: when, end: when, out: out, gain: g, srcs: [], live: 0, chokeAt: Infinity };
+    var v = { pad: pad, t0: when, end: when, out: out, gain: g, srcs: [], live: 0, chokeAt: Infinity, seq: seq };
     voices.push(v);
     return v;
   }
@@ -302,7 +308,8 @@
     }
   }
 
-  function trigger(pad, vel, when) {
+  // src 'seq': sequencer vuruşu (canlı panic'te kalır).
+  function trigger(pad, vel, when, src) {
     var ctx = ctxNow();
     if (!ctx || !hasSound(pad)) return false;
     var slot = KIT[pad];
@@ -323,7 +330,7 @@
     }
     if (voices.length >= MAX_VOICES) stealOldest(t);
 
-    var v = newVoice(ctx, pad, velo, t);
+    var v = newVoice(ctx, pad, velo, t, src === 'seq');
     if (slot.kind === 'sample') {
       var src = ctx.createBufferSource();
       src.buffer = buffers[pad];
@@ -334,27 +341,42 @@
     return true;
   }
 
-  function panic() {
+  // live: yalnız canlı pad sesleri (sequencer'ın planladıkları kalır).
+  function panic(live) {
     var ctx = ctxNow();
     if (!ctx) return;
     var t = ctx.currentTime;
-    for (var k = voices.length - 1; k >= 0; k--) silence(voices[k], t);
+    for (var k = voices.length - 1; k >= 0; k--) {
+      if (live === true && voices[k].seq) continue;
+      silence(voices[k], t);
+    }
   }
+  function livePanic() { panic(true); }
+
+  function nowMs() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
+  function anyFailed() { for (var f in failed) return true; return false; }
+  function mayRetry() { return tries < RETRY_MAX && nowMs() - lastTry >= RETRY_MS; }
 
   function load() {
-    if (loading) return loading;
+    if (loading && !(settled && anyFailed() && mayRetry())) return loading;
     var ctx = ctxNow();
     if (!ctx) {
       console.warn(`[p3] drums.load: AudioContext hazır değil`);
       return Promise.resolve(false);
     }
-    if (!offPanic && P3.bus) offPanic = P3.bus.on('panic', panic);
-    noise = makeNoise(ctx);
+    if (!offPanic && P3.bus) offPanic = P3.bus.on('panic', livePanic);
+    if (!noise) noise = makeNoise(ctx);
     var jobs = [];
     for (var k = 0; k < KIT.length; k++) {
-      if (KIT[k].kind === 'sample') jobs.push(loadSample(ctx, KIT[k]));
+      if (KIT[k].kind !== 'sample' || buffers[k]) continue;
+      delete failed[k];
+      jobs.push(loadSample(ctx, KIT[k]));
     }
+    if (loading) tries++;
+    lastTry = nowMs();
+    settled = false;
     loading = Promise.all(jobs).then(function () {
+      settled = true;
       P3.drums.ready = true;
       var bad = [];
       for (var f in failed) bad.push(+f);

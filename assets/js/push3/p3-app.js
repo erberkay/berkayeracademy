@@ -12,11 +12,15 @@
  * - Her mod temiz bir durumdan başlar: öğretici ve seviyeler için initState (app ve prefs korunur), Serbest
  *   Çal için P3.save 'free.snapshot' (track presetleri/parametreleri/matrisi, clip'ler, scale, tempo, ses
  *   seviyeleri; ≤50 KB) ya da yoksa varsayılan (init preset, C Major, track 0). Kayıt Serbest Çal'dan
- *   çıkarken, sekme gizlenince ve durum değiştikten 1,5 sn sonra yazılır. Parametre şeması değiştiyse
- *   (PARAMS imzası) kayıtlı değerler yerine kayıtlı preset uygulanır; bozuk kayıt yok sayılır.
+ *   çıkarken (önce transport durur: süren kayıt kapanır), sekme gizlenince ve durum değiştikten 1,5 sn sonra
+ *   yazılır. 50 KB aşılırsa en büyük clip'ten başlayarak sığana dek clip'ler dışarıda kalır ve oturumda bir kez
+ *   toast çıkar; yine sığmazsa önceki kayıt ezilmez. Parametre şeması değiştiyse (PARAMS imzası) kayıtlı
+ *   değerler yerine kayıtlı preset uygulanır; bozuk kayıt yok sayılır. Öğretici, seviyeler ve kaydı olmayan
+ *   Serbest Çal da ses seviyelerini (S.vol) önceki durumdan alır (hedef Main).
  * - {keep:true}: durum ve transport korunur ("Serbest Çal'da aç", sartname-ogretici §4). P3.app.go('free',
  *   {keep:true}) ya da öğreticinin P3.tut.handoff = {keep:true} işareti ile istenir; öğreticideyken app
- *   dışından gelen `#serbest` hash'i de böyle yorumlanır (VARSAYIM).
+ *   dışından gelen `#serbest` hash'i de böyle yorumlanır (VARSAYIM). Önceki Serbest Çal kaydında clip varsa
+ *   yerine bu oturumun geçeceği toast ile söylenir.
  * - Gezinme: menü kartı pushState ile yeni giriş açar; taskbar anahtarı, Learn ve P3.app.go replaceState
  *   kullanır. "← Modlar" bu belgenin açtığı girişteyse history.back(), değilse hash'i temizler; böylece
  *   tarayıcının Geri'si oyundan menüye, menüden önceki sayfaya gider. P3.app.setHash(h) URL'yi rota
@@ -24,18 +28,22 @@
  *   olan hash yok sayılır.
  * - Gate (§I2): bırakış olayları her zaman geçer; kilitli bir encoder'a fare hover'ı (touch) sessizce
  *   yutulur, uyarı yalnız gerçek eylemde (basış, dönüş, strip/pad dokunuşu) çıkar. Engellenen eylem bus
- *   'gate' {ev, id} olarak yayınlanır (öğretici "yanlış kontrol" sayabilsin). Süren bir jestin (encoder
- *   dokunuşu, strip) sonraki olayları kilit adım içinde değişse de geçer. allow() ek olarak 'drumPads',
- *   'loopPads', 'steps' bölge adlarını ve '*' (her şey) desenini kabul eder; LCD hiç karartılmaz.
+ *   'gate' {ev, id} olarak yayınlanır; Faz 1'de dinleyicisi yok (uzantı noktası; öğretici yanlış kontrolü
+ *   kendi 'in' kaydından sayar). Süren bir jestin (encoder dokunuşu, strip) sonraki olayları kilit adım içinde
+ *   değişse de geçer. Ctrl/⌘+Shift+Z'nin geçici Shift'i (combo:true) Undo izinliyse geçer (Redo). allow() ek
+ *   olarak 'drumPads', 'loopPads', 'steps' bölge adlarını ve '*' (her şey) desenini kabul eder; LCD hiç
+ *   karartılmaz.
  * - allow(list, focus): focus uyarıdaki adı verir ({tr,en}, metin ya da hedef deseni/listesi); verilmezse
  *   öğreticinin P3.tut.blockedText(ev)'i (adım hedefinden), o da yoksa listeden türetilen ad kullanılır.
  * - Görünüm (VARSAYIM): prefs.view 'auto' iken telefonda (≤600 px genişlik ya da dokunmatik ve ≤600 px
  *   yükseklik) sahne yataysa padsStrip, dikeyse pads; 'pads' tercihi de aynı kuralla çözülür. Seviye 1 her
- *   zaman tam görünüm (sartname-mobil: telefonda tam görünüm yalnız Seviye 1). P3.app.setView(name) geçici
- *   görünüm verir (öğretici), setView(null) tercihe döner.
+ *   zaman tam görünüm (sartname-mobil: telefonda tam görünüm yalnız Seviye 1). Seviye 2'de 'auto' da tam
+ *   görünümdür: görevler pad dışı kontrollerde (Tap Tempo, Octave, Scale, Swing, Mute, Record); seçilmiş
+ *   bir görünüm tercihi yine uygulanır. P3.app.setView(name) geçici görünüm verir (öğretici), setView(null)
+ *   tercihe döner. Telefon kuralı (PHONE_MQ) sayfa CSS'indeki telefon kırılımıyla aynıdır (≤600 px).
  * - Tuş katmanı (§H16): #p3KeysBtn ve bus 'keys' (Shift+/) #p3KeysLayer'ı açar: pad ve düğmelerin üstünde
  *   klavye tuşu etiketleri (kullanıcının klavye düzeninden, navigator.keyboard varsa) ve kısa bir lejant.
- *   Seviye 1'de yok (cevabı verirdi). Tuş listesi P3.input.util.SHORTCUTS açılırsa oradan okunur.
+ *   Seviye 1'de yok (cevabı verirdi). Tuş listesi P3.input.util.SHORTCUTS'tan (tek kaynak) okunur.
  * - Ses (§I11, A10): ipucu ve "Sesi yeniden başlat" çipi durum 500 ms sürünce görünür (kilit açılırken
  *   geçen 'suspended' yanıp sönmesin). Yedek dinleyiciler yalnız oyunda ve sesli modda unlock() çağırır;
  *   'failed' durumunu yalnız çip yeniden dener. #p3Feedback'te başka modülün (seviye/öğretici) yazdığı
@@ -44,11 +52,13 @@
  *   kayıtlı tercihler (settings) geri yazılır.
  * - İpucu düğmesi: seviyelerde prefs.hints anahtarı (undo'suz; seviyeler okur, aria-pressed); öğreticide
  *   bir eylem: P3.tut.hint() ipucunu bir kademe açar (ipuçları kapalıysa önce açılır). Tercihler (hints,
- *   kbOn, view, kbWin, noteNames, velMode, quality) P3.save 'settings'e yazılır, sıfırlamada korunur.
+ *   kbOn, view, kbWin, noteNames, quality) P3.save 'settings'e yazılır, sıfırlamada korunur. velMode kalıcı
+ *   değil (yalnız öğreticinin geçici ayarı).
  * - Menü: Öğretici meta'sı, ilerlemesi ve devam noktası P3.tut.progress() (yoksa CURRICULUM + P3.save
  *   'tutorial', Faz 1 bölüm/adımları), seviyeler P3.levels.progress() (yoksa P3.save). İlk kez satırı hiç
- *   mod açılmamışken görünür. Başka sekme kaydı değiştirirse (storage olayı) menü yenilenir. Sıfırlama bus
- *   'progressReset' yayar.
+ *   mod açılmamışken görünür. Başka sekme kaydı değiştirirse (storage olayı) menü yenilenir. Sıfırlama
+ *   P3.tut.resetProgress()'i çağırır (seviyeler ilerlemeyi yalnız P3.save'den okur) ve bus 'progressReset'
+ *   yayar (Faz 1'de dinleyicisi yok; uzantı noktası).
  */
 (function () {
   'use strict';
@@ -84,12 +94,13 @@
     session: tx(`Session`, `Session`), final: tx(`Final`, `Final`)
   };
 
-  // Kalıcı tercihler (P3.save 'settings') ve geçerlilik denetimleri.
+  // Kalıcı tercihler (P3.save 'settings') ve geçerlilik denetimleri. velMode burada değil: onu yalnız öğretici
+  // geçici olarak yazar (kullanıcı arayüzü yok); kalıcı olsaydı adım sürerken kapanan sekme 'position'ı
+  // kalıcı yapardı. Eski kayıtlardaki settings.velMode da bu yüzden yüklenmez.
   var PREFS = {
     hints: isBool, kbOn: isBool, noteNames: isBool,
     view: function (v) { return v === 'auto' || v === 'full' || v === 'pads' || v === 'padsStrip' || v === 'controls'; },
     kbWin: function (v) { return v === (v | 0) && v >= 0 && v <= 4; },
-    velMode: function (v) { return v === 'fixed' || v === 'position'; },
     quality: function (v) { return v === 'auto' || v === 'hq' || v === 'std' || v === 'eco'; }
   };
 
@@ -98,17 +109,13 @@
   var TOAST_MS = 4000, TOAST_MAX = 3;
   var AUTOSAVE_MS = 1500, RESIZE_MS = 150;
   var SNAP_MAX = 50000;        // sartname-ogretici §3: serbest mod kaydı ≤ 50 KB
+  // ders-push3.html'deki telefon kuralıyla aynı (ui.css kırılımı: ≤600 px telefon, ≥601 px geniş).
   var PHONE_MQ = '(max-width: 600px), (max-height: 600px) and (pointer: coarse)';
   var SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
   var GESTURES = ['pointerup', 'touchend', 'mousedown', 'keydown', 'click'];   // A10 yedek kilit
 
-  // p3-input'un tek tuş kısayolları (Düzen A). Yalnız tuş katmanının etiketleri için; P3.input.util
-  // SHORTCUTS açarsa o kullanılır.
-  var KEY_CTL = {
-    Space: 'play', Enter: 'record', Slash: 'tapTempo', Digit9: 'scale', Digit0: 'layout', Period: 'repeat',
-    Backquote: 'accent', Backspace: 'delete', ShiftLeft: 'shift', ShiftRight: 'shift', Backslash: 'select',
-    ArrowUp: 'octaveUp', ArrowDown: 'octaveDown', ArrowLeft: 'pageLeft', ArrowRight: 'pageRight'
-  };
+  // Tuş katmanının kaynağı p3-input'un tabloları (P3.input.util.SHORTCUTS / KB_ROWS). KB_ROWS yalnız p3-input
+  // yoksa kullanılan yedektir.
   var KB_ROWS = [
     ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8'],
     ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI'],
@@ -147,6 +154,13 @@
     keysShow: tx(`Klavye kısayollarını göster`, `Show keyboard shortcuts`),
     keysHide: tx(`Klavye kısayollarını gizle`, `Hide keyboard shortcuts`),
     resetDone: tx(`İlerleme sıfırlandı.`, `Progress reset.`),
+    snapTrim: function (n) {
+      return tx(`Kayıt tarayıcıya sığmıyor: en uzun ${n} clip kaydedilmedi. Diğerleri kaydedildi.`,
+        `Your session is too big to store: the longest ${n} clip(s) were not saved. The rest were saved.`);
+    },
+    snapFull: tx(`Kayıt tarayıcıya sığmıyor; önceki kayıt korundu.`, `Your session is too big to store; the previous save was kept.`),
+    freeReplace: tx(`Serbest Çal öğreticideki sesle açıldı; önceki Serbest Çal kaydının yerine bu oturum kaydedilecek.`,
+      `Free Play opened with the tutorial's sound; this session will replace your previous Free Play save.`),
     locked: function (name) { return tx(`Bu adımda ${name} ile ilgileniyoruz.`, `This step is about ${name}.`); },
     soon: function (title) { return tx(`${title} bölümü yakında geliyor.`, `${title} is coming soon.`); },
     and: tx(`ve`, `and`),
@@ -200,6 +214,7 @@
   var soundSince = 0, soundTimer = null, lastAudio = null;
   var keysOn = false, keysDom = null, layoutMap = null, layoutAsked = false;
   var appliedView = null, resizeTimer = null, autosaveTimer = null;
+  var snapWarned = false;    // 50 KB aşım toast'ı Serbest Çal oturumunda bir kez
   var resetReturn = null;
 
   // ---------------------------------------------------------------- yardımcılar
@@ -373,12 +388,18 @@
   }
 
   // ---------------------------------------------------------------- durum: taban ve serbest mod kaydı
-  // Taban: initState; app (mod, ses, profil) ve prefs korunur. hydrate init presetini doldurur.
+  // Taban: initState; app (mod, ses, profil), prefs ve ses seviyeleri korunur (öğreticinin emu.load'u gibi:
+  // dinleme seviyesi mod ya da bölüm değişince habersiz −6 dB'ye dönmesin; hedef Main'e çekilir).
+  // hydrate init presetini doldurur.
   function baseState() {
     var S = P3.initState(), old = St();
     if (old) {
       if (old.app) S.app = clone(old.app);
       if (old.prefs) S.prefs = clone(old.prefs);
+      if (old.vol && typeof old.vol === 'object') {
+        S.vol = clone(old.vol);
+        S.vol.target = 'main';
+      }
     }
     return S;
   }
@@ -413,11 +434,29 @@
       wtui: { bank: w.bank, osc: w.osc, flt: w.flt, env: w.env, lfo: w.lfo, ampView: w.ampView, modView: w.modView,
         expr: w.expr, target: w.target, prevBank: w.prevBank }
     };
-    if (JSON.stringify(snap).length > SNAP_MAX) {
-      console.warn(`[p3] serbest mod kaydı 50 KB sınırını aştı; clip'ler kaydedilmedi`);
-      snap.tracks.forEach(function (t) { if (t.clips) t.clips = t.clips.map(function () { return null; }); });
-    }
+    fitSnapshot(snap);
     return snap;
+  }
+
+  // 50 KB sınırı (sartname-ogretici §3): en büyük clip'ten başlayarak sığana dek clip'ler dışarıda kalır; kısa
+  // clip'ler korunur. snap.trimmed = atılan clip sayısı; clip'ler atılsa da sığmıyorsa snap.over = true.
+  function fitSnapshot(snap) {
+    var size = JSON.stringify(snap).length;
+    if (size <= SNAP_MAX) return;
+    var list = [];
+    snap.tracks.forEach(function (t, ti) {
+      (t.clips || []).forEach(function (c, ci) { if (c) list.push({ ti: ti, ci: ci, n: JSON.stringify(c).length }); });
+    });
+    list.sort(function (a, b) { return b.n - a.n; });
+    var trimmed = 0;
+    for (var i = 0; i < list.length && size > SNAP_MAX; i++) {
+      snap.tracks[list[i].ti].clips[list[i].ci] = null;
+      trimmed++;
+      size = JSON.stringify(snap).length;
+    }
+    snap.trimmed = trimmed;
+    if (size > SNAP_MAX) snap.over = true;
+    console.warn(`[p3] serbest mod kaydı 50 KB sınırını aştı; ${trimmed} clip kaydedilmedi`);
   }
 
   function saveFree() {
@@ -425,7 +464,14 @@
     autosaveTimer = null;
     if (cur !== 'free') return;
     var snap = buildSnapshot();
-    if (snap) P3.save.patch('free.snapshot', snap);
+    if (!snap) return;
+    if (snap.over) {   // clip'siz bile sığmıyor: önceki geçerli kayıt ezilmez
+      if (!snapWarned) { snapWarned = true; toast(P3.t(TX.snapFull), { tone: 'err' }); }
+      return;
+    }
+    if (snap.trimmed && !snapWarned) { snapWarned = true; toast(P3.t(TX.snapTrim(snap.trimmed)), { tone: 'err' }); }
+    delete snap.trimmed;
+    P3.save.patch('free.snapshot', snap);
   }
 
   function pickEnum(v, list, def) { return list.indexOf(v) >= 0 ? v : def; }
@@ -713,7 +759,8 @@
   function stopMode(opts) {
     if (!cur) return;
     var m = cur;
-    if (m === 'free') saveFree();
+    // Kayıt sürüyorsa önce durdur: finishRec'in kapattığı clip (yuvarlanmış uzunluk) kayda girsin.
+    if (m === 'free') { stopTransport(); saveFree(); }
     if (m === 'tutorial') call(P3.tut, 'stop');
     else if (m === 'level1' || m === 'level2') call(P3.levels, 'stop');
     cur = null;
@@ -753,8 +800,19 @@
     P3.bus.emit('mode', { mode: m, prev: prev || 'menu' });
     startModule(m, arg);
     P3.save.patch('lastMode', m);
+    if (m === 'free') {
+      snapWarned = false;
+      // "Serbest Çal'da aç": ilk otomatik kayıt önceki oturumun kaydını ezer; clip'li bir kayıt varsa söylenir.
+      if (keep && snapHasClips(P3.save.get('free.snapshot'))) toast(P3.t(TX.freeReplace), { ms: 6000 });
+    }
     soundChanged();
     return true;
+  }
+
+  function snapHasClips(snap) {
+    return !!(snap && Array.isArray(snap.tracks) && snap.tracks.some(function (t) {
+      return t && Array.isArray(t.clips) && t.clips.some(function (c) { return !!c; });
+    }));
   }
 
   function moduleFailed(e) {
@@ -918,6 +976,7 @@
         if (ev.down === false) return true;
         id = ev.id || leafOf(ev);
         if (id === 'escape' || ALWAYS[id] || lock.ids[id]) return true;
+        if (id === 'shift' && ev.combo && lock.ids.undo) return true;   // Ctrl/⌘+Shift+Z = Shift+Undo (Redo)
         return block(ev, id);
       case 'pad':
         if (ev.down === false) return true;
@@ -1060,7 +1119,8 @@
   function resolveView() {
     if (cur === 'level1') return 'full';
     var S = St(), v = (S && S.prefs && S.prefs.view) || 'auto';
-    if (v === 'auto') return isPhone() ? playView() : 'full';
+    // Seviye 2'nin görevleri pad dışı kontrollerde: çalma görünümü onları gizlerdi.
+    if (v === 'auto') return isPhone() && cur !== 'level2' ? playView() : 'full';
     if (v === 'pads') return playView();
     return P3.dev && P3.dev.VIEWS && P3.dev.VIEWS[v] ? v : 'full';
   }
@@ -1129,7 +1189,7 @@
   }
 
   function shortcutMap() {
-    var u = P3.input && P3.input.util, src = (u && u.SHORTCUTS) || KEY_CTL, byId = {};
+    var u = P3.input && P3.input.util, src = (u && u.SHORTCUTS) || {}, byId = {};
     Object.keys(src).forEach(function (code) { if (!byId[src[code]]) byId[src[code]] = code; });
     return byId;
   }
@@ -1376,8 +1436,7 @@
     var keepSettings = currentSettings();
     P3.save.reset();
     P3.save.patch('settings', keepSettings);
-    call(P3.tut, 'resetProgress');
-    call(P3.levels, 'resetProgress');
+    call(P3.tut, 'resetProgress');   // seviyelerin bellekte ilerlemesi yok: P3.save.reset yeter
     P3.bus.emit('progressReset', {});
     closeReset();
     menuRender();

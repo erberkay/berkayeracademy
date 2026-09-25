@@ -50,8 +50,16 @@
  * - bus 'table' {id}: bir tablonun disp verisi hazır olunca (LCD yeniden çizsin diye). P3.lcd.invalidate de çağrılır.
  * - Ek API: P3.wt.press(i, v) (kanal basıncı), P3.audio.trackInput(i), P3.audio.metroOut, P3.audio.ready.
  * - P3.wt.setTable(i, osc, id) Cat/Tab'ı store'a yazar ('Table' undo'su); motor 'state' olayından izler.
- * - Görünürlük: gizlenince main 20 ms'de 0'a iner, görünür olunca geri gelir ve askıdaki context resume
- *   edilir. Panic p3-input'tadır (visibilitychange/blur/pagehide).
+ * - Görünürlük: gizlenince main ve cue (metronom) 20 ms'de 0'a iner, görünür olunca geri gelir ve askıdaki
+ *   context resume edilir; iOS'un sessiz <audio> döngüsü gizlenince duraklatılır, sonraki unlock() onu yeniden
+ *   çalar. Panic p3-input'tadır (visibilitychange/blur/pagehide).
+ * - Worklet yüklenirken gelen store değişiklikleri (ör. ilk mod girişindeki restore) 'state' dinleyicisinde
+ *   yok sayılır; hazır olunca mikser, seviyeler ve kalite tercihi yeniden uygulanır.
+ * - bus 'panic' canlı sesler içindir (A11): worklet'e {t:'panic', live:true} gider ve 'seq:' önekli id'li
+ *   (sequencer) notalar kalır. P3.wt.panic() argümansız hepsini söndürür. 'on' mesajındaki s:1 bu işarettir.
+ * - Sınıf değişiminde (std ⇄ eco) kullanılan tablolar düşürülmez: yeni sınıftaki sürüm gelince worklet'te
+ *   aynı id'nin yerine geçer (tıksız). Kullanılmayanlar düşer. 'sub' de yenisi gelene dek çalar.
+ * - unlock() her çağrıda P3.drums.load()'u da çağırır: yüklenemeyen sample'lar yeniden denenir.
  */
 (function () {
   'use strict';
@@ -150,17 +158,24 @@
     return 'data:audio/wav;base64,' + btoa(bin);
   }
 
+  // Reddedilen play() döngüyü bırakır (sonraki unlock yenisini dener); duraklamış döngü yeniden çalınır.
   function silentLoop() {
-    if (silentEl || typeof Audio === 'undefined') return;
+    if (typeof Audio === 'undefined') return;
     try {
-      silentEl = new Audio();
-      silentEl.setAttribute('playsinline', '');
-      silentEl.setAttribute('x-webkit-airplay', 'deny');
-      silentEl.loop = true;
-      silentEl.src = silentWav();
-      var p = silentEl.play();
-      if (p && p.catch) p.catch(noop);
-    } catch (e) { console.warn('[p3] sessiz ses döngüsü başlatılamadı', e); }
+      if (!silentEl) {
+        silentEl = new Audio();
+        silentEl.setAttribute('playsinline', '');
+        silentEl.setAttribute('x-webkit-airplay', 'deny');
+        silentEl.loop = true;
+        silentEl.src = silentWav();
+      } else if (silentEl.paused === false) return;
+      var el = silentEl, p = el.play();
+      if (p && p.catch) p.catch(function () { if (silentEl === el) silentEl = null; });
+    } catch (e) { silentEl = null; console.warn('[p3] sessiz ses döngüsü başlatılamadı', e); }
+  }
+  function silentPause() {
+    if (!silentEl || typeof silentEl.pause !== 'function') return;
+    try { silentEl.pause(); } catch (e) { /* zaten durmuş */ }
   }
 
   function createContext() {
@@ -183,9 +198,10 @@
     if (session) { try { nav.audioSession.type = 'playback'; } catch (e) { /* salt okunur olabilir */ } }
     else if (P3.u.isIOS()) silentLoop();
     if (!A.ctx && !createContext()) return Promise.resolve(false);
-    var c = A.ctx, r = null;
+    var c = A.ctx, r = null, again = !!initP;
     try { r = c.resume ? c.resume() : null; } catch (e) { r = null; }
     var ip = init();
+    if (again) loadDrums();   // ilk init zaten yükler; sonrakiler yüklenemeyen sample'ları yeniden dener
     return Promise.resolve(r).catch(noop).then(function () { return ip; }).then(function () {
       syncAudioState();
       return c.state === 'running';
@@ -232,17 +248,22 @@
 
   function trackInput(i) { var ch = chain(i); return ch ? ch.gain : null; }
 
-  var mainDb = -10;
-  function applyMain(fade) {
-    var p = A.master.main;
-    if (!p || !A.ctx) return;
-    var target = hidden ? 0 : dbGain(mainDb), t = A.ctx.currentTime;
+  // A12: gizliyken main ve cue (metronom destination'a cue'dan gider) 0'dır.
+  var mainDb = -10, cueDb = 0;
+  function rampOut(p, target, fade) {
     if (fade) {
+      var t = A.ctx.currentTime;
       try { hold(p.gain, t); p.gain.linearRampToValueAtTime(target, t + HIDE_S); } catch (e) { p.gain.value = target; }
     } else glide(p.gain, target);
   }
+  function applyMain(fade) {
+    var m = A.master;
+    if (!A.ctx) return;
+    if (m.main) rampOut(m.main, hidden ? 0 : dbGain(mainDb), fade);
+    if (m.cue) rampOut(m.cue, hidden ? 0 : dbGain(cueDb), fade);
+  }
   function setMainDb(db) { mainDb = +db; applyMain(false); }
-  function setCueDb(db) { if (A.master.cue) glide(A.master.cue.gain, dbGain(db)); }
+  function setCueDb(db) { cueDb = +db; applyMain(false); }
   // §I8: Main Track seviyesi tüm track'lerin toplandığı mixBus'a uygulanır (softClip'ten önce).
   function setMainTrackDb(db) {
     if (A.master.mixBus) glide(A.master.mixBus.gain, dbGain(typeof db === 'number' && db === db ? db : 0));
@@ -281,6 +302,7 @@
     if (h === hidden) return;
     hidden = h;
     applyMain(true);
+    if (h) silentPause();
     var c = A.ctx;
     if (!h && c && c.state === 'suspended' && c.resume) { try { c.resume().catch(noop); } catch (e) { /* etkileşim gerekebilir */ } }
   }
@@ -505,13 +527,16 @@
 
   function ensureSub() { if (!subLoaded && !WT.onFallback) request('sub', curClass()); }
 
-  // eco ⇄ std/hq: mip uzunlukları farklı. Yüklü her şey düşer, kullanılanlar yeni sınıfta gelir.
+  // eco ⇄ std/hq: mip uzunlukları farklı. Kullanılmayan tablolar düşer; kullanılanlar (ve 'sub') yeni sınıftaki
+  // sürüm gelene dek çalar, gelince worklet aynı id'yi yerinde değiştirir (osilatör susmaz, tık olmaz).
   function switchClass() {
-    Object.keys(loaded).forEach(function (id) { drop(+id); });
-    if (subLoaded) { eachWorklet(function (rec) { post(rec, { t: 'drop', id: 'sub' }); }); subLoaded = false; }
+    var pin = pinned();
+    Object.keys(loaded).forEach(function (id) { if (!pin[id]) drop(+id); });
+    subLoaded = false;
     parked = {};
     if (!A.ready) return;
     ensureSub();
+    Object.keys(loaded).forEach(function (id) { want[id] = true; request(+id, curClass()); });
     tracks().forEach(function (t, i) { if (nodes[i] && nodes[i].kind === 'wl') selectTables(i, true); });
   }
 
@@ -695,11 +720,11 @@
     if (offs.length) return;
     offs.push(P3.bus.on('state', onState));
     offs.push(P3.bus.on('transport', function (e) { if (e && e.bpm) tempo(e.bpm); }));
-    offs.push(P3.bus.on('panic', function () { WT.panic(); }));
+    offs.push(P3.bus.on('panic', function () { WT.panic(true); }));   // A11: yalnız canlı sesler
     if (typeof document !== 'undefined' && document.addEventListener) {
       document.addEventListener('visibilitychange', onVisibility);
       hidden = document.visibilityState === 'hidden';
-      if (hidden) applyMain(false);
+      if (hidden) { applyMain(false); silentPause(); }
     }
   }
 
@@ -738,6 +763,11 @@
     syncAudioState();
   }
 
+  function loadDrums() {
+    if (!P3.drums || typeof P3.drums.load !== 'function') return;
+    Promise.resolve().then(function () { return P3.drums.load(); }).catch(function (e) { console.warn('[p3] drum kit yüklenemedi', e); });
+  }
+
   function init() {
     if (initP) return initP;
     if (!A.ctx) return Promise.resolve(false);
@@ -751,13 +781,14 @@
     listen();
     genStart();
     request('sub', curClass());
-    if (P3.drums && typeof P3.drums.load === 'function') {
-      Promise.resolve().then(function () { return P3.drums.load(); }).catch(function (e) { console.warn('[p3] drum kit yüklenemedi', e); });
-    }
+    loadDrums();
     initP = loadWorklet().then(function (ok) {
       if (!ok) fallback('worklet');
       A.ready = true;
       lastBpm = bpm();
+      // Yükleme sürerken gelen store değişiklikleri onState'te yok sayıldı (ör. mod girişindeki restore).
+      applyVolumes(); applyMix();
+      if (lvl.base !== pickProfile()) reprofile();
       tracks().forEach(function (t, i) { if (t && t.kind === 'synth') ensureTrack(i); });
       syncAudioState();
       return true;
@@ -865,7 +896,7 @@
     var held = this.vs.filter(function (v) { return !v.rel; }), lim = this.limit();
     while (held.length >= lim) this.fast(held.shift(), t);
 
-    var v = { id: id, n: midi, vel: vel, t0: t, rel: false, stop: Infinity, nb: 0, srcs: [], oscs: [], flt: [] };
+    var v = { id: id, seq: fromSeq(id), n: midi, vel: vel, t0: t, rel: false, stop: Infinity, nb: 0, srcs: [], oscs: [], flt: [] };
     var env = v.env = c.createGain();
     env.gain.value = 0;
     env.connect(trackInput(this.i));
@@ -984,10 +1015,10 @@
     }
   };
 
-  Fb.prototype.panic = function () {
+  Fb.prototype.panic = function (live) {
     var c = A.ctx, self = this;
     if (!c) return;
-    this.vs.forEach(function (v) { self.fast(v, c.currentTime); });
+    this.vs.forEach(function (v) { if (!(live && v.seq)) self.fast(v, c.currentTime); });
   };
 
   Fb.prototype.meter = function () {
@@ -998,12 +1029,14 @@
 
   // ---------------------------------------------------------------- nota yolu
   function rec(i) { return nodes[i] || ensureTrack(i); }
+  // p3-seq'in nota id'leri 'seq:N': canlı panic (bus 'panic') bunlara dokunmaz.
+  function fromSeq(id) { return typeof id === 'string' && id.slice(0, 4) === 'seq:'; }
   function when(at) { return at == null ? A.ctx.currentTime : +at; }
 
   function noteOn(i, id, midi, vel, at) {
     var r = A.ctx && rec(i);
     if (!r) return false;
-    if (r.kind === 'wl') post(r, { t: 'on', id: id, n: midi, v: vel == null ? 100 : vel, at: when(at) });
+    if (r.kind === 'wl') post(r, { t: 'on', id: id, n: midi, v: vel == null ? 100 : vel, at: when(at), s: fromSeq(id) ? 1 : 0 });
     else r.fb.noteOn(id, midi, vel == null ? 100 : vel, at);
     return true;
   }
@@ -1087,10 +1120,12 @@
       if (r && r.kind === 'fb') return r.fb.meter();
       return meters[i] || null;
     },
-    panic: function () {
+    // live: yalnız canlı sesler (sequencer notaları ve planlı olayları kalır); argümansız hepsi.
+    panic: function (live) {
+      live = !!live;
       nodes.forEach(function (r) {
         if (!r) return;
-        if (r.kind === 'wl') post(r, { t: 'panic' }); else r.fb.panic();
+        if (r.kind === 'wl') post(r, live ? { t: 'panic', live: true } : { t: 'panic' }); else r.fb.panic(live);
       });
     }
   };

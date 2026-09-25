@@ -26,8 +26,9 @@
  * - Undo: cihaz parametreleri (k slotları, Osc Pitch, matris miktarları) encoder dokunuşu boyunca tek kayıt
  *   (merge 'encN'), etiketi slot adı. Seçiciler (Oscillator, Filter, Envelopes, LFO, View, Mod Target),
  *   Filter Switch / Expression Mode ve Add to Matrix / Back / Go to görünüm durumudur, undo'ya girmez.
- *   Scale değişikliği ('Scale') yeniden hizalanan pos'larla tek kayıt; Scale menüsündeki encoder ve jog
- *   dönüşleri dokunuş boyunca birleşir. Mute ('Mute'), Solo ('Solo'), clip silme ('Delete Clip') undo'lu.
+ *   Scale değişikliği ('Scale') yalnız ayarı kaydeder; yeniden hizalanan pos'lar undo'suz yazılır ve Scale
+ *   undo/redo'sunda o anki pos eski ↔ yeni ayarla yeniden hizalanır (aradaki Octave hareketleri korunur).
+ *   Scale menüsündeki encoder ve jog dönüşleri dokunuş boyunca birleşir. Mute ('Mute'), Solo ('Solo'), clip silme ('Delete Clip') undo'lu.
  *   Octave, bank, sayfa, grid, seçim, volume ve tempo undo'suz (Live'da da geçmişe girmez).
  * - Stop Clip / Shift+Stop Clip (§I5): P3.seq.stopClip(seçili track) / P3.seq.stopAllClips(); clip bir sonraki
  *   bar'da durur (kuantizasyon ve çalan notaların kapanması seq'te). Popup yok (gerçek cihaz gibi).
@@ -38,7 +39,8 @@
  * - Page ◀▶ (drum) görünen sayfayı değiştirir ve P3.seq.setFollow(track, false); Page'i HOLD_MS'den uzun
  *   tutmak setFollow(track, true) (P3 kılavuzu 7.3.1: basılı tutmak auto-follow'u geri açar).
  * - Mute/Solo/Stop Clip + alt ekran düğmesi o track'e uygulanır (kılavuz §17; Seviye 2 "Mute + lower2").
- *   Delete + alt ekran düğmesi (track silme) işlevsiz. Mute/Solo + drum pad (kılavuz; Faz 1 listesinde
+ *   Delete + alt ekran düğmesi (track silme) işlevsiz. Mute/Solo/Stop Clip/Delete + üst ekran düğmesi
+ *   (cihazı kapatma / silme, dogrulanmis-donanim §5) Faz 1'de işlevsiz: üst düğme kendi işini yapmaz. Mute/Solo + drum pad (kılavuz; Faz 1 listesinde
  *   yok ama p3-leds ve p3-seq t.padMute / t.padSolo'yu zaten okuyor): pad susturulur / exclusive solo,
  *   undo 'Mute' / 'Solo'; susturulan pad canlı çalmada da sessiz. Delete/Select + step işlevsiz (Faz 2).
  * - Desteklenmeyen kontrol popup'ı: metin 'Not in this simulator', alt satır kontrolün adı; açıklama bus
@@ -51,9 +53,10 @@
  *   mixBus'a uygular, §I8). Headphones değeri tutulur ama ses değişmez; popup alt satırı P3.lcd.text.volumeSub
  *   ('Browser: single output').
  *   −inf = −71 (−70'in altı; P3.u.dbToGain 0 verir, JSON'a yazılabilir). Sıfırlama (Delete + dokunma /
- *   klavye Delete): Main, Headphones, Cue −10 dB, Main Track 0 dB; Tempo 120 BPM, Swing %0.
- * - Scene düğmeleri: Repeat açıkken ya da synth track'te tekrar hızı (repeat.rate), drum track'te step
- *   çözünürlüğü (grid; görünen sayfa aynı zaman konumunda kalır).
+ *   klavye Delete): P3.K.VOL_DEF (Main, Headphones −6 dB, Cue −10 dB, Main Track 0 dB); Tempo 120 BPM, Swing %0.
+ * - Scene düğmeleri: Repeat açıkken tekrar hızı (repeat.rate), drum track'te step çözünürlüğü (grid; görünen
+ *   sayfa aynı zaman konumunda kalır). Synth track'te Repeat kapalıyken (Repeat Faz 2) popup 'Not in this
+ *   simulator' + UNSUPPORTED.repeat açıklaması; repeat.rate yazılmaz.
  * - Jog: Scale menüsünde gam ±1, Learn'de bölüm sayfası, bank görünümünde bank ±1; sola itme overlay'i
  *   kapatır ya da bank görünümünden çıkar. Basma ve sağa itme Faz 1'de işlevsiz.
  * - Track değişince bank görünümü kapanır (VARSAYIM: bank görünümü cihaza ait). Drum track'te upper1
@@ -80,7 +83,9 @@
   var TOUCH_GRACE_MS = 2000, DWELL_MS = 150;
   var PB_RETURN_MS = 30, PB_RETURN_STEPS = 4;
   var VOL_MIN = -70, VOL_INF = -71, VOL_MAX = 6;
-  var VOL_DEF = { main: -10, phones: -10, track: 0, cue: -10 };
+  // Varsayılan seviyeler P3.K.VOL_DEF'ten (initState ile aynı); yoksa bu yedek.
+  var VOL_DEF_FB = { main: -6, phones: -6, track: 0, cue: -10 };
+  function volDef(tg) { var d = (P3.K && P3.K.VOL_DEF) || VOL_DEF_FB; return typeof d[tg] === 'number' ? d[tg] : VOL_DEF_FB[tg]; }
   var VOL_TARGETS = ['main', 'phones', 'track', 'cue'];
   var VOL_LABEL = { main: 'Main Output', phones: 'Headphones', track: 'Main Track', cue: 'Cue' };
   var BPM_MIN = 20, BPM_MAX = 999, BPM_DEF = 120;
@@ -254,17 +259,37 @@
   function scaleCopy(sc) { return { root: sc.root, idx: sc.idx, inKey: sc.inKey, fixed: sc.fixed, layoutIdx: sc.layoutIdx }; }
 
   // Kök, gam, In Key ya da Fixed değişince synth track'lerin konumu aynı "oktav + derece" yerinde kalacak
-  // şekilde yeniden hizalanır (sartname-scale-note §4). Ayar ve konumlar tek undo kaydıdır.
+  // şekilde yeniden hizalanır (sartname-scale-note §4). Undo kaydında yalnız ayar vardır: konum undo'suz
+  // yazılır, undo/redo'da onScaleHistory o anki konumu yeniden hizalar (arada yapılan Octave kaybolmaz).
+  function realignPos(before, after) {
+    P3.S.tracks.forEach(function (t, i) {
+      if (t.kind === 'synth' && typeof t.pos === 'number') set('tracks.' + i + '.pos', P3.scale.realign(before, after, t.pos));
+    });
+  }
+
   function setScale(key, value, merge) {
     var S = P3.S, before = scaleCopy(S.scale), after = scaleCopy(S.scale);
     if (before[key] === value) return false;
     after[key] = value;
-    var opts = { undo: 'Scale', merge: merge || 'scale#' + (++mergeSeq) };
-    set('scale.' + key, value, opts);
-    S.tracks.forEach(function (t, i) {
-      if (t.kind === 'synth' && typeof t.pos === 'number') set('tracks.' + i + '.pos', P3.scale.realign(before, after, t.pos), opts);
-    });
+    set('scale.' + key, value, { undo: 'Scale', merge: merge || 'scale#' + (++mergeSeq) });
+    realignPos(before, after);
     return true;
+  }
+
+  // bus 'undo'/'redo': kayıtta scale.* değiştiyse (ve konumu kayıt kendisi geri yüklemiyorsa) pad konumu
+  // uygulamadan önceki ayardan şimdikine hizalanır.
+  function onScaleHistory(undo, ev) {
+    var ch = ev && ev.changes, S = P3.S, sc = [], i, m;
+    if (!Array.isArray(ch) || !S || !S.scale) return;
+    for (i = 0; i < ch.length; i++) {
+      if (/^tracks\.\d+\.pos$/.test(ch[i].path)) return;
+      m = /^scale\.(\w+)$/.exec(ch[i].path);
+      if (m) sc.push([m[1], undo ? ch[i].next : ch[i].prev]);
+    }
+    if (!sc.length) return;
+    var before = scaleCopy(S.scale), after = scaleCopy(S.scale);
+    sc.forEach(function (c) { before[c[0]] = c[1]; });
+    realignPos(before, after);
   }
 
   function scaleIdx(d, merge) {
@@ -475,6 +500,8 @@
   }
 
   // ---------------------------------------------------------------- ekran düğmeleri
+  function modHeld() { return isHeld('mute') || isHeld('solo') || isHeld('stopClip') || isHeld('delete'); }
+
   function upper(k) {
     var S = P3.S, t = track();
     if (S.overlay === 'scale') {
@@ -482,6 +509,9 @@
       return;
     }
     if (S.overlay === 'learn') { learnOpen(k); return; }
+    // Mute/Solo/Stop Clip/Delete + üst ekran düğmesi cihaza uygulanır (kapatma / silme; Faz 1'de yok):
+    // üst düğme kendi işini (bank görünümü, seçenek) yapmaz (lower() ile aynı kapı).
+    if (modHeld()) return;
     if (!isSynth(t)) return;
     if (k === 1) {
       set('bankView', !S.bankView);
@@ -532,11 +562,13 @@
     }
   }
 
-  // Repeat açıkken ya da 64 Notes'ta tekrar hızı, drum track'te step çözünürlüğü.
+  // Repeat açıkken tekrar hızı, drum track'te step çözünürlüğü. 64 Notes'ta Repeat kapalıyken scene'in işi
+  // tekrar hızıdır; Repeat Faz 2 olduğundan desteklenmeyen kontrol gibi popup + açıklama, duruma yazılmaz.
   function scene(k) {
     var i = selIndex(), t = track(), g = k - 1;
     if (!t) return;
-    if (!isDrum(t) || (t.repeat && t.repeat.on)) { set('tracks.' + i + '.repeat.rate', g); return; }
+    if (t.repeat && t.repeat.on) { set('tracks.' + i + '.repeat.rate', g); return; }
+    if (!isDrum(t)) { popup(NOT_HERE, controlLabel('scene' + k)); feedback(P3.K.UNSUPPORTED.repeat); return; }
     if (t.grid === g) return;
     // Sayfa uzunluğu çözünürlükle değişir; görünen sayfa aynı zaman konumunda kalır.
     var sc = P3.scale, page = Math.floor(t.page * sc.pageBeats(t) / sc.pageBeats({ grid: g }) + 1e-9);
@@ -621,6 +653,8 @@
     if (next === P3.S.learnPage) return;
     set('learnPage', next, { silent: true });   // §I14: görünüm durumu, undo'suz ve olaysız
     if (fn(P3.lcd, 'invalidate')) P3.lcd.invalidate();
+    // Olaysız yazıldığından LED'ler de elle yenilenir (boş bölüm sütunu ve uç sayfada Page ışığı söner).
+    if (fn(P3.leds, 'invalidate')) P3.leds.invalidate(['upper*', 'pageLeft', 'pageRight']);
   }
 
   // Scale menüsünde ↑ −1, ↓ +1, ← −4, → +4 (sınırlı). Menü dışında Session gezinmesi (Faz 2).
@@ -745,7 +779,7 @@
   }
 
   function volTarget() { var tg = P3.S.vol.target; return VOL_LABEL[tg] ? tg : 'main'; }
-  function volOf(tg) { var v = P3.S.vol[tg]; return typeof v === 'number' ? v : VOL_DEF[tg]; }
+  function volOf(tg) { var v = P3.S.vol[tg]; return typeof v === 'number' ? v : volDef(tg); }
   function fmtDb(db) { return db < VOL_MIN ? '-inf dB' : (Math.round(db * 10) / 10 || 0).toFixed(1) + ' dB'; }
   // §I8: Headphones hedefinde alt satır 'Browser: single output' (metin P3.lcd.text'ten; ARIA ile aynı).
   function volumePopup() {
@@ -770,7 +804,7 @@
       volumePopup();
       return;
     }
-    if (ev.reset) v = VOL_DEF[tg];
+    if (ev.reset) v = volDef(tg);
     else if (ev.steps) v = volStep(volOf(tg), ev.steps, ev.fine);
     else return;
     delayedPopup('volume', false);
@@ -1002,6 +1036,8 @@
     inited = true;
     P3.bus.on('panic', onPanic);
     P3.bus.on('restore', onRestore);
+    P3.bus.on('undo', function (ev) { onScaleHistory(true, ev); });
+    P3.bus.on('redo', function (ev) { onScaleHistory(false, ev); });
     return P3.modes;
   }
 

@@ -28,6 +28,8 @@
  *   Track 1 seçili, transport duruk); her görev de kendi başlangıcını sabitler (ör. Octave tabanı).
  *   Yazılar undo'suzdur, geçmişe girmez.
  * - Ek API: TASKS, TASKS2, hint(on?), fmtTime(ms), check().
+ * - Devam'dan sonra odak (paneldeyse) P3.input.focus ile sahneye döner. Kazanma kartında Tab döngüsü ve
+ *   Escape (kapatır) vardır, kart açıkken #p3Game inert'tir. Kart düğmeleri P3.app.go kullanır.
  */
 (function () {
   'use strict';
@@ -176,9 +178,13 @@
         setBpm(120);
         P3.store.set('transport.tapTimes', [], { silent: true });
       },
+      // Tempo dokunuşlardan hesaplanır (p3-seq tap() ile aynı formül): 4 dokunuştan sonra encoder'la 128'e
+      // çevirmek tapTimes'ı değiştirmez, bu yüzden görevi tamamlamaz. Tempo da hâlâ o değerde olmalı.
       done: function (S) {
-        var taps = S.transport.tapTimes || [];
-        return taps.length >= TAPS_MIN && Math.abs(S.transport.bpm - BPM_TARGET) <= BPM_TOL;
+        var taps = S.transport.tapTimes || [], n = taps.length;
+        if (n < TAPS_MIN || !(taps[n - 1] > taps[0])) return false;
+        var tapBpm = 60000 / ((taps[n - 1] - taps[0]) / (n - 1));
+        return Math.abs(tapBpm - BPM_TARGET) <= BPM_TOL && Math.abs(S.transport.bpm - BPM_TARGET) <= BPM_TOL;
       },
       stage: function () {
         return { target: 'tapTempo', text: { tr: `Tap Tempo'ya eşit aralıklarla en az 4 kez dokun: 128 BPM, saniyede iki vuruştan biraz hızlı.` } };
@@ -380,7 +386,7 @@
   var lastIn = null;        // aynı 'in' nesnesi iki yoldan gelirse bir kez işlenir
   var shownTarget = null;   // P3.leds.setTarget'a son verilen hedef (anahtar)
   var domBound = null;      // Seviye 1 DOM dinleyicilerinin bağlı olduğu #p3HotspotLayer
-  var continueFn = null, winFns = null;
+  var continueFn = null, winFns = null, winKeyBound = null;
 
   // Seviye 1
   var wrongs = 0, lastAct = null, runT0 = 0, runMs = 0, runEligible = true, runStartedAt = 0;
@@ -439,24 +445,51 @@
     if (btn && btn.focus) { try { btn.focus({ preventScroll: true }); } catch (e) { btn.focus(); } }
   }
 
-  function closeExplain() {
+  function activeEl() { return typeof document !== 'undefined' ? document.activeElement : null; }
+  function focusStage() { if (P3.input && typeof P3.input.focus === 'function') P3.input.focus(); }
+
+  // noFocus: seviye kapanıyor ya da kazanma kartı açılacak. Aksi halde odak paneldeyse (Devam) sahneye
+  // döner: gizlenen düğmedeki odak body'ye düşer ve p3-input'un klavye kısayolları (sahne odağı ister) susardı.
+  function closeExplain(noFocus) {
+    var panel = $('p3ExplainPanel'), ae = activeEl();
+    var had = !!(panel && ae && typeof panel.contains === 'function' && panel.contains(ae));
     show('p3ExplainPanel', false);
     var btn = $('p3ContinueBtn');
     if (btn && btn.onclick === continueFn) btn.onclick = null;
     continueFn = null;
+    if (had && !noFocus) focusStage();
   }
 
-  function go(hash) {
-    if (typeof location !== 'undefined') location.hash = hash;
+  // P3.app.go girişi değiştirir (replaceState, README §G14 gezinme); location.hash yeni bir geçmiş girişi
+  // açardı ve tarayıcının Geri'si biten seviyeyi yeniden başlatırdı. Hash yalnız app yokken yedektir.
+  var MODE_HASH = { level2: '#seviye-2', free: '#serbest', menu: '' };
+  function go(mode) {
+    if (P3.app && typeof P3.app.go === 'function') { P3.app.go(mode); return; }
+    if (typeof location !== 'undefined') location.hash = MODE_HASH[mode] || '';
   }
+
+  // Kazanma kartı (aria-modal): Tab iki düğme arasında döner, Escape kartı kapatıp odağı sahneye verir.
+  // Kart açıkken oyun alanı inert: klavye odağı karartmanın arkasına geçmez.
+  function onWinKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); hideWin(); focusStage(); return; }
+    if (e.key !== 'Tab') return;
+    var p = $('p3WinPrimary'), s = $('p3WinSecondary'), ae = activeEl();
+    if (!p || !s) return;
+    if (e.shiftKey && ae === p) { e.preventDefault(); s.focus(); }
+    else if (!e.shiftKey && ae === s) { e.preventDefault(); p.focus(); }
+  }
+
+  function setInert(on) { var g = $('p3Game'); if (g) g.inert = !!on; }
 
   function showWin(title, body, primary, secondary) {
     text('p3WinTitle', title);
     text('p3WinText', body);
-    var p = $('p3WinPrimary'), s = $('p3WinSecondary');
+    var w = $('p3Win'), p = $('p3WinPrimary'), s = $('p3WinSecondary');
     winFns = { p: primary.fn, s: secondary.fn };
     if (p) { p.textContent = primary.label; p.hidden = false; p.onclick = winFns.p; }
     if (s) { s.textContent = secondary.label; s.hidden = false; s.onclick = winFns.s; }
+    if (w && !winKeyBound) { w.addEventListener('keydown', onWinKey); winKeyBound = w; }
+    setInert(true);
     show('p3Win', true);
     if (p && p.focus) p.focus();
   }
@@ -467,6 +500,8 @@
     if (p && p.onclick === winFns.p) p.onclick = null;
     if (s && s.onclick === winFns.s) s.onclick = null;
     winFns = null;
+    if (winKeyBound) { winKeyBound.removeEventListener('keydown', onWinKey); winKeyBound = null; }
+    setInert(false);
     show('p3Win', false);
   }
 
@@ -558,7 +593,7 @@
     if (record) best = ms;
     idx = TASKS.length;
     save1({ idx: idx, completedAt: Date.now(), bestMs: best, ms: runEligible ? ms : null });
-    closeExplain();
+    closeExplain(true);
     setTarget(null);
     text('p3Progress', `${TASKS.length} / ${TASKS.length}`);
     text('p3TaskText', `Seviye 1 tamamlandı ✓`);
@@ -568,8 +603,8 @@
     if (best !== null) body += record ? ` Yeni en iyi süre!` : ` En iyi süre: ${fmtTime(best)}.`;
     body += ` Şimdi bu kontrolleri gerçek emülatörde kullanma zamanı.`;
     showWin(`Seviye 1 tamamlandı`, body,
-      { label: `Seviye 2'ye geç`, fn: function () { go('#seviye-2'); } },
-      { label: `Modlara dön`, fn: function () { go(''); } });
+      { label: `Seviye 2'ye geç`, fn: function () { go('level2'); } },
+      { label: `Modlara dön`, fn: function () { go('menu'); } });
   }
 
   function onLayerClick(e) {
@@ -659,7 +694,7 @@
     finished = true;
     idx = TASKS2.length;
     save2({ idx: idx, completedAt: Date.now() });
-    closeExplain();
+    closeExplain(true);
     setTarget(null);
     // Kayıt açık kalmasın: kazanma kartı açıkken clip büyümeye devam ederdi.
     if (P3.seq && typeof P3.seq.stop === 'function') P3.seq.stop();
@@ -668,8 +703,8 @@
     feedback('');
     showWin(`Seviye 2 tamamlandı`,
       `Tempo, oktav, gam, swing, mute ve kayıt: Push 3'ün temel iş akışını gerçek emülatörde yaptın. Şimdi kural olmadan çal.`,
-      { label: `Serbest Çal'a geç`, fn: function () { go('#serbest'); } },
-      { label: `Modlara dön`, fn: function () { go(''); } });
+      { label: `Serbest Çal'a geç`, fn: function () { go('free'); } },
+      { label: `Modlara dön`, fn: function () { go('menu'); } });
   }
 
   function start2() {
@@ -726,7 +761,7 @@
     unbindDom1();
     setTarget(null);
     unmarkAll();
-    closeExplain();
+    closeExplain(true);
     hideWin();
     feedback('');
     level = 0;

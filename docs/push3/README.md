@@ -86,7 +86,7 @@ Dosyalar yalnız tanım yapar; hiçbiri yüklenirken yan etki üretmez. Tek giri
   scale: { root:0, idx:0, inKey:true, fixed:false, layoutIdx:0 },       // global
   transport: { playing:false, rec:'idle' /*idle|rec|play|overdub*/, bpm:120, swing:0, metro:false, tapTimes:[] },
   swingTempo: 'tempo',     // Swing&Tempo encoder modu
-  vol: { target:'main' /*main|phones|track|cue*/, main:-10, phones:-10, cue:-10 },
+  vol: { target:'main' /*main|phones|track|cue*/, main:-6, phones:-6, cue:-10 },   // varsayılanlar tek kaynak: P3.K.VOL_DEF {main:-6, phones:-6, track:0, cue:-10}
   accent: { on:false },
   strip: { mode:'pb' /*pb|mod*/, pb:0, mod:0 },
   wtui: { bank:0 /*0 Main,1 Oscillators,2 Filters,3 Global,4 Envelopes,5 LFOs,6 Matrix,7 MIDI & MPE*/, osc:'1' /*'1'|'2'|'S'|'Mix'*/, flt:1, env:'amp' /*amp|e2|e3*/, lfo:1, ampView:'time' /*time|slope*/, modView:'time' /*time|slope|value*/, expr:'mpe' /*mpe|monopoly*/, target:null /*mod hedefi param k*/, prevBank:0, touched:-1 /*dokunulan enc 0..7*/ },
@@ -174,6 +174,7 @@ P3.save = { load() /*→obj*/, get(key), patch(key, value) /*300 ms debounce, tr
 P3.t = function (o) {…};           // o string ise aynen; {tr,en} ise dil seçimi (window._i18n?.getLang?.() || localStorage._lang || 'tr')
 P3.u = { clamp, mod, lerp, dbToGain, gainToDb, mulberry32, deepClone, rafThrottle(fn), debounce(fn, ms), isIOS(), isMobile(), hasPointerFine() };
 P3.panic = function (reason) {…}; // bus.emit('panic', {reason}); dinleyenler: wt, drums, input (basılı pad'leri bırakır), seq (repeat'i durdurur)
+// bus 'panic' CANLI sesler içindir (A11): wt → worklet'e {t:'panic', live:true} ('on' mesajı s:1 ile gelen, id'si 'seq:' önekli sequencer notaları kalır); drums → trigger(pad, vel, when, 'seq') ile planlanan vuruşlar kalır. Argümansız P3.wt.panic() / P3.drums.panic() hepsini söndürür (seq Stop'u bunu kullanır).
 // i18n köprüsü: window._i18n.setLang sarmalanır → bus.emit('lang', l)
 ```
 

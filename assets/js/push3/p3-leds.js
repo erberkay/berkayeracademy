@@ -39,11 +39,13 @@
  *   'countin' | 'pending' | 'armed' (seq'in bekleme durumu nasıl adlandırılırsa) blink; diğerleri
  *   kırmızı×0.3.
  * - D-pad: Scale menüsü açıkken gam listesinin ucunda off, değilse dim; menü dışında dim (Session F2).
- *   Page ◀▶: drum track'te sayfa varsa dim, yoksa off; Learn sayfasında dim (bölüm sayfaları, VARSAYIM);
- *   64 Notes'ta off. Learn açıkken upper1–8 dim, lower off (VARSAYIM: bölüm başlatma düğmeleri).
+ *   Page ◀▶: drum track'te sayfa varsa dim, yoksa off; Learn sayfasında o yönde bölüm sayfası varsa dim,
+ *   uçta off (P3.lcd.learnPages; VARSAYIM); 64 Notes'ta off. Learn açıkken üstünde bölüm olan upper dim,
+ *   boş sütun off, lower off (VARSAYIM: bölüm başlatma düğmeleri).
  * - Bank görünümünde switch option'ları (Filter 1/2, Slope, Sync, Expression) her zaman beyaz
  *   (VARSAYIM: iki durum da geçerli seçim, Scale menüsündeki In Key LED'i gibi); action option'ı
- *   etkinse dim, değilse off. Drum track'te bank görünümü yok: zincir kuralları geçerli.
+ *   etkinse dim, değilse off. Drum track'te bank görünümü yok: zincir kuralları geçerli, upper1 off.
+ * - Öğretici kilidinde soluk (setDisabled) encoder'ın dokunma halkası çizilmez.
  * - Zincir görünümünde lower: sessiz track, solo varken solosuz track ve Stop Clip basılıyken durmuş
  *   track söner (dogrulanmis-donanim §4 "Unlit durumları"); seçili track her zaman beyaz.
  * - aria-pressed registry'deki toggle'lara ek olarak Scale ve Learn'e de yazılır (overlay açık/kapalı).
@@ -335,7 +337,7 @@
     var t = track(S), sel = selIndex(S);
     var bank = !!(S.bankView && t && t.kind === 'synth' && t.p && P3.wtp && P3.wtp.BANKS);
     if (up) {
-      if (k === 1) return barOn();
+      if (k === 1) return t && t.kind === 'synth' ? barOn() : OFF();   // drum track'te bank yok (§H14)
       return bank ? bankOption(S, t, k) : OFF();
     }
     if (bank) {
@@ -351,10 +353,18 @@
     return led('dim', shade(tk.color, 0.5));
   }
 
+  // Learn: üstünde bölüm olan düğme dim, boş sütun off (LCD yoksa hepsi dim).
+  function learnBar(k) {
+    var L = P3.lcd;
+    if (!L || typeof L.learnChapterAt !== 'function') return barDim();
+    var ch = L.learnChapterAt(k);
+    return ch !== null && ch !== undefined ? barDim() : OFF();
+  }
+
   function barLed(S, id) {
     var up = id.charAt(0) === 'u', k = +id.slice(5);
     if (S.overlay === 'scale') return scaleBar(S, up, k);
-    if (S.overlay === 'learn') return up ? barDim() : OFF();   // VARSAYIM: bölüm başlatma düğmeleri
+    if (S.overlay === 'learn') return up ? learnBar(k) : OFF();   // VARSAYIM: bölüm başlatma düğmeleri
     return deviceBar(S, up, k);
   }
 
@@ -384,7 +394,12 @@
 
   function pageLed(S, right) {
     var t = track(S);
-    if (S.overlay === 'learn') return DIM();
+    if (S.overlay === 'learn') {
+      var lp = P3.lcd && typeof P3.lcd.learnPages === 'function' ? P3.lcd.learnPages() : undefined;
+      if (lp === undefined) return DIM();   // LCD yok: sayfa bilinmiyor
+      if (!lp || lp.pages < 2) return OFF();
+      return (right ? lp.page < lp.pages - 1 : lp.page > 0) ? DIM() : OFF();
+    }
     if (!t || t.kind !== 'drum') return OFF();
     if (!right) return t.page > 0 ? DIM() : OFF();
     var clip = curClip(t);
@@ -532,7 +547,7 @@
     disabled = r.ids;
     disabledPads = r.pads;
     allPadsDisabled = r.allPads;
-    dirty.pads = true;
+    dirty.pads = dirty.rings = true;   // soluk encoder'ın halkası gizlenir
     schedule();
   }
 
@@ -748,7 +763,9 @@
     var S = P3.S, tw = S && S.wtui ? S.wtui.touched : -1;
     for (var i = 1; i <= 8; i++) {
       var r = P3.dev.ring && P3.dev.ring('enc' + i);
-      if (r) write('ring:' + i, r, 'visibility', touched['enc' + i] || tw === i - 1 ? 'visible' : 'hidden');
+      // Öğretici kilidindeki (soluk) encoder'da halka çizilmez: dokunuş olayı gate'te yutulur.
+      var on = !disabled['enc' + i] && (touched['enc' + i] || tw === i - 1);
+      if (r) write('ring:' + i, r, 'visibility', on ? 'visible' : 'hidden');
     }
   }
 

@@ -15,9 +15,9 @@
  * Protokol (ana thread → worklet; zamanlar ctx saniyesi, `at` yoksa/geçmişteyse hemen):
  *   {t:'init', params:[{k,min,max,curve,mod}], def, mods:{k:{srcIdx:amt}}, bpm, profile}   (ilk mesaj)
  *   {t:'p', i:Uint16Array, v:Float32Array}  gerçek birimler, indeksler init'teki params sırası
- *   {t:'m', tgt:k, src, amt}  {t:'on', id, n, v, at}  {t:'off', id, at}  {t:'x', id, bend, slide, press, at}
+ *   {t:'m', tgt:k, src, amt}  {t:'on', id, n, v, at, s?}  {t:'off', id, at}  {t:'x', id, bend, slide, press, at}
  *   {t:'pb'|'mw'|'press', v, at}  {t:'tempo', bpm}  {t:'tab', osc:1|2, id}  {t:'tdata', id, F, levels, buf}
- *   {t:'drop', id}  {t:'panic'}  {t:'profile', p, cap?}
+ *   {t:'drop', id}  {t:'panic', live?}  {t:'profile', p, cap?}
  * Worklet → ana thread: {t:'meter', voices, cpu, pos1, pos2, l, r} (12 blokta bir), {t:'need', id}.
  *
  * SAPMA/EKLEME (sözleşmede olmayan ya da belirsiz olan yerler):
@@ -26,7 +26,11 @@
  *   onmessage içinde doğrudan işlenir (yapısal, zamansız); 'init' gelmeden 'p' indeksleri iç düzen sayılır.
  * - 'p' kuyruğa değil, önceden ayrılmış bir ara belleğe yazılır (son değer kazanır, taşma olmaz); blok
  *   başında uygulanır. Zamanlı olaylar kuyruğu halka değil zamana göre sıralı tutulur, çünkü ileri tarihli
- *   (sequencer) ve anlık olaylar karışık gelir. 'panic' bekleyen bütün olayları da siler.
+ *   (sequencer) ve anlık olaylar karışık gelir. 'panic' bekleyen nota ve denetleyici olaylarını da siler;
+ *   tempo/tab/matris/profil olayları durumdur, kalır.
+ * - {t:'panic', live:true} (A11, asılı canlı nota): yalnız canlı sesler söner. 'on'u s:1 ile gelen (sequencer)
+ *   sesler, onların bekleyen note-on'ları ve bütün note-off/ifade olayları kalır. Mono yığınında da yalnız
+ *   sequencer notaları kalır.
  * - Nota id'si sayı ya da string olabilir; string'ler onmessage'da negatif tamsayılara eşlenir.
  * - {t:'profile', p, cap}: opsiyonel cap = bu track'in ses tavanı (README A9 toplam ses bütçesi için).
  *   processorOptions.maxVoices da aynı tavandır (yoksa 16); Poly Voices 16 yalnız tavan 16 iken çalışır.
@@ -54,6 +58,9 @@
  * - Sub perdesi sesin perdesini izler (nota + Transpose + PITCH), Osc 1'in Transp/Det'ini izlemez (VARSAYIM).
  *   Sub tablosu: Worker'dan tdata id 'sub' geldiyse o kullanılır; yoksa burada üretilir (16 Tone karesi,
  *   8 mip seviyesi, en çok 255. harmonik; üstü −150 dB'in altında). Sub'ın {t:'need'} isteği yoktur.
+ *   Üretim ses thread'ini tek seferde kilitlemesin diye (≈ 25 ms) process() bloklarına bölünür: 32 blok Worker'ın
+ *   tablosu beklenir, sonra her blokta bir adım (31 adım); Worker'ın tablosu gelmişse adım atılmaz. İkisi de
+ *   yokken sub osilatörü sessizdir (VARSAYIM: motor 'sub'u node kurulur kurulmaz gönderdiği için kısa sürer).
  * - Mono'da Glide legato'da ve release sırasında yeniden basışta da uygulanır; legato'da velocity güncellenir.
  * - Tablo değişimi anlıktır (Vital'deki 7 ms geçiş Faz 2). Kayıp tablo için {t:'need'} bir kez gönderilir,
  *   o osilatör tablo gelene kadar sessizdir.
@@ -210,43 +217,52 @@ function makeTable(F, levels, buf) {
 
 // Sub: tanh(k·sin)/tanh(k), k = 10·tone; Tone %0 saf sinüs (sartname §6). Tek harmonikler e^(−0.156·h)
 // hızında söndüğü için (k = 10) 255. harmoniğin üstü −150 dB'in altındadır ve kesilir.
-function buildSub() {
-  const F = 16, N = 2048, HM = 255, NL = 8, PEAK = 0.9;
-  const sn = new Float64Array(N);
+// Üretim adımlara bölünür (subJob tamponları ayırır, subStep bir adım işler; process() blok başına bir adım).
+const SUB_F = 16, SUB_N = 2048, SUB_HM = 255, SUB_NL = 8, SUB_PEAK = 0.9;
+const SUB_WAIT = 32;              // üretime başlamadan önce Worker'ın 'sub'unu bu kadar blok bekle
+let SUBJ = null, SUBW = 0;
+
+function subJob() {
+  const F = SUB_F, N = SUB_N, sn = new Float64Array(N);
   for (let i = 0; i < N; i++) sn[i] = Math.sin(2 * Math.PI * i / N);
-  const co = new Float64Array(F * (HM + 1)), y = new Float64Array(N);
+  const co = new Float64Array(F * (SUB_HM + 1)), levels = [];
   co[1] = 1;
-  for (let f = 1; f < F; f++) {
-    const k = 10 * f / (F - 1), tk = Math.tanh(k);
+  let total = 0;
+  for (let L = 0; L < SUB_NL; L++) {
+    const len = Math.max(512, N >> L);
+    levels.push({ len: len, H: Math.max(1, SUB_HM >> L), base: total });
+    total += F * (len + 3);
+  }
+  return { k: 0, sn: sn, co: co, y: new Float64Array(N), w: new Float64Array(N), levels: levels, buf: new Float32Array(total) };
+}
+
+// Adım k: 0..F−2 → Tone karesi k+1'in katsayıları (kare 0 saf sinüs); F−1..2F−2 → kare k−F+1'in mip seviyeleri.
+// Son adımda true döner.
+function subStep(j) {
+  const F = SUB_F, N = SUB_N, HM = SUB_HM, sn = j.sn, co = j.co;
+  if (j.k < F - 1) {
+    const f = j.k + 1, y = j.y, k = 10 * f / (F - 1), tk = Math.tanh(k);
     for (let i = 0; i < N; i++) y[i] = Math.tanh(k * sn[i]) / tk;
     for (let h = 1; h <= HM; h += 2) {
       let acc = 0;
-      for (let i = 0, j = 0; i < N; i++, j = (j + h) & (N - 1)) acc += y[i] * sn[j];
+      for (let i = 0, m = 0; i < N; i++, m = (m + h) & (N - 1)) acc += y[i] * sn[m];
       co[f * (HM + 1) + h] = 2 * acc / N;
     }
-  }
-  const levels = [];
-  let total = 0;
-  for (let L = 0; L < NL; L++) {
-    const len = Math.max(512, N >> L);
-    levels.push({ len: len, H: Math.max(1, HM >> L), base: total });
-    total += F * (len + 3);
-  }
-  const buf = new Float32Array(total), w = new Float64Array(N);
-  for (let f = 0; f < F; f++) {
+  } else {
+    const f = j.k - (F - 1), levels = j.levels, buf = j.buf, w = j.w;
     let gain = 1;
-    for (let L = 0; L < NL; L++) {
+    for (let L = 0; L < SUB_NL; L++) {
       const len = levels[L].len, H = levels[L].H, st = N / len;
       w.fill(0, 0, len);
       for (let h = 1; h <= H; h += 2) {
         const c = co[f * (HM + 1) + h];
         if (c === 0) continue;
-        for (let i = 0, j = 0; i < len; i++, j = (j + h * st) & (N - 1)) w[i] += c * sn[j];
+        for (let i = 0, m = 0; i < len; i++, m = (m + h * st) & (N - 1)) w[i] += c * sn[m];
       }
       if (L === 0) {   // tepe normalizasyonu L0'dan, bütün seviyelere aynı katsayı
         let pk = 0;
         for (let i = 0; i < len; i++) pk = Math.max(pk, Math.abs(w[i]));
-        gain = pk > 0 ? PEAK / pk : 1;
+        gain = pk > 0 ? SUB_PEAK / pk : 1;
       }
       const o = levels[L].base + f * (len + 3);
       buf[o] = w[len - 1] * gain;
@@ -255,7 +271,13 @@ function buildSub() {
       buf[o + 2 + len] = w[1] * gain;
     }
   }
-  return makeTable(F, levels, buf);
+  return ++j.k >= 2 * F - 1;
+}
+
+// Worker'ın 'sub'u yokken (SUB_WAIT bloktan sonra) blok başına bir adım; bitince SUB kurulur.
+function subAdvance() {
+  if (SUB || !SUBJ || TABLES.has('sub') || ++SUBW <= SUB_WAIT) return;
+  if (subStep(SUBJ)) { SUB = makeTable(SUB_F, SUBJ.levels, SUBJ.buf); SUBJ = null; }
 }
 
 // Kare içi okuma: doğrusal (std/eco) ya da Niemitalo 4 noktalı Hermite (hq). b = karenin s0 indeksi.
@@ -410,7 +432,7 @@ function makeFlt() { return { on: false, type: -1, s24: false, drv: false, s: ne
 function makeVoice() {
   return {
     st: 0,                 // 0 boş, 1 çalıyor, 2 sönüyor (çalınan ses; kuyruk slotu)
-    id: -1, note: 60, vel: 100, held: false, age: 0, fade: 0, fadeN: 1,
+    id: -1, seq: 0, note: 60, vel: 100, held: false, age: 0, fade: 0, fadeN: 1,   // seq: sequencer sesi (canlı panic'te kalır)
     fresh: false, retrig: false, from: new Float64Array(3),   // ilk dilimde zarfların başlangıç değerleri
     pitch: 60, ptgt: 60, pstep: 0.5, pc: 60.5, ua: 0.5,       // Glide (yarım ton, doğrusal); dilimin perdesi, Unison Amount
     src: new Float64Array(NSRC), nb: 0, slide: 0, press: -1, rnd: 0,
@@ -463,7 +485,7 @@ class P3Wavetable extends AudioWorkletProcessor {
   constructor(options) {
     super();
     const po = (options && options.processorOptions) || {};
-    if (!SUB) SUB = buildSub();
+    if (!SUB && !SUBJ) SUBJ = subJob();   // yalnız tamponlar; hesap process() bloklarında (subAdvance)
     // Parametreler: pv gerçek birim taban değer, pn normalize karşılığı; lo/hi/cv/md init ile güncellenir.
     this.pv = new Float64Array(NP); this.pn = new Float64Array(NP);
     this.lo = new Float64Array(NP); this.hi = new Float64Array(NP);
@@ -496,6 +518,7 @@ class P3Wavetable extends AudioWorkletProcessor {
     for (let i = 0; i < MAXPOLY + SPARE; i++) this.V.push(makeVoice());
     this.age = 0; this.mv = null;                  // mv: Mono sesi
     this.stk = new Float64Array(16 * 3); this.stkN = 0;   // Mono nota yığını: [id, nota, velocity]
+    this.stkS = new Uint8Array(16);                      // yığın girdisi sequencer'dan mı
     this.fadeN = Math.max(1, Math.round(FADE_S * sampleRate));
     // Dilim tamponları (osc1 L/R, osc2 L/R, sub) ve sağ kanal yedeği (tek kanallı çıkış olursa)
     this.bx = [];
@@ -535,7 +558,7 @@ class P3Wavetable extends AudioWorkletProcessor {
         }
         return;
       }
-      case 'on': this.push(EV_ON, d.at, this.nid(d.id, false), +d.n, d.v == null ? 100 : +d.v, 0); return;
+      case 'on': this.push(EV_ON, d.at, this.nid(d.id, false), +d.n, d.v == null ? 100 : +d.v, d.s ? 1 : 0); return;
       case 'off': this.push(EV_OFF, d.at, this.nid(d.id, true), 0, 0, 0); return;
       case 'x': this.push(EV_X, d.at, this.nid(d.id, false), num(d.bend), num(d.slide), num(d.press)); return;
       case 'pb': this.push(EV_PB, d.at, +d.v, 0, 0, 0); return;
@@ -548,7 +571,7 @@ class P3Wavetable extends AudioWorkletProcessor {
         if (t !== undefined && t >= 0) this.push(EV_MOD, 0, t, d.src | 0, +d.amt || 0, 0);
         return;
       }
-      case 'panic': this.qn = 0; this.push(EV_PANIC, 0, 0, 0, 0, 0); return;   // planlı notalar da düşer
+      case 'panic': this.panicMsg(!!d.live); return;
       case 'profile': this.push(EV_PROFILE, 0, profCode(d.p), d.cap | 0, 0, 0); return;
       case 'tdata': this.install(d); return;
       case 'drop': TABLES.delete(d.id); if (typeof d.id === 'number') this.needSent[d.id & 255] = 0; return;
@@ -566,6 +589,23 @@ class P3Wavetable extends AudioWorkletProcessor {
     const o = i * ES;
     q[o] = type; q[o + 1] = fr; q[o + 2] = a; q[o + 3] = b; q[o + 4] = c; q[o + 5] = d;
     this.qn++;
+  }
+
+  // Bekleyen nota ve denetleyici olayları silinir (planlı notalar da); tempo/tab/matris/profil/panic kalır.
+  // live: sequencer note-on'ları (s:1) ve bütün note-off/ifade olayları da kalır.
+  panicMsg(live) {
+    const q = this.q;
+    let w = 0;
+    for (let r = 0; r < this.qn; r++) {
+      const o = r * ES, ty = q[o];
+      const drop = ty === EV_ON ? !(live && q[o + 5]) : ty === EV_OFF || ty === EV_X ? !live
+        : ty === EV_PB || ty === EV_MW || ty === EV_PRESS;
+      if (drop) continue;
+      if (w !== r) q.copyWithin(w * ES, o, o + ES);
+      w++;
+    }
+    this.qn = w;
+    this.push(EV_PANIC, 0, live ? 1 : 0, 0, 0, 0);
   }
 
   // Sayı id'ler olduğu gibi; string id'ler (ör. 'p3', 'key:KeyA') −2, −3… tamsayılarına eşlenir.
@@ -710,6 +750,7 @@ class P3Wavetable extends AudioWorkletProcessor {
     const t0 = this.clock.now();
     oL.fill(0); oR.fill(0, 0, n);
     if (this.pAny) this.applyParams();
+    subAdvance();
     this.resolveTables();
     // Olay noktalarında alt bloklara bölünür, alt bloklar en çok 32 örneklik dilimlerle işlenir.
     const f0 = typeof currentFrame === 'number' ? currentFrame : Math.round(currentTime * sampleRate);
@@ -746,7 +787,7 @@ class P3Wavetable extends AudioWorkletProcessor {
   apply(qi) {
     const q = this.q, o = qi * ES;
     switch (q[o]) {
-      case EV_ON: this.noteOn(q[o + 2], q[o + 3], q[o + 4]); break;
+      case EV_ON: this.noteOn(q[o + 2], q[o + 3], q[o + 4], q[o + 5]); break;
       case EV_OFF: this.noteOff(q[o + 2]); break;
       case EV_X: this.expr(q[o + 2], q[o + 3], q[o + 4], q[o + 5]); break;
       case EV_PB: this.pb = clamp(q[o + 2], -1, 1); break;
@@ -759,7 +800,7 @@ class P3Wavetable extends AudioWorkletProcessor {
         if (this.md[t] !== 0 && s >= 0 && s < NSRC) { this.mm[t * NSRC + s] = clamp(q[o + 4], -1, 1); this.rebuildTargets(); }
         break;
       }
-      case EV_PANIC: this.fadeAll(); this.pb = 0; this.press = 0; break;
+      case EV_PANIC: if (q[o + 2]) this.fadeLive(); else this.fadeAll(); this.pb = 0; this.press = 0; break;
       case EV_PROFILE:
         this.base = q[o + 2];
         if (q[o + 3] > 0) this.cap = clamp(q[o + 3], 1, MAXPOLY);
@@ -833,6 +874,18 @@ class P3Wavetable extends AudioWorkletProcessor {
     for (let i = 0; i < this.V.length; i++) if (this.V[i].st === 1) this.steal(this.V[i]);
     this.stkN = 0; this.mv = null;
   }
+  // Canlı panic: sequencer sesleri çalmayı sürdürür; Mono yığınında yalnız onların notaları kalır.
+  fadeLive() {
+    const V = this.V, stk = this.stk, ss = this.stkS;
+    for (let i = 0; i < V.length; i++) if (V[i].st === 1 && !V[i].seq) this.steal(V[i]);
+    let w = 0;
+    for (let r = 0; r < this.stkN; r++) {
+      if (!ss[r]) continue;
+      if (w !== r) { stk[w * 3] = stk[r * 3]; stk[w * 3 + 1] = stk[r * 3 + 1]; stk[w * 3 + 2] = stk[r * 3 + 2]; ss[w] = 1; }
+      w++;
+    }
+    this.stkN = w;
+  }
   // Çalan seslerin unison-osilatör toplamı. Osc açıklığı taban parametreden okunur: aynı blokta başlayan
   // seslerin ilk kontrol dilimi henüz çalışmamış olabilir.
   uniCount(ex) {
@@ -846,9 +899,9 @@ class P3Wavetable extends AudioWorkletProcessor {
   }
 
   // ---------------------------------------------------------------- notalar
-  noteOn(id, n, vel) {
-    n = clamp(Math.round(n), 0, 127); vel = clamp(vel, 1, 127);
-    if (this.pv[P_MONO] >= 0.5) { this.monoOn(id, n, vel); return; }
+  noteOn(id, n, vel, sq) {
+    n = clamp(Math.round(n), 0, 127); vel = clamp(vel, 1, 127); sq = sq ? 1 : 0;
+    if (this.pv[P_MONO] >= 0.5) { this.monoOn(id, n, vel, sq); return; }
     // Ses kimliği id'dir (README §H4): yalnız basılı tutulan aynı id çalınır; Release'teki ses id'yi bırakır.
     // id −1 (kimliksiz) hiçbir sesle eşleşmez.
     const V = this.V;
@@ -863,7 +916,7 @@ class P3Wavetable extends AudioWorkletProcessor {
     }
     if (same) { this.steal(same); act--; }           // aynı id: eski ses söner, yeni ses onun seviyesinden
     while (act >= this.limit) { const v = this.victim(); if (!v) break; this.steal(v); act--; }
-    this.start(this.alloc(), id, n, vel, same);
+    this.start(this.alloc(), id, n, vel, same, sq);
   }
   noteOff(id) {
     if (this.pv[P_MONO] >= 0.5) { this.monoOff(id); return; }
@@ -880,15 +933,15 @@ class P3Wavetable extends AudioWorkletProcessor {
     }
   }
   // Mono (sartname §8): son-nota yığını, legato zarflar; Glide yarım ton domeninde doğrusal.
-  monoOn(id, n, vel) {
-    const stk = this.stk;
+  monoOn(id, n, vel, sq) {
+    const stk = this.stk, ss = this.stkS;
     let top = this.stkN;
-    if (top >= 16) { stk.copyWithin(0, 3, 48); top = 15; }   // yığın dolarsa en eski nota düşer
-    stk[top * 3] = id; stk[top * 3 + 1] = n; stk[top * 3 + 2] = vel;
+    if (top >= 16) { stk.copyWithin(0, 3, 48); ss.copyWithin(0, 1, 16); top = 15; }   // yığın dolarsa en eski nota düşer
+    stk[top * 3] = id; stk[top * 3 + 1] = n; stk[top * 3 + 2] = vel; ss[top] = sq;
     this.stkN = top + 1;
     const v = this.mv;
     if (v && v.st === 1) {
-      v.id = id; v.vel = vel;
+      v.id = id; v.vel = vel; v.seq = sq;
       this.glideTo(v, n);
       if (top === 0) {   // basılı tuş yoktu (ses Release'teydi): zarflar o anki değerden yeniden başlar
         v.held = true; v.retrig = true;
@@ -899,7 +952,7 @@ class P3Wavetable extends AudioWorkletProcessor {
       return;
     }
     const nv = this.alloc();
-    this.start(nv, id, n, vel, null);
+    this.start(nv, id, n, vel, null, sq);
     this.mv = nv;
   }
   monoOff(id) {
@@ -908,10 +961,11 @@ class P3Wavetable extends AudioWorkletProcessor {
     for (let i = n - 1; i >= 0; i--) if (stk[i * 3] === id) { at = i; break; }
     if (at < 0) return;
     stk.copyWithin(at * 3, (at + 1) * 3, n * 3);
+    this.stkS.copyWithin(at, at + 1, n);
     this.stkN = --n;
     const v = this.mv;
     if (!v || v.st !== 1 || at !== n) return;   // bırakılan nota çalan (en üstteki) değildi
-    if (n > 0) { v.id = stk[(n - 1) * 3]; this.glideTo(v, stk[(n - 1) * 3 + 1]); }   // legato: önceki notaya
+    if (n > 0) { v.id = stk[(n - 1) * 3]; v.seq = this.stkS[n - 1]; this.glideTo(v, stk[(n - 1) * 3 + 1]); }   // legato: önceki notaya
     else this.release(v);
   }
   glideTo(v, n) {
@@ -921,8 +975,9 @@ class P3Wavetable extends AudioWorkletProcessor {
     else { v.pitch = n; v.pstep = 0; }
   }
 
-  start(v, id, n, vel, inh) {
+  start(v, id, n, vel, inh, sq) {
     const pv = this.pv;
+    v.seq = sq ? 1 : 0;
     for (let e = 0; e < 3; e++) v.from[e] = inh ? inh.env[e].v : e === 0 ? 0 : NaN;   // NaN: Env2/3 Initial'dan
     v.st = 1; v.id = id; v.note = n; v.vel = vel; v.held = true; v.age = ++this.age;
     v.fresh = true; v.retrig = false; v.fade = 0;
@@ -1105,7 +1160,7 @@ class P3Wavetable extends AudioWorkletProcessor {
   // Sub: sesin perdesi × 2^(−oktav); Tone karelere pozisyon olarak okunur. Merkez pan (eşit güç).
   ctlSub(v, first, herm) {
     const sb = v.sub, ev = v.ev, p = v.pc;
-    if (ev[P_SUBON] < 0.5) { sb.on = false; return; }
+    if (ev[P_SUBON] < 0.5 || !this.subRef) { sb.on = false; return; }   // tablo henüz yoksa sessiz
     const init = first || !sb.on;
     sb.on = true;
     const f = mtof(p) * Math.pow(2, -clamp(Math.round(ev[P_SUBOCT]), 0, 2));

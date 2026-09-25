@@ -13,6 +13,8 @@
  * - restore(snap) durumu yerinde değiştirir (P3.S kimliği korunur), geçmişi siler ve
  *   bus 'state' {path:'*'} + 'restore' yayınlar.
  * - bus 'history' {canUndo, canRedo}: undo LED'i ve düğme durumları için.
+ * - bus 'undo' / 'redo' {label, changes:[{path, prev, next}]}: uygulanan kaydın kopyası (modes, Scale geri
+ *   alınınca o anki pad konumlarını yeniden hizalamak için kullanır).
  * - Undo kayıtları nesne değerlerini derin kopyalar; sonradan yerinde yapılan değişiklikler geçmişi bozmaz.
  * - Yalnız synth track'lerde p/mods vardır (§D'de drum track'te yok). JSON'dan dönen p (dizi ya da
  *   {"0":…} nesnesi) init/restore sırasında Float32Array'e çevrilir.
@@ -21,6 +23,9 @@
  *   Faz 3 kayıtları da `(yakında)` der (planlı özellik); `(bu simülatörde yok)` yalnız phase 0.
  * - i18n köprüsü yükleme anında değil P3.bridgeI18n() ile kurulur; P3.store.init onu çağırır.
  * - P3.save.load() ilk çağrıda pagehide/visibilitychange'e flush bağlar (bekleyen yazı kaybolmasın).
+ * - P3.save çok sekmede güvenlidir: patch edilen yollar kirli listesinde tutulur; flush diski yeniden okur,
+ *   yalnız bu sekmenin patch'lediği yolları üstüne uygular ve yazar. Bekleyen patch yoksa flush yazmaz.
+ *   Başka sekme kaydı değiştirince ('storage' olayı) önbellek diskten yenilenir, kirli yollar yeniden uygulanır.
  */
 (function () {
   'use strict';
@@ -28,7 +33,7 @@
 
   // ---------------------------------------------------------------- sabitler
   P3.K = {
-    V: '20260925c',
+    V: '20260925d',
     HOLD_MS: 300, DOUBLE_MS: 500, TOUCH_POPUP_MS: 400, POPUP_MS: 1500,
     UNDO_MAX: 100,
     SAVE_KEY: 'bk_push3_v1', SAVE_MS: 300,
@@ -72,7 +77,9 @@
       // VARSAYIM: MiscButton = Main Track eşlemesi çıkarım (dogrulanmis-donanim.md §244).
       mainTrack: { phase: 2, partial: true, tr: `Main Track: Ana (master) track'i seçer; Mix görünümünde ana çıkışın seviyesini ve efektlerini ayarlarsın (yakında).` }
     },
-    kbVel: 100, kbVelShift: 70
+    kbVel: 100, kbVelShift: 70,
+    // Ses seviyelerinin varsayılanı (dB): initState, Delete ile sıfırlama (modes) ve LCD yedeği bunu okur.
+    VOL_DEF: { main: -6, phones: -6, track: 0, cue: -10 }
   };
 
   // ---------------------------------------------------------------- olay yolu
@@ -224,7 +231,7 @@
       scale: { root: 0, idx: 0, inKey: true, fixed: false, layoutIdx: 0 },
       transport: { playing: false, rec: 'idle', bpm: 120, swing: 0, metro: false, tapTimes: [] },
       swingTempo: 'tempo',
-      vol: { target: 'main', main: -6, phones: -6, cue: -10 },
+      vol: { target: 'main', main: P3.K.VOL_DEF.main, phones: P3.K.VOL_DEF.phones, cue: P3.K.VOL_DEF.cue },
       accent: { on: false },
       strip: { mode: 'pb', pb: 0, mod: 0 },
       wtui: { bank: 0, osc: '1', flt: 1, env: 'amp', lfo: 1, ampView: 'time', modView: 'time', expr: 'mpe', target: null, prevBank: 0, touched: -1 },
@@ -406,7 +413,7 @@
       applyRecord(rec, 'prev');
       redoStack.push(rec);
       emitHistory();
-      P3.bus.emit('undo', { label: rec.label });
+      P3.bus.emit('undo', { label: rec.label, changes: deepClone(rec.changes) });
       return true;
     },
 
@@ -418,7 +425,7 @@
       applyRecord(rec, 'next');
       undoStack.push(rec);
       emitHistory();
-      P3.bus.emit('redo', { label: rec.label });
+      P3.bus.emit('redo', { label: rec.label, changes: deepClone(rec.changes) });
       return true;
     },
 
@@ -456,6 +463,26 @@
   // ---------------------------------------------------------------- yerel kayıt
   // Tek anahtar altında tek JSON. Gizli modda / kota dolunca / bozuk JSON'da sessizce boş nesneye düşer.
   var saveCache = null, saveTimer = null, saveHooked = false;
+  var saveDirty = [];   // bu sekmenin henüz yazılmamış patch'leri, sırayla: {key, value}
+
+  // key noktalı yol; value undefined ise anahtar silinir.
+  function applyPatch(o, key, value) {
+    var parts = splitPath(key);
+    if (!parts.length) return;
+    for (var i = 0; i < parts.length - 1; i++) {
+      if (o[parts[i]] === null || typeof o[parts[i]] !== 'object') o[parts[i]] = {};
+      o = o[parts[i]];
+    }
+    if (value === undefined) delete o[parts[parts.length - 1]];
+    else o[parts[parts.length - 1]] = value;
+  }
+
+  // Disk + bu sekmenin bekleyen patch'leri (başka sekmenin yazdıkları ezilmez).
+  function mergedSaved() {
+    var o = readSaved();
+    saveDirty.forEach(function (d) { applyPatch(o, d.key, d.value); });
+    return o;
+  }
 
   function storage() {
     try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (e) { return null; }
@@ -474,6 +501,10 @@
     if (saveHooked || typeof window.addEventListener !== 'function') return;
     saveHooked = true;
     window.addEventListener('pagehide', function () { P3.save.flush(); });
+    // Başka sekme yazdı: önbellek diskten yenilenir (bekleyen yerel patch'ler korunur).
+    window.addEventListener('storage', function (e) {
+      if (e && (e.key === P3.K.SAVE_KEY || e.key === null)) saveCache = mergedSaved();
+    });
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') P3.save.flush(); });
     }
@@ -482,8 +513,8 @@
   P3.save = {
     // Diskten yeniden okur (başka sekmenin yazdığını görmek için de kullanılır). Bekleyen yazı önce yazılır.
     load: function () {
-      if (saveTimer !== null) P3.save.flush();
-      saveCache = readSaved();
+      if (saveDirty.length) P3.save.flush();
+      saveCache = mergedSaved();
       hookUnload();
       return saveCache;
     },
@@ -499,30 +530,31 @@
     },
     patch: function (key, value) {
       if (!saveCache) saveCache = readSaved();
-      var parts = splitPath(key);
-      if (!parts.length) return;
-      var o = saveCache;
-      for (var i = 0; i < parts.length - 1; i++) {
-        if (o[parts[i]] === null || typeof o[parts[i]] !== 'object') o[parts[i]] = {};
-        o = o[parts[i]];
-      }
-      if (value === undefined) delete o[parts[parts.length - 1]];
-      else o[parts[parts.length - 1]] = value;
+      key = String(key);
+      if (!splitPath(key).length) return;
+      applyPatch(saveCache, key, value);
+      for (var i = saveDirty.length - 1; i >= 0; i--) if (saveDirty[i].key === key) saveDirty.splice(i, 1);
+      saveDirty.push({ key: key, value: value });
       if (saveTimer !== null) clearTimeout(saveTimer);
       saveTimer = setTimeout(P3.save.flush, P3.K.SAVE_MS);
     },
+    // Yalnız bekleyen patch'ler, diskteki güncel kaydın üstüne yazılır (başka sekmenin ilerlemesi korunur).
     flush: function () {
       if (saveTimer !== null) { clearTimeout(saveTimer); saveTimer = null; }
-      if (!saveCache) return;
-      if (saveCache.v === undefined) saveCache.v = 1;
+      if (!saveDirty.length) return;
+      var o = mergedSaved();
+      if (o.v === undefined) o.v = 1;
+      saveCache = o;
+      // Yazılamazsa (gizli mod / kota) patch'ler bekler: ilerleme bu oturumda kalır, sonraki flush yeniden dener.
       try {
         var ls = storage();
-        if (ls) ls.setItem(P3.K.SAVE_KEY, JSON.stringify(saveCache));
-      } catch (e) { /* gizli mod / kota: ilerleme yalnız bu oturumda kalır */ }
+        if (ls) { ls.setItem(P3.K.SAVE_KEY, JSON.stringify(o)); saveDirty = []; }
+      } catch (e) { /* yut */ }
     },
     reset: function () {
       if (saveTimer !== null) { clearTimeout(saveTimer); saveTimer = null; }
       saveCache = {};
+      saveDirty = [];
       try { var ls = storage(); if (ls) ls.removeItem(P3.K.SAVE_KEY); } catch (e) { /* yut */ }
     }
   };

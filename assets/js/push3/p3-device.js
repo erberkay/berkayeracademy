@@ -28,7 +28,8 @@
  * - Nötrleştirmeye ek: strip'in statik noktası `Group 8` gizlenir (canlı nokta hareket eder),
  *   boşalan blend grubu `Rectangle 39` ile olası desen dolgulu arka plan silinir. "57 no-op rect"
  *   kuralı fill="none" ve stroke'suz rect'tir (dosyada tam 57; 2'sinin fill-opacity'si 0.04 değil).
- * - Ek API: GROUPS, PAD, VIEWS, view, svgRect, ring, stripDot, stripY, stripValue, targetG, expand.
+ * - Ek API: GROUPS, PAD, VIEWS, view, svgRect, ring, stripDot, stripY, stripValue, targetG, expand, ariaAttrs
+ *   (hotspot'un ARIA öznitelikleri; Jog role=spinbutton, değer özniteliği yok).
  *   hotspotEl, controlRect ve svgRect `{pad:[x,y]}` de kabul eder (hitTest'in döndürdüğü biçim).
  * - align() LCD canvas'ın arka tamponunu da kurar (CSS px × DPR, en çok 2) ve bus'a
  *   'layout' {view, scale, lcdResized} yayar; tampon değişince canvas silinir, p3-lcd yeniden çizer.
@@ -547,6 +548,29 @@
     return 'p3-hotspot p3-hs-' + c.kind + extra;
   }
 
+  // Hotspot'un ARIA öznitelikleri (pad yüzeyi hariç; onu padSurface kurar). Slider'ların aria-valuenow/valuetext'i
+  // yer tutucudur, değeri bilen modül yazar (encoder'lar, Volume, Swing&Tempo p3-lcd; strip p3-input). Jog sonsuz
+  // bir encoder'dır, konumu yok: role=spinbutton (ARIA 1.2'de değer özniteliği zorunlu değil), hep 0 okunan bir
+  // slider değeri yazılmaz.
+  function ariaAttrs(id) {
+    var c = CONTROLS[id];
+    if (!c || c.kind === 'pad') return null;
+    var a = { 'aria-label': c.label };
+    if (id === 'jog') a.role = 'spinbutton';
+    else if (c.kind === 'enc' || c.kind === 'strip') {
+      a.role = 'slider';
+      a['aria-orientation'] = 'vertical';
+      a['aria-valuemin'] = 0;
+      a['aria-valuemax'] = 100;
+      a['aria-valuenow'] = 0;
+    } else {
+      a.role = 'button';
+      if (c.toggle) a['aria-pressed'] = 'false';
+      if (c.keys) a['aria-keyshortcuts'] = c.keys;
+    }
+    return a;
+  }
+
   function buildHotspots() {
     Object.keys(hotspots).forEach(function (id) { if (hotspots[id] !== surface) drop(hotspots[id]); });
     hotspots = {};
@@ -556,15 +580,7 @@
       el.setAttribute('data-id', id);
       if (c.kind !== 'pad') {
         el.tabIndex = 0;
-        el.setAttribute('aria-label', c.label);
-        if (c.kind === 'enc' || c.kind === 'strip') {
-          // Yer tutucu değerler: aria-valuenow/valuetext'i parametreyi bilen modül yazar.
-          attrs(el, { role: 'slider', 'aria-orientation': 'vertical', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0 });
-        } else {
-          el.setAttribute('role', 'button');
-          if (c.toggle) el.setAttribute('aria-pressed', 'false');
-          if (c.keys) el.setAttribute('aria-keyshortcuts', c.keys);
-        }
+        attrs(el, ariaAttrs(id));
       }
       // Tıklama alanı çizimle aynı olsun: daireler border-radius (tarayıcı isabeti ve odak
       // halkası buna uyar), çapraz bölgeler clip-path üçgeni.
@@ -726,7 +742,7 @@
     svg: null, live: null, view: view, stripDot: null, targetG: null,
     CONTROLS: CONTROLS, GROUPS: GROUPS, PAD: PAD, VIEWS: VIEWS,
     toSvg: toSvg, hitTest: hitTest, padAt: padAt, svgRect: svgRect, controlRect: controlRect,
-    align: align, setView: setView, expand: expand, stripY: stripY, stripValue: stripValue,
+    align: align, setView: setView, expand: expand, stripY: stripY, stripValue: stripValue, ariaAttrs: ariaAttrs,
     glyph: function (id) { return glyphs[id] || null; },
     padEl: function (i) { return pads[i] || null; },
     bar: function (id) { return bars[id] || null; },

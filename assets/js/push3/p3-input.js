@@ -28,7 +28,17 @@
  * - steps ivmesiz ham px'ten sayılır (enum/int parametreler ivmeyle seçenek atlamasın); turn ivmelidir.
  * - Tekerlek: çentik benzeri olay (|Δ| ≥ 40 px) tam bir çentik; trackpad'in küçük Δ'ları 40 px'te bir çentik.
  * - Ctrl/⌘+Z → Undo düğmesine bas-bırak. Ctrl/⌘+Shift+Z → Shift basılı değilse geçici Shift + Undo
- *   (Push'taki Shift+Undo = Redo). Ctrl/⌘+S → Save (haritada var; modes popup'ını gösterir).
+ *   (Push'taki Shift+Undo = Redo); geçici Shift'in down olayı combo:true taşır (öğretici kilidi Undo izinliyse
+ *   onu da geçirir). Ctrl/⌘+S → Save (haritada var; modes popup'ını gösterir). Harf e.key'den okunur (TR-F,
+ *   AZERTY: Z/S harfinin yeri); e.key Latin harf değilse (Kiril vb.) fiziksel e.code'a düşülür.
+ * - Shift tuşu ertelenir: keydown'da Push'un Shift'ine basılmaz. Sonraki tuş (Tab hariç) ya da sahnedeki bir
+ *   pointer basışı onu basar; Shift yalnız basılıp bırakılırsa bas-bırak olur. Tab gelirse iptal: Shift+Tab
+ *   ile geri gezinmek Push'un Shift'ine basmaz (Seviye 1'de yanlış cevap sayılmaz).
+ * - Odaktaki encoder/jog'da Space = Enter (Volume, Swing&Tempo, Jog'da press); odaktaki strip'te Enter/Space
+ *   tüketilir ve bir şey yapmaz. İkisi de Play/Record kısayoluna düşmez.
+ * - Strip hotspot'unun aria-valuenow (0..100) / aria-valuetext'i S.strip'ten yazılır (pb: −1..1 → 0..100).
+ * - Sahne (#p3Stage) kaydırılamaz: odak kısmen görünen bir hotspot'a gelince tarayıcı sahneyi kaydırırsa
+ *   hemen geri alınır (P3.dev.toSvg'nin önbellekteki CTM'i eskimesin); pad odağı preventScroll ile taşınır.
  * - Escape her yerde (metin alanı hariç) releaseAll + P3.panic('escape'); sahne odaktaysa ayrıca
  *   {k:'btn', id:'escape', down} (keyup'ta down:false). Tek tuş değil, kbOn kapalıyken de çalışır.
  * - contextmenu: sahnede yalnız engellenir, panic yok. Android'de pad'e uzun basmak contextmenu üretir;
@@ -52,7 +62,7 @@
  *   PgUp/PgDn tekrarları ARIA slider geleneğiyle değeri sürdürür.
  * - macOS'ta ⌘ basılıyken diğer tuşların keyup'ı gelmez: ⌘ bırakılınca klavyeyle basılı her şey bırakılır.
  * - Ek API: P3.input.focus() (sahneyi odaklar; p3-app oyuna girerken çağırmalı), P3.input.kbVelocity(),
- *   P3.input.util (saf yardımcılar; testler için).
+ *   P3.input.util (saf yardımcılar; testler için; SHORTCUTS ve KB_ROWS p3-app'in tuş katmanının kaynağı).
  */
 (function () {
   'use strict';
@@ -88,6 +98,7 @@
   };
 
   var PRESS_ENC = { volume: 1, swingTempo: 1, jog: 1 };
+  var SHIFT_CODE = { ShiftLeft: 1, ShiftRight: 1 };
 
   // ---------------------------------------------------------------- saf yardımcılar
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
@@ -213,12 +224,15 @@
     return { k: 'btn', id: id, down: down };
   }
 
-  function press(id, src) {
+  // combo: Ctrl/⌘ kombinasyonunun sentezlediği basış (down olayı combo:true taşır).
+  function press(id, src, combo) {
     var b = btns[id];
     if (b) { b.src[src] = 1; return; }
     b = btns[id] = { t0: now(), src: {} };
     b.src[src] = 1;
-    emit(ctlEvent(id, true));
+    var ev = ctlEvent(id, true);
+    if (combo) ev.combo = true;
+    emit(ev);
   }
 
   function release(id, src) {
@@ -431,6 +445,7 @@
     var hs = hotspotOf(e.target), id = hs && hs.getAttribute('data-id'), c = id && ctl(id);
     if (!c) return;
     e.preventDefault();
+    flushShift();   // klavye Shift'i basılıyken dokunuş: Push'ta Shift + kontrol
     capture(hs, e.pointerId);   // her zaman: parmak yüzeyden çıkıp orada kalksa da up bize gelir
     focusStage();
     var pid = e.pointerId;
@@ -553,6 +568,26 @@
     press(id, 'key:' + code);
   }
 
+  // Ertelenen Shift (Shift+Tab Push'un Shift'ine basmasın): keydown yalnız işaretler.
+  function keyShift(code) {
+    if (keyHeld[code]) return;
+    keyHeld[code] = { kind: 'shiftPend', id: 'shift', src: 'key:' + code };
+  }
+
+  // Bekleyen Shift'i gerçek basışa çevirir (sonraki tuş ya da pointer basışı gelince).
+  function flushShift() {
+    keysOf(keyHeld).forEach(function (code) {
+      var h = keyHeld[code];
+      if (h.kind !== 'shiftPend') return;
+      h.kind = 'btn';
+      press(h.id, h.src);
+    });
+  }
+
+  function cancelShift() {
+    keysOf(keyHeld).forEach(function (code) { if (keyHeld[code].kind === 'shiftPend') delete keyHeld[code]; });
+  }
+
   function keyStrip(code, delta, abs) {
     if (strip && strip.src !== 'key') return;   // parmak strip'teyken klavye karışmaz
     var from = strip ? strip.v : stripStateValue();
@@ -561,9 +596,11 @@
     if (!keyHeld[code]) { keyHeld[code] = { kind: 'strip' }; strip.keys++; }
   }
 
-  function endKey(h, t) {
+  // tapPending: bekleyen Shift yalnız basılıp bırakıldı (keyup) → bas-bırak; releaseAll'da basılmaz.
+  function endKey(h, t, tapPending) {
     if (h.kind === 'pad') padOff(h, t);
     else if (h.kind === 'btn') release(h.id, h.src);
+    else if (h.kind === 'shiftPend') { if (tapPending) tap(h.id, h.src); }
     else if (h.kind === 'strip') { if (strip && strip.src === 'key' && --strip.keys <= 0) stripEnd(); }
     else if (h.kind === 'escape') emit({ k: 'btn', id: 'escape', down: false, dt: now() - h.t0 });
   }
@@ -594,7 +631,8 @@
     if (next && next !== cell) {
       cell.tabIndex = -1;
       next.tabIndex = 0;
-      next.focus();
+      // Kısmen görünen pad'e odak sahneyi kaydırmasın (katman hizası bozulur).
+      try { next.focus({ preventScroll: true }); } catch (err) { next.focus(); }
     }
     return true;
   }
@@ -609,7 +647,7 @@
       case 'PageDown': n = -PAGE_STEPS; turn = -PAGE_TURN; break;
       case 'Home': n = -RANGE_STEPS; turn = -1; fine = false; break;
       case 'End': n = RANGE_STEPS; turn = 1; fine = false; break;
-      case 'Enter':
+      case 'Enter': case 'Space':   // Space de: Play kısayoluna düşmesin
         if (!e.repeat && PRESS_ENC[id]) emit({ k: 'enc', id: id, press: true });
         return true;
       case 'Delete':
@@ -630,6 +668,7 @@
       case 'PageDown': keyStrip(e.code, -STRIP_PAGE); return true;
       case 'Home': if (!e.repeat) keyStrip(e.code, 0, 0); return true;
       case 'End': if (!e.repeat) keyStrip(e.code, 0, 1); return true;
+      case 'Enter': case 'Space': return true;   // strip'in basışı yok; Record/Play kısayoluna düşmesin
       default: return false;
     }
   }
@@ -648,19 +687,28 @@
   }
 
   // Ctrl/⌘ kombinasyonları: tek tuş değil, kbOn'dan bağımsız (yine de yalnız sahne odaktayken).
+  // Kombinasyon harfi: kullanıcının düzenindeki harf (e.key); Latin harf değilse fiziksel tuş (e.code).
+  function comboLetter(e) {
+    var k = typeof e.key === 'string' ? e.key.toLowerCase() : '';
+    if (/^[a-z]$/.test(k)) return k;
+    var m = /^Key([A-Z])$/.exec(e.code || '');
+    return m ? m[1].toLowerCase() : '';
+  }
+
   function comboKey(e) {
-    if (e.code === 'KeyZ') {
+    var letter = comboLetter(e);
+    if (letter === 'z') {
       if (e.repeat) return true;
       if (!e.shiftKey) tap('undo', 'key:combo');
       else {
         var synth = !btns.shift;   // Push'ta Redo = Shift+Undo
-        if (synth) press('shift', 'key:combo');
+        if (synth) press('shift', 'key:combo', true);
         tap('undo', 'key:combo');
         if (synth) release('shift', 'key:combo');
       }
       return true;
     }
-    if (e.code === 'KeyS') {
+    if (letter === 's') {
       if (!e.repeat) tap('save', 'key:combo');
       return true;
     }
@@ -682,6 +730,7 @@
   function shortcutKey(e) {
     var code = e.code;
     if (code === 'Slash' && e.shiftKey) { P3.bus.emit('keys', {}); return true; }
+    if (SHORTCUTS[code] === 'shift') { keyShift(code); return true; }
     if (SHORTCUTS[code]) { keyBtn(code, SHORTCUTS[code]); return true; }
     var xy = kbPad(code, kbWin());
     if (xy) { keyPad(code, xy[0], xy[1], e.shiftKey); return true; }
@@ -708,8 +757,10 @@
     if (e.defaultPrevented || e.isComposing || !e.code) return;   // IME ve kodsuz sanal klavye tuşları
     var ae = document.activeElement;
     if (e.code === 'Escape') { if (!isTextField(ae)) escapeKey(e); return; }
+    if (e.code === 'Tab') { cancelShift(); return; }   // Shift+Tab: geri gezinme, Push'un Shift'i değil
     if (!stageHasFocus() || isNative(ae)) return;   // koç balonundaki gibi gerçek düğmeler kendi tuşlarını kullanır
     if (e.altKey) return;
+    if (!SHIFT_CODE[e.code]) flushShift();
     if (ae !== stage && focusedKey(e, ae)) { e.preventDefault(); return; }
     if (e.ctrlKey || e.metaKey) { if (comboKey(e)) e.preventDefault(); return; }
     if (!kbOn()) return;
@@ -722,7 +773,7 @@
     var h = keyHeld[e.code];
     if (!h) return;
     delete keyHeld[e.code];
-    endKey(h, now());
+    endKey(h, now(), stageHasFocus());
   }
 
   // ---------------------------------------------------------------- panik ve yaşam döngüsü
@@ -768,8 +819,26 @@
   function onBlur(e) { if (!e || e.target === window || e.target === document) panicAll('blur'); }
   function onPageHide() { panicAll('pagehide'); }
 
+  // Strip slider'ının erişilebilir değeri (p3-device yer tutucu 0 yazar; değeri tutan S.strip).
+  function syncStripAria() {
+    var el = P3.dev && typeof P3.dev.hotspotEl === 'function' ? P3.dev.hotspotEl('strip') : null;
+    var s = P3.S && P3.S.strip;
+    if (!el || !el.setAttribute || !s) return;
+    var mod = s.mode === 'mod', v = stripStateValue(), pb = clamp(+s.pb || 0, -1, 1), txt;
+    if (mod) txt = `Mod Wheel ${Math.round(v * 100)}%`;
+    else txt = `Pitch Bend ${pb > 0 ? '+' : ''}${Math.round(pb * 100)}%`;
+    el.setAttribute('aria-valuenow', String(Math.round(v * 100)));
+    el.setAttribute('aria-valuetext', txt);
+  }
+
   function onState(ch) {
     if (ch && (ch.path === 'prefs.kbOn' || ch.path === '*') && !kbOn()) releaseKeys();
+    if (ch && (ch.path === '*' || /^strip(\.|$)/.test(String(ch.path)))) syncStripAria();
+  }
+
+  // overflow:clip desteklemeyen tarayıcıda odak sahneyi kaydırırsa geri al (toSvg önbellekteki CTM'i kullanır).
+  function onStageScroll() {
+    if (stage && (stage.scrollTop || stage.scrollLeft)) { stage.scrollTop = 0; stage.scrollLeft = 0; }
   }
 
   // ---------------------------------------------------------------- dış API
@@ -793,6 +862,7 @@
     layer.addEventListener('wheel', onWheel, { passive: false });
     layer.addEventListener('focusin', onFocusIn);
     layer.addEventListener('focusout', onFocusOut);
+    if (stage) stage.addEventListener('scroll', onStageScroll);
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
@@ -803,6 +873,7 @@
 
     P3.bus.on('panic', releasePads);
     P3.bus.on('state', onState);
+    syncStripAria();
     return true;
   }
 
@@ -822,7 +893,7 @@
     util: {
       accel: accel, encDrag: encDrag, wheelNotch: wheelNotch, kbPad: kbPad, jogDelta: jogDelta,
       flickDir: flickDir, posVel: posVel, groupLeaf: groupLeaf,
-      ENC_PX: ENC_PX, STEP_PX: STEP_PX, JOG_DEG: JOG_DEG, KB_ROWS: KB_ROWS
+      ENC_PX: ENC_PX, STEP_PX: STEP_PX, JOG_DEG: JOG_DEG, KB_ROWS: KB_ROWS, SHORTCUTS: SHORTCUTS
     }
   };
 })();

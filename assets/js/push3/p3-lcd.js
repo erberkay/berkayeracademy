@@ -63,7 +63,7 @@
  * - #p3LcdLive: açılıştaki ilk çizim duyurulmaz; sonraki sayfa/bank değişimlerinde son durum en çok
  *   500 ms'de bir yazılır.
  * - Popup: sub verilirse iki satır (ana metin taban 82, alt satır 104, gri 13 px). 'restore'da temizlenir.
- * - Ek API: render() (anında çizim; test ve selftest), filterResponse(fp, f, fs), learnChapterAt(k),
+ * - Ek API: render() (anında çizim; test ve selftest), filterResponse(fp, f, fs), learnChapterAt(k), learnPages(),
  *   text.volume(S) / text.volumeSub(S) / text.swingTempo(S) (popup metinleriyle aynı biçim:
  *   'Main Output: -10.0 dB'; volumeSub popup alt satırı, yalnız Headphones'ta 'Browser: single output').
  */
@@ -887,6 +887,12 @@
     return ch && k >= 1 && k <= 8 ? ch.slug : null;
   }
 
+  // Learn sayfasında görünen bölüm sayfası (p3-leds Page ◀▶ ışığı için): {page, pages}, bölüm yoksa null.
+  function learnPages() {
+    var S = P3.S, L = S ? learnModel(S) : null;
+    return L ? { page: L.page, pages: L.pages } : null;
+  }
+
   // Faz 1'de olmayan görünüm/overlay (Mix, Clip, Fixed Length…): modes popup'ı da gösterir.
   function pageUnsupported(ctx, S) {
     use(ctx);
@@ -950,7 +956,7 @@
   // ---------------------------------------------------------------- metinler (popup + ARIA)
   // [etiket, değer metni, dB, alt satır ('' ya da §I8 Headphones notu)]
   function volumeParts(S) {
-    var v = S.vol || {}, t = VOL_LABEL[v.target] ? v.target : 'main', db = num(v[t], t === 'track' ? 0 : -10);
+    var v = S.vol || {}, t = VOL_LABEL[v.target] ? v.target : 'main', db = num(v[t], P3.K && P3.K.VOL_DEF && typeof P3.K.VOL_DEF[t] === 'number' ? P3.K.VOL_DEF[t] : (t === 'track' ? 0 : t === 'cue' ? -10 : -6));
     return [VOL_LABEL[t], db < -70 ? '-inf dB' : fixed(db, 1) + ' dB', db, VOL_SUB[t] || ''];
   }
 
@@ -1246,6 +1252,7 @@
     render: render,
     filterResponse: filterResponse,
     learnChapterAt: learnChapterAt,
+    learnPages: learnPages,
     text: {
       volume: function (S) { var p = volumeParts(S || P3.S); return p[0] + ': ' + p[1]; },
       volumeSub: function (S) { return volumeParts(S || P3.S)[3]; },

@@ -59,6 +59,11 @@
  *   bar'dan başlayan kayıt için de aynı tolerans.
  * - Swing yalnız değer olarak saklanır (Faz 1; sartname-scale-note §9). Count-in, Fixed Length,
  *   Repeat, Quantize Faz 2.
+ * - Planlanmış pencerenin (lookahead) gerisinde kalan koşul değişikliği o track için hemen yeniden planlanır
+ *   (replanTrack): kayıt bitince yeni döngünün ilk vuruşu ve Record'la yeniden başlayan clip'in bar'daki ilk
+ *   notası kaybolmaz. Bekleyen yeniden başlatma iptal edilirse bar'dan sonrası geri alınır.
+ * - Drum vuruşları P3.drums.trigger(pad, vel, when, 'seq') ile planlanır: bus 'panic' (canlı sesler) onlara
+ *   dokunmaz. Stop'ta planlanmış metronom tıkları da iptal edilir.
  */
 (function () {
   'use strict';
@@ -98,6 +103,7 @@
   var seqId = 0, recSeq = 0;
   var rec = { track: -1, start: 0, prev: 'idle', key: '', label: 'Record' };
   var recOpen = [];            // açık kayıt notaları {track, p, onAt, onB, t}
+  var clicks = [];             // planlanmış metronom tıkları {o, g, at} (Stop'ta gelecektekiler iptal)
   var selfWrite = 0;
 
   // ---------------------------------------------------------------- yardımcılar
@@ -265,12 +271,29 @@
     g.connect(out);
     o.start(at);
     o.stop(at + METRO_DUR + 0.005);
-    o.onended = function () { try { g.disconnect(); } catch (e) { /* zaten kopuk */ } };
+    var k = { o: o, g: g, at: at };
+    while (clicks.length && clicks[0].at < c.currentTime - 1) clicks.shift();
+    clicks.push(k);
+    o.onended = function () {
+      try { g.disconnect(); } catch (e) { /* zaten kopuk */ }
+      var j = clicks.indexOf(k);
+      if (j >= 0) clicks.splice(j, 1);
+    };
+  }
+  // n'den sonra başlayacak tıklar çalmaz (Stop).
+  function cancelClicks(n) {
+    clicks.forEach(function (k) {
+      if (k.at <= n) return;
+      try { k.o.stop(n); } catch (e) { /* eski Safari ikinci stop'ta hata atabilir */ }
+      try { k.g.disconnect(); } catch (e) { /* zaten kopuk */ }
+    });
+    clicks = [];
   }
 
   // [b0, b1) aralığındaki clip notaları. Her aday beat aynı formülle hesaplanıp aynı sınırla
   // karşılaştırılır; ardışık aralıklar bir bölüntü olduğundan hiçbir nota iki kez planlanmaz.
-  function trackRange(i, t, b0, b1, n) {
+  // skip: {'t|p': true} bu planlamada atlanan notalar (replanTrack).
+  function trackRange(i, t, b0, b1, n, skip) {
     var c = t.clips && t.clips[0];
     if (!c || !c.notes || !c.notes.length) return;
     if (recState() === 'rec' && rec.track === i) return;
@@ -280,7 +303,7 @@
     if (!(L > 0) || b1 <= b0) return;
     for (var j = 0; j < c.notes.length; j++) {
       var note = c.notes[j];
-      if (note.m || note.t < lp[0] - EPS || note.t >= lp[1] - EPS) continue;
+      if (note.m || note.t < lp[0] - EPS || note.t >= lp[1] - EPS || (skip && skip[note.t + '|' + note.p])) continue;
       var off = base + (note.t - lp[0]);
       // Loop sonunda nota kesilir (Live'daki gibi).
       var d = Math.max(MIN_D, Math.min(note.d || MIN_D, lp[1] - note.t));
@@ -298,7 +321,7 @@
     if (t.kind === 'drum') {
       var pad = note.p - 36;
       if (padSilenced(t, pad)) return;
-      if (clockCtx && P3.drums) P3.drums.trigger(pad, note.v, when);
+      if (clockCtx && P3.drums) P3.drums.trigger(pad, note.v, when, 'seq');
       if (when > lastDrumAt) lastDrumAt = when;
     } else {
       o.id = 'seq:' + (++seqId);
@@ -307,6 +330,15 @@
     o.vis = { on: when, off: Infinity, st: 0, e: { track: i, note: note.p, vel: note.v } };
     vis.push(o.vis);
     open.push(o);
+  }
+
+  // Track'in [from, schedBeat) aralığı hemen planlanır (koşulu, planlanmış pencere içinde değişti). Aralık
+  // daha önce bu track için planlanmamış olmalı; LATE_S'ten eski notalar tick'teki gibi atlanır.
+  function replanTrack(i, from, skip) {
+    var t = track(i);
+    if (!playing || !t) return;
+    var n = now(), b0 = Math.max(from, timeToBeat(n - LATE_S) - EPS);
+    if (schedBeat > b0) trackRange(i, t, b0, schedBeat, n, skip);
   }
 
   // Note-off'lar asla atlanmaz: ufka giren her açık nota kapanır (gerekirse hemen).
@@ -403,6 +435,7 @@
     open.forEach(function (o) { endVoice(o, Math.max(n, o.on)); });
     open = [];
     if (lastDrumAt > n && clockCtx && P3.drums && typeof P3.drums.panic === 'function') P3.drums.panic();
+    cancelClicks(n);
     flushAllVis();
     segs = []; schedBeat = 0; clockCtx = null; lastDrumAt = -1; stops = [];
   }
@@ -470,7 +503,13 @@
     var s = S();
     if (!s) return 'idle';
     var st = recState(), sel = (s.sel && s.sel.track) || 0;
-    if (st === 'rec') { finishRec(); setRec('play'); }
+    if (st === 'rec') {
+      // Kayıt sürerken track planlanmadı: ikinci turun başı (ilk tur canlı duyuldu) hemen planlanır.
+      // Grace içinde çalınıp başa sarılan notalar da canlı duyuldu, yeniden çalınmaz.
+      var fin = finishRec();
+      setRec('play');
+      if (fin) replanTrack(rec.track, fin.from, fin.wrapped);
+    }
     else if (st === 'overdub') { closeRecOpen(now()); setRec('play'); }
     else if (st === 'pending') cancelPending();   // VARSAYIM: bekleyen kaydı iptal
     else {
@@ -483,6 +522,7 @@
         stops[sel].resume = rec.start;
         launch[sel] = rec.start;
         setRec('pending');
+        replanTrack(sel, rec.start);   // bar çizgisi zaten planlanmışsa ilk nota kaybolmasın
       } else if (clip(sel, 0)) {
         rec.label = 'Overdub';
         if (!playing) play();
@@ -533,19 +573,21 @@
   }
 
   // Kayıt biter: uzunluk yukarı tam bar'a yuvarlanır, clip kayıt başladığı bar'dan döngüye girer.
+  // Döner: {from: ikinci turun başladığı beat, wrapped: başa sarılan notalar {'t|p'}} ya da null.
   function finishRec() {
     var n = now();
     closeRecOpen(n);
     var i = rec.track, c = clip(i, 0);
-    if (!c) return;
+    if (!c) return null;
     var bars = Math.max(1, Math.ceil((timeToBeat(n) - rec.start - REC_GRACE) / BAR - EPS));
-    var len = bars * BAR, c2 = clone(c);
-    c2.notes.forEach(function (x) { if (x.t >= len - EPS) x.t = mod(x.t, len); });
+    var len = bars * BAR, c2 = clone(c), wrapped = {};
+    c2.notes.forEach(function (x) { if (x.t >= len - EPS) { x.t = mod(x.t, len); wrapped[x.t + '|' + x.p] = true; } });
     sortNotes(c2.notes);
     c2.len = len;
     c2.loop = [0, len];
     writeClip(i, c2, rec.label, rec.key);
     launch[i] = rec.start;
+    return { from: rec.start + len, wrapped: wrapped };
   }
 
   function findRecOpen(i, p, onAt) {
@@ -771,7 +813,11 @@
   // Bekleyen kayıt (ya da durmuş clip'in yeniden başlatılması) iptal: clip durmuş kalır.
   function cancelPending() {
     var st = stops[rec.track];
-    if (st) st.resume = undefined;
+    if (st && st.resume != null) {
+      var at = st.resume;
+      st.resume = undefined;
+      if (playing) cutPlanned(rec.track, at);   // replanTrack'in bar'dan sonrasına planladıkları geri alınır
+    }
     setRec(playing ? rec.prev : 'idle');
   }
 

@@ -32,7 +32,8 @@
  * - emu sözleşmedekiler (load, set, openOverlay, select, resetTrack) + e.S (emülatör durumu) + preset'tir.
  *   setup/stepSetup'lar yalnız load/set/openOverlay/select ve e.S kullanır (scaleTo, bankTo, paramsTo…
  *   yardımcıları {yol: değer} haritası kurar); p3-selftest'in ayrık test emu'su da aynı kurulumu üretir.
- *   emu.set: prefs.* yazımı adım süresince geçerlidir (çıkışta geri alınır), strip.pb/mod motora da iletilir.
+ *   emu.set: prefs.* yazımı adım süresince geçerlidir (çıkışta geri alınır; P3.save 'settings'e geçmez),
+ *   strip.pb/mod motora da iletilir.
  *   emu.load('tutorial-base') P3.store.restore ile yapılır; S.app, S.prefs ve S.vol korunur (öğrencinin
  *   ayarladığı ses seviyesi bölümden bölüme sıfırlanmasın), vol.target 'main' olur.
  * - P3.tut.makeRt(S): verilen durumdan kurulum anındaki rt (p3-selftest'in check(setup) testi için).
@@ -40,11 +41,13 @@
  *   `do` metniyle hedefe demirlenir, 1. kademede ipucu balona eklenir (balon kapalıysa bus 'feedback').
  * - Yanlış kontrol: hedef olmayan bir kontrole basış/dönüş. İzinli pad'ler (deneme alanı), Play, Volume ve
  *   encoder'a dokunmak (fareyle üstünden geçmek) sayılmaz; aynı encoder'ın ardışık dönüşleri bir kez sayılır.
+ * - Step-mute adımı prefs.kbWin'i adım süresince 4 yapar (klavye 1–8 sırası = en üst step sırası): tek fare
+ *   işaretçisi Mute'u tutarken step'e basamaz. Select / Delete adımlarının ipuçları \ ve Backspace'i anlatır.
  * - Velocity adımı prefs.velMode'u adım süresince 'position' yapar, çıkışta eski değer geri yazılır. Eşik
  *   |Δvel| ≥ 30 (mufredat 40): klavyede Shift (70) ile normal (100) arası da yetsin.
  * - Akor adımı: üç nota birlikte basılıyken ya da fareyle son üç nota 2 sn içinde çalınınca tamamlanır.
- *   Metin düzeltmesi: şekil ızgaranın her yerinde "majör" değil, gamdaki yerine göre majör ya da minör
- *   üçlü verir (kılavuz "triads" der; In Key'de şekil gam derecelerine göre değişir).
+ *   Metin düzeltmesi: şekil ızgaranın her yerinde "majör" değil, gamdaki yerine göre majör, minör ya da
+ *   (7. derecede) diminished üçlü verir (kılavuz "triads" der; In Key'de şekil d, d+2, d+4 derecelerini çalar).
  * - Add to Matrix adımında LFO 1 miktarı |a| ≥ 0.3 (§F "≠ 0" yerine mufredat.md 5.7): küçük miktar duyulmaz.
  * - Wavetable Position'ın gri görünmesi yanlıştı (mufredat 4.5): kapalı osilatörde yalnız Category, Table,
  *   Effect Type ve Pitch gri olur (p3-wt-params dis bayrağı).
@@ -120,6 +123,15 @@
   function beatCount(s, pad) {
     var seen = {};
     padNotes(s, pad).forEach(function (n) { seen[Math.round(n.t * 1e6)] = true; });
+    return Object.keys(seen).length;
+  }
+  // Pad'in çift adımlardaki (1, 3, 5… — 0 tabanlı çift) farklı konum sayısı: sekizlik hi-hat deseni.
+  function evenCount(s, pad) {
+    var seen = {};
+    padNotes(s, pad).forEach(function (n) {
+      var st = Math.round(n.t / STEP_B);
+      if (Math.abs(n.t - st * STEP_B) < 1e-6 && st % 2 === 0) seen[st] = true;
+    });
     return Object.keys(seen).length;
   }
   function beats(steps) { return steps.map(function (st) { return st * STEP_B; }); }
@@ -200,6 +212,7 @@
 
   // ---------------------------------------------------------------- emu (öğreticinin emülatör API'si)
   var temp = null;   // adım süresince değiştirilen tercihler: anahtar → eski değer
+  var tempSaved = null;   // aynı anahtarların kayıttaki (P3.save 'settings') değeri
 
   function expressionReset() {
     if (fn(P3.wt, 'pb')) P3.wt.pb(0, 0);
@@ -210,14 +223,27 @@
     if (!temp) return;
     var t = temp;
     temp = null;
+    tempSaved = null;
     for (var k in t) if (own(t, k)) put('prefs.' + k, t[k]);
   }
+
+  function saveApi() { return !!P3.save && fn(P3.save, 'get') && fn(P3.save, 'patch'); }
 
   function keepPref(k) {
     var p = P3.S && P3.S.prefs;
     if (!p) return;
     if (!temp) temp = {};
-    if (!own(temp, k)) temp[k] = p[k];
+    if (!tempSaved) tempSaved = {};
+    if (!own(temp, k)) {
+      temp[k] = p[k];
+      tempSaved[k] = saveApi() ? P3.save.get('settings.' + k) : undefined;
+    }
+  }
+
+  // p3-app her 'prefs.*' olayında değeri P3.save 'settings'e yazar; geçici değer kayda geçmesin diye kayıttaki
+  // değer hemen geri yazılır. Sayfa adım sürerken kapansa da (pagehide flush) kayıt öğrencinin tercihinde kalır.
+  function unsavePref(k) {
+    if (tempSaved && own(tempSaved, k) && saveApi()) P3.save.patch('settings.' + k, tempSaved[k]);
   }
 
   // Sözleşme (README §G13): load, set, openOverlay, select (+ resetTrack); S = emülatörün durumu.
@@ -251,13 +277,15 @@
       return true;
     },
     // Undo'suz, olaylı yazım. prefs.* yolları adım süresince geçerlidir (adımdan çıkınca eski değer geri
-    // yazılır: öğretici öğrencinin tercihini kalıcı değiştirmez). strip.pb / strip.mod motora da iletilir
+    // yazılır; kayıttaki 'settings' hiç değişmez: öğretici öğrencinin tercihini kalıcı değiştirmez). strip.pb / strip.mod motora da iletilir
     // (motor pitch bend ve Mod Wheel'i 'state'ten okumaz).
     set: function (o) {
       for (var k in o) {
         if (!own(o, k)) continue;
-        if (k.indexOf('prefs.') === 0) keepPref(k.slice(6));
+        var pref = k.indexOf('prefs.') === 0 ? k.slice(6) : null;
+        if (pref) keepPref(pref);
         put(k, o[k]);
+        if (pref) unsavePref(pref);
         if (k === 'strip.pb' && fn(P3.wt, 'pb')) P3.wt.pb(0, +o[k] || 0);
         else if (k === 'strip.mod' && fn(P3.wt, 'mw')) P3.wt.mw(0, +o[k] || 0);
       }
@@ -502,7 +530,7 @@
         {
           id: 'ilk-akor', kind: 'action',
           title: tx(`İlk akor`),
-          body: tx(`Sol alt pad, onun iki sağındaki ve bir yukarı-bir sağındaki pad birlikte C majör akorunu çalar. Bu üçgen şekli ızgaranın her yerinde bir akor verir; gamdaki yerine göre majör ya da minör olur.`),
+          body: tx(`Sol alt pad, onun iki sağındaki ve bir yukarı-bir sağındaki pad birlikte C majör akorunu çalar. Bu üçgen şekli ızgaranın her yerinde bir akor verir; gamdaki yerine göre majör, minör ya da 7. derecede eksik (diminished) olur.`),
           do: tx(`Üç pad'e aynı anda bas ve basılı tut: sol alt pad, onun iki sağındaki ve bir yukarı-bir sağındaki.`),
           listen: tx(`C, E ve G birlikte: C majör. Fareyle üçüne 2 saniye içinde sırayla da basabilirsin; klavyede üç tuşu birlikte basılı tut (varsayılan düzende Z, C ve S).`),
           targets: [{ pad: [0, 0] }, { pad: [2, 0] }, { pad: [1, 1] }], allow: ['pads'],
@@ -793,7 +821,7 @@
           do: tx(`Encoder 1 ile 2'yi seç, sonra üst sırada soldan 2. düğmeyle (Osc) Osc 2'yi aç.`),
           listen: tx(`İki osilatör artık birlikte çalar.`),
           targets: ['enc1', 'upper2'], allow: ['enc1', 'upper2', 'pads'],
-          stepSetup: function (e) { synth(e); bankTo(e, true, 0, '1'); paramsTo(e, { o2On: 0 }); },
+          stepSetup: function (e) { synth(e); bankTo(e, true, 0, '1'); paramsTo(e, { o1On: 1, o2On: 0 }); },
           check: function (S, rt) {
             return S.wtui.osc === '2' && pv(S, 'o2On') > 0.5 && !(pv(rt.base, 'o2On') > 0.5);
           },
@@ -807,7 +835,7 @@
           do: tx(`Alt sıradan Oscillators bankasını seç (soldan 2.).`),
           listen: tx(`Ekranın alt sırasında Oscillators sekmesi seçili görünür.`),
           targets: ['lower2'], allow: ['lower*', 'pads'],
-          stepSetup: function (e) { synth(e); bankTo(e, true, 0, '2'); paramsTo(e, { o2On: 1 }); },
+          stepSetup: function (e) { synth(e); bankTo(e, true, 0, '2'); paramsTo(e, { o1On: 1, o2On: 1 }); },
           check: function (S) { return S.bankView === true && S.wtui.bank === 1; },
           success: tx(`Oscillators bankası açık.`),
           hints: [tx(`Alt sıranın soldan ikinci düğmesi.`)]
@@ -819,7 +847,7 @@
           do: tx(`Encoder 5 (Pitch) ile Osc 2'nin perdesini kaydır ve bir nota çal.`),
           listen: tx(`İki osilatör artık farklı perdelerde birlikte çalar.`),
           targets: ['enc5', 'pads'], anchor: 'enc5', allow: ['enc5', 'shift', 'pads'],
-          stepSetup: function (e) { synth(e); bankTo(e, true, 1, '2'); paramsTo(e, { o2On: 1, o2Transp: 0, o2Det: 0 }); },
+          stepSetup: function (e) { synth(e); bankTo(e, true, 1, '2'); paramsTo(e, { o1On: 1, o2On: 1, o2Transp: 0, o2Det: 0 }); },
           check: function (S, rt) {
             var b = rt.base, moved = Math.abs(pv(S, 'o2Transp') - pv(b, 'o2Transp')) >= 1 ||
               Math.abs(pv(S, 'o2Det') - pv(b, 'o2Det')) >= 0.05;
@@ -835,7 +863,7 @@
           do: tx(`Encoder 6 (Effect Type) ile Classic'i seç, Encoder 7 (Pulse Width) ile en az %20'ye çıkar ve bir nota çal.`),
           listen: tx(`Pulse Width arttıkça ses incelir, genizden gelir gibi olur.`),
           targets: ['enc6', 'enc7', 'pads'], anchor: 'enc6', allow: ['enc6', 'enc7', 'enc8', 'pads'],
-          stepSetup: function (e) { synth(e); bankTo(e, true, 1, '2'); paramsTo(e, { o2On: 1, o2Fx: 0, o2Fx1: 0 }); },
+          stepSetup: function (e) { synth(e); bankTo(e, true, 1, '2'); paramsTo(e, { o1On: 1, o2On: 1, o2Fx: 0, o2Fx1: 0 }); },
           check: function (S, rt) {
             var n = osc(S);
             return pv(S, 'o' + n + 'Fx') === 2 && pv(S, 'o' + n + 'Fx1') >= 0.2 && heard(rt, [pPath('o' + n + 'Fx1')], 0);
@@ -850,7 +878,7 @@
           do: tx(`Encoder 1 ile S'yi seç. Üst sırada soldan 2. düğmeyle (Sub) Sub'ı aç ve Encoder 2 (Gain) ile -3 dB'nin üstüne çıkar.`),
           listen: tx(`Notaların altında kalın, yumuşak bir taban belirir.`),
           targets: ['enc1', 'upper2', 'enc2', 'pads'], allow: ['enc1', 'upper2', 'enc2', 'enc3', 'enc4', 'pads'],
-          stepSetup: function (e) { synth(e); bankTo(e, true, 1, '2'); paramsTo(e, { subOn: 0, subGain: def('subGain') }); },
+          stepSetup: function (e) { synth(e); bankTo(e, true, 1, '2'); paramsTo(e, { o1On: 1, o2On: 1, subOn: 0, subGain: def('subGain') }); },
           check: function (S, rt) {
             return S.wtui.osc === 'S' && pv(S, 'subOn') > 0.5 && pv(S, 'subGain') >= 0.708 &&
               heard(rt, [pPath('subOn'), pPath('subGain')], 0);
@@ -1022,7 +1050,7 @@
           stepSetup: function (e) { synth(e); stripTo(e); bankTo(e, true, 0, '1'); paramsTo(e, { o1Pos: 0 }); },
           check: function (S, rt) { return S.strip.mode === 'mod' && S.strip.mod >= 0.5 && heard(rt, ['strip.mod'], 0); },
           success: tx(`Mod Wheel ile Position'ı taradın.`),
-          hints: [tx(`Önce Select basılıyken strip'e bir kez dokun: ekranda Mod Wheel yazar.`),
+          hints: [tx(`Önce Select basılıyken strip'e bir kez dokun: ekranda Mod Wheel yazar. Yalnız fareyle: klavyede \\ tuşu Select'tir; onu basılı tutup strip'e tıkla.`),
             tx(`Sonra strip'i yarının üstüne kaydır ve bir nota çal.`)]
         },
         {
@@ -1176,7 +1204,7 @@
             });
           },
           success: tx(`Closed Hat sessizce seçildi.`),
-          hints: [tx(`Select, sağ alt köşede Shift'in yanında.`),
+          hints: [tx(`Select, sağ alt köşede Shift'in yanında. Yalnız fareyle: klavyede \\ tuşu Select'tir; onu basılı tutup pad'e tıkla.`),
             tx(`Closed Hat, sol alt bölgenin ikinci sırasındaki üçüncü pad.`)]
         },
         {
@@ -1191,7 +1219,7 @@
             clipTo(e, drumClip(e.S, { clear: [6], ensure: { 0: KICK[0], 2: SNARE_STEPS } }));
             e.set({ 'tracks.1.selPad': 6 });
           },
-          check: function (S) { return beatCount(S, 6) >= 6; },
+          check: function (S) { return evenCount(S, 6) >= 6; },
           success: tx(`Beat tamam.`),
           hints: [tx(`Closed Hat seçili kalmalı; üst bölgedeki adımlara bas.`)]
         },
@@ -1200,7 +1228,7 @@
           title: tx(`Adımı sustur`),
           body: tx(`Mute basılıyken bir adıma dokunmak o adımı silmeden susturur. Aynı kombinasyonla yeniden açabilirsin.`),
           do: tx(`Mute'u basılı tut ve hi-hat adımlarından birine dokun.`),
-          listen: tx(`Susturulan adım daha açık renkte görünür ve çalmaz.`),
+          listen: tx(`Susturulan adım daha açık renkte görünür ve çalmaz. Yalnız fareyle: Mute'u fareyle basılı tut ve klavyede hi-hat'li bir adımın tuşuna bas; bu adımda klavyenin 1–8 sırası step'lerin en üst sırasıdır (1 = 1. adım).`),
           targets: function (S) {
             var hats = padNotes(S, 6).sort(function (a, b) { return a.t - b.t; }), st = hats.length ? Math.round(hats[0].t / STEP_B) : 0;
             return ['mute', stepPad(st >= 0 && st < 32 ? st : 0)];
@@ -1212,11 +1240,14 @@
             if (beatCount(e.S, 6) < 6) { o.clear = [6]; o.ensure[6] = HATS; }
             clipTo(e, drumClip(e.S, o));
             e.set({ 'tracks.1.selPad': 6, 'tracks.1.mute': false });
+            // Tek fare işaretçisi Mute'u tutarken step'e basamaz: klavye penceresi geçici olarak step bölgesine
+            // (y 4–7) kayar, 1–8 sırası en üst step sırasını çalar. Adımdan çıkınca eski değer döner.
+            prefTo(e, 'kbWin', 4);
           },
           check: function (S) { return padNotes(S, 6).some(function (n) { return !!n.m; }); },
           success: tx(`Adım susturuldu.`),
           hints: [tx(`Mute, sol tarafta ikinci sıranın üçüncü düğmesi.`),
-            tx(`Mute'a tek başına basarsan bütün track susar; o zaman bir kez daha bas.`)]
+            tx(`Mute'a tek başına basarsan bütün track susar; o zaman bir kez daha bas. Fareyle Mute'u basılı tutarken klavyede 1–8 tuşları üst sıradaki step'lere basar.`)]
         },
         {
           id: 'delete-pad', kind: 'action',
@@ -1236,7 +1267,7 @@
             return (rt.vals['tracks.1.clips.0'] || []).some(function (e) { return !!e.v && notesOf(e.v, 2).length === 0; });
           },
           success: tx(`Silmeyi ve geri almayı öğrendin.`),
-          hints: [tx(`Delete, sağda Convert'in yanında; Undo, sol üstte Volume'un sağında.`),
+          hints: [tx(`Delete, sağda Convert'in yanında; Undo, sol üstte Volume'un sağında. Yalnız fareyle: klavyede Backspace Delete'tir; onu basılı tutup Snare pad'ine tıkla.`),
             tx(`Delete'e tek başına basarsan bütün clip silinir; Undo ile geri alabilirsin.`)]
         }
       ]
@@ -2118,8 +2149,11 @@
 
   // 'Serbest Çal'da aç': ses ve set korunarak #serbest'e geçilir; app handoff.keep'i görünce serbest
   // modun kayıtlı snapshot'ını yüklememeli (sartname-ogretici §4).
+  // P3.app.go girişi değiştirir (replaceState); location.hash yeni bir geçmiş girişi açardı ve tarayıcının
+  // Geri'si öğreticiyi yeniden başlatırdı. Hash yalnız app yokken yedektir.
   function free() {
     P3.tut.handoff = { keep: true, t: Date.now() };
+    if (P3.app && fn(P3.app, 'go')) { P3.app.go('free', { keep: true }); return true; }
     if (typeof location !== 'undefined') location.hash = '#serbest';
     return true;
   }
