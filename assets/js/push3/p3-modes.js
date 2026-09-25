@@ -29,8 +29,8 @@
  *   Scale değişikliği ('Scale') yeniden hizalanan pos'larla tek kayıt; Scale menüsündeki encoder ve jog
  *   dönüşleri dokunuş boyunca birleşir. Mute ('Mute'), Solo ('Solo'), clip silme ('Delete Clip') undo'lu.
  *   Octave, bank, sayfa, grid, seçim, volume ve tempo undo'suz (Live'da da geçmişe girmez).
- * - Stop Clip / Shift+Stop Clip: P3.seq.stopClip(track) / stopAllClips() varsa çağrılır. Faz 1 seq'inde
- *   yok (her track slot 0'ını çalar): o durumda popup 'Not in this simulator' + 'Stop Clip' ve açıklama.
+ * - Stop Clip / Shift+Stop Clip (§I5): P3.seq.stopClip(seçili track) / P3.seq.stopAllClips(); clip bir sonraki
+ *   bar'da durur (kuantizasyon ve çalan notaların kapanması seq'te). Popup yok (gerçek cihaz gibi).
  *   Delete tek başına: P3.seq.deleteClip(track, slot), yoksa tx 'Delete Clip' (clips.slot = null).
  *   Seçili clip = çalan slot, yoksa 0 (VARSAYIM, p3-leds ile aynı).
  * - Loop pad: tek dokunuş P3.seq.setLoopPage(track, page) (bırakınca); bas-tut + ikinci pad ve çift
@@ -42,10 +42,14 @@
  *   yok ama p3-leds ve p3-seq t.padMute / t.padSolo'yu zaten okuyor): pad susturulur / exclusive solo,
  *   undo 'Mute' / 'Solo'; susturulan pad canlı çalmada da sessiz. Delete/Select + step işlevsiz (Faz 2).
  * - Desteklenmeyen kontrol popup'ı: metin 'Not in this simulator', alt satır kontrolün adı; açıklama bus
- *   'feedback'. Layout (kısmi): düzen adı + 'Other layouts: coming soon'. Main Track §H13. Metronome'u
- *   basılı tutmak (menü, Faz 2) popup + açıklama verir, aç/kapa yapmaz. Scale menüsü dışında D-pad
- *   okları popup + açıklama (Session, Faz 2); orta düğme UNSUPPORTED.dpadC.
- * - Volume: 'track' hedefi Main Track'tir, S.vol.track'te tutulur (initState'te yok, varsayılan 0 dB).
+ *   'feedback'. Layout (kısmi): düzen adı + 'Other layouts: coming soon'. Main Track §H13. Metronome (§I9):
+ *   HOLD_MS (300 ms) ve üstü basılı tutmak aç/kapa YAPMAZ; popup 'Metronome' / 'Settings: coming soon' +
+ *   Faz 2 menü açıklaması (P3.K.UNSUPPORTED.metronome, yoksa kendi metnimiz). Kısa basış aç/kapa. Scale
+ *   menüsü dışında D-pad okları popup + açıklama (Session, Faz 2); orta düğme UNSUPPORTED.dpadC.
+ * - Delete + drum pad (§I10): pad'in clip'teki notaları silinir; notası yoksa LCD popup 'No notes'.
+ * - Volume: 'track' hedefi Main Track'tir, S.vol.track'te tutulur (initState'te yok, varsayılan 0 dB; motor
+ *   mixBus'a uygular, §I8). Headphones değeri tutulur ama ses değişmez; popup alt satırı P3.lcd.text.volumeSub
+ *   ('Browser: single output').
  *   −inf = −71 (−70'in altı; P3.u.dbToGain 0 verir, JSON'a yazılabilir). Sıfırlama (Delete + dokunma /
  *   klavye Delete): Main, Headphones, Cue −10 dB, Main Track 0 dB; Tempo 120 BPM, Swing %0.
  * - Scene düğmeleri: Repeat açıkken ya da synth track'te tekrar hızı (repeat.rate), drum track'te step
@@ -62,8 +66,9 @@
  * - Kayıt: nota basılınca recordNote(track, midi, vel, onT) (açık), bırakınca recordNote(…, onT, offT).
  *   Drum vuruşları da yazılır. Zaman P3.audio.toCtxTime(ev.t), yoksa ctx.currentTime.
  * - Learn: upper k → bus 'learn' {chapter: P3.lcd.learnChapterAt(k)} (LCD'de o düğmenin üstündeki bölümün
- *   slug'ı; LCD yoksa sıra k−1; boş düğmede olay yok). Page ◀▶ ve jog LCD'nin isteğe bağlı S.learnPage
- *   alanını ±1 değiştirir; Learn açılırken silinir (LCD güncel bölümün sayfasını açar). Jog sola itme kapatır.
+ *   slug'ı; LCD yoksa sıra k−1; boş düğmede olay yok). Page ◀▶ ve jog S.learnPage'i ±1 değiştirir (§I14:
+ *   sessiz ve undo'suz yazılır, ardından P3.lcd.invalidate()); Learn açılırken S.learnPage ve S.learnSel
+ *   silinir (LCD güncel bölümü ve onun sayfasını açar). Jog sola itme kapatır.
  * - Ek API: openOverlay(name), selectTrack(i), applyPreset(i, id) (öğretici emu ve taskbar preset'i için).
  */
 (function () {
@@ -89,9 +94,9 @@
 
   // UNSUPPORTED'da karşılığı olmayan kısmi durumların açıklaması (#p3Feedback).
   var TEXT = {
-    metroMenu: { tr: `Metronome: Basılı tutunca count-in, tık sesi ve ritim ayarları açılır (yakında). Kısa basış metronomu açıp kapatır.` },
-    dpad: { tr: `D-pad: Session'da clip ızgarasını bir track ya da bir scene kaydırır (yakında). Scale menüsü açıkken oklar gam listesinde gezinir.` },
-    stopClip: { tr: `Stop Clip: Seçili track'in clip'ini bir sonraki ölçüde durdurur; Shift ile tüm clip'leri durdurur (yakında). Şimdilik çalmayı Play ile durdurabilirsin.` }
+    // §I9: P3.K.UNSUPPORTED.metronome yoksa kullanılır.
+    metroMenu: { tr: `Basılı tutunca metronom ayarları açılır (yakında).` },
+    dpad: { tr: `D-pad: Session'da clip ızgarasını bir track ya da bir scene kaydırır (yakında). Scale menüsü açıkken oklar gam listesinde gezinir.` }
   };
 
   // ---------------------------------------------------------------- modül durumu
@@ -156,7 +161,10 @@
     var S = P3.S, prev = S.overlay || null;
     name = name || null;
     if (prev === name) return false;
-    if (name === 'learn' && S.learnPage !== undefined) set('learnPage', undefined);   // LCD güncel bölümün sayfasıyla açar
+    if (name === 'learn') {   // §I14: LCD güncel bölümü ve onun sayfasını açar
+      if (S.learnPage !== undefined) set('learnPage', undefined, { silent: true });
+      if (S.learnSel !== undefined) set('learnSel', undefined, { silent: true });
+    }
     set('overlay', name);
     releaseTouch();
     P3.bus.emit('overlay', { name: name, prev: prev });
@@ -375,7 +383,8 @@
 
   function drumPad(ev, i, t, pad) {
     if (isHeld('delete')) {
-      if (fn(P3.seq, 'deletePadNotes')) P3.seq.deletePadNotes(i, pad);
+      // §I10: notası olmayan pad'de popup (gerçek cihaz pad'in sesini siler; burada yok).
+      if (fn(P3.seq, 'deletePadNotes') && !P3.seq.deletePadNotes(i, pad)) popup('No notes');
       return;
     }
     if (isHeld('mute')) { togglePadMute(i, t, pad); return; }
@@ -442,23 +451,14 @@
     });
   }
 
-  // Clip durdurma seq'in işidir (launch kuantizasyonu, çalan seq notalarının kapanması). Faz 1 seq'inde
-  // her track slot 0'ını çaldığı için durdurma işlevi yoksa kontrol sessiz kalmaz, açıklanır (A17).
+  // Clip durdurma seq'in işidir (§I5: bir sonraki bar'da durur, çalan seq notaları kapanır).
   function stopClip(i) {
-    if (!track(i)) return;
-    if (fn(P3.seq, 'stopClip')) P3.seq.stopClip(i);
-    else stopUnavailable();
+    if (track(i) && fn(P3.seq, 'stopClip')) P3.seq.stopClip(i);
   }
 
   function stopAllClips() {
     if (fn(P3.seq, 'stopAllClips')) P3.seq.stopAllClips();
     else if (fn(P3.seq, 'stopClip')) P3.S.tracks.forEach(function (t, i) { P3.seq.stopClip(i); });
-    else stopUnavailable();
-  }
-
-  function stopUnavailable() {
-    popup(NOT_HERE, 'Stop Clip');
-    feedback(TEXT.stopClip);
   }
 
   // Delete tek başına: seçili track'in seçili clip'i silinir (P3 kılavuzu §17).
@@ -617,7 +617,10 @@
       first = fn(P3.lcd, 'learnChapterAt') ? P3.lcd.learnChapterAt(1) : null;
       for (i = 0; i < list.length; i++) if (String(list[i].id || list[i].slug || i) === first) cur = Math.floor(i / 8);
     }
-    set('learnPage', clamp(cur + d, 0, pages - 1));
+    var next = clamp(cur + d, 0, pages - 1);
+    if (next === P3.S.learnPage) return;
+    set('learnPage', next, { silent: true });   // §I14: görünüm durumu, undo'suz ve olaysız
+    if (fn(P3.lcd, 'invalidate')) P3.lcd.invalidate();
   }
 
   // Scale menüsünde ↑ −1, ↓ +1, ← −4, → +4 (sınırlı). Menü dışında Session gezinmesi (Faz 2).
@@ -656,20 +659,26 @@
     scaleByPress = false;
   };
 
-  // toggleMenu: kısa basış aç/kapa. Basılı tutma menüyü açar (Faz 2); şimdilik açıklama gösterilir.
+  // toggleMenu (§I9): kısa basış aç/kapa. HOLD_MS ve üstü basılı tutma menüyü açar (Faz 2): aç/kapa yok,
+  // yalnız açıklama. Zamanlayıcı basılıyken gösterir; bırakış zamanlayıcıdan önce gelirse (dt ≥ HOLD_MS)
+  // açıklama bırakışta gösterilir.
+  function metroMenu() {
+    popup('Metronome', 'Settings: coming soon');
+    feedback(P3.K.UNSUPPORTED.metronome || TEXT.metroMenu);
+  }
   DOWN.metronome = function () {
     clearTimeout(metroT);
     metroT = setTimeout(function () {
       metroT = null;
-      if (!isHeld('metronome')) return;
-      popup('Metronome', 'Settings: coming soon');
-      feedback(TEXT.metroMenu);
+      if (isHeld('metronome')) metroMenu();
     }, P3.K.HOLD_MS);
   };
   UP.metronome = function (h, long) {
+    var pending = metroT !== null;
     clearTimeout(metroT);
     metroT = null;
     if (!long) setMetronome(!P3.S.transport.metro);
+    else if (pending) metroMenu();
   };
 
   // action: işlev basışta çalışır.
@@ -738,7 +747,12 @@
   function volTarget() { var tg = P3.S.vol.target; return VOL_LABEL[tg] ? tg : 'main'; }
   function volOf(tg) { var v = P3.S.vol[tg]; return typeof v === 'number' ? v : VOL_DEF[tg]; }
   function fmtDb(db) { return db < VOL_MIN ? '-inf dB' : (Math.round(db * 10) / 10 || 0).toFixed(1) + ' dB'; }
-  function volumePopup() { var tg = volTarget(); popup(VOL_LABEL[tg] + ': ' + fmtDb(volOf(tg))); }
+  // §I8: Headphones hedefinde alt satır 'Browser: single output' (metin P3.lcd.text'ten; ARIA ile aynı).
+  function volumePopup() {
+    var tg = volTarget(), T = P3.lcd && P3.lcd.text;
+    var sub = T && typeof T.volumeSub === 'function' ? T.volumeSub(P3.S) : '';
+    popup(VOL_LABEL[tg] + ': ' + fmtDb(volOf(tg)), sub || undefined);
+  }
 
   // −70 dB'in altı −inf: aşağı inerken −70'ten sonra −inf'e düşer, yukarı dönüş −70'ten başlar.
   function volStep(db, steps, fine) {

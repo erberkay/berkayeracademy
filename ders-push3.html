@@ -36,7 +36,10 @@
    #p3PadSurface is provided empty inside #p3HotspotLayer (§E lists it under the layer; its
    rows/cells are built by JS). #p3CoachText/#p3CoachClose, #p3TocList/#p3TocClose,
    #p3ResetModal/#p3ResetConfirm/#p3ResetCancel. Mode cards expose .p3-mode-badge/-title/
-   -desc/-meta/-fill/-cta/-first for p3-app to fill. */
+   -desc/-meta/-fill/-cta/-first for p3-app to fill.
+   Wave 3 (p3-app, README §H16/§I1): #p3AudioBtn ("Sesi yeniden başlat" chip), #p3KeysBtn +
+   #p3KeysLayer (keyboard-shortcut labels and legend), the short independence note next to
+   .p3-attribution on the game screen. */
 
 /* The `hidden` attribute must beat component display rules (.seg, html .btn, html .card,
    html .modal-overlay all set display). (0,1,2) outranks every one of them without !important;
@@ -45,9 +48,14 @@ html body [hidden] { display:none; }
 
 html, body { height:100%; }
 html body { padding:0; overflow:hidden; overscroll-behavior:none; }
+/* themes.css (≥1024) gives body `padding-bottom:2.5rem !important` for the sidebar shell. The menu
+   and the game are fixed-height boxes, so they subtract that padding instead of overflowing the
+   body by 40px (which let focus()/click scroll the whole page and clip the taskbar). */
+html body { --p3-shell-bottom:0px; }
+@media (min-width:1024px) { html body { --p3-shell-bottom:2.5rem; } }
 
 /* ── Mode menu (#p3Modes): the only part of the page that scrolls, inside its own box ── */
-.p3-modes { height:100dvh; overflow-y:auto; overscroll-behavior:contain; padding:var(--s7) var(--gutter) calc(var(--s7) + env(safe-area-inset-bottom, 0px)); }
+.p3-modes { height:calc(100dvh - var(--p3-shell-bottom)); overflow-y:auto; overscroll-behavior:contain; padding:var(--s7) var(--gutter) calc(var(--s7) + env(safe-area-inset-bottom, 0px)); }
 @media (max-width:1023px) { .p3-modes { height:calc(100dvh - var(--topbar-h)); padding-top:var(--s6); } }
 .p3-modes-inner { max-width:var(--maxw); margin:0 auto; }
 .p3-modes-head { margin-bottom:var(--s6); }
@@ -76,7 +84,7 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 .p3-disclaimer { max-width:72ch; margin-top:var(--s6); font-size:var(--fs-micro); line-height:1.6; color:var(--fg-3); }
 
 /* ── Game (#p3Game): single screen, no page scroll ── */
-.p3-game { display:flex; flex-direction:column; height:100dvh; padding:0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+.p3-game { display:flex; flex-direction:column; height:calc(100dvh - var(--p3-shell-bottom)); padding:0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 @media (max-width:1023px) { .p3-game { height:calc(100dvh - var(--topbar-h)); } }
 
 .p3-game-taskbar { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2) var(--s3); padding:var(--s3) var(--s4); border-bottom:1px solid var(--line); flex:0 0 auto; background:var(--surface); }
@@ -86,17 +94,29 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 .p3-game-progress:empty { display:none; }
 .p3-game-task { flex:1 1 200px; min-width:0; font-size:var(--fs-small); font-weight:600; color:var(--fg); line-height:1.3; }
 @media (min-width:600px) { .p3-game-task { font-size:var(--fs-body); } }
+/* Mode switch only on large screens; view switch everywhere else. A landscape phone (short, often
+   ≥900 wide) gets the view switch instead: its height is too precious for a second taskbar row. */
 .p3-mode-seg { display:none; }
-@media (min-width:900px) { .p3-mode-seg:not([hidden]) { display:inline-flex; } }
-@media (min-width:900px) { .p3-view-seg { display:none; } }
+@media (min-width:900px) and (min-height:601px) { .p3-mode-seg:not([hidden]) { display:inline-flex; } }
+@media (min-width:900px) and (min-height:601px) { .p3-view-seg { display:none; } }
 html .p3-game-taskbar .p3-preset-sel { width:auto; max-width:200px; }
-.p3-kb-toggle[aria-checked="true"] { border-color:var(--accent); color:var(--accent); }
-@media (max-width:599px) {
-  .p3-game-taskbar { padding:10px var(--s3); }
-  .p3-hide-sm { display:none; }
+.p3-kb-toggle[aria-checked="true"], .p3-keys-btn[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+/* "Sesi yeniden başlat": shown by p3-app while the AudioContext is suspended / interrupted / failed. */
+html .p3-game-taskbar .p3-audio-chip { border-color:var(--warn); color:var(--warn); background:transparent; }
+@media (hover:hover) { html .p3-game-taskbar .p3-audio-chip:hover { background:color-mix(in srgb, var(--warn) 12%, transparent); } }
+@media (max-width:599px) { .p3-game-taskbar { padding:10px var(--s3); } }
+/* Phones — portrait, or landscape with a coarse pointer (same rule as p3-app's PHONE_MQ): no physical
+   keyboard, and one taskbar row matters. (0,2,1) beats `html .btn` (0,1,1), which sets display. */
+@media (max-width:599px), (max-height:600px) and (pointer:coarse) {
+  html .p3-game-taskbar .p3-hide-sm { display:none; }
 }
 
 .p3-game-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:var(--s2) var(--s3); position:relative; overflow:hidden; background:var(--bg); }
+/* The stage is focused so single-key shortcuts work (WCAG 2.1.4 scopes them to it). A full accent ring
+   around the whole device reads as an error state, so the stage only gets a hairline; the controls
+   inside keep the accent focus ring. */
+.p3-game-stage:focus { outline:none; }
+.p3-game-stage:focus-visible { outline:1px solid var(--line); outline-offset:-1px; }
 
 /* Everything that sits on the device is an absolute SIBLING inside this frame. Device SVG and
    #p3Live fill the same box with the same viewBox and preserveAspectRatio, so they letterbox
@@ -142,8 +162,25 @@ html .p3-game-taskbar .p3-preset-sel { width:auto; max-width:200px; }
 .p3-coach:not([hidden]) { position:absolute; z-index:5; display:flex; flex-direction:column; align-items:flex-start; gap:var(--s2); max-width:min(280px, 80vw); padding:var(--s3); background:var(--surface); border:1px solid var(--accent); color:var(--fg); font-size:var(--fs-small); line-height:1.45; }
 .p3-coach-text { margin:0; }
 
-.p3-attribution { position:absolute; bottom:2px; right:8px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.02em; color:var(--fg-3); opacity:.55; z-index:6; pointer-events:auto; }
+/* Keyboard-shortcut layer (p3-app): labels are device-internal (fixed hex, like P3.K.C); the legend is
+   page chrome (tokens). Label positions and font size are runtime state (inline style). */
+.p3-keys-layer { position:absolute; inset:0; z-index:5; pointer-events:none; }
+.p3-key { position:absolute; display:inline-flex; align-items:center; justify-content:center; min-width:1.7em; height:1.7em; padding:0 .35em; font-family:var(--ff-mono); font-weight:700; line-height:1; color:#FFFFFF; background:#000000; border:1px solid #7C858A; white-space:nowrap; }
+.p3-key.p3-key-pad { border-color:#E6E6E6; }
+.p3-keys-legend { position:absolute; top:var(--s2); left:var(--s2); max-width:min(290px, calc(100% - 16px)); padding:var(--s2) var(--s3); background:var(--surface); border:1px solid var(--line); font-size:var(--fs-micro); line-height:1.5; color:var(--fg-2); }
+.p3-keys-legend.p3-keys-legend-end { left:auto; right:var(--s2); }
+.p3-keys-legend-title { font-family:var(--ff-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); margin-bottom:var(--s1); }
+.p3-keys-legend dl { display:grid; grid-template-columns:auto 1fr; gap:2px var(--s3); }
+.p3-keys-legend dt { font-family:var(--ff-mono); color:var(--fg); white-space:nowrap; }
+.p3-keys-legend-note { margin-top:var(--s2); color:var(--fg-3); }
+.p3-keys-legend-note.off { color:var(--warn); }
+
+.p3-attribution { position:absolute; bottom:2px; right:8px; max-width:calc(100% - 16px); text-align:right; font-family:var(--ff-mono); font-size:9px; letter-spacing:.02em; color:var(--fg-3); opacity:.55; z-index:6; pointer-events:auto; }
 .p3-attribution a { color:inherit; }
+@media (max-width:599px) {
+  .p3-indep { display:block; }
+  .p3-indep-sep { display:none; }
+}
 
 /* ── Bottom: feedback, level explain panel, tutorial panel ── */
 .p3-game-bottom { flex:0 0 auto; }
@@ -267,9 +304,11 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
     </div>
     <div class="p3-game-task" id="p3TaskText" aria-live="polite">Yükleniyor…</div>
     <div class="p3-tb-group">
+      <button type="button" class="btn btn-sm p3-audio-chip" id="p3AudioBtn" hidden><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg><span>Sesi yeniden başlat</span></button>
       <button type="button" class="btn btn-ghost btn-icon btn-sm" id="p3HintBtn" aria-pressed="true" aria-label="İpucunu gizle"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg></button>
       <select class="select p3-preset-sel" id="p3PresetSel" aria-label="Preset" hidden></select>
-      <button type="button" class="btn btn-ghost btn-sm p3-kb-toggle" id="p3KbToggle" role="switch" aria-checked="true" hidden><span data-i18n="p3_kb_toggle">Klavyeyle çal</span></button>
+      <button type="button" class="btn btn-ghost btn-sm p3-kb-toggle p3-hide-sm" id="p3KbToggle" role="switch" aria-checked="true" hidden><span data-i18n="p3_kb_toggle">Klavyeyle çal</span></button>
+      <button type="button" class="btn btn-ghost btn-sm p3-keys-btn p3-hide-sm" id="p3KeysBtn" aria-pressed="false" aria-controls="p3KeysLayer" title="Klavye kısayollarını göster (Shift + /)" hidden>Tuşlar</button>
       <div class="seg p3-view-seg" id="p3ViewSeg" role="group" aria-label="Görünüm">
         <button type="button" class="seg-btn" data-view="full" aria-pressed="false" data-i18n="p3_view_full">Tam</button>
         <button type="button" class="seg-btn" data-view="pads" aria-pressed="false" data-i18n="p3_view_pads">Pad</button>
@@ -290,12 +329,15 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
       <div class="p3-hotspot-layer" id="p3HotspotLayer">
         <div class="p3-pad-surface" id="p3PadSurface" role="grid" aria-label="Pad ızgarası"></div>
       </div>
+      <!-- Keyboard-shortcut layer (#p3KeysBtn / Shift+/): key labels over pads and buttons + a legend.
+           Built by p3-app; positioned in the same px space as the hotspots (P3.dev.controlRect). -->
+      <div class="p3-keys-layer" id="p3KeysLayer" hidden></div>
       <div class="p3-coach" id="p3Coach" role="note" hidden>
         <p class="p3-coach-text" id="p3CoachText"></p>
         <button type="button" class="btn btn-ghost btn-sm" id="p3CoachClose" data-i18n="p3_close">Kapat</button>
       </div>
     </div>
-    <p class="p3-attribution">Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
+    <p class="p3-attribution"><span class="p3-indep">Bağımsız eğitim aracı · Ableton AG ile bağlantılı değildir</span><span class="p3-indep-sep" aria-hidden="true"> · </span>Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
   </div>
 
   <div class="p3-game-bottom">
@@ -412,20 +454,20 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
 })();
 </script>
 
-<script src="/assets/js/push3/p3-core.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-scale.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-wt-params.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-device.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-leds.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-lcd.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-wt-engine.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-drums.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-seq.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-modes.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-input.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-levels.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-tutorial.js?v=20260925a"></script>
-<script src="/assets/js/push3/p3-app.js?v=20260925a"></script>
+<script src="/assets/js/push3/p3-core.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-scale.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-wt-params.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-device.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-leds.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-lcd.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-wt-engine.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-drums.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-seq.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-modes.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-input.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-levels.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-tutorial.js?v=20260925c"></script>
+<script src="/assets/js/push3/p3-app.js?v=20260925c"></script>
 
 </body>
 </html>

@@ -8,7 +8,7 @@
  *
  * Ses grafiği:
  *   worklet / drum sesleri → trackInput(i) = gain(dB) → StereoPanner → mute → mixBus
- *   mixBus → drive(×¼) → softClip (WaveShaper, §H7) → main(Main dB) → destination
+ *   mixBus(Main Track dB) → drive(×¼) → softClip (WaveShaper, §H7) → main(Main dB) → destination
  *   metroOut → cue(Cue dB) → destination
  *
  * Worklet protokolü koddan doğrulandı (p3-wt-worklet.js başlığı): ilk mesaj
@@ -20,7 +20,9 @@
  * - softClip eğrisi [−4, 4] girişini kapsar: WaveShaper ±1 dışını uç değere kırptığından önüne ×¼ kazançlı
  *   bir 'drive' düğümü konur ve eğri f(4u) olarak yazılır. f: |x| < 0.7 doğrusal, üstü tanh diz (worklet'le
  *   aynı biçim); tavan 1.0.
- * - Headphones (S.vol.phones) ayrı bir çıkış bulunmadığından sese etki etmez (sartname §1 tek çıkış VARSAYIMI).
+ * - Volume hedefleri (§I8): S.vol.main → main (çıkış) kazancı, S.vol.track (Main Track; initState'te yok,
+ *   varsayılan 0 dB) → mixBus kazancı, S.vol.cue → cue. Headphones (S.vol.phones) ayrı bir çıkış
+ *   bulunmadığından sese etki etmez (tarayıcıda tek çıkış; LCD 'Browser: single output' der).
  * - tracks.i.vol dB, tracks.i.pan −1..1 kabul edilir (VARSAYIM: Mix modu Faz 2'de kesinleşir).
  * - Matris değişikliği ('tracks.i.mods…' yolları) tek tek 'm' yerine rAF'te {t:'init', mods} ile bütün
  *   olarak gönderilir; worklet init'i params'sız da kabul eder ve matrisi baştan kurar. P3.wt.setMod ise
@@ -241,7 +243,18 @@
   }
   function setMainDb(db) { mainDb = +db; applyMain(false); }
   function setCueDb(db) { if (A.master.cue) glide(A.master.cue.gain, dbGain(db)); }
-  function setTrackDb(i, db) { var ch = chain(i); if (ch) glide(ch.gain.gain, dbGain(db)); }
+  // §I8: Main Track seviyesi tüm track'lerin toplandığı mixBus'a uygulanır (softClip'ten önce).
+  function setMainTrackDb(db) {
+    if (A.master.mixBus) glide(A.master.mixBus.gain, dbGain(typeof db === 'number' && db === db ? db : 0));
+  }
+  // Kazanç yapısı (tarayıcıda ölçüldü, init/saw-lead/pad/bell presetleri, vel 100): worklet'in ses başına
+  // 0.25 kazancı sekiz sese pay bıraktığı için tek nota track girişinde ≈ −26 dBFS tepe veriyor, davul
+  // sample'ları ise ≈ −4…0 dBFS. Track'in 0 dB'i türe göre bu sabitle kaydırılır: synth tek nota ≈ −10,
+  // dörtlü akor ≈ −1 dBFS'e çıkar (fazlasını master softClip karşılar), davul synth'le aynı düzeye iner.
+  // VARSAYIM: değerler kulakla ince ayar bekler.
+  var KIND_MAKEUP_DB = { synth: 16, drum: -6 };
+  function makeupDb(i) { var t = tracks()[i]; return (t && KIND_MAKEUP_DB[t.kind]) || 0; }
+  function setTrackDb(i, db) { var ch = chain(i); if (ch) glide(ch.gain.gain, dbGain((+db || 0) + makeupDb(i))); }
   function setTrackPan(i, v) { var ch = chain(i); if (ch && ch.pan) glide(ch.pan.pan, clamp(+v || 0, -1, 1)); }
   function setTrackMute(i, on) { var ch = chain(i); if (ch) glide(ch.mute.gain, on ? 0 : 1, 0.005); }
 
@@ -250,6 +263,7 @@
     if (!S || !S.vol) return;
     setMainDb(S.vol.main);
     setCueDb(S.vol.cue);
+    setMainTrackDb(S.vol.track);
   }
   // Solo: herhangi bir track solo ise solo olmayanlar susar; mute her durumda susturur.
   function applyMix() {
@@ -1024,7 +1038,7 @@
     metroOut: null,
     unlock: unlock, init: init,
     trackInput: trackInput,
-    setMainDb: setMainDb, setCueDb: setCueDb, setTrackDb: setTrackDb, setTrackPan: setTrackPan, setTrackMute: setTrackMute,
+    setMainDb: setMainDb, setCueDb: setCueDb, setMainTrackDb: setMainTrackDb, setTrackDb: setTrackDb, setTrackPan: setTrackPan, setTrackMute: setTrackMute,
     latency: latency, toCtxTime: toCtxTime
   };
 

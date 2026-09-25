@@ -42,7 +42,8 @@
  *   (slider okları, grid okları, düğmede Enter/Space) önce gelir ve kbOn'dan bağımsızdır.
  * - Klavye odağı (:focus-visible) encoder'a touch verir; fareyle gelen odak vermez (yoksa sürüklenen
  *   encoder odakta kaldıkça dokunulu görünürdü).
- * - Klavye velocity'si (Minus/Equal ±20, 1..127) yalnız bu oturumda tutulur; LCD popup'ı gösterilir.
+ * - Klavye velocity'si (Minus/Equal ±20, 20..127; §I13 alt sınır 20) yalnız bu oturumda tutulur; LCD
+ *   popup'ı gösterilir.
  *   BracketLeft/Right S.prefs.kbWin'i (0..4) undo'suz yazar. Shift+Slash bus 'keys' {} yayar (tuş etiketi
  *   katmanı, p3-app / #p3KeysBtn). Slash tek başına Tap Tempo.
  * - Strip klavyeyle: odaktayken ↑/→ +0.1, ↓/← −0.1, PgUp/PgDn ±0.25, Home/End 0/1; tuş basılıyken strip
@@ -67,7 +68,7 @@
   var JOG_DEG = 15, JOG_INNER = 0.3, JOG_PX_DEG = 15 / 24;
   var FLICK_MS = 200, FLICK_PX = 20;
   var TAP_SLOP = 20;         // çift tıkın iki basışı arasındaki en büyük uzaklık (px)
-  var VEL_FIXED = 100, VEL_LO = 40, VEL_HI = 127, KB_VEL_STEP = 20;
+  var VEL_FIXED = 100, VEL_LO = 40, VEL_HI = 127, KB_VEL_STEP = 20, KB_VEL_MIN = 20;   // §I13
   var STRIP_KEY = 0.1, STRIP_PAGE = 0.25;
 
   // Düzen A (sartname-kontrol-haritasi): üstten alta klavye sıraları; sıra r → pad satırı y = kbWin + 3 - r.
@@ -352,9 +353,16 @@
   function encMove(e, st) {
     var x = e.clientX, y = e.clientY, t = evTime(e), fine = isFine(e);
     if (!st.moved) {
-      if (Math.abs(x - st.x0) + Math.abs(y - st.y0) < DRAG_PX) return;
-      st.moved = true;   // ölçüm eşiği aşan noktadan başlar: tıkın titremesi değere karışmaz
-    } else if (st.id === 'jog') {
+      var dist = Math.abs(x - st.x0) + Math.abs(y - st.y0);
+      if (dist < DRAG_PX) return;
+      st.moved = true;
+      // Tıkın titremesi (ilk DRAG_PX) değere karışmaz ama eşiği aşan kısım sayılır: referans başlangıçtan
+      // eşik kadar ilerletilir ve bu olayın kalanı aşağıda işlenir. Hızlı bir sürükleme (trackpad fırlatması,
+      // hızlı dokunmatik kaydırma) tek büyük olayla gelirse mesafesinin tamamı kaybolmasın diye.
+      var k = DRAG_PX / dist;
+      st.x = st.x0 + (x - st.x0) * k; st.y = st.y0 + (y - st.y0) * k;
+    }
+    if (st.id === 'jog') {
       var deg = st.c ? jogDelta({ x: st.x, y: st.y }, { x: x, y: y }, st.c, st.R) : -(y - st.y) * JOG_PX_DEG;
       if (t - st.t0 < FLICK_MS) st.pend += deg;          // fırlatma mı dönüş mü, henüz belli değil
       else { jogEmit(st, deg + st.pend, fine); st.pend = 0; }
@@ -660,7 +668,7 @@
   }
 
   function setKbVel(d) {
-    kbVel = clamp(kbVelocity() + d, 1, 127);
+    kbVel = clamp(kbVelocity() + d, KB_VEL_MIN, 127);
     popup('Key Velocity', String(kbVel));
   }
 

@@ -43,23 +43,29 @@
  *   Attack, worklet gibi doğrusal açılma. Mod Time hem periyodu hem Attack'ı aynı oranda ölçeklediği için
  *   çizimi değiştirmez.
  * - Drum Rack (§H14): 4×4 ad ızgarası sütun 0–3'te, r3–r6'da; fiziksel pad'lerle aynı yerleşim (sol alt =
- *   bank'ın ilk pad'i). Sesi olmayan (boş ya da yüklenemeyen) pad soluk.
+ *   bank'ın ilk pad'i). Sesi olmayan (boş ya da yüklenemeyen) pad soluk. §I12: sütun 4–7'de seçili pad'in
+ *   adı büyük (r4), notası küçük (r5); boş pad '—' ve soluk.
  * - Scale: ızgara kaydırma durumu (c0) bu modülde tutulur; görünüm durumudur, undo'ya girmez.
  * - Learn: tek renkli (Scale gibi). Bölüm listesi P3.tut.CURRICULUM (dizi ya da {chapters}); ilerleme
- *   P3.save 'tutorial' kaydından (sartname-ogretici §3 biçimi). İsteğe bağlı durum alanları S.learnPage ve
- *   S.learnSel (sayı; yoksa sayfa, seçili bölümün sayfasıdır; seçili = kayıttaki güncel bölüm). Upper k'nın
- *   açacağı bölüm: P3.lcd.learnChapterAt(k). Faz 2 bölümleri gri ve '(yakında)'.
+ *   P3.save 'tutorial' kaydından (sartname-ogretici §3 biçimi). Durum alanları S.learnPage ve S.learnSel
+ *   (§I14; sayı, p3-modes sessiz ve undo'suz yazar, Learn açılırken ikisini de siler). Yoksa seçili = kayıttaki
+ *   güncel bölüm, sayfa = onun sayfası. Page ◀▶ / jog başka sayfaya geçince seçili bölüm o sayfada değilse
+ *   ortadaki başlık sayfanın ilk bölümünü gösterir (görünen çiplerle tutarlı). Upper k'nın açacağı bölüm:
+ *   P3.lcd.learnChapterAt(k). Faz 2 bölümleri gri ve '(yakında)'.
  * - 'Basic audio' rozeti ve ses ipucu r6'nın sağ altında. 'fallback' sesli sayılır (ipucu yok, rozet var);
- *   'failed' için ayrı metin; Seviye 1 (pasif) ve menüde ipucu yok.
+ *   ipucu İngilizce 'Tap a pad to enable audio' (§I11; TR karşılığı #p3Feedback'te, p3-app), 'failed' için
+ *   'Audio unavailable'; Seviye 1 (pasif) ve menüde ipucu yok.
  * - Faz 1'de olmayan overlay/view değerleri için 'unsupported' sayfası (ad + 'Not in this simulator').
  * - ARIA: boş slot'ta aria-label kayıttaki ad ('Encoder 3'), değer metni 'boş'. aria-valuenow 0..100
  *   (hotspot'ların min/max'ı). Volume −70..+6 dB, Tempo 20..999 BPM, Swing 0..100 % üzerinden. Volume
- *   hedefi 'track' (Main Track) için S.vol.track okunur, yoksa 0 dB (VARSAYIM).
+ *   hedefi 'track' (Main Track) için S.vol.track okunur, yoksa 0 dB (VARSAYIM). Headphones hedefinde
+ *   (§I8) değer gösterilir ama ses değişmez: popup alt satırı ve ARIA metni 'Browser: single output'.
  * - #p3LcdLive: açılıştaki ilk çizim duyurulmaz; sonraki sayfa/bank değişimlerinde son durum en çok
  *   500 ms'de bir yazılır.
  * - Popup: sub verilirse iki satır (ana metin taban 82, alt satır 104, gri 13 px). 'restore'da temizlenir.
  * - Ek API: render() (anında çizim; test ve selftest), filterResponse(fp, f, fs), learnChapterAt(k),
- *   text.volume(S) / text.swingTempo(S) (popup metinleriyle aynı biçim: 'Main Output: -10.0 dB').
+ *   text.volume(S) / text.volumeSub(S) / text.swingTempo(S) (popup metinleriyle aynı biçim:
+ *   'Main Output: -10.0 dB'; volumeSub popup alt satırı, yalnız Headphones'ta 'Browser: single output').
  */
 (function () {
   'use strict';
@@ -110,6 +116,7 @@
   var OSC_GLYPH = ['1', '2', 'S', 'M'];
   var SWITCH_WORDS = { 'Filter Switch': ['Filter 1', 'Filter 2'] };
   var VOL_LABEL = { main: 'Main Output', phones: 'Headphones', track: 'Main Track', cue: 'Cue' };
+  var VOL_SUB = { phones: 'Browser: single output' };   // §I8: tarayıcıda tek çıkış, Headphones sesi değiştirmez
   var UNSUP_TITLE = { mix: 'Mix', clip: 'Clip', sessionScreen: 'Session', fixedLength: 'Fixed Length',
     quantize: 'Quantize', metronome: 'Metronome', setup: 'Setup', swap: 'Swap', add: 'Add', sets: 'Sets' };
 
@@ -771,6 +778,11 @@
         put(named ? slot.name : '—', COL(x), BASE[6 - y], col, F_SMALL, TEXT_W);   // §H15: boş pad '—'
       }
     }
+    // §I12: sütun 4–7 seçili pad — adı büyük, notası küçük (Select + pad popup'ıyla aynı bilgi).
+    var sp = Math.round(num(tr.selPad, 0)), ss = kit && sp >= 0 && sp < kit.length ? kit[sp] : null;
+    var sn = !!(ss && ss.name), sa = sn && (!P3.drums.hasSound || P3.drums.hasSound(sp)), wide = 121 * 3 + TEXT_W;
+    put(sn ? ss.name : '—', COL(4), BASE[4], sa ? K.lcdWhite : K.lcdMono, F_BIG, wide);
+    if (P3.scale) put(P3.scale.noteName(36 + sp), COL(4), BASE[5] + 4, K.lcdName, F_SMALL, wide);
     trackRow(S);
   }
 
@@ -841,6 +853,12 @@
     if (sel < 0) sel = 0;
     var pages = Math.ceil(list.length / 8);
     var page = typeof S.learnPage === 'number' ? clamp(Math.round(S.learnPage), 0, pages - 1) : Math.floor(sel / 8);
+    // Sayfa elle değiştiyse (Page ◀▶ / jog) ortadaki bölüm görünen sayfadan olur: seçili o sayfada değilse
+    // sayfanın ilk bölümü (Faz 1'de açılabilir olan tercih edilir).
+    if (Math.floor(sel / 8) !== page) {
+      sel = page * 8;
+      for (i = page * 8; i < Math.min(list.length, page * 8 + 8); i++) if (list[i].avail) { sel = i; break; }
+    }
     return { list: list, sel: sel, page: page, pages: pages };
   }
 
@@ -890,7 +908,8 @@
       g.strokeRect(x + 0.5, 126.5, w - 1, 12);
       put('Basic audio', x + 4, 136, K.lcdName, F_BADGE);
     } else if (a !== 'running' && app.mode !== 'level1' && app.mode !== 'menu') {
-      putRight(a === 'failed' ? `Ses başlatılamadı` : `Ses kapalı — bir pad'e dokun`, COLR(7), 136, K.lcdName, F_TINY);
+      // §I11: LCD metni İngilizce (A16); Türkçe karşılığını p3-app #p3Feedback'e yazar.
+      putRight(a === 'failed' ? 'Audio unavailable' : 'Tap a pad to enable audio', COLR(7), 136, K.lcdName, F_TINY);
     }
   }
 
@@ -929,9 +948,10 @@
   }
 
   // ---------------------------------------------------------------- metinler (popup + ARIA)
+  // [etiket, değer metni, dB, alt satır ('' ya da §I8 Headphones notu)]
   function volumeParts(S) {
     var v = S.vol || {}, t = VOL_LABEL[v.target] ? v.target : 'main', db = num(v[t], t === 'track' ? 0 : -10);
-    return [VOL_LABEL[t], db < -70 ? '-inf dB' : fixed(db, 1) + ' dB', db];
+    return [VOL_LABEL[t], db < -70 ? '-inf dB' : fixed(db, 1) + ' dB', db, VOL_SUB[t] || ''];
   }
 
   function swingTempoParts(S) {
@@ -987,7 +1007,7 @@
     var vp = volumeParts(S), sp = swingTempoParts(S);
     if ((el = dev.hotspotEl('volume'))) {
       setAttr(el, 'volume', 'aria-valuenow', Math.round(100 * (clamp(vp[2], -70, 6) + 70) / 76));
-      setAttr(el, 'volume', 'aria-valuetext', vp[0] + ' ' + vp[1]);
+      setAttr(el, 'volume', 'aria-valuetext', vp[0] + ' ' + vp[1] + (vp[3] ? ', ' + vp[3] : ''));
     }
     if ((el = dev.hotspotEl('swingTempo'))) {
       setAttr(el, 'swingTempo', 'aria-valuenow', Math.round(100 * clamp01(sp[2])));
@@ -1228,6 +1248,7 @@
     learnChapterAt: learnChapterAt,
     text: {
       volume: function (S) { var p = volumeParts(S || P3.S); return p[0] + ': ' + p[1]; },
+      volumeSub: function (S) { return volumeParts(S || P3.S)[3]; },
       swingTempo: function (S) { var p = swingTempoParts(S || P3.S); return p[0] + ': ' + p[1]; }
     }
   };

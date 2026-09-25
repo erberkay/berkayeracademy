@@ -43,7 +43,20 @@
  *   ve çift dokunuş (a === b). Loop clip uzunluğunu aşarsa clip uzatılır.
  * - AudioContext yoksa ya da 'running' değilse transport performance.now saatine düşer (LED'ler ve
  *   ekran çalışır, ses planlanmaz); ses bağlamı çalışır hâle gelince saat ona devredilir.
- * - Faz 1'de tracks[i].playing yazılmaz: çalan clip her track'in slot 0'ıdır (Session Faz 2).
+ * - Faz 1'de her track yalnız slot 0'ını çalar (Session Faz 2). tracks.i.playing çalma durumunu yansıtır
+ *   (undo'suz): transport çalıyor, slot 0'da clip var ve track durdurulmamışsa 0, değilse −1.
+ * - Stop Clip (§I5): stopClip(track) track'in clip'ini bir sonraki bar başında durdurur (launch
+ *   quantization 1 bar); o andan sonra notası planlanmaz, çalan seq notaları bar çizgisinde kapanır,
+ *   tracks.i.playing −1 olur. Kayıt ('rec') o track'teyse kayıt da orada biter. Bar çizgisi zaten
+ *   planlanmış bölgedeyse (≤100 ms kala basıldı) o bölgedeki synth notaları başladıkları anda kapatılır;
+ *   drum vuruşu varsa stop()'taki gibi P3.drums.panic() (yalnız geleceği iptal eden API yok). Bekleyen
+ *   kayıt ('pending') o track içinse iptal edilir. stopAllClips() hepsine uygular; transport durmaz.
+ *   Durmuş clip Faz 1'de (Session yok) Play ile ya da o track'te Record ile yeniden başlar: Record bir
+ *   sonraki bar'da clip'i yeniden başlatıp overdub açar (VARSAYIM). Durmuş track'e overdub yazılmaz.
+ *   Yeni clip (silinmiş clip'in yerine step ya da loop) durdurmayı kaldırır ve hemen çalar.
+ * - Kayıt beat-0 toleransı (§I6): kaydın (ya da overdub'da clip'in) başlangıç beat'inden en çok
+ *   REC_EARLY_S önce gelen nota clip başına (t = 0) yazılır. VARSAYIM: yalnız beat 0 değil, sonraki
+ *   bar'dan başlayan kayıt için de aynı tolerans.
  * - Swing yalnız değer olarak saklanır (Faz 1; sartname-scale-note §9). Count-in, Fixed Length,
  *   Repeat, Quantize Faz 2.
  */
@@ -63,6 +76,7 @@
   var STEP_VEL = 100, ACCENT_VEL = 127;
   var REC_GRACE = 0.25;        // VARSAYIM: bar çizgisinden sonra bu kadar içinde durdurmak aşağı yuvarlar
   var REC_OPEN_D = 0.25;       // bırakılmamış kayıt notasının geçici süresi (beat)
+  var REC_EARLY_S = 0.05;      // §I6: kayıt başlangıcından bu kadar önce gelen nota başa yazılır
   var MIN_D = 1 / 64;          // en kısa nota süresi (beat)
   var SEG_KEEP_S = 10;         // geçmiş tempo bölütleri: recordNote biraz geçmişten zaman verebilir
   var EPS = 1e-9;
@@ -77,7 +91,8 @@
   var schedBeat = 0;           // bu beat'e kadar (hariç) her şey planlandı
   var timer = null, frameId = 0, frameIsRaf = false;
   var launch = [];             // track → clip döngüsünün başladığı song beat'i
-  var open = [];               // çalan seq notaları {track, id, off:beat, on:s, vis}
+  var open = [];               // çalan seq notaları {track, id, b:beat, off:beat, on:s, vis}
+  var stops = [];              // track → {at: durma beat'i, done, resume?: yeniden başlama beat'i} (§I5)
   var vis = [];                // görsel 'note' kuyruğu {on, off, st:0|1, e}
   var lastDrumAt = -1;         // planlanan son drum vuruşunun zamanı (stop'ta gelecek var mı)
   var seqId = 0, recSeq = 0;
@@ -260,7 +275,9 @@
     if (!c || !c.notes || !c.notes.length) return;
     if (recState() === 'rec' && rec.track === i) return;
     var lp = loopOf(c), L = lp[1] - lp[0], base = launch[i] || 0;
-    if (!(L > 0)) return;
+    // Durma bar'ından sonrası planlanmaz; yeniden başlatılan clip (resume) launch'tan itibaren çalar.
+    if (stops[i] && stops[i].resume == null) b1 = Math.min(b1, stops[i].at - EPS);
+    if (!(L > 0) || b1 <= b0) return;
     for (var j = 0; j < c.notes.length; j++) {
       var note = c.notes[j];
       if (note.m || note.t < lp[0] - EPS || note.t >= lp[1] - EPS) continue;
@@ -276,8 +293,8 @@
   }
 
   function fire(i, t, note, b, d, n) {
-    var when = Math.max(beatToTime(b), n);
-    var o = { track: i, id: null, off: b + d, on: when, vis: null };
+    var when = Math.max(beatToTime(b), n), st = stops[i];
+    var o = { track: i, id: null, b: b, off: st && b < st.at ? Math.min(b + d, st.at) : b + d, on: when, vis: null };
     if (t.kind === 'drum') {
       var pad = note.p - 36;
       if (padSilenced(t, pad)) return;
@@ -324,7 +341,10 @@
     }
     schedBeat = Math.max(schedBeat, from, to);
     closeOffs(to, n);
-    recUpdate(timeToBeat(n));
+    var b = timeToBeat(n);
+    recUpdate(b);
+    applyStops(b);
+    syncPlaying();
     flushVis(n);
   }
 
@@ -334,6 +354,7 @@
     var n = now(), b = timeToBeat(n);
     flushVis(n);
     recUpdate(b);
+    applyStops(b);
     follow(b);
     P3.bus.emit('tick', { beat: Math.max(0, b) });
     frameId = reqFrame(frame);
@@ -344,7 +365,7 @@
     var s = S();
     for (var i = 0; i < s.tracks.length; i++) {
       var t = s.tracks[i];
-      if (t.kind !== 'drum' || t.follow === false) continue;
+      if (t.kind !== 'drum' || t.follow === false || stopped(i)) continue;
       var c = t.clips && t.clips[0];
       if (!c) continue;
       var pos = clipPos(i, c, b);
@@ -363,10 +384,11 @@
     bpm = clampBpm(s.transport.bpm);
     playing = true;
     clockCtx = c && c.state === 'running' ? c : null;
-    open = []; vis = []; launch = []; lastDrumAt = -1;
+    open = []; vis = []; launch = []; stops = []; lastDrumAt = -1;
     segs = [{ t: now() + START_S, b: 0, bpm: bpm }];
     schedBeat = 0;
     write('transport.playing', true);
+    syncPlaying();
     timer = setInterval(tick, TICK_MS);
     tick();
     frameId = reqFrame(frame);
@@ -382,7 +404,7 @@
     open = [];
     if (lastDrumAt > n && clockCtx && P3.drums && typeof P3.drums.panic === 'function') P3.drums.panic();
     flushAllVis();
-    segs = []; schedBeat = 0; clockCtx = null; lastDrumAt = -1;
+    segs = []; schedBeat = 0; clockCtx = null; lastDrumAt = -1; stops = [];
   }
 
   // Durdurmak her kaydı bitirir (arastirma-modlar §6.2).
@@ -396,6 +418,7 @@
     halt(n);
     setRec('idle');
     write('transport.playing', false);
+    syncPlaying();
     emitTransport();
     return true;
   }
@@ -449,14 +472,21 @@
     var st = recState(), sel = (s.sel && s.sel.track) || 0;
     if (st === 'rec') { finishRec(); setRec('play'); }
     else if (st === 'overdub') { closeRecOpen(now()); setRec('play'); }
-    else if (st === 'pending') setRec(playing ? rec.prev : 'idle');   // VARSAYIM: bekleyen kaydı iptal
+    else if (st === 'pending') cancelPending();   // VARSAYIM: bekleyen kaydı iptal
     else {
       rec.prev = st;
       rec.track = sel;
       rec.key = 'rec:' + (++recSeq);
-      if (clip(sel, 0)) {
+      if (clip(sel, 0) && playing && stopped(sel)) {
+        // Durmuş clip: bir sonraki bar'da yeniden başlar (şimdiden planlanır) ve overdub açılır (beginRec).
+        rec.start = nextBar(timeToBeat(now()));
+        stops[sel].resume = rec.start;
+        launch[sel] = rec.start;
+        setRec('pending');
+      } else if (clip(sel, 0)) {
         rec.label = 'Overdub';
         if (!playing) play();
+        else if (stops[sel]) stops[sel] = undefined;   // bekleyen durdurma iptal: clip çalmaya devam eder
         setRec('overdub');
       } else if (!playing) {
         // §A8: durukken kayıt beat 0'dan (count-in Faz 2).
@@ -466,7 +496,7 @@
         beginRec();
       } else {
         // §A8: çalarken bir sonraki bar'dan (launch quantization 1 bar, VARSAYIM).
-        rec.start = (Math.floor(timeToBeat(now()) / BAR + EPS) + 1) * BAR;
+        rec.start = nextBar(timeToBeat(now()));
         setRec('pending');
       }
     }
@@ -477,7 +507,12 @@
   // Bekleyen kayıt bar'a varınca clip açılır. O arada track'e clip girdiyse (step) overdub olur.
   function beginRec() {
     var i = rec.track;
-    if (clip(i, 0)) { rec.label = 'Overdub'; setRec('overdub'); return; }
+    if (clip(i, 0)) {
+      if (stops[i]) { stops[i] = undefined; launch[i] = rec.start; syncPlaying(); }   // durmuş clip yeniden başlar
+      rec.label = 'Overdub';
+      setRec('overdub');
+      return;
+    }
     rec.label = 'Record';
     writeClip(i, newClip(BAR), rec.label, rec.key);
     setRec('rec');
@@ -545,23 +580,30 @@
     q.forEach(function (o) { closeRecNote(o, n); });
   }
 
+  // §I6: başlangıç beat'inden en çok REC_EARLY_S önce gelen nota başlangıca sayılır.
+  function early(onB, onAt, startB) {
+    return onB < startB - EPS && beatToTime(startB) - onAt <= REC_EARLY_S + 1e-6;
+  }
+
   function addRecNote(i, p, v, onAt, offAt) {
     if (!playing) return false;
     var onB = timeToBeat(onAt);
-    if (recState() === 'pending' && onB >= rec.start - EPS) beginRec();
+    if (recState() === 'pending' && (onB >= rec.start - EPS || early(onB, onAt, rec.start))) beginRec();
     var st = recState(), t = track(i), c = clip(i, 0);
     if ((st !== 'rec' && st !== 'overdub') || !t || t.arm === false || !c) return false;
     var c2 = clone(c), ct, cap = Infinity;
     if (st === 'rec') {
       if (i !== rec.track) return false;
+      if (early(onB, onAt, rec.start)) onB = rec.start;
       ct = onB - rec.start;
-      if (ct < -EPS) return false;   // bar'dan önce basılan nota kayda girmez
+      if (ct < -EPS) return false;   // toleranstan da önce basılan nota kayda girmez
       ct = Math.max(0, ct);
       if (ct >= c2.len - EPS) { c2.len = (Math.floor(ct / BAR + EPS) + 1) * BAR; c2.loop = [0, c2.len]; }
     } else {
-      var lp = loopOf(c), L = lp[1] - lp[0];
-      if (!(L > 0)) return false;
-      ct = lp[0] + mod(onB - (launch[i] || 0), L);
+      var lp = loopOf(c), L = lp[1] - lp[0], base = launch[i] || 0;
+      if (!(L > 0) || stoppedAt(i, onB)) return false;   // durmuş clip'e overdub yazılmaz
+      if (early(onB, onAt, base)) onB = base;
+      ct = lp[0] + mod(onB - base, L);
       if (ct >= lp[1] - EPS) ct = lp[0];
       cap = lp[1] - ct;
     }
@@ -595,7 +637,7 @@
     if (c) return c;
     var len = lenBeats > 0 ? lenBeats : P3.scale.CLIP_LEN[t.grid == null ? P3.scale.GRID_DEF : t.grid];
     P3.store.set(clipPath(i, slot), newClip(len), { undo: 'Clip' });
-    if (slot === 0) launch[i] = 0;
+    if (slot === 0) { launch[i] = 0; stops[i] = undefined; }   // yeni clip hemen çalar (Stop Clip'i kaldırır)
     return clip(i, slot);
   }
 
@@ -713,7 +755,99 @@
     var c = clip(i, 0);
     if (!c) return -1;
     var b = timeToBeat(now());
+    if (stoppedAt(i, b)) return -1;
     return b < 0 ? -1 : clipPos(i, c, b);
+  }
+
+  // ---------------------------------------------------------------- Stop Clip (§I5)
+  function nextBar(b) { return (Math.floor(b / BAR + EPS) + 1) * BAR; }
+  // Track b beat'inde durmuş mu: durma bar'ı geçti ve (varsa) yeniden başlama bar'ı gelmedi.
+  function stoppedAt(i, b) {
+    var st = stops[i];
+    return !!st && b >= st.at - EPS && !(st.resume != null && b >= st.resume - EPS);
+  }
+  function stopped(i) { return playing && stoppedAt(i, timeToBeat(now())); }
+
+  // Bekleyen kayıt (ya da durmuş clip'in yeniden başlatılması) iptal: clip durmuş kalır.
+  function cancelPending() {
+    var st = stops[rec.track];
+    if (st) st.resume = undefined;
+    setRec(playing ? rec.prev : 'idle');
+  }
+
+  // tracks.i.playing: çalan slot (Faz 1: 0) ya da −1. Undo'suz; tx dışında (zamanlayıcı, transport) çağrılır.
+  function syncPlaying() {
+    var s = S();
+    if (!s || !s.tracks) return;
+    for (var i = 0; i < s.tracks.length; i++) {
+      var t = s.tracks[i];
+      if (!t) continue;
+      var want = playing && t.clips && t.clips[0] && !stopped(i) ? 0 : -1;
+      if (t.playing !== want) write('tracks.' + i + '.playing', want);
+    }
+  }
+
+  // Durma bar'ına gelen track'ler: kayıt biter, açık kayıt notaları kapanır, playing −1.
+  function applyStops(b) {
+    var changed = false;
+    for (var i = 0; i < stops.length; i++) {
+      var st = stops[i];
+      if (!st || st.done || b < st.at - EPS) continue;
+      st.done = true;
+      changed = true;
+      var rs = recState(), n = now();
+      if (rs === 'rec' && rec.track === i) { finishRec(); setRec('play'); }
+      else if (rs === 'pending' && rec.track === i) cancelPending();
+      else closeTrackRecOpen(i, n);
+    }
+    if (changed) { syncPlaying(); emitTransport(); }
+  }
+
+  function closeTrackRecOpen(i, n) {
+    var keep = [];
+    recOpen.forEach(function (o) { if (o.track === i) closeRecNote(o, n); else keep.push(o); });
+    recOpen = keep;
+  }
+
+  // Bar çizgisi zaten planlandıysa (lookahead içinde) oradan sonrası geri alınır; öncesi çizgide kesilir.
+  function cutPlanned(i, at) {
+    var drumCut = false;
+    for (var k = 0; k < open.length;) {
+      var o = open[k];
+      if (o.track !== i) { k++; continue; }
+      if (o.b >= at - EPS) {
+        if (o.id) endVoice(o, o.on);
+        else { drumCut = true; if (o.vis) o.vis.off = o.on; }
+        open.splice(k, 1);
+        continue;
+      }
+      if (o.off > at) o.off = at;
+      k++;
+    }
+    if (drumCut && clockCtx && P3.drums && typeof P3.drums.panic === 'function') P3.drums.panic();
+  }
+
+  // Track'in clip'i bir sonraki bar'da durur. true = durdurma planlandı ya da zaten bekliyor.
+  function stopClip(i) {
+    var t = track(i);
+    if (!t || !playing) return false;
+    var cancel = recState() === 'pending' && rec.track === i;
+    if (cancel) cancelPending();   // o track'te bekleyen kayıt (ya da yeniden başlatma) iptal
+    if (!clip(i, 0) || stopped(i)) { if (cancel) emitTransport(); return cancel; }
+    if (stops[i]) return true;
+    var at = nextBar(timeToBeat(now()));
+    stops[i] = { at: at, done: false };
+    // Açık notalar bar çizgisinde kapanır; çizgiden sonrası planlandıysa geri alınır.
+    cutPlanned(i, at);
+    emitTransport();
+    return true;
+  }
+
+  function stopAllClips() {
+    var s = S(), any = false;
+    if (!s || !s.tracks) return false;
+    for (var i = 0; i < s.tracks.length; i++) if (stopClip(i)) any = true;
+    return any;
   }
 
   function recording() {
@@ -732,6 +866,7 @@
       write('transport.bpm', bpm);
       write('transport.playing', false);
       write('transport.rec', 'idle');
+      syncPlaying();
       emitTransport();
       return;
     }
@@ -765,6 +900,7 @@
       write('transport.bpm', bpm);
       write('transport.playing', false);
       write('transport.rec', 'idle');
+      syncPlaying();
     }
     return P3.seq;
   }
@@ -777,7 +913,7 @@
     clip: clip, ensureClip: ensureClip, deleteClip: deleteClip,
     stepToggle: stepToggle, stepMute: stepMute, deletePadNotes: deletePadNotes,
     setLoopPage: setLoopPage, setLoopRange: setLoopRange, setFollow: setFollow,
-    playhead: playhead,
+    playhead: playhead, stopClip: stopClip, stopAllClips: stopAllClips,
     BAR: BAR
   };
 })();

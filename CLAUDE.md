@@ -173,7 +173,7 @@ These flows live almost entirely inside `booking.html` (~5300 lines) — single 
 | profile.html | /profile?uid= | |
 | ableton-lab.html | /ableton-lab | Interactive lab — multiple Web Audio modules |
 | ders-ableton.html | /ders-ableton | Lesson content |
-| ders-push3.html | /ders-push3 | Ableton Push 3 interactive "find the control" game — 27 hotspots bound to named layers in assets/img/push3-device.svg (fetched + injected, background removed); linked from egitim.html curriculum grid |
+| ders-push3.html | /ders-push3 | Push 3 Laboratuvarı — öğretici, Seviye 1/2 ve tarayıcıda çalan Push 3 emülatörü (Wavetable synth); kod assets/js/push3/, sözleşme docs/push3/README.md. Linked from egitim.html curriculum grid |
 | sss.html | /sss | FAQ |
 | app-bridge.html | /app-bridge | UUID-keyed cross-app data bridge UI |
 
@@ -189,3 +189,21 @@ Preset application must **not** trigger a full re-render. Pattern:
 - Preset clicks call `_m1Update()` instead of `navigate(1)` so scroll, oscilloscope continuity, and any open sub-panel state are preserved.
 
 `state.waveform` is kept as a legacy alias for `state.osc1.wave`. Older presets that only set `wave` still load via `applyPreset()` which fills new fields with neutral defaults.
+
+## Push 3 Lab (`ders-push3.html`)
+
+Tarayıcıda çalan Push 3 emülatörü + öğretici + Seviye 1 (Kontrolü Bul) / Seviye 2 (Görevler). **Single source of truth: `docs/push3/README.md`** (§H/§I, §G'yi geçersiz kılar; `dalga*-notlar.md` entegrasyon notları). `docs/**/*.md` yayınlanmaz (`firebase.json` ignore).
+
+**Architecture** — plain IIFE scripts in `assets/js/push3/`, shared namespace `window.P3`, loaded in README §C order; no side effects on load, single entry `P3.app.boot()`:
+- `p3-core` (`P3.K` sabitler, `bus`, `store` undo/redo, `save` → `localStorage['bk_push3_v1']`, `t`, `panic`) · `p3-scale` (saf gam/pad→nota) · `p3-wt-params` (Wavetable parametre/bank tanımları) · `p3-device` (SVG yükleme, kontrol registry, hit-test, `align`/`setView`) · `p3-leds` (pad/LED renkleri, `#p3Live`) · `p3-lcd` (`#p3LcdCanvas` 960×160 sayfaları) · `p3-wt-engine` (`P3.audio` + `P3.wt`: graf, worklet, tablolar) · `p3-wt-worklet` (DSP, AudioWorklet) · `p3-wt-tables.worker` (wavetable üretimi) · `p3-drums` · `p3-seq` (transport, scheduler, kayıt, clip) · `p3-modes` (buton/pad/encoder davranışı) · `p3-input` (pointer/klavye → `bus 'in'`) · `p3-levels` · `p3-tutorial` · `p3-app` (boot, router `#ogretici|#seviye-1|#seviye-2|#serbest`, gate) · `p3-selftest` (yalnız `?p3debug=1`).
+
+**Rules**
+- Injected device SVG is **never mutated** after injection — the only exception is `P3.dev.setView()` (viewBox swap). Everything dynamic (pads, LED glyph clones, light bars, touch rings) draws into the sibling `<svg id="p3Live">` layer (same viewBox, no filter, `pointer-events:none`); `filter` lives only on `.p3-device-wrap`.
+- One `AudioContext` (`P3.audio.ctx`), unlocked on a user gesture via `P3.audio.unlock()` (idempotent).
+- Worklet/worker load from `/assets/js/push3/<file>?v=${P3.K.V}`; if that fails (Firebase `**` rewrite can return HTML) the engine refetches the text and loads it from a Blob URL, then falls back to main-thread table generation / PeriodicWave.
+- `P3.K.V` (`p3-core.js`) is the version stamp and **must equal the `?v=` on the page's `push3/*.js` script tags** — bump both together.
+- Coding: README §B — no `type="module"`/`class` on the main thread, `var`/`function`, Turkish strings only in template literals, `// VARSAYIM:` for unverified behaviour, no `console.log` (`console.warn('[p3] …')`). Page chrome strings are `p3_*` keys in `i18n.js`.
+
+**Testing** — DOM-free modules are tested in Node by loading the real files into `vm` (scale, params, engine, seq, modes); in the browser `?p3debug=1` loads `p3-selftest.js`, then `P3.test.run()` returns the result table (unit checks + OfflineAudioContext measurements, `sartname-dogrulama.md`).
+
+**Phases** — Faz 1 = current scope (README §A + plan). Faz 2 (Session, Layout/sequencer, Repeat, Quantize, Web MIDI, öğretici bölüm 7–10) and Faz 3 (MPE, Setup, otomasyon, Firestore preset kaydı, EN öğretici) are specified in `docs/push3/sartname-kapsam.md`.

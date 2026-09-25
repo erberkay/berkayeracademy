@@ -28,7 +28,7 @@
 
   // ---------------------------------------------------------------- sabitler
   P3.K = {
-    V: '20260925a',
+    V: '20260925c',
     HOLD_MS: 300, DOUBLE_MS: 500, TOUCH_POPUP_MS: 400, POPUP_MS: 1500,
     UNDO_MAX: 100,
     SAVE_KEY: 'bk_push3_v1', SAVE_MS: 300,
@@ -224,7 +224,7 @@
       scale: { root: 0, idx: 0, inKey: true, fixed: false, layoutIdx: 0 },
       transport: { playing: false, rec: 'idle', bpm: 120, swing: 0, metro: false, tapTimes: [] },
       swingTempo: 'tempo',
-      vol: { target: 'main', main: -10, phones: -10, cue: -10 },
+      vol: { target: 'main', main: -6, phones: -6, cue: -10 },
       accent: { on: false },
       strip: { mode: 'pb', pb: 0, mod: 0 },
       wtui: { bank: 0, osc: '1', flt: 1, env: 'amp', lfo: 1, ampView: 'time', modView: 'time', expr: 'mpe', target: null, prevBank: 0, touched: -1 },
