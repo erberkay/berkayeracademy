@@ -36,10 +36,15 @@
  *   seviyede 3. harmonik üretir (−35 dBFS sinüste ≈ −88 dB) ve Sub Tone %0 ölçütünü (< −90 dB) bozar.
  * - Bandpass çıkışı k·band (tepe 0 dB; Morph'taki normalizasyonla aynı), yüksek rezonansta patlama olmasın.
  * - Parallel'de kapalı filtre bypass olduğundan çıkış 0.5·(F1(x) + x) olur (kural birebir uygulandı).
- * - Aynı notaya yeniden basınca eski ses 3 ms'de söner, yeni ses zarflarına eskisinin o anki
- *   seviyesinden başlar (tık yok, seviye çukuru yok). Trigger döngüsünde note-off yok sayılır (VARSAYIM).
+ * - Ses kimliği olayın id'sidir (README §H4): aynı perdeye farklı id ile basmak ayrı bir ses açar (Push 3 MPE).
+ *   Basılı bir id yeniden tetiklenince o sesin eski hali 3 ms'de söner, yeni ses zarflarına onun o anki
+ *   seviyesinden başlar (tık yok, seviye çukuru yok). Release'teki ses id'sini bırakır, kuyruğunu çalmayı
+ *   sürdürür; böylece sayı ve string id'ler (string'lerin eşlemesi note-off'ta silinir) aynı davranır.
+ *   Trigger döngüsünde note-off yok sayılır (VARSAYIM).
  * - Unison ses sayısı ve modu note-on'da sabitlenir (VARSAYIM); Amount canlıdır. eco: ≤4 ses ve toplam
  *   ≤48 unison-osilatör, hq/std: ≤8 ve ≤128. Shimmer/Noise'a ±0.02·A pozisyon titreşimi eklendi (araştırma §8.2).
+ *   Unison pan'ı detune sırasını izler: pan_i = e_i · UNI_WIDTH (README §H5). Şartnamedeki dönüşümlü ±|e_i|
+ *   tek sayıda seste iki uç sesi aynı tarafa koyuyordu (3 ses: −1, 0, −1).
  * - Classic PW = max(0, fx1); Modern Warp çift yönlü (d = 0.5 − 0.49·fx1), mip çarpanı 0.5/min(d, 1−d).
  *   EKLEME: PW/Warp sıkıştırması ve Fold kazancı perdeye göre tavanlanır (sıkıştırılmış dalganın temeli
  *   0.45·fs'i aşmasın); yalnız üst oktavlarda devreye girer ve en kaba katlanmayı önler (VARSAYIM).
@@ -73,6 +78,7 @@ const SYNC_BARS = [1 / 64, 1 / 48, 1 / 32, 1 / 24, 1 / 16, 1 / 12, 1 / 8, 1 / 6,
   3 / 8, 1 / 2, 3 / 4, 1, 1.5, 2, 3, 4, 6, 8];
 const PR_HQ = 0, PR_STD = 1, PR_ECO = 2;
 const UNI_MAX = [8, 8, 4], UNI_TOTAL = [128, 128, 48];
+const UNI_WIDTH = 1;              // VARSAYIM: Live'da unison genişlik parametresi yok; uç sesler tam sol/sağ
 
 const EV_ON = 1, EV_OFF = 2, EV_X = 3, EV_PB = 4, EV_MW = 5, EV_PRESS = 6, EV_TEMPO = 7, EV_TAB = 8,
   EV_MOD = 9, EV_PANIC = 10, EV_PROFILE = 11;
@@ -796,7 +802,8 @@ class P3Wavetable extends AudioWorkletProcessor {
     v.st = 2; v.id = -1; v.held = false; v.fade = v.fadeN = this.fadeN;
     if (this.mv === v) this.mv = null;
   }
-  // Çalma sırası (sartname §8): Release'teki en sessiz → en eski (en alt ve en üst tutulan nota korunur).
+  // Çalma sırası (sartname §8, aynı nota yerine aynı id: README §H4): Release'teki en sessiz → en eski
+  // (en alt ve en üst tutulan nota korunur).
   victim() {
     const V = this.V;
     let best = null, lo = null, hi = null, held = 0;
@@ -842,15 +849,19 @@ class P3Wavetable extends AudioWorkletProcessor {
   noteOn(id, n, vel) {
     n = clamp(Math.round(n), 0, 127); vel = clamp(vel, 1, 127);
     if (this.pv[P_MONO] >= 0.5) { this.monoOn(id, n, vel); return; }
+    // Ses kimliği id'dir (README §H4): yalnız basılı tutulan aynı id çalınır; Release'teki ses id'yi bırakır.
+    // id −1 (kimliksiz) hiçbir sesle eşleşmez.
     const V = this.V;
     let same = null, act = 0;
     for (let i = 0; i < V.length; i++) {
       const v = V[i];
       if (v.st !== 1) continue;
       act++;
-      if (v.note === n && (!same || v.age > same.age)) same = v;
+      if (v.id !== id || id === -1) continue;
+      if (!v.held) v.id = -1;
+      else if (!same || v.age > same.age) same = v;
     }
-    if (same) { this.steal(same); act--; }           // aynı nota: eski ses söner, yeni ses onun seviyesinden
+    if (same) { this.steal(same); act--; }           // aynı id: eski ses söner, yeni ses onun seviyesinden
     while (act >= this.limit) { const v = this.victim(); if (!v) break; this.steal(v); act--; }
     this.start(this.alloc(), id, n, vel, same);
   }
@@ -934,7 +945,7 @@ class P3Wavetable extends AudioWorkletProcessor {
     for (let i = 0; i < nu; i++) {
       const e = nu > 1 ? 2 * i / (nu - 1) - 1 : 0;
       os.e[i] = e;
-      os.sp[i] = nu > 1 ? ((i & 1) ? 1 : -1) * Math.abs(e) : 0;   // dönüşümlü pan ±|e|
+      os.sp[i] = e * UNI_WIDTH;                                   // pan detune sırasıyla (README §H5)
       os.ph[i] = nu > 1 && mode !== 4 ? this.rand() : 0;          // rastgele faz; Phase Sync ve tek ses 0'dan
       os.pm[i] = 0;
       os.fz[3 * i] = 0; os.fz[3 * i + 1] = NaN; os.fz[3 * i + 2] = 0;

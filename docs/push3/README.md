@@ -346,3 +346,25 @@ Dalga 1 dosyaları yazıldı ve testleri geçti: `p3-core.js`, `p3-scale.js`, `p
 14. **Drum track device sayfası (Faz 1, VARSAYIM):** r0 çip `Drum Rack`; görselleştirme alanında 4×4 pad adı ızgarası (seçili pad track renginde, boş pad `—`); encoder slot'ları boş. Seçili pad adı popup'ı Select+pad ile.
 15. **Boş drum pad adı** LCD'de `—`.
 16. **Taskbar'a `#p3KeysBtn`** (klavye kısayolları katmanı) ve oyun ekranında `.p3-attribution` yanına kısa bağımsızlık notu Dalga 3'te eklenir.
+
+---
+
+## I. Dalga 2 sonrası kararlar (Dalga 3 bunları izler)
+
+Dalga 2 dosyaları yazıldı ve testleri geçti: `p3-wt-engine.js`, `p3-leds.js`, `p3-lcd.js`, `p3-seq.js`, `p3-input.js`, `p3-modes.js` (+ worklet §H4/§H5). Entegrasyon notlarının tam listesi `docs/push3/dalga2-notlar.md`'de.
+
+1. **Boot sırası (`P3.app.boot`):** `P3.store.init()` → `P3.seq.init()` → `P3.lcd.init()` → `P3.modes.init()` → `P3.dev.load()` → (çözülünce) `P3.leds.init()` → `P3.input.init()` → `P3.bus.on('in', ev => { if (P3.app.gate(ev)) P3.modes.dispatch(ev); })` → router. Ses: mod kartı tıklamasında `P3.audio.unlock()` (içinde `init()` + `drums.load()`); yedek capture dinleyicileri (`pointerup, touchend, mousedown, keydown, click`) da `unlock()` çağırır (idempotent). `S.app.audio` `'interrupted'|'suspended'` ise taskbar'da "Sesi yeniden başlat" çipi.
+2. **Gate kuralı:** down'ı geçirilen bir kontrolün bırakış olayı (btn/dpad/octpage `down:false`, pad `down:false`, enc `touch:false`, strip `up`) **her zaman** geçer. Seviye 1'de olaylar `P3.modes`'a değil `P3.levels.onEvent('in', ev)`'e gider (cihaz pasif, ses yok). Öğreticide `allow` dışı down olayları yutulur ve `bus 'feedback'` ile uyarı verilir.
+3. **Bus olayları p3-app'in gösterdikleri:** `'toast' {text}` → `#p3Toast`; `'feedback' {text}` → `#p3Feedback`; `'learn' {chapter}` (slug veya sayı) → `#ogretici/<slug>`; `'keys'` → tuş etiketi katmanı (`#p3KeysBtn`).
+4. **Oyuna girişte** `P3.input.focus()`; `#p3KbToggle` → `P3.input.setKeyboard(on)`; `#p3PresetSel` → `P3.modes.applyPreset(0, id)`; `#p3ViewSeg` → `P3.dev.setView(name)` (≤600px'te otomatik `pads`/`padsStrip`).
+5. **Stop Clip Faz 1'de çalışır:** `P3.seq.stopClip(track)` (bir sonraki bar'da durur) ve `P3.seq.stopAllClips()` eklenir; modes bunları çağırır (Stop Clip, Shift+Stop Clip).
+6. **Kayıt beat-0 toleransı:** Record'dan sonra, beat 0'dan en fazla 50 ms önce gelen nota clip başına (t=0) yazılır.
+7. **Record + mevcut clip → overdub** (Live Session Record davranışı). Bekleme (`pending`) durumunda tekrar Record → iptal.
+8. **Volume hedefleri:** `main` → çıkış kazancı; `track` (Main Track) → mixBus kazancı (engine uygular); `phones` → değer gösterilir, ses değişmez; LCD popup alt satırı `Browser: single output`; `cue` → metronom.
+9. **Metronome uzun basış** (≥300 ms): açıp kapamaz; `UNSUPPORTED`'daki Faz 2 menü açıklaması gösterilir. Kısa basış toggle.
+10. **Mute/Solo + drum pad Faz 1'de etkin** (kabul). Delete + notası olmayan drum pad → LCD popup `No notes`.
+11. **LCD ses ipucu İngilizce:** `Tap a pad to enable audio`; Türkçe karşılığı `#p3Feedback`'e yazılır (app).
+12. **Drum Rack sayfası:** sütun 4–7'de seçili pad'in adı büyük ve notası küçük gösterilir.
+13. **Klavye velocity alt sınırı 20** (±20 adımlarla simetrik).
+14. **Learn sayfası:** `S.learnPage`/`S.learnSel` (silent, undo'suz) kullanılır; Faz 2 bölümleri gri + `(yakında)` listelenir.
+15. **Encoder dokunmada popup yok** (LCD vurgusu yeterli; gerçek cihaz gibi).
