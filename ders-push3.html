@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <script>if(window.location.pathname==='/ders-push3.html')window.location.replace('/ders-push3'+window.location.search+window.location.hash);</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Ableton Push 3 — İnteraktif Kontrol Oyunu · Berkay Er Academy</title>
-<meta name="description" content="Ableton Push 3'ün kontrollerini oyun oynayarak öğren — görevi oku, doğru düğmeye dokun, anında ne işe yaradığını gör. Ücretsiz interaktif eğitim.">
-<meta name="keywords" content="ableton push 3, push 3 oyunu, push 3 kontrolleri öğren, push 3 interaktif, push 3 eğitimi, ableton push kısayolları">
+<title>Push 3 Laboratuvarı — İnteraktif Push 3 Simülatörü · Berkay Er Academy</title>
+<meta name="description" content="Push 3'ü satın almadan tarayıcında öğren ve çal: adım adım öğretici, online Push 3 emülatörü ve Wavetable synth, kontrolleri bulma oyunu. Tamamen ücretsiz.">
+<meta name="keywords" content="ableton push 3, push 3 simülatörü, push 3 emülatörü, online push 3, push 3 öğretici, push 3 eğitimi, wavetable synth, push 3 kontrolleri öğren">
 <meta name="robots" content="index, follow">
 <meta name="theme-color" content="#101013">
-<meta property="og:title" content="Ableton Push 3 — İnteraktif Kontrol Oyunu · Berkay Er Academy">
-<meta property="og:description" content="Push 3'ün kontrollerini oyun oynayarak öğren — göreve göre doğru düğmeye dokun.">
+<meta property="og:title" content="Push 3 Laboratuvarı — İnteraktif Push 3 Simülatörü · Berkay Er Academy">
+<meta property="og:description" content="Adım adım öğretici, online Push 3 emülatörü ve Wavetable synth. Push 3'ü tarayıcında ücretsiz öğren ve çal.">
 <meta property="og:image" content="https://berkayeracademy.com/assets/img/DSC00141.jpg">
 <meta property="og:url" content="https://berkayeracademy.com/ders-push3">
 <link rel="canonical" href="https://berkayeracademy.com/ders-push3">
@@ -28,54 +28,139 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
-/* ── Push 3 interactive game: single-screen, no scroll. Nav shell (topbar/sidebar) from themes.css still applies. ── */
+/* ── Push 3 Laboratuvarı: page shell. Everything interactive is built by /assets/js/push3/*.js
+   (contract: docs/push3/README.md §E). Tokens only; radius 0; no gradient / !important /
+   backdrop-filter. Device-internal colours (hotspot overlays) are fixed hex, like P3.K.C.
+
+   EKLEME (not in README §E, used by p3-app / p3-tutorial if they want them):
+   #p3PadSurface is provided empty inside #p3HotspotLayer (§E lists it under the layer; its
+   rows/cells are built by JS). #p3CoachText/#p3CoachClose, #p3TocList/#p3TocClose,
+   #p3ResetModal/#p3ResetConfirm/#p3ResetCancel. Mode cards expose .p3-mode-badge/-title/
+   -desc/-meta/-fill/-cta/-first for p3-app to fill.
+   Wave 3 (p3-app, README §H16/§I1): #p3AudioBtn ("Sesi yeniden başlat" chip), #p3KeysBtn +
+   #p3KeysLayer (keyboard-shortcut labels and legend), the short independence note next to
+   .p3-attribution on the game screen. */
+
+/* The `hidden` attribute must beat component display rules (.seg, html .btn, html .card,
+   html .modal-overlay all set display). (0,1,2) outranks every one of them without !important;
+   breakpoint rules below use :not([hidden]) so they never re-show a hidden element. */
+html body [hidden] { display:none; }
+
 html, body { height:100%; }
 html body { padding:0; overflow:hidden; overscroll-behavior:none; }
+/* themes.css (≥1024) gives body `padding-bottom:2.5rem !important` for the sidebar shell. The menu
+   and the game are fixed-height boxes, so they subtract that padding instead of overflowing the
+   body by 40px (which let focus()/click scroll the whole page and clip the taskbar). */
+html body { --p3-shell-bottom:0px; }
+@media (min-width:1024px) { html body { --p3-shell-bottom:2.5rem; } }
 
-.p3-game { display:flex; flex-direction:column; height:100dvh; }
+/* ── Mode menu (#p3Modes): the only part of the page that scrolls, inside its own box ── */
+.p3-modes { height:calc(100dvh - var(--p3-shell-bottom)); overflow-y:auto; overscroll-behavior:contain; padding:var(--s7) var(--gutter) calc(var(--s7) + env(safe-area-inset-bottom, 0px)); }
+@media (max-width:1023px) { .p3-modes { height:calc(100dvh - var(--topbar-h)); padding-top:var(--s6); } }
+.p3-modes-inner { max-width:var(--maxw); margin:0 auto; }
+.p3-modes-head { margin-bottom:var(--s6); }
+.p3-modes-head .h2 { margin-bottom:var(--s3); }
+.p3-modes-lead { max-width:60ch; font-size:var(--fs-body); color:var(--fg-2); line-height:var(--lh-body); }
+
+.p3-mode-grid { display:grid; grid-template-columns:1fr; gap:var(--s4); }
+@media (min-width:601px) { .p3-mode-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+@media (min-width:900px) { .p3-mode-grid { gap:var(--s5); } }
+
+.p3-mode-card { display:flex; flex-direction:column; align-items:flex-start; gap:var(--s2); width:100%; text-align:left; cursor:pointer; transition:border-color .15s; }
+.p3-mode-card:focus-visible { border-color:var(--accent); outline:2px solid var(--accent); outline-offset:2px; }
+@media (hover:hover) { .p3-mode-card:hover { border-color:var(--accent); } }
+.p3-mode-card > span { display:block; }
+.p3-mode-card > .p3-mode-badge { display:inline-flex; }
+.p3-mode-title { font-family:var(--ff-disp); font-size:var(--fs-h3); font-weight:400; line-height:1.3; color:var(--fg); }
+@media (min-width:900px) { .p3-mode-title { font-size:calc(var(--fs-h3) * 4 / 3); } }
+.p3-mode-desc { font-size:var(--fs-small); line-height:var(--lh-body); color:var(--fg-2); }
+.p3-mode-meta { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; color:var(--fg-3); }
+.p3-mode-first { font-size:var(--fs-small); color:var(--accent); }
+.p3-mode-bar { width:100%; height:4px; margin-top:auto; background:var(--line); }
+.p3-mode-fill { display:block; width:0; height:100%; background:var(--accent); }
+.p3-mode-card > .p3-mode-action { display:inline-flex; align-items:center; gap:var(--s2); font-size:var(--fs-ctl-md); font-weight:600; color:var(--accent); }
+
+.p3-modes-foot { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s3); margin-top:var(--s6); }
+.p3-disclaimer { max-width:72ch; margin-top:var(--s6); font-size:var(--fs-micro); line-height:1.6; color:var(--fg-3); }
+
+/* ── Game (#p3Game): single screen, no page scroll ── */
+.p3-game { display:flex; flex-direction:column; height:calc(100dvh - var(--p3-shell-bottom)); padding:0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 @media (max-width:1023px) { .p3-game { height:calc(100dvh - var(--topbar-h)); } }
 
-.p3-game-taskbar { display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s4); border-bottom:1px solid var(--line); flex:0 0 auto; background:var(--surface); }
-.p3-game-progress { flex:0 0 auto; }
-.p3-game-task { flex:1; min-width:0; font-size:var(--fs-small); font-weight:600; color:var(--fg); line-height:1.3; }
-@media (min-width:600px) { .p3-game-task { font-size:var(--fs-body); } }
+.p3-game-taskbar { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2) var(--s3); padding:var(--s3) var(--s4); border-bottom:1px solid var(--line); flex:0 0 auto; background:var(--surface); }
+/* ≥1024 the fixed #authBar (themes.css) sits over the taskbar's top-right corner. */
+@media (min-width:1024px) { .p3-game-taskbar { padding-right:200px; } }
+.p3-tb-group { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2); flex:0 1 auto; min-width:0; }
+.p3-game-progress:empty { display:none; }
+.p3-game-task { flex:1 1 200px; min-width:0; font-size:var(--fs-small); font-weight:600; color:var(--fg); line-height:1.3; }
+@media (min-width:601px) { .p3-game-task { font-size:var(--fs-body); } }
+/* Mode switch only on large screens; view switch everywhere else. A landscape phone (short, often
+   ≥900 wide) gets the view switch instead: its height is too precious for a second taskbar row. */
+.p3-mode-seg { display:none; }
+@media (min-width:900px) and (min-height:601px) { .p3-mode-seg:not([hidden]) { display:inline-flex; } }
+@media (min-width:900px) and (min-height:601px) { .p3-view-seg { display:none; } }
+html .p3-game-taskbar .p3-preset-sel { width:auto; max-width:200px; }
+.p3-kb-toggle[aria-checked="true"], .p3-keys-btn[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+/* "Sesi yeniden başlat": shown by p3-app while the AudioContext is suspended / interrupted / failed. */
+html .p3-game-taskbar .p3-audio-chip { border-color:var(--warn); color:var(--warn); background:transparent; }
+@media (hover:hover) { html .p3-game-taskbar .p3-audio-chip:hover { background:color-mix(in srgb, var(--warn) 12%, transparent); } }
+@media (max-width:600px) { .p3-game-taskbar { padding:var(--s2) var(--s3); } }
+/* Phones — portrait, or landscape with a coarse pointer (same rule as p3-app's PHONE_MQ; phone ≤600px like
+   ui.css, the min-width sides of this page start at 601px): no physical keyboard, and one taskbar row
+   matters. (0,2,1) beats `html .btn` (0,1,1), which sets display. */
+@media (max-width:600px), (max-height:600px) and (pointer:coarse) {
+  html .p3-game-taskbar .p3-hide-sm { display:none; }
+}
 
-.p3-game-stage { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:var(--s2) var(--s3); position:relative; overflow:hidden; background:var(--bg); }
+/* overflow:clip, not hidden: a hidden box is still a programmatic scroll container, so focusing a partly
+   visible hotspot (pads/controls letterbox) would scroll the stage and stale the hotspot/pointer mapping.
+   `hidden` stays as the fallback for browsers without clip (p3-input then undoes any scroll). */
+.p3-game-stage { flex:1; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; padding:var(--s2) var(--s3); position:relative; overflow:hidden; overflow:clip; background:var(--bg); }
+/* The stage is focused so single-key shortcuts work (WCAG 2.1.4 scopes them to it). A full accent ring
+   around the whole device reads as an error state, so the stage only gets a hairline; the controls
+   inside keep the accent focus ring. */
+.p3-game-stage:focus { outline:none; }
+.p3-game-stage:focus-visible { outline:1px solid var(--line); outline-offset:-1px; }
+
+/* Everything that sits on the device is an absolute SIBLING inside this frame. Device SVG and
+   #p3Live fill the same box with the same viewBox and preserveAspectRatio, so they letterbox
+   identically; the LCD canvas, pad surface and hotspots are placed by P3.dev.align() from the
+   device's screen CTM. */
+.p3-device-frame { position:relative; width:100%; height:100%; }
 .p3-device-wrap {
-  position:relative; z-index:1; width:100%; height:100%;
-  /* This element (and only this element) carries the CSS filter, and it now holds ONLY the
-     static, never-mutated device SVG — the interactive hotspot/highlight layer below is a
-     SIBLING, not a descendant, so hover/click never forces this filtered subtree to
-     re-rasterize. Before this split, every interaction repainted the whole filtered SVG at
-     its rendered pixel size — cheap on a small phone screen, expensive on a wide desktop
-     window, which is exactly the "faster on phone than PC" symptom this fixes. */
+  position:absolute; inset:0; z-index:1;
+  /* The only CSS filter on the page, on a subtree that never changes after injection (except
+     P3.dev.setView). Anything that updates per frame lives in a sibling layer, so hover/pad
+     play never forces this filtered image to re-rasterize at full window size. */
   filter:drop-shadow(0 16px 34px rgba(0,0,0,.55));
 }
 .p3-device-wrap svg { width:100%; height:100%; display:block; -webkit-user-select:none; user-select:none; }
+.p3-live { position:absolute; inset:0; z-index:2; width:100%; height:100%; display:block; pointer-events:none; overflow:hidden; }
+.p3-lcd-canvas { position:absolute; left:0; top:0; z-index:3; display:block; pointer-events:none; }
+.p3-hotspot-layer { position:absolute; inset:0; z-index:4; pointer-events:none; isolation:isolate; }
 
-/* Interactive layer: plain HTML divs positioned over the (unfiltered) device image via
-   percentages derived from each control's real SVG bbox (svgRoot.getScreenCTM()) — see
-   script below. All visual feedback here animates opacity/transform only (GPU compositing,
-   no paint of the SVG, no layout). */
-.p3-hotspot-layer { position:absolute; z-index:2; pointer-events:none; }
-.p3-hotspot { position:absolute; pointer-events:auto; cursor:pointer; touch-action:none; }
-.p3-hotspot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.p3-hotspot.draggable { cursor:ns-resize; }
-
-/* Level 2 "live screen" — a flat, always-mounted overlay positioned over the LCD Display
-   control the same way hotspots are (getScreenCTM math), just with real content instead of
-   an invisible hit target. Reveal/updates are opacity/transform only — no filter, no blur. */
-.p3-lcd { position:absolute; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; background:#0a0f0d; opacity:0; transform:scale(.97); transition:opacity .25s ease, transform .25s ease; pointer-events:none; overflow:hidden; }
-.p3-lcd.visible { opacity:1; transform:scale(1); }
-.p3-lcd-label { font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--ok); opacity:.75; }
-.p3-lcd-value { font-family:var(--ff-mono); font-size:clamp(13px, 2.6vw, 26px); font-weight:700; color:var(--ok); line-height:1; }
-.p3-lcd-sub { font-family:var(--ff-mono); font-size:8px; letter-spacing:.04em; color:rgba(255,255,255,.4); }
-@media (min-width:900px) {
-  .p3-lcd-label { font-size:11px; }
-  .p3-lcd-sub { font-size:9px; }
+/* Instrument surfaces: no scrolling, text selection, iOS callout or tap flash while playing.
+   Pinch-zoom stays available on the rest of the page. */
+.p3-hotspot, .p3-pad-surface, .p3-enc, .p3-strip, .p3-jog {
+  touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent;
 }
-.p3-hl { position:absolute; inset:0; border-radius:3px; opacity:0; pointer-events:none; transform:scale(1); transition:opacity .18s ease; }
-.p3-hotspot:hover .p3-hl:not(.target):not(.correct):not(.wrong) { opacity:.22; background:rgba(236,236,234,.9); }
+.p3-hotspot, .p3-pad-surface { position:absolute; pointer-events:auto; cursor:pointer; }
+.p3-hotspot.draggable, .p3-enc { cursor:ns-resize; }
+/* Encoders are small on phones; keep a 44px hit area around them (WCAG 2.5.5 target). z-index:-1 puts the
+   extension under every hotspot of the layer (the layer is the stacking context): it only catches touches
+   on empty device surface and never steals one from a neighbour (Lock/Stop Clip/Mute under Swing&Tempo,
+   the upper display buttons under the encoders, the next encoder). p3-input takes the target from e.target. */
+.p3-enc::after { content:''; position:absolute; z-index:-1; left:50%; top:50%; width:max(100%, 44px); height:max(100%, 44px); transform:translate(-50%, -50%); }
+.p3-hotspot:focus-visible, .p3-pad-surface:focus-visible, .p3-pad-surface :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+/* D-pad and Octave/Page arrows are clip-path triangles: the clip cuts the outline away, so their focus
+   indicator is a fill inside the triangle instead. */
+.p3-hotspot[data-shape="tri"]:focus-visible::after { content:''; position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 55%, transparent); pointer-events:none; }
+.p3-hotspot[aria-disabled="true"] { cursor:not-allowed; }
+.p3-hotspot[aria-disabled="true"]::before { content:''; position:absolute; inset:0; background:#000000; opacity:.35; pointer-events:none; }
+
+/* Highlight overlay inside each hotspot: opacity/transform only (compositor, no SVG repaint). */
+.p3-hl { position:absolute; inset:0; opacity:0; pointer-events:none; transform:scale(1); transition:opacity .18s ease; }
+@media (hover:hover) { .p3-hotspot:hover .p3-hl:not(.target):not(.correct):not(.wrong) { opacity:.22; background:#E6E6E6; } }
 .p3-hl.target { background:color-mix(in srgb, var(--ok) 14%, transparent); box-shadow:inset 0 0 0 2px var(--ok); opacity:.45; animation:p3TargetPulse 1.8s ease-in-out infinite; }
 .p3-hl.correct { background:color-mix(in srgb, var(--accent) 35%, transparent); box-shadow:inset 0 0 0 3px var(--accent); animation:p3CorrectFlash .5s ease-out; }
 .p3-hl.wrong { background:var(--err); animation:p3WrongFlash .35s ease-out; }
@@ -83,81 +168,268 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 @keyframes p3CorrectFlash { 0%{opacity:0; transform:scale(1);} 30%{opacity:1; transform:scale(1.06);} 100%{opacity:0; transform:scale(1.06);} }
 @keyframes p3WrongFlash { 0%{opacity:.6; transform:translate(0,0);} 25%{transform:translate(-6px,0);} 75%{transform:translate(6px,0);} 100%{opacity:0; transform:translate(0,0);} }
 
-.p3-game-bottom { flex:0 0 auto; }
-.p3-game-feedback { align-items:center; justify-content:center; padding:6px var(--s5); font-size:var(--fs-small); text-align:center; line-height:1.35; color:var(--fg-3); min-height:40px; }
-.p3-game-feedback:not([hidden]) { display:flex; }
+/* Tutorial coach bubble: p3-tutorial anchors it (left/top) to the target's CTM position. */
+.p3-coach:not([hidden]) { position:absolute; z-index:5; display:flex; flex-direction:column; align-items:flex-start; gap:var(--s2); max-width:min(280px, 80vw); padding:var(--s3); background:var(--surface); border:1px solid var(--accent); color:var(--fg); font-size:var(--fs-small); line-height:1.45; }
+.p3-coach-text { margin:0; }
+
+/* Keyboard-shortcut layer (p3-app): labels are device-internal (fixed hex, like P3.K.C); the legend is
+   page chrome (tokens). Label positions and font size are runtime state (inline style). */
+.p3-keys-layer { position:absolute; inset:0; z-index:5; pointer-events:none; }
+.p3-key { position:absolute; display:inline-flex; align-items:center; justify-content:center; min-width:1.7em; height:1.7em; padding:0 .35em; font-family:var(--ff-mono); font-weight:700; line-height:1; color:#FFFFFF; background:#000000; border:1px solid #7C858A; white-space:nowrap; }
+.p3-key.p3-key-pad { border-color:#E6E6E6; }
+.p3-keys-legend { position:absolute; top:var(--s2); left:var(--s2); max-width:min(290px, calc(100% - 16px)); padding:var(--s2) var(--s3); background:var(--surface); border:1px solid var(--line); font-size:var(--fs-micro); line-height:1.5; color:var(--fg-2); }
+.p3-keys-legend.p3-keys-legend-end { left:auto; right:var(--s2); }
+.p3-keys-legend-title { font-family:var(--ff-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); margin-bottom:var(--s1); }
+.p3-keys-legend dl { display:grid; grid-template-columns:auto 1fr; gap:2px var(--s3); }
+.p3-keys-legend dt { font-family:var(--ff-mono); color:var(--fg); white-space:nowrap; }
+.p3-keys-legend-note { margin-top:var(--s2); color:var(--fg-3); }
+.p3-keys-legend-note.off { color:var(--warn); }
+
+/* Under the hotspot layer (z 3 < 4) and transparent to pointers except its link: in the pads/padsStrip
+   letterbox the bottom pad row reaches into this band, and a touch there must reach the pad. */
+.p3-attribution { position:absolute; bottom:0; right:var(--s2); max-width:calc(100% - 2 * var(--s2)); text-align:right; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.02em; color:var(--fg-3); z-index:3; pointer-events:none; }
+.p3-attribution a { color:inherit; pointer-events:auto; }
 @media (max-width:600px) {
-  .p3-game-taskbar { padding:10px var(--s3); gap:var(--s2); }
-  .p3-game-feedback { padding:6px var(--s4); font-size:12px; }
+  .p3-indep { display:block; }
+  .p3-indep-sep { display:none; }
 }
+
+/* ── Bottom: feedback, level explain panel, tutorial panel ── */
+.p3-game-bottom { flex:0 0 auto; }
+.p3-game-feedback { align-items:center; justify-content:center; padding:var(--s1) var(--s5); font-size:var(--fs-small); text-align:center; line-height:1.35; color:var(--fg-3); min-height:var(--ctl-md); }
+.p3-game-feedback:not([hidden]) { display:flex; }
 .p3-game-feedback.ok { color:var(--ok); }
 .p3-game-feedback.err { color:var(--err); }
 
 .p3-explain-panel:not([hidden]) { display:flex; flex-direction:column; align-items:center; gap:var(--s3); padding:var(--s4) var(--s5); background:var(--surface); border-top:1px solid var(--line); animation:p3PanelIn .2s ease-out; }
 .p3-explain-text { max-width:64ch; font-size:var(--fs-small); color:var(--fg-2); line-height:1.55; text-align:center; margin:0; }
-@media (min-width:600px) { .p3-explain-text { font-size:var(--fs-body); } }
+@media (min-width:601px) { .p3-explain-text { font-size:var(--fs-body); } }
+
+.p3-tut-panel:not([hidden]) { display:flex; flex-direction:column; gap:var(--s2); max-height:40dvh; overflow-y:auto; padding:var(--s3) var(--s5) var(--s4); background:var(--surface); border-top:1px solid var(--line); animation:p3PanelIn .2s ease-out; }
+.p3-tut-title { outline-offset:4px; }
+.p3-tut-body { max-width:72ch; margin:0; font-size:var(--fs-small); color:var(--fg-2); line-height:1.55; }
+@media (min-width:601px) { .p3-tut-body { font-size:var(--fs-body); } }
+/* "Dinle" line: what to listen for after the action. Empty on steps without one. */
+.p3-tut-listen { max-width:72ch; margin:0; padding-left:var(--s3); border-left:2px solid var(--accent); font-size:var(--fs-small); color:var(--fg-3); line-height:1.5; }
+.p3-tut-listen:empty { display:none; }
+.p3-tut-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2); margin-top:var(--s1); }
+.p3-tut-actions-end { display:flex; flex-wrap:wrap; gap:var(--s2); margin-left:auto; }
+@media (max-width:600px) {
+  .p3-game-feedback { padding:var(--s1) var(--s4); }
+  .p3-tut-panel:not([hidden]) { padding:var(--s3) var(--s4); }
+}
+/* Short landscape screens (a phone on its side, 844×390): stacked under the stage, topbar + taskbar +
+   feedback + a 40dvh tutorial panel left ~74px of device. There the tutorial / explain panel moves into a
+   column beside the stage (the stage keeps the full height below the taskbar), and an empty feedback line
+   takes no height. */
+@media (max-height:600px) and (orientation:landscape) {
+  .p3-game-feedback:empty { min-height:0; padding:0; }
+  .p3-game:not([hidden]):has(> .p3-game-bottom > .p3-tut-panel:not([hidden])),
+  .p3-game:not([hidden]):has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) {
+    display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 38%); grid-template-rows:auto minmax(0, 1fr);
+  }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) > .p3-game-taskbar,
+  .p3-game:has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) > .p3-game-taskbar { grid-column:1 / -1; }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) > .p3-game-bottom,
+  .p3-game:has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) > .p3-game-bottom {
+    min-height:0; overflow-y:auto; overscroll-behavior:contain; background:var(--surface); border-left:1px solid var(--line);
+  }
+  /* Scoped with :has() too: a browser without it keeps the stacked layout and the panel's own 40dvh cap. */
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) .p3-tut-panel:not([hidden]),
+  .p3-game:has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) .p3-explain-panel:not([hidden]) { max-height:none; overflow-y:visible; border-top:0; }
+}
 @keyframes p3PanelIn { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
 
-.p3-attribution { position:absolute; bottom:2px; right:8px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.02em; color:var(--fg-3); opacity:.55; z-index:1; pointer-events:auto; }
-.p3-attribution a { color:inherit; }
+/* ── Table of contents: .modal-lg opening from the right edge ── */
+html .p3-toc { justify-content:flex-end; align-items:stretch; padding:0; }
+html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
+.p3-toc-list { list-style:none; display:flex; flex-direction:column; }
+.p3-toc-list > li { border-bottom:1px solid var(--line); }
 
+/* ── Win card ── */
 .p3-win:not([hidden]) { position:fixed; inset:0; z-index:var(--z-modal); background:rgba(0,0,0,.82); display:flex; align-items:center; justify-content:center; padding:var(--s4); }
 .p3-win-card { background:var(--surface); border:1px solid var(--line); padding:var(--s6) var(--s5); text-align:center; max-width:380px; width:100%; }
-.p3-win-card h1 { margin-bottom:var(--s3); }
+.p3-win-card .h2 { margin-bottom:var(--s3); }
 .p3-win-card p { font-size:var(--fs-small); color:var(--fg-2); line-height:1.55; margin-bottom:var(--s3); }
 .p3-win-actions { display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s5); }
 .p3-win-free { font-size:var(--fs-micro); color:var(--fg-3); margin-top:var(--s4); }
 .p3-win-free a { color:var(--fg-2); }
+
+@media (prefers-reduced-motion:reduce) {
+  .p3-hl, .p3-mode-card { transition:none; }
+  .p3-hl.target { animation:none; opacity:.6; }
+  /* Visibility comes only from the keyframes; without them the marks stay visible (static). */
+  .p3-hl.correct, .p3-hl.wrong { animation:none; }
+  .p3-hl.correct { opacity:.8; }
+  .p3-hl.wrong { opacity:.6; }
+  .p3-explain-panel:not([hidden]), .p3-tut-panel:not([hidden]) { animation:none; }
+}
 </style>
 </head>
 <body>
 <a id="homeLogo" href="egitim" title="Eğitim">Eğitim</a>
 <div id="authBar"></div>
 
-<main class="p3-game" id="p3Game">
-  <div class="p3-game-taskbar">
-    <a href="egitim" class="btn btn-ghost btn-icon btn-sm" aria-label="Eğitime dön"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg></a>
-    <span class="badge accent p3-game-progress" id="p3Progress">1 / 26</span>
-    <div class="p3-game-task" id="p3TaskText" aria-live="polite">Yükleniyor…</div>
-    <button type="button" class="btn btn-ghost btn-icon btn-sm" id="p3HintBtn" aria-pressed="true" aria-label="İpucunu gizle"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg></button>
-  </div>
+<section class="p3-modes" id="p3Modes" aria-labelledby="p3ModesTitle">
+  <div class="p3-modes-inner">
+    <header class="p3-modes-head">
+      <h1 class="h2" id="p3ModesTitle" data-i18n="p3_menu_title">Push 3 Laboratuvarı</h1>
+      <p class="p3-modes-lead" data-i18n="p3_menu_lead">Push 3'ü satın almadan, tarayıcında gerçeğine sadık bir kopyasıyla öğren ve çal. Kulaklık önerilir.</p>
+    </header>
+    <noscript><p class="p3-modes-lead">Push 3 Laboratuvarı JavaScript gerektirir. Tarayıcında JavaScript'i açıp sayfayı yenile.</p></noscript>
 
-  <div class="p3-game-stage">
-    <div class="p3-device-wrap" id="p3DeviceWrap" role="img" aria-label="Ableton Push 3 cihazı">
-      <!-- Real push3-device.svg is fetched and injected here at runtime (see script), untouched
-           after that — it never changes, so its CSS filter never has to re-rasterize. -->
+    <!-- Static text = first-visit defaults. p3-app (menuRender) rewrites meta, progress width, CTA
+         and the first-visit line from saved progress. -->
+    <div class="p3-mode-grid" id="p3ModeGrid">
+      <button type="button" class="card p3-mode-card" data-mode="tutorial">
+        <span class="badge accent p3-mode-badge" data-i18n="p3_card_tut_badge">Önerilen</span>
+        <span class="p3-mode-title" data-i18n="p3_card_tut_title">Öğretici</span>
+        <span class="p3-mode-desc" data-i18n="p3_card_tut_desc">Push 3'ü sıfırdan adım adım öğren: nota çalmaktan Wavetable ile ses tasarımına, davul programlamaktan kayda.</span>
+        <span class="p3-mode-meta">8 bölüm</span>
+        <span class="p3-mode-first" hidden data-i18n="p3_card_tut_first">İlk kez mi? Buradan başla.</span>
+        <span class="p3-mode-bar" aria-hidden="true"><span class="p3-mode-fill"></span></span>
+        <span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+      </button>
+      <button type="button" class="card p3-mode-card" data-mode="level1">
+        <span class="badge p3-mode-badge" data-i18n="p3_card_l1_badge">Oyun</span>
+        <span class="p3-mode-title" data-i18n="p3_card_l1_title">Seviye 1 · Kontrolü Bul</span>
+        <span class="p3-mode-desc" data-i18n="p3_card_l1_desc">Push 3'ün gerçek kontrollerini cihazın üstünde tek tek bul, her birinin ne işe yaradığını öğren.</span>
+        <span class="p3-mode-meta">27 kontrol · ~5 dk</span>
+        <span class="p3-mode-bar" aria-hidden="true"><span class="p3-mode-fill"></span></span>
+        <span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+      </button>
+      <button type="button" class="card p3-mode-card" data-mode="level2">
+        <span class="badge p3-mode-badge" data-i18n="p3_card_l2_badge">Görev</span>
+        <span class="p3-mode-title" data-i18n="p3_card_l2_title">Seviye 2 · Görevler</span>
+        <span class="p3-mode-desc" data-i18n="p3_card_l2_desc">Tempoyu dokunarak ayarla, oktav değiştir, gamı seç, swing ver, track sustur, kayda başla.</span>
+        <span class="p3-mode-meta">6 görev · ~5 dk</span>
+        <span class="p3-mode-bar" aria-hidden="true"><span class="p3-mode-fill"></span></span>
+        <span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+      </button>
+      <button type="button" class="card p3-mode-card" data-mode="free">
+        <span class="badge p3-mode-badge" data-i18n="p3_card_free_badge">Emülatör</span>
+        <span class="p3-mode-title" data-i18n="p3_card_free_title">Serbest Çal</span>
+        <span class="p3-mode-desc" data-i18n="p3_card_free_desc">Kural yok, ipucu yok. Wavetable synth ve davul setiyle Push 3'ü gerçek bir cihaz gibi çal. Learn düğmesi seni derslere götürür.</span>
+        <span class="p3-mode-meta" data-i18n="p3_card_free_meta">Tüm kontroller açık</span>
+        <span class="p3-mode-bar" aria-hidden="true" hidden><span class="p3-mode-fill"></span></span>
+        <span class="p3-mode-action"><span class="p3-mode-cta">Aç</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+      </button>
     </div>
-    <div class="p3-hotspot-layer" id="p3HotspotLayer">
-      <!-- Plain HTML hit-target divs, positioned over the SVG above via getScreenCTM() math
-           (see script). Sibling of #p3DeviceWrap, not a child of the SVG — see CSS comment. -->
-      <div class="p3-lcd" id="p3Lcd" aria-hidden="true">
-        <div class="p3-lcd-label" id="p3LcdLabel"></div>
-        <div class="p3-lcd-value" id="p3LcdValue"></div>
-        <div class="p3-lcd-sub" id="p3LcdSub"></div>
+
+    <div class="p3-modes-foot">
+      <a href="egitim" class="btn btn-ghost btn-sm"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span data-i18n="p3_back_egitim">Eğitime dön</span></a>
+      <button type="button" class="btn btn-ghost btn-sm" id="p3ResetProgress"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg><span data-i18n="p3_reset">İlerlemeyi sıfırla</span></button>
+    </div>
+
+    <p class="p3-disclaimer" id="p3Disclaimer" data-i18n="p3_disclaimer">Ableton, Live ve Push, Ableton AG'nin ticari markalarıdır. Bu simülatör, Berkay Er Academy tarafından hazırlanmış bağımsız bir eğitim aracıdır; Ableton AG tarafından yetkilendirilmemiş, desteklenmemiş veya onaylanmamıştır.</p>
+  </div>
+</section>
+
+<main class="p3-game" id="p3Game" hidden>
+  <div class="p3-game-taskbar">
+    <div class="p3-tb-group">
+      <button type="button" class="btn btn-ghost btn-sm" id="p3BackBtn" aria-label="Modlara dön"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span class="p3-hide-sm" data-i18n="p3_modes">Modlar</span></button>
+      <div class="seg p3-mode-seg" id="p3ModeSeg" role="group" aria-label="Mod">
+        <button type="button" class="seg-btn" data-mode="tutorial" aria-pressed="false" data-i18n="p3_seg_tut">Öğretici</button>
+        <button type="button" class="seg-btn" data-mode="level1" aria-pressed="false" data-i18n="p3_seg_l1">Seviye 1</button>
+        <button type="button" class="seg-btn" data-mode="level2" aria-pressed="false" data-i18n="p3_seg_l2">Seviye 2</button>
+        <button type="button" class="seg-btn" data-mode="free" aria-pressed="false" data-i18n="p3_seg_free">Serbest</button>
+      </div>
+      <span class="badge accent p3-game-progress" id="p3Progress"></span>
+    </div>
+    <div class="p3-game-task" id="p3TaskText" aria-live="polite">Yükleniyor…</div>
+    <div class="p3-tb-group">
+      <button type="button" class="btn btn-sm p3-audio-chip" id="p3AudioBtn" hidden><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg><span>Sesi yeniden başlat</span></button>
+      <button type="button" class="btn btn-ghost btn-icon btn-sm" id="p3HintBtn" aria-pressed="true" aria-label="İpucunu gizle"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg></button>
+      <select class="select p3-preset-sel" id="p3PresetSel" aria-label="Preset" hidden></select>
+      <button type="button" class="btn btn-ghost btn-sm p3-kb-toggle p3-hide-sm" id="p3KbToggle" role="switch" aria-checked="true" hidden><span data-i18n="p3_kb_toggle">Klavyeyle çal</span></button>
+      <button type="button" class="btn btn-ghost btn-sm p3-keys-btn p3-hide-sm" id="p3KeysBtn" aria-pressed="false" aria-controls="p3KeysLayer" title="Klavye kısayollarını göster (Shift + /)" hidden>Tuşlar</button>
+      <div class="seg p3-view-seg" id="p3ViewSeg" role="group" aria-label="Görünüm">
+        <button type="button" class="seg-btn" data-view="full" aria-pressed="false" data-i18n="p3_view_full">Tam</button>
+        <button type="button" class="seg-btn" data-view="pads" aria-pressed="false" data-i18n="p3_view_pads">Pad</button>
+        <button type="button" class="seg-btn" data-view="controls" aria-pressed="false" data-i18n="p3_view_controls">Kontrol</button>
       </div>
     </div>
-    <p class="p3-attribution">Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
+  </div>
+
+  <div class="p3-game-stage" id="p3Stage">
+    <div class="p3-device-frame">
+      <!-- push3-device.svg is fetched, neutralised and injected here by P3.dev.load(); it is never
+           mutated afterwards (except P3.dev.setView), so its filter never re-rasterizes. -->
+      <div class="p3-device-wrap" id="p3DeviceWrap" role="img" aria-label="Ableton Push 3 cihazı"></div>
+      <!-- Live layer: LEDs, pad colours, glyph clones. Same viewBox as the device (P3.K.VB). -->
+      <svg class="p3-live" id="p3Live" viewBox="161 135 2116 1725" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false"></svg>
+      <canvas class="p3-lcd-canvas" id="p3LcdCanvas" width="960" height="160" aria-hidden="true"></canvas>
+      <div class="sr-only" id="p3LcdLive" aria-live="polite"></div>
+      <div class="p3-hotspot-layer" id="p3HotspotLayer">
+        <div class="p3-pad-surface" id="p3PadSurface" role="grid" aria-label="Pad ızgarası"></div>
+      </div>
+      <!-- Keyboard-shortcut layer (#p3KeysBtn / Shift+/): key labels over pads and buttons + a legend.
+           Built by p3-app; positioned in the same px space as the hotspots (P3.dev.controlRect). -->
+      <div class="p3-keys-layer" id="p3KeysLayer" hidden></div>
+      <div class="p3-coach" id="p3Coach" role="note" hidden>
+        <p class="p3-coach-text" id="p3CoachText"></p>
+        <button type="button" class="btn btn-ghost btn-sm" id="p3CoachClose" data-i18n="p3_close">Kapat</button>
+      </div>
+    </div>
+    <p class="p3-attribution"><span class="p3-indep">Bağımsız eğitim aracı · Ableton AG ile bağlantılı değildir</span><span class="p3-indep-sep" aria-hidden="true"> · </span>Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
   </div>
 
   <div class="p3-game-bottom">
-    <div class="p3-game-feedback" id="p3Feedback" aria-live="assertive">Cihaz üzerinde göreve uyan kontrole dokun.</div>
+    <div class="p3-game-feedback" id="p3Feedback" aria-live="assertive"></div>
     <div class="p3-explain-panel" id="p3ExplainPanel" aria-live="polite" hidden>
       <p class="p3-explain-text" id="p3ExplainText"></p>
       <button type="button" class="btn btn-primary btn-sm" id="p3ContinueBtn">Devam →</button>
     </div>
+    <div class="p3-tut-panel" id="p3TutPanel" hidden>
+      <h2 class="h3 p3-tut-title" id="p3TutTitle" tabindex="-1"></h2>
+      <p class="p3-tut-body" id="p3TutBody"></p>
+      <p class="p3-tut-listen" id="p3TutListen"></p>
+      <div class="p3-tut-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="p3TutPrev"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span data-i18n="p3_tut_prev">Geri</span></button>
+        <button type="button" class="btn btn-ghost btn-sm" id="p3TutSkip" data-i18n="p3_tut_skip">Atla</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="p3TutToc" aria-haspopup="dialog" aria-controls="p3Toc" data-i18n="p3_tut_toc">İçindekiler</button>
+        <div class="p3-tut-actions-end">
+          <button type="button" class="btn btn-ghost btn-sm" id="p3TutFree" data-i18n="p3_tut_free">Serbest Çal'da aç</button>
+          <button type="button" class="btn btn-primary btn-sm" id="p3TutNext">Devam →</button>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 
-<div class="p3-win" id="p3Win" hidden>
-  <div class="p3-win-card">
-    <h1 class="h2">Tebrikler! 🎉</h1>
-    <p>Push 3'ün <strong id="p3WinCount">26</strong> kontrolünü tek tek buldun ve birkaç gerçek görevle kullanmayı da denedin. Artık cihazı elinde tutunca ne yapacağını biliyorsun.</p>
-    <div class="p3-win-actions">
-      <button type="button" class="btn btn-primary btn-block" id="p3RestartBtn">Baştan Başla</button>
-    </div>
-    <p class="p3-win-free">Bu oyun tamamen ücretsiz. <a href="egitim">→ Akademiyi keşfet</a></p>
+<div class="modal-overlay p3-toc" id="p3Toc" role="dialog" aria-modal="true" aria-labelledby="p3TocTitle" hidden>
+  <div class="modal modal-lg">
+    <button type="button" class="modal-close" id="p3TocClose" aria-label="Kapat"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-x"/></svg></button>
+    <h2 class="modal-title" id="p3TocTitle" data-i18n="p3_toc_title">İçindekiler</h2>
+    <ol class="p3-toc-list" id="p3TocList"></ol>
   </div>
 </div>
+
+<div class="modal-overlay" id="p3ResetModal" role="dialog" aria-modal="true" aria-labelledby="p3ResetTitle" hidden>
+  <div class="modal modal-sm">
+    <h2 class="modal-title" id="p3ResetTitle" data-i18n="p3_reset_title">İlerleme sıfırlansın mı?</h2>
+    <p class="modal-body" data-i18n="p3_reset_body">Öğretici ve seviyelerdeki ilerlemen ile Serbest Çal'daki kaydın bu tarayıcıdan silinir. Bu işlem geri alınamaz.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="p3ResetCancel" data-i18n="p3_cancel">Vazgeç</button>
+      <button type="button" class="btn btn-danger" id="p3ResetConfirm" data-i18n="p3_reset_confirm">Sıfırla</button>
+    </div>
+  </div>
+</div>
+
+<div class="p3-win" id="p3Win" role="dialog" aria-modal="true" aria-labelledby="p3WinTitle" hidden>
+  <div class="p3-win-card">
+    <h2 class="h2" id="p3WinTitle">Tebrikler!</h2>
+    <p id="p3WinText"></p>
+    <div class="p3-win-actions">
+      <button type="button" class="btn btn-primary btn-block" id="p3WinPrimary"></button>
+      <button type="button" class="btn btn-ghost btn-block" id="p3WinSecondary"></button>
+    </div>
+    <p class="p3-win-free">Push 3 Laboratuvarı tamamen ücretsiz. <a href="egitim">Akademiyi keşfet</a></p>
+  </div>
+</div>
+
+<div class="toast-wrap" id="p3Toast" aria-live="polite"></div>
 
 <nav class="bottom-nav" data-active="egitim">
   <a class="bnav-item" href="egitim" data-page="egitim"><span class="bnav-icon">🎓</span><span class="bnav-label" data-i18n="nav_egitim">Eğitim</span></a>
@@ -217,444 +489,20 @@ html body { padding:0; overflow:hidden; overscroll-behavior:none; }
 })();
 </script>
 
-<script>
-(function() {
-  // Hotspots are bound directly to the real named layers exported from the Figma file
-  // (assets/img/push3-device.svg, "Include 'id' attribute" export option). No coordinate
-  // guessing: each target's rect comes from getBBox() on the actual SVG element at runtime.
-  // A few Figma groups hold two/four buttons together (e.g. "LayoutScale" = Scale + Layout);
-  // for those, `split` cuts that group's real bbox in half/quarters using the exact divider
-  // position measured from the group's own child separators.
-  var TASKS = [
-    { svgId:'LCD Display',    label:'Ekran',         task:'Ekrana dokun.', explain:'Ekran, seçili cihazın 8 parametresini gösterir — her biri altındaki dokunmatik encoder\'la eşleşir.' },
-    { svgId:'Pads',           label:'Pad ızgarası',  task:'8×8 pad ızgarasına dokun.', explain:'Pad ızgarası nota çalma, step sequencing ve clip tetikleme için kullanılır — moda göre davranışı değişir.' },
-    { svgId:'TopKnobs',       label:'Encoder\'lar',  task:'8 encoder\'dan birine dokun.', explain:'8 dokunmatik encoder, ekrandaki parametreleri kontrol eder — dokunmak bile ekranda değerini gösterir.' },
-    { svgId:'Knob_11',        label:'Jog Wheel',     task:'Jog Wheel\'i bul.', explain:'Jog Wheel, menülerde ve listelerde gezinmeni sağlar; basarak seçimi onaylarsın.' },
-    { svgId:'TouchSlider',    label:'Touch Slider',  task:'Touch Slider\'ı bul.', explain:'Touch Slider, pitch bend veya mod wheel işlevi görür — parmağını şerit üzerinde kaydırarak sesi gerçek zamanlı büker.' },
-    { svgId:'ButtonBigPlay',  label:'Play',          task:'Play düğmesini bul.', explain:'Play/Stop, transport\'un temelidir — çalmayı başlatır veya durdurur.' },
-    { svgId:'RecordControls', label:'Record',        split:'y', half:'bottom', frac:0.57, task:'Record düğmesini bul.', explain:'Record, çaldığın veya step\'lediğin notaları bir clip\'e kaydeder.' },
-    { svgId:'RecordControls', label:'New',           split:'y', half:'top',    frac:0.57, task:'New düğmesini bul.', explain:'New, yeni bir clip veya sahne (scene) oluşturur.' },
-    { svgId:'NoteSettings',   label:'Fixed Length',  task:'Fixed Length\'i bul.', explain:'Fixed Length açıkken yeni bir clip her zaman belirlediğin sabit uzunlukta kaydedilir.' },
-    { svgId:'Tempo',          label:'Tap Tempo',     split:'y', half:'top',    frac:0.45, task:'Tap Tempo\'yu bul.', explain:'Tap Tempo\'ya art arda dokunarak tempoyu kulağınla ayarlarsın.' },
-    { svgId:'Tempo',          label:'Quantize',      split:'y', half:'bottom', frac:0.45, task:'Quantize\'ı bul.', explain:'Quantize açıkken çaldığın notalar en yakın grid çizgisine hizalanır.' },
-    { svgId:'mute',           label:'Mute',          task:'Mute (M) düğmesini bul.', explain:'Mute, seçili track\'i geçici olarak susturur — miksaj yaparken bir sesi anlık kapatıp açarak karşılaştırma yapmak için kullanışlıdır.' },
-    { svgId:'solo',           label:'Solo',          task:'Solo (S) düğmesini bul.', explain:'Solo, seçili track\'i tek başına çalar, diğerlerini susturur.' },
-    { svgId:'LayoutScale',    label:'Scale',         split:'x', half:'left',  task:'Scale düğmesini bul.', explain:'Scale, pad ızgarasının tonunu ve gam türünü değiştirir.' },
-    { svgId:'LayoutScale',    label:'Layout',        split:'x', half:'right', task:'Layout düğmesini bul.', explain:'Layout, pad dizilimini 4ths / 3rds / Sequential seçenekleri arasında değiştirir.' },
-    { svgId:'RepeatAccent',   label:'Repeat',        split:'x', half:'left',  task:'Repeat\'i bul.', explain:'Repeat açıkken bir pad\'e basılı tutmak notayı otomatik olarak tekrar tetikler.' },
-    { svgId:'RepeatAccent',   label:'Accent',        split:'x', half:'right', task:'Accent\'i bul.', explain:'Accent basılıyken çalınan notalar tam vuruş şiddetinde (velocity) kaydedilir.' },
-    { svgId:'LoopingSection', label:'Double Loop',   split:'quad', half:'top-left',     task:'Double Loop\'u bul.', explain:'Double Loop, sequencer sayfasının uzunluğunu ikiye katlar — kısa bir fikri büyütüp üstüne yeni katmanlar eklemek istediğinde işine yarar.' },
-    { svgId:'LoopingSection', label:'Duplicate',     split:'quad', half:'top-right',    task:'Duplicate\'i bul.', explain:'Duplicate, seçili sayfa veya clip içeriğini başka bir sayfaya kopyalar.' },
-    { svgId:'LoopingSection', label:'Convert',       split:'quad', half:'bottom-left',  task:'Convert\'i bul.', explain:'Convert, seçili öğeye göre değişen bir dönüştürme komutudur — örneğin birden fazla cihazı tek bir Rack\'e gruplar.' },
-    { svgId:'LoopingSection', label:'Delete',        split:'quad', half:'bottom-right', task:'Delete\'i bul.', explain:'Delete, seçili adımı, notayı veya clip\'i siler.' },
-    { svgId:'JogControls',    label:'Octave ↑',      task:'Octave ↑ (yukarı) düğmesini bul.', explain:'Octave ↑, pad ızgarasında görünen nota aralığını bir oktav yukarı kaydırır.' },
-    { svgId:'JogControls_2',  label:'Octave ↓',      task:'Octave ↓ (aşağı) düğmesini bul.', explain:'Octave ↓, görünen nota aralığını bir oktav aşağı kaydırır.' },
-    { svgId:'JogControls_3',  label:'Page ◀',        task:'Page ◀ (sol) düğmesini bul.', explain:'Page ◀, sequencer sayfaları arasında geriye gezinir.' },
-    { svgId:'JogControls_4',  label:'Page ▶',        task:'Page ▶ (sağ) düğmesini bul.', explain:'Page ▶, sequencer sayfaları arasında ileriye gezinir.' },
-    { svgId:'NoteSelection',  label:'Shift',         split:'x', half:'left',  task:'Shift\'i bul.', explain:'Shift, diğer düğmelerin ikincil (alternatif) işlevini açan bir modifier\'dır.' },
-    { svgId:'NoteSelection',  label:'Select',        split:'x', half:'right', task:'Select\'i bul.', explain:'Select, bir adımı veya clip\'i tetiklemeden seçmeni sağlar.' }
-  ];
-  // unique key per task (two tasks can share the same svgId, e.g. Scale/Layout)
-  TASKS.forEach(function(t, i) { t.key = t.svgId + '__' + i; });
-
-  var wrap = document.getElementById('p3DeviceWrap');
-  var hotspotLayer = document.getElementById('p3HotspotLayer');
-  var progressEl = document.getElementById('p3Progress');
-  var taskEl = document.getElementById('p3TaskText');
-  var feedbackEl = document.getElementById('p3Feedback');
-  var explainPanel = document.getElementById('p3ExplainPanel');
-  var explainTextEl = document.getElementById('p3ExplainText');
-  var continueBtn = document.getElementById('p3ContinueBtn');
-  var hintBtn = document.getElementById('p3HintBtn');
-  var winEl = document.getElementById('p3Win');
-  var winCountEl = document.getElementById('p3WinCount');
-  var restartBtn = document.getElementById('p3RestartBtn');
-  winCountEl.textContent = TASKS.length;
-
-  var hotspotEls = {}; // key -> outer hit-target div
-  var hlEls = {};      // key -> inner highlight div (opacity/transform only)
-  var svgRoot = null;
-  var state = { idx: 0, advancing: false, hintsOn: true, level: 1, simIdx: 0, simDone: false, dragKey: null, dragStartY: 0, dragStartValue: 0 };
-
-  function findTaskByLabel(label) { return TASKS.filter(function(t) { return t.label === label; })[0]; }
-
-  // Level 2: same 27 hotspots, same highlight layer — just a different click/drag handler and
-  // a live LCD readout instead of "find the control". Facts here match real Ableton behavior
-  // (Live's tempo range, tap-tempo-from-interval, one octave per press, scale/root selection,
-  // swing as a percentage, mute/record as simple toggles) — simplified screen graphics, real logic.
-  var lcdEl = document.getElementById('p3Lcd');
-  var lcdLabelEl = document.getElementById('p3LcdLabel');
-  var lcdValueEl = document.getElementById('p3LcdValue');
-  var lcdSubEl = document.getElementById('p3LcdSub');
-
-  var SIM_TASKS = [
-    {
-      hotspotKey: findTaskByLabel('Tap Tempo').key, type: 'tap', lcdLabel: 'TEMPO', sub: 'Hedef: 128 BPM',
-      task: 'Tempoyu 128 BPM\'e ayarla — Tap Tempo\'ya birkaç kez, düzenli aralıklarla dokun.',
-      explain: 'Tap Tempo\'ya art arda dokunduğunda Live, dokunuşlar arasındaki süreye bakarak tempoyu hesaplar — kulağınla yakaladığın bir ritme Live\'ı böyle uydurursun.',
-      init: function(s) { s.taps = []; s.bpm = 120; },
-      onTap: function(s) {
-        s.taps.push(performance.now());
-        if (s.taps.length > 5) s.taps.shift();
-        if (s.taps.length >= 2) {
-          var sum = 0;
-          for (var i = 1; i < s.taps.length; i++) sum += s.taps[i] - s.taps[i - 1];
-          var avgMs = sum / (s.taps.length - 1);
-          s.bpm = Math.max(20, Math.min(999, 60000 / avgMs));
-        }
-      },
-      isDone: function(s) { return s.taps.length >= 3 && Math.abs(s.bpm - 128) <= 2; },
-      displayValue: function(s) { return s.bpm.toFixed(1) + ' BPM'; }
-    },
-    {
-      hotspotKey: findTaskByLabel('Octave ↑').key, type: 'press', lcdLabel: 'OCTAVE', sub: 'Hedef: +2',
-      task: 'Oktavı 2 kademe yukarı çıkar — Octave ↑\'a arka arkaya bas.',
-      explain: 'Octave ↑/↓, pad ızgarasında çalabildiğin nota aralığını bir oktav kaydırır — her basışta ekrandaki gösterge anında değişir.',
-      init: function(s) { s.offset = 0; },
-      onTap: function(s) { s.offset = Math.min(4, s.offset + 1); },
-      isDone: function(s) { return s.offset === 2; },
-      displayValue: function(s) { return (s.offset >= 0 ? '+' : '') + s.offset; }
-    },
-    {
-      hotspotKey: findTaskByLabel('Scale').key, type: 'cycle', lcdLabel: 'SCALE', sub: 'Hedef: D Minor',
-      task: 'Ölçeği D Minor yap — Scale\'e arka arkaya dokunarak listede ilerle.',
-      explain: 'Scale, pad ızgarasını seçtiğin gam ve kök notaya sınırlar — sahnede yanlış nota basma korkusu olmadan çalmanı sağlar.',
-      list: ['C Major', 'G Major', 'A Minor', 'D Minor', 'E Minor'],
-      init: function(s) { s.idx = 0; },
-      onTap: function(s) { s.idx = (s.idx + 1) % s.list.length; },
-      isDone: function(s) { return s.list[s.idx] === 'D Minor'; },
-      displayValue: function(s) { return s.list[s.idx]; }
-    },
-    {
-      hotspotKey: findTaskByLabel('Encoder\'lar').key, type: 'drag', lcdLabel: 'SWING', sub: 'Hedef: %58',
-      task: 'Swing\'i %58\'e getir — encoder\'ı yukarı/aşağı sürükle.',
-      explain: 'Swing, çift vuruşları geciktirerek gruv katar — encoder\'ı sürükleyip bırakman, ekrandaki değeri gerçek zamanlı böyle değiştirir.',
-      min: 0, max: 100, sensitivity: 0.6,
-      init: function(s) { s.value = 50; },
-      isDone: function(s) { return Math.abs(s.value - 58) <= 2; },
-      displayValue: function(s) { return Math.round(s.value) + '%'; }
-    },
-    {
-      hotspotKey: findTaskByLabel('Mute').key, type: 'toggle', lcdLabel: 'TRACK 2', sub: 'Hedef: Mute',
-      task: 'Track 2\'yi sustur — Mute\'a bas.',
-      explain: 'Mute, seçili track\'i anında susturur — miksaj yaparken diğer track\'leri geçici kapatıp karşılaştırma yapmak için kullanışlıdır.',
-      init: function(s) { s.muted = false; },
-      onTap: function(s) { s.muted = !s.muted; },
-      isDone: function(s) { return s.muted === true; },
-      displayValue: function(s) { return s.muted ? 'MUTE' : 'AKTİF'; }
-    },
-    {
-      hotspotKey: findTaskByLabel('Record').key, type: 'toggle', lcdLabel: 'TRANSPORT', sub: 'Hedef: Kaydı başlat',
-      task: 'Kaydı başlat — Record\'a bas.',
-      explain: 'Record, çaldığın veya step\'lediğin notaları seçili clip\'e kaydeder — canlı bir fikri ilk kez buradan kalıcı hale getirirsin.',
-      init: function(s) { s.recording = false; },
-      onTap: function(s) { s.recording = true; },
-      isDone: function(s) { return s.recording === true; },
-      displayValue: function(s) { return s.recording ? '● REC' : 'HAZIR'; }
-    }
-  ];
-
-  function rectFor(t) {
-    var el = svgRoot.getElementById(t.svgId);
-    if (!el) return null;
-    var b = el.getBBox();
-    if (!t.split) return { x: b.x, y: b.y, w: b.width, h: b.height };
-    if (t.split === 'x') {
-      var w = b.width * (t.frac || 0.5);
-      return t.half === 'left' ? { x: b.x, y: b.y, w: w, h: b.height } : { x: b.x + w, y: b.y, w: b.width - w, h: b.height };
-    }
-    if (t.split === 'y') {
-      var h = b.height * (t.frac || 0.5);
-      return t.half === 'top' ? { x: b.x, y: b.y, w: b.width, h: h } : { x: b.x, y: b.y + h, w: b.width, h: b.height - h };
-    }
-    // quad
-    var hw = b.width / 2, hh = b.height / 2;
-    return {
-      x: b.x + (t.half.indexOf('right') >= 0 ? hw : 0),
-      y: b.y + (t.half.indexOf('bottom') >= 0 ? hh : 0),
-      w: hw, h: hh
-    };
-  }
-
-  // Maps an SVG user-space point to a percentage position within #p3HotspotLayer, using the
-  // browser's own current SVG->screen transform (accounts for preserveAspectRatio letterboxing
-  // automatically, unlike a manual viewBox percentage calc would).
-  function svgPointToLayerPct(x, y) {
-    var pt = svgRoot.createSVGPoint();
-    pt.x = x; pt.y = y;
-    var screenPt = pt.matrixTransform(svgRoot.getScreenCTM());
-    var layerRect = hotspotLayer.getBoundingClientRect();
-    return {
-      xPct: (screenPt.x - layerRect.left) / layerRect.width * 100,
-      yPct: (screenPt.y - layerRect.top) / layerRect.height * 100
-    };
-  }
-
-  // #p3HotspotLayer is a sibling of #p3DeviceWrap (not a descendant — see CSS comment), so it
-  // must be aligned to the wrap's actual rendered box by measurement rather than CSS inset:0,
-  // which would resolve against the stage's padding box (bigger than the wrap's own box).
-  function alignHotspotLayer() {
-    var wrapRect = wrap.getBoundingClientRect();
-    var parentRect = hotspotLayer.offsetParent.getBoundingClientRect();
-    hotspotLayer.style.left = (wrapRect.left - parentRect.left) + 'px';
-    hotspotLayer.style.top = (wrapRect.top - parentRect.top) + 'px';
-    hotspotLayer.style.width = wrapRect.width + 'px';
-    hotspotLayer.style.height = wrapRect.height + 'px';
-  }
-
-  function positionHotspots() {
-    if (!svgRoot) return;
-    alignHotspotLayer();
-    TASKS.forEach(function(t) {
-      var el = hotspotEls[t.key];
-      var r = rectFor(t);
-      if (!el || !r) return;
-      var p1 = svgPointToLayerPct(r.x, r.y);
-      var p2 = svgPointToLayerPct(r.x + r.w, r.y + r.h);
-      el.style.left = p1.xPct + '%';
-      el.style.top = p1.yPct + '%';
-      el.style.width = (p2.xPct - p1.xPct) + '%';
-      el.style.height = (p2.yPct - p1.yPct) + '%';
-    });
-    // LCD overlay tracks the same "LCD Display" bbox as the Ekran hotspot (TASKS[0]).
-    var lr = rectFor(TASKS[0]);
-    if (lr) {
-      var lp1 = svgPointToLayerPct(lr.x, lr.y);
-      var lp2 = svgPointToLayerPct(lr.x + lr.w, lr.y + lr.h);
-      lcdEl.style.left = lp1.xPct + '%';
-      lcdEl.style.top = lp1.yPct + '%';
-      lcdEl.style.width = (lp2.xPct - lp1.xPct) + '%';
-      lcdEl.style.height = (lp2.yPct - lp1.yPct) + '%';
-    }
-  }
-
-  function buildHotspots() {
-    TASKS.forEach(function(t) {
-      var r = rectFor(t);
-      if (!r) { console.warn('Push3 game: missing SVG id', t.svgId); return; }
-      var el = document.createElement('div');
-      el.className = 'p3-hotspot';
-      el.tabIndex = 0;
-      el.setAttribute('role', 'button');
-      el.setAttribute('aria-label', t.label);
-      var hl = document.createElement('div');
-      hl.className = 'p3-hl';
-      el.appendChild(hl);
-      el.addEventListener('click', function() {
-        if (state.level === 2) onSimClick(t.key);
-        else if (state.level === 1) onHotspotClick(t.key);
-      });
-      el.addEventListener('keydown', function(e) {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();
-        if (state.level === 2) onSimClick(t.key);
-        else if (state.level === 1) onHotspotClick(t.key);
-      });
-      el.addEventListener('pointerdown', function(e) { onSimPointerDown(t.key, e); });
-      hotspotLayer.appendChild(el);
-      hotspotEls[t.key] = el;
-      hlEls[t.key] = hl;
-    });
-    positionHotspots();
-    var resizeTimer = null;
-    window.addEventListener('resize', function() {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(positionHotspots, 120);
-    });
-  }
-
-  function clearStates() {
-    TASKS.forEach(function(t) { hlEls[t.key].classList.remove('correct', 'wrong', 'target'); });
-  }
-
-  function applyTargetHighlight() {
-    TASKS.forEach(function(t) { hlEls[t.key].classList.remove('target'); });
-    if (state.hintsOn) hlEls[TASKS[state.idx].key].classList.add('target');
-  }
-
-  function renderTask() {
-    var t = TASKS[state.idx];
-    progressEl.textContent = (state.idx + 1) + ' / ' + TASKS.length;
-    taskEl.textContent = t.task;
-    explainPanel.hidden = true;
-    feedbackEl.hidden = false;
-    feedbackEl.textContent = 'Cihaz üzerinde göreve uyan kontrole dokun.';
-    feedbackEl.className = 'p3-game-feedback';
-    clearStates();
-    applyTargetHighlight();
-  }
-
-  function next() {
-    state.advancing = false;
-    state.idx++;
-    if (state.idx >= TASKS.length) { startLevel2Intro(); return; }
-    renderTask();
-  }
-
-  function onHotspotClick(key) {
-    if (state.advancing) return;
-    var t = TASKS[state.idx];
-    if (key === t.key) {
-      state.advancing = true;
-      hlEls[key].classList.remove('target');
-      hlEls[key].classList.add('correct');
-      feedbackEl.hidden = true;
-      explainTextEl.textContent = t.explain;
-      continueBtn.textContent = (state.idx + 1 >= TASKS.length) ? 'Bitir' : 'Devam →';
-      explainPanel.hidden = false;
-      continueBtn.focus();
-    } else {
-      var wrongEl = hlEls[key];
-      wrongEl.classList.remove('wrong'); void wrongEl.offsetWidth; wrongEl.classList.add('wrong');
-      var wrongTask = TASKS.filter(function(x) { return x.key === key; })[0];
-      feedbackEl.textContent = 'Hayır, o ' + wrongTask.label + '. Aradığın: ' + t.label + '.';
-      feedbackEl.className = 'p3-game-feedback err';
-    }
-  }
-
-  // ── Level 2: simulation ──────────────────────────────────────────────────
-  function renderLcd(sim) {
-    lcdLabelEl.textContent = sim.lcdLabel;
-    lcdValueEl.textContent = sim.displayValue(sim);
-    lcdSubEl.textContent = sim.sub;
-  }
-
-  function simSuccess(sim) {
-    state.simDone = true;
-    hlEls[sim.hotspotKey].classList.remove('target');
-    hlEls[sim.hotspotKey].classList.add('correct');
-    feedbackEl.hidden = true;
-    explainTextEl.textContent = sim.explain;
-    continueBtn.textContent = (state.simIdx + 1 >= SIM_TASKS.length) ? 'Bitir' : 'Devam →';
-    explainPanel.hidden = false;
-    continueBtn.focus();
-  }
-
-  function onSimClick(key) {
-    if (state.level !== 2 || state.simDone) return;
-    var sim = SIM_TASKS[state.simIdx];
-    if (!sim || sim.hotspotKey !== key || sim.type === 'drag') return;
-    sim.onTap(sim);
-    renderLcd(sim);
-    if (sim.isDone(sim)) simSuccess(sim);
-  }
-
-  function onSimPointerDown(key, e) {
-    if (state.level !== 2 || state.simDone) return;
-    var sim = SIM_TASKS[state.simIdx];
-    if (!sim || sim.hotspotKey !== key || sim.type !== 'drag') return;
-    state.dragKey = key;
-    state.dragStartY = e.clientY;
-    state.dragStartValue = sim.value;
-    e.preventDefault();
-  }
-  window.addEventListener('pointermove', function(e) {
-    if (!state.dragKey) return;
-    var sim = SIM_TASKS[state.simIdx];
-    var dy = state.dragStartY - e.clientY;
-    sim.value = Math.max(sim.min, Math.min(sim.max, state.dragStartValue + dy * sim.sensitivity));
-    renderLcd(sim);
-  });
-  window.addEventListener('pointerup', function() {
-    if (!state.dragKey) return;
-    state.dragKey = null;
-    var sim = SIM_TASKS[state.simIdx];
-    if (sim.isDone(sim)) simSuccess(sim);
-  });
-
-  function renderSimTask() {
-    var sim = SIM_TASKS[state.simIdx];
-    state.simDone = false;
-    sim.init(sim);
-    progressEl.textContent = 'Seviye 2 · ' + (state.simIdx + 1) + ' / ' + SIM_TASKS.length;
-    taskEl.textContent = sim.task;
-    explainPanel.hidden = true;
-    feedbackEl.hidden = false;
-    feedbackEl.textContent = 'Cihaz üzerinde göreve uyan kontrole dokun.';
-    feedbackEl.className = 'p3-game-feedback';
-    clearStates();
-    TASKS.forEach(function(t) { hotspotEls[t.key].classList.toggle('draggable', state.level === 2 && t.key === sim.hotspotKey && sim.type === 'drag'); });
-    if (state.hintsOn) hlEls[sim.hotspotKey].classList.add('target');
-    renderLcd(sim);
-  }
-
-  function nextSim() {
-    state.simIdx++;
-    if (state.simIdx >= SIM_TASKS.length) { showWin(); return; }
-    renderSimTask();
-  }
-
-  function startLevel2Intro() {
-    state.level = 'transition';
-    explainPanel.hidden = true;
-    feedbackEl.hidden = false;
-    feedbackEl.textContent = '';
-    progressEl.textContent = 'Seviye 2';
-    taskEl.textContent = 'Tebrikler, kontrolleri öğrendin! Şimdi kullanmayı deneyelim.';
-    clearStates();
-    explainTextEl.textContent = 'Artık cihazın kontrollerini biliyorsun. Şimdi onları gerçekten kullanarak birkaç görev tamamlayacaksın — ekran, dokunduğun kontrole göre canlı değişecek.';
-    continueBtn.textContent = 'Başla →';
-    explainPanel.hidden = false;
-    continueBtn.focus();
-  }
-
-  function showWin() {
-    explainPanel.hidden = true;
-    feedbackEl.hidden = false;
-    lcdEl.classList.remove('visible');
-    lcdEl.setAttribute('aria-hidden', 'true');
-    winEl.hidden = false;
-  }
-  function restart() {
-    winEl.hidden = true;
-    state.idx = 0; state.advancing = false; state.level = 1; state.simIdx = 0; state.simDone = false; state.dragKey = null;
-    lcdEl.classList.remove('visible');
-    lcdEl.setAttribute('aria-hidden', 'true');
-    renderTask();
-  }
-
-  function toggleHint() {
-    state.hintsOn = !state.hintsOn;
-    hintBtn.setAttribute('aria-pressed', String(state.hintsOn));
-    hintBtn.setAttribute('aria-label', state.hintsOn ? 'İpucunu gizle' : 'İpucunu göster');
-    if (state.level === 2) {
-      TASKS.forEach(function(t) { hlEls[t.key].classList.remove('target'); });
-      if (state.hintsOn) hlEls[SIM_TASKS[state.simIdx].hotspotKey].classList.add('target');
-    } else {
-      applyTargetHighlight();
-    }
-  }
-
-  hintBtn.addEventListener('click', toggleHint);
-  continueBtn.addEventListener('click', function() {
-    if (state.level === 1) next();
-    else if (state.level === 'transition') {
-      state.level = 2; state.simIdx = 0;
-      lcdEl.classList.add('visible');
-      lcdEl.setAttribute('aria-hidden', 'false');
-      renderSimTask();
-    } else {
-      nextSim();
-    }
-  });
-  restartBtn.addEventListener('click', restart);
-
-  fetch('assets/img/push3-device.svg')
-    .then(function(r) { return r.text(); })
-    .then(function(svgText) {
-      wrap.innerHTML = svgText;
-      svgRoot = wrap.querySelector('svg');
-      svgRoot.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-      buildHotspots();
-      renderTask();
-    })
-    .catch(function(err) {
-      feedbackEl.textContent = 'Cihaz görseli yüklenemedi. Sayfayı yenilemeyi dene.';
-      feedbackEl.className = 'p3-game-feedback err';
-      console.error(err);
-    });
-})();
-</script>
+<script src="/assets/js/push3/p3-core.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-scale.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-wt-params.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-device.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-leds.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-lcd.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-wt-engine.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-drums.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-seq.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-modes.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-input.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-levels.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-tutorial.js?v=20260925d"></script>
+<script src="/assets/js/push3/p3-app.js?v=20260925d"></script>
 
 </body>
 </html>
