@@ -15,11 +15,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609210030">
-  <script src="assets/js/theme-init.js?v=202609210030"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609210030">
-  <script src="assets/js/auth-ui.js?v=202609210030"></script>
-  <script src="assets/js/placement-quiz.js?v=202609210030"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609261200">
+  <script src="assets/js/theme-init.js?v=202609261200"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609261200">
+  <script src="assets/js/auth-ui.js?v=202609261200"></script>
+  <script src="assets/js/placement-quiz.js?v=202609261200"></script>
   <style>
     /* booking.html — page layout only. Tokens, controls, cards, modals, toasts
        and the nav shell come from ui.css + themes.css. Class names are load-
@@ -49,6 +49,7 @@
     .av-cell.free:hover { color:var(--fg); }
     .av-cell.busy, .av-cell.closed { border-color:var(--err); color:var(--err); background:var(--err-soft); cursor:not-allowed; opacity:.7; }
     .av-cell.selected { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:700; }
+    .av-cell:focus-visible { outline:2px solid var(--fg); outline-offset:1px; }
     .avail-legend { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; text-transform:uppercase; color:var(--fg-3); }
     .avail-legend span { display:flex; align-items:center; gap:6px; }
     .avail-legend i { display:inline-block; width:10px; height:10px; border:1px solid var(--line); }
@@ -94,6 +95,9 @@
     .payment-box { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:var(--surface-2); border:1px solid var(--line); border-left:2px solid var(--accent); padding:14px 18px; margin-bottom:14px; }
     .payment-box-label { font-size:var(--fs-small); color:var(--fg-2); line-height:1.6; }
     .payment-box-price { font-family:var(--ff-disp); font-size:28px; color:var(--fg); line-height:1; }
+    .payment-box-save { margin-top:6px; font-size:var(--fs-small); color:var(--accent); line-height:1.5; }
+    .payment-box-save s { color:var(--fg-2); margin-right:6px; }
+    .payment-box-extra { margin-top:6px; font-size:var(--fs-small); color:var(--fg-2); line-height:1.5; }
     .payment-box-paid { display:inline-flex; align-items:center; height:var(--ctl-md); padding:0 14px; font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.08em; text-transform:uppercase; color:var(--ok); border:1px solid var(--ok); white-space:nowrap; }
     .pay-info-link { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-small); color:var(--fg-2); cursor:pointer; margin-bottom:14px; text-decoration:none; }
     .pay-info-link:hover { color:var(--accent); }
@@ -143,17 +147,80 @@
     .rule-item { display:flex; gap:10px; margin-bottom:10px; font-size:var(--fs-small); line-height:1.6; color:var(--fg-2); }
     .rule-dot { color:var(--accent); flex-shrink:0; margin-top:2px; }
 
-    /* ── Lesson type + lessons-per-month toggles (segmented) ── */
+    /* ── Lesson type toggle (segmented) ── */
     .req-type-toggle { display:flex; margin-bottom:var(--s5); border:1px solid var(--line); }
     .req-type-toggle .req-type-btn { flex:1; height:var(--ctl-md); border:0; font-size:var(--fs-ctl-md); }
     .req-type-toggle .req-type-btn + .req-type-btn { border-left:1px solid var(--line); }
     .req-type-toggle .req-type-btn.active { background:var(--accent); color:var(--accent-ink); }
-    .lpm-toggle { display:flex; gap:8px; }
-    .lpm-toggle .lpm-btn { flex:1; height:var(--ctl-md); padding:0 var(--ctl-px-md); gap:8px; font-size:var(--fs-ctl-md); }
-    .lpm-btn .lpm-num { font-family:var(--ff-disp); font-size:18px; line-height:1; color:inherit; }
-    .lpm-btn .lpm-sub { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; text-transform:uppercase; color:var(--fg-3); }
-    .lpm-toggle .lpm-btn.active { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
-    .lpm-toggle .lpm-btn.active .lpm-sub { color:var(--accent-ink); opacity:.8; }
+
+    /* ── Paket tablosu: satırlar PACKAGES'tan renderPackageTable() ile üretilir.
+       ≥901 tablo, 601–900 açılım paket adının altına iner, ≤600 her satır kart. ── */
+    .pkg-table { border:1px solid var(--line); background:var(--surface); }
+    .pkg-row { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1.5fr) minmax(0,.7fr) minmax(0,.95fr) minmax(0,.65fr) minmax(0,.95fr) minmax(0,1.05fr); grid-template-areas:"name plan hours list disc save total"; align-items:center; column-gap:var(--s3); padding:14px var(--s4); border-top:1px solid var(--line); }
+    .pkg-head { border-top:0; padding-top:10px; padding-bottom:10px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-2); }
+    .pkg-opt { cursor:pointer; transition:background .12s; }
+    .pkg-opt:hover { background:var(--surface-2); }
+    /* En avantajlı satır: rozet + sol altın çizgi + panel zemini. Seçili satır ise tam
+       altın çerçeve + dolu radyo — seçilmemiş "best" satırı seçili gibi görünmesin. */
+    .pkg-opt.is-best { background:var(--surface-2); box-shadow:inset 3px 0 0 var(--accent); }
+    .pkg-opt[aria-checked="true"] { box-shadow:inset 0 0 0 2px var(--accent); }
+    .pkg-opt.is-best[aria-checked="true"] { box-shadow:inset 0 0 0 2px var(--accent), inset 5px 0 0 var(--accent); }
+    .pkg-opt:focus-visible { outline:2px solid var(--fg); outline-offset:-5px; }
+    .pkg-c-name { grid-area:name; display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; min-width:0; }
+    .pkg-c-plan { grid-area:plan; min-width:0; }
+    .pkg-c-hours { grid-area:hours; }
+    .pkg-c-list { grid-area:list; }
+    .pkg-c-disc { grid-area:disc; }
+    .pkg-c-save { grid-area:save; }
+    .pkg-c-total { grid-area:total; text-align:right; }
+    .pkg-radio { width:14px; height:14px; border:1px solid var(--fg-3); flex-shrink:0; }
+    .pkg-opt[aria-checked="true"] .pkg-radio { border-color:var(--accent); background:var(--accent); box-shadow:inset 0 0 0 3px var(--surface); }
+    .pkg-name { font-family:var(--ff-mono); font-size:var(--fs-label); font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--fg); }
+    .pkg-best { display:inline-flex; align-items:center; height:18px; padding:0 6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; text-transform:uppercase; background:var(--accent); color:var(--accent-ink); white-space:nowrap; }
+    .pkg-plan { font-size:var(--fs-small); color:var(--fg-2); }
+    .pkg-weekly { display:block; margin-top:2px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; text-transform:uppercase; color:var(--fg-2); }
+    .pkg-num { font-family:var(--ff-mono); font-size:var(--fs-small); color:var(--fg); white-space:nowrap; }
+    .pkg-strike { color:var(--fg-2); text-decoration:line-through; }
+    .pkg-gold { color:var(--accent); }
+    .pkg-dim { color:var(--fg-3); }
+    .pkg-total { font-family:var(--ff); font-size:var(--fs-body); font-weight:700; color:var(--fg); white-space:nowrap; }
+    .pkg-k { display:none; }
+    .pkg-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:1px; margin-top:var(--s3); background:var(--line); border:1px solid var(--line); }
+    .pkg-strip-cell { background:var(--surface-2); padding:12px 14px; min-width:0; }
+    .pkg-strip-val { font-family:var(--ff-disp); font-size:24px; line-height:1; color:var(--accent); }
+    .pkg-strip-lbl { margin-top:6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-2); line-height:1.4; }
+    .pkg-progress { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; text-transform:uppercase; }
+    .pkg-progress.is-short { color:var(--fg-2); }
+    .pkg-progress.is-short.is-partial { color:var(--warn); }
+    .pkg-progress.is-ok { color:var(--ok); }
+    .pkg-progress.is-over { color:var(--err); }
+    .pkg-est-head { display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; margin-bottom:6px; }
+    .pkg-est-name { font-weight:600; color:var(--fg); }
+    .pkg-est-row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+    .pkg-est-row.is-total { margin-top:6px; padding-top:8px; border-top:1px solid var(--accent); color:var(--fg); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.1em; text-transform:uppercase; }
+    .pkg-est-total { font-family:var(--ff); font-size:18px; font-weight:700; letter-spacing:0; color:var(--fg); }
+    .pkg-est-need { margin-top:8px; font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; text-transform:uppercase; color:var(--warn); }
+    @media (forced-colors: active) {
+      .pkg-opt[aria-checked="true"] { outline:2px solid Highlight; outline-offset:-2px; }
+      .pkg-opt[aria-checked="true"] .pkg-radio { forced-color-adjust:none; background:Highlight; border-color:Highlight; box-shadow:none; }
+      .av-cell.selected { forced-color-adjust:none; background:Highlight; color:HighlightText; border-color:Highlight; }
+    }
+    @media (max-width:900px) {
+      /* İndirim sütunu başlığı ("DISCOUNT") tek kelime — daralınca komşuya taşmasın */
+      .pkg-row { grid-template-columns:minmax(0,1.6fr) minmax(0,.6fr) minmax(0,1fr) minmax(max-content,.6fr) minmax(0,1fr) minmax(0,1.1fr); grid-template-areas:"name hours list disc save total" "plan hours list disc save total"; row-gap:4px; }
+      .pkg-head { letter-spacing:.06em; }
+    }
+    @media (max-width:600px) {
+      .pkg-table { display:flex; flex-direction:column; gap:8px; border:0; background:transparent; }
+      .pkg-head { display:none; }
+      .pkg-row { grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"name total" "plan total" "hours list" "disc save"; row-gap:6px; column-gap:0; border:1px solid var(--line); background:var(--surface); padding:12px 14px; }
+      .pkg-c-hours, .pkg-c-list { margin-top:4px; padding-top:8px; border-top:1px solid var(--line-2); }
+      .pkg-c-list, .pkg-c-save { text-align:right; }
+      .pkg-c-total, .pkg-c-list, .pkg-c-save { padding-left:var(--s3); }
+      .pkg-k { display:block; margin-bottom:2px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; text-transform:uppercase; color:var(--fg-2); }
+      .pkg-total { font-size:20px; }
+      .pkg-strip { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
     .single-lesson-note { background:var(--err-soft); border:1px solid var(--err); padding:12px 14px; font-size:var(--fs-small); color:var(--fg-2); line-height:1.7; margin-bottom:16px; }
     .single-lesson-note strong { color:var(--err); }
 
@@ -194,6 +261,7 @@
     .req-row-pills { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
     .req-row-pill { display:inline-flex; align-items:center; height:22px; padding:0 8px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--line); color:var(--fg-2); }
     .req-row-pill.gold { color:var(--accent); border-color:var(--accent); }
+    .req-row-pill.err { color:var(--err); border-color:var(--err); background:var(--err-soft); }
     .req-row-note { font-size:var(--fs-small); color:var(--fg-2); font-style:italic; padding:10px 14px; background:var(--surface-2); border-left:2px solid var(--line); }
     .req-actions { display:flex; border-top:1px solid var(--line); }
     .req-actions .req-approve, .req-actions .req-reject { flex:1; height:var(--ctl-lg); border:0; background:transparent; }
@@ -553,7 +621,7 @@
     .admin-note .btn { margin-top:6px; }
 
     /* ── Admin dialogs, toggles, WhatsApp inbox, access requests ── */
-    .hint-sub { color:var(--fg-3); font-size:var(--fs-label); font-family:var(--ff-mono); }
+    .hint-sub { color:var(--fg-2); font-size:var(--fs-label); font-family:var(--ff-mono); }
     .signin-err { margin-top:12px; text-align:center; }
     .dlg-field { margin-bottom:14px; }
     .dlg-sub { font-size:var(--fs-small); color:var(--fg-2); margin:-6px 0 14px; }
@@ -633,8 +701,8 @@
       .student-row, .req-row-body, .access-row-body { padding:12px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609210030"></script>
-<script src="assets/js/love-nav.js?v=202609210030"></script>
+<script src="assets/js/i18n.js?v=202609261200"></script>
+<script src="assets/js/love-nav.js?v=202609261200"></script>
 </head>
 <body>
 
@@ -694,41 +762,32 @@
       <div class="card-sub" data-i18n="bk_req_sub">Tercihlerini belirt, Berkay Er inceleyip onaylayacak.</div>
 
       <div class="req-type-toggle">
-        <button class="req-type-btn active" id="typeMonthly" onclick="setReqType('monthly')" data-i18n="bk_monthly_plan">Aylık Plan</button>
+        <button class="req-type-btn active" id="typeMonthly" onclick="setReqType('monthly')" data-i18n="bk_pkg_tab">Paketler</button>
         <button class="req-type-btn" id="typeSingle" onclick="setReqType('single')" data-i18n="bk_single_lesson">Tek Ders</button>
       </div>
 
       <div id="singleLessonNote" class="single-lesson-note" style="display:none;">
-        <span id="singleLessonNoteText" data-i18n-html="bk_single_note">Aylık ders alan öğrencilerin ders saati değişiklikleri ile çakıştığında <strong>aylık ders alan öğrencilerin öncelikleri vardır</strong>. Bu nedenle seçtiğiniz saat iptal edilebilir.</span>
+        <span id="singleLessonNoteText" data-i18n-html="bk_single_note">Paket alan öğrencilerin ders saati değişiklikleri ile çakıştığında <strong>paket alan öğrencilerin öncelikleri vardır</strong>. Bu nedenle seçtiğiniz saat iptal edilebilir.</span>
       </div>
 
-      <!-- Tek ders seçiliyken aylık plandaki ders başı farkı (rakamlar LESSON_PRICE* sabitlerinden türetilir) -->
+      <!-- Tek ders seçiliyken paketlerin saat başı avantajı (rakamlar LESSON_PRICE* + PACKAGES'tan türetilir) -->
       <div id="singleUpsell" class="notice notice-accent field-group" style="display:none;">
-        <div class="notice-title" data-i18n="bk_upsell_title">Aylık planda ders başı daha uygun</div>
+        <div class="notice-title" data-i18n="bk_pkg_upsell_title">Paketlerde saat başı daha uygun</div>
         <div class="notice-text" id="singleUpsellText"></div>
         <div class="btn-row notice-text-2">
-          <button type="button" class="btn btn-sm btn-primary" onclick="setReqType('monthly')" data-i18n="bk_upsell_btn">Aylık Plana Geç</button>
+          <button type="button" class="btn btn-sm btn-primary" onclick="setReqType('monthly')" data-i18n="bk_pkg_upsell_btn">Paketlere Geç</button>
         </div>
       </div>
 
-      <div class="field-group field-row" id="durationField">
-        <div class="field-col">
-          <label class="field-label" data-i18n="bk_duration">Süre</label>
-          <select class="field-input" id="reqDuration" onchange="updatePriceEstimate()">
-            <option value="1" selected>1 Ay</option>
-            <option value="2">2 Ay</option>
-            <option value="3">3 Ay</option>
-            <option value="4">4 Ay</option>
-            <option value="6">6 Ay</option>
-          </select>
-        </div>
-        <div class="field-col">
-          <label class="field-label" data-i18n="bk_lessons_per_month">Aylık Ders Sayısı</label>
-          <input type="hidden" id="reqLessonsPerMonth" value="4">
-          <div class="lpm-toggle">
-            <button type="button" class="lpm-btn active" data-lpm="4" onclick="setLpm(4)"><span class="lpm-num">4</span><span class="lpm-sub" data-i18n="bk_lpm_sub">DERS/AY</span></button>
-          </div>
-        </div>
+      <!-- Paket seçimi. Satırlar ve özet şeridi PACKAGES'tan renderPackageTable() ile
+           üretilir — buraya rakam yazılmaz. Gizli alanlar paketin ay sayısını ve ders/ay
+           değerini taşır (selectPackage yazar). -->
+      <div class="field-group" id="durationField">
+        <input type="hidden" id="reqDuration" value="1">
+        <input type="hidden" id="reqLessonsPerMonth" value="4">
+        <div class="field-label" id="pkgLabel" data-i18n="bk_pkg_label">Paket Seç</div>
+        <div class="pkg-table" id="pkgTable" role="radiogroup" aria-labelledby="pkgLabel"></div>
+        <div class="pkg-strip" id="pkgStrip"></div>
       </div>
 
       <div class="field-group" id="startDateField">
@@ -737,7 +796,7 @@
       </div>
 
       <div class="field-group">
-        <label class="field-label" id="slotLabel"><span data-i18n="bk_slot_label">Gün & Saat Seç</span> <span class="field-hint" data-i18n="bk_slot_hint">(birden fazla seçebilirsin)</span></label>
+        <label class="field-label" id="slotLabel"><span data-i18n="bk_slot_label">Gün & Saat Seç</span></label>
         <div class="avail-legend">
           <span><i class="lg-free"></i> <span data-i18n="bk_avail_free">Müsait</span></span>
           <span><i class="lg-busy"></i> <span data-i18n="bk_avail_busy">Dolu</span></span>
@@ -746,9 +805,9 @@
         </div>
         <div class="avail-wrap">
           <div id="availGridLoading" class="loading-hint" data-i18n="bk_avail_loading">Müsaitlik yükleniyor…</div>
-          <table class="avail-table" id="availGrid" style="display:none;"></table>
+          <table class="avail-table" id="availGrid" style="display:none;" aria-labelledby="slotLabel"></table>
         </div>
-        <div class="avail-selected-summary" id="availSummary"></div>
+        <div class="avail-selected-summary" id="availSummary" aria-live="polite"></div>
         <div id="priceEstimate" class="price-estimate" style="display:none;"></div>
         <!-- Reschedule rights notice -->
         <div class="notice notice-info">
@@ -775,7 +834,7 @@
         <textarea class="field-input" id="reqNote" rows="3" data-i18n-ph="bk_req_note_ph" placeholder="Tercihleriniz, sorularınız veya eklemek istediğiniz herhangi bir şey…"></textarea>
       </div>
 
-      <div id="reqError" class="form-error" style="display:none;"></div>
+      <div id="reqError" class="form-error" role="alert" style="display:none;"></div>
 
       <button class="btn btn-primary btn-lg" id="submitRequestBtn" disabled data-i18n="bk_submit_btn">Talep Gönder →</button>
     </div>
@@ -1141,6 +1200,35 @@ function showInputModal({ title, placeholder = '', defaultVal = '', multiline = 
     setTimeout(() => input.focus(), 50);
   });
 }
+// Seçenekli admin penceresi: choices [{label, value, cls}] → seçilen value; Vazgeç /
+// Esc / dışarı tıklama → null. confirm()'ün Tamam/İptal'i iki farklı işi anlatamadığı
+// yerler için (ör. onayda önceki özel fiyat korunsun mu).
+function showChoiceModal({ title, body = '', choices }) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="choiceModalTitle">
+        <div class="modal-title" id="choiceModalTitle">${title}</div>
+        ${body ? `<div class="modal-body">${body}</div>` : ''}
+        <div class="modal-actions modal-actions-stack"></div>
+      </div>`;
+    const done = v => { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = e => { if (e.key === 'Escape') done(null); };
+    const row = overlay.querySelector('.modal-actions');
+    [...choices, { label: 'Vazgeç', value: null, cls: 'btn-ghost' }].forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = `btn ${c.cls || 'btn-ghost'}`; b.textContent = c.label;
+      b.onclick = () => done(c.value);
+      row.append(b);
+    });
+    overlay.onclick = e => { if (e.target === overlay) done(null); };
+    document.addEventListener('keydown', onKey);
+    document.body.append(overlay);
+    setTimeout(() => row.querySelector('button')?.focus(), 50);
+  });
+}
+
 // Bump this whenever the rule text/set below changes, so old acceptances
 // (stored with a prior version tag) aren't confused with new ones.
 const RULES_CONSENT_VERSION = 'per-rule-v1';
@@ -1486,9 +1574,15 @@ async function loadAndRenderAvailGrid() {
     });
 }
 
+// Izgara klavyeyle de kullanılır: hücreler role="checkbox", tek sekme durağı (roving
+// tabindex), oklar/Home/End gezer, Enter/Space seçer. _availFocusKey yeniden çizimde
+// (booked_slots dinleyicisi) odak konumunu korur.
+let _availFocusKey = null;
 function renderAvailGrid() {
   const table = document.getElementById('availGrid');
+  const hadFocus = table.contains(document.activeElement);
   table.innerHTML = '';
+  table.onkeydown = availGridKeydown;
 
   // Header row
   const thead = table.createTHead();
@@ -1513,14 +1607,56 @@ function renderAvailGrid() {
       cell.className = 'av-cell ' + (isClosed ? 'closed' : isBusy ? 'busy' : _selectedSlots.has(key) ? 'selected' : 'free');
       cell.textContent = time;
       cell.dataset.key = key;
+      cell.setAttribute('role', 'checkbox');
+      cell.setAttribute('aria-checked', _selectedSlots.has(key) ? 'true' : 'false');
+      cell.setAttribute('aria-label', `${getDays()[dow]} ${time}${isClosed ? ' — ' + (window._i18n?.t('bk_avail_closed')||'Kapalı') : isBusy ? ' — ' + (window._i18n?.t('bk_avail_busy')||'Dolu') : ''}`);
+      cell.tabIndex = -1;
       if (!isBusy && !isClosed) {
-        cell.onclick = () => toggleSlot(key, cell);
+        cell.onclick = () => { setAvailFocus(cell, false); toggleSlot(key, cell); };
+      } else {
+        cell.setAttribute('aria-disabled', 'true');
       }
       td.append(cell); tr.append(td);
     });
   });
 
+  // Tek sekme durağı: son odaklanan hücre, yoksa ilk seçili, yoksa ilk müsait hücre
+  const target = (_availFocusKey && table.querySelector(`.av-cell[data-key="${_availFocusKey}"]`))
+    || table.querySelector('.av-cell.selected') || table.querySelector('.av-cell.free') || table.querySelector('.av-cell');
+  if (target) setAvailFocus(target, hadFocus);
+
   updateSlotSummary();
+}
+
+function setAvailFocus(cell, focus) {
+  const table = document.getElementById('availGrid');
+  table.querySelectorAll('.av-cell[tabindex="0"]').forEach(x => { if (x !== cell) x.tabIndex = -1; });
+  cell.tabIndex = 0;
+  _availFocusKey = cell.dataset.key;
+  if (focus) cell.focus();
+}
+
+function availGridKeydown(e) {
+  const cell = e.target.closest && e.target.closest('.av-cell');
+  if (!cell) return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    if (cell.getAttribute('aria-disabled') !== 'true') toggleSlot(cell.dataset.key, cell);
+    return;
+  }
+  const rows = e.currentTarget.tBodies[0].rows;
+  const td = cell.parentElement;
+  let r = td.parentElement.sectionRowIndex, c = td.cellIndex;
+  const move = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] }[e.key];
+  if (move) { r += move[0]; c += move[1]; }
+  else if (e.key === 'Home') c = 0;
+  else if (e.key === 'End') c = rows[r].cells.length - 1;
+  else return;
+  e.preventDefault();
+  r = Math.max(0, Math.min(rows.length - 1, r));
+  c = Math.max(0, Math.min(rows[r].cells.length - 1, c));
+  const next = rows[r].cells[c].querySelector('.av-cell');
+  if (next) setAvailFocus(next, true);
 }
 
 function toggleSlot(key, cell) {
@@ -1534,6 +1670,7 @@ function toggleSlot(key, cell) {
     cell.className = 'av-cell selected';
     cell.textContent = time;
   }
+  cell.setAttribute('aria-checked', _selectedSlots.has(key) ? 'true' : 'false');
   updateSlotSummary();
   document.getElementById('submitRequestBtn').disabled = _selectedSlots.size === 0;
 }
@@ -1648,30 +1785,338 @@ function adjustSchedule(rawSlots) {
   return result;
 }
 
-const LESSON_PRICE        = 2500; // TL per lesson — monthly plans
+// ─── Fiyatlar + paket indirimleri ─────────────────────────
+// Saf blok: DOM'a, window'a ve Firestore'a dokunmaz (scratchpad testleri bu bloğu
+// metin olarak çekip değerlendirir). Tek kaynak burası: paket tablosu, özet şeridi,
+// fiyat tahmini, tek ders notu, talep kaydı, admin onayı ve öğrenci paneli buradan
+// türetir; markup'a rakam yazılmaz.
+const LESSON_PRICE        = 2500; // TL per lesson hour — paketlerin liste fiyatı
 const LESSON_PRICE_SINGLE = 3000; // TL per lesson — single booking
+const LESSON_PRICE_TRIAL  = 0;    // deneme dersi ücretsiz (özet şeridinde gösterilir)
+
+// weekly = öğrencinin ızgaradan seçeceği haftalık ders saati; her haftalık saat
+// ayda PKG_LESSONS_PER_MONTH ders üretir (calculateLessonDates slot başına months×4).
+const PKG_LESSONS_PER_MONTH = 4;
+const PACKAGES = [
+  { id:'baslangic',   name:'Başlangıç',   months:1, weekly:1, discount:0  },
+  { id:'devamlilik',  name:'Devamlılık',  months:2, weekly:1, discount:8  },
+  { id:'gelisim',     name:'Gelişim',     months:3, weekly:1, discount:10 },
+  { id:'yogun',       name:'Yoğun',       months:2, weekly:2, discount:15 },
+  { id:'profesyonel', name:'Profesyonel', months:3, weekly:2, discount:20, best:true },
+];
+const DEFAULT_PACKAGE_ID = 'baslangic';
+// Rezervasyondaki paket alanları — paketsiz onayda hepsi silinir.
+const PACKAGE_RES_FIELDS = ['package_id','package_name','package_discount_pct','package_hours','package_list_price','package_total_price'];
+// Paketli rezervasyona sonradan eklenen ek dersler paket DIŞIDIR: her biri LESSON_PRICE
+// olarak custom_total_price'a eklenir ve burada ayrıca sayılır (paket kazanç satırı
+// bozulmasın). Yeni talep onaylanınca (lessons baştan yazılır) sıfırlanır.
+const EXTRA_LESSON_FIELDS = ['extra_lessons_count','extra_lessons_price'];
+
+function findPackage(id) { return PACKAGES.find(p => p.id === id) || null; }
+
+// hours = ay × 4 × haftalık saat · liste = saat × LESSON_PRICE · indirim yuvarlanır
+function packagePrice(pkgOrId) {
+  const p = typeof pkgOrId === 'string' ? findPackage(pkgOrId) : pkgOrId;
+  if (!p) return null;
+  const hours = p.months * PKG_LESSONS_PER_MONTH * p.weekly;
+  const list  = hours * LESSON_PRICE;
+  const save  = Math.round(list * p.discount / 100);
+  const total = list - save;
+  return { hours, list, save, total, perHour: total / hours };
+}
+
+// Özet şeridi ve tek ders notu için uç değerler: ilk paket, saat başı en ucuz paket,
+// en yüksek indirim yüzdesi.
+function packageExtremes() {
+  const cheapest = PACKAGES.reduce((a, b) => packagePrice(b).perHour < packagePrice(a).perHour ? b : a);
+  return { first: PACKAGES[0], cheapest, maxDiscount: Math.max(...PACKAGES.map(p => p.discount)) };
+}
+
+// Izgarada seçilen haftalık saat sayısı pakete uyuyor mu: 'ok' | 'short' | 'over'
+function packageSlotStatus(pkg, slotCount) {
+  if (!pkg) return 'short';
+  if (slotCount === pkg.weekly) return 'ok';
+  return slotCount < pkg.weekly ? 'short' : 'over';
+}
+
+// lesson_requests kaydına eklenen paket alanları — yalnız gösterim içindir;
+// admin onayı bunlara güvenmez, package_id'den kanonik fiyatı yeniden hesaplar.
+function packageRequestFields(pkg) {
+  const pp = packagePrice(pkg);
+  if (!pp) return {};
+  return {
+    package_id: pkg.id, package_name: pkg.name, package_discount_pct: pkg.discount,
+    package_hours: pp.hours, package_list_price: pp.list, package_total_price: pp.total,
+  };
+}
+
+// Talep kanonik paketle tutarlı mı? reason: 'none' (paketsiz / eski talep) |
+// 'unknown' (tanınmayan id) | 'mismatch' (süre, haftalık saat ya da ders/ay tutmuyor) | ''
+function requestPackageCheck(r) {
+  if (!r || !r.package_id) return { pkg: null, valid: false, reason: 'none' };
+  const pkg = findPackage(r.package_id);
+  if (!pkg) return { pkg: null, valid: false, reason: 'unknown' };
+  const valid = (r.lesson_type || 'monthly') === 'monthly'
+    && r.duration_months === pkg.months
+    && Array.isArray(r.schedule) && r.schedule.length === pkg.weekly
+    && (r.lessons_per_month || PKG_LESSONS_PER_MONTH) === PKG_LESSONS_PER_MONTH;
+  return { pkg, valid, reason: valid ? '' : 'mismatch' };
+}
+
+// Önceki rezervasyonda paketsiz onayda KORUNACAK bir özel fiyat var mı? (admin'in
+// elle girdiği ya da price_source'suz eski fiyat). Onay düğmesi bunu admin'e sorar.
+function keptCustomPrice(prevRes) {
+  if (!prevRes || prevRes.price_source === 'package') return null;
+  const total = prevRes.custom_total_price, per = prevRes.custom_lesson_price;
+  if (typeof total !== 'number' && !(per > 0)) return null;
+  return { total: typeof total === 'number' ? total : null, per: per > 0 ? per : null };
+}
+
+// acceptRequest'in rezervasyona yazdığı fiyat alanları. del() alan silme işareti
+// döndürür (FieldValue.delete). Geçerli paket: saat başı indirimli ücret; çakışma
+// yüzünden atlanan ders varsa öğrenci yalnız yapılacak ders kadar öder (paketin
+// indirimi korunur — admin onay penceresinde bunu açıkça görür). Paket yoksa
+// (tek ders, eski talep, uyuşmazlık) package_* silinir; önceki rezervasyonun PAKET
+// fiyatı da silinir ki yeni talebe sızmasın. Admin'in elle girdiği fiyat (price_source
+// yok ya da 'admin') varsayılan olarak korunur, 'admin' işareti de onunla kalır;
+// opts.keepAdminPrice === false ise (admin onayda "liste fiyatına dön" dedi) o da
+// silinir. Ek ders sayaçları her onayda sıfırlanır (lessons baştan yazılıyor).
+function reservationPriceFields(r, lessonCount, prevRes, del, opts = {}) {
+  const { pkg, valid } = requestPackageCheck(r);
+  const out = {};
+  EXTRA_LESSON_FIELDS.forEach(k => { out[k] = del(); });
+  if (valid) {
+    const pp = packagePrice(pkg);
+    return Object.assign(out, {
+      ...packageRequestFields(pkg),
+      price_source: 'package',
+      custom_lesson_price: pp.perHour,
+      custom_total_price: lessonCount === pp.hours ? pp.total : lessonCount * pp.perHour,
+    });
+  }
+  PACKAGE_RES_FIELDS.forEach(k => { out[k] = del(); });
+  const prevSource = prevRes ? prevRes.price_source : undefined;
+  const dropCustom = prevSource === 'package' || (opts.keepAdminPrice === false && !!keptCustomPrice(prevRes));
+  if (prevSource !== 'admin' || dropCustom) out.price_source = del();
+  if (dropCustom) { out.custom_lesson_price = del(); out.custom_total_price = del(); }
+  return out;
+}
+
+// Rezervasyona ek ders eklenirken (öğrencinin ek ders talebi onayı / admin "Ders Ekle")
+// aynı yazıma katılacak fiyat alanları. inc(n) = FieldValue.increment(n). Yalnız
+// fiyatı paketten gelen rezervasyonda: ek ders paket dışıdır, LESSON_PRICE eklenir.
+// Diğer rezervasyonlarda tutar zaten aktif ders × birimden hesaplanır (ya da admin'in
+// elle girdiği sabit fiyattır) — dokunulmaz.
+function extraLessonPriceFields(res, inc) {
+  if (!res || res.price_source !== 'package' || typeof res.custom_total_price !== 'number') return {};
+  return {
+    custom_total_price: inc(LESSON_PRICE),
+    extra_lessons_count: inc(1),
+    extra_lessons_price: inc(LESSON_PRICE),
+  };
+}
+
+// Rezervasyonun ödenecek toplamı — öğrenci paneli ödeme kutusu ve admin ödeme talebi
+// kontrolü aynı formülü kullanır (functions reservationPrice() de custom_total_price'ı
+// önceler). İptal edilen dersler sayılmaz; custom_total_price varsa o geçerlidir.
+function reservationTotalPrice(res) {
+  if (!res) return 0;
+  if (res.lesson_type === 'trial') return LESSON_PRICE_TRIAL;
+  if (typeof res.custom_total_price === 'number') return res.custom_total_price;
+  const active = (res.lessons || []).filter(l => l.status !== 'cancelled').length;
+  const unit = res.custom_lesson_price || (res.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE);
+  return active * unit;
+}
+
+// Rezervasyonun paket özeti (öğrenci paneli + admin). Onay anında yazılan alanlardan
+// okunur — PACKAGES sonradan değişse de öğrencinin aldığı fiyat görünür. İndirim
+// satırı (discounted) yalnız fiyat hâlâ paketten geliyorsa verilir; admin elle
+// değiştirdiyse (price_source 'admin') gösterilmez. total = paket kısmı (ek dersler
+// hariç), extraCount/extraPrice = paket dışı ek dersler, grandTotal = ikisi toplamı.
+// paidHours: öğrencinin paket fiyatıyla ödediği ders saati (çakışmalı onayda paket
+// saatinden az olabilir; iptal edilen dersler paket tutarını düşürmez).
+function reservationPackageInfo(res) {
+  if (!res || !res.package_id) return null;
+  const pkg = findPackage(res.package_id);
+  const info = {
+    id: res.package_id,
+    name: res.package_name || (pkg ? pkg.name : res.package_id),
+    pct: typeof res.package_discount_pct === 'number' ? res.package_discount_pct : (pkg ? pkg.discount : 0),
+    months: res.duration_months || (pkg ? pkg.months : 0),
+    hours: res.package_hours || (pkg ? packagePrice(pkg).hours : 0),
+    source: res.price_source || '',
+    discounted: false,
+  };
+  const perHour = res.custom_lesson_price, grandTotal = res.custom_total_price;
+  const num = v => (typeof v === 'number' && v > 0 ? v : 0);
+  const extraCount = num(res.extra_lessons_count), extraPrice = num(res.extra_lessons_price);
+  const total = typeof grandTotal === 'number' ? grandTotal - extraPrice : NaN;
+  if (res.price_source === 'package' && perHour > 0 && total > 0
+      && res.package_hours > 0 && res.package_list_price > 0) {
+    const paidHours = Math.round(total / perHour);
+    const list = Math.round(res.package_list_price / res.package_hours * paidHours);
+    Object.assign(info, { discounted: true, total, list, save: list - total, paidHours, extraCount, extraPrice, grandTotal });
+  }
+  return info;
+}
+// ─── /Fiyatlar + paket indirimleri ────────────────────────
+
+// ─── Paket seçimi (talep formu) ───────────────────────────
+let _reqPackageId = DEFAULT_PACKAGE_ID;
+function selectedPackage() { return findPackage(_reqPackageId) || PACKAGES[0]; }
+
+// i18n.t() eksik anahtarda anahtarın kendisini döndürür; o durumda Türkçe yedek kullanılır.
+function pkgT(key, fb) { const v = window._i18n?.t(key); return (v && v !== key) ? v : fb; }
+function pkgIsEn() { return window._i18n?.getLang() === 'en'; }
+function pkgName(pkgOrInfo) { return pkgT('bk_pkg_name_' + pkgOrInfo.id, pkgOrInfo.name); }
+function pkgPct(n) { return pkgIsEn() ? `${n}%` : `%${n}`; }
+function tlFmt(n) { return Math.round(n).toLocaleString('tr-TR') + ' TL'; }
+// "3 Ay · 8 + 8 + 8 saat" (h bir sayı da olabilir: "3 Ay · 24 saat")
+function pkgMonthsHours(months, h) { return pkgT('bk_pkg_mh', `{m} Ay · {h} saat`).replace('{m}', months).replace('{h}', h); }
+function pkgPlanText(p) {
+  const perMonth = PKG_LESSONS_PER_MONTH * p.weekly;
+  return pkgMonthsHours(p.months, Array.from({ length: p.months }, () => perMonth).join(' + '));
+}
+// "Haftada 2 ders saati" — öğrencinin ızgaradan seçeceği haftalık saat sayısı
+function pkgWeeklyText(p) { return pkgT('bk_pkg_weekly', 'Haftada {n} ders saati').replace('{n}', p.weekly).replace('{s}', p.weekly > 1 ? 's' : ''); }
+// Admin satırları (yalnız Türkçe): "Profesyonel · 3 Ay · 24 saat · %20 · 48.000 TL"
+function pkgAdminLine(pkg) {
+  const pp = packagePrice(pkg);
+  return [pkg.name, `${pkg.months} Ay`, `${pp.hours} saat`, pkg.discount ? `%${pkg.discount}` : '', tlFmt(pp.total)].filter(Boolean).join(' · ');
+}
+
+function renderPackageTable() {
+  const wrap = document.getElementById('pkgTable');
+  if (!wrap) return;
+  const col = {
+    pkg:   pkgT('bk_pkg_col_pkg', 'Paket'),
+    plan:  pkgT('bk_pkg_col_plan', 'Açılım'),
+    hours: pkgT('bk_pkg_col_hours', 'Toplam saat'),
+    list:  pkgT('bk_pkg_col_list', 'Liste fiyatı'),
+    disc:  pkgT('bk_pkg_col_disc', 'İndirim'),
+    save:  pkgT('bk_pkg_col_save', 'Kazancın'),
+    pay:   pkgT('bk_pkg_col_pay', 'Ödenecek'),
+  };
+  const best = pkgT('bk_pkg_best', 'En avantajlı');
+  const head = `<div class="pkg-row pkg-head" aria-hidden="true">
+    <div class="pkg-c-name">${col.pkg}</div><div class="pkg-c-plan">${col.plan}</div>
+    <div class="pkg-c-hours">${col.hours}</div><div class="pkg-c-list">${col.list}</div>
+    <div class="pkg-c-disc">${col.disc}</div><div class="pkg-c-save">${col.save}</div>
+    <div class="pkg-c-total">${col.pay}</div></div>`;
+  const rows = PACKAGES.map(p => {
+    const pp = packagePrice(p);
+    const has = p.discount > 0;
+    const name = pkgName(p), plan = pkgPlanText(p), weekly = pkgWeeklyText(p);
+    // role="radio" çocuklarını sunumsal sayar: ekran okuyucu adı sütun başlıklarıyla birlikte verilir
+    const aria = [name, plan, weekly, `${col.hours} ${pp.hours}`, `${col.list} ${tlFmt(pp.list)}`,
+      has ? `${col.disc} ${pkgPct(p.discount)}` : '', has ? `${col.save} ${tlFmt(pp.save)}` : '',
+      `${col.pay} ${tlFmt(pp.total)}`, p.best ? best : ''].filter(Boolean).join(', ');
+    return `<div class="pkg-row pkg-opt${p.best ? ' is-best' : ''}" role="radio" aria-checked="false" tabindex="-1" data-pkg="${p.id}" aria-label="${aria}">
+      <div class="pkg-c-name"><span class="pkg-radio" aria-hidden="true"></span><span class="pkg-name">${name}</span>${p.best ? `<span class="pkg-best">${best}</span>` : ''}</div>
+      <div class="pkg-c-plan"><span class="pkg-plan">${plan}</span><span class="pkg-weekly">${weekly}</span></div>
+      <div class="pkg-c-hours"><span class="pkg-k">${col.hours}</span><span class="pkg-num">${pp.hours}</span></div>
+      <div class="pkg-c-list"><span class="pkg-k">${col.list}</span><span class="pkg-num${has ? ' pkg-strike' : ''}">${tlFmt(pp.list)}</span></div>
+      <div class="pkg-c-disc"><span class="pkg-k">${col.disc}</span><span class="pkg-num ${has ? 'pkg-gold' : 'pkg-dim'}">${has ? pkgPct(p.discount) : '—'}</span></div>
+      <div class="pkg-c-save"><span class="pkg-k">${col.save}</span><span class="pkg-num ${has ? 'pkg-gold' : 'pkg-dim'}">${has ? tlFmt(pp.save) : '—'}</span></div>
+      <div class="pkg-c-total"><span class="pkg-k">${col.pay}</span><span class="pkg-total">${tlFmt(pp.total)}</span></div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = head + rows;
+  wrap.querySelectorAll('.pkg-opt').forEach(el => {
+    el.onclick = () => selectPackage(el.dataset.pkg, false);
+    el.onkeydown = pkgKeydown;
+  });
+  renderPackageStrip();
+  syncPackageSelection(false);
+}
+
+function renderPackageStrip() {
+  const el = document.getElementById('pkgStrip');
+  if (!el) return;
+  const { first, cheapest, maxDiscount } = packageExtremes();
+  const perHour = pkgT('bk_pkg_strip_per_hour', '{name} · saat başı');
+  const cells = [
+    [tlFmt(packagePrice(first).perHour),    perHour.replace('{name}', pkgName(first))],
+    [tlFmt(packagePrice(cheapest).perHour), perHour.replace('{name}', pkgName(cheapest))],
+    [pkgPct(maxDiscount),                   pkgT('bk_pkg_strip_max', 'Maksimum avantaj')],
+    [tlFmt(LESSON_PRICE_TRIAL),             pkgT('bk_pkg_strip_trial', 'Deneme dersi')],
+  ];
+  el.innerHTML = cells.map(([v, l]) => `<div class="pkg-strip-cell"><div class="pkg-strip-val">${v}</div><div class="pkg-strip-lbl">${l}</div></div>`).join('');
+}
+
+// Radiogroup klavyesi: oklar seçimi taşır (Home/End uçlar), Enter/Space seçer.
+function pkgKeydown(e) {
+  const i = PACKAGES.findIndex(p => p.id === e.currentTarget.dataset.pkg);
+  let n = null;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') n = (i + 1) % PACKAGES.length;
+  else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') n = (i - 1 + PACKAGES.length) % PACKAGES.length;
+  else if (e.key === 'Home') n = 0;
+  else if (e.key === 'End') n = PACKAGES.length - 1;
+  else if (e.key === 'Enter' || e.key === ' ') n = i;
+  if (n === null || n < 0) return;
+  e.preventDefault();
+  selectPackage(PACKAGES[n].id, true);
+}
+
+function syncPackageSelection(focus) {
+  document.querySelectorAll('#pkgTable .pkg-opt').forEach(el => {
+    const on = el.dataset.pkg === _reqPackageId;
+    el.setAttribute('aria-checked', on ? 'true' : 'false');
+    el.tabIndex = on ? 0 : -1;
+    if (on && focus) el.focus();
+  });
+}
+
+// Paket seçimi gizli alanlara ayı ve ders/ay değerini yazar; slot ipucu, ilerleme
+// ve fiyat tahmini pakete göre yenilenir. Seçili slotlar korunur.
+function selectPackage(id, focus) {
+  const pkg = findPackage(id);
+  if (!pkg) return;
+  _reqPackageId = pkg.id;
+  document.getElementById('reqDuration').value = pkg.months;
+  document.getElementById('reqLessonsPerMonth').value = PKG_LESSONS_PER_MONTH;
+  syncPackageSelection(focus);
+  const errEl = document.getElementById('reqError');
+  if (errEl) errEl.style.display = 'none';
+  renderSlotLabel();
+  updateSlotSummary();
+}
+
+function renderSlotLabel() {
+  const el = document.getElementById('slotLabel');
+  if (!el) return;
+  if (_reqType === 'single') {
+    el.innerHTML = window._i18n?.t('bk_slot_single_hint')||'Gün & Saat Seç <span class="hint-sub">(bir saat seç)</span>';
+    return;
+  }
+  const pkg = selectedPackage();
+  const hint = pkgT('bk_pkg_slot_hint', '(Bu paket için haftada {n} saat seç)')
+    .replace('{n}', pkg.weekly).replace('{s}', pkg.weekly > 1 ? 's' : '');
+  el.innerHTML = `${pkgT('bk_slot_label', 'Gün & Saat Seç')} <span class="hint-sub">${hint}</span>`;
+}
 
 function updateSlotSummary() {
   const el = document.getElementById('availSummary');
-  if (_selectedSlots.size === 0) { el.textContent = ''; updatePriceEstimate(); return; }
+  const n = _selectedSlots.size;
+  // Paket: haftada kaç saat seçileceği ilerleme olarak gösterilir ("1/2 saat seçildi")
+  let progress = '';
+  if (_reqType !== 'single') {
+    const pkg = selectedPackage();
+    const st = packageSlotStatus(pkg, n);
+    progress = `<span class="pkg-progress is-${st}${st === 'short' && n > 0 ? ' is-partial' : ''}">${pkgT('bk_pkg_progress', '{sel}/{need} saat seçildi').replace('{sel}', n).replace('{need}', pkg.weekly)}${st === 'over' ? ' ' + pkgT('bk_pkg_progress_over', '— fazla seçim') : ''}</span>`;
+  }
+  if (n === 0) { el.innerHTML = progress; updatePriceEstimate(); return; }
   const raw = [..._selectedSlots].map(k => {
     const [dow, time] = k.split('_');
     return { dayIndex: parseInt(dow), time };
   });
   const adjusted = adjustSchedule(raw);
   const parts = adjusted.map(s => getDays()[s.dayIndex] + ' ' + s.time);
-  el.textContent = (window._i18n?.t('bk_slot_sel_label')||'Seçili: ') + parts.join(', ');
+  el.innerHTML = (progress ? progress + ' · ' : '') + (window._i18n?.t('bk_slot_sel_label')||'Seçili: ') + parts.join(', ');
   updatePriceEstimate();
 }
 
-let _reqType = 'monthly'; // 'monthly' | 'single'
-
-function setLpm(n) {
-  document.getElementById('reqLessonsPerMonth').value = n;
-  document.querySelectorAll('.lpm-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.lpm) === n));
-  updatePriceEstimate();
-  renderSingleUpsell();
-}
+let _reqType = 'monthly'; // 'monthly' (paket) | 'single'
 
 function setReqType(type) {
   _reqType = type;
@@ -1681,38 +2126,28 @@ function setReqType(type) {
   document.getElementById('startDateField').style.display = type === 'single' ? 'none' : '';
   document.getElementById('singleLessonNote').style.display = type === 'single' ? '' : 'none';
   renderSingleUpsell();
-  document.getElementById('slotLabel').innerHTML = type === 'single'
-    ? (window._i18n?.t('bk_slot_single_hint')||'Gün & Saat Seç <span class="hint-sub">(bir saat seç)</span>')
-    : (window._i18n?.t('bk_slot_multi_hint')||'Gün & Saat Seç <span class="hint-sub">(birden fazla seçebilirsin)</span>');
+  renderSlotLabel();
   _selectedSlots.clear();
   renderAvailGrid();
   updatePriceEstimate();
 }
 
-// Tek ders seçiliyken aylık planın ders başı avantajını gösterir. Ders başı fark
-// LESSON_PRICE / LESSON_PRICE_SINGLE'dan, paket toplamı da formdaki ders/ay
-// değerinden hesaplanır — fiyat ya da ders sayısı değişirse not da değişir.
-function monthlyLessonsPerMonth() {
-  const fromInput = parseInt(document.getElementById('reqLessonsPerMonth')?.value, 10);
-  if (fromInput > 0) return fromInput;
-  const fromBtn = parseInt(document.querySelector('.lpm-btn.active')?.dataset.lpm, 10);
-  return fromBtn > 0 ? fromBtn : 4;
-}
-
+// Tek ders seçiliyken paketlerin saat başı avantajını gösterir. Rakamlar
+// LESSON_PRICE_SINGLE ve PACKAGES'tan türetilir: ilk paketin saat başı ücreti,
+// saat başı en ucuz paket ve en yüksek indirim — fiyat/paket değişirse not da değişir.
 function renderSingleUpsell() {
   const box = document.getElementById('singleUpsell');
   if (!box) return;
-  const save = LESSON_PRICE_SINGLE - LESSON_PRICE;
-  if (_reqType !== 'single' || save <= 0) { box.style.display = 'none'; return; }
-  const lessons = monthlyLessonsPerMonth();
-  const tl = n => n.toLocaleString('tr-TR') + ' TL';
+  const { first, cheapest, maxDiscount } = packageExtremes();
+  const start = packagePrice(first).perHour;
+  if (_reqType !== 'single' || start >= LESSON_PRICE_SINGLE) { box.style.display = 'none'; return; }
   document.getElementById('singleUpsellText').innerHTML =
-    (window._i18n?.t('bk_upsell_text') || 'Aylık planda ders başı {single} yerine {monthly}. {n} derslik planda toplam {total} tasarruf edersin.')
-      .replace('{single}', `<strong>${tl(LESSON_PRICE_SINGLE)}</strong>`)
-      .replace('{monthly}', `<strong class="text-accent">${tl(LESSON_PRICE)}</strong>`)
-      .replace('{save}', `<strong class="text-accent">${tl(save)}</strong>`)
-      .replace('{total}', `<strong class="text-accent">${tl(save * lessons)}</strong>`)
-      .replace('{n}', lessons);
+    pkgT('bk_pkg_upsell_text', `Tek ders {single}. Paketlerde saat başı ücret {start} ile başlar, {best} paketinde {bestPrice} olur — en fazla {max} indirim.`)
+      .replace('{single}', `<strong>${tlFmt(LESSON_PRICE_SINGLE)}</strong>`)
+      .replace('{start}', `<strong class="text-accent">${tlFmt(start)}</strong>`)
+      .replace('{best}', pkgName(cheapest))
+      .replace('{bestPrice}', `<strong class="text-accent">${tlFmt(packagePrice(cheapest).perHour)}</strong>`)
+      .replace('{max}', `<strong class="text-accent">${pkgPct(maxDiscount)}</strong>`);
   box.style.display = '';
 }
 
@@ -1725,15 +2160,28 @@ function updatePriceEstimate() {
     el.innerHTML = `${window._i18n?.t('bk_price_single_label')||'Tek ders ücreti:'} <strong class="text-accent">${LESSON_PRICE_SINGLE.toLocaleString('tr-TR')} TL</strong>`;
     return;
   }
-  const duration = parseInt(document.getElementById('reqDuration')?.value || '1');
-  const lpm = parseInt(document.getElementById('reqLessonsPerMonth')?.value || '4');
-  const startDate = document.getElementById('reqStartDate')?.value || '';
-  const raw = [..._selectedSlots].map(k => { const [dow, time] = k.split('_'); return { dayIndex: parseInt(dow), time }; });
-  const schedule = adjustSchedule(raw);
-  const totalLessons = calculateLessonDates(schedule, duration, lpm, startDate).length;
-  const total = totalLessons * LESSON_PRICE;
+  // Paket: fiyat seçilen saatlerden değil paketten gelir (haftalık saat şartı submit'te
+  // denetlenir). Şart karşılanmadıysa tutarın altında ne yapılacağı yazar.
+  const pkg = selectedPackage();
+  const pp = packagePrice(pkg);
+  const has = pkg.discount > 0;
+  const st = packageSlotStatus(pkg, _selectedSlots.size);
+  const diff = Math.abs(pkg.weekly - _selectedSlots.size);
+  const needLine = st === 'ok' ? '' : `<div class="pkg-est-need">${
+    (st === 'short' ? pkgT('bk_pkg_need_more', 'Bu paket için {k} saat daha seç') : pkgT('bk_pkg_need_less', 'Bu paket için {k} saati kaldır'))
+      .replace('{k}', diff).replace('{s}', diff > 1 ? 's' : '')}</div>`;
   el.style.display = '';
-  el.innerHTML = `${window._i18n?.t('bk_price_total_label')||'Tahmini toplam:'} <strong class="text-accent">${total.toLocaleString('tr-TR')} TL</strong><br><span class="hint-sub">${totalLessons} ${window._i18n?.t('bk_price_per_lesson')||'ders × '}${LESSON_PRICE.toLocaleString('tr-TR')} ${window._i18n?.t('bk_price_per_slot')||'TL/ders saat'}</span>`;
+  el.innerHTML = `
+    <div class="pkg-est-head">
+      <span class="pkg-est-name">${pkgT('bk_pkg_title', '{name} Paket').replace('{name}', pkgName(pkg))}</span>
+      <span class="hint-sub">${pkgMonthsHours(pkg.months, pp.hours)}</span>
+    </div>
+    ${has ? `
+    <div class="pkg-est-row"><span>${pkgT('bk_pkg_col_list', 'Liste fiyatı')}</span><span class="pkg-strike">${tlFmt(pp.list)}</span></div>
+    <div class="pkg-est-row"><span>${pkgT('bk_pkg_col_disc', 'İndirim')}</span><span class="pkg-gold">${pkgPct(pkg.discount)}</span></div>
+    <div class="pkg-est-row"><span>${pkgT('bk_pkg_col_save', 'Kazancın')}</span><span class="pkg-gold">${tlFmt(pp.save)}</span></div>` : ''}
+    <div class="pkg-est-row is-total"><span>${pkgT('bk_pkg_col_pay', 'Ödenecek')}</span><strong class="pkg-est-total">${tlFmt(pp.total)}</strong></div>
+    <div class="hint-sub">${pkgT('bk_pkg_per_hour', 'saat başı {price}').replace('{price}', tlFmt(pp.perHour))}</div>${needLine}`;
 }
 
 // ─── Phone parsing (shared by request form, WhatsApp self-prompt, admin edit) ──
@@ -1782,8 +2230,20 @@ async function submitRequest() {
   }
 
   const isSingle = _reqType === 'single';
-  const duration = isSingle ? 0 : parseInt(document.getElementById('reqDuration').value);
-  const lessonsPerMonth = isSingle ? 1 : parseInt(document.getElementById('reqLessonsPerMonth').value);
+  // Paket: ızgaradan tam paket.weekly haftalık saat seçilmeli (1 saat → ayda 4, 2 saat → ayda 8)
+  const pkg = isSingle ? null : selectedPackage();
+  if (pkg && packageSlotStatus(pkg, _selectedSlots.size) !== 'ok') {
+    errEl.textContent = pkgT('bk_pkg_err_slots', '{name} paketi için haftada tam {n} saat seçmelisin (şu an {sel}).')
+      .replace('{name}', pkgName(pkg)).replace('{n}', pkg.weekly).replace('{s}', pkg.weekly > 1 ? 's' : '')
+      .replace('{sel}', _selectedSlots.size);
+    errEl.style.display = '';
+    // Hata formun en altında — telefonda ızgara çok yukarıda kalır: ızgaraya götür
+    document.getElementById('availSummary')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  const duration = isSingle ? 0 : pkg.months;
+  const lessonsPerMonth = isSingle ? 1 : PKG_LESSONS_PER_MONTH;
+  const pkgFields = pkg ? packageRequestFields(pkg) : {};
   const preferredStartDate = isSingle ? '' : (document.getElementById('reqStartDate').value || '');
   const rawSlots = [..._selectedSlots].map(k => {
     const [dow, time] = k.split('_');
@@ -1832,6 +2292,7 @@ async function submitRequest() {
       preferred_start_date: preferredStartDate,
       schedule,
       note,
+      ...pkgFields, // yalnız gösterim — admin onayı package_id'den yeniden hesaplar
       status: 'pending',
       rules_accepted_at: firebase.firestore.FieldValue.serverTimestamp(),
       rules_accepted_detail: rulesConsent.items,
@@ -1849,7 +2310,7 @@ async function submitRequest() {
       firebase.app().functions('europe-west1').httpsCallable('sendWelcomeEmail')({ toEmail: _user.email, toName: _user.displayName || '' }).catch(() => {});
     }
     toast(window._i18n?.t('bk_req_submitted')||'✓ Talebiniz gönderildi!');
-    renderPendingView({ from_uid: _user.uid, from_name: _user.displayName||'', from_email: _user.email||'', lesson_type: isSingle?'single':'monthly', duration_months: duration, lessons_per_month: lessonsPerMonth, preferred_start_date: preferredStartDate, schedule, note, status: 'pending', id: reqRef.id });
+    renderPendingView({ from_uid: _user.uid, from_name: _user.displayName||'', from_email: _user.email||'', lesson_type: isSingle?'single':'monthly', duration_months: duration, lessons_per_month: lessonsPerMonth, preferred_start_date: preferredStartDate, schedule, note, ...pkgFields, status: 'pending', id: reqRef.id });
   } catch(e) {
     const c = errId();
     errEl.textContent = `${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): ` + (e.message || e.code || (window._i18n?.getLang()==='en'?'Connection error':'Bağlantı hatası'));
@@ -2173,16 +2634,23 @@ async function renderPendingView(reqData) {
     const daysText = (reqData.schedule||[]).map(s => getDays()[s.dayIndex] + ' ' + s.time).join(', ');
     const isSinglePending = reqData.lesson_type === 'single';
     const pendingLessonCount = isSinglePending ? 1 : calculateLessonDates(reqData.schedule, reqData.duration_months, reqData.lessons_per_month).length;
-    const pendingTotal = pendingLessonCount * (isSinglePending ? LESSON_PRICE_SINGLE : LESSON_PRICE);
+    // Paketli talep: tutar kanonik PACKAGES'tan (talepteki package_* alanlarından değil)
+    const _pkChk = isSinglePending ? null : requestPackageCheck(reqData);
+    const _pk = _pkChk && _pkChk.valid ? _pkChk.pkg : null;
+    const _pkP = _pk ? packagePrice(_pk) : null;
+    const pendingTotal = _pkP ? _pkP.total : pendingLessonCount * (isSinglePending ? LESSON_PRICE_SINGLE : LESSON_PRICE);
     const _ri2 = window._i18n; const _isEn2 = _ri2?.getLang()==='en';
     summary.innerHTML = `
       <div class="req-summary">
-        <strong>${_isEn2?'Duration':'Süre'}:</strong> ${isSinglePending ? (_isEn2?'Single Lesson':'Tek Ders') : reqData.duration_months + (_isEn2?' Months':' Ay')}<br>
+        ${_pk ? `<strong>${pkgT('bk_pkg_col_pkg', 'Paket')}:</strong> ${pkgName(_pk)} · ${pkgPlanText(_pk)}<br>`
+              : `<strong>${_isEn2?'Duration':'Süre'}:</strong> ${isSinglePending ? (_isEn2?'Single Lesson':'Tek Ders') : reqData.duration_months + (_isEn2?' Months':' Ay')}<br>`}
         <strong>${_isEn2?'Days':'Günler'}:</strong> ${daysText || '—'}<br>
+        ${_pk && _pk.discount ? `<strong>${pkgT('bk_pkg_col_list', 'Liste fiyatı')}:</strong> <s class="pkg-strike">${tlFmt(_pkP.list)}</s> · <strong>${pkgT('bk_pkg_col_save', 'Kazancın')}:</strong> <span class="pkg-gold">${tlFmt(_pkP.save)}</span><br>` : ''}
         ${reqData.note ? `<strong>${_isEn2?'Note':'Not'}:</strong> ${reqData.note}<br>` : ''}
       </div>
       <div class="badge-row">
-        <span class="badge accent">${pendingTotal.toLocaleString('tr-TR')} TL</span>
+        <span class="badge accent">${_pk ? `${pkgT('bk_pkg_col_pay', 'Ödenecek')}: ` : ''}${pendingTotal.toLocaleString('tr-TR')} TL</span>
+        ${_pk && _pk.discount ? `<span class="badge accent">${pkgT('bk_pkg_discount_badge', '{pct} indirim').replace('{pct}', pkgPct(_pk.discount))}</span>` : ''}
         <span class="badge">${pendingLessonCount} ${_isEn2?'lesson slots':'ders saati'}</span>
       </div>`;
   }
@@ -2311,8 +2779,9 @@ function initRequestForm() {
   document.getElementById('startDateField').style.display = '';
   document.getElementById('singleLessonNote').style.display = 'none';
   renderSingleUpsell();
-  document.getElementById('reqDuration').value = '1';
-  setLpm(4);
+  // Paket tablosu PACKAGES'tan kurulur; varsayılan Başlangıç (gizli alanları da yazar)
+  renderPackageTable();
+  selectPackage(DEFAULT_PACKAGE_ID, false);
   const _sdEl = document.getElementById('reqStartDate');
   _sdEl.min = toDateStr(new Date());
   _sdEl.value = '';
@@ -2329,7 +2798,6 @@ function initRequestForm() {
   }
   showView('view-request');
   loadAndRenderAvailGrid();
-  document.getElementById('reqDuration').onchange = updatePriceEstimate;
 }
 
 // ─── Student Dashboard ────────────────────────────────────
@@ -2377,7 +2845,16 @@ async function renderDashboard() {
   const isTrial = res.lesson_type === 'trial';
   const _trialLbl = window._i18n?.t('bk_trial_label')||'Deneme Dersi';
   const daysStr = isTrial ? _trialLbl : (res.schedule||[]).map(s => getDays()[s.dayIndex]).join(' & ');
-  document.getElementById('dashSub').textContent = isTrial ? `${_trialLbl}` : `${res.duration_months} ${window._i18n?.getLang()==='en'?'Month':'Aylık'} · ${res.lessons_per_month || 4} ${window._i18n?.getLang()==='en'?'Lessons/Month':'Ders/Ay'} · ${daysStr}`;
+  // Paketli rezervasyon: "Profesyonel Paket · 3 Ay · 24 saat · Pazartesi & Çarşamba".
+  // Çakışma yüzünden paket saatinden az ders planlandıysa ödeme kutusuyla aynı sayı
+  // görünür: "3 Ay · 22 saat (24 saatlik paket)".
+  const _pkInfo = isTrial ? null : reservationPackageInfo(res);
+  const _pkHours = _pkInfo && _pkInfo.discounted && _pkInfo.paidHours !== _pkInfo.hours
+    ? `${pkgMonthsHours(_pkInfo.months, _pkInfo.paidHours)} ${pkgT('bk_pkg_of_hours', '({h} saatlik paket)').replace('{h}', _pkInfo.hours)}`
+    : _pkInfo ? pkgMonthsHours(_pkInfo.months, _pkInfo.hours) : '';
+  document.getElementById('dashSub').textContent = isTrial ? `${_trialLbl}`
+    : _pkInfo ? `${pkgT('bk_pkg_title', '{name} Paket').replace('{name}', pkgName(_pkInfo))} · ${_pkHours} · ${daysStr}`
+    : `${res.duration_months} ${window._i18n?.getLang()==='en'?'Month':'Aylık'} · ${res.lessons_per_month || 4} ${window._i18n?.getLang()==='en'?'Lessons/Month':'Ders/Ay'} · ${daysStr}`;
 
   let lessons = res.lessons || [];
   const today = toDateStr(new Date());
@@ -2492,14 +2969,22 @@ async function renderDashboard() {
 
   // Payment box
   const activeLessons = lessons.filter(l => l.status !== 'cancelled');
-  const lessonUnitPrice = res.custom_lesson_price || (res.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE);
-  const totalPrice = res.custom_total_price ?? (activeLessons.length * lessonUnitPrice);
+  const totalPrice = reservationTotalPrice(res); // admin ödeme talebi kontrolüyle aynı formül
   const isPaid = !!res.payment_confirmed;
   const isPending = !!res.payment_pending;
   const pboxEl = document.getElementById('paymentBox');
   pboxEl.innerHTML = '';
   const pbox = document.createElement('div'); pbox.className = 'payment-box';
-  pbox.innerHTML = `<div><div class="payment-box-label">${activeLessons.length} ${window._i18n?.t('bk_lessons')||'ders'} · ${window._i18n?.t('bk_payment_label')||'Toplam Ücret'}</div><div class="payment-box-price">${totalPrice.toLocaleString('tr-TR')} TL</div></div>`;
+  // Paket indirimi: üstü çizili liste fiyatı + "%20 indirim · 12.000 TL kazancın"
+  // (yalnız fiyat hâlâ paketten geliyorsa; admin elle değiştirdiyse gösterilmez).
+  // Paket dışı ek dersler ayrı satırda: "+ 1 ek ders · 2.500 TL (paket dışı)".
+  // Üstü çizme ekran okuyucuda okunmaz — liste fiyatının önünde gizli etiket var.
+  const _pkOk = !!(_pkInfo && _pkInfo.discounted && _pkInfo.grandTotal === totalPrice);
+  const _pkSave = (_pkOk && _pkInfo.save > 0)
+    ? `<div class="payment-box-save"><span class="sr-only">${pkgT('bk_pkg_col_list', 'Liste fiyatı')}: </span><s>${tlFmt(_pkInfo.list)}</s>${pkgT('bk_pkg_pay_save', '{pct} indirim · {save} kazancın').replace('{pct}', pkgPct(_pkInfo.pct)).replace('{save}', tlFmt(_pkInfo.save))}</div>` : '';
+  const _pkExtra = (_pkOk && _pkInfo.extraCount > 0)
+    ? `<div class="payment-box-extra">${pkgT('bk_pkg_pay_extra', '{pkg} paket + {n} ek ders · {price} (paket dışı)').replace('{pkg}', tlFmt(_pkInfo.total)).replace('{n}', _pkInfo.extraCount).replace('{price}', tlFmt(_pkInfo.extraPrice))}</div>` : '';
+  pbox.innerHTML = `<div><div class="payment-box-label">${activeLessons.length} ${window._i18n?.t('bk_lessons')||'ders'} · ${window._i18n?.t('bk_payment_label')||'Toplam Ücret'}</div><div class="payment-box-price">${totalPrice.toLocaleString('tr-TR')} TL</div>${_pkExtra}${_pkSave}</div>`;
   if (isPaid) {
     const badge = document.createElement('span'); badge.className = 'payment-box-paid'; badge.textContent = window._i18n?.t('bk_paid')||'✓ Ödendi';
     pbox.append(badge);
@@ -2644,6 +3129,13 @@ async function renderDashboard() {
           + '<button id="xcClose" class="modal-close" aria-label="Kapat">✕</button>';
         box.append(title);
         title.querySelector('#xcClose').onclick = () => overlay.remove();
+        // Paketli öğrenci: ek ders paket dışıdır, liste fiyatıyla toplamına eklenir
+        if (res.price_source === 'package') {
+          const xNote = document.createElement('div');
+          xNote.className = 'dlg-sub';
+          xNote.textContent = pkgT('bk_pkg_extra_note', 'Ek ders paketine dahil değildir: {price} toplam ücretine eklenir.').replace('{price}', tlFmt(LESSON_PRICE));
+          box.append(xNote);
+        }
 
         // Month nav
         const nav = document.createElement('div');
@@ -3070,12 +3562,14 @@ async function renderAdminPanel() {
             if (!resSnap.exists) { toast('Rezervasyon bulunamadı.', true); approveBtn.disabled = false; return; }
             const existingLessons = resSnap.data().lessons || [];
             const newLesson = { date: r.lesson_date, time: r.lesson_time, status: 'scheduled' };
+            // Paketli rezervasyon: ek ders paket dışıdır → toplam LESSON_PRICE artar (aynı batch)
+            const extraPrice = extraLessonPriceFields(resSnap.data(), n => firebase.firestore.FieldValue.increment(n));
             const batch = db.batch();
-            batch.set(db.collection('reservations').doc(r.from_uid), { lessons: [...existingLessons, newLesson] }, {merge:true});
+            batch.set(db.collection('reservations').doc(r.from_uid), { lessons: [...existingLessons, newLesson], ...extraPrice }, {merge:true});
             batch.set(db.collection('booked_slots').doc(r.lesson_date + '_' + r.lesson_time), { date: r.lesson_date, time: r.lesson_time, student_uid: r.from_uid });
             batch.update(doc.ref, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
             await batch.commit();
-            toast('✓ Ek ders eklendi.'); row.remove();
+            toast(extraPrice.custom_total_price ? `✓ Ek ders eklendi — paket dışı, toplama +${tlFmt(LESSON_PRICE)}.` : '✓ Ek ders eklendi.'); row.remove();
           } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); approveBtn.disabled = false; }
         };
         const rejectBtn = document.createElement('button'); rejectBtn.className = 'req-reject'; rejectBtn.textContent = '✕ Reddet';
@@ -3102,6 +3596,20 @@ async function renderAdminPanel() {
               <span class="req-row-pill gold">${(r.total_price||0).toLocaleString('tr-TR')} TL</span>
             </div>
           </div>`;
+        // total_price öğrencinin tarayıcısında yazılır — rezervasyondaki gerçek tutarla
+        // karşılaştır (öğrenci paneliyle aynı formül: reservationTotalPrice).
+        db.collection('reservations').doc(r.from_uid).get().then(rs => {
+          const pills = row.querySelector('.req-row-pills');
+          if (!pills) return;
+          if (!rs.exists) { pills.insertAdjacentHTML('beforeend', '<span class="req-row-pill err">Rezervasyon yok</span>'); return; }
+          const rd = rs.data();
+          const expected = reservationTotalPrice(rd);
+          const pk = reservationPackageInfo(rd);
+          if (pk) pills.insertAdjacentHTML('beforeend', `<span class="req-row-pill dim">${pk.name}${pk.pct ? ` · %${pk.pct}` : ''}</span>`);
+          pills.insertAdjacentHTML('beforeend', expected === (r.total_price || 0)
+            ? '<span class="req-row-pill dim">rezervasyonla aynı</span>'
+            : `<span class="req-row-pill err">Rezervasyon: ${tlFmt(expected)} — tutar uyuşmuyor</span>`);
+        }).catch(() => {});
         const actions = document.createElement('div'); actions.className = 'req-actions';
         const approveBtn = document.createElement('button'); approveBtn.className = 'req-approve'; approveBtn.textContent = '✓ Ödendi Onayla';
         approveBtn.onclick = async () => {
@@ -3182,7 +3690,12 @@ async function renderAdminPanel() {
       const daysText = (r.schedule||[]).map(s => getDays()[s.dayIndex] + ' ' + s.time).join(', ');
       const isSingleReq = r.lesson_type === 'single';
       const reqLessonCount = isSingleReq ? 1 : (isTrialReq ? 1 : calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date).length);
-      const reqTotalPrice = isTrialReq ? 0 : reqLessonCount * (isSingleReq ? LESSON_PRICE_SINGLE : LESSON_PRICE);
+      // Paket: talepteki fiyat alanlarına güvenilmez — package_id kanonik PACKAGES'la
+      // yeniden hesaplanır; süre / haftalık saat / ders-ay tutmazsa liste fiyatı geçerli
+      // olur ve onayda paket uygulanmaz (acceptRequest aynı kontrolü tekrar yapar).
+      const reqPkg = (isTrialReq || isSingleReq) ? { pkg: null, valid: false, reason: 'none' } : requestPackageCheck(r);
+      const reqPkgBad = !!r.package_id && !reqPkg.valid && !isTrialReq;
+      const reqTotalPrice = isTrialReq ? 0 : reqPkg.valid ? packagePrice(reqPkg.pkg).total : reqLessonCount * (isSingleReq ? LESSON_PRICE_SINGLE : LESSON_PRICE);
       row.innerHTML = `
         <div class="req-row-body">
           <div class="req-row-name">
@@ -3193,12 +3706,15 @@ async function renderAdminPanel() {
           </div>
           <div class="req-row-detail">
             ${isTrialReq ? `Deneme Dersi &nbsp;·&nbsp; ${formatDateStr(r.trial_date)} ${r.trial_time}` :
-              isSingleReq ? `Tek Ders &nbsp;·&nbsp; ${daysText}` : `${r.duration_months} Ay · ${r.lessons_per_month || 4}/Ay &nbsp;·&nbsp; ${daysText}`}
+              isSingleReq ? `Tek Ders &nbsp;·&nbsp; ${daysText}` :
+              reqPkg.valid ? `<strong class="text-accent">${pkgAdminLine(reqPkg.pkg)}</strong> &nbsp;·&nbsp; ${daysText}` :
+              `${r.duration_months} Ay · ${r.lessons_per_month || 4}/Ay &nbsp;·&nbsp; ${daysText}`}
             ${r.from_phone ? `<br><span class="text-ok mono-sm">${r.from_phone}</span>` : ''}
           </div>
           ${!isTrialReq ? `<div class="req-row-pills">
             <span class="req-row-pill gold">${reqTotalPrice.toLocaleString('tr-TR')} TL</span>
             <span class="req-row-pill dim">${reqLessonCount} ders</span>
+            ${reqPkgBad ? `<span class="req-row-pill err" title="Talep: ${reqPkg.pkg ? reqPkg.pkg.name : 'tanınmayan paket'} · ${Number(r.duration_months) || 0} ay · haftada ${(r.schedule||[]).length} saat">Paket uyuşmuyor — liste fiyatı</span>` : ''}
           </div>` : ''}
           ${r.note ? `<div class="req-row-note">"${r.note}"</div>` : ''}
         </div>`;
@@ -3227,8 +3743,15 @@ async function renderAdminPanel() {
               .filter(l => conflicts.has(l.date + '_' + l.time))
               .map(l => `${formatDateStr(l.date)} ${l.time}`)
               .join('\n');
+            // Paketli talepte öğrenci yalnız yapılacak ders kadar öder ama paketin indirim
+            // oranı korunur (karar 8) — admin bunu ve liste karşılığını açıkça görür.
+            const _pkLeft = allLessons.length - conflicts.size;
+            const _pkPP = reqPkg.valid ? packagePrice(reqPkg.pkg) : null;
+            const _pkNote = _pkPP
+              ? `\n\n${reqPkg.pkg.name} paketi (${_pkPP.hours} saat) yerine ${_pkLeft} ders planlanacak. Paketin %${reqPkg.pkg.discount} indirimi KORUNUR: ${_pkLeft} ders × ${tlFmt(_pkPP.perHour)} = ${tlFmt(_pkLeft * _pkPP.perHour)} yazılacak (liste: ${tlFmt(_pkLeft * LESSON_PRICE)}). Bu indirimi vermek istemiyorsan reddet ya da onaydan sonra fiyatı düzenle.`
+              : '';
             const proceed = confirm(
-              `${conflicts.size} tarihte çakışma var (başka öğrenci o saate kayıtlı):\n\n${conflictDates}\n\nBu dersler takvime eklenmeyecek. Yine de kabul et?`
+              `${conflicts.size} tarihte çakışma var (başka öğrenci o saate kayıtlı):\n\n${conflictDates}\n\nBu dersler takvime eklenmeyecek.${_pkNote} Yine de kabul et?`
             );
             if (!proceed) {
               approveBtn.disabled = false; approveBtn.textContent = '✓ Kabul Et';
@@ -3242,7 +3765,30 @@ async function renderAdminPanel() {
             r.from_uid
           );
           freshConflicts.forEach(k => conflicts.add(k));
-          await acceptRequest(doc.id, r, conflicts);
+          // Paketsiz / uyuşmayan talep + önceki rezervasyonda elle girilmiş özel fiyat:
+          // varsayılan korunur (price_source 'admin'), ama yeni talep farklı olabileceği
+          // için admin'e yazılacak tutar gösterilip sorulur.
+          let keepAdminPrice = true;
+          if (!reqPkg.valid) {
+            const prevSnap = await db.collection('reservations').doc(r.from_uid).get();
+            const kept = keptCustomPrice(prevSnap.exists ? prevSnap.data() : null);
+            if (kept) {
+              const newCount = allLessons.length - conflicts.size;
+              const unit = isSingleReq ? LESSON_PRICE_SINGLE : LESSON_PRICE;
+              const keptTxt = kept.total !== null ? tlFmt(kept.total) : `${newCount} ders × ${tlFmt(kept.per)} = ${tlFmt(newCount * kept.per)}`;
+              const choice = await showChoiceModal({
+                title: 'Önceki özel fiyat',
+                body: `Bu öğrencinin önceki rezervasyonunda elle girilmiş özel fiyat var: <strong>${keptTxt}</strong>${kept.per ? ` (${tlFmt(kept.per)}/ders)` : ''}.<br>Yeni talep: ${newCount} ders · liste fiyatı <strong>${tlFmt(newCount * unit)}</strong> (${newCount} × ${tlFmt(unit)}).`,
+                choices: [
+                  { label: `Özel fiyatı koru (${keptTxt})`, value: 'keep', cls: 'btn-primary' },
+                  { label: `Liste fiyatına dön (${tlFmt(newCount * unit)})`, value: 'list', cls: 'btn-ghost' },
+                ],
+              });
+              if (!choice) { approveBtn.disabled = false; approveBtn.textContent = '✓ Kabul Et'; return; }
+              keepAdminPrice = choice === 'keep';
+            }
+          }
+          await acceptRequest(doc.id, r, conflicts, { keepAdminPrice });
           toast('✓ Talep kabul edildi, dersler oluşturuldu.');
           row.remove();
         } catch(e) {
@@ -3325,7 +3871,8 @@ async function renderAdminPanel() {
           statsPendingStudents++;
         }
         if (studentMonthLessons > 0 || (d.payment_confirmed && paidMonthKey === curMonthStr)) {
-          statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, totalLessons: totalNonCancelled, revenue: (paidMonthKey === curMonthStr ? packagePrice : 0), totalRevenue: packagePrice, paid: !!d.payment_confirmed });
+          const _stPk = reservationPackageInfo(d);
+          statsPerStudent.push({ name: d.student_name || d.student_email || '—', lessons: studentMonthLessons, totalLessons: totalNonCancelled, revenue: (paidMonthKey === curMonthStr ? packagePrice : 0), totalRevenue: packagePrice, paid: !!d.payment_confirmed, pkgLabel: _stPk ? `${_stPk.name}${_stPk.pct ? ` (%${_stPk.pct})` : ''}` : '' });
         }
       }
     });
@@ -3351,6 +3898,7 @@ async function renderAdminPanel() {
           <div>
             <span>${st.name}</span>
             ${st.paid ? '<span class="text-ok stat-paid">✓</span>' : ''}
+            ${st.pkgLabel ? `<span class="badge accent name-badge">${st.pkgLabel}</span>` : ''}
             <div class="stat-tile-sub">Bu ay: ${st.lessons} ders · Toplam: ${st.totalLessons} ders</div>
           </div>
           <strong class="text-accent stat-list-val">${st.totalRevenue.toLocaleString('tr-TR')} ₺</strong>
@@ -3510,15 +4058,20 @@ async function renderAdminPanel() {
       const totalPrice = isTrial ? 0 : (s.custom_total_price ?? (totalLessons * lessonPrice));
       const isResPaid = !!s.payment_confirmed;
       const isPending = !isResPaid && !!s.payment_pending;
+      // Paket etiketi "Profesyonel (%20)"; fiyat custom_total_price'tan gelir. Paket
+      // fiyatı "özel fiyat" sayılmaz — o işaret yalnız admin elle fiyat girdiyse çıkar.
+      const _resPk = isTrial ? null : reservationPackageInfo(s);
+      const _resPkBadge = _resPk ? ` <span class="badge accent name-badge">${_resPk.name}${_resPk.pct ? ` (%${_resPk.pct})` : ''}</span>` : '';
+      const _resAdminPrice = !isTrial && s.price_source === 'admin' ? ' <span class="badge warn name-badge">özel fiyat</span>' : '';
       const row = document.createElement('div'); row.className = 'student-row';
       const headerDiv = document.createElement('div'); headerDiv.className = 'student-head';
       headerDiv.innerHTML = `
         <div>
-          <div class="student-row-name">${s.student_name || s.student_email}${isTrial ? ' <span class="badge ok name-badge">Deneme</span>' : ''} ${ptBadgeHtml(studentUid)}</div>
+          <div class="student-row-name">${s.student_name || s.student_email}${isTrial ? ' <span class="badge ok name-badge">Deneme</span>' : ''}${_resPkBadge}${_resAdminPrice} ${ptBadgeHtml(studentUid)}</div>
           <div class="student-row-meta">
             ${isTrial
               ? `<strong class="text-ok">Deneme Dersi</strong> · ${formatDateStr(s.start_date)} · <strong class="text-ok">Ücretsiz</strong>`
-              : `${s.duration_months} Ay · <strong>${totalLessons} ders</strong> · <strong class="text-accent">${totalPrice.toLocaleString('tr-TR')} TL</strong> <span class="mono-sm">(${lessonPrice.toLocaleString('tr-TR')} TL/ders)</span>`
+              : `${s.duration_months} Ay · <strong>${totalLessons} ders</strong> · <strong class="text-accent">${totalPrice.toLocaleString('tr-TR')} TL</strong> <span class="mono-sm">(${lessonPrice.toLocaleString('tr-TR')} TL/ders)</span>${_resPk && _resPk.discounted && _resPk.extraCount > 0 ? ` <span class="mono-sm">· paket ${tlFmt(_resPk.total)} + ${_resPk.extraCount} ek ders ${tlFmt(_resPk.extraPrice)}</span>` : ''}`
             }<br>
             ${(() => {
               if (s.schedule && s.schedule.length) return s.schedule.map(x => getDays()[x.dayIndex] + ' ' + x.time + '–' + getEndTime(x.time)).join(', ');
@@ -3616,7 +4169,7 @@ async function renderAdminPanel() {
         const addLessonBtn = document.createElement('button');
         addLessonBtn.className = 'btn btn-sm btn-ok btn-block student-action';
         addLessonBtn.textContent = 'Ders Ekle';
-        addLessonBtn.onclick = () => adminAddLesson(studentUid);
+        addLessonBtn.onclick = () => adminAddLesson(studentUid, s.price_source === 'package');
         payWrap.append(addLessonBtn);
         // Grant extra reschedule credit (admin manually after 500 TL payment)
         const creditBtn = document.createElement('button');
@@ -3783,7 +4336,7 @@ async function renderAdminPanel() {
             menu.append(
               Object.assign(document.createElement('div'), {className:'lesson-options-separator'}),
               mkItem('₺ Fiyat Düzenle', '', () => adminEditStudentPrice(studentUid, lessonPrice, totalLessons, s.custom_total_price ?? null)),
-              mkItem('Ders Ekle', '', () => adminAddLesson(studentUid)),
+              mkItem('Ders Ekle', '', () => adminAddLesson(studentUid, s.price_source === 'package')),
               mkItem('Email Yaz', '', () => adminComposeEmail(studentUid, s.student_email||s.from_email||'', s.student_name||s.from_name||'Öğrenci', isTrial)),
               mkItem('Hoşgeldin Maili', '', () => adminSendWelcomeEmail(s.student_email||s.from_email||'', s.student_name||s.from_name||'Öğrenci', null))
             );
@@ -4094,10 +4647,14 @@ async function adminEditStudentPrice(studentUid, currentLessonPrice, totalLesson
     const totalVal = parseInt(totalInput.value, 10);
     if (isNaN(perVal) || perVal < 0 || isNaN(totalVal) || totalVal < 0) return;
     modal.remove();
+    // Değişiklik yoksa yazma: aksi halde paket fiyatı tek tıkla kalıcı "admin fiyatı"na
+    // dönüşür (price_source 'admin' sonraki paketsiz onaylarda korunur).
+    if (perVal === Number(initPer) && totalVal === Number(initTotal)) { toast('Fiyat değişmedi.'); return; }
     try {
       await db.collection('reservations').doc(studentUid).set({
         custom_lesson_price: perVal,
         custom_total_price:  totalVal,
+        price_source:        'admin', // elle fiyat: yeni paketsiz onayda korunur, panelde indirim satırı gizlenir
       }, {merge:true});
       toast(`✓ Fiyat güncellendi — ${totalVal.toLocaleString('tr-TR')} TL toplam`);
       renderAdminPanel();
@@ -4386,7 +4943,10 @@ async function adminChangeLessonDate(studentUid, lessonIdx, allLessons, lesson) 
   };
 }
 
-async function adminAddLesson(studentUid) {
+// isPackage: rezervasyon fiyatı paketten geliyor (price_source 'package'). O zaman eklenen
+// ders varsayılan olarak paket dışı ek ders sayılır ve toplamı LESSON_PRICE artırır;
+// telafi dersi gibi ücretsiz eklemek için kutu kaldırılabilir.
+async function adminAddLesson(studentUid, isPackage = false) {
   const today = toDateStr(new Date());
   const timeOpts = AVAILABLE_TIMES.map(t => `<option value="${t}">${t}</option>`).join('');
   const modal = Object.assign(document.createElement('div'), { innerHTML: `
@@ -4397,6 +4957,10 @@ async function adminAddLesson(studentUid) {
         <input type="date" id="addLessonDate" value="${today}" min="${today}" class="input dlg-field">
         <label class="field-label" for="addLessonTime">Saat</label>
         <select id="addLessonTime" class="select dlg-field">${timeOpts}</select>
+        ${isPackage ? `<label class="check-row">
+          <input type="checkbox" id="addLessonCharge" checked>
+          <span>Paket dışı ek ders olarak ücretlendir (+${tlFmt(LESSON_PRICE)}). Telafi dersi ise kaldır.</span>
+        </label>` : ''}
         <div class="modal-actions modal-actions-fill">
           <button id="addLessonCancel" class="btn btn-ghost">İptal</button>
           <button id="addLessonSave" class="btn btn-primary">Ekle</button>
@@ -4421,12 +4985,16 @@ async function adminAddLesson(studentUid) {
       if (!snap.exists) { toast('Rezervasyon bulunamadı.', true); modal.remove(); return; }
       const lessons = snap.data().lessons || [];
       const newLesson = { date, time, status: 'scheduled' };
+      // Paketli rezervasyon + "ücretlendir" işaretli: ek ders paket dışı, toplam +LESSON_PRICE
+      const chargeEl = modal.querySelector('#addLessonCharge');
+      const extraPrice = (!chargeEl || chargeEl.checked)
+        ? extraLessonPriceFields(snap.data(), n => firebase.firestore.FieldValue.increment(n)) : {};
       const batch = db.batch();
-      batch.set(db.collection('reservations').doc(studentUid), { lessons: [...lessons, newLesson] }, {merge:true});
+      batch.set(db.collection('reservations').doc(studentUid), { lessons: [...lessons, newLesson], ...extraPrice }, {merge:true});
       batch.set(db.collection('booked_slots').doc(date + '_' + time), { date, time, student_uid: studentUid });
       await batch.commit();
       modal.remove();
-      toast(`✓ Ders eklendi: ${formatDateStr(date)} ${time}`);
+      toast(`✓ Ders eklendi: ${formatDateStr(date)} ${time}${extraPrice.custom_total_price ? ` — paket dışı, toplama +${tlFmt(LESSON_PRICE)}` : ''}`);
       renderAdminPanel();
     } catch(e) { const c=errId(); toast(`Hata (${c}): ` + (e.message||e.code), true); saveBtn.disabled = false; saveBtn.textContent = '✓ Ekle'; }
   };
@@ -5351,7 +5919,7 @@ async function acceptTrialRequest(reqId, r) {
 }
 
 // ─── Accept Request → Create Reservation ─────────────────
-async function acceptRequest(reqId, r, conflicts = new Set()) {
+async function acceptRequest(reqId, r, conflicts = new Set(), opts = {}) {
   const isSingle = r.lesson_type === 'single';
   const effDur   = isSingle ? 1 : r.duration_months;
   const effLpm   = isSingle ? 1 : (r.lessons_per_month || 4);
@@ -5371,6 +5939,15 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
   }
 
   const endDate = lessons.length ? lessons[lessons.length-1].date : '';
+
+  // Paket fiyatı: talepteki package_* alanlarına güvenilmez, package_id kanonik
+  // PACKAGES'la doğrulanıp yeniden hesaplanır (reservationPriceFields). Önceki
+  // rezervasyonun paket fiyatı yeni talebe sızmasın diye mevcut kayıt okunur;
+  // okunamazsa onay durur (hata toast'ı, buton yeniden açılır).
+  const prevSnap = await db.collection('reservations').doc(r.from_uid).get();
+  const priceFields = reservationPriceFields(r, lessons.length, prevSnap.exists ? prevSnap.data() : null,
+    () => firebase.firestore.FieldValue.delete(), { keepAdminPrice: opts.keepAdminPrice !== false });
+
   const batch = db.batch();
 
   // Create reservation
@@ -5395,6 +5972,7 @@ async function acceptRequest(reqId, r, conflicts = new Set()) {
     rules_accepted_at: r.rules_accepted_at || firebase.firestore.FieldValue.serverTimestamp(),
     rules_accepted_detail: r.rules_accepted_detail || null,
     rules_version: r.rules_version || null,
+    ...priceFields,
     created_at: firebase.firestore.FieldValue.serverTimestamp(),
   }, {merge:true});
 
@@ -6237,21 +6815,15 @@ auth.onAuthStateChanged(user => {
   if(bAv&&lAv){lAv.innerHTML=bAv.innerHTML;new MutationObserver(function(){lAv.innerHTML=bAv.innerHTML;}).observe(bAv,{childList:true,subtree:true});}
 })();</script>
 <script>(function(){
-  function updateDurationOptions(l){
-    var sel=document.getElementById('reqDuration'); if(!sel) return;
-    var lbl=l==='en'?'Month':'Ay';
-    [1,2,3,4,6].forEach(function(v){
-      var opt=sel.querySelector('option[value="'+v+'"]');
-      if(opt) opt.textContent=v+' '+lbl+(l==='en'&&v>1?'s':'');
-    });
-  }
+  // Dil değişince JS'in ürettiği metinler (paket tablosu, slot ipucu, tek ders notu) yeniden çizilir
   function init(){
     if(window._i18n){
-      updateDurationOptions(window._i18n.getLang());
       var _orig=window._i18n.setLang;
       window._i18n.setLang=function(l){
         _orig(l);
-        updateDurationOptions(l);
+        if(typeof renderPackageTable==='function') renderPackageTable();
+        if(typeof renderSlotLabel==='function') renderSlotLabel();
+        if(typeof updateSlotSummary==='function') updateSlotSummary();
         if(typeof renderSingleUpsell==='function') renderSingleUpsell();
         if(typeof updateAuthBar==='function') updateAuthBar(typeof _user!=='undefined'?_user:null);
         if(typeof loadUserState==='function' && typeof _user!=='undefined' && _user) loadUserState(_user);
