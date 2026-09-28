@@ -18,7 +18,7 @@
 
   // ── Oturum ipucu (oturum çözülene dek; kişisel veri yok — yalnız '1'/'0' ve piksel genişliği):
   // son ziyarette girişliyse "Ücretsiz deneme" CTA'sı baştan gizli (be-auth-guess), deneme adayıysa
-  // etiketler baştan "Deneme" (be-trial; love-nav gerçek durumu yazar). syncAuthUi ipucunu günceller.
+  // etiketler baştan "Deneme" (be-trial; trial-nav gerçek durumu yazar). syncAuthUi ipucunu günceller.
   var AUTH_HINT = lsGet('be-auth');
   if (AUTH_HINT === '1') {
     html.classList.add('be-auth-guess');
