@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Profil — Berkay Er Topluluğu</title>
-<meta name="theme-color" content="#101013">
+<meta name="theme-color" content="#0b0b0e">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Profil — Elektronik Müzik Topluluğu">
 <meta property="og:description" content="Elektronik Müzik Topluluğu üye profili.">
@@ -14,10 +14,10 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
-<script src="assets/js/theme-init.js?v=202609271200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
-<script src="assets/js/auth-ui.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609281800">
+<script src="assets/js/theme-init.js?v=202609281800"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609281800">
+<script src="assets/js/auth-ui.js?v=202609281800"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
@@ -306,6 +306,8 @@ html .toast.is-out { opacity:0; transform:translateY(8px); transition:opacity .2
   .pf-empty p { font-size:var(--fs-body); }
   .pf-list { padding:6px; }
   a.pf-item { padding:14px 12px; gap:12px; }
+  /* M_Profil sırası: kimlik → eylemler → istatistik → ünvan → sekmeler; tasarımda olmayan Hakkında sekmelerin altına */
+  .pf-about { order:0; }
   .pf-card { padding:16px; border-radius:var(--r-16); gap:14px; }
   html .pf-card-title { font-size:26px; }
   .pf-card--sunk { padding:16px; }
@@ -320,8 +322,8 @@ html .toast.is-out { opacity:0; transform:translateY(8px); transition:opacity .2
   .chat-input-wrap { padding:10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
 }
 </style>
-<script src="assets/js/i18n.js?v=202609271200"></script>
-<script src="assets/js/love-nav.js?v=202609271200"></script>
+<script src="assets/js/i18n.js?v=202609281800"></script>
+<script src="assets/js/love-nav.js?v=202609281800"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="profile"><div id="authBar"></div></header>
@@ -427,7 +429,8 @@ function fmtDateTime(ts) {
 // Tıklanabilir div'i klavyeyle de kullanılabilir yap (Enter / Boşluk)
 function _btnify(node) {
   node.setAttribute('role', 'button'); node.tabIndex = 0;
-  node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); } });
+  // yalnız satırın kendisi odaktayken: içteki "Bildirimi sil" düğmesinde Enter satırı açmasın
+  node.addEventListener('keydown', e => { if (e.target === node && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); node.click(); } });
   return node;
 }
 // Avatar kutusu: fotoğraf ya da baş harf (fotoğraf yüklenemezse baş harfe düşer)
@@ -848,6 +851,7 @@ function updateAuthBar(user) {
     img.src = user.photoURL || ''; img.alt = '';
     const name = document.createElement('span'); name.className = 'auth-name';
     name.textContent = isAdmin(user) ? 'Admin' : (user.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye'));
+    img.onclick = name.onclick = () => { location.href = `profile?uid=${user.uid}`; };
     const out = document.createElement('button'); out.className = 'auth-out-btn';
     out.textContent = '✕'; out.onclick = () => auth.signOut();
     wrap.append(img, name, out);
@@ -856,7 +860,7 @@ function updateAuthBar(user) {
     const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.innerHTML = ic('bell'); bell.title = 'Bildirimler';
     const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
     _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
-    _notifPanelEl.innerHTML = `<div class="notif-panel-head"><span class="notif-panel-title">${window._i18n?.t('ui_notifications')||'Bildirimler'}</span><button class="notif-read-all">${window._i18n?.t('ui_read_all')||'Tümünü Oku'}</button></div><div class="notif-list"></div>`;
+    _notifPanelEl.innerHTML = `<div class="notif-panel-head"><span class="notif-panel-title" data-i18n="ui_notifications">${window._i18n?.t('ui_notifications')||'Bildirimler'}</span><button type="button" class="notif-read-all" data-i18n="ui_read_all">${window._i18n?.t('ui_read_all')||'Tümünü Oku'}</button></div><div class="notif-list"></div>`;
     _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
     bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
     bellWrap.append(bell, badge, _notifPanelEl);
@@ -882,13 +886,14 @@ function toggleNotifPanel(user) {
 function _notifItem(n, uid, annSec) {
   const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
   const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
-  const icon = n._t==='a' ? '📢 ' : '';
   const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-  const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=icon+(n.text||L('prof_notif_new', 'Yeni bildirim', 'New notification'));const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
+  const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=(n.text||L('prof_notif_new', 'Yeni bildirim', 'New notification'));if(n._t==='a')_nt.insertAdjacentHTML('afterbegin','<svg class="icon notif-ann-icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-info"/></svg> ');const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
   let act = null;
+  // Sıra: collab isteği → gönderenin profili; konu bildirimi (yanıt, takip edilenin yeni konusu) → konu;
+  // yalnız gönderen taşıyan (DM, collab kabulü) → sohbet çekmecesi
   if (n.type === 'collab' && n.fromUid) act = () => { location.href = `profile?uid=${n.fromUid}`; };
-  else if (n.fromUid) { act = () => { _closePanels(); openChatWith(n.fromUid, n.fromName); }; item.setAttribute('data-pf-chat', ''); }
   else if (n.postId) act = () => { location.href = `post?id=${n.postId}`; };
+  else if (n.fromUid) { act = () => { _closePanels(); openChatWith(n.fromUid, n.fromName); }; item.setAttribute('data-pf-chat', ''); }
   if (act) { item.onclick = act; _btnify(item); }
   if (n._id) {
     const del = document.createElement('button'); del.type = 'button'; del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil'; del.setAttribute('aria-label', L('prof_notif_del', 'Bildirimi sil', 'Delete notification'));

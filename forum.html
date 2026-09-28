@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Topluluk Forumu — Elektronik Müzik</title>
 <meta name="description" content="Elektronik Müzik topluluğu. Ableton, ses tasarımı, mix ve prodüksiyon hakkında sor, yanıtla, paylaş.">
-<meta name="theme-color" content="#101013">
+<meta name="theme-color" content="#0b0b0e">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Elektronik Müzik topluluğu">
 <meta property="og:description" content="Ableton, ses tasarımı, mix ve prodüksiyon hakkında soru sor ve yanıtla.">
@@ -17,10 +17,10 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
-<script src="assets/js/theme-init.js?v=202609271200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
-<script src="assets/js/auth-ui.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609281800">
+<script src="assets/js/theme-init.js?v=202609281800"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609281800">
+<script src="assets/js/auth-ui.js?v=202609281800"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
@@ -41,7 +41,8 @@
 .fr-glow { position:absolute; right:0; top:-380px; width:700px; height:700px; border-radius:50%; pointer-events:none; background:radial-gradient(closest-side, rgba(184,45,69,.22), transparent 75%); }
 .fr-hero-text { position:relative; flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:18px; }
 /* tasarım: Forum h1 96px (masaüstü) → 52px (≤600); --fs-display 88px'ten büyük, sayfaya özgü */
-html .fr-h1 { font-size:clamp(52px, calc(52px + (100vw - 600px) * .0524), 96px); line-height:.92; }
+/* tasarımdaki kırılım: yalnız son kelime alt satıra ("Elektronik müzik / topluluğu"); ui.css'in h1 balance'ı "Elektronik / müzik topluluğu" yapıyordu */
+html .fr-h1 { font-size:clamp(52px, calc(52px + (100vw - 600px) * .0524), 96px); line-height:.92; text-wrap:wrap; }
 /* metin zaten BÜYÜK harf (i18n): CSS büyütmesi Türkçede "MIX"i "MİX" yapardı */
 .fr-sub { font-family:var(--ff-mono); font-size:13px; letter-spacing:var(--tr-mono); color:var(--fg-muted); }
 .fr-hero-actions { position:relative; flex-shrink:0; display:flex; align-items:center; gap:var(--s3); }
@@ -257,7 +258,9 @@ html .fr-mem-signin { min-height:var(--ctl-md); font-size:var(--fs-small); }
   .fr-join-text { font-size:var(--fs-ui); line-height:1.55; }
   .fr-join-more { display:none; }
   html .fr-join .btn { height:50px; }
-  html .fr-goto { width:var(--ctl-sm); min-height:var(--ctl-sm); justify-content:center; border:1px solid var(--accent-line); border-radius:50%; }
+  html .fr-goto { position:relative; width:var(--ctl-sm); min-height:var(--ctl-sm); justify-content:center; border:1px solid var(--accent-line); border-radius:50%; }
+  /* 40px daire → 46px dokunma alanı (≥44 kuralı) */
+  html .fr-goto::after { content:''; position:absolute; inset:-4px; border-radius:50%; }
   .fr-goto-t { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
   .fr-rp-form { flex-wrap:wrap; }
   .fr-rp-form .btn { width:100%; }
@@ -269,8 +272,8 @@ html .fr-mem-signin { min-height:var(--ctl-md); font-size:var(--fs-small); }
   .fr-card { padding:var(--s4); border-radius:var(--r-16); gap:var(--s3); }
 }
 </style>
-<script src="assets/js/i18n.js?v=202609271200"></script>
-<script src="assets/js/love-nav.js?v=202609271200"></script>
+<script src="assets/js/i18n.js?v=202609281800"></script>
+<script src="assets/js/love-nav.js?v=202609281800"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="forum"><div id="authBar"></div></header>
@@ -474,7 +477,7 @@ function updateAuthBar(user) {
     const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.innerHTML = ic('bell'); bell.title = window._i18n?.t('ui_notifications')||'Bildirimler';
     const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
     _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
-    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">'+(window._i18n?.t('ui_notifications')||'Bildirimler')+'</span><button class="notif-read-all">'+(window._i18n?.t('ui_read_all')||'Tümünü Oku')+'</button></div><div class="notif-list"></div>';
+    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title" data-i18n="ui_notifications">'+(window._i18n?.t('ui_notifications')||'Bildirimler')+'</span><button type="button" class="notif-read-all" data-i18n="ui_read_all">'+(window._i18n?.t('ui_read_all')||'Tümünü Oku')+'</button></div><div class="notif-list"></div>';
     _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
     bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
     bellWrap.append(bell, badge, _notifPanelEl);
@@ -496,6 +499,12 @@ function toggleNotifPanel(user) {
   markAllNotifRead(user.uid);
 }
 
+// Bağlantılı bildirim satırı klavyeyle de açılsın (profile.html _btnify ile aynı kalıp)
+function _notifBtnify(node) {
+  node.setAttribute('role', 'button'); node.tabIndex = 0;
+  node.addEventListener('keydown', e => { if (e.target === node && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); node.click(); } });
+  return node;
+}
 function _mergeNotifs(uid) {
   const all = [
     ..._personalNotifs.map(n => ({...n, _t:'p'})),
@@ -513,13 +522,12 @@ function _mergeNotifs(uid) {
     all.forEach(n => {
       const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
       const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
-      const icon = n._t==='a' ? '📢 ' : '';
       const _loc = window._i18n?.getLang()==='en'?'en-US':'tr-TR';
       const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString(_loc,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-      const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=icon+(n.text||(window._i18n?.t('ui_new_notif')||'Yeni bildirim'));const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
-      if (n.postId) item.onclick = () => { location.href = `post?id=${n.postId}`; };
+      const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=(n.text||(window._i18n?.t('ui_new_notif')||'Yeni bildirim'));if(n._t==='a')_nt.insertAdjacentHTML('afterbegin','<svg class="icon notif-ann-icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-info"/></svg> ');const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
+      if (n.postId) { item.onclick = () => { location.href = `post?id=${n.postId}`; }; _notifBtnify(item); }
       if (n._id) {
-        const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'notif-del-btn'; del.textContent = '×'; del.title = L('prof_notif_del', `Bildirimi sil`, 'Delete notification'); del.setAttribute('aria-label', del.title);
         del.onclick = e => {
           e.stopPropagation();
           if (n._t === 'p') {
@@ -887,7 +895,8 @@ function renderPost(post, container) {
     const solveBtn = document.createElement('button'); solveBtn.type = 'button';
     solveBtn.className = 'btn btn-sm btn-ok fr-solve'; solveBtn.setAttribute('aria-pressed', String(!!post.solved));
     solveBtn.innerHTML = ic('check'); const sl = document.createElement('span');
-    sl.textContent = post.solved ? (window._i18n?.t('forum_is_solved')||'✓ Çözüldü') : (window._i18n?.t('forum_mark_solved')||'Çözüldü işaretle');
+    // düğmede zaten check ikonu var: metindeki ✓ tekrar etmesin
+    sl.textContent = post.solved ? L('forum_is_solved', `✓ Çözüldü`, '✓ Solved').replace(/^✓\s*/, '') : L('forum_mark_solved', `Çözüldü işaretle`, 'Mark as solved');
     solveBtn.append(sl);
     solveBtn.onclick = async () => {
       try {

@@ -1515,6 +1515,69 @@
     adm_zoom_title:            { tr: 'Zoom linki', en: 'Zoom link' },
     bk_no_students:            { tr: 'Henüz öğrenci yok.', en: 'No students yet.' },
 
+
+    // ── Yeni tasarım: sonradan eklenen anahtarlar ──
+    lab_hero_lead_m: { tr: `Derslerde öğrendiklerini telefonunda dene. Derse başlamadan önce Lab'ı tamamla.`, en: 'Try what you learn in lessons on your phone. Finish the Lab before your first lesson.' },   // ableton-lab.json
+    lab_cards_aria: { tr: 'Önizleme kartı seç', en: 'Choose a preview card' },   // ableton-lab.json
+    lab_min: { tr: 'dk', en: 'min' },   // ableton-lab.json
+    lab_desc_1: { tr: `Sıfırdan ses üret: oscillator'lar, ADSR envelope, filter, presetler.`, en: 'Generate sound from scratch: oscillators, ADSR envelope, filters, presets.' },   // ableton-lab.json
+    lab_desc_2: { tr: 'Step sequencer; velocity, swing ve tür şablonları.', en: 'Step sequencer with velocity, swing, and genre templates.' },   // ableton-lab.json
+    lab_desc_3: { tr: 'EQ eğrileri, mixer stripleri, pan, stereo field.', en: 'EQ curves, channel strips, panning, stereo field.' },   // ableton-lab.json
+    lab_desc_4: { tr: 'Şarkı yapısı: intro, build, drop, chorus — örüntüleri seç.', en: 'Song structure: intro, build, drop, chorus — pick the patterns.' },   // ableton-lab.json
+    lab_desc_5: { tr: 'Master zinciri: EQ → Glue → Multiband → Limiter. Sık hatalar.', en: 'Master chain: EQ → Glue → Multiband → Limiter. Common mistakes.' },   // ableton-lab.json
+    lab_celeb_eyebrow: { tr: 'Rozet Kazanıldı', en: 'Badge earned' },   // ableton-lab.json
+    lab_celeb_title: { tr: 'Modül Tamamlandı!', en: 'Module complete!' },   // ableton-lab.json
+    lab_celeb_p: { tr: 'Tebrikler!', en: 'Congratulations!' },   // ableton-lab.json
+    lab_celeb_ok: { tr: 'Harika!', en: 'Great!' },   // ableton-lab.json
+    adm_pt_pending: { tr: 'Sınav bekleniyor', en: 'Test pending' },   // booking-admin.json
+    adm_pt_pending_title: { tr: 'Seviye belirleme sınavı henüz çözülmedi', en: 'The placement test has not been taken yet' },   // booking-admin.json
+    adm_pt_detail_title: { tr: 'Detay için tıkla', en: 'Click for details' },   // booking-admin.json
+    adm_pt_detail_aria: { tr: 'seviye sınavı detayı', en: 'placement test details' },   // booking-admin.json
+    adm_pay_nores: { tr: 'Rezervasyon yok', en: 'No reservation' },   // booking-admin.json
+    adm_pay_match: { tr: 'rezervasyonla aynı', en: 'matches the reservation' },   // booking-admin.json
+    adm_pay_mismatch: { tr: 'Rezervasyon: {price} — tutar uyuşmuyor', en: 'Reservation: {price} — amount does not match' },   // booking-admin.json
+    adm_rev_paid_one: { tr: 'öğrenci · ödeme onaylı', en: 'student · payment confirmed' },   // booking-admin.json
+    adm_lesson_lc_one: { tr: 'ders', en: 'lesson' },   // booking-admin.json
+    bks_rules_ack: { tr: 'Okudum, onaylıyorum', en: 'I have read and accept' },   // booking-ogrenci.json
+    bks_rules_modal_title: { tr: 'Ders Kuralları — Onay Gerekli', en: 'Lesson rules — confirmation required' },   // booking-ogrenci.json
+    bks_rules_modal_body: { tr: 'Devam etmeden önce her kuralı tek tek okuyup ayrı ayrı onaylaman gerekiyor.', en: 'Before you continue, read each rule and confirm them one by one.' },   // booking-ogrenci.json
+    bks_rules_progress: { tr: '{n}/{m} onaylandı', en: '{n}/{m} confirmed' },   // booking-ogrenci.json
+    bks_rules_missing: { tr: 'Eksik onay: {list}', en: 'Not confirmed yet: {list}' },   // booking-ogrenci.json
+    bks_rules_accept: { tr: 'Onaylıyorum ve devam et', en: 'I accept, continue' },   // booking-ogrenci.json
+    bks_rc_reschedule: { tr: 'Her ay 1 ders erteleme hakkı vardır. Ek hak <strong class="text-accent">500 TL</strong> ödeme ile alınır.', en: 'You get 1 lesson reschedule per month. Extra credits cost <strong class="text-accent">500 TL</strong>.' },   // booking-ogrenci.json
+    bks_rc_notice: { tr: 'En az 24 saat öncesinden talep edilmelidir. Ertelenen ders aynı ay içinde yapılmalıdır.', en: 'Must be requested at least 24 hours in advance. The rescheduled lesson must take place within the same month.' },   // booking-ogrenci.json
+    bks_rc_limit: { tr: 'Süresinde kullanılmazsa hak yanar.', en: 'If not used in time, the credit is lost.' },   // booking-ogrenci.json
+    bks_rc_late: { tr: '10 dakika içinde girilmezse ders yapılmış sayılır.', en: 'If you do not join within 10 minutes, the lesson counts as held.' },   // booking-ogrenci.json
+    bks_rc_absence: { tr: 'Haber vermeden katılmama → ders yapılmış sayılır, yeniden planlanmaz.', en: 'Not attending without notice → the lesson counts as held and is not rescheduled.' },   // booking-ogrenci.json
+    bks_rc_copyright: { tr: `<strong class="text-accent">Berkay Er'in</strong> derste paylaştığı ve yaptığı parçalar/içerikler kendisine aittir; hiçbir şekilde paylaşılamaz veya dağıtılamaz.`, en: 'Tracks and content that <strong class="text-accent">Berkay Er</strong> shares and makes in lessons belong to him; they may not be shared or distributed in any way.' },   // booking-ogrenci.json
+    bks_rc_cancel: { tr: 'Alınan dersler iptal edilemez, başka kişiye devredilemez.', en: 'Purchased lessons cannot be cancelled or transferred to another person.' },   // booking-ogrenci.json
+    bks_ec_title: { tr: 'Ek Erteleme Hakkı Al', en: 'Buy extra reschedule credits' },   // booking-ogrenci.json
+    bks_ec_body_html: { tr: `Almak istediğin hak sayısını seç. Her ek hak <strong class="text-accent">500 TL</strong>. Ödeme sonrası WhatsApp'tan bildirince hakkın hesabına tanımlanır.`, en: 'Choose how many credits you want. Each extra credit is <strong class="text-accent">500 TL</strong>. Once you pay and let us know on WhatsApp, the credit is added to your account.' },   // booking-ogrenci.json
+    bks_ec_qty: { tr: 'Adet', en: 'Quantity' },   // booking-ogrenci.json
+    bks_ec_total: { tr: 'Toplam Tutar', en: 'Total' },   // booking-ogrenci.json
+    bks_ec_fee: { tr: 'Erteleme hakkı bedeli', en: 'Reschedule credit fee' },   // booking-ogrenci.json
+    bks_ec_wa: { tr: 'Ödedim — WhatsApp ile bildir', en: 'I paid — notify on WhatsApp' },   // booking-ogrenci.json
+    bks_phone_fmt: { tr: 'TR: 05XX XXX XX XX · Yurt dışı: + ile başlayan numara (örn: +1 617 388 4403)', en: 'TR: 05XX XXX XX XX · Abroad: a number starting with + (e.g. +1 617 388 4403)' },   // booking-ogrenci.json
+    bks_phone_err: { tr: 'Geçerli bir cep telefonu numarası gir ({help}).', en: 'Enter a valid mobile number ({help}).' },   // booking-ogrenci.json
+    bks_phone_invalid: { tr: 'Geçersiz numara.', en: 'Invalid number.' },   // booking-ogrenci.json
+    bks_wa_saved_title: { tr: 'Numaran kaydedildi', en: 'Your number is saved' },   // booking-ogrenci.json
+    bks_wa_saved_body_html: { tr: `Şimdi WhatsApp'tan bize bir kez mesaj at ki <strong>hatırlatma botumuz</strong> sana mesaj yollayabilsin (WhatsApp kuralı gereği).<br><br>Aşağıdaki butona bas → WhatsApp açılır → hazır metni gönder, hepsi bu.`, en: 'Now send us one WhatsApp message so <strong>our reminder bot</strong> can write to you (a WhatsApp rule).<br><br>Tap the button below → WhatsApp opens → send the prepared text, that’s it.' },   // booking-ogrenci.json
+    bks_wa_saved_open: { tr: `WhatsApp'ı aç ve mesaj at`, en: 'Open WhatsApp and send' },   // booking-ogrenci.json
+    bks_wa_saved_later: { tr: 'Daha sonra hatırlat', en: 'Remind me later' },   // booking-ogrenci.json
+    bks_credit_title: { tr: 'Erteleme Hakkı', en: 'Reschedule credits' },   // booking-ogrenci.json
+    bks_credit_left_html: { tr: '<strong class="text-ok">{n} hak</strong> kaldı', en: '<strong class="text-ok">{n} left</strong>' },   // booking-ogrenci.json
+    bks_credit_none_html: { tr: '<strong class="text-err">hak kalmadı</strong>', en: '<strong class="text-err">none left</strong>' },   // booking-ogrenci.json
+    bks_credit_pkg_html: { tr: 'Paketin: <strong>{m} aylık</strong> → toplam <strong>{m} erteleme hakkı</strong> · Kalan: <strong class="{cls}">{n}</strong>', en: 'Your package: <strong>{m} month(s)</strong> → <strong>{m} reschedule credit(s)</strong> in total · Left: <strong class="{cls}">{n}</strong>' },   // booking-ogrenci.json
+    bks_credit_note_html: { tr: 'Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong>{n}</strong>.', en: 'Credits are per package — lessons spilling into the next month do not change them. Total lessons: <strong>{n}</strong>.' },   // booking-ogrenci.json
+    bks_credit_buy: { tr: '+ Ek Hak Al (500 TL)', en: '+ Buy extra credit (500 TL)' },   // booking-ogrenci.json
+    bks_wa_first_title: { tr: 'Önemli — WhatsApp iletişimini sen başlatmalısın', en: 'Important — you need to start the WhatsApp chat' },   // booking-ogrenci.json
+    bks_wa_first_desc_html: { tr: 'Sana <strong>WhatsApp üzerinden</strong> dönüş yapılacak. Ancak WhatsApp politikası gereği <strong class="be-accent">önce senin kısa bir mesaj atman gerekiyor</strong> — aksi halde sana cevap yazılamıyor. Aşağıdaki butona basarak hazır metni gönder, 1 saniyede halledersin.', en: 'We will get back to you <strong>on WhatsApp</strong>. But WhatsApp policy requires <strong class="be-accent">you to send a short message first</strong> — otherwise we cannot reply to you. Tap the button below to send the prepared text; it takes a second.' },   // booking-ogrenci.json
+    bks_wa_first_btn: { tr: 'WhatsApp ile mesaj at', en: 'Message on WhatsApp' },   // booking-ogrenci.json
+    bks_wa_first_hint: { tr: 'Buton tıklanınca WhatsApp açılır, mesaj hazır. Sadece "Gönder"e basman yeterli.', en: 'The button opens WhatsApp with the message ready. Just tap "Send".' },   // booking-ogrenci.json
+    bks_trial_phone_err: { tr: 'Geçerli bir cep telefonu numarası gir (TR: 05XX XXX XX XX · Uluslararası: +ülke kodu ile başlat, örn +1 617 388 4403).', en: 'Enter a valid mobile number (TR: 05XX XXX XX XX · International: start with + and the country code, e.g. +1 617 388 4403).' },   // booking-ogrenci.json
+    bks_strip_cheapest: { tr: 'En ucuz saat başı', en: 'Lowest hourly rate' },   // booking-ogrenci.json
+    idx2_reviews_more: { tr: 'Tümünü gör', en: 'See all' },   // index.json
+    idx2_reviews_less: { tr: 'Daha az göster', en: 'Show less' },   // index.json
   };
 
   var lang = localStorage.getItem('_lang') || 'tr';

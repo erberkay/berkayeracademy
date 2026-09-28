@@ -5,17 +5,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Konu — Elektronik Müzik Topluluğu</title>
-<meta name="theme-color" content="#101013">
+<meta name="theme-color" content="#0b0b0e">
 <meta property="og:title" content="Konu — Elektronik Müzik Topluluğu">
 <meta property="og:image" content="https://berkayeracademy.com/assets/img/DSC00141.jpg">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
-<script src="assets/js/theme-init.js?v=202609271200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
-<script src="assets/js/auth-ui.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609281800">
+<script src="assets/js/theme-init.js?v=202609281800"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609281800">
+<script src="assets/js/auth-ui.js?v=202609281800"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
@@ -206,8 +206,8 @@ html .pd-send { height:48px; padding:0 24px; font-size:var(--fs-ctl-lg); }
   .pd-reply-text { font-size:var(--fs-body); line-height:1.6; }
 }
 </style>
-<script src="assets/js/i18n.js?v=202609271200"></script>
-<script src="assets/js/love-nav.js?v=202609271200"></script>
+<script src="assets/js/i18n.js?v=202609281800"></script>
+<script src="assets/js/love-nav.js?v=202609281800"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="post" data-be-back="/forum" data-be-back-label="nav_forum" data-be-tabs="off"><div data-be-slot class="be-slot--mobile"><button type="button" class="pd-share" id="pdShareBtn" aria-label="Paylaş"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v8h16v-8M12 3v13M7 8l5-5 5 5"/></svg></button></div><div id="authBar"></div></header>
@@ -263,6 +263,9 @@ function L(key, tr, en) {
   return (lang() === 'en' && en) ? en : tr;
 }
 const up = s => String(s || '').toLocaleUpperCase(lang() === 'en' ? 'en' : 'tr');
+// Kategori: Firestore'da Türkçe değer; görünen ad forum.html ile aynı anahtarlardan
+const CAT_KEY = { 'Genel':['forum_cat_general','General'], 'Ses Tasarımı':['forum_cat_sound','Sound Design'], 'Diğer':['forum_cat_other','Other'] };
+const catLabel = c => CAT_KEY[c] ? L(CAT_KEY[c][0], c, CAT_KEY[c][1]) : c;
 
 function doSignIn() { window.bkAuth.openLogin(); }
 window.doSignIn = doSignIn;
@@ -364,8 +367,9 @@ function updateAuthBar(user) {
     const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
     _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
     const head = el('div', 'notif-panel-head');
-    head.append(el('span', 'notif-panel-title', L('ui_notifications', `Bildirimler`, 'Notifications')));
-    const readAll = el('button', 'notif-read-all', L('ui_read_all', `Tümünü Oku`, 'Mark all read')); readAll.id = 'notifReadAll'; readAll.type = 'button';
+    const pTitle = el('span', 'notif-panel-title', L('ui_notifications', `Bildirimler`, 'Notifications')); pTitle.setAttribute('data-i18n', 'ui_notifications');
+    head.append(pTitle);
+    const readAll = el('button', 'notif-read-all', L('ui_read_all', `Tümünü Oku`, 'Mark all read')); readAll.id = 'notifReadAll'; readAll.type = 'button'; readAll.setAttribute('data-i18n', 'ui_read_all');
     readAll.onclick = () => markAllRead(user.uid);
     head.append(readAll);
     _notifPanelEl.append(head, el('div', 'notif-list'));
@@ -394,6 +398,12 @@ function toggleNotifPanel(user) {
   markAllRead(user.uid);
 }
 
+// Bağlantılı bildirim satırı klavyeyle de açılsın (profile.html _btnify ile aynı kalıp)
+function _notifBtnify(node) {
+  node.setAttribute('role', 'button'); node.tabIndex = 0;
+  node.addEventListener('keydown', e => { if (e.target === node && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); node.click(); } });
+  return node;
+}
 function _mergeNotifs(uid) {
   const all = [
     ..._personalNotifs.map(n => ({...n, _t:'p'})),
@@ -411,12 +421,13 @@ function _mergeNotifs(uid) {
     all.forEach(n => {
       const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
       const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
-      const icon = n._t==='a' ? '📢 ' : '';
       const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString(lang() === 'en' ? 'en-US' : 'tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-      item.append(el('div', 'notif-item-text', icon + (n.text || L('ui_new_notif', `Yeni bildirim`, 'New notification'))), el('div', 'notif-item-time', timeStr));
-      if (n.postId) item.onclick = () => { location.href = `post?id=${n.postId}`; };
+      const _nt = el('div', 'notif-item-text', n.text || L('ui_new_notif', `Yeni bildirim`, 'New notification'));
+      if (n._t === 'a') _nt.insertAdjacentHTML('afterbegin', '<svg class="icon notif-ann-icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-info"/></svg> ');
+      item.append(_nt, el('div', 'notif-item-time', timeStr));
+      if (n.postId) { item.onclick = () => { location.href = `post?id=${n.postId}`; }; _notifBtnify(item); }
       if (n._id) {
-        const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = L('post_delete', `Sil`, 'Delete');
+        const del = document.createElement('button'); del.type = 'button'; del.className = 'notif-del-btn'; del.textContent = '×'; del.title = L('prof_notif_del', `Bildirimi sil`, 'Delete notification'); del.setAttribute('aria-label', del.title);
         del.onclick = e => {
           e.stopPropagation();
           if (n._t === 'p') {
@@ -564,7 +575,7 @@ function buildArticle(post, profile, anim) {
 
   // Kategori + durum
   const chips = el('div', 'pd-chips');
-  if (post.category) chips.append(el('span', 'pd-chip pd-chip--cat', post.category));
+  if (post.category) chips.append(el('span', 'pd-chip pd-chip--cat', catLabel(post.category)));
   if (post.solved) chips.append(el('span', 'pd-chip pd-chip--ok', L('forum_is_solved', `✓ Çözüldü`, '✓ Solved')));
   else {
     const open = el('span', 'pd-chip pd-chip--open');

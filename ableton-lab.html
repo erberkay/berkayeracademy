@@ -17,10 +17,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-    <link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
-    <script src="assets/js/theme-init.js?v=202609271200"></script>
-    <link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
-    <script src="assets/js/auth-ui.js?v=202609271200"></script>
+    <link rel="stylesheet" href="assets/css/ui.css?v=202609281800">
+    <script src="assets/js/theme-init.js?v=202609281800"></script>
+    <link rel="stylesheet" href="assets/css/themes.css?v=202609281800">
+    <script src="assets/js/auth-ui.js?v=202609281800"></script>
     <style>
         /* ═══════════════════════════════════════════════════════════════
            ABLETON LAB — sayfa stili (TASARIM.md + Lab / M_Lab tasarımı)
@@ -74,6 +74,9 @@
         .lab-tabs .be-tab { position:relative; }
         .lab-tabs .be-tab::after { content:''; position:absolute; inset:-2px 0; }
         .lab-tab-num { font-family:var(--ff-mono); font-size:10px; opacity:.7; }
+        /* Genel bakış kart seçici — yalnız telefonda (M_Lab) */
+        .lab-cardtabs { display:none; }
+        .lab-lead-m { display:none; }
 
         /* ── Görünüm kabı + kartlar ─────────────────────────────────────── */
         .lab-app { padding-top:6px; }
@@ -102,6 +105,7 @@
         .lab-opt:hover { border-color:var(--accent-line-2); color:var(--fg); }
         .lab-opt.active, .lab-opt[aria-pressed="true"] { background:var(--c, var(--accent)); border-color:var(--c, var(--accent)); color:var(--accent-ink); }
         .lab-opt small { font-family:var(--ff); font-size:11px; letter-spacing:0; opacity:.8; }
+        .lab-opt.active small, .lab-opt[aria-pressed="true"] small { opacity:1; }
         .lab-opt svg { width:22px; height:14px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
         .lab-opt--sm { min-height:32px; padding:4px 8px; font-size:11px; }
         .lab-opt--row { flex-direction:row; }
@@ -150,6 +154,8 @@
         .lab-celeb-box { text-align:center; }
         .lab-celeb-box .modal-eyebrow, .lab-celeb-box .modal-title { padding-right:0; }
         .lab-celeb-box .modal-actions { justify-content:center; }
+        .lab-celeb-icon { width:64px; height:64px; margin:4px auto 16px; border-radius:50%; background:var(--accent-soft); border:1px solid var(--accent-line); color:var(--accent); display:flex; align-items:center; justify-content:center; }
+        .lab-celeb-icon .icon { width:28px; height:28px; }
         .lab-celeb p { font-size:var(--fs-body); color:var(--fg-muted); }
         .lab-celeb p.lab-celeb-mod { display:inline-flex; align-items:center; gap:8px; margin-top:10px; padding:8px 16px; border-radius:var(--r-pill); background:var(--accent-soft); border:1px solid var(--accent-line); font-family:var(--ff-disp); font-size:22px; color:var(--accent); }
         .lab-span { grid-column:1 / -1; }
@@ -206,7 +212,7 @@
         .lab-saved-del .icon { width:12px; height:12px; }
         /* Kompakt görünüm (Learning Synths tarzı tek ekran) */
         .lab-compact .lab-sec-sub, .lab-compact .lab-adsr-card, .lab-compact .lab-acc, .lab-compact .lab-hint, .lab-compact .lab-fx-hint { display:none; }
-        .lab-compact .lab-grid { grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:12px; }
+        .lab-compact .lab-grid { grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:12px; }
         .lab-compact .lab-box { padding:16px; }
         .lab-compact .lab-scope canvas { height:110px; }
         .lab-compact .lab-filter-cv { height:48px; margin-bottom:10px; }
@@ -215,9 +221,17 @@
         .lab-compact .lab-box--filter { grid-column:auto; }
         .lab-compact .lab-box--filter .lab-opts { grid-template-columns:repeat(4, minmax(0,1fr)); gap:4px; }
         .lab-compact .lab-sl { height:24px; }
-        @media (min-width:1280px) { .lab-grid { grid-template-columns:repeat(3, minmax(0,1fr)); } .lab-compact .lab-grid { grid-template-columns:repeat(4, minmax(0,1fr)); } }
-        @media (min-width:1400px) { .lab-compact .lab-grid { grid-template-columns:repeat(5, minmax(0,1fr)); } }
+        @media (min-width:1280px) { .lab-grid, .lab-compact .lab-grid { grid-template-columns:repeat(3, minmax(0,1fr)); } }
         .lab-box--filter { grid-column:1 / -1; }
+        /* Synth kutuları: iç ızgaralar kutunun kendi genişliğine göre katlanır (kompakt/detaylı, her ekran) */
+        .lab-grid > .lab-box { container-type:inline-size; }
+        .lab-opts--4 .lab-opt--sm, .lab-opts--5 .lab-opt--sm { padding-inline:2px; letter-spacing:0; }
+        @container (max-width:399px) {
+            .lab-g3 { grid-template-columns:repeat(2, minmax(0,1fr)); }
+            .lab-g3 > :has(> .lab-opts--5) { grid-column:1 / -1; }
+        }
+        @container (max-width:329px) { .lab-g2:has(.lab-opts--4, .lab-opts--5) { grid-template-columns:1fr; } }
+        @container (max-width:269px) { .lab-g2, .lab-g3 { grid-template-columns:1fr; } }
 
         /* ── Beat maker / step sequencer ────────────────────────────────── */
         .lab-seq-scroll { overflow-x:auto; scrollbar-width:thin; }
@@ -328,7 +342,7 @@
         /* ── Aranjman ───────────────────────────────────────────────────── */
         .lab-e-low { --c:var(--track); --cl:var(--fg-3); --ci:var(--fg); }
         .lab-e-mid { --c:var(--bar-muted); --cl:var(--fg-2); --ci:var(--fg); }
-        .lab-e-build { --c:var(--lab-build); --cl:var(--ember-rose); --ci:var(--fg); }
+        .lab-e-build { --c:var(--lab-build); --cl:var(--err); --ci:var(--fg); }
         .lab-e-high { --c:var(--ember-2); --cl:var(--ember-2); --ci:var(--accent-ink); }
         .lab-e-peak { --c:var(--accent); --cl:var(--accent); --ci:var(--accent-ink); }
         .lab-arr-scroll { overflow-x:auto; scrollbar-width:thin; }
@@ -421,6 +435,9 @@
         .lab-wave svg { position:absolute; left:0; top:0; max-width:none; overflow:visible; animation:lab-wave 2.4s linear infinite; }
         .lab-wave path { fill:none; stroke:var(--accent); stroke-width:2.5; filter:drop-shadow(0 0 6px rgba(232,184,75,.7)); }
         @keyframes lab-wave { to { transform:translateX(-50%); } }
+        /* Ekran dışı duraklatma (labObserve → .be-paused). Yukarıdaki animation kısaltmaları
+           play-state'i sıfırladığı için ui.css'teki genel kural yetmez; burada daha özgül ve sonra. */
+        .lab .be-paused, .lab .be-paused * { animation-play-state:paused; }
         .lab-knobs { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px 28px; }
         .lab-knob { display:flex; flex-direction:column; gap:8px; }
         .lab-knob .lab-sl-label { margin:0; color:var(--fg-muted); }
@@ -447,14 +464,31 @@
             .lab-opt--sm::after { inset:-6px -2px; }
             .lab .seg--sm .seg-btn { position:relative; }
             .lab .seg--sm .seg-btn::after { content:''; position:absolute; inset:-5px 0; }
-            .lab-sl { height:32px; }
+            .lab-sl, .lab-compact .lab-sl { height:32px; }
+            .lab-sl::after { content:''; position:absolute; inset:-6px 0; }
+            .lab-sl.is-v::after { inset:0 -8px; }
+            .lab-cluster input[type="range"], input[type="range"].lab-range { height:44px; }
+            .lab-chipbtn::after { inset:-4px 0; }
+            .lab-arr-cell { height:44px; }
+            .lab-cluster .lab-opt--sm { min-width:44px; }
+            .lab-hero-ctas .btn-link { min-height:44px; }
             .lab-chain-cards { grid-template-columns:1fr; }
         }
         @media (max-width:600px) {
             .lab-hero-in { padding-top:28px; padding-bottom:4px; gap:12px; }
             .lab-hero-copy { gap:12px; }
             .lab-hero-lead { font-size:15px; line-height:1.6; }
-            .lab-hero-ctas { gap:16px; margin-top:4px; }
+            .lab-hero-ctas { display:none; }
+            .lab-lead-d { display:none; } .lab-lead-m { display:inline; }
+            /* M_Lab: genel bakışta modül sekmeleri yerine kart seçici; tek kart görünür */
+            .lab[data-view="home"] > #moduleNav { display:none; }
+            .lab-cardtabs { display:block; margin:0 calc(-1 * var(--page-x)); }
+            .lab-cardtabs .lab-tabs-in { padding-inline:var(--page-x); }
+            .lab-cardtabs .be-tab { flex-shrink:0; height:40px; font-size:13px; font-weight:500; }
+            .lab-home { gap:0; }
+            .lab-home .lab-row { display:contents; }
+            .lab-home [data-lab-card].is-off { display:none; }
+            .lab-home .lab-row--arr > :last-child { margin-top:16px; }
             .lab-path { display:none; }
             .lab-hero .be-glow { width:520px; height:520px; left:-120px; top:-300px; }
             .lab-card, .lab-card--wide, .lab-mod { padding:18px; gap:14px; border-radius:var(--r-20); }
@@ -509,21 +543,21 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-    <script src="assets/js/love-nav.js?v=202609271200"></script>
-<script src="assets/js/i18n.js?v=202609271200"></script>
+    <script src="assets/js/love-nav.js?v=202609281800"></script>
+<script src="assets/js/i18n.js?v=202609281800"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="ableton-lab"><div id="authBar"></div></header>
 <div id="scrollProgress" aria-hidden="true"></div>
 
-<main id="labMain" class="lab">
+<main id="labMain" class="lab" data-view="home">
   <section class="lab-hero be-grid-bg" aria-labelledby="labHeroTitle">
     <div class="be-glow be-drift" aria-hidden="true"></div>
     <div class="lab-hero-in be-wrap">
       <div class="lab-hero-copy">
         <span class="be-eyebrow be-rv"><span class="be-live" aria-hidden="true"></span><span data-i18n="lab_hero_eyebrow">ÜCRETSİZ İNTERAKTİF LAB</span></span>
         <h1 id="labHeroTitle" class="lab-hero-title be-rv be-d1"><span data-i18n="lab_hero_t1">Ableton'a</span><br><em class="be-ember-text" data-i18n="lab_hero_t2">ilk adım.</em></h1>
-        <p class="lab-hero-lead be-rv be-d2" data-i18n="lab_hero_lead">Synthesizer, Beat Maker, Mixer ve Arrangement Builder ile derslerde öğrendiklerini tarayıcında dene. Derse başlamadan önce Lab'ı tamamla.</p>
+        <p class="lab-hero-lead be-rv be-d2"><span class="lab-lead-d" data-i18n="lab_hero_lead">Synthesizer, Beat Maker, Mixer ve Arrangement Builder ile derslerde öğrendiklerini tarayıcında dene. Derse başlamadan önce Lab'ı tamamla.</span><span class="lab-lead-m" data-i18n="lab_hero_lead_m">Derslerde öğrendiklerini telefonunda dene. Derse başlamadan önce Lab'ı tamamla.</span></p>
         <div class="lab-hero-ctas be-rv be-d3">
           <button type="button" class="btn btn-primary btn-xl" id="labHeroStart"><span data-i18n="lab_hero_start">Hemen başla</span> <span aria-hidden="true">↓</span></button>
           <a class="btn-link" href="egitim"><span data-i18n="lab_hero_lessons">Birebir dersle ilerle</span> <span aria-hidden="true">→</span></a>
@@ -673,18 +707,26 @@ async function deleteUserPreset(id) {
 }
 
 // ── Auth state observer ──────────────────────────────────────────────
+const ADMIN_EMAIL = 'berkayer032@gmail.com';
 function updateAuthBar() {
     const bar = document.getElementById('authBar');
     if (!bar) return;
     if (currentUser) {
         bar.innerHTML = '';
+        const uid = currentUser.uid;
+        const goProfile = () => { location.href = `profile?uid=${encodeURIComponent(uid)}`; };
         const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
         const img  = document.createElement('img');  img.className = 'auth-avatar';
         img.src = currentUser.photoURL || ''; img.alt = '';
+        img.style.cursor = 'pointer'; img.onclick = goProfile;
         const name = document.createElement('span'); name.className = 'auth-name';
-        name.textContent = currentUser.displayName?.trim().split(' ')[0] || currentUser.email?.split('@')[0] || 'Kullanıcı';
-        const out = document.createElement('button'); out.className = 'auth-out-btn';
-        out.textContent = 'Çıkış'; out.onclick = signOut;
+        name.textContent = currentUser.email === ADMIN_EMAIL ? 'Admin'
+            : (currentUser.displayName?.trim().split(' ')[0] || currentUser.email?.split('@')[0] || (window._i18n?.t('ui_member') || `Üye`));
+        name.style.cursor = 'pointer'; name.onclick = goProfile;
+        const out = document.createElement('button'); out.className = 'auth-out-btn'; out.type = 'button';
+        out.textContent = '✕'; out.onclick = signOut;
+        const outLbl = window._i18n?.t('ui_signout') || `Çıkış Yap`;
+        out.title = outLbl; out.setAttribute('aria-label', outLbl);
         wrap.append(img, name, out); bar.append(wrap);
     } else {
         bar.innerHTML = '';
@@ -1675,7 +1717,23 @@ const LAB_TXT = {
     lab_mast_title:   [`Master chain`, `Master chain`],
     lab_mast_p:       [`Sinyal sırası, loudness yönetimi ve limiter tavanı — modül 05'in özeti.`, `Signal order, loudness management and limiter ceiling — a summary of module 05.`],
     lab_mast_aria:    [`Master zinciri: EQ Eight, Glue Compressor, Multiband, Limiter`, `Master chain: EQ Eight, Glue Compressor, Multiband, Limiter`],
+    lab_hero_lead_m:  [`Derslerde öğrendiklerini telefonunda dene. Derse başlamadan önce Lab'ı tamamla.`, `Try what you learn in lessons on your phone. Finish the Lab before your first lesson.`],
+    lab_cards_aria:   [`Önizleme kartı seç`, `Choose a preview card`],
+    lab_min:          [`dk`, `min`],
+    lab_desc_1:       [`Sıfırdan ses üret: oscillator'lar, ADSR envelope, filter, presetler.`, `Generate sound from scratch: oscillators, ADSR envelope, filters, presets.`],
+    lab_desc_2:       [`Step sequencer; velocity, swing ve tür şablonları.`, `Step sequencer with velocity, swing, and genre templates.`],
+    lab_desc_3:       [`EQ eğrileri, mixer stripleri, pan, stereo field.`, `EQ curves, channel strips, panning, stereo field.`],
+    lab_desc_4:       [`Şarkı yapısı: intro, build, drop, chorus — örüntüleri seç.`, `Song structure: intro, build, drop, chorus — pick the patterns.`],
+    lab_desc_5:       [`Master zinciri: EQ → Glue → Multiband → Limiter. Sık hatalar.`, `Master chain: EQ → Glue → Multiband → Limiter. Common mistakes.`],
+    lab_celeb_eyebrow:[`Rozet Kazanıldı`, `Badge earned`],
+    lab_celeb_title:  [`Modül Tamamlandı!`, `Module complete!`],
+    lab_celeb_p:      [`Tebrikler!`, `Congratulations!`],
+    lab_celeb_ok:     [`Harika!`, `Great!`],
 };
+// Modüllerin tahmini süresi (dk) — eski "Tüm Modüller" kartlarındaki değerler
+const MODULE_MIN = { 1: 12, 2: 15, 3: 18, 4: 10, 5: 10 };
+const modTime = id => `~${MODULE_MIN[id]} ${L('lab_min')}`;
+const modSub = id => `${L('lab_desc_' + id)} · ${modTime(id)}`;
 function labLang() { const i = window._i18n; return (i && typeof i.getLang === 'function' && i.getLang() === 'en') ? 'en' : 'tr'; }
 function L(key) {
     const i = window._i18n;
@@ -1695,14 +1753,18 @@ function labApplyLang(root) {
 // ═══════════════════════════════════════════════════════════════════
 function showModuleCompletion(mid) {
     const overlay = openLabModal({
-        eyebrow: 'Rozet Kazanıldı',
-        title: 'Modül Tamamlandı!',
-        html: `<div class="lab-celeb"><p>Tebrikler!</p><p class="lab-celeb-mod">${MODULE_NAMES[mid] || 'Modül'} ${ic('check')}</p></div>`,
-        actions: [{ label: 'Harika!', primary: true }],
+        eyebrow: L('lab_celeb_eyebrow'),
+        title: L('lab_celeb_title'),
+        html: `<div class="lab-celeb"><p>${L('lab_celeb_p')}</p><p class="lab-celeb-mod">${MODULE_NAMES[mid] || 'Modül'} ${ic('check')}</p></div>`,
+        actions: [{ label: L('lab_celeb_ok'), primary: true }],
         noClose: true,
         small: true,
     });
-    overlay.querySelector('.modal').classList.add('lab-celeb-box');
+    const box = overlay.querySelector('.modal');
+    box.classList.add('lab-celeb-box');
+    // Kupa/rozet işareti (eski kutlamadaki 🏆 yerine sprite ikonu)
+    const badge = mk('div', 'lab-celeb-icon', ic('star'));
+    box.insertBefore(badge, box.querySelector('.modal-eyebrow'));
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1925,7 +1987,7 @@ function renderPath() {
         const pct   = getProgress(id);
         const li = mk('li');
         const b  = mk('button','lab-path-item' + (tasks.length && pct === 100 ? ' is-done' : ''));
-        b.type = 'button';
+        b.type = 'button'; b.title = modSub(id);
         const nm = mk('span'); nm.textContent = `${String(id).padStart(2,'0')} ${L('lab_mod_' + id)}`;
         const meta = mk('span','lab-path-meta');
         meta.textContent = L('lab_cat_' + id) + (tasks.length ? ` · ${done}/${tasks.length}` : '');
@@ -1996,7 +2058,7 @@ let _sustainPedal = false;
 function renderModule1() {
     const root = mk('div','lab-view be-wrap');
     const shell = mk('section','lab-mod');
-    const { head: hdr, actions: hdrAct } = modHead(1, 'Synthesizer', 'Synthesizer');
+    const { head: hdr, actions: hdrAct } = modHead(1, 'Synthesizer', 'Synthesizer', modSub(1));
     shell.setAttribute('aria-label','Synthesizer');
     // Görünüm anahtarı — Kompakt (Learning Synths tarzı tek ekran) / Detaylı (ders açıklamaları)
     const viewSeg = mk('div','seg seg--sm'); viewSeg.setAttribute('role','group'); viewSeg.setAttribute('aria-label','Görünüm');
@@ -2556,7 +2618,7 @@ function renderModule1() {
     });
     filtGrp.append(typeRow);
     // Slope selector — 12 dB (tek biquad) / 24 dB (cascade)
-    const slopeRow = mk('div','lab-optline lab-mt');
+    const slopeRow = mk('div','lab-optline lab-mt'); slopeRow.setAttribute('data-lab-press', '');
     const slopeTag = mk('span','lab-label','SLOPE:');
     slopeRow.append(slopeTag);
     [12, 24].forEach(s => {
@@ -3027,6 +3089,17 @@ function renderModule1() {
         m1Refresh.forEach(fn => { try { fn(); } catch (e) { console.error('m1Refresh err', e); } });
     };
 
+    // Seçim grupları (dalga, oktav, unison, filtre tipi/eğim, LFO, delay sync, POLY/MONO):
+    // görsel .active durumu aria-pressed olarak da bildirilir (tıklama + preset yüklemesi).
+    polyCluster.setAttribute('data-lab-press', '');
+    const PRESS_SEL = '.lab-opts > .lab-opt, [data-lab-press] > .lab-opt';
+    const syncPress = b => { const v = String(b.classList.contains('active')); if (b.getAttribute('aria-pressed') !== v) b.setAttribute('aria-pressed', v); };
+    shell.querySelectorAll(PRESS_SEL).forEach(syncPress);
+    if ('MutationObserver' in window) {
+        new MutationObserver(ms => ms.forEach(m => { if (m.target.matches && m.target.matches(PRESS_SEL)) syncPress(m.target); }))
+            .observe(shell, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+
     _cleanup = () => {
         window.removeEventListener('keydown', onKey);
         window.removeEventListener('keyup',   onKeyUp);
@@ -3087,9 +3160,10 @@ function buildBeatGrid(opts = {}) {
                     if (e.button !== 0) return; e.preventDefault();
                     dragState = { ti, bi, el: cell, startY: e.clientY, startVel: state.beatPatterns[ti][bi], moved: false, pendingVel: null };
                 };
-                cell.onkeydown = e => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    e.preventDefault();
+                // Klavye (Enter/Boşluk), ekran okuyucu ve programatik tıklama: click olayı.
+                // Fare/dokunma aç-kapatı zaten mouseup'ta yapıldıysa ardından gelen click yok sayılır.
+                cell.onclick = () => {
+                    if (performance.now() - (cell._labPtrT || 0) < 600) return;
                     state.beatPatterns[ti][bi] = state.beatPatterns[ti][bi] > 0 ? 0 : 100;
                     paintBeatCell(cell, state.beatPatterns[ti][bi]); changed();
                 };
@@ -3120,6 +3194,7 @@ function buildBeatGrid(opts = {}) {
         if (rafDrag) { cancelAnimationFrame(rafDrag); rafDrag = null; }
         if (!d.moved) state.beatPatterns[d.ti][d.bi] = state.beatPatterns[d.ti][d.bi] > 0 ? 0 : 100;
         else if (d.pendingVel != null) state.beatPatterns[d.ti][d.bi] = d.pendingVel;
+        d.el._labPtrT = performance.now();
         paintBeatCell(d.el, state.beatPatterns[d.ti][d.bi]);
         dragState = null;
         changed();
@@ -3147,7 +3222,7 @@ function renderModule2() {
     const root  = mk('div','lab-view be-wrap');
     const shell = mk('section','lab-mod');
     shell.setAttribute('aria-label','Beat Maker');
-    const { head, actions } = modHead(2, 'Beat Maker', 'Step sequencer');
+    const { head, actions } = modHead(2, 'Beat Maker', 'Step sequencer', modSub(2));
     head.classList.add('lab-beat-head');
     shell.append(head);
 
@@ -3528,7 +3603,7 @@ function buildMixerSection() {
         <strong>VOL</strong> = ses seviyesi &nbsp;|&nbsp;
         <strong>PAN</strong> = stereo konum (L ← C → R) &nbsp;|&nbsp;
         <strong>MUTE</strong> = kanalı sustur<br>
-        <strong>MIX ÇAL</strong>'a basınca Beat Maker'daki pattern + Lead Loop birlikte çalar.
+        <strong>Mix çal</strong>'a basınca Beat Maker'daki pattern + Lead Loop birlikte çalar.
         Slider ve mute değişiklikleri <em>anında</em> etkili olur — duyarak dengele.
     `);
     const goBtn=mk('button','btn btn-subtle btn-sm','Önce Beat Maker\'da Pattern Kur →'); goBtn.type='button';
@@ -3540,7 +3615,7 @@ function buildMixerSection() {
             <li><strong>Beat Maker'a git</strong> — aşağıdaki butonla veya ana menüden Modül 2'yi seç</li>
             <li>Step sequencer'da adımları tıkla — KICK, SNARE, HI-HAT satırlarını istediğin gibi doldur</li>
             <li>BPM'i ayarla (öneri: 125)</li>
-            <li>Geri gel, bu sayfada <strong>▶ MIX ÇAL</strong>'a bas</li>
+            <li>Geri gel, bu sayfada <strong>Mix çal</strong>'a bas</li>
             <li>Her kanalın <strong>VOL</strong> slider'ını çekerek seviyeleri dengele</li>
             <li><strong>PAN</strong> ile SNARE'i biraz sola, LEAD'i biraz sağa al — stereo genişliği hisset</li>
             <li><strong>MUTE</strong> ile tek tek kanalları sustur — ne kadar etki ettiğini duyumsa</li>
@@ -3719,7 +3794,7 @@ function buildMixerSection() {
         if(has===_patHas) return; _patHas=has;
         patBanner.classList.toggle('is-ok',has); patBanner.classList.toggle('is-wait',!has);
         if(has){
-            patBanner.innerHTML=`<span>${ic('check')} Beat Maker'da pattern mevcut — MIX ÇAL'a basabilirsin</span>`;
+            patBanner.innerHTML=`<span>${ic('check')} Beat Maker'da pattern mevcut — Mix çal'a basabilirsin</span>`;
         } else {
             const txt=mk('span','','Henüz Beat Maker\'da pattern yok — önce bir ritim kur');
             const goBtnSmall=mk('button','btn btn-subtle btn-sm','Kur →'); goBtnSmall.type='button';
@@ -3743,11 +3818,11 @@ function buildMixerSection() {
         if(!hasPattern){
             showModal(
                 'Beat Maker\'da Pattern Yok',
-                `<p><strong>MIX ÇAL çalışmıyor çünkü henüz bir ritim pattern\'i yok.</strong></p>
+                `<p><strong>Mix çal çalışmıyor çünkü henüz bir ritim pattern\'i yok.</strong></p>
                 <ul>
                     <li><strong>Modül 2 — Beat Maker\'a git</strong></li>
                     <li>KICK, SNARE veya HI-HAT satırındaki kutulara tıkla (aktif = renkli)</li>
-                    <li>Buraya geri dön → <strong>▶ MIX ÇAL</strong> artık çalışır</li>
+                    <li>Buraya geri dön → <strong>Mix çal</strong> artık çalışır</li>
                 </ul>
                 <p class="lab-note">Not: LEAD LOOP her zaman çalar. Sadece ritim için Beat Maker gerekli.</p>`,
                 [{label:'Beat Maker\'a Git', fn:()=>navigate(2)}]
@@ -4650,7 +4725,7 @@ registerProcessor('sidechain-processor',SidechainProcessor);`;
 function renderModule3() {
     const root=mk('div','lab-view be-wrap');
     const shell=mk('section','lab-mod'); shell.setAttribute('aria-label','Mixing & Efektler');
-    shell.append(modHead(3, 'Mixing & efektler', 'Mixing & Efektler').head);
+    shell.append(modHead(3, 'Mixing & efektler', 'Mixing & Efektler', modSub(3)).head);
 
     // ── İnteraktif önce ──
     shell.append(buildEQSection());
@@ -4674,7 +4749,7 @@ function renderModule3() {
 function renderModule4() {
     const root=mk('div','lab-view be-wrap');
     const shell=mk('section','lab-mod'); shell.setAttribute('aria-label','Song Arrangement');
-    shell.append(modHead(4, 'Song arrangement', 'Song Arrangement').head);
+    shell.append(modHead(4, 'Song arrangement', 'Song Arrangement', modSub(4)).head);
 
     // ── İnteraktif önce ──
     shell.append(buildArrangementBuilder());
@@ -5047,7 +5122,7 @@ function masterChainSvg(label) {
 function renderModule5() {
     const root=mk('div','lab-view be-wrap');
     const shell=mk('section','lab-mod'); shell.setAttribute('aria-label','Mastering');
-    shell.append(modHead(5, 'Mastering', 'Mastering', 'Miksinin son hali — profesyonel ses zinciri').head);
+    shell.append(modHead(5, 'Mastering', 'Mastering', `Miksinin son hali — profesyonel ses zinciri · ${modTime(5)}`).head);
 
     // ── What is mastering ─────────────────────────────────────────
     const intro = mk('div','lab-box');
@@ -5147,10 +5222,10 @@ function cardFoot(id) {
         bar.setAttribute('aria-valuenow', String(pct)); bar.setAttribute('aria-label', `${L('lab_mod_' + id)} — %${pct}`);
         const fill = mk('span','lab-prog-fill'); fill.style.width = pct + '%';
         bar.append(fill);
-        const txt = mk('span'); txt.textContent = `${done}/${tasks.length} ${L('lab_tasks_word')}`;
+        const txt = mk('span'); txt.textContent = `${done}/${tasks.length} ${L('lab_tasks_word')} · ${modTime(id)}`;
         p.append(bar, txt);
         f.append(p);
-    } else f.append(mk('span'));
+    } else { const p = mk('span','lab-prog'); p.textContent = modTime(id); f.append(p); }
     const open = mk('button','btn-link'); open.type = 'button';
     open.innerHTML = `<span></span> <span aria-hidden="true">→</span>`;
     open.firstChild.textContent = L('lab_open');
@@ -5196,7 +5271,7 @@ function buildBeatCard(cleanups) {
 // Synth kartı: dalga / cutoff / resonance / hızlı preset → gerçek synth state'i
 function synthWavePath(W, H) {
     const mid = H / 2, resoPct = Math.max(0, Math.min(1, ((state.filter.resonance || 1) - .1) / 19.9));
-    const amp = H * (.17 + resoPct * .25), per = W / 6, w = state.osc1.wave;
+    const amp = H * (.17 + resoPct * .25), per = W / 12, w = state.osc1.wave;
     let d = '';
     for (let x = 0; x <= W; x += 4) {
         const ph = (x % per) / per;
@@ -5220,7 +5295,8 @@ function buildSynthCard() {
     });
     actions.append(waves);
     const well = mk('div','lab-wave'); well.setAttribute('role','img');
-    const W = 1200, H = 180;
+    // 12 periyot × 200px: -%50 kayma 6 periyot eder (kesintisiz) ve 1200px'e kadar geniş kuyuyu doldurur
+    const W = 2400, H = 180;
     well.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="100%" preserveAspectRatio="none" aria-hidden="true" data-lab-anim><path vector-effect="non-scaling-stroke" d=""/></svg>`;
     const path = well.querySelector('path');
     const knobs = mk('div','lab-knobs');
@@ -5312,15 +5388,37 @@ function buildMastCard() {
     return c;
 }
 
+// Telefonda (≤600) genel bakış M_Lab gibi: yapışkan sekmeler tek önizleme kartı gösterir
+// (Arrangement sekmesi Mastering kartını da içerir). Masaüstünde sekmeler gizli, tüm kartlar görünür.
+const HOME_CARDS = [['beat','Beat Maker'], ['synth','Synth'], ['mix','Mixer'], ['arr','Arrangement']];
+let _labHomeCard = 'beat';
 function renderHome() {
-    const root = mk('div','lab-view be-wrap');
+    const root = mk('div','lab-view be-wrap lab-home');
     const cleanups = [];
-    root.append(buildBeatCard(cleanups));
+    const beat = buildBeatCard(cleanups), synth = buildSynthCard(), mixer = buildMixerCard(), arr = buildArrCard(), mast = buildMastCard();
+    const cards = [[beat,'beat'], [synth,'synth'], [mixer,'mix'], [arr,'arr'], [mast,'arr']];
+    cards.forEach(([c, id]) => { c.dataset.labCard = id; });
+    const tabs = mk('div','lab-tabs lab-cardtabs');
+    tabs.setAttribute('role','group'); tabs.setAttribute('data-i18n-aria','lab_cards_aria'); tabs.setAttribute('aria-label', L('lab_cards_aria'));
+    const tin = mk('div','lab-tabs-in');
+    const pick = id => {
+        _labHomeCard = id;
+        tin.querySelectorAll('[data-card]').forEach(b => { const on = b.dataset.card === id; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+        cards.forEach(([c, cid]) => c.classList.toggle('is-off', cid !== id));
+    };
+    HOME_CARDS.forEach(([id, label]) => {
+        const b = mk('button','be-tab', label); b.type = 'button'; b.dataset.card = id;
+        b.onclick = () => pick(id);
+        tin.append(b);
+    });
+    tabs.append(tin);
+    root.append(tabs, beat);
     const row1 = mk('div','lab-row lab-row--2');
-    row1.append(buildSynthCard(), buildMixerCard());
+    row1.append(synth, mixer);
     const row2 = mk('div','lab-row lab-row--arr');
-    row2.append(buildArrCard(), buildMastCard());
+    row2.append(arr, mast);
     root.append(row1, row2);
+    pick(_labHomeCard);
     _cleanup = () => cleanups.forEach(f => f());
     return root;
 }
@@ -5337,11 +5435,16 @@ function labObserve(root) {
 }
 function render() {
     teardownView();
+    // Eski görünümün hedeflerini bırak (kaldırılan öğeler gözlemde kalmasın)
+    if (_labIO) _labIO.disconnect();
     const app=document.getElementById('app'); app.innerHTML='';
     const views={1:renderModule1, 2:renderModule2, 3:renderModule3, 4:renderModule4, 5:renderModule5};
     app.append((views[state.currentModule] || renderHome)());
-    // Büyük harfe çevrilen İngilizce parametre adları Türkçe "İ" almasın (DETUNE, WIDTH…)
-    app.querySelectorAll('.lab-sl-label, .lab-kicker, .lab-sub-head, .lab-label').forEach(el => el.setAttribute('lang','en'));
+    const main = document.getElementById('labMain');
+    if (main) main.dataset.view = state.currentModule == null ? 'home' : 'mod';
+    // Büyük harfe çevrilen İngilizce parametre adları Türkçe "İ" almasın (DETUNE, WIDTH…).
+    // data-i18n'li (çevrilen) metinler sayfa dilini izler: "Şarkı yapısı rehberi" → REHBERİ.
+    app.querySelectorAll('.lab-sl-label, .lab-kicker, .lab-sub-head, .lab-label').forEach(el => { if (!el.hasAttribute('data-i18n')) el.setAttribute('lang','en'); });
     updateModuleNav();
     renderPath();
     labObserve(app);
@@ -5374,6 +5477,7 @@ document.getElementById('labHeroStart')?.addEventListener('click', () => {
     i.setLang = function (l) {
         orig.call(i, l);
         labApplyLang();
+        updateAuthBar();
         if (state.currentModule === null) render(); else { updateModuleNav(); renderPath(); }
     };
     i._labWrapped = true;

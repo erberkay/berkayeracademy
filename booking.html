@@ -11,15 +11,15 @@
   <meta property="og:title" content="Ders Rezervasyonu · BerkayEr Academy">
   <meta property="og:description" content="BerkayEr Academy online Ableton dersleri — rezervasyon ve ders takip sistemi.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#101013">
+  <meta name="theme-color" content="#0b0b0e">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
-  <script src="assets/js/theme-init.js?v=202609271200"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
-  <script src="assets/js/auth-ui.js?v=202609271200"></script>
-  <script src="assets/js/placement-quiz.js?v=202609271200"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609281800">
+  <script src="assets/js/theme-init.js?v=202609281800"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609281800">
+  <script src="assets/js/auth-ui.js?v=202609281800"></script>
+  <script src="assets/js/placement-quiz.js?v=202609281800"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -177,6 +177,8 @@
     .bk-c-desc { font-family:var(--ff-mono); font-size:11px; color:var(--fg-3); }
     .bk-c-num { font-size:var(--fs-ui); color:var(--fg); white-space:nowrap; }
     .bk-c-strike { color:var(--fg-faint); text-decoration:line-through; }
+    /* altın zeminli (seçili / en avantajlı) satırda liste fiyatı ≥4.5:1 kalsın */
+    .bk-copt[aria-checked="true"] .bk-c-strike, .bk-copt.is-best .bk-c-strike { color:var(--fg-3); }
     .bk-c-gold { color:var(--accent); }
     .bk-c-bold { font-weight:700; }
     .bk-c-dim { color:var(--fg-faint); }
@@ -316,6 +318,7 @@
     .bk-stats .stat-card { display:flex; flex-direction:column; gap:6px; min-width:64px; }
     .bk-zoom:empty { display:none; }
     .bk-money { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:start; }
+    .bk-money[hidden] { display:none; }
     .bk-paybox { grid-column:1 / -1; border-radius:var(--r-20); background:var(--bg); border:1px solid var(--line); overflow:hidden; }
     .bk-paybox:empty { display:none; }
     .bk-extra:empty { display:none; }
@@ -548,9 +551,10 @@
     .pt-progress { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-muted); }
     .bk-pt-result { display:flex; flex-direction:column; gap:14px; align-items:flex-start; padding:8px 0 28px; }
 
-    /* WhatsApp FAB: talep formunun yapışkan gönder çubuğunun üstüne çıkar */
+    /* WhatsApp FAB + bildirimler (toast): talep formunun yapışkan gönder çubuğunun üstüne çıkar */
     @media (max-width:1024px) {
-      #bkMain[data-view="view-request"] ~ .wa-fab { bottom:calc(max(16px, var(--be-tabbar-space)) + 84px); }
+      #bkMain[data-view="view-request"] ~ .wa-fab,
+      #bkMain[data-view="view-request"] ~ .toast-wrap { bottom:calc(max(16px, var(--be-tabbar-space)) + 84px); }
     }
 
     /* ── Dar masaüstü 1025–1279 ── */
@@ -558,9 +562,15 @@
       .bk-layout { grid-template-columns:minmax(0,1fr) 340px; }
       .bk-strip-val { font-size:28px; }
     }
+    /* Masaüstü gönderim satırı: fiyat kutusu özet metnin yanına sığmazsa alt satıra iner
+       (düğmenin altına taşmaz); 1025–1279'da düğme de kendi satırına geçer. */
+    @media (min-width:1025px) {
+      .bk-sumwrap { flex-wrap:wrap; }
+      .bk-sumtext { flex:1 1 120px; min-width:120px; }
+    }
     @media (min-width:1025px) and (max-width:1279px) {
       .bk-submitbar { flex-wrap:wrap; }
-      .bk-sumwrap { flex:1 1 100%; flex-wrap:wrap; }
+      .bk-sumwrap { flex:1 1 100%; }
       html .bk-submit { margin-left:auto; }
     }
     /* Kampanya kartları: ≤1279 (dar sütun) */
@@ -619,7 +629,7 @@
       .bk-p-cell { flex-direction:row; }
       .bk-p-cell--pay { order:-1; }
       .bk-p-pay { font-size:26px; }
-      .bk-p-list { font-size:11px; color:var(--fg-faint); }
+      .bk-p-list { font-size:11px; color:var(--fg-3); }
       .bk-p-disc-s { display:inline; font-family:var(--ff-mono); font-size:10px; }
       html .bk-submitbar .bk-submit { height:46px; padding:0 18px; font-size:var(--fs-ui); }
       html .bk-submitbar .bk-submit::after { inset:-2px; }
@@ -642,6 +652,8 @@
       .bk-strip-cell { padding:12px; border-radius:var(--r-12); background:var(--surface-0); }
       .bk-strip-val { font-size:26px; }
       .bk-strip-lbl { font-size:9px; letter-spacing:.08em; }
+      /* M_DersPaneli: iki hücre (en ucuz saat başı + maksimum avantaj) */
+      .bk-strip-cell--first:not(.bk-strip-cell--cheap), .bk-strip-cell--trial { display:none; }
       .bk-single { flex-direction:column; align-items:stretch; gap:10px; padding:14px; }
       .bk-single p { font-size:var(--fs-small); line-height:1.55; }
       .bk-slots { grid-template-areas:"label count" "jump jump" "box box" "legend legend"; gap:12px; }
@@ -685,6 +697,9 @@
       .bk-lesson { grid-template-columns:44px minmax(0,1fr) auto; grid-template-areas:"date info status" "date act act" "date zoom zoom"; gap:6px 12px; padding:14px 14px; }
       .bk-lesson .lesson-zoom-area, .bk-lesson .lesson-frozen-note { margin-top:2px; }
       .bk-l-act { justify-self:start; }
+      /* Ders satırı "Derse Katıl" çipi: tam genişlik, iki satırlı küçük kart (etiket / tarih) — gün adı uzunluğundan bağımsız */
+      .bk-student .bk-lesson .zoom-chip { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; width:100%; padding:8px 14px; border-radius:var(--r-12); }
+      .bk-student .bk-lesson .zoom-chip-sub { max-width:100%; }
       .bk-l-day { font-size:28px; }
       .bk-sumcard { padding:18px; }
       .bk-dl-row { grid-template-columns:minmax(0,1fr); gap:2px; }
@@ -742,6 +757,10 @@
     .adm-nav-count--ok { background:var(--ok); color:var(--adm-ok-ink); }
     .adm-nav-dot { margin-left:auto; width:8px; height:8px; border-radius:50%; background:var(--accent); }
     .adm-user { margin-top:auto; padding:14px; border-radius:var(--r-14); background:var(--surface); border:1px solid var(--line); display:grid; grid-template-columns:36px minmax(0,1fr); gap:12px; align-items:center; }
+    /* avatar + ad: kendi profiline bağlantı (eski yan menüdeki Profil) */
+    .adm-user-link { grid-column:1 / -1; display:grid; grid-template-columns:36px minmax(0,1fr); gap:12px; align-items:center; min-height:44px; margin:-4px; padding:4px; border-radius:var(--r-10); color:var(--fg); text-decoration:none; transition:background var(--dur-fast); }
+    .adm-user-link:hover { color:var(--fg); background:var(--surface-hi); }
+    .adm-user-link:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
     .adm-user-ava { width:36px; height:36px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; overflow:hidden; }
     .adm-user-ava img { width:100%; height:100%; object-fit:cover; }
     .adm-user-txt { display:flex; flex-direction:column; min-width:0; }
@@ -828,6 +847,10 @@
     .adm-tag--gold { border-color:var(--accent-line); color:var(--accent); }
     .adm-tag--err { border-color:var(--err-line); background:var(--err-soft); color:var(--err); }
     .adm .badge.name-badge { margin-left:0; }
+    /* seviye sınavı rozeti düğme olarak (talep satırı, öğrenci detayı): ~20px rozet, ≥44px dokunma alanı */
+    .adm-ptbtn { position:relative; cursor:pointer; }
+    .adm-ptbtn::after { content:''; position:absolute; inset:-12.5px -4px; }
+    .adm-ptbtn:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
     .adm .form-status { margin-top:0; font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); line-height:1.5; min-height:14px; }
     .adm .form-status:empty { display:none; }
     .adm .form-status.is-ok { color:var(--ok); } .adm .form-status.is-err { color:var(--err); }
@@ -877,6 +900,9 @@
     .adm-chead + .adm-crows > .adm-crow:first-child { border-top:0; }
     .adm-c-r { text-align:right; }
     .adm-crow.is-best { background:var(--accent-wash); }
+    /* altın zeminli satırda sönük metinler bir kademe açık (≥4.5:1) */
+    .adm-crow.is-best .adm-c-desc, .adm-crow.is-best .adm-c-sub, .adm-crow.is-best .adm-c-lbl, .adm-crow.is-best .adm-c-per,
+    .adm-crow.is-best .adm-c-list.is-strike .adm-c-v { color:var(--fg-3); }
     .adm-c-dim { min-width:0; transition:opacity var(--dur); }
     .adm-crow.is-off .adm-c-dim { opacity:.45; }
     .adm-c-lbl { display:none; }
@@ -1000,6 +1026,8 @@
     .adm-mxv-scroll::-webkit-scrollbar { display:none; }
     .adm-mxv-h { display:flex; align-items:center; font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); }
     .adm-mxv-h.is-6 { color:var(--accent); }
+    /* Bilinçli istisna (44px kuralı): 390'da 7 gün sütunu ~35px genişliğe sığar; tasarım (M_AdminPaneli) 36px hücre,
+       3px aralık — genişletilmiş alan komşu hücreye taşardı. Klavye: ok tuşlarıyla hücre gezinme. */
     .adm-mxv-grid .adm-cell { height:36px; }
     .adm-mxv::after { content:''; position:absolute; left:0; right:0; bottom:0; height:34px; background:linear-gradient(180deg, transparent, var(--bg)); pointer-events:none; }
     .adm-legend--avail { padding-top:4px; }
@@ -1022,6 +1050,7 @@
     .adm-stu-plan > span:first-child { font-size:13px; color:var(--fg-soft); }
     .adm-stu-plan strong { color:var(--accent); font-weight:600; }
     .adm-stu-per { font-family:var(--ff-mono); font-size:11px; color:var(--fg-faint); }
+    .adm-stu.is-open .adm-stu-per { color:var(--fg-3); }
     .adm-stu-prog { display:flex; flex-direction:column; gap:6px; }
     .adm-stu-prog > span:first-child { font-family:var(--ff-mono); font-size:11px; color:var(--fg-muted); text-transform:uppercase; }
     .adm-bar { display:block; height:4px; border-radius:2px; background:var(--track-2); overflow:hidden; }
@@ -1101,7 +1130,7 @@
 
     /* Ders "⋯" menüsü (position:fixed; JS konumlar) */
     .lesson-options-menu { position:fixed; z-index:var(--z-pop); min-width:200px; max-width:calc(100vw - 24px); overflow-y:auto; overscroll-behavior:contain; padding:6px; border-radius:var(--r-14); background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-pop); }
-    .lesson-options-item { display:block; width:100%; min-height:40px; padding:8px 12px; border:0; border-radius:var(--r-8); background:transparent; color:var(--fg); font-family:var(--ff); font-size:var(--fs-small); text-align:left; cursor:pointer; }
+    .lesson-options-item { display:block; width:100%; min-height:44px; padding:8px 12px; border:0; border-radius:var(--r-8); background:transparent; color:var(--fg); font-family:var(--ff); font-size:var(--fs-small); text-align:left; cursor:pointer; }
     .lesson-options-item:hover, .lesson-options-item:focus-visible { background:var(--surface-hi); outline:none; }
     .lesson-options-item.danger { color:var(--err); }
     .lesson-options-item.danger:hover { background:var(--err-soft); }
@@ -1147,7 +1176,9 @@
     .adm-qa-list { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px; scrollbar-width:thin; scrollbar-color:var(--bar-muted) transparent; }
     .adm .qa-group-head { margin:6px 0 0; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
     .adm .qa-question { flex-shrink:0; margin:0; padding:14px 16px; border-radius:var(--r-14); background:var(--bg); border:1px solid var(--line-div); display:flex; flex-direction:column; gap:10px; }
-    .adm .qa-question.solved { opacity:.72; }
+    /* çözülmüş soru: kart saydamlaşmaz (küçük metinler 4.5:1 altına düşerdi) — çerçeve + soru metni sönükleşir */
+    .adm .qa-question.solved { border-color:var(--ok-line); }
+    .adm .qa-question.solved .qa-q-text { color:var(--fg-muted); }
     .adm .qa-q-header { margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .adm .qa-q-avatar { border:0; width:26px; height:26px; border-radius:50%; background:var(--surface-4); display:flex; align-items:center; justify-content:center; overflow:hidden; font-size:11px; font-weight:700; flex-shrink:0; }
     .adm .qa-q-avatar img { width:100%; height:100%; object-fit:cover; }
@@ -1325,6 +1356,9 @@
       .adm-stu-acts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); padding-top:0; }
       .adm-stu-acts > .adm-act--full, .adm-stu-acts > .adm-stu-note, .adm-stu-acts > .adm-act-note, .adm-stu-acts > .adm-act-row { grid-column:1 / -1; }
       .adm-act { min-height:44px; }
+      /* iletişim satırları 44px: "düzenle" ve seviye rozetinin genişletilmiş dokunma alanları çakışmasın */
+      .adm-stu-contact { row-gap:0; }
+      .adm-stu-contact > span { display:flex; flex-wrap:wrap; align-items:center; column-gap:6px; min-height:44px; }
       .adm-selall, .adm-mini, .adm-dots { min-height:44px; }
       .adm-dots { width:44px; }
       .adm-lsel { min-height:48px; }
@@ -1355,13 +1389,15 @@
       .adm-avail-act .btn { width:100%; height:44px; }
       .adm-avail-box { padding:0; border:0; background:transparent; }
       .adm-legend--avail { font-size:11px; gap:6px 10px; }
-      .adm-info3 { grid-template-columns:minmax(0,1fr); }
+      /* M_AdminPaneli: yan yana iki küçük kart (yaklaşan · erteleme), tarih aralığı üstte tam genişlik */
+      .adm-info3 { gap:6px; }
+      .adm-info { padding:10px; border-radius:var(--r-10); gap:3px; font-size:10px; }
       .adm-bulk .btn { flex:1 1 auto; }
       .adm-month { width:100%; justify-content:space-between; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609271200"></script>
-<script src="assets/js/love-nav.js?v=202609271200"></script>
+<script src="assets/js/i18n.js?v=202609281800"></script>
+<script src="assets/js/love-nav.js?v=202609281800"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="booking"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -1685,8 +1721,11 @@
           <a class="adm-nav-a" href="/love" data-be-love data-i18n="be_love_short">Sevgim</a>
         </nav>
         <div class="adm-user">
-          <span class="adm-user-ava" id="admUserAva" aria-hidden="true"></span>
-          <span class="adm-user-txt"><span class="adm-user-name" id="admUserName"></span><span class="adm-user-role" data-i18n="adm_role">Admin</span></span>
+          <a class="adm-user-link" href="/profile">
+            <span class="adm-user-ava" id="admUserAva" aria-hidden="true"></span>
+            <span class="adm-user-txt"><span class="adm-user-name" id="admUserName"></span><span class="adm-user-role" data-i18n="adm_role">Admin</span></span>
+            <span class="sr-only">— <span data-i18n="nav_profile">Profil</span></span>
+          </a>
           <div class="adm-user-tools">
             <div class="be-lang adm-lang" role="group" aria-label="Dil" data-bk-aria="be_lang"><button type="button" class="lang-btn" data-lang="tr">TR</button><button type="button" class="lang-btn" data-lang="en">EN</button></div>
             <button type="button" class="adm-iconbtn" id="admSignOut" aria-label="Çıkış yap" data-bk-aria="ui_signout" title="Çıkış yap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10"/></svg></button>
@@ -2120,6 +2159,46 @@ function showChoiceModal({ title, body = '', choices }) {
   });
 }
 
+// Öğrenci pencereleri (ertele, ek hak, hoş geldin, numara kaydedildi) için ortak erişilebilirlik:
+// role=dialog + aria-modal + başlık bağı, açılışta odak pencereye, Tab pencere içinde döner,
+// Escape kapatır (escape:false değilse), kapanınca odak pencereyi açan öğeye geri döner.
+// Dönen close() pencereyi kaldırır; pencere başka yoldan kaldırılırsa dinleyici ilk tuşta temizlenir.
+function bkDialog(overlay, box, { title, focus, escape = true } = {}) {
+  const opener = document.activeElement;
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  const titleEl = title ? box.querySelector(title) : null;
+  if (titleEl) {
+    if (!titleEl.id) titleEl.id = 'bkDlg' + Math.random().toString(36).slice(2, 8);
+    box.setAttribute('aria-labelledby', titleEl.id);
+  }
+  const focusables = () => [...box.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+    .filter(el => el.getClientRects().length);
+  const onKey = e => {
+    if (!overlay.isConnected) { document.removeEventListener('keydown', onKey); return; }
+    if (e.key === 'Escape' && escape) { e.preventDefault(); close(); return; }
+    if (e.key !== 'Tab') return;
+    const f = focusables();
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (!box.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  function close() {
+    document.removeEventListener('keydown', onKey);
+    if (!overlay.isConnected) return;
+    overlay.remove();
+    if (opener && opener !== document.body && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+  }
+  document.addEventListener('keydown', onKey);
+  setTimeout(() => {
+    if (!overlay.isConnected) return;
+    ((focus && box.querySelector(focus)) || focusables()[0])?.focus();
+  }, 60);
+  return close;
+}
+
 // Bump this whenever the rule text/set below changes, so old acceptances
 // (stored with a prior version tag) aren't confused with new ones.
 const RULES_CONSENT_VERSION = 'per-rule-v1';
@@ -2144,22 +2223,25 @@ function showRulesAcceptanceModal() {
     const box = document.createElement('div');
     box.className = 'modal modal-lg rules-modal';
     box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-labelledby', 'rulesModalTitle');
+    // Görünen metin dile göre (başlık bk_rule_<id>, açıklama bks_rc_<id>); kayıt yalnız id + zaman tutar.
+    const _ruleTitle = r => bkT('bk_rule_' + r.id, r.title);
+    const _ack = bkT('bks_rules_ack', 'Okudum, onaylıyorum');
     const itemsHtml = RULES_CONSENT_ITEMS.map(r => `
         <div class="rule-row">
-          <div class="rule-row-text"><strong>${r.title}:</strong> ${r.desc}</div>
+          <div class="rule-row-text"><strong>${_ruleTitle(r)}:</strong> ${bkT('bks_rc_' + r.id, r.desc)}</div>
           <label class="rule-check">
-            <input type="checkbox" class="ruleItemCb" data-rule-id="${r.id}" data-rule-title="${r.title}">
-            <span>Okudum, onaylıyorum</span>
+            <input type="checkbox" class="ruleItemCb" data-rule-id="${r.id}" data-rule-title="${escHtml(_ruleTitle(r))}">
+            <span>${_ack}</span>
           </label>
         </div>`).join('');
     box.innerHTML = `
       <div class="modal-eyebrow">${bkT('bks_rules_eyebrow', 'Son adım')}</div>
-      <div class="modal-title" id="rulesModalTitle">Ders Kuralları — Onay Gerekli</div>
-      <div class="modal-body">Devam etmeden önce her kuralı tek tek okuyup ayrı ayrı onaylaman gerekiyor.</div>
+      <div class="modal-title" id="rulesModalTitle">${bkT('bks_rules_modal_title', 'Ders Kuralları — Onay Gerekli')}</div>
+      <div class="modal-body">${bkT('bks_rules_modal_body', 'Devam etmeden önce her kuralı tek tek okuyup ayrı ayrı onaylaman gerekiyor.')}</div>
       <div id="rulesProgress" class="rules-progress"><span id="rulesProgressTxt"></span><span class="rules-bar" aria-hidden="true"><i></i></span></div>
       <div id="rulesList">${itemsHtml}</div>
       <div id="rulesMissing" class="rules-missing" style="display:none;"></div>
-      <button id="rulesAcceptBtn" class="btn btn-primary btn-block rules-accept" disabled>Onaylıyorum ve devam et</button>`;
+      <button id="rulesAcceptBtn" class="btn btn-primary btn-block rules-accept" disabled>${bkT('bks_rules_accept', 'Onaylıyorum ve devam et')}</button>`;
     overlay.append(box);
     document.body.append(overlay);
     const btn = box.querySelector('#rulesAcceptBtn');
@@ -2170,13 +2252,13 @@ function showRulesAcceptanceModal() {
     const updateProgress = () => {
       const checked = cbs.filter(c => c.checked);
       const allChecked = checked.length === cbs.length;
-      progressEl.querySelector('#rulesProgressTxt').textContent = `${checked.length}/${cbs.length} onaylandı`;
+      progressEl.querySelector('#rulesProgressTxt').textContent = bkT('bks_rules_progress', '{n}/{m} onaylandı').replace('{n}', checked.length).replace('{m}', cbs.length);
       progressEl.querySelector('.rules-bar i').style.transform = `scaleX(${cbs.length ? checked.length / cbs.length : 0})`;
       progressEl.classList.toggle('is-ok', allChecked);
       cbs.forEach(c => c.closest('.rule-row')?.classList.toggle('is-checked', c.checked));
       const missingTitles = cbs.filter(c => !c.checked).map(c => c.dataset.ruleTitle);
       missingEl.style.display = missingTitles.length ? '' : 'none';
-      missingEl.textContent = missingTitles.length ? `Eksik onay: ${missingTitles.join(', ')}` : '';
+      missingEl.textContent = missingTitles.length ? bkT('bks_rules_missing', 'Eksik onay: {list}').replace('{list}', missingTitles.join(', ')) : '';
       btn.disabled = !allChecked;
     };
     cbs.forEach(cb => {
@@ -2201,52 +2283,54 @@ function showExtraCreditModal(studentName, monthKey) {
   const PRICE_PER = 500;
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
-  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
   const box = document.createElement('div');
   box.className = 'modal ec-modal';
+  const _copyLbl = bkT('bk_pay_copy', 'Kopyala');
   box.innerHTML = `
-    <div class="modal-title">Ek Erteleme Hakkı Al</div>
-    <button id="ecClose" class="modal-close" aria-label="Kapat">✕</button>
-    <div class="modal-body">Almak istediğin hak sayısını seç. Her ek hak <strong class="text-accent">500 TL</strong>. Ödeme sonrası WhatsApp'tan bildirince hakkın hesabına tanımlanır.</div>
+    <div class="modal-title">${bkT('bks_ec_title', 'Ek Erteleme Hakkı Al')}</div>
+    <button id="ecClose" class="modal-close" aria-label="${escHtml(bkT('bk_pt_close', 'Kapat'))}">✕</button>
+    <div class="modal-body">${bkT('bks_ec_body_html', `Almak istediğin hak sayısını seç. Her ek hak <strong class="text-accent">500 TL</strong>. Ödeme sonrası WhatsApp'tan bildirince hakkın hesabına tanımlanır.`)}</div>
 
-    <div class="field-label ec-label">Adet</div>
-    <div id="ecQtyRow" class="ec-qty-row">
-      ${[1,2,3,4,5].map(n=>`<button type="button" data-qty="${n}" class="ecQty btn btn-ghost">${n}</button>`).join('')}
+    <div class="field-label ec-label" id="ecQtyLbl">${bkT('bks_ec_qty', 'Adet')}</div>
+    <div id="ecQtyRow" class="ec-qty-row" role="group" aria-labelledby="ecQtyLbl">
+      ${[1,2,3,4,5].map(n=>`<button type="button" data-qty="${n}" class="ecQty btn btn-ghost" aria-pressed="false">${n}</button>`).join('')}
     </div>
 
-    <div class="ec-total">
+    <div class="ec-total" aria-live="polite">
       <div class="ec-total-row">
-        <span>Toplam Tutar</span>
+        <span>${bkT('bks_ec_total', 'Toplam Tutar')}</span>
         <strong id="ecTotal" class="ec-total-val">— TL</strong>
       </div>
       <div class="ec-total-row ec-total-sub">
-        <span>Erteleme hakkı bedeli</span>
+        <span>${bkT('bks_ec_fee', 'Erteleme hakkı bedeli')}</span>
         <span id="ecBreakdown">500 TL × —</span>
       </div>
     </div>
 
     <div id="ecPayBox" class="pay-table" style="display:none;">
-      <div class="pay-table-title">Ödeme Bilgileri</div>
+      <div class="pay-table-title">${bkT('bk_pay_info_title', 'Ödeme Bilgileri')}</div>
       <div class="pay-table-row">
-        <span class="pay-table-key">Banka</span>
+        <span class="pay-table-key">${bkT('bk_pay_bank', 'Banka')}</span>
         <span class="pay-table-val">Garanti Bankası</span>
       </div>
       <div class="pay-table-row">
-        <span class="pay-table-key">İsim</span>
+        <span class="pay-table-key">${bkT('bk_pay_name_label', 'İsim')}</span>
         <span class="pay-table-val">Muhammet Berkay Er</span>
       </div>
       <div class="pay-table-row">
-        <span class="pay-table-key">IBAN</span>
+        <span class="pay-table-key">${bkT('bk_pay_iban', 'IBAN')}</span>
         <span class="pay-table-val">TR35 0006 2000 6870 0006 8982 06</span>
-        <button id="ecCopy" class="btn btn-sm btn-ghost">Kopyala</button>
+        <button id="ecCopy" class="btn btn-sm btn-ghost">${_copyLbl}</button>
       </div>
-      <div class="pay-table-note">Açıklama kısmına <strong>hiçbir şey yazmayınız.</strong></div>
+      <div class="pay-table-note">${bkT('bk_pay_warn', 'Lütfen açıklama kısmına <strong>hiçbir şey yazmayınız.</strong>')}</div>
     </div>
 
-    <button id="ecWaBtn" class="btn btn-ok btn-block" disabled>Ödedim — WhatsApp ile bildir</button>
+    <button id="ecWaBtn" class="btn btn-ok btn-block" disabled>${bkT('bks_ec_wa', 'Ödedim — WhatsApp ile bildir')}</button>
   `;
   overlay.append(box);
   document.body.append(overlay);
+  const closeEc = bkDialog(overlay, box, { title: '.modal-title', focus: '.ecQty' });
+  overlay.onclick = (e) => { if (e.target === overlay) closeEc(); };
 
   let qty = 0;
   const totalEl = box.querySelector('#ecTotal');
@@ -2263,6 +2347,7 @@ function showExtraCreditModal(studentName, monthKey) {
     waBtn.disabled = false;
     box.querySelectorAll('.ecQty').forEach(b => {
       b.classList.toggle('active', parseInt(b.dataset.qty) === n);
+      b.setAttribute('aria-pressed', parseInt(b.dataset.qty) === n ? 'true' : 'false');
     });
   }
 
@@ -2273,7 +2358,7 @@ function showExtraCreditModal(studentName, monthKey) {
   box.querySelector('#ecCopy').onclick = function() {
     navigator.clipboard.writeText('TR350006200068700006898206');
     this.textContent = '✓';
-    setTimeout(() => this.textContent = 'Kopyala', 1500);
+    setTimeout(() => this.textContent = _copyLbl, 1500);
   };
 
   waBtn.onclick = () => {
@@ -2283,7 +2368,7 @@ function showExtraCreditModal(studentName, monthKey) {
     window.open(`https://wa.me/905523070067?text=${msg}`, '_blank', 'noopener');
   };
 
-  box.querySelector('#ecClose').onclick = () => overlay.remove();
+  box.querySelector('#ecClose').onclick = closeEc;
 }
 
 function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
@@ -2654,9 +2739,8 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
       </div>
     </div>` });
   document.body.append(modal);
-  const _reschEsc = e => { if (e.key === 'Escape') { modal.remove(); document.removeEventListener('keydown', _reschEsc); } };
-  document.addEventListener('keydown', _reschEsc);
-  modal.querySelector('#reschCancel').onclick = () => { modal.remove(); document.removeEventListener('keydown', _reschEsc); };
+  const closeResch = bkDialog(modal, modal.querySelector('.modal'), { title: '.modal-title', focus: '#reschSave' });
+  modal.querySelector('#reschCancel').onclick = closeResch;
   modal.querySelector('#reschSave').onclick = async () => {
     const saveBtn = modal.querySelector('#reschSave');
     saveBtn.disabled = true; saveBtn.textContent = '⏳';
@@ -2693,8 +2777,7 @@ async function rescheduleLesson(lesson, idx, allLessons, res) {
         status: 'pending',
         created_at: firebase.firestore.FieldValue.serverTimestamp(),
       });
-      modal.remove();
-      document.removeEventListener('keydown', _reschEsc);
+      closeResch();
       toast(window._i18n?.t('bk_resched_req_sent')||'✓ Erteleme talebi gönderildi — onaylanınca takvimin güncellenir.');
       renderDashboard();
     } catch(e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); saveBtn.disabled = false; saveBtn.textContent = window._i18n?.t('bk_resched_req_btn')||'Talep Gönder'; }
@@ -3037,10 +3120,10 @@ function pkgPlanText(p) {
 }
 // "Haftada 2 ders saati" — öğrencinin ızgaradan seçeceği haftalık saat sayısı
 function pkgWeeklyText(p) { return pkgT('bk_pkg_weekly', 'Haftada {n} ders saati').replace('{n}', p.weekly).replace('{s}', p.weekly > 1 ? 's' : ''); }
-// Admin satırları (yalnız Türkçe): "Profesyonel · 3 Ay · 24 saat · %20 · 48.000 TL"
+// Admin satırları: "Profesyonel · 3 Ay · 24 saat · %20 · 48.000 TL" (EN: "Professional · 3 mo · 24 hrs · 20% · …")
 function pkgAdminLine(pkg) {
   const pp = packagePrice(pkg);
-  return [pkg.name, `${pkg.months} Ay`, `${pp.hours} saat`, pkg.discount ? `%${pkg.discount}` : '', tlFmt(pp.total)].filter(Boolean).join(' · ');
+  return [pkgName(pkg), pkgMonthsHours(pkg.months, pp.hours), pkg.discount ? pkgPct(pkg.discount) : '', tlFmt(pp.total)].filter(Boolean).join(' · ');
 }
 
 // Kampanya tablosu (DersPaneli): radyo · PAKET (ad + açılım) · SAAT · LİSTE · İNDİRİM ·
@@ -3105,13 +3188,17 @@ function renderPackageStrip() {
   const { first, cheapest, maxDiscount } = packageExtremes();
   if (!first) { el.innerHTML = ''; return; }
   const perHour = pkgT('bk_pkg_strip_per_hour', '{name} · saat başı');
+  // Telefonda (M_DersPaneli) yalnız iki hücre: en ucuz saat başı + maksimum avantaj.
+  // Rol sınıfları ≤600'de ilk paket (en ucuz değilse) ve deneme hücresini gizler.
+  const cheapLbl = name => `<span class="bk-desk">${perHour.replace('{name}', name)}</span><span class="bk-mob">${pkgT('bks_strip_cheapest', 'En ucuz saat başı')}</span>`;
+  const sameFirst = first.id === cheapest.id;
   const cells = [
-    [tlFmt(packagePrice(first).perHour),    perHour.replace('{name}', pkgName(first))],
-    first.id !== cheapest.id ? [tlFmt(packagePrice(cheapest).perHour), perHour.replace('{name}', pkgName(cheapest))] : null,
-    maxDiscount > 0 ? [pkgPct(maxDiscount), pkgT('bk_pkg_strip_max', 'Maksimum avantaj')] : null,
-    [tlFmt(LESSON_PRICE_TRIAL),             pkgT('bk_pkg_strip_trial', 'Deneme dersi')],
+    [tlFmt(packagePrice(first).perHour),    sameFirst ? cheapLbl(pkgName(first)) : perHour.replace('{name}', pkgName(first)), sameFirst ? 'first bk-strip-cell--cheap' : 'first'],
+    sameFirst ? null : [tlFmt(packagePrice(cheapest).perHour), cheapLbl(pkgName(cheapest)), 'cheap'],
+    maxDiscount > 0 ? [pkgPct(maxDiscount), pkgT('bk_pkg_strip_max', 'Maksimum avantaj'), 'max'] : null,
+    [tlFmt(LESSON_PRICE_TRIAL),             pkgT('bk_pkg_strip_trial', 'Deneme dersi'), 'trial'],
   ].filter(Boolean);
-  el.innerHTML = cells.map(([v, l]) => `<div class="bk-strip-cell"><span class="bk-strip-val">${v}</span><span class="bk-strip-lbl">${l}</span></div>`).join('');
+  el.innerHTML = cells.map(([v, l, role]) => `<div class="bk-strip-cell bk-strip-cell--${role}"><span class="bk-strip-val">${v}</span><span class="bk-strip-lbl">${l}</span></div>`).join('');
 }
 
 // Radiogroup klavyesi: oklar seçimi taşır (Home/End uçlar), Enter/Space seçer.
@@ -3332,7 +3419,8 @@ function parsePhoneInput(raw) {
   }
   return { ok: false };
 }
-const PHONE_HELP_TEXT = 'TR: 05XX XXX XX XX · Yurt dışı: + ile başlayan numara (örn: +1 617 388 4403)';
+// Telefon biçimi yardımı (dile göre; hata ve durum metinlerinde kullanılır)
+function phoneHelpText() { return bkT('bks_phone_fmt', 'TR: 05XX XXX XX XX · Yurt dışı: + ile başlayan numara (örn: +1 617 388 4403)'); }
 
 // ─── Submit Request ───────────────────────────────────────
 async function submitRequest() {
@@ -3379,7 +3467,7 @@ async function submitRequest() {
   const phoneRaw = document.getElementById('reqPhone')?.value.trim() || '';
   const _phoneParsed = parsePhoneInput(phoneRaw);
   if (!_phoneParsed.ok) {
-    errEl.textContent = 'Geçerli bir cep telefonu numarası gir (' + PHONE_HELP_TEXT + ').';
+    errEl.textContent = bkT('bks_phone_err', 'Geçerli bir cep telefonu numarası gir ({help}).').replace('{help}', phoneHelpText());
     errEl.style.display = '';
     const _phEl = document.getElementById('reqPhone');
     if (_phEl) {
@@ -3463,22 +3551,29 @@ function ptWatchAll() {
 }
 
 // Satırlara gömülen rozet: <span class="badge ..." data-pt-uid="UID">
-function ptBadgeHtml(uid) {
+// asButton: satırın kendisi düğme değilse (talep satırı, öğrenci detayı) klavyeyle ulaşılan
+// <button> — detay + "Sınavı Sıfırla" başka yoldan açılmıyor. Öğrenci satırı zaten <button>: span kalır.
+function ptBadgeHtml(uid, asButton) {
   const d = _ptMap[uid];
-  if (!d) return `<span class="badge warn name-badge" data-pt-uid="${uid}" title="Seviye belirleme sınavı henüz çözülmedi">Sınav bekleniyor</span>`;
-  const tone = d.score >= 76 ? 'accent' : d.score >= 51 ? 'info' : d.score >= 26 ? 'ok' : '';
-  return `<span class="badge ${tone} name-badge" data-pt-uid="${uid}" title="Detay için tıkla">${d.level_tr} · ${d.score}/100</span>`;
+  const tag = asButton ? 'button' : 'span';
+  const lvl = d ? (window._i18n?.getLang() === 'en' ? (d.level_en || d.level_tr) : d.level_tr) : '';
+  const text = d ? `${lvl} · ${d.score}/100` : bkT('adm_pt_pending', 'Sınav bekleniyor');
+  const title = d ? bkT('adm_pt_detail_title', 'Detay için tıkla') : bkT('adm_pt_pending_title', 'Seviye belirleme sınavı henüz çözülmedi');
+  const tone = !d ? 'warn' : d.score >= 76 ? 'accent' : d.score >= 51 ? 'info' : d.score >= 26 ? 'ok' : '';
+  const btnAttrs = asButton ? ` type="button" aria-label="${escHtml(text + ' — ' + bkT('adm_pt_detail_aria', 'seviye sınavı detayı'))}"` : '';
+  return `<${tag} class="badge ${tone} name-badge${asButton ? ' adm-ptbtn' : ''}" data-pt-uid="${escHtml(uid)}" title="${escHtml(title)}"${btnAttrs}>${escHtml(text)}</${tag}>`;
 }
 
 function ptRefreshBadges() {
   document.querySelectorAll('[data-pt-uid]').forEach(el => {
     const uid = el.getAttribute('data-pt-uid');
     const tmp = document.createElement('div');
-    tmp.innerHTML = ptBadgeHtml(uid);
+    tmp.innerHTML = ptBadgeHtml(uid, el.tagName === 'BUTTON');
     const fresh = tmp.firstElementChild;
     el.className = fresh.className;
     el.textContent = fresh.textContent;
     el.title = fresh.title;
+    if (fresh.hasAttribute('aria-label')) el.setAttribute('aria-label', fresh.getAttribute('aria-label'));
   });
 }
 
@@ -3832,13 +3927,13 @@ async function renderPendingView(reqData) {
     waBox.innerHTML = `
       <span class="be-callout-icon" aria-hidden="true"><svg class="icon"><use href="/assets/img/icons.svg#i-whatsapp"/></svg></span>
       <div class="bk-phone-main">
-        <strong class="bk-callout-title">Önemli — WhatsApp iletişimini sen başlatmalısın</strong>
-        <p>Sana <strong>WhatsApp üzerinden</strong> dönüş yapılacak. Ancak WhatsApp politikası gereği <strong class="be-accent">önce senin kısa bir mesaj atman gerekiyor</strong> — aksi halde sana cevap yazılamıyor. Aşağıdaki butona basarak hazır metni gönder, 1 saniyede halledersin.</p>
+        <strong class="bk-callout-title">${bkT('bks_wa_first_title', 'Önemli — WhatsApp iletişimini sen başlatmalısın')}</strong>
+        <p>${bkT('bks_wa_first_desc_html', 'Sana <strong>WhatsApp üzerinden</strong> dönüş yapılacak. Ancak WhatsApp politikası gereği <strong class="be-accent">önce senin kısa bir mesaj atman gerekiyor</strong> — aksi halde sana cevap yazılamıyor. Aşağıdaki butona basarak hazır metni gönder, 1 saniyede halledersin.')}</p>
         <a href="${_waLink}" target="_blank" rel="noopener" class="btn btn-ok btn-lg">
           <svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-whatsapp"/></svg>
-          WhatsApp ile mesaj at <span aria-hidden="true">→</span>
+          ${bkT('bks_wa_first_btn', 'WhatsApp ile mesaj at')} <span aria-hidden="true">→</span>
         </a>
-        <div class="form-status">Buton tıklanınca WhatsApp açılır, mesaj hazır. Sadece "Gönder"e basman yeterli.</div>
+        <div class="form-status">${bkT('bks_wa_first_hint', 'Buton tıklanınca WhatsApp açılır, mesaj hazır. Sadece "Gönder"e basman yeterli.')}</div>
       </div>
     `;
     actions.append(waBox);
@@ -4054,13 +4149,13 @@ async function renderDashboard() {
       const _parsed = parsePhoneInput(input.value || '');
       if (!_parsed.ok) {
         statusEl.style.color = 'var(--crimson)';
-        statusEl.textContent = 'Geçersiz numara. ' + PHONE_HELP_TEXT;
+        statusEl.textContent = bkT('bks_phone_invalid', 'Geçersiz numara.') + ' ' + phoneHelpText();
         return;
       }
       const raw = _parsed.bare;
       saveBtn.disabled = true;
       statusEl.style.color = 'var(--dim)';
-      statusEl.textContent = 'Kaydediliyor…';
+      statusEl.textContent = bkT('bk_pt_saving', 'Kaydediliyor…');
       try {
         await db.collection('reservations').doc(_user.uid).set(
           { student_phone: raw }, { merge: true }
@@ -4077,26 +4172,25 @@ async function renderDashboard() {
         const modal = Object.assign(document.createElement('div'), { innerHTML: `
           <div class="modal-overlay">
             <div class="modal modal-sm">
-              <div class="field-label text-ok">Son adım</div>
-              <div class="modal-title">Numaran kaydedildi</div>
-              <div class="modal-body">
-                Şimdi WhatsApp'tan bize bir kez mesaj at ki <strong>hatırlatma botumuz</strong> sana mesaj yollayabilsin (WhatsApp kuralı gereği).<br><br>
-                Aşağıdaki butona bas → WhatsApp açılır → hazır metni gönder, hepsi bu.
-              </div>
+              <div class="field-label text-ok">${bkT('bks_rules_eyebrow', 'Son adım')}</div>
+              <div class="modal-title">${bkT('bks_wa_saved_title', 'Numaran kaydedildi')}</div>
+              <div class="modal-body">${bkT('bks_wa_saved_body_html', `Şimdi WhatsApp'tan bize bir kez mesaj at ki <strong>hatırlatma botumuz</strong> sana mesaj yollayabilsin (WhatsApp kuralı gereği).<br><br>Aşağıdaki butona bas → WhatsApp açılır → hazır metni gönder, hepsi bu.`)}</div>
               <div class="modal-actions modal-actions-stack">
-                <a href="${waUrl}" target="_blank" rel="noopener" id="studentWaFirstSend" class="btn btn-ok btn-block">WhatsApp'ı aç ve mesaj at</a>
-                <button id="studentWaSkip" class="btn btn-ghost btn-block">Daha sonra hatırlat</button>
+                <a href="${waUrl}" target="_blank" rel="noopener" id="studentWaFirstSend" class="btn btn-ok btn-block">${bkT('bks_wa_saved_open', `WhatsApp'ı aç ve mesaj at`)}</a>
+                <button id="studentWaSkip" class="btn btn-ghost btn-block">${bkT('bks_wa_saved_later', 'Daha sonra hatırlat')}</button>
               </div>
             </div>
           </div>
         ` });
         document.body.append(modal);
-        modal.querySelector('#studentWaSkip').onclick = () => modal.remove();
-        modal.querySelector('#studentWaFirstSend').onclick = () => setTimeout(() => modal.remove(), 400);
+        const closeWaSaved = bkDialog(modal, modal.querySelector('.modal'), { title: '.modal-title', focus: '#studentWaFirstSend' });
+        modal.querySelector('#studentWaSkip').onclick = closeWaSaved;
+        modal.querySelector('#studentWaFirstSend').onclick = () => setTimeout(closeWaSaved, 400);
       } catch (e) {
         const c = errId();
         statusEl.style.color = 'var(--crimson)';
-        statusEl.textContent = `Hata (${c}): ${e.message || e.code || 'kaydedilemedi'}`;
+        const _en = window._i18n?.getLang() === 'en';
+        statusEl.textContent = `${_en ? 'Error' : 'Hata'} (${c}): ${e.message || e.code || (_en ? 'could not be saved' : 'kaydedilemedi')}`;
         saveBtn.disabled = false;
       }
     };
@@ -4210,6 +4304,9 @@ async function renderDashboard() {
     document.getElementById('paymentBox').innerHTML = '';
     document.getElementById('creditBadge').style.display = 'none';
   }
+  // Denemede ödeme/erteleme/ek ders kutuları boş: kap akışta kalıp panel aralığını ikiye katlamasın
+  const _moneyBox = document.querySelector('#view-dashboard .bk-money');
+  if (_moneyBox) _moneyBox.hidden = isTrial;
 
   const curMonthKey = yearMonthKey(today);
   const totalLessonsCount = lessons.filter(l => l.status !== 'cancelled').length;
@@ -4222,21 +4319,20 @@ async function renderDashboard() {
   const _remaining = totalRescheduleCredits(res);
   const _pkgMonths = res.duration_months || 1;
   const _curSummary = _remaining > 0
-    ? `<strong class="text-ok">${_remaining} hak</strong> kaldı`
-    : `<strong class="text-err">hak kalmadı</strong>`;
+    ? bkT('bks_credit_left_html', '<strong class="text-ok">{n} hak</strong> kaldı').replace('{n}', _remaining)
+    : bkT('bks_credit_none_html', '<strong class="text-err">hak kalmadı</strong>');
   document.getElementById('creditBadge').innerHTML = `
     <details class="bk-credit">
       <summary>
         <span class="bk-credit-ico" aria-hidden="true"><svg class="icon"><use href="/assets/img/icons.svg#i-refresh"/></svg></span>
-        <span><span class="bk-credit-t">Erteleme Hakkı</span> <span class="bk-credit-s">— ${_curSummary}</span></span>
+        <span><span class="bk-credit-t">${bkT('bks_credit_title', 'Erteleme Hakkı')}</span> <span class="bk-credit-s">— ${_curSummary}</span></span>
         <svg class="icon bk-chev" aria-hidden="true"><use href="/assets/img/icons.svg#i-chevron-down"/></svg>
       </summary>
       <div class="bk-credit-body">
-        <p>
-          Paketin: <strong>${_pkgMonths} aylık</strong> → toplam <strong>${_pkgMonths} erteleme hakkı</strong> · Kalan: <strong class="${_remaining > 0 ? 'text-ok' : 'text-err'}">${_remaining}</strong>
-        </p>
-        <p class="bk-credit-note">Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong>${totalLessonsCount}</strong>.</p>
-        <button type="button" class="btn btn-sm btn-dashed" onclick="window._openExtraCreditModal()">+ Ek Hak Al (500 TL)</button>
+        <p>${bkT('bks_credit_pkg_html', 'Paketin: <strong>{m} aylık</strong> → toplam <strong>{m} erteleme hakkı</strong> · Kalan: <strong class="{cls}">{n}</strong>')
+          .replace(/\{m\}/g, _pkgMonths).replace('{n}', _remaining).replace('{cls}', _remaining > 0 ? 'text-ok' : 'text-err')}</p>
+        <p class="bk-credit-note">${bkT('bks_credit_note_html', 'Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong>{n}</strong>.').replace('{n}', totalLessonsCount)}</p>
+        <button type="button" class="btn btn-sm btn-dashed" onclick="window._openExtraCreditModal()">${bkT('bks_credit_buy', '+ Ek Hak Al (500 TL)')}</button>
       </div>
     </details>`;
 
@@ -4564,11 +4660,10 @@ async function renderDashboard() {
     setTimeout(() => {
       const ov = document.createElement('div');
       ov.className = 'modal-overlay';
-      ov.onclick = e => { if(e.target===ov) ov.remove(); };
       const _wi = window._i18n;
       ov.innerHTML = `
         <div class="modal welcome-modal">
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()" aria-label="Kapat">✕</button>
+          <button type="button" class="modal-close" aria-label="${escHtml(bkT('bk_pt_close', 'Kapat'))}">✕</button>
           <div class="modal-title">${_wi?.t('bk_welcome_title')||'Ders panelinize hoş geldiniz'}</div>
           <div class="field-label welcome-sub">${_wi?.t('bk_welcome_subtitle')||'Birkaç önemli bilgi:'}</div>
 
@@ -4595,9 +4690,13 @@ async function renderDashboard() {
             </div>
           </div>
 
-          <button class="btn btn-primary btn-block" onclick="this.closest('.modal-overlay').remove()">${_wi?.t('bk_welcome_ok')||'Anladım'}</button>
+          <button type="button" class="btn btn-primary btn-block welcome-done">${_wi?.t('bk_welcome_ok')||'Anladım'}</button>
         </div>`;
       document.body.append(ov);
+      const closeWelcome = bkDialog(ov, ov.querySelector('.welcome-modal'), { title: '.modal-title', focus: '.modal-close' });
+      ov.onclick = e => { if (e.target === ov) closeWelcome(); };
+      ov.querySelector('.modal-close').onclick = closeWelcome;
+      ov.querySelector('.welcome-done').onclick = closeWelcome;
     }, 700);
   }
   }, e => {
@@ -4633,6 +4732,8 @@ const _admNarrowMq = window.matchMedia('(max-width:1279px)');
 function escHtml(v) {
   return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+// "1 lesson" / "3 lessons" (TR'de ikisi de "ders")
+function admLessonsLc(n) { return n === 1 ? bkT('adm_lesson_lc_one', 'ders') : bkT('adm_lessons_lc', 'ders'); }
 function admSet(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
 function admStatus(el, text, kind) {
   if (!el) return;
@@ -5081,14 +5182,14 @@ function renderAdminRequests(reqSnap) {
         const pills = row.querySelector('.adm-rq-meta');
         if (!pills) return;
         pills.hidden = false; pills.textContent = '';
-        if (!rs.exists) { pills.insertAdjacentHTML('beforeend', '<span class="adm-tag adm-tag--err">Rezervasyon yok</span>'); return; }
+        if (!rs.exists) { pills.insertAdjacentHTML('beforeend', `<span class="adm-tag adm-tag--err">${escHtml(bkT('adm_pay_nores', 'Rezervasyon yok'))}</span>`); return; }
         const rd = rs.data();
         const expected = reservationTotalPrice(rd);
         const pk = reservationPackageInfo(rd);
-        if (pk) pills.insertAdjacentHTML('beforeend', `<span class="adm-tag">${escHtml(pk.name)}${pk.pct ? ` · %${pk.pct}` : ''}</span>`);
+        if (pk) pills.insertAdjacentHTML('beforeend', `<span class="adm-tag">${escHtml(pkgName(pk))}${pk.pct ? ` · ${pkgPct(pk.pct)}` : ''}</span>`);
         pills.insertAdjacentHTML('beforeend', expected === (r.total_price || 0)
-          ? '<span class="adm-tag">rezervasyonla aynı</span>'
-          : `<span class="adm-tag adm-tag--err">Rezervasyon: ${tlFmt(expected)} — tutar uyuşmuyor</span>`);
+          ? `<span class="adm-tag">${escHtml(bkT('adm_pay_match', 'rezervasyonla aynı'))}</span>`
+          : `<span class="adm-tag adm-tag--err">${escHtml(bkT('adm_pay_mismatch', 'Rezervasyon: {price} — tutar uyuşmuyor').replace('{price}', tlFmt(expected)))}</span>`);
       }).catch(() => {});
       approveBtn.onclick = async () => {
         approveBtn.disabled = true;
@@ -5176,14 +5277,14 @@ function renderAdminRequests(reqSnap) {
     else lines.push(escHtml(daysText) || '—');
     const badTitle = `Talep: ${r.package_name || (reqPkg.pkg ? reqPkg.pkg.name : 'tanınmayan paket')} · ${Number(r.duration_months) || 0} ay · haftada ${(r.schedule||[]).length} saat`;
     const meta = isTrialReq ? '' : `<span class="adm-tag adm-tag--gold">${escHtml(reqTotalPrice.toLocaleString('tr-TR'))} TL</span>
-      <span class="adm-tag">${reqLessonCount} ${escHtml(bkT('adm_lessons_lc', 'ders'))}</span>
+      <span class="adm-tag">${reqLessonCount} ${escHtml(admLessonsLc(reqLessonCount))}</span>
       ${reqPkgBad ? `<span class="adm-tag adm-tag--err" title="${escHtml(badTitle)}">${escHtml(admPkgReasonLabel(reqPkg.reason))}</span>` : ''}`;
 
     const lblAccept = bkT('adm_accept', 'Kabul et');
     const approveBtn = admBtn(lblAccept, 'btn btn-sm btn-primary');
     const rejectBtn = admBtn(lblReject, 'btn btn-sm btn-danger');
     const row = admReqRow({ name: who, photo: r.from_photo, chip: chip[0], tone: chip[1],
-      extra: r.from_uid ? ptBadgeHtml(r.from_uid) : '', lines, phone: r.from_phone, meta, note: r.note,
+      extra: r.from_uid ? ptBadgeHtml(r.from_uid, true) : '', lines, phone: r.from_phone, meta, note: r.note,
       actions: [rejectBtn, approveBtn] });
 
     // Accept button
@@ -5376,7 +5477,7 @@ function admComputeStats(mk) {
       if (monthL > 0 || (d.payment_confirmed && paidKey === mk)) {
         const pk = reservationPackageInfo(d);
         per.push({ name: d.student_name || d.student_email || '—', lessons: monthL, totalLessons: totalNonCancelled,
-          total: pkgTotal, paid: !!d.payment_confirmed, pkg: pk ? `${pk.name}${pk.pct ? ` %${pk.pct}` : ''}` : '' });
+          total: pkgTotal, paid: !!d.payment_confirmed, pkg: pk ? `${pkgName(pk)}${pk.pct ? ` ${pkgPct(pk.pct)}` : ''}` : '' });
       }
     }
   });
@@ -5388,7 +5489,7 @@ function admRenderStats() {
   const mName = admMonthName(mk);
   admSet('admRevLabel', `${bkT('adm_rev_label', 'Aylık gelir')} · ${mName}`);
   admSet('admRevVal', tlNum(st.revenue));
-  admSet('admRevSub', `${st.paid} ${bkT('adm_rev_paid', 'öğrenci · ödeme onaylı')}${st.pending > 0 ? ` · ${st.pending} ${bkT('adm_rev_pending', 'beklemede')}` : ''}`);
+  admSet('admRevSub', `${st.paid} ${st.paid === 1 ? bkT('adm_rev_paid_one', 'öğrenci · ödeme onaylı') : bkT('adm_rev_paid', 'öğrenci · ödeme onaylı')}${st.pending > 0 ? ` · ${st.pending} ${bkT('adm_rev_pending', 'beklemede')}` : ''}`);
   admSet('admStatLessons', st.lessons);
   admSet('admStatActive', `${st.per.length} ${bkT('adm_stat_active_lc', 'aktif öğrenci')}`);
   admSet('admPerStuCount', st.per.length ? `(${st.per.length})` : '');
@@ -5403,7 +5504,7 @@ function admRenderStats() {
       <span class="adm-ps-name">${escHtml(p.name)} <b class="${p.paid ? 'adm-ok' : 'adm-err'}" aria-hidden="true">${p.paid ? '✓' : '•'}</b><span class="sr-only">${p.paid ? 'ödendi' : 'ödenmedi'}</span></span>
       <span class="adm-ps-bar" aria-hidden="true"><span${grow} style="--w:${Math.round(p.total / max * 100)}%"></span></span>
       <span class="adm-ps-amt">${tlNum(p.total)} ₺</span>
-      <span class="adm-ps-meta">${escHtml(bkT('adm_ps_month', 'Bu ay'))}: ${p.lessons} ${escHtml(bkT('adm_lessons_lc', 'ders'))} · ${escHtml(bkT('adm_ps_total', 'Toplam'))}: ${p.totalLessons} ${escHtml(bkT('adm_lessons_lc', 'ders'))}${p.pkg ? `<span class="adm-chip adm-chip--accent">${escHtml(p.pkg)}</span>` : ''}</span>
+      <span class="adm-ps-meta">${escHtml(bkT('adm_ps_month', 'Bu ay'))}: ${p.lessons} ${escHtml(admLessonsLc(p.lessons))} · ${escHtml(bkT('adm_ps_total', 'Toplam'))}: ${p.totalLessons} ${escHtml(admLessonsLc(p.totalLessons))}${p.pkg ? `<span class="adm-chip adm-chip--accent">${escHtml(p.pkg)}</span>` : ''}</span>
     </div>`).join('');
 }
 
@@ -5522,7 +5623,7 @@ function admRenderStudents() {
     art.className = 'adm-stu' + (open ? ' is-open' : '');
     const badges = [
       isTrial ? `<span class="badge ok">${escHtml(bkT('adm_cal_trial', 'Deneme'))}</span>` : '',
-      _resPk ? `<span class="badge accent">${escHtml(_resPk.name)}${_resPk.pct ? ` · %${_resPk.pct}` : ''}</span>` : '',
+      _resPk ? `<span class="badge accent">${escHtml(pkgName(_resPk))}${_resPk.pct ? ` · ${pkgPct(_resPk.pct)}` : ''}</span>` : '',
       !isTrial && s.price_source === 'admin' ? `<span class="badge warn">${escHtml(bkT('adm_custom_price', 'Özel fiyat'))}</span>` : '',
       finished ? `<span class="badge">${escHtml(bkT('adm_finished', 'Paket bitti'))}</span>` : '',
       ptBadgeHtml(studentUid),
@@ -5543,7 +5644,7 @@ function admRenderStudents() {
         <span class="adm-stu-plan">
           <span>${isTrial
             ? `${escHtml(bkT('adm_rq_trial', 'Deneme dersi'))} · <strong>${escHtml(bkT('adm_free', 'Ücretsiz'))}</strong>`
-            : `${s.duration_months || 0} ${escHtml(bkT('adm_month_cap', 'Ay'))} · ${totalLessons} ${escHtml(bkT('adm_lessons_lc', 'ders'))} · <strong>${tlNum(totalPrice)} TL</strong>`}</span>
+            : `${s.duration_months || 0} ${escHtml(bkT('adm_month_cap', 'Ay'))} · ${totalLessons} ${escHtml(admLessonsLc(totalLessons))} · <strong>${tlNum(totalPrice)} TL</strong>`}</span>
           <span class="adm-stu-per">${isTrial ? escHtml(bkT('adm_cal_trial', 'Deneme')).toLocaleUpperCase('tr-TR') : `${tlNum(lessonPrice)} TL/${escHtml(bkT('adm_per_lesson', 'ders'))}`}${_resPk && _resPk.discounted && _resPk.extraCount > 0 ? ` · paket ${tlFmt(_resPk.total)} + ${_resPk.extraCount} ek ders ${tlFmt(_resPk.extraPrice)}` : ''}</span>
         </span>
         <span class="adm-stu-prog"><span>${doneLessons} / ${totalLessons} ${escHtml(bkT('adm_done_lessons', 'ders tamam'))}</span><span class="adm-bar" aria-hidden="true"><span style="--w:${pct}%"></span></span></span>
@@ -5569,11 +5670,11 @@ function admRenderStudents() {
     const left = document.createElement('div');
     left.className = 'adm-stu-left';
     const lastRem = s.last_reminder_sent ? new Date(s.last_reminder_sent.toDate ? s.last_reminder_sent.toDate() : s.last_reminder_sent).toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-    const ptBtn = ptBadgeHtml(studentUid).replace('<span', '<button type="button"').replace(/<\/span>$/, '</button>');
+    const ptBtn = ptBadgeHtml(studentUid, true);
     left.innerHTML = `
       <div class="adm-info3">
         <div class="adm-info"><span>${escHtml(bkT('adm_range', 'Tarih aralığı'))}</span><span>${escHtml(startDateStr)} → ${escHtml(endDateStr)}</span></div>
-        <div class="adm-info"><span>${escHtml(bkT('adm_upcoming_month', 'Yaklaşan · bu ay'))}</span><span>${upcomingLessons.length} · ${thisMonthCount} ${escHtml(bkT('adm_lessons_lc', 'ders'))}</span></div>
+        <div class="adm-info"><span>${escHtml(bkT('adm_upcoming_month', 'Yaklaşan · bu ay'))}</span><span>${upcomingLessons.length} · ${thisMonthCount} ${escHtml(admLessonsLc(thisMonthCount))}</span></div>
         <div class="adm-info"><span>${escHtml(bkT('adm_credits', 'Erteleme hakkı'))}</span>${isTrial ? '<span>—</span>' : `<span class="${credits > 0 ? 'is-info' : 'is-err'}">${credits} ${escHtml(bkT('adm_left', 'kalan'))} (${s.duration_months || 1} ${escHtml(bkT('adm_month_pkg', 'aylık paket'))})</span>`}</div>
       </div>
       <div class="adm-stu-contact">
@@ -5623,7 +5724,7 @@ function admRenderStudents() {
       selectAllBtn.querySelector('span:last-child').textContent = all ? bkT('adm_select_none', 'Seçimi kaldır') : bkT('adm_select_all', 'Tümünü seç');
       selInfo.textContent = n ? `${n} ${bkT('adm_selected', 'seçili')}` : '';
       bulkBar.hidden = n === 0;
-      bulkLabel.textContent = `${bkT('adm_selected_cap', 'Seçili')}: ${n} ${bkT('adm_lessons_lc', 'ders')}`;
+      bulkLabel.textContent = `${bkT('adm_selected_cap', 'Seçili')}: ${n} ${admLessonsLc(n)}`;
     };
     selectAllBtn.onclick = () => {
       const allSelected = selectedIdxs.size === upcomingLessons.length;
@@ -6594,7 +6695,8 @@ async function adminGrantRescheduleCredit(studentUid, resDataInit) {
 
   async function write(newCredits) {
     try {
-      await db.collection('reservations').doc(studentUid).set({ reschedule_credits: newCredits }, { merge: true });
+      // update(): harita alanı bütünüyle değişir — set(merge) silinen ayı (Sil) geri getirirdi
+      await db.collection('reservations').doc(studentUid).update({ reschedule_credits: newCredits });
       resData = { ...resData, reschedule_credits: newCredits };
       render();
     } catch (e) {
@@ -6935,6 +7037,7 @@ async function initAdminAvailDays() {
 function initAdminBlockedHours() { admRenderAvail(); }
 
 var _admMxFocus = null; // { r, c } — matriste son odaklanan hücre (roving tabindex)
+var _admMxvTop = null;           // dikey müsaitlik matrisinin son görünür kaydırma konumu (null → 08:00)
 function admRenderAvail() {
   const container = document.getElementById('adminAvailDaysList');
   if (!container || !_admAvail.loaded) return;
@@ -6973,11 +7076,14 @@ function admRenderAvail() {
       </div></div>
     </div>`;
   }
-  const prevScroll = container.querySelector('#admMxvScroll');
-  const prevTop = prevScroll && prevScroll.clientHeight > 0 ? prevScroll.scrollTop : null;
   container.innerHTML = html;
   const sc = container.querySelector('#admMxvScroll');
-  if (sc) sc.scrollTop = prevTop != null ? prevTop : 8 * 39; // ilk açılış 08:00
+  if (sc) {
+    // Son görünür kaydırma konumu korunur; hiç görünmediyse 08:00. Sekme gizliyken
+    // yapılan atama yok sayılır — admSetTab görünür olunca yeniden çizer ve burası uygular.
+    sc.scrollTop = _admMxvTop != null ? _admMxvTop : 8 * 39;
+    sc.addEventListener('scroll', () => { if (sc.clientHeight > 0) _admMxvTop = sc.scrollTop; }, { passive: true });
+  }
   // roving tabindex: tek sekme durağı
   const cells = [...container.querySelectorAll('.adm-cell:not(:disabled)')];
   let target = _admMxFocus ? container.querySelector(`.adm-cell[data-r="${_admMxFocus.r}"][data-c="${_admMxFocus.c}"]:not(:disabled)`) : null;
@@ -7162,8 +7268,8 @@ window.adminEditStudentPhone = async function(studentUid, currentPhone, studentN
   if ((fresh || '').trim()) {
     const _parsed = parsePhoneInput(fresh);
     if (!_parsed.ok) {
-      if (typeof toast === 'function') toast('Geçersiz numara. ' + PHONE_HELP_TEXT, true);
-      else alert('Geçersiz numara. ' + PHONE_HELP_TEXT);
+      if (typeof toast === 'function') toast(bkT('bks_phone_invalid', 'Geçersiz numara.') + ' ' + phoneHelpText(), true);
+      else alert(bkT('bks_phone_invalid', 'Geçersiz numara.') + ' ' + phoneHelpText());
       return;
     }
     cleaned = _parsed.bare;
@@ -7913,7 +8019,7 @@ function renderAccessView(user, state, rejectReason) {
         <div class="field">
           <label class="field-label" for="trialPhone">${bkT('bks_wa_label', 'WhatsApp numarası')} <span class="req">*</span></label>
           <input type="tel" id="trialPhone" class="input input-lg" placeholder="05XX XXX XX XX" inputmode="tel" autocomplete="tel" aria-describedby="trialPhoneHelp">
-          <p class="field-help bk-help-ok" id="trialPhoneHelp">Talebi gönderdikten sonra <strong>WhatsApp ile mesaj at</strong> butonuna basıp hazır metni göndermen gerekiyor — yoksa WhatsApp bilgilendirme botumuz sana ulaşamaz :(</p>
+          <p class="field-help bk-help-ok" id="trialPhoneHelp">${bkT('bks_phone_help_wa', 'Talebi gönderdikten sonra <strong>WhatsApp ile mesaj at</strong> butonuna basıp hazır metni göndermen gerekiyor — yoksa WhatsApp bilgilendirme botumuz sana ulaşamaz :(')}</p>
         </div>
         <div class="field">
           <label class="field-label" for="trialNote">${_av?.t('bk_note_label')||'Not'} <span class="opt">${_av?.t('bk_optional')||'(isteğe bağlı)'}</span></label>
@@ -8039,7 +8145,7 @@ function renderAccessView(user, state, rejectReason) {
       const isIntlValid = isPlusPrefixed && /^\d{8,15}$/.test(phoneDigits);
       const phoneOk = isTrValid || isIntlValid;
       if (!phoneOk) {
-        errEl.textContent = 'Geçerli bir cep telefonu numarası gir (TR: 05XX XXX XX XX · Uluslararası: +ülke kodu ile başlat, örn +1 617 388 4403).';
+        errEl.textContent = bkT('bks_trial_phone_err', 'Geçerli bir cep telefonu numarası gir (TR: 05XX XXX XX XX · Uluslararası: +ülke kodu ile başlat, örn +1 617 388 4403).');
         errEl.style.display = '';
         const _trPh = card.querySelector('#trialPhone');
         if (_trPh) {

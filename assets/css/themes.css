@@ -20,7 +20,11 @@ html .be-header {
   padding:0 max(var(--page-x), calc(50% - var(--page-max) / 2 + var(--page-x)));
   border-bottom:1px solid var(--line-div); background:var(--bg);
 }
-html .be-header:not([data-be-built]) { visibility:hidden; }
+/* kurulana dek gizli — yalnız JS varken (theme-init <head>'de be-js verir); JS'siz ziyaretçi
+   #beHeader içindeki statik yedek bağlantıları (varsa) görür */
+html.be-js .be-header:not([data-be-built]) { visibility:hidden; }
+html:not(.be-js) .be-header { flex-wrap:wrap; height:auto; min-height:var(--be-header-h); padding-block:12px; }
+html:not(.be-js) .be-header .be-nav { display:flex; flex-wrap:wrap; gap:4px 20px; }
 .be-brand { display:flex; align-items:center; gap:12px; color:var(--fg); text-decoration:none; flex-shrink:0; min-width:0; }
 .be-brand:hover { color:var(--fg); }
 .be-mark { position:relative; flex-shrink:0; width:40px; height:40px; border-radius:var(--r-10); background:var(--bg-ink); border:1px solid var(--line-ctl); display:flex; align-items:center; justify-content:center; overflow:hidden; }
@@ -43,7 +47,8 @@ html .be-lang .lang-btn { height:auto; min-height:0; padding:6px 10px; border:0;
 html .be-lang .lang-btn:hover { color:var(--fg); }
 html .be-lang .lang-btn.lang-active, html .be-lang .lang-btn[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
 html .be-cta { display:inline-flex; }
-html.be-authed:not(.be-trial) .be-cta { display:none; }
+/* be-auth-guess: oturum çözülene dek "son ziyarette girişliydi" ipucu (theme-init) — CTA yanıp sönmesin */
+html.be-authed:not(.be-trial) .be-cta, html.be-auth-guess:not(.be-trial) .be-cta { display:none; }
 .be-slot { display:flex; align-items:center; gap:8px; }
 .be-slot--mobile { display:none; }
 .be-menu-btn { display:none; position:relative; flex-shrink:0; width:var(--ctl-md); height:var(--ctl-md); border-radius:50%; border:1px solid var(--line-strong); background:transparent; color:var(--fg); align-items:center; justify-content:center; cursor:pointer; padding:0; transition:border-color var(--dur-fast), background var(--dur-fast); }
@@ -61,10 +66,20 @@ html.be-drawer-open .be-menu-btn .be-ico-close { display:block; }
   .be-actions { gap:8px; }
   html #authBar .auth-name { display:none; }
 }
+/* ≥1280'de başlık sığmazsa (deneme adayı + zil + CTA, uzun ad, EN) theme-init fitHeader()
+   kademeli sıkıştırır: be-fit-1 marka yazısını, be-fit-2 ayrıca adı gizler ve aralıkları daraltır */
+@media (min-width:1280px) {
+  .be-header.be-fit-1 .be-brand-text { display:none; }
+  .be-header.be-fit-2 .be-nav { gap:20px; }
+  .be-header.be-fit-2 .be-actions { gap:8px; }
+  html .be-header.be-fit-2 #authBar .auth-name { display:none; }
+}
 
 /* ---------- Auth bar (içeriği sayfa JS'i yazar: updateAuthBar) ---------- */
 html #authBar { position:static; display:flex; align-items:center; gap:12px; height:auto; }
 html #authBar:empty { display:none; }
+/* oturum çözülürken son ölçülen genişlik ayrılır (theme-init, sayfa başına) — gezinme kaymasın */
+@media (min-width:1025px) { html .be-header.be-auth-pending #authBar:empty { display:block; width:var(--be-auth-w); } }
 /* sayfa içindeki giriş düğmeleri (ör. yorum formu) — metinli pill */
 html .auth-sign-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:var(--ctl-md); padding:0 var(--ctl-px-md); border-radius:var(--r-pill); border:1px solid var(--line-fg); background:transparent; color:var(--fg); font-family:var(--ff); font-size:var(--fs-ctl-md); font-weight:600; letter-spacing:0; text-transform:none; line-height:1; cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
 html .auth-sign-btn:hover { border-color:var(--accent-line-2); color:var(--accent); }
@@ -90,7 +105,7 @@ html .notif-bell { position:relative; display:inline-flex; align-items:center; j
 html .notif-bell:hover, html .notif-bell[aria-expanded="true"] { color:var(--accent); border-color:var(--accent-line-2); }
 html .notif-bell svg, html .notif-bell .icon { width:18px; height:18px; }
 html .notif-bell.ringing { animation:be-bell .55s ease-in-out 3; }
-html .notif-badge { position:absolute; top:-3px; right:-3px; min-width:18px; height:18px; padding:0 5px; border-radius:var(--r-pill); background:var(--err-strong); color:#fff; font-family:var(--ff-mono); font-size:10px; line-height:18px; text-align:center; pointer-events:none; box-shadow:0 0 0 2px var(--bg); }
+html .notif-badge { position:absolute; top:-3px; right:-3px; min-width:18px; height:18px; padding:0 5px; border-radius:var(--r-pill); background:var(--ember-1); color:var(--fg); font-family:var(--ff-mono); font-size:10px; line-height:18px; text-align:center; pointer-events:none; box-shadow:0 0 0 2px var(--bg); }
 html .notif-panel { position:absolute; top:calc(var(--ctl-md) + 10px); right:0; width:340px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-18); box-shadow:var(--shadow-pop); z-index:var(--z-pop); overflow:hidden; display:none; }
 html .notif-panel.open { display:block; animation:be-slide var(--dur-slow) var(--ease-out) both; }
 html .notif-panel-head { padding:14px 18px; border-bottom:1px solid var(--line-div); display:flex; align-items:center; justify-content:space-between; gap:12px; }
@@ -108,6 +123,10 @@ html .notif-item-time { font-family:var(--ff-mono); font-size:var(--fs-micro); l
 html .notif-empty { padding:24px 18px; text-align:center; font-size:var(--fs-ui); color:var(--fg-muted); }
 html .notif-del-btn { position:absolute; top:50%; right:8px; transform:translateY(-50%); width:28px; height:28px; border-radius:50%; background:none; border:0; color:var(--fg-3); font-size:16px; line-height:1; cursor:pointer; }
 html .notif-del-btn:hover { color:var(--err); background:var(--err-soft); }
+/* 28px silme / 33px "Tümünü Oku" → ≥44px dokunma alanı (görünüm aynı) */
+html .notif-read-all { position:relative; }
+html .notif-del-btn::after { content:''; position:absolute; inset:-8px; border-radius:50%; }
+html .notif-read-all::after { content:''; position:absolute; inset:-6px -8px; }
 
 /* ---------- Giriş modalı (auth-ui.js) ---------- */
 html .be-auth { max-width:440px; }
@@ -149,9 +168,10 @@ html.be-drawer-open body { overflow:hidden; }
   .be-mark { width:34px; height:34px; border-radius:var(--r-9); }
   .be-mark-strip { height:3px; }
   .be-mark-txt { font-size:13px; letter-spacing:0; }
-  .be-brand { gap:10px; }
+  /* marka küçülebilir: etiket kalan alanı doldurur, sığmazsa … ile kısalır */
+  .be-brand { gap:10px; flex:0 1 auto; }
   .be-brand-text { display:none; }
-  .be-brand-label { display:block; font-family:var(--ff-mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .be-brand-label { display:block; min-width:0; font-family:var(--ff-mono); font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .be-header[data-be-back] .be-brand { display:none; }
   .be-back { display:inline-flex; align-items:center; gap:6px; min-height:var(--ctl-md); min-width:0; font-family:var(--ff-mono); font-size:11px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-soft); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .be-back:hover { color:var(--fg); }
@@ -186,9 +206,6 @@ html.be-drawer-open body { overflow:hidden; }
 @media (max-width:600px) {
   .be-drawer-link { font-size:38px; }
 }
-@media (max-width:360px) {
-  .be-brand-label { max-width:96px; }
-}
 
 /* kabuk parçalarını gizleme (beShell.hide) */
 html.be-hide-header .be-header, html.be-hide-header .be-drawer { display:none; }
@@ -216,9 +233,20 @@ html .be-footer--full { padding-top:56px; padding-bottom:40px; display:flex; fle
 .be-footer--full .be-footer-col a:hover { color:var(--accent-hover); }
 .be-footer--full .be-footer-bar { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; color:var(--fg-faint); text-transform:uppercase; }
 .be-footer .be-eq { height:16px; }
+/* WhatsApp FAB'lı sayfada (egitim, booking) footer'ın sağ ucu FAB'ın altında kalmasın:
+   sağ iç boşluk en az FAB izi kadar (masaüstü sağ 24 + 52 + 12 boşluk; mobil 16 + 52 + 12) */
+html body:has(> .wa-fab) .be-footer { padding-right:max(var(--page-x), calc(50% - var(--page-max) / 2 + var(--page-x)), 88px); }
 @media (max-width:1024px) {
   .be-footer-top { flex-direction:column; }
   .be-footer-cols { gap:40px; flex-wrap:wrap; }
+  html body:has(> .wa-fab) .be-footer { padding-right:max(var(--page-x), 80px); }
+  /* dokunma hedefi ≥44px: sütun bağlantıları gerçek 44px satır (aralık 0), yan yana sosyal bağlantılar dikey genişletme */
+  .be-footer-col { gap:0; }
+  .be-footer-col h2 { margin-bottom:4px; }
+  /* :where → özgüllük (0,0,1): html:not(.be-love) [data-be-love] gizlemesini ezmesin */
+  :where(.be-footer--full .be-footer-col) a { display:inline-flex; align-items:center; min-height:44px; }
+  .be-footer-social a { position:relative; }
+  .be-footer-social a::after { content:''; position:absolute; inset:-14px -4px; }
 }
 @media (max-width:600px) {
   html .be-footer { padding-top:28px; padding-bottom:28px; }
@@ -242,17 +270,3 @@ html.font-clear body { font-weight:500; }
 
 /* ---------- Kabuk dışı genel varsayılanlar ---------- */
 html input, html textarea, html select { font-family:var(--ff); }
-
-/* =========================================================
-   GEÇİCİ — Ableton Lab modül içleri (mk() ile üretilen, token'a
-   bağlanmamış CSS). Lab ajanı sayfa CSS'ine taşıyıp bu bloğu siler.
-   (!important burada eski satır içi stilleri ezmek için; yeni koda örnek değil.)
-   ========================================================= */
-html .adsr-explanation, html .arr-build-cell, html .arr-section, html .beat-cell, html .control-group, html .eq-canvas, html .genre-btn, html .hint-box, html .key, html .mix-concept, html .mixer-strip, html .module-card-status, html .oscilloscope-wrap, html .power-button, html .preset-btn, html .saved-del, html .skel, html .status-card, html .synth-container, html .task-card, html .task-item, html .task-progress-bar, html .theory-ableton, html .theory-card, html .toggle-btn, html .vu-wrap, html .wave-btn { border-radius:var(--r-10) !important; }
-html .preset-btn.active, html .toggle-btn.on, html .wave-btn.active { background:var(--accent) !important; background-image:none !important; color:var(--accent-ink) !important; }
-html .adsr-fill, html .task-progress-fill { background:var(--accent) !important; background-image:none !important; }
-html .adsr-explanation, html .control-group, html .preset-btn { background:var(--surface) !important; background-image:none !important; }
-html .adsr-explanation::before, html .control-group::before { background:none !important; }
-html .synth-header h2, html .synth-section-title { font-family:var(--ff-disp) !important; font-weight:400; letter-spacing:-.01em; }
-html .wave-btn, html .preset-btn, html .genre-btn, html .toggle-btn, html .back-btn, html .power-button, html .theory-toggle, html .saved-del { font-family:var(--ff); letter-spacing:0; }
-html .section-emoji, html .ps-feat-icon { display:none !important; }

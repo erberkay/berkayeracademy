@@ -34,6 +34,9 @@
     html.classList.toggle('be-trial', !!firstTimer);
     refreshShell();
   }
+  // Girişli kullanıcının son bilinen deneme durumu — theme-init bir sonraki yüklemede oturum
+  // çözülene dek bunu kullanır (etiket/CTA yanıp sönmesin). Yalnız '1'/'0'; kişisel veri yok.
+  function rememberTrial(v) { try { window.localStorage.setItem('be-trial-last', v ? '1' : '0'); } catch (e) { /* noop */ } }
 
   // Firestore SDK'sı yüklenmeyen sayfalar (ders-ableton, ders-push3) için son bilinen
   // durum oturum boyunca saklanır (yalnız '1'/'0'; kişisel veri yok).
@@ -44,14 +47,14 @@
   function syncTrialNav(user) {
     // Girişsiz ziyaretçi için "Ücretsiz deneme" CTA'sı zaten görünür; etiket "Ders Paneli" kalır.
     if (!user) { applyTrialNav(false); return; }
-    if (user.email === ADMIN_EMAIL) { applyTrialNav(false); return; }
+    if (user.email === ADMIN_EMAIL) { rememberTrial(false); applyTrialNav(false); return; }
     if (typeof firebase === 'undefined' || !firebase.firestore) {
       var c = cacheGet(user.uid);
       if (c !== null) applyTrialNav(c === '1');
       return;
     }
     firebase.firestore().collection('reservations').doc(user.uid).get()
-      .then(function (snap) { var ft = isFirstTimer(snap); cacheSet(user.uid, ft); applyTrialNav(ft); })
+      .then(function (snap) { var ft = isFirstTimer(snap); cacheSet(user.uid, ft); rememberTrial(ft); applyTrialNav(ft); })
       .catch(function () { /* kural reddi ya da çevrimdışı — varsayılan kalır */ });
   }
 

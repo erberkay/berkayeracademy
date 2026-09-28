@@ -5,17 +5,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Konu Aç — Elektronik Müzik Topluluğu</title>
-<meta name="theme-color" content="#101013">
+<meta name="theme-color" content="#0b0b0e">
 <meta property="og:title" content="Konu Aç — Elektronik Müzik Topluluğu">
 <meta property="og:image" content="https://berkayeracademy.com/assets/img/DSC00141.jpg">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
-<script src="assets/js/theme-init.js?v=202609271200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
-<script src="assets/js/auth-ui.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609281800">
+<script src="assets/js/theme-init.js?v=202609281800"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609281800">
+<script src="assets/js/auth-ui.js?v=202609281800"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
@@ -151,8 +151,8 @@ html .np-pub-top[aria-disabled="true"], html .np-pub-top[aria-disabled="true"]:h
   .np-cat-list { grid-template-columns:repeat(2, minmax(0, 1fr)); }
 }
 </style>
-<script src="assets/js/i18n.js?v=202609271200"></script>
-<script src="assets/js/love-nav.js?v=202609271200"></script>
+<script src="assets/js/i18n.js?v=202609281800"></script>
+<script src="assets/js/love-nav.js?v=202609281800"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="new-post" data-be-back="/forum" data-be-back-label="nav_forum" data-be-tabs="off"><div data-be-slot class="be-slot--mobile" id="npSlot" hidden><button type="button" class="btn btn-primary btn-sm np-pub-top" id="npPublishTop" aria-disabled="true"><span data-i18n="np_publish_short">Yayınla</span></button></div><div id="authBar"></div></header>
@@ -276,6 +276,9 @@ const NP_T = {
   np_tip_bold:          [`kalın`, `bold`],
   np_tip_italic:        [`italik`, `italic`],
   np_tip_code:          [`kod`, `code`],
+  forum_cat_general:    [`Genel`, `General`],
+  forum_cat_sound:      [`Ses Tasarımı`, `Sound Design`],
+  forum_cat_other:      [`Diğer`, `Other`],
   np_tips_note:         [`Hata mesajını ve Live sürümünü yazmak yardımcı olur. Tekrar eden soruları forumda aramayı dene.`, `Including the error message and your Live version helps. Try searching the forum for similar questions first.`],
 };
 function npLang() {
@@ -310,6 +313,12 @@ const ic = n => '<svg class="icon" aria-hidden="true"><use href="/assets/img/ico
 
 let _notifUnsub = null, _annUnsub = null, _notifPanelEl = null;
 let _personalNotifs = [], _announcements = [], _annSeenAt = null, _dismissedAnns = [], _prevUnreadCount = 0;
+// Bağlantılı bildirim satırı klavyeyle de açılsın (profile.html _btnify ile aynı kalıp)
+function _notifBtnify(node) {
+  node.setAttribute('role', 'button'); node.tabIndex = 0;
+  node.addEventListener('keydown', e => { if (e.target === node && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); node.click(); } });
+  return node;
+}
 function _mergeNotifs(uid) {
   const all=[..._personalNotifs.map(n=>({...n,_t:'p'})),..._announcements.filter(n=>!_dismissedAnns.includes(n._id)).map(n=>({...n,_t:'a'}))].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
   const annSec=_annSeenAt?.seconds||0;
@@ -321,14 +330,14 @@ function _mergeNotifs(uid) {
   if(!_notifPanelEl)return;
   const list=_notifPanelEl.querySelector('.notif-list');if(!list)return;
   list.innerHTML='';
-  if(!all.length){list.innerHTML='<div class="notif-empty">Bildirim yok</div>';return;}
+  if(!all.length){list.innerHTML=`<div class="notif-empty">${L('ui_no_notifs',`Bildirim yok`)}</div>`;return;}
   all.forEach(n=>{
     const isUnread=n._t==='p'?!n.read:(n.createdAt?.seconds||0)>annSec;
     const item=document.createElement('div');item.className='notif-item'+(isUnread?' unread':'');
     const timeStr=n.createdAt?n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'';
-    const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=(n._t==='a'?'📢 ':'')+(n.text||'Yeni bildirim');const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
-    if(n.postId)item.onclick=()=>{location.href=`post?id=${n.postId}`;};
-    if(n._id){const del=document.createElement('button');del.className='notif-del-btn';del.textContent='×';del.onclick=e=>{e.stopPropagation();if(n._t==='p'){db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();}else{_dismissedAnns.push(n._id);db.collection('users').doc(uid).update({dismissedAnns:firebase.firestore.FieldValue.arrayUnion(n._id)}).catch(()=>{});_announcements=_announcements.filter(a=>a._id!==n._id);_mergeNotifs(uid);}};item.append(del);}
+    const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=(n.text||L('ui_new_notif',`Yeni bildirim`));if(n._t==='a')_nt.insertAdjacentHTML('afterbegin','<svg class="icon notif-ann-icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-info"/></svg> ');const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
+    if(n.postId){item.onclick=()=>{location.href=`post?id=${n.postId}`;};_notifBtnify(item);}
+    if(n._id){const del=document.createElement('button');del.type='button';del.className='notif-del-btn';del.textContent='×';del.title=L('prof_notif_del',`Bildirimi sil`);del.setAttribute('aria-label',del.title);del.onclick=e=>{e.stopPropagation();if(n._t==='p'){db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();}else{_dismissedAnns.push(n._id);db.collection('users').doc(uid).update({dismissedAnns:firebase.firestore.FieldValue.arrayUnion(n._id)}).catch(()=>{});_announcements=_announcements.filter(a=>a._id!==n._id);_mergeNotifs(uid);}};item.append(del);}
     list.append(item);
   });
 }
@@ -370,6 +379,7 @@ function updateAuthBar(user) {
   img.src = user.photoURL || ''; img.alt = '';
   const name = document.createElement('span'); name.className = 'auth-name';
   name.textContent = user.email === ADMIN_EMAIL ? 'Admin' : (user.displayName?.split(' ')[0] || 'Üye');
+  img.onclick = name.onclick = () => { location.href = `profile?uid=${user.uid}`; };
   const out = document.createElement('button'); out.className = 'auth-out-btn';
   out.textContent = '✕'; out.onclick = () => auth.signOut();
   wrap.append(img, name, out);
@@ -377,7 +387,7 @@ function updateAuthBar(user) {
   const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.innerHTML = ic('bell'); bell.title = window._i18n?.t('ui_notifications')||`Bildirimler`;
   const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
   _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
-  _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all">Tümünü Oku</button></div><div class="notif-list"></div>';
+  _notifPanelEl.innerHTML = `<div class="notif-panel-head"><span class="notif-panel-title" data-i18n="ui_notifications">${L('ui_notifications', `Bildirimler`)}</span><button type="button" class="notif-read-all" data-i18n="ui_read_all">${L('ui_read_all', `Tümünü Oku`)}</button></div><div class="notif-list"></div>`;
   _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllNotifRead(user.uid);
   bell.onclick = e => { e.stopPropagation(); toggleNotifPanel(user); };
   bellWrap.append(bell, badge, _notifPanelEl);
@@ -408,6 +418,9 @@ function renderMarkdown(txt) {
 // ── Form (statik markup; bir kez bağlanır) ───────────────────────────
 const CATS = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
 const DEFAULT_CAT = 'Genel';
+// Firestore'a Türkçe değer yazılır; görünen ad forum.html ile aynı anahtarlardan (EN: General / Sound Design / Other)
+const CAT_KEY = { 'Genel':'forum_cat_general', 'Ses Tasarımı':'forum_cat_sound', 'Diğer':'forum_cat_other' };
+const catLabel = c => CAT_KEY[c] ? L(CAT_KEY[c], c) : c;
 const el = id => document.getElementById(id);
 const form = el('npForm'), wall = el('npWall'), slot = el('npSlot');
 const titleInput = el('npTitle'), bodyInput = el('npBody');
@@ -423,7 +436,7 @@ CATS.forEach(c => {
   const lbl = document.createElement('label'); lbl.className = 'np-cat';
   const r = document.createElement('input'); r.type = 'radio'; r.name = 'npCat'; r.value = c; r.className = 'sr-only';
   if (c === DEFAULT_CAT) r.checked = true;
-  const s = document.createElement('span'); s.textContent = c;
+  const s = document.createElement('span'); s.dataset.cat = c; s.textContent = catLabel(c);
   lbl.append(r, s); catWrap.append(lbl);
 });
 const selectedCat = () => catWrap.querySelector('input:checked')?.value || DEFAULT_CAT;
@@ -441,8 +454,8 @@ function updatePreview() {
   const t = titleInput.value.trim();
   pvTitle.textContent = t || L('np_preview_empty');
   const cat = selectedCat();
-  pvCat.textContent = cat;
-  pvCatInline.textContent = cat.toLocaleUpperCase(npLang() === 'en' ? 'en-US' : 'tr-TR');
+  pvCat.textContent = catLabel(cat);
+  pvCatInline.textContent = catLabel(cat).toLocaleUpperCase(npLang() === 'en' ? 'en-US' : 'tr-TR');
   const b = bodyInput.value;
   pvBody.hidden = !b.trim();
   pvBody.innerHTML = b.trim() ? renderMarkdown(b) : '';
@@ -498,17 +511,20 @@ async function submitPost() {
       replyCount:     0,
       solved:         false,
     });
+    // Admin duyurusu + takipçi bildirimleri yönlendirmeden ÖNCE bitsin: sayfa kapanınca bekleyen
+    // follows sorgusu iptal oluyor, bildirimler hiç yazılmıyordu. Kullanıcı takılmasın diye en fazla 3 sn.
+    const sideTasks = [];
     if (user.email === ADMIN_EMAIL) {
-      db.collection('announcements').add({
+      sideTasks.push(db.collection('announcements').add({
         text: `Yeni Admin konusu: "${title}"`,
         postId: ref.id,
         fromName: user.displayName?.split(' ')[0] || 'Admin',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         type: 'forum',
-      }).catch(() => {});
+      }).catch(() => {}));
     }
     // Notify followers
-    db.collection('follows').where('followeeId','==',user.uid).limit(100).get().then(followSnap => {
+    sideTasks.push(db.collection('follows').where('followeeId','==',user.uid).limit(100).get().then(followSnap => {
       if (!followSnap || followSnap.empty) return;
       const batch = db.batch();
       const authorName = user.displayName?.split(' ')[0] || 'Biri';
@@ -523,8 +539,9 @@ async function submitPost() {
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
       });
-      batch.commit().catch(() => {});
-    }).catch(() => {});
+      return batch.commit();
+    }).catch(() => {}));
+    await Promise.race([Promise.all(sideTasks), new Promise(r => setTimeout(r, 3000))]);
     window.location.href = 'forum';
   } catch(e) {
     setBusy(false);
@@ -551,7 +568,7 @@ function showState(user) {
 }
 
 // dil değişince: yeni anahtarlar + dinamik metinler
-function relang() { npApply(); if (!busy) submitLbl.textContent = L('np_publish'); updateCounts(); updatePreview(); }
+function relang() { npApply(); catWrap.querySelectorAll('[data-cat]').forEach(s => { s.textContent = catLabel(s.dataset.cat); }); if (!busy) submitLbl.textContent = L('np_publish'); updateCounts(); updatePreview(); }
 new MutationObserver(relang).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 npApply(); updateCounts(); updatePreview();
 

@@ -9,11 +9,21 @@
 (function () {
   var html = document.documentElement;
   function lsGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) { /* noop */ } }
 
   // ── Boyamadan önce: tema yok (yalnız koyu). Eski 'site-theme' yok sayılır.
   html.classList.remove('theme-light');
   html.classList.add('be-js');
   if (lsGet('site-font-clear') === '1') html.classList.add('font-clear');
+
+  // ── Oturum ipucu (oturum çözülene dek; kişisel veri yok — yalnız '1'/'0' ve piksel genişliği):
+  // son ziyarette girişliyse "Ücretsiz deneme" CTA'sı baştan gizli (be-auth-guess), deneme adayıysa
+  // etiketler baştan "Deneme" (be-trial; love-nav gerçek durumu yazar). syncAuthUi ipucunu günceller.
+  var AUTH_HINT = lsGet('be-auth');
+  if (AUTH_HINT === '1') {
+    html.classList.add('be-auth-guess');
+    if (lsGet('be-trial-last') === '1') html.classList.add('be-trial');
+  }
 
   // ── Kabuk metinleri: i18n.js'te anahtar varsa o, yoksa buradaki yedek [tr, en].
   var T = {
@@ -29,6 +39,7 @@
     nav_profile: ['Profil', 'Profile'],
     ui_signout: [`Çıkış Yap`, 'Sign Out'],
     ui_notifications: ['Bildirimler', 'Notifications'],
+    prof_notif_del: ['Bildirimi sil', 'Delete notification'],
     be_brand: ['BERKAY ER ACADEMY', 'BERKAY ER ACADEMY'],
     be_home_aria: [`Berkay Er Academy — ana sayfa`, 'Berkay Er Academy — home'],
     be_nav_main: [`Ana menü`, 'Main menu'],
@@ -124,7 +135,7 @@
     return e;
   }
 
-  var state = { page: '', header: null, drawer: null, menuBtn: null, tabbar: null, built: false, lastFocus: null };
+  var state = { page: '', header: null, drawer: null, menuBtn: null, tabbar: null, built: false, lastFocus: null, authW: null };
 
   // ── Başlık ───────────────────────────────────────────────────────────
   function langGroup(extraCls) {
@@ -198,6 +209,15 @@
     menu.addEventListener('click', function () { setDrawer(!html.classList.contains('be-drawer-open')); });
     actions.appendChild(menu);
     state.menuBtn = menu;
+
+    // oturum çözülürken #authBar'a bu sayfada son ölçülen genişliği ayır (masaüstü gezinmesi kaymasın)
+    if (AUTH_HINT !== null) {
+      state.authW = lsGet('be-auth-w:' + page);
+      if (state.authW && /^\d{1,4}$/.test(state.authW) && !auth.firstChild) {
+        h.style.setProperty('--be-auth-w', state.authW + 'px');
+        h.classList.add('be-auth-pending');
+      }
+    }
 
     h.textContent = '';
     h.appendChild(brand);
@@ -377,14 +397,24 @@
       var src = img && img.getAttribute('src');
       if (img && src && src.trim()) wrap.classList.add('be-has-photo');
       if (img) img.addEventListener('error', function () { wrap.classList.remove('be-has-photo'); });
-      var ini = el('span', { 'class': 'be-ava-initial', 'aria-hidden': 'true' }, initialOf(name && name.textContent));
-      ini.addEventListener('click', function () { if (img) img.click(); else if (name) name.click(); });
+      var ini = el('span', { 'class': 'be-ava-initial' }, initialOf(name && name.textContent));
       if (img) img.parentNode.insertBefore(ini, img.nextSibling); else wrap.insertBefore(ini, wrap.firstChild);
-      if (name && !name.hasAttribute('tabindex')) {
-        name.setAttribute('tabindex', '0');
-        name.setAttribute('role', 'link');
-        name.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); name.click(); } });
-      }
+      // profil: sayfanın kendi tıklama işleyicisi (profile?uid=…) varsa o, yoksa /profile (kendi profili)
+      var own = function (x) { return x && typeof x.onclick === 'function' ? x : null; };
+      var openProfile = function () { var x = own(img) || own(name); if (x) x.click(); else location.href = '/profile'; };
+      ini.addEventListener('click', openProfile);
+      if (img && !own(img)) img.addEventListener('click', openProfile);
+      if (name && !own(name)) name.addEventListener('click', openProfile);
+      // klavye yolu: görünen avatar (fotoğraf ya da baş harf) her genişlikte profil bağlantısı;
+      // ad yalnız fareyle (dar başlıkta gizlenir — tek sekme durağı avatarda kalır)
+      [img, ini].forEach(function (x) {
+        if (!x) return;
+        x.setAttribute('tabindex', '0');
+        x.setAttribute('role', 'link');
+        x.setAttribute('data-be-aria', 'be_open_profile');
+        x.setAttribute('aria-label', t('be_open_profile'));
+        x.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); openProfile(); } });
+      });
       var out = wrap.querySelector('.auth-out-btn');
       if (out) {
         var lbl = out.getAttribute('aria-label') || out.getAttribute('title') || out.textContent.trim();
@@ -409,6 +439,13 @@
           .observe(panel, { attributes: true, attributeFilter: ['class'] });
       }
     }
+    // bildirim silme düğmeleri ('×') — adı olmayanlara erişilebilir ad
+    [].forEach.call(bar.querySelectorAll('.notif-del-btn:not([aria-label])'), function (b) {
+      b.setAttribute('type', 'button');
+      b.setAttribute('data-be-aria', 'prof_notif_del');
+      b.setAttribute('aria-label', t('prof_notif_del'));
+      if (!b.getAttribute('title')) b.setAttribute('title', t('prof_notif_del'));
+    });
     var sign = bar.querySelector('.auth-sign-btn');
     if (sign && !sign.hasAttribute('data-be-done')) {
       sign.setAttribute('data-be-done', '');
@@ -422,7 +459,12 @@
     if (!bar) return;
     var wrap = bar.querySelector('.auth-user-wrap');
     var signedIn = !!wrap, signedOut = !!bar.querySelector('.auth-sign-btn');
-    if (signedIn || signedOut) html.classList.toggle('be-authed', signedIn);
+    if (signedIn || signedOut) {
+      html.classList.toggle('be-authed', signedIn);
+      authSettled();
+      if (AUTH_HINT !== (signedIn ? '1' : '0')) { AUTH_HINT = signedIn ? '1' : '0'; lsSet('be-auth', AUTH_HINT); }
+    }
+    fitHeader();
     var av = document.getElementById('beTabAv');
     if (!av) return;
     var img = wrap && wrap.classList.contains('be-has-photo') && wrap.querySelector('.auth-avatar');
@@ -439,6 +481,39 @@
       av.innerHTML = svg('user');
     }
   }
+  // oturum çözüldü (ya da zaman aşımı): ipucu sınıflarını kaldır
+  function authSettled() {
+    html.classList.remove('be-auth-guess');
+    if (state.header) state.header.classList.remove('be-auth-pending');
+  }
+
+  // ── Başlık sığdırma (≥1280): içerik sağ dolguyu aşarsa kademeli sıkıştır ──────────
+  // be-fit-1 marka yazısını, be-fit-2 ayrıca adı gizler + aralıkları daraltır (themes.css).
+  // ≤1279'daki dar masaüstü kuralları CSS'te; orada sınıf verilmez.
+  var mqFit = window.matchMedia ? window.matchMedia('(min-width: 1280px)') : null;
+  function fitHeader() {
+    var h = state.header;
+    if (!h || !h.hasAttribute('data-be-built')) return;
+    h.classList.remove('be-fit-1', 'be-fit-2');
+    if (mqFit && mqFit.matches && !html.classList.contains('be-hide-header')) {
+      var acts = h.querySelector('.be-actions');
+      var over = function () {
+        var r = h.getBoundingClientRect();
+        var pr = parseFloat(window.getComputedStyle(h).paddingRight) || 0;
+        return !!acts && acts.getBoundingClientRect().right > r.right - pr + 1;
+      };
+      if (over()) { h.classList.add('be-fit-1'); if (over()) h.classList.add('be-fit-2'); }
+    }
+    saveAuthW();
+  }
+  // bu sayfadaki son #authBar genişliği (bir sonraki yüklemede ayrılır) — yalnız masaüstü
+  function saveAuthW() {
+    var bar = document.getElementById('authBar');
+    if (!state.page || !bar || !bar.firstElementChild || window.innerWidth <= 1024 || !state.header.contains(bar)) return;
+    var w = String(Math.round(bar.getBoundingClientRect().width));
+    if (w !== '0' && w !== state.authW) { state.authW = w; lsSet('be-auth-w:' + state.page, w); }
+  }
+
   function watchAuth(bar) {
     enhanceAuth(bar);
     if (window.MutationObserver) new MutationObserver(function () { enhanceAuth(bar); }).observe(bar, { childList: true, subtree: true });
@@ -464,6 +539,7 @@
       b.classList.toggle('lang-active', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
+    fitHeader();
   }
 
   // ── Ekran dışındaki ağır animasyonları duraklat ──────────────────────
@@ -518,6 +594,14 @@
     refresh();
     observeAnim(document);
     document.addEventListener('keydown', onKey, true);
+    var rz = false;
+    window.addEventListener('resize', function () {
+      if (rz) return; rz = true;
+      (window.requestAnimationFrame || setTimeout)(function () { rz = false; fitHeader(); });
+    });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitHeader, function () {});
+    // sayfa #authBar'ı hiç doldurmazsa (SDK yüklenemedi vb.) ipucu sonsuza dek CTA'yı gizlemesin
+    setTimeout(authSettled, 6000);
     if (window.matchMedia) {
       var mq = window.matchMedia('(min-width: 1025px)');
       var close = function (m) { if (m.matches) setDrawer(false, true); };
