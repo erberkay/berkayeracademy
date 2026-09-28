@@ -15,11 +15,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609281930">
-  <script src="assets/js/theme-init.js?v=202609281930"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609281930">
-  <script src="assets/js/auth-ui.js?v=202609281930"></script>
-  <script src="assets/js/placement-quiz.js?v=202609281930"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609282330">
+  <script src="assets/js/theme-init.js?v=202609282330"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609282330">
+  <script src="assets/js/auth-ui.js?v=202609282330"></script>
+  <script src="assets/js/placement-quiz.js?v=202609282330"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -214,7 +214,6 @@
     .bk-legend i, .bk-tlegend i { display:inline-block; width:10px; height:10px; border-radius:3px; }
     .bk-lg-free { border:1px solid var(--accent-line-2); }
     .bk-lg-busy { background:#3a2226; }
-    .bk-lg-closed { background:repeating-linear-gradient(45deg, #1c1c21 0 3px, #111114 3px 6px); }
     .bk-lg-sel { background:var(--accent); }
     .bk-jump { grid-area:jump; display:flex; gap:6px; flex-wrap:wrap; }
     .bk-jump-btn { position:relative; height:34px; padding:0 12px; border-radius:var(--r-pill); border:1px solid var(--line-ctl); background:transparent; color:var(--fg-soft); font-family:var(--ff-mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
@@ -1396,8 +1395,8 @@
       .adm-month { width:100%; justify-content:space-between; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609281930"></script>
-<script src="assets/js/trial-nav.js?v=202609281930"></script>
+<script src="assets/js/i18n.js?v=202609282330"></script>
+<script src="assets/js/trial-nav.js?v=202609282330"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="booking"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -1504,7 +1503,6 @@
             <div class="bk-legend" aria-hidden="true">
               <span><i class="bk-lg-free"></i><span data-i18n="bk_avail_free">Müsait</span></span>
               <span><i class="bk-lg-busy"></i><span data-i18n="bk_avail_busy">Dolu</span></span>
-              <span><i class="bk-lg-closed"></i><span data-i18n="bk_avail_closed">Kapalı</span></span>
               <span><i class="bk-lg-sel"></i><span data-i18n="bk_avail_sel">Seçili</span></span>
             </div>
             <div class="bk-jump" role="group" aria-label="Saat aralığına git" data-bk-aria="bks_jump_aria">
@@ -1875,7 +1873,7 @@
           <div class="adm-panel-head adm-panel-head--end">
             <div class="adm-titles">
               <h2 class="adm-h2" id="admAvailTitle" data-i18n="adm_nav_avail">Müsaitlik</h2>
-              <p class="adm-desc" data-i18n="adm_avail_desc">Günleri aç/kapat, saat hücrelerine dokunarak kapat. Kapalı saatler öğrencinin saat tablosunda seçilemez; "Kaydet" ile yayına girer ve takvime yansır.</p>
+              <p class="adm-desc" data-i18n="adm_avail_desc">Günleri aç/kapat, saat hücrelerine dokunarak kapat. Kapalı saatler öğrencinin saat tablosunda "Dolu" görünür ve seçilemez; "Kaydet" ile yayına girer ve takvime yansır.</p>
             </div>
             <div class="adm-avail-act">
               <span class="adm-k adm-k--gold" id="admAvailCount" aria-live="polite"></span>
@@ -2598,12 +2596,14 @@ function renderAvailGrid() {
       const isClosed = _closedSlots.has(key);
       const isBusy   = _busySlots.has(key);
       const isSel    = !isClosed && !isBusy && _selectedSlots.has(key);
-      cell.className = 'av-cell ' + (isClosed ? 'closed' : isBusy ? 'busy' : isSel ? 'selected' : 'free');
-      cell.innerHTML = isBusy ? `<span class="av-t">${busyTxt}</span>` : isSel ? '<span aria-hidden="true">✓</span>' : '';
+      // Kapalı (admin'in kapattığı) saat öğrenciye dolu saatten ayırt edilmeden "Dolu" görünür
+      const shownBusy = isClosed || isBusy;
+      cell.className = 'av-cell ' + (shownBusy ? 'busy' : isSel ? 'selected' : 'free');
+      cell.innerHTML = shownBusy ? `<span class="av-t">${busyTxt}</span>` : isSel ? '<span aria-hidden="true">✓</span>' : '';
       cell.dataset.key = key;
       cell.setAttribute('role', 'checkbox');
       cell.setAttribute('aria-checked', isSel ? 'true' : 'false');
-      cell.setAttribute('aria-label', `${getDays()[dow]} ${time}${isClosed ? ' — ' + bkT('bk_avail_closed', 'Kapalı') : isBusy ? ' — ' + busyTxt : ''}`);
+      cell.setAttribute('aria-label', `${getDays()[dow]} ${time}${shownBusy ? ' — ' + busyTxt : ''}`);
       cell.tabIndex = -1;
       if (!isBusy && !isClosed) {
         cell.onclick = () => { setAvailFocus(cell, false); toggleSlot(key, cell); };
@@ -8095,15 +8095,15 @@ function renderAccessView(user, state, rejectReason) {
         const dayBlocked = new Set(Array.isArray(trialBlockedHours[trialDow]) ? trialBlockedHours[trialDow] : []);
         if (dayClosed) {
           const dayName = getDays()[trialDow];
-          grid.innerHTML = `<div class="time-grid-msg">${dayName} günü kapalı. Lütfen başka bir gün seçin.</div>`;
+          grid.innerHTML = `<div class="time-grid-msg">${dayName} günü dolu. Lütfen başka bir gün seçin.</div>`;
           loading.style.display = 'none';
           wrap.style.display = '';
           return;
         }
         AVAILABLE_TIMES.forEach(t => {
-          if (dayBlocked.has(t)) return; // hide blocked slots
+          // Kapalı saat de öğrenciye dolu saat gibi görünür
           const btn2 = document.createElement('button');
-          const busy = busyTimes.has(t);
+          const busy = busyTimes.has(t) || dayBlocked.has(t);
           btn2.textContent = t;
           btn2.type = 'button';
           btn2.className = 'time-slot' + (busy ? ' busy' : '');

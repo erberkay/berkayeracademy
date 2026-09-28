@@ -1287,7 +1287,7 @@
     adm_avail_day:             { tr: 'Gün', en: 'Day' },
     adm_avail_dayoff:          { tr: 'Gün kapalı', en: 'Day closed' },
     adm_avail_dayoff_lc:       { tr: 'gün kapalı', en: 'day closed' },
-    adm_avail_desc:            { tr: 'Günleri aç/kapat, saat hücrelerine dokunarak kapat. Kapalı saatler öğrencinin saat tablosunda seçilemez; "Kaydet" ile yayına girer ve takvime yansır.', en: `Turn days on/off and tap hour cells to close them. Closed hours can't be picked on the student's time grid; changes go live with "Save" and show on the calendar.` },
+    adm_avail_desc:            { tr: 'Günleri aç/kapat, saat hücrelerine dokunarak kapat. Kapalı saatler öğrencinin saat tablosunda "Dolu" görünür ve seçilemez; "Kaydet" ile yayına girer ve takvime yansır.', en: `Turn days on/off and tap hour cells to close them. Closed hours show as "Full" on the student's time grid and can't be picked; changes go live with "Save" and show on the calendar.` },
     adm_avail_dirty:           { tr: 'Kaydedilmemiş değişiklik var.', en: 'Unsaved changes.' },
     adm_avail_lesson:          { tr: 'Ders var', en: 'Has lesson' },
     adm_avail_lesson_lc:       { tr: 'ders var', en: 'has lesson' },
