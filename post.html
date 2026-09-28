@@ -12,144 +12,224 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609261200">
-<script src="assets/js/theme-init.js?v=202609261200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609261200">
-<script src="assets/js/auth-ui.js?v=202609261200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
+<script src="assets/js/theme-init.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
+<script src="assets/js/auth-ui.js?v=202609271200"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
-/* ── Post: page layout only. Controls, inputs, badges and toasts come from ui.css; the nav shell from themes.css. ── */
+/* ── Konu detayı (tasarım: KonuDetay + M_KonuDetay). Yalnız sayfa yerleşimi;
+      token + ortak bileşenler ui.css'te, kabuk themes.css'te. Sınıflar pd-* önekli
+      (ui.css'teki eski alias adlarıyla — like-btn, reply-ta … — çakışmasın diye). ── */
 
-/* ── Page top bar (<1024; theme-init.js mounts the hamburger inside it) ── */
-.topnav { position:fixed; top:0; left:0; right:0; z-index:var(--z-nav); height:var(--topbar-h); display:flex; align-items:center; padding:0 16px; background:var(--bg); border-bottom:1px solid var(--line); }
-.topnav-left { display:flex; align-items:center; gap:12px; min-width:0; }
-.topnav-back { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-2); text-decoration:none; white-space:nowrap; }
-.topnav-back:hover { color:var(--accent); }
-.topnav-sep { color:var(--line); }
-.topnav-brand { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.2em; text-transform:uppercase; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (min-width:1024px) { .topnav { display:none; } }
+.pd-page { position:relative; max-width:var(--page-max); margin:0 auto; padding:48px var(--page-x) 64px; }
+.pd-bg { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+/* tasarım: 700px kızıl radial ışık, içerik alanının üstünden taşar (tek seferlik renk) */
+.pd-glow { width:700px; height:700px; left:200px; top:-500px; --glow:rgba(184,45,69,.2); --glow-2:rgba(184,45,69,.08); }
+.pd-grid { position:relative; display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:40px; align-items:start; }
+.pd-main, .pd-content { display:flex; flex-direction:column; gap:var(--s5); min-width:0; }
 
-.layout { max-width:var(--maxw); margin:0 auto; padding:calc(var(--topbar-h) + var(--s5)) var(--gutter) var(--s8); }
-.empty-state { text-align:center; padding:var(--s7) var(--s4); color:var(--fg-3); font-size:var(--fs-small); }
+.pd-back { align-self:flex-start; display:inline-flex; align-items:center; gap:8px; font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-muted); text-decoration:none; }
+.pd-back:hover { color:var(--fg); }
 
-/* post */
-.post-card { background:var(--surface); border:1px solid var(--line); margin-bottom:var(--s5); }
-.post-header { padding:var(--s5); border-bottom:1px solid var(--line); }
-.post-author-row { display:flex; align-items:center; gap:var(--s3); margin-bottom:var(--s4); }
-.avatar, .avatar-placeholder, .reply-avatar, .reply-avatar-ph { border-radius:50%; object-fit:cover; flex-shrink:0; background:var(--surface-2); border:1px solid var(--line); cursor:pointer; }
-.avatar, .avatar-placeholder { width:44px; height:44px; }
-.reply-avatar, .reply-avatar-ph { width:32px; height:32px; }
-.avatar-placeholder, .reply-avatar-ph { display:flex; align-items:center; justify-content:center; color:var(--fg-3); cursor:default; }
-.avatar-placeholder .icon { width:20px; height:20px; }
-.reply-avatar-ph .icon { width:16px; height:16px; }
-.avatar:hover, .reply-avatar:hover { border-color:var(--accent); }
-.author-info { display:flex; flex-direction:column; gap:2px; min-width:0; }
-.author-name { font-size:var(--fs-small); font-weight:600; color:var(--fg); cursor:pointer; }
-.author-name:hover { text-decoration:underline; }
-.is-admin::after { content:'admin'; margin-left:6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); }
-.author-meta { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); }
-.post-badges { display:flex; gap:6px; margin-left:auto; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
-.post-badges .badge-solved { border-color:var(--ok); color:var(--ok); }
-.post-badges .badge-open { border-color:var(--accent); color:var(--accent); }
-.post-badges .badge-cat { border-color:var(--info); color:var(--info); }
-.post-title { font-family:var(--ff-disp); font-size:var(--fs-h2); font-weight:400; line-height:var(--lh-tight); color:var(--fg); margin-bottom:var(--s3); }
-.post-body { font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg); white-space:pre-wrap; word-break:break-word; }
-.post-body b { color:var(--accent); }
-.post-body i { color:var(--info); }
-.post-body code { background:var(--surface-2); border:1px solid var(--line); padding:1px 6px; font-family:var(--ff-mono); font-size:var(--fs-small); }
-.post-actions { padding:var(--s3) var(--s5); display:flex; gap:var(--s2); align-items:center; flex-wrap:wrap; }
-.post-count { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--fg-3); margin-right:var(--s2); }
-.post-actions .delete-btn { margin-left:auto; }
-.post-actions .like-btn.liked { border-color:var(--err); color:var(--err); background:var(--err-soft); }
-.post-actions .solve-btn.active { border-color:var(--ok); color:var(--ok); background:var(--ok-soft); }
-.inline-edit-wrap { padding:var(--s4) var(--s5); border-top:1px solid var(--line); }
-.inline-edit-wrap--reply { padding:var(--s3) 0 0; border-top:0; }
-.inline-edit-btns { display:flex; gap:var(--s2); margin-top:var(--s2); }
+/* ── Konu kartı ── */
+.pd-article { position:relative; display:flex; flex-direction:column; gap:var(--s5); padding:40px; border-radius:var(--r-28); background:var(--surface-0); border:1px solid var(--line); }
+.pd-chips { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.pd-chip { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--r-pill); font-size:var(--fs-small); font-weight:500; line-height:1.3; white-space:nowrap; }
+.pd-chip--cat { background:var(--accent-soft); color:var(--accent); }
+.pd-chip--ok { background:var(--ok-soft); color:var(--ok); }
+.pd-chip--open { padding:5px 11px; border:1px solid var(--line-strong); color:var(--fg-2); }
+/* tasarım h1 64px (mobil 40px) — ölçekte token yok, 600→1440 akışkan */
+html .pd-title { font-size:clamp(40px, calc(40px + (100vw - 600px) * .0286), 64px); line-height:1; letter-spacing:0; color:var(--fg); overflow-wrap:anywhere; }
 
-/* replies */
-.replies-section { margin-bottom:var(--s5); }
-.replies-header { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.14em; text-transform:uppercase; color:var(--fg-2); margin-bottom:var(--s4); padding-bottom:10px; border-bottom:1px solid var(--line); }
-.reply-card { display:flex; gap:var(--s3); margin-bottom:var(--s3); }
-.reply-body { flex:1; min-width:0; background:var(--surface); border:1px solid var(--line); padding:var(--s4); }
-.reply-author-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
-.reply-author { font-size:var(--fs-small); font-weight:600; color:var(--fg); cursor:pointer; }
-.reply-author:hover { text-decoration:underline; }
-.reply-author.is-admin { color:var(--accent); }
-.reply-date { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); margin-left:auto; }
-.reply-del { background:none; border:0; padding:0; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
-.reply-del:hover { color:var(--err); }
-.reply-del.reply-edit:hover { color:var(--info); }
-.reply-text { font-size:var(--fs-small); line-height:var(--lh-body); color:var(--fg); white-space:pre-wrap; word-break:break-word; }
+.pd-author { display:flex; align-items:center; gap:14px; min-width:0; }
+.pd-author-meta { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.pd-author-line { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; }
+.pd-author-name { font-size:var(--fs-body); font-weight:600; color:var(--fg); text-decoration:none; }
+.pd-author-name:hover, .pd-reply-name:hover, .pd-op-name:hover { color:var(--accent-hover); }
+.pd-rank { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:var(--tr-mono); color:var(--accent); }
+.pd-date { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--fg-3); }
 
-/* reply form */
-.reply-form-card { background:var(--surface); border:1px solid var(--line); padding:var(--s5); }
-.reply-form-title { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.14em; text-transform:uppercase; color:var(--fg-2); margin-bottom:var(--s4); }
-.reply-form-row { display:flex; gap:var(--s3); align-items:flex-start; }
-.reply-form-row .reply-ta { flex:1; min-height:88px; }
-.reply-form-row .reply-submit { align-self:flex-end; }
-.replies-closed { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; color:var(--ok); }
-.login-hint { text-align:center; padding:var(--s4); color:var(--fg-2); font-size:var(--fs-small); line-height:var(--lh-body); }
-.login-hint .btn { margin-top:var(--s3); }
+.pd-body { font-size:var(--fs-body-lg); line-height:1.75; color:var(--fg-soft); padding:var(--s5) 0; border-top:1px solid var(--line-div); border-bottom:1px solid var(--line-div); overflow-wrap:anywhere; }
+.pd-body b, .pd-reply-text b { color:var(--accent); font-weight:600; }
+.pd-body i, .pd-reply-text i { color:var(--info); }
+.pd-body code, .pd-reply-text code { padding:1px 6px; border-radius:var(--r-6); background:var(--surface-2); border:1px solid var(--line); font-family:var(--ff-mono); font-size:.86em; color:var(--fg); }
 
-/* ── Toast stack (look comes from ui.css .toast) ── */
-.toast-container { position:fixed; bottom:var(--s5); right:var(--s5); z-index:var(--z-toast); display:flex; flex-direction:column-reverse; gap:var(--s2); pointer-events:none; max-width:min(92vw,360px); }
-@media (max-width:600px) { .toast-container { left:var(--s4); right:var(--s4); bottom:var(--s4); max-width:none; } }
+.pd-edit { display:flex; flex-direction:column; gap:var(--s3); }
+.pd-edit-btns { display:flex; gap:8px; flex-wrap:wrap; }
 
-@media (max-width:600px) {
-  .post-header { padding:var(--s4); }
-  .post-actions { padding:var(--s3) var(--s4); }
-  .inline-edit-wrap { padding:var(--s4); }
-  .reply-form-card { padding:var(--s4); }
-  .reply-form-row { flex-wrap:wrap; }
-  .reply-form-row .reply-submit { width:100%; }
-  .reply-body { padding:var(--s3); }
+.pd-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.pd-actions-l, .pd-actions-r { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.pd-act { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:8px; height:var(--ctl-md); padding:0 18px; border-radius:var(--r-pill); border:1px solid var(--line-strong); background:transparent; color:var(--fg-soft); font-family:var(--ff); font-size:var(--fs-ui); font-weight:500; line-height:1; white-space:nowrap; cursor:pointer; transition:transform var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast); }
+.pd-act:hover { color:var(--fg); border-color:var(--accent-line-2); }
+.pd-act svg { width:16px; height:16px; flex-shrink:0; }
+.pd-act[aria-busy="true"] { opacity:.6; cursor:progress; }
+.pd-like svg { fill:none; stroke:currentColor; stroke-width:1.8; }
+.pd-like:hover { transform:scale(1.05); }
+.pd-like[aria-pressed="true"] { color:var(--err-strong); border-color:var(--err-line); }
+.pd-like[aria-pressed="true"] svg { fill:currentColor; }
+.pd-like-n { font-family:var(--ff-mono); font-size:12px; color:var(--fg-3); }
+.pd-like[aria-pressed="true"] .pd-like-n { color:inherit; }
+.pd-solve-sm { display:none; }
+.pd-act--danger { border-color:var(--err-line); color:var(--err); }
+.pd-act--danger:hover { background:var(--err-soft); border-color:var(--err-line); color:var(--err); }
+
+/* ── Yanıtlar ── */
+.pd-replies { display:flex; flex-direction:column; gap:var(--s5); }
+.pd-replies-head { display:flex; align-items:baseline; gap:12px; padding-top:12px; }
+/* tasarım 36px (mobil 30px) */
+html .pd-replies-title { font-size:clamp(30px, calc(30px + (100vw - 600px) * .0072), 36px); line-height:1; }
+.pd-replies-n { font-family:var(--ff-mono); font-size:12px; color:var(--fg-3); }
+.pd-reply-list { display:flex; flex-direction:column; gap:var(--s5); }
+.pd-reply { display:grid; grid-template-columns:44px minmax(0,1fr); column-gap:16px; row-gap:10px; align-items:start; padding:28px; border-radius:var(--r-22); background:var(--surface-0); border:1px solid var(--line-div); }
+.pd-reply--staff { border-color:var(--accent-line); }
+.pd-reply > .pd-ava { grid-row:1 / span 2; }
+.pd-reply-head, .pd-reply-text, .pd-reply > .pd-edit { grid-column:2; }
+.pd-reply-head { display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; min-height:24px; }
+.pd-reply-name { font-size:var(--fs-body); font-weight:600; color:var(--fg); text-decoration:none; }
+.pd-staff { display:inline-flex; align-items:center; padding:3px 8px; border-radius:var(--r-pill); background:var(--accent); color:var(--accent-ink); font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.12em; line-height:1.2; white-space:nowrap; }
+.pd-reply-text { font-size:16px; line-height:1.7; color:var(--fg-soft); overflow-wrap:anywhere; }
+.pd-reply-tools { display:flex; gap:2px; margin-left:auto; }
+.pd-tool { position:relative; padding:4px 8px; border:0; border-radius:var(--r-pill); background:none; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:var(--tr-mono); text-transform:uppercase; line-height:1.4; cursor:pointer; transition:color var(--dur-fast), background var(--dur-fast); }
+.pd-tool::after { content:''; position:absolute; inset:-11px -2px; }
+.pd-tool:hover, .pd-tool[aria-expanded="true"] { color:var(--fg); background:var(--surface-hi); }
+.pd-tool--danger:hover { color:var(--err); background:var(--err-soft); }
+.pd-replies-empty { color:var(--fg-muted); }
+
+/* ── Avatarlar ── */
+.pd-ava { position:relative; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:44px; height:44px; border-radius:50%; overflow:hidden; background:var(--surface-4); color:var(--fg); font-size:14px; font-weight:600; line-height:1; text-decoration:none; }
+a.pd-ava:hover { color:var(--fg); }
+.pd-ava img { width:100%; height:100%; object-fit:cover; display:block; }
+.pd-ava--lg { width:52px; height:52px; font-size:16px; }
+.pd-ava--staff.pd-ava--initial { background:var(--accent); color:var(--accent-ink); font-weight:700; }
+.pd-ava--staff:not(.pd-ava--initial) { box-shadow:0 0 0 1px var(--accent-line-2); }
+.pd-ring { display:inline-flex; flex-shrink:0; width:44px; height:44px; padding:2px; border-radius:50%; background:conic-gradient(var(--ember-1), var(--ember-3), var(--ember-1)); }
+.pd-ring .pd-ava { width:100%; height:100%; background:var(--surface-2); }
+.pd-ring .pd-ava--staff.pd-ava--initial { background:var(--accent); }
+
+/* ── Yanıt yazma ── */
+.pd-composer { display:flex; flex-direction:column; gap:14px; padding:24px; border-radius:var(--r-22); background:var(--surface); border:1px solid var(--line-3); }
+.pd-composer-field { display:flex; flex-direction:column; gap:10px; }
+.pd-composer-label { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-label); color:var(--fg-muted); }
+html .pd-ta { display:block; width:100%; min-height:128px; padding:16px; border-radius:var(--r-14); border:1px solid var(--line-ctl); background:var(--bg); color:var(--fg); font-family:var(--ff); font-size:var(--fs-input); line-height:1.6; resize:none; outline:0; -webkit-appearance:none; appearance:none; transition:border-color var(--dur-fast), box-shadow var(--dur-fast); }
+html .pd-ta:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.pd-composer-foot { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+.pd-md-hint { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--fg-3); } /* tasarım #6f6a62 → kontrast için --fg-3 */
+html .pd-send { height:48px; padding:0 24px; font-size:var(--fs-ctl-lg); }
+.pd-send-ico { display:none; }
+.pd-composer--signin { flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.pd-composer--signin p { font-size:var(--fs-body); color:var(--fg-2); }
+.pd-closed { padding:22px 24px; border-radius:var(--r-18); background:var(--ok-wash); border:1px solid var(--ok-line); color:var(--ok); font-size:var(--fs-body); font-weight:500; }
+
+/* ── Yan sütun: konuyu açan ── */
+.pd-aside { display:flex; flex-direction:column; gap:14px; padding-top:44px; }
+.pd-op { display:flex; flex-direction:column; gap:14px; padding:24px; border-radius:var(--r-22); background:var(--surface); border:1px solid var(--line); }
+.pd-op-label { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-label); color:var(--fg-muted); }
+.pd-op-row { display:flex; align-items:center; gap:12px; min-width:0; }
+.pd-op-who { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.pd-op-name { font-weight:600; color:var(--fg); text-decoration:none; overflow-wrap:anywhere; }
+.pd-op-rank { font-size:var(--fs-small); color:var(--fg-3); }
+.pd-op-link { align-self:flex-start; display:inline-flex; gap:6px; font-size:var(--fs-ui); font-weight:600; }
+
+/* ── Yükleniyor / boş ── */
+.pd-sk { display:flex; flex-direction:column; gap:var(--s5); }
+.pd-sk-chip { width:96px; height:28px; }
+.pd-sk-title { width:72%; height:56px; }
+.pd-sk-line { width:100%; height:14px; }
+.pd-sk-line--short { width:58%; }
+.pd-sk-reply { height:112px; border-radius:var(--r-22); }
+.pd-empty { gap:16px; padding:48px 20px; }
+
+/* ── Başlıktaki Paylaş (yalnız mobil, data-be-slot) ── */
+.pd-share { position:relative; display:inline-flex; align-items:center; justify-content:center; width:var(--ctl-md); height:var(--ctl-md); padding:0; border-radius:50%; border:1px solid var(--line-strong); background:transparent; color:var(--fg); cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
+.pd-share:hover { border-color:var(--line-hi); }
+.pd-share svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+
+@media (max-width:1279px) {
+  .pd-grid { grid-template-columns:minmax(0,1fr) 300px; gap:32px; }
 }
-@media (min-width:1024px) { .layout { padding-top:var(--s5); } }
+@media (max-width:1024px) {
+  .pd-page { padding:24px var(--page-x) calc(var(--pd-dock-h, 0px) + 32px); }
+  .pd-bg, .pd-back, .pd-aside { display:none; }
+  .pd-grid { grid-template-columns:minmax(0,1fr); }
+  .pd-act--copy { display:none; } /* mobilde bağlantı başlıktaki Paylaş düğmesinde */
+
+  /* yanıt çubuğu ekranın altına sabitlenir (M_KonuDetay) */
+  .pd-composer { position:fixed; left:0; right:0; bottom:0; z-index:var(--z-tabbar); flex-direction:row; align-items:flex-end; gap:8px; padding:12px 12px calc(20px + env(safe-area-inset-bottom, 0px)); border:0; border-top:1px solid var(--line); border-radius:0; background:var(--surface-0); background:color-mix(in srgb, var(--surface-0) 96%, transparent); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); }
+  .pd-composer-field { flex:1; min-width:0; }
+  .pd-composer-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  html .pd-ta { min-height:0; padding:12px; }
+  .pd-composer-foot { flex:none; }
+  .pd-md-hint { display:none; }
+  html .pd-send { width:52px; height:52px; padding:0; border-radius:50%; }
+  .pd-send-txt { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .pd-send-ico { display:block; width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+  .pd-composer--signin { align-items:center; flex-wrap:nowrap; padding-left:16px; }
+  .pd-composer--signin p { flex:1; font-size:var(--fs-ui); }
+  .pd-closed { position:fixed; left:12px; right:12px; bottom:calc(20px + env(safe-area-inset-bottom, 0px)); z-index:var(--z-tabbar); padding:16px; border-radius:var(--r-16); background:var(--surface-0); background:color-mix(in srgb, var(--ok-strong) 12%, var(--surface-0)); font-size:var(--fs-ui); font-weight:400; text-align:center; box-shadow:var(--shadow-pop); }
+  html.pd-docked .toast-wrap { bottom:calc(var(--pd-dock-h, 0px) + 12px); }
+}
+@media (max-width:600px) {
+  .pd-page { padding-top:20px; }
+  .pd-content { gap:26px; }
+  .pd-article { gap:14px; padding:0; border:0; border-radius:0; background:none; }
+  .pd-chips { gap:6px; }
+  .pd-chip { padding:5px 10px; font-size:12px; font-weight:400; }
+  .pd-chip--open { padding:4px 9px; }
+  .pd-author { gap:10px; }
+  .pd-author-meta { gap:0; }
+  .pd-author-name { font-size:var(--fs-ui); }
+  .pd-date { font-size:var(--fs-micro); }
+  .pd-ring { width:38px; height:38px; padding:0; background:none; }
+  .pd-ring .pd-ava { background:var(--surface-4); font-size:13px; }
+  .pd-body { font-size:16px; line-height:1.7; padding:var(--s4) 0; }
+  .pd-actions { gap:8px; }
+  .pd-actions-l, .pd-actions-r { display:contents; }
+  .pd-act { flex:1 1 auto; }
+  .pd-solve { font-size:var(--fs-small); }
+  .pd-solve-lg { display:none; }
+  .pd-solve-sm { display:inline; }
+  .pd-replies { gap:10px; }
+  .pd-replies-head { padding-top:0; gap:8px; }
+  .pd-replies-n { font-size:var(--fs-label); }
+  .pd-reply-list { gap:10px; }
+  .pd-reply { grid-template-columns:32px minmax(0,1fr); column-gap:8px; row-gap:8px; align-items:center; padding:16px; border-radius:var(--r-18); }
+  .pd-reply > .pd-ava { grid-row:auto; width:32px; height:32px; font-size:11px; }
+  .pd-reply-text, .pd-reply > .pd-edit { grid-column:1 / -1; }
+  .pd-reply-name { font-size:var(--fs-ui); }
+  .pd-staff { padding:2px 6px; font-size:9px; letter-spacing:var(--tr-mono); }
+  .pd-reply-text { font-size:var(--fs-body); line-height:1.6; }
+}
 </style>
-<script src="assets/js/i18n.js?v=202609261200"></script>
-<script src="assets/js/love-nav.js?v=202609261200"></script>
+<script src="assets/js/i18n.js?v=202609271200"></script>
+<script src="assets/js/love-nav.js?v=202609271200"></script>
 </head>
 <body>
+<header class="be-header" id="beHeader" data-be-page="post" data-be-back="/forum" data-be-back-label="nav_forum" data-be-tabs="off"><div data-be-slot class="be-slot--mobile"><button type="button" class="pd-share" id="pdShareBtn" aria-label="Paylaş"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v8h16v-8M12 3v13M7 8l5-5 5 5"/></svg></button></div><div id="authBar"></div></header>
 
-<div id="authBar"></div>
-<nav class="topnav">
-  <div class="topnav-left">
-    <a href="forum" class="topnav-back" data-i18n="post_back">← Forum</a>
-    <span class="topnav-sep">|</span>
-    <span class="topnav-brand" id="navTitle">Konu</span>
-  </div>
-</nav>
-
-<nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
-  <div class="lnav-items">
-    <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span><span data-i18n="nav_home">Ana Sayfa</span></a>
-    <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span><span data-i18n="nav_egitim">Eğitim</span></a>
-    <a class="lnav-item" href="egitmen" data-page="egitmen"><span class="lnav-icon">👤</span><span data-i18n="nav_egitmen">Eğitmen</span></a>
-    <a class="lnav-item" href="forum" data-page="forum"><span class="lnav-icon">💬</span><span data-i18n="nav_forum">Forum</span></a>
-    <a class="lnav-item" href="members" data-page="members"><span class="lnav-icon">👥</span><span data-i18n="nav_members">Üyeler</span></a>
-    <a class="lnav-item" href="ableton-lab" data-page="ableton-lab"><span class="lnav-icon">🎛️</span><span data-i18n="nav_lab">Lab</span></a>
-    <a class="lnav-item" href="sss" data-page="sss"><span class="lnav-icon">❓</span><span data-i18n="nav_sss">SSS</span></a>
-    <a class="lnav-item" id="lnavAdminItem" href="booking" data-page="booking" style="display:none;"><span class="lnav-icon">📅</span><span data-i18n="nav_lessons">Ders Paneli</span></a>
-    <a class="lnav-item" id="lnavLoveBtn" href="love" data-page="love" style="display:none;color:#e8527a;"><span class="lnav-icon">💌</span><span>Sana Olan Sevgim</span></a>
-  </div>
-  <div class="lnav-foot">
-    <div class="lnav-lang">
-      <button class="lang-btn" data-lang="tr" onclick="window._i18n?.setLang('tr')">TR</button>
-      <button class="lang-btn" data-lang="en" onclick="window._i18n?.setLang('en')">EN</button>
+<main class="pd-page" id="layout" aria-busy="true">
+  <div class="pd-bg" aria-hidden="true"><div class="pd-glow be-glow be-drift"></div></div>
+  <div class="pd-grid">
+    <div class="pd-main">
+      <a class="pd-back be-rv" href="/forum"><span aria-hidden="true">←</span><span data-i18n="nav_forum">Forum</span></a>
+      <div class="pd-content" id="pdContent">
+        <div class="pd-article pd-sk" role="status">
+          <span class="sr-only" data-i18n="ui_loading">Yükleniyor...</span>
+          <span class="be-sk be-sk--pill pd-sk-chip" aria-hidden="true"></span>
+          <span class="be-sk pd-sk-title" aria-hidden="true"></span>
+          <span class="be-sk pd-sk-line" aria-hidden="true"></span>
+          <span class="be-sk pd-sk-line pd-sk-line--short" aria-hidden="true"></span>
+        </div>
+      </div>
     </div>
-    <a class="lnav-profile-link" href="profile" data-page="profile"><div class="lnav-profile-av" id="lnavProfileAv">👤</div><span data-i18n="nav_profile">Profil</span></a>
+    <aside class="pd-aside" id="pdAside" hidden></aside>
   </div>
-</nav>
-
-<div class="layout" id="layout">
-  <div class="empty-state" data-i18n="ui_loading">Yükleniyor...</div>
-</div>
+</main>
 
 <script type="module">
 'use strict';
@@ -166,34 +246,99 @@ firebase.initializeApp({
 });
 const auth = firebase.auth();
 const db   = firebase.firestore();
+const FV   = firebase.firestore.FieldValue;
 let _user = null;
 let _unsubReplies = null;
+let _postSeq = 0, _replySeq = 0;   // eski (geç dönen) çizimleri yok say
+let _animate = true;               // giriş animasyonu yalnız ilk çizimde
+let _draft = '';                   // yeniden çizimde (giriş/dil değişimi) yanıt taslağı korunur
+let _lastLang = null;
+const _profiles = new Map();       // uid → Promise<users/{uid} | null>
+
+// ── i18n: anahtar i18n.js'te yoksa yedek metin (t() anahtarın kendisini döndürür)
+const lang = () => (window._i18n?.getLang?.() === 'en' ? 'en' : 'tr');
+function L(key, tr, en) {
+  const v = window._i18n?.t?.(key);
+  if (v && v !== key) return v;
+  return (lang() === 'en' && en) ? en : tr;
+}
+const up = s => String(s || '').toLocaleUpperCase(lang() === 'en' ? 'en' : 'tr');
 
 function doSignIn() { window.bkAuth.openLogin(); }
 window.doSignIn = doSignIn;
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function toDate(ts) { if (!ts) return null; const d = ts.toDate ? ts.toDate() : new Date(ts); return isNaN(d) ? null : d; }
 function fmtDate(ts) {
-  if (!ts) return '';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleDateString('tr-TR', {day:'numeric',month:'short',year:'numeric'});
+  const d = toDate(ts);
+  return d ? d.toLocaleDateString(lang() === 'en' ? 'en-US' : 'tr-TR', { day:'numeric', month:'short', year:'numeric' }) : '';
+}
+function timeEl(ts) {
+  const t = el('time', 'pd-date', fmtDate(ts));
+  const d = toDate(ts); if (d) t.dateTime = d.toISOString();
+  return t;
 }
 function renderMd(txt) {
   return (txt||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>')
     .replace(/`(.+?)`/g,'<code>$1</code>').replace(/\n/g,'<br>');
 }
-function goProfile(uid) { location.href = `profile?uid=${uid}`; }
+function profileHref(uid) { return `profile?uid=${encodeURIComponent(uid)}`; }
+function goProfile(uid) { location.href = profileHref(uid); }
+function initialOf(s) { s = String(s || '').trim(); return s ? s.charAt(0).toLocaleUpperCase('tr') : '•'; }
 
+const TITLE_KEYS = {
+  acemi:   ['mem_acemi',   `Acemi`,                  'Beginner'],
+  merakli: ['mem_merakli', `Prodüksiyon Meraklısı`,  'Production Enthusiast'],
+  uretici: ['mem_uretici', `Üretici`,                'Producer'],
+  veteran: ['mem_veteran', `Veteran`,                'Veteran'],
+  usta:    ['mem_usta',    `Usta`,                   'Master'],
+  efsane:  ['mem_efsane',  `Efsane`,                 'Legend'],
+};
+function titleLabel(k) { const t = TITLE_KEYS[k]; return t ? L(t[0], t[1], t[2]) : ''; }
+
+let _toastWrap = null;
 function showToast(msg, type='success', ms=3500) {
-  let c = document.getElementById('toastCt');
-  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
-  const t = document.createElement('div'); t.className='toast'+(type==='error'?' err':''); t.textContent=msg;
-  c.append(t);
+  if (!_toastWrap || !_toastWrap.isConnected) {
+    _toastWrap = el('div', 'toast-wrap'); _toastWrap.id = 'toastCt';
+    _toastWrap.setAttribute('role', 'status'); _toastWrap.setAttribute('aria-live', 'polite');
+    document.body.append(_toastWrap);
+  }
+  const t = el('div', 'toast ' + (type === 'error' ? 'err' : type === 'info' ? 'info' : 'ok'), msg);
+  _toastWrap.append(t);
   setTimeout(()=>{ t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
 }
 function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 const ic = n => '<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-' + n + '"/></svg>';
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.7-8 11-8 11z"/></svg>';
+const SEND  = '<svg class="pd-send-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
 
+// ── Bağlantıyı paylaş / kopyala ─────────────────────────────────────────
+function copyLink() {
+  const ok = () => showToast(L('post_link_copied', `Link kopyalandı`, 'Link copied'), 'info');
+  const fail = () => showToast(L('post_copy_fail', `Link kopyalanamadı`, 'Could not copy the link'), 'error');
+  try { navigator.clipboard.writeText(location.href).then(ok, fail); } catch { fail(); }
+}
+async function shareLink() {
+  if (navigator.share) {
+    try { await navigator.share({ title: document.title, url: location.href }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  copyLink();
+}
+const shareBtn = document.getElementById('pdShareBtn');
+if (shareBtn) shareBtn.onclick = shareLink;
+function syncStaticLabels() {
+  if (shareBtn) { const s = L('post_share', `Paylaş`, 'Share'); shareBtn.setAttribute('aria-label', s); shareBtn.title = s; }
+}
+syncStaticLabels();
+
+// ── Oturum çubuğu + bildirim zili (ortak kalıp) ────────────────────────
 let _notifUnsub = null, _annUnsub = null;
 let _notifPanelEl = null;
 let _personalNotifs = [], _announcements = [], _annSeenAt = null, _dismissedAnns = [];
@@ -204,10 +349,6 @@ function updateAuthBar(user) {
   if (user) {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
     const img  = document.createElement('img');  img.className = 'auth-avatar';
-      const _bnavAv = document.getElementById('bnavProfileAv');
-      const _bnavAdmin = document.getElementById('bnavAdminItem');
-      if (_bnavAdmin) _bnavAdmin.style.display = 'flex';
-      if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
     img.src = user.photoURL || ''; img.alt = '';
     img.onclick = () => goProfile(user.uid);
     const name = document.createElement('span'); name.className = 'auth-name';
@@ -217,13 +358,17 @@ function updateAuthBar(user) {
     out.textContent = '✕'; out.onclick = () => auth.signOut();
     wrap.append(img, name, out);
 
-    // Notification bell
+    // Bildirim zili
     const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
-    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.innerHTML = ic('bell'); bell.title = 'Bildirimler';
+    const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.innerHTML = ic('bell'); bell.title = L('ui_notifications', `Bildirimler`, 'Notifications');
     const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
     _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
-    _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all" id="notifReadAll">Tümünü Oku</button></div><div class="notif-list"></div>';
-    _notifPanelEl.querySelector('.notif-read-all').onclick = () => markAllRead(user.uid);
+    const head = el('div', 'notif-panel-head');
+    head.append(el('span', 'notif-panel-title', L('ui_notifications', `Bildirimler`, 'Notifications')));
+    const readAll = el('button', 'notif-read-all', L('ui_read_all', `Tümünü Oku`, 'Mark all read')); readAll.id = 'notifReadAll'; readAll.type = 'button';
+    readAll.onclick = () => markAllRead(user.uid);
+    head.append(readAll);
+    _notifPanelEl.append(head, el('div', 'notif-list'));
     bell.onclick = (e) => { e.stopPropagation(); toggleNotifPanel(user); };
     bellWrap.append(bell, badge, _notifPanelEl);
     bar.append(bellWrap, wrap);
@@ -231,7 +376,7 @@ function updateAuthBar(user) {
     document.addEventListener('click', closeNotifPanel, { once: true });
   } else {
     const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-    btn.textContent = window._i18n?.t('ui_signin')||'Giriş Yap'; btn.onclick = doSignIn;
+    btn.textContent = L('ui_signin', `Giriş Yap`, 'Sign in'); btn.onclick = doSignIn;
     bar.append(btn);
   }
 }
@@ -262,23 +407,23 @@ function _mergeNotifs(uid) {
   if (_notifPanelEl) {
     const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
     list.innerHTML = '';
-    if (!all.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
+    if (!all.length) { list.append(el('div', 'notif-empty', L('ui_no_notifs', `Bildirim yok`, 'No notifications'))); return; }
     all.forEach(n => {
       const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
       const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
       const icon = n._t==='a' ? '📢 ' : '';
-      const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-      const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=icon+(n.text||'Yeni bildirim');const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
+      const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString(lang() === 'en' ? 'en-US' : 'tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      item.append(el('div', 'notif-item-text', icon + (n.text || L('ui_new_notif', `Yeni bildirim`, 'New notification'))), el('div', 'notif-item-time', timeStr));
       if (n.postId) item.onclick = () => { location.href = `post?id=${n.postId}`; };
       if (n._id) {
-        const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
+        const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = L('post_delete', `Sil`, 'Delete');
         del.onclick = e => {
           e.stopPropagation();
           if (n._t === 'p') {
             db.collection('notifications').doc(uid).collection('items').doc(n._id).delete();
           } else {
             if (!_dismissedAnns.includes(n._id)) { _dismissedAnns.push(n._id); }
-            db.collection('users').doc(uid).update({ dismissedAnns: firebase.firestore.FieldValue.arrayUnion(n._id) }).catch(() => {});
+            db.collection('users').doc(uid).update({ dismissedAnns: FV.arrayUnion(n._id) }).catch(() => {});
             _announcements = _announcements.filter(a => a._id !== n._id);
             _mergeNotifs(uid);
           }
@@ -295,7 +440,7 @@ function markAllRead(uid) {
     .where('read', '==', false).get().then(snap => {
       const batch = db.batch(); snap.docs.forEach(d => batch.update(d.ref, { read: true })); batch.commit();
     }).catch(() => {});
-  db.collection('users').doc(uid).set({ announcementsSeenAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }).catch(() => {});
+  db.collection('users').doc(uid).set({ announcementsSeenAt: FV.serverTimestamp() }, { merge: true }).catch(() => {});
   _annSeenAt = { seconds: Date.now() / 1000 };
   _personalNotifs = _personalNotifs.map(n => ({...n, read: true}));
   _mergeNotifs(uid);
@@ -322,336 +467,490 @@ function initNotifications(user) {
     .onSnapshot(snap => { _announcements = snap.docs.map(d => ({...d.data(), _id: d.id})); _mergeNotifs(user.uid); }, () => {});
 }
 
-async function getProfile(uid) {
-  try {
-    const d = await db.collection('users').doc(uid).get();
-    return d.exists ? d.data() : null;
-  } catch { return null; }
-}
-
-function makeAvatar(photoURL, size, uid) {
-  if (photoURL) {
-    const img = document.createElement('img');
-    img.className = size === 40 ? 'avatar' : 'reply-avatar';
-    img.src = photoURL; img.alt = ''; img.width = size; img.height = size;
-    img.onerror = () => { img.style.display='none'; };
-    if (uid) img.onclick = () => goProfile(uid);
-    return img;
+// ── Profiller (önbellekli; girişsizken `users` okunamaz → null) ────────
+function getProfile(uid) {
+  if (!uid) return Promise.resolve(null);
+  if (!_profiles.has(uid)) {
+    _profiles.set(uid, db.collection('users').doc(uid).get()
+      .then(d => d.exists ? d.data() : null).catch(() => null));
   }
-  const ph = document.createElement('div');
-  ph.className = size === 40 ? 'avatar-placeholder' : 'reply-avatar-ph';
-  ph.innerHTML = ic('user');
-  return ph;
+  return _profiles.get(uid);
+}
+const photoOf = (prof, fallback) => prof?.customPhotoURL || prof?.photoURL || fallback || null;
+
+// Avatar: fotoğraf → baş harf (eğitmen: altın "BE"). Ada ayrıca bağlantı olduğu için
+// avatar bağlantısı ekran okuyucudan ve sekme sırasından gizli.
+function avatar({ photo, name, uid, cls = '', staff = false }) {
+  const a = document.createElement(uid ? 'a' : 'span');
+  a.className = 'pd-ava' + (cls ? ' ' + cls : '') + (staff ? ' pd-ava--staff' : '');
+  if (uid) { a.href = profileHref(uid); a.tabIndex = -1; }
+  a.setAttribute('aria-hidden', 'true');
+  const initial = () => { a.textContent = staff ? 'BE' : initialOf(name); a.classList.add('pd-ava--initial'); };
+  if (photo) {
+    const img = document.createElement('img');
+    img.src = photo; img.alt = ''; img.decoding = 'async';
+    img.onerror = () => { img.remove(); initial(); };
+    a.append(img);
+  } else initial();
+  return a;
+}
+function nameLink(cls, name, uid) {
+  const n = el(uid ? 'a' : 'span', cls, name || L('post_member', `Üye`, 'Member'));
+  if (uid) n.href = profileHref(uid);
+  return n;
 }
 
+// ── Mobil: sabit yanıt çubuğunun yüksekliği (sayfa alt boşluğu + toast konumu)
+let _dockRO = null, _dockMeasure = null;
+function watchDock(box) {
+  if (_dockRO) { _dockRO.disconnect(); _dockRO = null; }
+  const root = document.documentElement;
+  root.classList.add('pd-docked');
+  _dockMeasure = () => {
+    if (!box.isConnected) return;
+    const fixed = getComputedStyle(box).position === 'fixed';
+    const h = fixed ? Math.max(0, Math.ceil(window.innerHeight - box.getBoundingClientRect().top)) : 0;
+    root.style.setProperty('--pd-dock-h', h + 'px');
+  };
+  _dockMeasure();
+  if ('ResizeObserver' in window) { _dockRO = new ResizeObserver(() => _dockMeasure && _dockMeasure()); _dockRO.observe(box); }
+}
+window.addEventListener('resize', () => { if (_dockMeasure) _dockMeasure(); });
+
+function renderEmpty(msg) {
+  const content = document.getElementById('pdContent');
+  content.textContent = '';
+  const box = el('div', 'be-empty pd-empty'); box.setAttribute('role', 'status');
+  box.append(el('p', '', msg));
+  const back = el('a', 'btn btn-subtle btn-sm', L('post_back', `← Forum`, '← Forum')); back.href = '/forum';
+  box.append(back);
+  content.append(box);
+  document.getElementById('layout').setAttribute('aria-busy', 'false');
+}
+
+// ── Konu ────────────────────────────────────────────────────────────────
 async function renderPost() {
   if (!postId) { location.href = 'forum'; return; }
-  const layout = document.getElementById('layout');
-
-  const doc = await db.collection('forum').doc(postId).get();
-  if (!doc.exists) { layout.innerHTML = '<div class="empty-state">Konu bulunamadı.</div>'; return; }
+  const seq = ++_postSeq;
+  let doc;
+  try { doc = await db.collection('forum').doc(postId).get(); }
+  catch (e) {
+    if (seq !== _postSeq) return;
+    renderEmpty(L('post_load_fail', `Konu yüklenemedi.`, 'Could not load the topic.'));
+    return;
+  }
+  if (seq !== _postSeq) return;
+  if (!doc.exists) { renderEmpty(L('post_not_found', `Konu bulunamadı.`, 'Topic not found.')); return; }
   const post = { id: doc.id, ...doc.data() };
+  const profile = await getProfile(post.authorId);
+  if (seq !== _postSeq) return;
 
   document.title = (post.title || 'Konu') + ' — Elektronik Müzik Topluluğu';
-  const navTitle = document.getElementById('navTitle');
-  if (navTitle) navTitle.textContent = post.title || 'Konu';
+  _lastLang = lang();
+  const anim = _animate; _animate = false;
 
-  layout.innerHTML = '';
+  const content = document.getElementById('pdContent');
+  content.textContent = '';
+  content.append(buildArticle(post, profile, anim));
+  renderAside(post, profile);
+  document.getElementById('layout').setAttribute('aria-busy', 'false');
+  renderReplies(content, post, anim);
+}
 
-  // ── Post card ──
-  const card = document.createElement('div'); card.className = 'post-card';
-  const header = document.createElement('div'); header.className = 'post-header';
+function buildArticle(post, profile, anim) {
+  const authorIsAdmin = post.authorEmail === ADMIN_EMAIL;
+  const card = el('article', 'pd-article' + (anim ? ' be-rv be-d1' : ''));
+  card.setAttribute('aria-labelledby', 'pdTitle');
 
-  // Author row
-  const authorRow = document.createElement('div'); authorRow.className = 'post-author-row';
-  const profile = await getProfile(post.authorId);
-  const photo = profile?.photoURL || post.authorPhotoURL || null;
-  const avEl = makeAvatar(photo, 40, post.authorId);
-  const authorInfo = document.createElement('div'); authorInfo.className = 'author-info';
-  const nameEl = document.createElement('span');
-  nameEl.className = 'author-name' + (post.authorEmail === ADMIN_EMAIL ? ' is-admin' : '');
-  nameEl.textContent = post.authorName;
-  nameEl.onclick = () => goProfile(post.authorId);
-  const metaEl = document.createElement('span'); metaEl.className = 'author-meta';
-  metaEl.textContent = fmtDate(post.createdAt);
-  authorInfo.append(nameEl, metaEl);
-  const badges = document.createElement('div'); badges.className = 'post-badges';
-  const b = document.createElement('span');
-  b.className = 'badge ' + (post.solved ? 'badge-solved' : 'badge-open');
-  b.textContent = post.solved ? '✓ Çözüldü' : 'Açık';
-  badges.append(b);
-  if (post.category && post.category !== 'Genel') {
-    const cb = document.createElement('span'); cb.className = 'badge badge-cat'; cb.textContent = post.category;
-    badges.append(cb);
+  // Kategori + durum
+  const chips = el('div', 'pd-chips');
+  if (post.category) chips.append(el('span', 'pd-chip pd-chip--cat', post.category));
+  if (post.solved) chips.append(el('span', 'pd-chip pd-chip--ok', L('forum_is_solved', `✓ Çözüldü`, '✓ Solved')));
+  else {
+    const open = el('span', 'pd-chip pd-chip--open');
+    open.append(el('span', 'be-dot'), document.createTextNode(L('forum_filter_open', `Açık`, 'Open')));
+    chips.append(open);
   }
-  authorRow.append(avEl, authorInfo, badges);
-  header.append(authorRow);
+  card.append(chips);
 
-  if (post.title) {
-    const ttl = document.createElement('div'); ttl.className = 'post-title'; ttl.textContent = post.title;
-    header.append(ttl);
-  }
+  const ttl = el('h1', 'pd-title', post.title || L('post_topic', `Konu`, 'Topic')); ttl.id = 'pdTitle';
+  card.append(ttl);
+
+  // Yazar
+  const author = el('div', 'pd-author');
+  const ring = el('span', 'pd-ring');
+  ring.append(avatar({ photo: photoOf(profile, post.authorPhotoURL), name: post.authorName, uid: post.authorId, staff: authorIsAdmin }));
+  const meta = el('div', 'pd-author-meta');
+  const line = el('span', 'pd-author-line');
+  line.append(nameLink('pd-author-name', post.authorName, post.authorId));
+  if (authorIsAdmin) line.append(el('span', 'pd-staff', L('post_staff', `EĞİTMEN`, 'INSTRUCTOR')));
+  else if (titleLabel(profile?.title)) line.append(el('span', 'pd-rank', up(titleLabel(profile.title))));
+  meta.append(line, timeEl(post.createdAt));
+  author.append(ring, meta);
+  card.append(author);
+
+  let body = null;
   if (post.text) {
-    const body = document.createElement('div'); body.className = 'post-body';
+    body = el('div', 'pd-body');
     body.innerHTML = renderMd(post.text);
-    header.append(body);
+    card.append(body);
   }
-  card.append(header);
 
-  // Post actions
-  const actions = document.createElement('div'); actions.className = 'post-actions';
-  const replyCount = document.createElement('span'); replyCount.className = 'post-count';
-  replyCount.textContent = `${post.replyCount||0} Yanıt`;
-  actions.append(replyCount);
+  // Eylemler
+  const actions = el('div', 'pd-actions');
+  const left = el('div', 'pd-actions-l'), right = el('div', 'pd-actions-r');
+  actions.append(left, right);
 
-  const copyBtn = document.createElement('button'); copyBtn.className = 'action-btn';
-  copyBtn.textContent = window._i18n?.t('post_copy_link')||'Linki Kopyala';
-  copyBtn.onclick = () => {
-    navigator.clipboard.writeText(location.href).then(() => showToast('Link kopyalandı', 'info'));
+  // Beğeni (yerinde güncellenir)
+  const likeBtn = el('button', 'pd-act pd-like'); likeBtn.type = 'button';
+  likeBtn.innerHTML = HEART;
+  const likeTxt = el('span', '', L('post_like', `Beğen`, 'Like'));
+  const likeN = el('span', 'pd-like-n');
+  likeBtn.append(likeTxt, likeN);
+  const syncLike = (pop) => {
+    const liked = !!(_user && (post.likedBy || []).includes(_user.uid));
+    likeBtn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+    likeN.textContent = String(post.likeCount || 0);
+    likeBtn.setAttribute('aria-label', `${L('post_like', `Beğen`, 'Like')} (${post.likeCount || 0})`);
+    const svg = likeBtn.querySelector('svg');
+    if (pop && liked && svg) { svg.classList.remove('be-pop-in'); void svg.getBoundingClientRect(); svg.classList.add('be-pop-in'); }
   };
-  actions.append(copyBtn);
-
-  // Like button
-  const likedBy = post.likedBy || [];
-  const isLiked = _user && likedBy.includes(_user.uid);
-  const likeBtn = document.createElement('button');
-  likeBtn.className = 'action-btn like-btn' + (isLiked ? ' liked' : '');
-  likeBtn.innerHTML = ic('heart') + ' ' + (post.likeCount || 0);
+  syncLike(false);
+  let likeBusy = false;
   likeBtn.onclick = async () => {
-    if (!_user) { showToast('Beğenmek için giriş yap', 'info'); return; }
+    if (!_user) { showToast(L('forum_like_signin', `Beğenmek için giriş yap`, 'Sign in to like'), 'info'); return; }
+    if (likeBusy) return;
+    likeBusy = true; likeBtn.setAttribute('aria-busy', 'true');
+    const uid = _user.uid;
+    const wasLiked = (post.likedBy || []).includes(uid);
     const ref = db.collection('forum').doc(postId);
     try {
-      if (isLiked) {
-        await ref.update({ likedBy: firebase.firestore.FieldValue.arrayRemove(_user.uid), likeCount: firebase.firestore.FieldValue.increment(-1) });
+      if (wasLiked) {
+        await ref.update({ likedBy: FV.arrayRemove(uid), likeCount: FV.increment(-1) });
+        post.likedBy = (post.likedBy || []).filter(x => x !== uid);
+        post.likeCount = Math.max(0, (post.likeCount || 0) - 1);
       } else {
-        await ref.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(_user.uid), likeCount: firebase.firestore.FieldValue.increment(1) });
+        await ref.update({ likedBy: FV.arrayUnion(uid), likeCount: FV.increment(1) });
+        post.likedBy = [...(post.likedBy || []), uid];
+        post.likeCount = (post.likeCount || 0) + 1;
       }
-      renderPost();
+      syncLike(true);
     } catch(e) { const c=errId(); showToast(`Hata (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
+    finally { likeBusy = false; likeBtn.removeAttribute('aria-busy'); }
   };
-  actions.append(likeBtn);
+  left.append(likeBtn);
 
-  // Edit own post
+  // Linki kopyala (mobilde başlıktaki Paylaş)
+  const copyBtn = el('button', 'pd-act pd-act--copy'); copyBtn.type = 'button';
+  copyBtn.innerHTML = ic('link');
+  copyBtn.append(el('span', '', L('post_copy_link', `Linki Kopyala`, 'Copy Link')));
+  copyBtn.onclick = copyLink;
+  left.append(copyBtn);
+
+  // Sahibi: konuyu düzenle (yalnız metin)
   if (_user && post.authorId === _user.uid) {
-    const editBtn = document.createElement('button'); editBtn.className = 'action-btn edit-own-btn'; editBtn.textContent = window._i18n?.t('post_edit')||'Düzenle';
+    const editBtn = el('button', 'pd-act', L('post_edit', `Düzenle`, 'Edit')); editBtn.type = 'button';
+    editBtn.setAttribute('aria-expanded', 'false');
     let editWrap = null;
+    const closeEdit = () => { if (editWrap) { editWrap.remove(); editWrap = null; } editBtn.setAttribute('aria-expanded', 'false'); };
     editBtn.onclick = () => {
-      if (editWrap) { editWrap.remove(); editWrap = null; return; }
-      editWrap = document.createElement('div'); editWrap.className = 'inline-edit-wrap';
-      const ta = document.createElement('textarea'); ta.className = 'inline-edit-ta';
+      if (editWrap) { closeEdit(); return; }
+      editWrap = el('div', 'pd-edit');
+      const ta = el('textarea', 'textarea');
       ta.value = post.text || '';
-      const btns = document.createElement('div'); btns.className = 'inline-edit-btns';
-      const saveB = document.createElement('button'); saveB.className = 'btn btn-sm btn-primary'; saveB.textContent = window._i18n?.t('post_save')||'Kaydet';
-      const cancelB = document.createElement('button'); cancelB.className = 'btn btn-sm btn-ghost'; cancelB.textContent = window._i18n?.t('post_cancel')||'Vazgeç';
-      cancelB.onclick = () => { editWrap.remove(); editWrap = null; };
+      ta.placeholder = L('forum_edit_ph', `Konu içeriği...`, 'Topic content...');
+      ta.setAttribute('aria-label', ta.placeholder);
+      const btns = el('div', 'pd-edit-btns');
+      const saveB = el('button', 'btn btn-sm btn-primary', L('post_save', `Kaydet`, 'Save')); saveB.type = 'button';
+      const cancelB = el('button', 'btn btn-sm btn-ghost', L('post_cancel', `Vazgeç`, 'Cancel')); cancelB.type = 'button';
+      cancelB.onclick = () => { closeEdit(); editBtn.focus(); };
       saveB.onclick = async () => {
         const newText = ta.value.trim(); if (!newText) return;
         saveB.disabled = true; saveB.textContent = '…';
-        await db.collection('forum').doc(postId).update({ text: newText, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        editWrap.remove(); editWrap = null;
-        showToast('✓ Konu güncellendi');
-        renderPost();
+        try {
+          await db.collection('forum').doc(postId).update({ text: newText, editedAt: FV.serverTimestamp() });
+          closeEdit();
+          showToast(L('forum_post_updated', `✓ Konu güncellendi`, '✓ Post updated'));
+          renderPost();
+        } catch(e) {
+          const c=errId(); showToast(`Hata (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error');
+          saveB.disabled = false; saveB.textContent = L('post_save', `Kaydet`, 'Save');
+        }
       };
       btns.append(saveB, cancelB); editWrap.append(ta, btns);
-      card.append(editWrap);
+      card.insertBefore(editWrap, actions);
+      editBtn.setAttribute('aria-expanded', 'true');
+      ta.focus();
     };
-    actions.append(editBtn);
+    left.append(editBtn);
   }
 
+  // Admin: çözüldü (iki yönlü) + sil
   if (_user && isAdmin(_user)) {
-    const solveBtn = document.createElement('button');
-    solveBtn.className = 'action-btn solve-btn' + (post.solved ? ' active' : '');
-    solveBtn.textContent = post.solved ? '✓ Çözüldü' : 'Çözüldü işaretle';
+    const solveBtn = el('button', 'pd-act pd-solve'); solveBtn.type = 'button';
+    if (post.solved) solveBtn.textContent = L('post_reopen', `Yeniden aç`, 'Reopen');
+    else solveBtn.append(el('span', 'pd-solve-lg', L('post_mark_solved', `Çözüldü olarak işaretle`, 'Mark as solved')),
+                         el('span', 'pd-solve-sm', L('forum_mark_solved', `Çözüldü işaretle`, 'Mark as solved')));
+    solveBtn.setAttribute('aria-pressed', post.solved ? 'true' : 'false');
     solveBtn.onclick = async () => {
-      await db.collection('forum').doc(postId).update({ solved: !post.solved });
-      showToast(post.solved ? 'Konu yeniden açıldı' : '✓ Konu çözüldü olarak işaretlendi');
-      renderPost();
+      solveBtn.setAttribute('aria-busy', 'true');
+      try {
+        await db.collection('forum').doc(postId).update({ solved: !post.solved });
+        showToast(post.solved ? L('post_reopened', `Konu yeniden açıldı`, 'Topic reopened')
+                              : L('post_marked_solved', `✓ Konu çözüldü olarak işaretlendi`, '✓ Topic marked as solved'), post.solved ? 'info' : 'success');
+        renderPost();
+      } catch(e) {
+        const c=errId(); showToast(`Hata (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error');
+        solveBtn.removeAttribute('aria-busy');
+      }
     };
-    actions.append(solveBtn);
+    right.append(solveBtn);
 
-    const del = document.createElement('button'); del.className = 'action-btn delete-btn'; del.textContent = window._i18n?.t('post_delete')||'Sil';
+    const del = el('button', 'pd-act pd-act--danger', L('post_delete', `Sil`, 'Delete')); del.type = 'button';
     del.onclick = async () => {
-      if (!confirm('Konuyu ve yanıtlarını sil?')) return;
-      const rSnap = await db.collection('forum').doc(postId).collection('replies').get();
-      const batch = db.batch();
-      rSnap.docs.forEach(d => batch.delete(d.ref));
-      batch.delete(db.collection('forum').doc(postId));
-      await batch.commit();
-      location.href = 'forum';
+      if (!confirm(L('post_delete_confirm', `Konuyu ve yanıtlarını sil?`, 'Delete the topic and its replies?'))) return;
+      del.setAttribute('aria-busy', 'true');
+      try {
+        const rSnap = await db.collection('forum').doc(postId).collection('replies').get();
+        const batch = db.batch();
+        rSnap.docs.forEach(d => batch.delete(d.ref));
+        batch.delete(db.collection('forum').doc(postId));
+        await batch.commit();
+        location.href = 'forum';
+      } catch(e) {
+        const c=errId(); showToast(`Silme hatası (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error');
+        del.removeAttribute('aria-busy');
+      }
     };
-    actions.append(del);
+    right.append(del);
   }
   card.append(actions);
-  layout.append(card);
-
-  // ── Replies ──
-  await renderReplies(layout, post);
+  return card;
 }
 
-async function renderReplies(layout, post) {
+function renderAside(post, profile) {
+  const aside = document.getElementById('pdAside');
+  aside.textContent = '';
+  aside.setAttribute('aria-label', L('post_opened_by_aria', `Konuyu açan`, 'Started by'));
+  const authorIsAdmin = post.authorEmail === ADMIN_EMAIL;
+  const card = el('div', 'pd-op');
+  card.append(el('span', 'pd-op-label', L('post_opened_by', `KONUYU AÇAN`, 'STARTED BY')));
+  const row = el('div', 'pd-op-row');
+  row.append(avatar({ photo: photoOf(profile, post.authorPhotoURL), name: post.authorName, uid: post.authorId, cls: 'pd-ava--lg', staff: authorIsAdmin }));
+  const who = el('div', 'pd-op-who');
+  who.append(nameLink('pd-op-name', post.authorName, post.authorId));
+  const rank = [authorIsAdmin ? L('post_staff_role', `Eğitmen`, 'Instructor') : '', titleLabel(profile?.title)].filter(Boolean).join(' · ');
+  if (rank) who.append(el('span', 'pd-op-rank', rank));
+  row.append(who);
+  card.append(row);
+  if (post.authorId) {
+    const a = el('a', 'pd-op-link'); a.href = profileHref(post.authorId);
+    a.append(el('span', '', L('post_view_profile', `Profili gör`, 'View profile')), el('span', '', '→'));
+    a.lastChild.setAttribute('aria-hidden', 'true');
+    card.append(a);
+  }
+  const nb = el('a', 'btn btn-light btn-lg btn-block', L('post_new_topic', `Yeni konu aç`, 'Start a new topic')); nb.href = '/new-post';
+  aside.append(card, nb);
+  aside.hidden = false;
+}
+
+// ── Yanıtlar ────────────────────────────────────────────────────────────
+function renderReplies(content, post, anim) {
   if (_unsubReplies) { _unsubReplies(); _unsubReplies = null; }
-  const sec = document.createElement('div'); sec.className = 'replies-section'; sec.id = 'repliesSec';
+  const sec = el('section', 'pd-replies'); sec.id = 'repliesSec';
+  sec.setAttribute('aria-labelledby', 'pdRepliesH');
+  const head = el('div', 'pd-replies-head' + (anim ? ' be-rv be-d2' : ''));
+  const h2 = el('h2', 'pd-replies-title', L('post_replies_h', `Yanıtlar`, 'Replies')); h2.id = 'pdRepliesH';
+  const n = el('span', 'pd-replies-n');
+  head.append(h2, n);
+  const list = el('div', 'pd-reply-list'); list.id = 'pdReplyList';
+  list.setAttribute('aria-busy', 'true');
+  list.append(el('span', 'sr-only', L('post_replies_loading', `Yanıtlar yükleniyor...`, 'Loading replies...')));
+  for (let i = 0; i < 2; i++) { const s = el('span', 'be-sk pd-sk-reply'); s.setAttribute('aria-hidden', 'true'); list.append(s); }
+  sec.append(head, list);
+  content.append(sec);
 
-  const hdr = document.createElement('div'); hdr.className = 'replies-header';
-  hdr.textContent = window._i18n?.t('post_replies_loading')||'Yanıtlar yükleniyor...';
-  sec.append(hdr);
-
-  const repliesListDiv = document.createElement('div');
-  sec.append(repliesListDiv);
-  layout.append(sec);
-
-  async function renderReplyCards(snap) {
-    hdr.textContent = `${snap.size} Yanıt`;
-    repliesListDiv.innerHTML = '';
-  for (const d of snap.docs) {
-    const r = { id: d.id, ...d.data() };
-    const rCard = document.createElement('div'); rCard.className = 'reply-card';
-    const rProfile = await getProfile(r.authorId);
-    const rPhoto = rProfile?.photoURL || r.authorPhotoURL || null;
-    const rAv = makeAvatar(rPhoto, 30, r.authorId);
-    const rBody = document.createElement('div'); rBody.className = 'reply-body';
-    const rAuthorRow = document.createElement('div'); rAuthorRow.className = 'reply-author-row';
-    const rName = document.createElement('span');
-    rName.className = 'reply-author' + (r.isAdmin ? ' is-admin' : '');
-    rName.textContent = r.authorName;
-    rName.onclick = () => goProfile(r.authorId);
-    const rDate = document.createElement('span'); rDate.className = 'reply-date'; rDate.textContent = fmtDate(r.createdAt);
-    rAuthorRow.append(rName, rDate);
-    if (_user && isAdmin(_user)) {
-      const rdel = document.createElement('button'); rdel.className = 'reply-del'; rdel.textContent = window._i18n?.t('post_delete')||'Sil';
-      rdel.onclick = async () => {
-        try {
-          await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
-          await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(-1) });
-          rCard.remove();
-        } catch(e) { const c=errId(); showToast(`Silme hatası (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
-      };
-      rAuthorRow.append(rdel);
-    }
-    // Edit own reply
-    if (_user && r.authorId === _user.uid) {
-      const replyEditBtn = document.createElement('button'); replyEditBtn.className = 'reply-del reply-edit'; replyEditBtn.textContent = window._i18n?.t('post_edit')||'Düzenle';
-      replyEditBtn.title = 'Düzenle';
-      let replyEditWrap = null;
-      replyEditBtn.onclick = () => {
-        if (replyEditWrap) { replyEditWrap.remove(); replyEditWrap = null; return; }
-        replyEditWrap = document.createElement('div'); replyEditWrap.className = 'inline-edit-wrap inline-edit-wrap--reply';
-        const ta = document.createElement('textarea'); ta.className = 'inline-edit-ta'; ta.value = r.text || '';
-        const btns = document.createElement('div'); btns.className = 'inline-edit-btns';
-        const saveB = document.createElement('button'); saveB.className = 'btn btn-sm btn-primary'; saveB.textContent = window._i18n?.t('post_save')||'Kaydet';
-        const cancelB = document.createElement('button'); cancelB.className = 'btn btn-sm btn-ghost'; cancelB.textContent = window._i18n?.t('post_cancel')||'Vazgeç';
-        cancelB.onclick = () => { replyEditWrap.remove(); replyEditWrap = null; };
-        saveB.onclick = async () => {
-          const t = ta.value.trim(); if (!t) return;
-          saveB.disabled = true;
-          try {
-            await db.collection('forum').doc(postId).collection('replies').doc(r.id).update({ text: t, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
-            replyEditWrap.remove(); replyEditWrap = null;
-            rTxt.textContent = t; showToast('✓ Yanıt güncellendi');
-          } catch(e) {
-            showToast('Güncelleme hatası: ' + (e.message||e.code), 'error');
-            saveB.disabled = false;
-          }
-        };
-        btns.append(saveB, cancelB); replyEditWrap.append(ta, btns);
-        rBody.append(replyEditWrap);
-      };
-      rAuthorRow.append(replyEditBtn);
-    }
-    const rTxt = document.createElement('div'); rTxt.className = 'reply-text'; rTxt.textContent = r.text;
-    rBody.append(rAuthorRow, rTxt);
-    rCard.append(rAv, rBody);
-    repliesListDiv.append(rCard);
-  }
-  }
-
+  let first = true;
   _unsubReplies = db.collection('forum').doc(postId).collection('replies')
     .orderBy('createdAt','asc').limit(200)
-    .onSnapshot(snap => renderReplyCards(snap), e => {
+    .onSnapshot(snap => { renderReplyCards(snap, list, n, post, first && anim); first = false; }, e => {
+      list.removeAttribute('aria-busy'); list.textContent = '';
       if (e.code !== 'permission-denied') showToast('Yorumlar yüklenemedi: ' + (e.message || e.code), 'error');
     });
 
-  // ── Reply form ──
-  const formCard = document.createElement('div'); formCard.className = 'reply-form-card';
-  if (post.solved) {
-    formCard.innerHTML = `<div class="replies-closed">✓ Bu konu çözüldü — yanıt kapalı</div>`;
-  } else if (_user) {
-    const ft = document.createElement('div'); ft.className = 'reply-form-title'; ft.textContent = window._i18n?.t('post_reply_write')||'Yanıt Yaz';
-    const row = document.createElement('div'); row.className = 'reply-form-row';
-    const profile = await getProfile(_user.uid);
-    const myPhoto = profile?.photoURL || _user.photoURL || null;
-    row.append(makeAvatar(myPhoto, 30, _user.uid));
-    const ta = document.createElement('textarea'); ta.className = 'reply-ta';
-    ta.placeholder = 'Yanıtını buraya yaz... (Ctrl+Enter ile gönder)';
-    const sub = document.createElement('button'); sub.className = 'reply-submit'; sub.textContent = window._i18n?.t('post_reply_btn')||'Yanıtla';
-    ta.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); sub.click(); } });
-    sub.onclick = async () => {
-      const txt = ta.value.trim(); if (!txt) return;
-      sub.disabled = true; sub.textContent = '…';
-      try {
-        await db.collection('forum').doc(postId).collection('replies').add({
-          text:          txt,
-          authorName:    _user.displayName?.split(' ')[0] || 'Üye',
-          authorEmail:   _user.email,
-          authorId:      _user.uid,
-          authorPhotoURL:_user.photoURL || '',
-          isAdmin:       isAdmin(_user),
-          createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
-        });
-        await db.collection('forum').doc(postId).update({ replyCount: firebase.firestore.FieldValue.increment(1) });
-        db.collection('users').doc(_user.uid).collection('userReplies').add({
-          postId, text: txt.slice(0, 200), createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        }).catch(() => {});
-        db.collection('users').doc(_user.uid).set({
-          replyCount: firebase.firestore.FieldValue.increment(1),
-        }, { merge: true }).catch(() => {});
-        if (post.authorId && post.authorId !== _user.uid) {
-          db.collection('notifications').doc(post.authorId).collection('items').add({
-            text: `${_user.displayName?.split(' ')[0] || 'Biri'}, "${post.title || 'konuna'}" konusuna yanıt verdi`,
-            postId, fromUid: _user.uid, fromName: _user.displayName?.split(' ')[0] || 'Üye',
-            read: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          }).catch(() => {});
-        }
-        ta.value = '';
-      } catch(e) {
-        const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error');
-      } finally {
-        sub.disabled = false; sub.textContent = 'Yanıtla';
-      }
-    };
-    row.append(ta, sub); formCard.append(ft, row);
-  } else {
-    formCard.innerHTML = `<div class="login-hint">${window._i18n?.t('post_signin_reply')||'Yanıt yazmak için giriş yap.'}<br><button class="btn btn-primary" onclick="doSignIn()">${window._i18n?.t('forum_login_btn')||'Giriş Yap'}</button></div>`;
-  }
-  layout.append(formCard);
+  const composer = buildComposer(post);
+  content.append(composer);
+  watchDock(composer);
 }
+
+async function renderReplyCards(snap, list, n, post, anim) {
+  const seq = ++_replySeq;
+  const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const profiles = await Promise.all(docs.map(r => getProfile(r.authorId)));
+  if (seq !== _replySeq || !list.isConnected) return;
+  n.textContent = String(docs.length);
+  list.removeAttribute('aria-busy');
+  list.textContent = '';
+  if (!docs.length) {
+    if (!post.solved) list.append(el('p', 'be-empty pd-replies-empty', L('post_no_replies', `Henüz yanıt yok. İlk yanıtı sen yaz!`, 'No replies yet. Be the first to reply!')));
+    return;
+  }
+  docs.forEach((r, i) => list.append(buildReply(r, profiles[i], anim ? i : -1)));
+}
+
+function buildReply(r, prof, idx) {
+  const staff = !!r.isAdmin;
+  const card = el('article', 'pd-reply' + (staff ? ' pd-reply--staff' : '') + (idx >= 0 ? ` be-rv be-d${Math.min(3 + idx, 6)}` : ''));
+  card.append(avatar({ photo: photoOf(prof, r.authorPhotoURL), name: r.authorName, uid: r.authorId, staff }));
+  const head = el('div', 'pd-reply-head');
+  head.append(nameLink('pd-reply-name', r.authorName, r.authorId));
+  if (staff) head.append(el('span', 'pd-staff', L('post_staff', `EĞİTMEN`, 'INSTRUCTOR')));
+  head.append(timeEl(r.createdAt));
+  const rTxt = el('div', 'pd-reply-text'); rTxt.innerHTML = renderMd(r.text);
+
+  const tools = el('div', 'pd-reply-tools');
+  // Sahibi: kendi yanıtını düzenle
+  if (_user && r.authorId === _user.uid) {
+    const editB = el('button', 'pd-tool', L('post_edit', `Düzenle`, 'Edit')); editB.type = 'button';
+    editB.setAttribute('aria-expanded', 'false');
+    let wrap = null;
+    const close = () => { if (wrap) { wrap.remove(); wrap = null; } editB.setAttribute('aria-expanded', 'false'); };
+    editB.onclick = () => {
+      if (wrap) { close(); return; }
+      wrap = el('div', 'pd-edit');
+      const ta = el('textarea', 'textarea'); ta.value = r.text || '';
+      ta.setAttribute('aria-label', L('post_edit', `Düzenle`, 'Edit'));
+      const btns = el('div', 'pd-edit-btns');
+      const saveB = el('button', 'btn btn-sm btn-primary', L('post_save', `Kaydet`, 'Save')); saveB.type = 'button';
+      const cancelB = el('button', 'btn btn-sm btn-ghost', L('post_cancel', `Vazgeç`, 'Cancel')); cancelB.type = 'button';
+      cancelB.onclick = () => { close(); editB.focus(); };
+      saveB.onclick = async () => {
+        const t = ta.value.trim(); if (!t) return;
+        saveB.disabled = true;
+        try {
+          await db.collection('forum').doc(postId).collection('replies').doc(r.id).update({ text: t, editedAt: FV.serverTimestamp() });
+          r.text = t; rTxt.innerHTML = renderMd(t);
+          close();
+          showToast(L('post_reply_updated', `✓ Yanıt güncellendi`, '✓ Reply updated'));
+        } catch(e) {
+          showToast('Güncelleme hatası: ' + (e.message||e.code), 'error');
+          saveB.disabled = false;
+        }
+      };
+      btns.append(saveB, cancelB); wrap.append(ta, btns);
+      card.append(wrap);
+      editB.setAttribute('aria-expanded', 'true');
+      ta.focus();
+    };
+    tools.append(editB);
+  }
+  // Admin: yanıtı sil (onaysız, eskisi gibi)
+  if (_user && isAdmin(_user)) {
+    const rdel = el('button', 'pd-tool pd-tool--danger', L('post_delete', `Sil`, 'Delete')); rdel.type = 'button';
+    rdel.onclick = async () => {
+      try {
+        await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
+        await db.collection('forum').doc(postId).update({ replyCount: FV.increment(-1) });
+        card.remove();
+      } catch(e) { const c=errId(); showToast(`Silme hatası (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
+    };
+    tools.append(rdel);
+  }
+  if (tools.childElementCount) head.append(tools);
+  card.append(head, rTxt);
+  return card;
+}
+
+// ── Yanıt yazma: masaüstünde akışta, mobilde ekranın altında ─────────
+function buildComposer(post) {
+  if (post.solved) {
+    const box = el('div', 'pd-closed', L('forum_solved_closed', `✓ Bu konu çözüldü — yanıt kapalı`, '✓ This topic is solved — replies closed'));
+    box.setAttribute('role', 'status');
+    return box;
+  }
+  if (!_user) {
+    const box = el('div', 'pd-composer pd-composer--signin');
+    box.append(el('p', '', L('post_signin_reply', `Yanıtlamak için giriş yap`, 'Sign in to reply')));
+    const b = el('button', 'btn btn-primary', L('forum_login_btn', `Giriş Yap`, 'Sign in')); b.type = 'button';
+    b.onclick = doSignIn;
+    box.append(b);
+    return box;
+  }
+  const form = el('form', 'pd-composer'); form.noValidate = true;
+  form.setAttribute('aria-label', L('post_reply_write', `Yanıt Yaz`, 'Write a Reply'));
+  const field = el('label', 'pd-composer-field');
+  field.append(el('span', 'pd-composer-label', L('post_reply_label', `YANITIN`, 'YOUR REPLY')));
+  const ta = el('textarea', 'pd-ta'); ta.rows = 2; ta.name = 'reply';
+  const mq = window.matchMedia('(max-width:1024px)');
+  const setPh = () => { ta.placeholder = mq.matches ? L('post_reply_ph', `Yanıtını yaz...`, 'Write your reply...')
+                                                    : L('post_reply_ph_long', `Yanıtını buraya yaz… (Ctrl+Enter ile gönder)`, 'Write your reply here… (Ctrl+Enter to send)'); };
+  setPh();
+  if (mq.addEventListener) mq.addEventListener('change', setPh);
+  ta.value = _draft;
+  ta.addEventListener('input', () => { _draft = ta.value; });
+  field.append(ta);
+  const foot = el('div', 'pd-composer-foot');
+  foot.append(el('span', 'pd-md-hint', L('post_md_hint', '**KALIN** · *İTALİK* · `KOD`', '**BOLD** · *ITALIC* · `CODE`')));
+  const sub = el('button', 'btn btn-primary pd-send'); sub.type = 'submit';
+  const subTxt = el('span', 'pd-send-txt', L('post_send', `Gönder`, 'Send'));
+  sub.append(subTxt); sub.insertAdjacentHTML('beforeend', SEND);
+  foot.append(sub);
+  form.append(field, foot);
+  ta.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') { e.preventDefault(); send(); } });
+  form.addEventListener('submit', e => { e.preventDefault(); send(); });
+
+  async function send() {
+    const txt = ta.value.trim(); if (!txt || sub.disabled) return;
+    sub.disabled = true; subTxt.textContent = '…'; sub.setAttribute('aria-busy', 'true');
+    try {
+      await db.collection('forum').doc(postId).collection('replies').add({
+        text:          txt,
+        authorName:    _user.displayName?.split(' ')[0] || 'Üye',
+        authorEmail:   _user.email,
+        authorId:      _user.uid,
+        authorPhotoURL:_user.photoURL || '',
+        isAdmin:       isAdmin(_user),
+        createdAt:     FV.serverTimestamp(),
+      });
+      await db.collection('forum').doc(postId).update({ replyCount: FV.increment(1) });
+      db.collection('users').doc(_user.uid).collection('userReplies').add({
+        postId, text: txt.slice(0, 200), createdAt: FV.serverTimestamp(),
+      }).catch(() => {});
+      db.collection('users').doc(_user.uid).set({
+        replyCount: FV.increment(1),
+      }, { merge: true }).catch(() => {});
+      if (post.authorId && post.authorId !== _user.uid) {
+        db.collection('notifications').doc(post.authorId).collection('items').add({
+          text: `${_user.displayName?.split(' ')[0] || 'Biri'}, "${post.title || 'konuna'}" konusuna yanıt verdi`,
+          postId, fromUid: _user.uid, fromName: _user.displayName?.split(' ')[0] || 'Üye',
+          read: false, createdAt: FV.serverTimestamp(),
+        }).catch(() => {});
+      }
+      ta.value = ''; _draft = '';
+    } catch(e) {
+      const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error');
+    } finally {
+      sub.disabled = false; sub.removeAttribute('aria-busy'); subTxt.textContent = L('post_send', `Gönder`, 'Send');
+    }
+  }
+  return form;
+}
+
+// Dil değişince (TR/EN) sayfa metinleri yeniden çizilir; taslak korunur
+new MutationObserver(() => {
+  syncStaticLabels();
+  if (_lastLang && lang() !== _lastLang) renderPost();
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
 
 window.bkAuth.handleRedirectResult();
 auth.onAuthStateChanged(async user => {
   _user = user;
+  _profiles.clear();   // girişe göre `users` okuma izni değişir
   updateAuthBar(user);
   initNotifications(user);
   await renderPost();
 });
 </script>
 
-<nav class="bottom-nav" data-active="forum">
-  <a class="bnav-item" href="egitim" data-page="egitim"><span class="bnav-icon">🎓</span><span class="bnav-label" data-i18n="nav_egitim">Eğitim</span></a>
-  <a class="bnav-item" href="forum" data-page="forum"><span class="bnav-icon">💬</span><span class="bnav-label" data-i18n="nav_forum">Forum</span></a>
-  <a class="bnav-item" href="members" data-page="members"><span class="bnav-icon">👥</span><span class="bnav-label" data-i18n="nav_members">Üyeler</span></a>
-  <a class="bnav-item" href="ableton-lab" data-page="ableton-lab"><span class="bnav-icon">🎛️</span><span class="bnav-label" data-i18n="nav_lab">Lab</span></a>
-  <a class="bnav-item" id="bnavAdminItem" href="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label" data-i18n="nav_lessons">Ders Paneli</span></a>
-  <a class="bnav-item" id="bnavLoveBtn" href="love" style="display:none;color:#e8527a;"><span class="bnav-icon">💌</span><span class="bnav-label">Sevgim</span></a>
-  <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label" data-i18n="nav_profile">Profil</span></a>
-</nav>
-<script type="module">(function(){const a=document.querySelector('.bottom-nav')?.dataset.active;document.querySelectorAll('.bnav-item[data-page]').forEach(e=>{if(a===e.dataset.page)e.classList.add('active');});})();</script>
-<script>(function(){
-  var act=document.querySelector('.bottom-nav')?.dataset.active;
-  if(act){document.querySelectorAll('.lnav-item[data-page]').forEach(function(e){if(act===e.dataset.page)e.classList.add('active');});}
-  var bAv=document.getElementById('bnavProfileAv'),lAv=document.getElementById('lnavProfileAv');
-  if(bAv&&lAv){lAv.innerHTML=bAv.innerHTML;new MutationObserver(function(){lAv.innerHTML=bAv.innerHTML;}).observe(bAv,{childList:true,subtree:true});}
-  var bAdm=document.getElementById('bnavAdminItem'),lAdm=document.getElementById('lnavAdminItem');
-  if(bAdm&&lAdm){new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName==='style')lAdm.style.display=bAdm.style.display;});}).observe(bAdm,{attributes:true,attributeFilter:['style']});}
-})();</script>
 </body>
 </html>

@@ -20,118 +20,208 @@
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609261200">
-<script src="assets/js/theme-init.js?v=202609261200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609261200">
-<script src="assets/js/auth-ui.js?v=202609261200"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
+<script src="assets/js/theme-init.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
+<script src="assets/js/auth-ui.js?v=202609271200"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="assets/js/love-nav.js?v=202609271200"></script>
 <style>
-/* ── Push 3 Laboratuvarı: page shell. Everything interactive is built by /assets/js/push3/*.js
-   (contract: docs/push3/README.md §E). Tokens only; radius 0; no gradient / !important /
-   backdrop-filter. Device-internal colours (hotspot overlays) are fixed hex, like P3.K.C.
+/* ── Push 3 Laboratuvarı: sayfa kabuğu. Görünüm: Claude Design "Push3" (1440) + "M_Push3" (390),
+   kurallar docs/tasarim/TASARIM.md. Etkileşimli her şeyi /assets/js/push3/*.js kurar (sözleşme
+   docs/push3/README.md §E); bu dosya yalnız id'leri ve görünümü sağlar.
 
-   EKLEME (not in README §E, used by p3-app / p3-tutorial if they want them):
-   #p3PadSurface is provided empty inside #p3HotspotLayer (§E lists it under the layer; its
-   rows/cells are built by JS). #p3CoachText/#p3CoachClose, #p3TocList/#p3TocClose,
-   #p3ResetModal/#p3ResetConfirm/#p3ResetCancel. Mode cards expose .p3-mode-badge/-title/
-   -desc/-meta/-fill/-cta/-first for p3-app to fill.
-   Wave 3 (p3-app, README §H16/§I1): #p3AudioBtn ("Sesi yeniden başlat" chip), #p3KeysBtn +
-   #p3KeysLayer (keyboard-shortcut labels and legend), the short independence note next to
-   .p3-attribution on the game screen. */
+   Yerleşim iki ekran (p3-app `hidden` ile değiştirir):
+   - #p3Modes: menü — tasarımın başlık bandı (ızgara + süzülen ışık, serif başlık), 4 mod kartı ve sayfa
+     alt bilgisi (marka notu, Eğitime dön, İlerlemeyi sıfırla). Sayfanın kaydırılan tek bölümü.
+   - #p3Game: tek ekran, kaydırmasız çalgı — tasarımın araç şeridi (taskbar), cihaz sahnesi (#p3Stage) ve
+     alt paneller. Masaüstünde öğretici paneli sahnenin sağında sütundur (cihaz küçülmesin).
+   Görünüm seçici (#p3ViewSeg) M_Push3'teki gibi başlıkta (data-be-slot).
 
-/* The `hidden` attribute must beat component display rules (.seg, html .btn, html .card,
-   html .modal-overlay all set display). (0,1,2) outranks every one of them without !important;
-   breakpoint rules below use :not([hidden]) so they never re-show a hidden element. */
+   Cihaza dokunan kurallar: #p3Stage ve atalarında transform ANİMASYONU YOK — P3.dev.align() hotspot,
+   LCD ve pointer eşlemesini ekran CTM'inden ölçer; kayan/ölçeklenen bir ata eşlemeyi kaydırır. Cihazın
+   girişi yalnız opaklıkla. Cihaz içi renkler (hotspot vurguları, tuş etiketleri) sabit hex, P3.K.C gibi.
+
+   EKLEME (README §E dışında, p3-app / p3-tutorial kullanır): #p3PadSurface #p3HotspotLayer içinde boş
+   gelir; #p3CoachText/#p3CoachClose, #p3TocList/#p3TocClose, #p3ResetModal/#p3ResetConfirm/#p3ResetCancel;
+   mod kartlarında .p3-mode-badge/-title/-desc/-meta/-fill/-cta/-first; #p3AudioBtn, #p3KeysBtn +
+   #p3KeysLayer, oyun ekranında .p3-attribution yanında kısa bağımsızlık notu. */
+
+/* `hidden` bileşenlerin display kurallarını yenmeli (.seg, html .btn, html .modal-overlay …). (0,1,2) hepsini
+   !important'sız geçer; aşağıdaki kırılım kuralları gizli öğeyi geri açmasın diye :not([hidden]) kullanır. */
 html body [hidden] { display:none; }
 
 html, body { height:100%; }
-html body { padding:0; overflow:hidden; overscroll-behavior:none; }
-/* themes.css (≥1024) gives body `padding-bottom:2.5rem !important` for the sidebar shell. The menu
-   and the game are fixed-height boxes, so they subtract that padding instead of overflowing the
-   body by 40px (which let focus()/click scroll the whole page and clip the taskbar). */
-html body { --p3-shell-bottom:0px; }
-@media (min-width:1024px) { html body { --p3-shell-bottom:2.5rem; } }
+html body {
+  padding:0; overflow:hidden; overscroll-behavior:none;
+  /* Başlık (#beHeader) akışta: menü ve oyun kutuları onun yüksekliğini düşer (masaüstü 88, mobil 64). */
+  --p3-shell-bottom:var(--be-header-h);
+  /* İçerik kenarı: kabuk başlığı ile aynı (≤1440'ta --page-x, daha genişte ortalanmış 1440). */
+  --p3-x:max(var(--page-x), calc(50% - var(--page-max) / 2 + var(--page-x)));
+}
+#p3Modes:focus, #p3Game:focus { outline:none; }
 
-/* ── Mode menu (#p3Modes): the only part of the page that scrolls, inside its own box ── */
-.p3-modes { height:calc(100dvh - var(--p3-shell-bottom)); overflow-y:auto; overscroll-behavior:contain; padding:var(--s7) var(--gutter) calc(var(--s7) + env(safe-area-inset-bottom, 0px)); }
-@media (max-width:1023px) { .p3-modes { height:calc(100dvh - var(--topbar-h)); padding-top:var(--s6); } }
-.p3-modes-inner { max-width:var(--maxw); margin:0 auto; }
-.p3-modes-head { margin-bottom:var(--s6); }
-.p3-modes-head .h2 { margin-bottom:var(--s3); }
-.p3-modes-lead { max-width:60ch; font-size:var(--fs-body); color:var(--fg-2); line-height:var(--lh-body); }
+/* ══════════════════════════ Menü (#p3Modes) ══════════════════════════ */
+.p3-modes { display:flex; flex-direction:column; height:calc(100dvh - var(--p3-shell-bottom)); overflow-y:auto; overscroll-behavior:contain; }
 
-.p3-mode-grid { display:grid; grid-template-columns:1fr; gap:var(--s4); }
-@media (min-width:601px) { .p3-mode-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
-@media (min-width:900px) { .p3-mode-grid { gap:var(--s5); } }
+/* Başlık bandı (tasarım: 56px üst, 28px alt; ızgara + sağ üstte süzülen ember ışığı) */
+.p3-hero { position:relative; flex-shrink:0; overflow:hidden; padding:56px 0 28px; }
+/* tasarım: radial-gradient(closest-side, rgba(212,114,42,.22), transparent 75%) — ember-2 tonu */
+.p3-hero-glow { width:900px; height:900px; right:-200px; top:-500px; --glow:rgba(212,114,42,.22); --glow-2:rgba(212,114,42,.06); }
+.p3-hero-inner { display:flex; flex-direction:column; align-items:flex-start; gap:16px; }
+.p3-hero-back { display:inline-flex; align-items:center; gap:8px; padding:14px 0; margin:-14px 0; font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-muted); }
+.p3-hero-back:hover { color:var(--fg); }
+/* tasarım: 96px (masaüstü) · 46px (M_Push3); ölçekte karşılığı yok, akışkan tek seferlik değer */
+html .p3-title { font-size:clamp(46px, calc(46px + (100vw - 390px) * .0476), 96px); line-height:.9; letter-spacing:-.025em; }
+.p3-lead { max-width:620px; font-size:var(--fs-body-lg); line-height:1.6; color:var(--fg-muted); }
 
-.p3-mode-card { display:flex; flex-direction:column; align-items:flex-start; gap:var(--s2); width:100%; text-align:left; cursor:pointer; transition:border-color .15s; }
-.p3-mode-card:focus-visible { border-color:var(--accent); outline:2px solid var(--accent); outline-offset:2px; }
-@media (hover:hover) { .p3-mode-card:hover { border-color:var(--accent); } }
+.p3-modes-body { padding-top:32px; padding-bottom:var(--s8); }
+.p3-noscript { max-width:620px; margin-bottom:var(--s5); font-size:var(--fs-body); color:var(--fg-muted); }
+
+/* Mod kartları (tasarım: 4 sütun, 22px radius, 28×24 dolgu, en az 250px; önerilen kart sıcak degrade) */
+.p3-mode-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:16px; }
+.p3-mode-grid .p3-mode-card {
+  position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:stretch; gap:12px;
+  width:100%; min-height:250px; padding:28px 24px; border-radius:var(--r-22);
+  background:var(--surface); border:1px solid var(--line); color:var(--fg);
+  font:inherit; text-align:left; cursor:pointer;
+  transition:transform var(--dur-slow) var(--ease-out), border-color var(--dur-slow), background-color var(--dur-slow);
+}
+/* tasarım: seçili kartın zemini linear-gradient(160deg, #1d1610, #111114 60%) — #1d1610 sıcak koyu ton, token yok */
+.p3-mode-grid .p3-mode-card[data-mode="tutorial"] { background:linear-gradient(160deg, #1d1610, var(--surface) 60%); border-color:var(--accent-line-2); }
+@media (hover:hover) {
+  .p3-mode-grid .p3-mode-card:hover { transform:translateY(-6px); border-color:rgba(232,184,75,.45); }
+  .p3-mode-grid .p3-mode-card:hover .p3-mode-action .icon { transform:translateX(3px); }
+}
+.p3-mode-grid .p3-mode-card:active { transform:translateY(-2px); }
 .p3-mode-card > span { display:block; }
-.p3-mode-card > .p3-mode-badge { display:inline-flex; }
-.p3-mode-title { font-family:var(--ff-disp); font-size:var(--fs-h3); font-weight:400; line-height:1.3; color:var(--fg); }
-@media (min-width:900px) { .p3-mode-title { font-size:calc(var(--fs-h3) * 4 / 3); } }
-.p3-mode-desc { font-size:var(--fs-small); line-height:var(--lh-body); color:var(--fg-2); }
-.p3-mode-meta { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; color:var(--fg-3); }
-.p3-mode-first { font-size:var(--fs-small); color:var(--accent); }
-.p3-mode-bar { width:100%; height:4px; margin-top:auto; background:var(--line); }
-.p3-mode-fill { display:block; width:0; height:100%; background:var(--accent); }
-.p3-mode-card > .p3-mode-action { display:inline-flex; align-items:center; gap:var(--s2); font-size:var(--fs-ctl-md); font-weight:600; color:var(--accent); }
+.p3-mode-badge { font-family:var(--ff-mono); font-size:var(--fs-label); line-height:1.4; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--accent); }
+.p3-mode-grid .p3-mode-title { font-family:var(--ff-disp); font-weight:400; font-size:32px; line-height:1; letter-spacing:-.005em; color:var(--fg); }
+.p3-mode-grid .p3-mode-desc { font-size:var(--fs-ui); line-height:1.55; color:var(--fg-muted); }
+.p3-mode-first { font-size:var(--fs-small); line-height:1.4; color:var(--accent); }
+/* İlerleme çubuğu (tasarımda yok; sitenin ilerleme bilgisi, ince iz) */
+.p3-mode-card > .p3-mode-bar { height:3px; margin-top:auto; border-radius:var(--r-pill); background:var(--track-2); overflow:hidden; }
+.p3-mode-fill { display:block; width:0; height:100%; border-radius:inherit; background:var(--accent); transition:width var(--dur-slow) var(--ease-out); }
+.p3-mode-card > .p3-mode-foot { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px 16px; margin-top:auto; }
+.p3-mode-bar:not([hidden]) + .p3-mode-foot { margin-top:0; }
+.p3-mode-meta { font-family:var(--ff-mono); font-size:var(--fs-label); line-height:1.4; letter-spacing:.04em; text-transform:uppercase; color:var(--fg-3); }
+.p3-mode-action { display:inline-flex; align-items:center; gap:6px; margin-left:auto; font-size:var(--fs-ui); font-weight:600; line-height:1.3; color:var(--accent); text-align:right; }
+.p3-mode-action .icon { width:16px; height:16px; transition:transform var(--dur) var(--ease-out); }
 
-.p3-modes-foot { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s3); margin-top:var(--s6); }
-.p3-disclaimer { max-width:72ch; margin-top:var(--s6); font-size:var(--fs-micro); line-height:1.6; color:var(--fg-3); }
+/* Menü alt bilgisi (tasarımın footer'ı): marka notu + Eğitime dön + İlerlemeyi sıfırla */
+.p3-foot {
+  margin-top:auto; display:flex; justify-content:space-between; align-items:center; gap:12px 40px;
+  padding:14px var(--p3-x) calc(14px + env(safe-area-inset-bottom, 0px));
+  background:var(--bg-sunk); border-top:1px solid var(--line-div);
+  font-family:var(--ff-mono); font-size:var(--fs-micro); line-height:1.6; letter-spacing:.06em; text-transform:uppercase; color:var(--fg-faint);
+}
+.p3-disclaimer { max-width:900px; padding:10px 0; }
+.p3-foot-links { display:flex; flex-wrap:wrap; column-gap:20px; flex-shrink:0; }
+.p3-foot-link { display:inline-flex; align-items:center; min-height:var(--ctl-md); padding:0 2px; border:0; border-radius:var(--r-6); background:none; color:var(--fg-muted); font:inherit; letter-spacing:inherit; text-transform:inherit; cursor:pointer; transition:color var(--dur-fast); }
+.p3-foot-link:hover { color:var(--fg); }
 
-/* ── Game (#p3Game): single screen, no page scroll ── */
-.p3-game { display:flex; flex-direction:column; height:calc(100dvh - var(--p3-shell-bottom)); padding:0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
-@media (max-width:1023px) { .p3-game { height:calc(100dvh - var(--topbar-h)); } }
+@media (max-width:1279px) {
+  .p3-mode-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width:1024px) {
+  .p3-hero-back { display:none; }   /* mobil başlıkta "← EĞİTİM" var */
+  .p3-hero { padding-top:32px; }
+  .p3-foot { flex-direction:column; align-items:flex-start; gap:0; }
+}
+/* Telefon (M_Push3): düz zemin, mod kartları satır: rozet / başlık / meta solda, eylem sağda */
+@media (max-width:600px) {
+  .p3-hero { padding:20px 0 0; background-image:none; }
+  .p3-hero-glow { display:none; }
+  .p3-hero-inner { gap:8px; }
+  html .p3-title { line-height:.92; letter-spacing:-.02em; }
+  .p3-lead { font-size:var(--fs-ui); line-height:1.55; }
+  .p3-modes-body { padding-top:20px; padding-bottom:var(--s7); }
+  .p3-mode-grid { grid-template-columns:1fr; gap:8px; }
+  .p3-mode-grid .p3-mode-card {
+    display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; row-gap:4px; align-items:center;
+    min-height:0; padding:16px; border-radius:var(--r-16);
+  }
+  .p3-mode-grid .p3-mode-desc { display:none; }
+  .p3-mode-card > .p3-mode-badge { grid-column:1; grid-row:1; font-size:9px; }
+  .p3-mode-grid .p3-mode-title { grid-column:1; grid-row:2; font-size:24px; }
+  .p3-mode-card > .p3-mode-foot { display:contents; }
+  .p3-mode-meta { grid-column:1; grid-row:3; font-size:var(--fs-micro); letter-spacing:0; }
+  .p3-mode-first { grid-column:1 / -1; grid-row:4; }
+  .p3-mode-action { grid-column:2; grid-row:1 / span 3; max-width:10em; justify-content:flex-end; }
+  .p3-mode-card > .p3-mode-bar { position:absolute; left:0; right:0; bottom:0; height:2px; margin:0; border-radius:0; }
+}
 
-.p3-game-taskbar { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2) var(--s3); padding:var(--s3) var(--s4); border-bottom:1px solid var(--line); flex:0 0 auto; background:var(--surface); }
-/* ≥1024 the fixed #authBar (themes.css) sits over the taskbar's top-right corner. */
-@media (min-width:1024px) { .p3-game-taskbar { padding-right:200px; } }
-.p3-tb-group { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2); flex:0 1 auto; min-width:0; }
+/* ══════════════════════════ Oyun (#p3Game) ══════════════════════════ */
+.p3-game { position:relative; display:flex; flex-direction:column; height:calc(100dvh - var(--p3-shell-bottom)); padding:0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+
+/* Araç şeridi (tasarım: 12/16 dolgu, 14px radius, --surface-0, ince kenar; 40px pill kontroller) */
+.p3-game-taskbar {
+  flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px;
+  margin:16px var(--p3-x) 0; padding:12px 16px; border-radius:var(--r-14);
+  background:var(--surface-0); border:1px solid var(--line);
+}
+.p3-tb-group { display:flex; flex-wrap:wrap; align-items:center; gap:8px; flex:0 1 auto; min-width:0; }
 .p3-game-progress:empty { display:none; }
-.p3-game-task { flex:1 1 200px; min-width:0; font-size:var(--fs-small); font-weight:600; color:var(--fg); line-height:1.3; }
-@media (min-width:601px) { .p3-game-task { font-size:var(--fs-body); } }
-/* Mode switch only on large screens; view switch everywhere else. A landscape phone (short, often
-   ≥900 wide) gets the view switch instead: its height is too precious for a second taskbar row. */
+/* Görev metni + tasarımın canlı noktası (p3-app textContent yazar; nokta ::before) */
+.p3-game-task { flex:1 1 220px; min-width:0; display:flex; align-items:center; gap:10px; font-size:var(--fs-ui); font-weight:600; line-height:1.35; color:var(--fg); }
+.p3-game-task::before { content:''; flex-shrink:0; width:8px; height:8px; border-radius:50%; background:var(--accent); animation:be-pulse 1.8s ease-out infinite; }
+.p3-game-task:empty::before { display:none; }
+
+/* Mod anahtarı (tasarımın mod seçicisi: 4px kapsül, 40px düğme, 13px/600, seçili krem) — yalnız geniş ve
+   yüksek ekranda; telefon ve yatay telefonda "← Modlar" yeter. */
 .p3-mode-seg { display:none; }
 @media (min-width:900px) and (min-height:601px) { .p3-mode-seg:not([hidden]) { display:inline-flex; } }
-@media (min-width:900px) and (min-height:601px) { .p3-view-seg { display:none; } }
-html .p3-game-taskbar .p3-preset-sel { width:auto; max-width:200px; }
-.p3-kb-toggle[aria-checked="true"], .p3-keys-btn[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
-/* "Sesi yeniden başlat": shown by p3-app while the AudioContext is suspended / interrupted / failed. */
-html .p3-game-taskbar .p3-audio-chip { border-color:var(--warn); color:var(--warn); background:transparent; }
-@media (hover:hover) { html .p3-game-taskbar .p3-audio-chip:hover { background:color-mix(in srgb, var(--warn) 12%, transparent); } }
-@media (max-width:600px) { .p3-game-taskbar { padding:var(--s2) var(--s3); } }
-/* Phones — portrait, or landscape with a coarse pointer (same rule as p3-app's PHONE_MQ; phone ≤600px like
-   ui.css, the min-width sides of this page start at 601px): no physical keyboard, and one taskbar row
-   matters. (0,2,1) beats `html .btn` (0,1,1), which sets display. */
+html .p3-mode-seg .seg-btn { height:var(--ctl-sm); padding:0 16px; font-size:var(--fs-ctl-sm); }
+html .p3-mode-seg .seg-btn::after { content:''; position:absolute; inset:-2px 0; }
+
+/* Şerit düğmeleri (tasarım: kenar --line-strong, yazı --fg-soft, 13px); açık durum altın */
+html .p3-tool { color:var(--fg-soft); font-weight:500; }
+html .p3-tool:hover { color:var(--fg); }
+html .p3-tool[aria-pressed="true"], html .p3-tool[aria-checked="true"] { border-color:var(--accent-line-2); color:var(--accent); }
+html .p3-game-taskbar .p3-preset-sel { width:auto; max-width:200px; height:var(--ctl-sm); padding-left:16px; border-radius:var(--r-pill); }
+@media (min-width:1025px) { html .p3-game-taskbar .p3-preset-sel { font-size:var(--fs-ctl-sm); } }
+/* "Sesi yeniden başlat": AudioContext askıda / kesik / hatalıyken p3-app gösterir. */
+html .p3-audio-chip { border-color:var(--warn-line); color:var(--warn); background:transparent; }
+html .p3-audio-chip:hover { background:var(--warn-soft); color:var(--warn); }
+/* Telefon — dikey ya da dokunmatik yatay (p3-app PHONE_MQ ile aynı; ui.css telefon kırılımı ≤600): fiziksel
+   klavye yok, tek şerit satırı değerli. (0,2,1) `html .btn`'i (0,1,1) geçer. */
 @media (max-width:600px), (max-height:600px) and (pointer:coarse) {
   html .p3-game-taskbar .p3-hide-sm { display:none; }
 }
 
-/* overflow:clip, not hidden: a hidden box is still a programmatic scroll container, so focusing a partly
-   visible hotspot (pads/controls letterbox) would scroll the stage and stale the hotspot/pointer mapping.
-   `hidden` stays as the fallback for browsers without clip (p3-input then undoes any scroll). */
-.p3-game-stage { flex:1; min-height:0; min-width:0; display:flex; align-items:center; justify-content:center; padding:var(--s2) var(--s3); position:relative; overflow:hidden; overflow:clip; background:var(--bg); }
-/* The stage is focused so single-key shortcuts work (WCAG 2.1.4 scopes them to it). A full accent ring
-   around the whole device reads as an error state, so the stage only gets a hairline; the controls
-   inside keep the accent focus ring. */
-.p3-game-stage:focus { outline:none; }
-.p3-game-stage:focus-visible { outline:1px solid var(--line); outline-offset:-1px; }
+/* Görünüm seçici başlıkta (M_Push3: 34px kapsül). Menüde ve seçicinin gizli olduğu modda (Seviye 1) yer
+   kaplamaz; geniş ve yüksek masaüstünde mod anahtarı var, görünüm hep tam. */
+html .p3-view-seg { border-color:var(--line-ctl); background:transparent; }
+html .p3-view-seg .seg-btn::after { content:''; position:absolute; inset:-5px 0; }   /* 34px → 44px dokunma */
+body:has(#p3Game[hidden]) .p3-view-slot, .p3-view-slot:has(> [hidden]) { display:none; }
+@media (min-width:1025px) and (min-height:601px) { .p3-view-slot { display:none; } }
+/* M_Push3 başlığı yalnız geri + görünüm seçici. Dar telefonda (≤389) seçici ve avatar/giriş halkası birlikte
+   sığmaz ("← EĞİTİM" kesilirdi): oyunda seçici görünürken avatar gizlenir; profil ve çıkış çekmecede. */
+@media (max-width:389px) {
+  body:has(.p3-view-slot #p3ViewSeg:not([hidden])):not(:has(#p3Game[hidden])) #authBar { display:none; }
+}
 
-/* Everything that sits on the device is an absolute SIBLING inside this frame. Device SVG and
-   #p3Live fill the same box with the same viewBox and preserveAspectRatio, so they letterbox
-   identically; the LCD canvas, pad surface and hotspots are placed by P3.dev.align() from the
-   device's screen CTM. */
-.p3-device-frame { position:relative; width:100%; height:100%; }
+/* Sahne. overflow:clip, hidden değil: hidden kutu yine programla kaydırılabilir; kısmen görünen bir
+   hotspot'a odak gelince sahne kayar ve hotspot/pointer eşlemesi eskir (p3-input clip'siz tarayıcıda geri alır). */
+.p3-game-stage {
+  flex:1; min-height:0; min-width:0; position:relative; display:flex; align-items:center; justify-content:center;
+  padding:14px var(--p3-x) 26px; overflow:hidden; overflow:clip; background:var(--bg);
+}
+/* Tek tuş kısayolları için sahne odaklanır (WCAG 2.1.4). Tüm cihazı saran altın halka hata gibi durur:
+   sahneye ince çizgi, içerideki kontrollere altın odak halkası. */
+.p3-game-stage:focus { outline:none; }
+.p3-game-stage:focus-visible { outline:1px solid var(--line-div); outline-offset:-1px; }
+
+/* Cihaza oturan her şey bu çerçevede mutlak KARDEŞ. Cihaz SVG'si ve #p3Live aynı viewBox ve
+   preserveAspectRatio ile aynı kutuyu doldurur; LCD tuvali, pad yüzeyi ve hotspot'ları P3.dev.align()
+   cihazın ekran CTM'inden yerleştirir. Giriş animasyonu yalnız opaklık (bkz. en üst not). */
+.p3-device-frame { position:relative; width:100%; height:100%; animation:be-fade .9s var(--ease-out) .1s backwards; }
 .p3-device-wrap {
   position:absolute; inset:0; z-index:1;
-  /* The only CSS filter on the page, on a subtree that never changes after injection (except
-     P3.dev.setView). Anything that updates per frame lives in a sibling layer, so hover/pad
-     play never forces this filtered image to re-rasterize at full window size. */
+  /* Sayfadaki tek CSS filtresi, enjeksiyondan sonra değişmeyen bir alt ağaçta (P3.dev.setView hariç).
+     Kare kare değişen her şey kardeş katmanda; hover/pad çalma bu filtreli görüntüyü yeniden taratmaz. */
   filter:drop-shadow(0 16px 34px rgba(0,0,0,.55));
 }
 .p3-device-wrap svg { width:100%; height:100%; display:block; -webkit-user-select:none; user-select:none; }
@@ -139,90 +229,149 @@ html .p3-game-taskbar .p3-audio-chip { border-color:var(--warn); color:var(--war
 .p3-lcd-canvas { position:absolute; left:0; top:0; z-index:3; display:block; pointer-events:none; }
 .p3-hotspot-layer { position:absolute; inset:0; z-index:4; pointer-events:none; isolation:isolate; }
 
-/* Instrument surfaces: no scrolling, text selection, iOS callout or tap flash while playing.
-   Pinch-zoom stays available on the rest of the page. */
+/* Çalgı yüzeyleri: çalarken kaydırma, metin seçimi, iOS menüsü, dokunma parlaması yok. Sayfanın geri kalanında
+   iki parmakla yakınlaştırma açık kalır. */
 .p3-hotspot, .p3-pad-surface, .p3-enc, .p3-strip, .p3-jog {
   touch-action:none; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent;
 }
 .p3-hotspot, .p3-pad-surface { position:absolute; pointer-events:auto; cursor:pointer; }
 .p3-hotspot.draggable, .p3-enc { cursor:ns-resize; }
-/* Encoders are small on phones; keep a 44px hit area around them (WCAG 2.5.5 target). z-index:-1 puts the
-   extension under every hotspot of the layer (the layer is the stacking context): it only catches touches
-   on empty device surface and never steals one from a neighbour (Lock/Stop Clip/Mute under Swing&Tempo,
-   the upper display buttons under the encoders, the next encoder). p3-input takes the target from e.target. */
+/* Encoder'lar telefonda küçük; çevresinde 44px isabet alanı (WCAG 2.5.5). z-index:-1 uzantıyı katmandaki her
+   hotspot'un altına koyar (katman yığın bağlamıdır): yalnız boş cihaz yüzeyindeki dokunuşu yakalar, komşudan
+   (Swing&Tempo altındaki Lock/Stop Clip/Mute, encoder'ların altındaki üst ekran düğmeleri, yandaki encoder)
+   dokunuş çalmaz. p3-input hedefi e.target'tan alır. */
 .p3-enc::after { content:''; position:absolute; z-index:-1; left:50%; top:50%; width:max(100%, 44px); height:max(100%, 44px); transform:translate(-50%, -50%); }
 .p3-hotspot:focus-visible, .p3-pad-surface:focus-visible, .p3-pad-surface :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-/* D-pad and Octave/Page arrows are clip-path triangles: the clip cuts the outline away, so their focus
-   indicator is a fill inside the triangle instead. */
+/* D-pad ve Octave/Page okları clip-path üçgenleri: kırpma dış halkayı keser, odak göstergesi içte dolgu. */
 .p3-hotspot[data-shape="tri"]:focus-visible::after { content:''; position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 55%, transparent); pointer-events:none; }
 .p3-hotspot[aria-disabled="true"] { cursor:not-allowed; }
 .p3-hotspot[aria-disabled="true"]::before { content:''; position:absolute; inset:0; background:#000000; opacity:.35; pointer-events:none; }
 
-/* Highlight overlay inside each hotspot: opacity/transform only (compositor, no SVG repaint). */
+/* Hotspot içi vurgu katmanı: yalnız opacity/transform (compositor; SVG yeniden boyanmaz). */
 .p3-hl { position:absolute; inset:0; opacity:0; pointer-events:none; transform:scale(1); transition:opacity .18s ease; }
 @media (hover:hover) { .p3-hotspot:hover .p3-hl:not(.target):not(.correct):not(.wrong) { opacity:.22; background:#E6E6E6; } }
 .p3-hl.target { background:color-mix(in srgb, var(--ok) 14%, transparent); box-shadow:inset 0 0 0 2px var(--ok); opacity:.45; animation:p3TargetPulse 1.8s ease-in-out infinite; }
 .p3-hl.correct { background:color-mix(in srgb, var(--accent) 35%, transparent); box-shadow:inset 0 0 0 3px var(--accent); animation:p3CorrectFlash .5s ease-out; }
-.p3-hl.wrong { background:var(--err); animation:p3WrongFlash .35s ease-out; }
+.p3-hl.wrong { background:var(--err-strong); animation:p3WrongFlash .35s ease-out; }
 @keyframes p3TargetPulse { 0%,100%{opacity:.4;} 50%{opacity:.8;} }
 @keyframes p3CorrectFlash { 0%{opacity:0; transform:scale(1);} 30%{opacity:1; transform:scale(1.06);} 100%{opacity:0; transform:scale(1.06);} }
 @keyframes p3WrongFlash { 0%{opacity:.6; transform:translate(0,0);} 25%{transform:translate(-6px,0);} 75%{transform:translate(6px,0);} 100%{opacity:0; transform:translate(0,0);} }
 
-/* Tutorial coach bubble: p3-tutorial anchors it (left/top) to the target's CTM position. */
-.p3-coach:not([hidden]) { position:absolute; z-index:5; display:flex; flex-direction:column; align-items:flex-start; gap:var(--s2); max-width:min(280px, 80vw); padding:var(--s3); background:var(--surface); border:1px solid var(--accent); color:var(--fg); font-size:var(--fs-small); line-height:1.45; }
-.p3-coach-text { margin:0; }
+/* Öğretici balonu: p3-tutorial hedefin CTM konumuna (left/top) demirler. Cihazın üstünde: arka plan
+   bulanıklığı yok (altındaki LED'ler her karede değişir), düz yüzey + altın kenar. */
+.p3-coach:not([hidden]) {
+  position:absolute; z-index:5; display:flex; flex-direction:column; align-items:flex-start; gap:10px;
+  max-width:min(290px, 80vw); padding:14px 16px; border-radius:var(--r-14);
+  background:var(--surface); border:1px solid var(--accent-line-2); box-shadow:var(--shadow-pop);
+  color:var(--fg); font-size:var(--fs-small); line-height:1.5;
+}
+.p3-coach-text strong { color:var(--accent); font-weight:600; }
 
-/* Keyboard-shortcut layer (p3-app): labels are device-internal (fixed hex, like P3.K.C); the legend is
-   page chrome (tokens). Label positions and font size are runtime state (inline style). */
+/* Klavye kısayolu katmanı (p3-app): etiketler cihaz içi (sabit hex, P3.K.C gibi); lejant sayfa arayüzü.
+   Etiket konumu ve yazı boyutu çalışma anı durumu (inline style). */
 .p3-keys-layer { position:absolute; inset:0; z-index:5; pointer-events:none; }
-.p3-key { position:absolute; display:inline-flex; align-items:center; justify-content:center; min-width:1.7em; height:1.7em; padding:0 .35em; font-family:var(--ff-mono); font-weight:700; line-height:1; color:#FFFFFF; background:#000000; border:1px solid #7C858A; white-space:nowrap; }
+.p3-key { position:absolute; display:inline-flex; align-items:center; justify-content:center; min-width:1.7em; height:1.7em; padding:0 .35em; font-family:var(--ff-mono); font-weight:700; line-height:1; color:#FFFFFF; background:#000000; border:1px solid #7C858A; border-radius:3px; white-space:nowrap; }
 .p3-key.p3-key-pad { border-color:#E6E6E6; }
-.p3-keys-legend { position:absolute; top:var(--s2); left:var(--s2); max-width:min(290px, calc(100% - 16px)); padding:var(--s2) var(--s3); background:var(--surface); border:1px solid var(--line); font-size:var(--fs-micro); line-height:1.5; color:var(--fg-2); }
+.p3-keys-legend { position:absolute; top:var(--s2); left:var(--s2); max-width:min(300px, calc(100% - 16px)); padding:12px 14px; border-radius:var(--r-14); background:var(--surface); border:1px solid var(--line-3); box-shadow:var(--shadow-pop); font-size:var(--fs-micro); line-height:1.55; color:var(--fg-2); }
 .p3-keys-legend.p3-keys-legend-end { left:auto; right:var(--s2); }
-.p3-keys-legend-title { font-family:var(--ff-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); margin-bottom:var(--s1); }
-.p3-keys-legend dl { display:grid; grid-template-columns:auto 1fr; gap:2px var(--s3); }
+.p3-keys-legend-title { margin-bottom:6px; font-family:var(--ff-mono); letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--accent); }
+.p3-keys-legend dl { display:grid; grid-template-columns:auto 1fr; gap:3px var(--s3); }
 .p3-keys-legend dt { font-family:var(--ff-mono); color:var(--fg); white-space:nowrap; }
 .p3-keys-legend-note { margin-top:var(--s2); color:var(--fg-3); }
 .p3-keys-legend-note.off { color:var(--warn); }
 
-/* Under the hotspot layer (z 3 < 4) and transparent to pointers except its link: in the pads/padsStrip
-   letterbox the bottom pad row reaches into this band, and a touch there must reach the pad. */
-.p3-attribution { position:absolute; bottom:0; right:var(--s2); max-width:calc(100% - 2 * var(--s2)); text-align:right; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.02em; color:var(--fg-3); z-index:3; pointer-events:none; }
-.p3-attribution a { color:inherit; pointer-events:auto; }
-@media (max-width:600px) {
-  .p3-indep { display:block; }
-  .p3-indep-sep { display:none; }
-}
+/* Sahnenin alt bandı (tasarım: cihazın altında sağda atıf; araç şeridindeki jest ipucu solda). Hotspot
+   katmanının altında (z 3 < 4) ve bağlantısı dışında işaretçiye geçirgen: telefonda pads/padsStrip
+   letterbox'ında en alt pad sırası bu banda uzanır, oraya dokunuş pad'e ulaşmalı. */
+.p3-stage-foot { position:absolute; left:var(--p3-x); right:var(--p3-x); bottom:6px; z-index:3; display:flex; justify-content:space-between; align-items:flex-end; gap:8px 24px; pointer-events:none; font-family:var(--ff-mono); font-size:var(--fs-micro); line-height:1.4; letter-spacing:.04em; color:var(--fg-faint); }
+.p3-stage-hint { text-transform:uppercase; letter-spacing:.1em; }
+.p3-attribution { display:flex; flex-wrap:wrap; justify-content:flex-end; margin-left:auto; text-align:right; }
+.p3-attribution a { color:var(--fg-muted); pointer-events:auto; }
+.p3-attribution a:hover { color:var(--fg); }
+.p3-indep { order:0; } .p3-attr-sep { order:1; white-space:pre; } .p3-credit { order:2; }
+/* Seviye 1'de cihaz pasif (yalnız bul); jest ipucu yanıltmasın. Dar ekranda yer yok. */
+.p3-game:has(#p3ModeSeg [data-mode="level1"][aria-pressed="true"]) .p3-stage-hint { display:none; }
+@media (max-width:1279px) { .p3-stage-hint { display:none; } }
 
-/* ── Bottom: feedback, level explain panel, tutorial panel ── */
-.p3-game-bottom { flex:0 0 auto; }
-.p3-game-feedback { align-items:center; justify-content:center; padding:var(--s1) var(--s5); font-size:var(--fs-small); text-align:center; line-height:1.35; color:var(--fg-3); min-height:var(--ctl-md); }
+/* ── Alt: geri bildirim satırı, seviye açıklaması, öğretici paneli ── */
+.p3-game-bottom { flex:0 0 auto; display:flex; flex-direction:column; }
+.p3-game-feedback { align-items:center; justify-content:center; min-height:var(--ctl-md); padding:4px var(--p3-x); font-size:var(--fs-small); line-height:1.4; text-align:center; color:var(--fg-3); }
 .p3-game-feedback:not([hidden]) { display:flex; }
 .p3-game-feedback.ok { color:var(--ok); }
 .p3-game-feedback.err { color:var(--err); }
 
-.p3-explain-panel:not([hidden]) { display:flex; flex-direction:column; align-items:center; gap:var(--s3); padding:var(--s4) var(--s5); background:var(--surface); border-top:1px solid var(--line); animation:p3PanelIn .2s ease-out; }
-.p3-explain-text { max-width:64ch; font-size:var(--fs-small); color:var(--fg-2); line-height:1.55; text-align:center; margin:0; }
-@media (min-width:601px) { .p3-explain-text { font-size:var(--fs-body); } }
-
-.p3-tut-panel:not([hidden]) { display:flex; flex-direction:column; gap:var(--s2); max-height:40dvh; overflow-y:auto; padding:var(--s3) var(--s5) var(--s4); background:var(--surface); border-top:1px solid var(--line); animation:p3PanelIn .2s ease-out; }
-.p3-tut-title { outline-offset:4px; }
-.p3-tut-body { max-width:72ch; margin:0; font-size:var(--fs-small); color:var(--fg-2); line-height:1.55; }
-@media (min-width:601px) { .p3-tut-body { font-size:var(--fs-body); } }
-/* "Dinle" line: what to listen for after the action. Empty on steps without one. */
-.p3-tut-listen { max-width:72ch; margin:0; padding-left:var(--s3); border-left:2px solid var(--accent); font-size:var(--fs-small); color:var(--fg-3); line-height:1.5; }
-.p3-tut-listen:empty { display:none; }
-.p3-tut-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2); margin-top:var(--s1); }
-.p3-tut-actions-end { display:flex; flex-wrap:wrap; gap:var(--s2); margin-left:auto; }
-@media (max-width:600px) {
-  .p3-game-feedback { padding:var(--s1) var(--s4); }
-  .p3-tut-panel:not([hidden]) { padding:var(--s3) var(--s4); }
+.p3-explain-panel:not([hidden]) {
+  display:flex; align-items:center; gap:12px 24px; margin:0 var(--p3-x) 16px; padding:16px 16px 16px 24px;
+  border-radius:var(--r-20); background:var(--surface-0); border:1px solid var(--line); animation:p3PanelIn .25s var(--ease-out);
 }
-/* Short landscape screens (a phone on its side, 844×390): stacked under the stage, topbar + taskbar +
-   feedback + a 40dvh tutorial panel left ~74px of device. There the tutorial / explain panel moves into a
-   column beside the stage (the stage keeps the full height below the taskbar), and an empty feedback line
-   takes no height. */
+.p3-explain-text { flex:1; min-width:0; margin:0; max-width:78ch; font-size:var(--fs-body); line-height:1.55; color:var(--fg-2); }
+.p3-explain-panel .btn { flex-shrink:0; }
+
+.p3-tut-panel:not([hidden]) {
+  display:flex; flex-direction:column; gap:10px; max-height:40dvh; overflow-y:auto; overscroll-behavior:contain;
+  margin:0 var(--p3-x) 16px; padding:20px 24px; border-radius:var(--r-20);
+  background:var(--surface-0); border:1px solid var(--line); animation:p3PanelIn .25s var(--ease-out);
+}
+.p3-tut-title { font-family:var(--ff-disp); font-weight:400; font-size:28px; line-height:1.05; letter-spacing:-.01em; color:var(--fg); outline-offset:4px; text-wrap:balance; }
+.p3-tut-body { max-width:72ch; margin:0; font-size:var(--fs-body); line-height:1.6; color:var(--fg-muted); }
+/* "Dinle" satırı: eylemden sonra neye kulak verileceği (tasarımın vurgulu bilgi kutusu). Adımda yoksa boş. */
+.p3-tut-listen { max-width:72ch; margin:0; padding:10px 14px; border-radius:var(--r-12); background:var(--accent-wash); border:1px solid rgba(232,184,75,.25); font-size:var(--fs-small); line-height:1.5; color:var(--fg-2); }
+.p3-tut-listen:empty { display:none; }
+.p3-tut-actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:4px; }
+.p3-tut-actions-end { display:flex; flex-wrap:wrap; gap:8px; margin-left:auto; }
+@keyframes p3PanelIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+/* Masaüstü: öğretici paneli sahnenin sağında sütun. Alta konunca cihaz yüksekliğin üçte birini kaybederdi;
+   yanda cihaz yine ekran yüksekliğince büyük kalır. Geri bildirim satırı da sütuna, panelin altına geçer. */
+@media (min-width:1025px) {
+  .p3-game:not([hidden]):has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) {
+    display:grid; grid-template-columns:minmax(0, 1fr) clamp(320px, 27vw, 400px); grid-template-rows:auto minmax(0, 1fr);
+  }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) > .p3-game-taskbar { grid-column:1 / -1; }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) > .p3-game-stage { grid-column:1; grid-row:2; padding-right:24px; }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) > .p3-game-stage .p3-stage-foot { right:24px; }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) .p3-stage-hint { display:none; }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) > .p3-game-bottom {
+    grid-column:2; grid-row:2; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+    margin:14px var(--p3-x) 26px 0; border-radius:var(--r-20); background:var(--surface-0); border:1px solid var(--line);
+  }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) .p3-tut-panel:not([hidden]) { order:1; max-height:none; overflow:visible; margin:0; padding:24px; border:0; border-radius:0; background:transparent; }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) .p3-game-feedback { order:2; justify-content:flex-start; padding:0 24px 20px; text-align:left; }
+  .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) .p3-game-feedback:empty { min-height:0; padding:0; }
+}
+
+@media (max-width:1024px) {
+  .p3-game-taskbar { margin-top:12px; }
+}
+/* Telefon (M_Push3): cihaz yuvarlatılmış çerçevede (12px, koyu yüzey), paneller alttan açılan tabaka */
+@media (max-width:600px) {
+  /* Tek satırda görev metni sıkışırdı: araçlar üstte (sol grup · sağ grup), görev metni altta tam genişlik. */
+  .p3-game-taskbar { gap:6px 8px; margin:8px var(--page-x) 0; padding:6px 6px 8px; }
+  .p3-tb-group + .p3-game-task + .p3-tb-group { margin-left:auto; }
+  .p3-game-task { order:3; flex-basis:100%; gap:8px; padding:0 6px; font-size:var(--fs-small); }
+  html .p3-game-taskbar .p3-preset-sel { max-width:160px; }
+  /* Alt bant iki satır atıfa yeter (dikey telefonda cihaz genişlikle sınırlı; bant cihazı küçültmez). */
+  .p3-game-stage { padding:8px var(--page-x) 32px; }
+  /* M_Push3'ün yuvarlatılmış çerçevesi: letterbox'ta görünen komşu kontroller köşelerde kırpılır; zemin
+     saydam (pads görünümünde cihazın altı boş kalır, kutu gibi durmasın). */
+  .p3-device-frame { border-radius:var(--r-12); overflow:clip; }
+  .p3-stage-foot { bottom:4px; font-size:9px; letter-spacing:0; }
+  /* M_Push3: "Görsel: Greg Hadala (CC BY 4.0) · Ableton AG ile bağlantılı değildir" */
+  .p3-indep-tool { display:none; }
+  .p3-indep { order:2; } .p3-credit { order:0; }
+  .p3-game-feedback { padding:2px var(--page-x); }
+  .p3-explain-panel:not([hidden]) { flex-direction:column; margin:0; padding:16px var(--page-x); border-radius:var(--r-20) var(--r-20) 0 0; border-width:1px 0 0; border-color:var(--line-3); text-align:center; }
+  .p3-explain-text { font-size:var(--fs-small); }
+  .p3-tut-panel:not([hidden]) { gap:8px; margin:0; padding:16px var(--page-x); border-radius:var(--r-20) var(--r-20) 0 0; border-width:1px 0 0; border-color:var(--line-3); }
+  .p3-tut-title { font-size:22px; }
+  .p3-tut-body { font-size:var(--fs-small); line-height:1.55; }
+}
+
+/* Kısa yatay ekran (yan çevrilmiş telefon, 844×390): alt alta dizilince başlık + şerit + geri bildirim + %40'lık
+   panel cihaza ~74px bırakırdı. Orada öğretici / açıklama paneli sahnenin yanına sütun olur (sahne şeridin
+   altındaki tüm yüksekliği korur) ve boş geri bildirim satırı yer kaplamaz. */
 @media (max-height:600px) and (orientation:landscape) {
+  .p3-game-taskbar { margin-top:8px; padding-block:6px; }
   .p3-game-feedback:empty { min-height:0; padding:0; }
   .p3-game:not([hidden]):has(> .p3-game-bottom > .p3-tut-panel:not([hidden])),
   .p3-game:not([hidden]):has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) {
@@ -232,103 +381,131 @@ html .p3-game-taskbar .p3-audio-chip { border-color:var(--warn); color:var(--war
   .p3-game:has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) > .p3-game-taskbar { grid-column:1 / -1; }
   .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) > .p3-game-bottom,
   .p3-game:has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) > .p3-game-bottom {
-    min-height:0; overflow-y:auto; overscroll-behavior:contain; background:var(--surface); border-left:1px solid var(--line);
+    min-height:0; overflow-y:auto; overscroll-behavior:contain; margin:8px var(--p3-x) 8px 0;
+    border-radius:var(--r-16); background:var(--surface-0); border:1px solid var(--line);
   }
-  /* Scoped with :has() too: a browser without it keeps the stacked layout and the panel's own 40dvh cap. */
+  /* :has() ile sınırlı: onu bilmeyen tarayıcı alt alta düzeni ve panelin kendi %40 sınırını korur. */
   .p3-game:has(> .p3-game-bottom > .p3-tut-panel:not([hidden])) .p3-tut-panel:not([hidden]),
-  .p3-game:has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) .p3-explain-panel:not([hidden]) { max-height:none; overflow-y:visible; border-top:0; }
+  .p3-game:has(> .p3-game-bottom > .p3-explain-panel:not([hidden])) .p3-explain-panel:not([hidden]) {
+    flex-direction:column; align-items:stretch; max-height:none; overflow-y:visible; margin:0; padding:14px 16px; border:0; border-radius:0; background:transparent; text-align:left;
+  }
+  .p3-tut-title { font-size:20px; }
+  /* Atıf tek satır (telefon düzeni): cihazın üstüne taşmasın. */
+  .p3-stage-foot { font-size:9px; letter-spacing:0; }
+  .p3-indep-tool { display:none; }
+  .p3-indep { order:2; } .p3-credit { order:0; }
 }
-@keyframes p3PanelIn { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
 
-/* ── Table of contents: .modal-lg opening from the right edge ── */
+/* ══════════════════════════ Katmanlar ══════════════════════════ */
+/* İçindekiler: sağ kenardan açılan .modal-lg (tam yükseklik); bölümler satır kartları (p3-tutorial kurar:
+   .card.p3-mode-card.p3-toc-item > .p3-mode-meta + .card-title + .p3-mode-desc; Faz 2 .is-soon). */
 html .p3-toc { justify-content:flex-end; align-items:stretch; padding:0; }
-html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
-.p3-toc-list { list-style:none; display:flex; flex-direction:column; }
-.p3-toc-list > li { border-bottom:1px solid var(--line); }
+html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; border-radius:var(--r-24) 0 0 var(--r-24); animation:p3TocIn var(--dur-slow) var(--ease-out) both; }
+@keyframes p3TocIn { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:none; } }
+.p3-toc-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+html .p3-toc .p3-toc-item {
+  display:flex; flex-direction:column; align-items:flex-start; gap:6px; width:100%; padding:16px 18px;
+  border-radius:var(--r-16); background:var(--bg); border:1px solid var(--line); color:var(--fg);
+  font:inherit; text-align:left; transition:border-color var(--dur-fast), background-color var(--dur-fast);
+}
+html .p3-toc button.p3-toc-item { cursor:pointer; }
+@media (hover:hover) { html .p3-toc button.p3-toc-item:hover { border-color:var(--accent-line-2); background:var(--surface-hi); } }
+html .p3-toc .p3-toc-item[aria-current="step"] { border-color:var(--accent-line-2); background:linear-gradient(160deg, #1d1610, var(--bg) 60%); }
+html .p3-toc .p3-toc-item.is-done .p3-mode-meta { color:var(--ok); }
+html .p3-toc .p3-toc-item.is-soon { background:transparent; border-style:dashed; border-color:var(--line-strong); }
+html .p3-toc .card-title { margin:0; font-family:var(--ff-disp); font-weight:400; font-size:24px; line-height:1.05; color:var(--fg); }
+html .p3-toc .p3-mode-desc { font-size:var(--fs-small); line-height:1.5; color:var(--fg-muted); }
+@media (max-width:600px) { html .p3-toc .modal { border-radius:var(--r-22) 0 0 var(--r-22); } html .p3-toc .card-title { font-size:22px; } }
 
-/* ── Win card ── */
-.p3-win:not([hidden]) { position:fixed; inset:0; z-index:var(--z-modal); background:rgba(0,0,0,.82); display:flex; align-items:center; justify-content:center; padding:var(--s4); }
-.p3-win-card { background:var(--surface); border:1px solid var(--line); padding:var(--s6) var(--s5); text-align:center; max-width:380px; width:100%; }
-.p3-win-card .h2 { margin-bottom:var(--s3); }
-.p3-win-card p { font-size:var(--fs-small); color:var(--fg-2); line-height:1.55; margin-bottom:var(--s3); }
-.p3-win-actions { display:flex; flex-direction:column; gap:var(--s2); margin-top:var(--s5); }
-.p3-win-free { font-size:var(--fs-micro); color:var(--fg-3); margin-top:var(--s4); }
-.p3-win-free a { color:var(--fg-2); }
+/* Bitiş kartı: ortak modal (ember şeritli yüzey, serif başlık); p3-tutorial / p3-levels doldurur. */
+html .p3-win .modal-title { padding-right:0; }
+.p3-win-actions { display:flex; flex-direction:column; gap:8px; margin-top:var(--s5); }
+.p3-win-free { margin-top:var(--s5); padding-top:var(--s4); border-top:1px solid var(--line-div); font-size:var(--fs-small); color:var(--fg-3); }
 
 @media (prefers-reduced-motion:reduce) {
-  .p3-hl, .p3-mode-card { transition:none; }
+  /* Görünürlük yalnız keyframe'lerden geliyor; onlar olmadan işaretler statik görünür kalsın. */
   .p3-hl.target { animation:none; opacity:.6; }
-  /* Visibility comes only from the keyframes; without them the marks stay visible (static). */
   .p3-hl.correct, .p3-hl.wrong { animation:none; }
   .p3-hl.correct { opacity:.8; }
   .p3-hl.wrong { opacity:.6; }
-  .p3-explain-panel:not([hidden]), .p3-tut-panel:not([hidden]) { animation:none; }
 }
 </style>
 </head>
 <body>
-<a id="homeLogo" href="egitim" title="Eğitim">Eğitim</a>
-<div id="authBar"></div>
+<header class="be-header" id="beHeader" data-be-page="ders-push3" data-be-back="/egitim" data-be-back-label="nav_egitim" data-be-tabs="off">
+  <!-- Görünüm seçici (M_Push3: başlıkta). Kabuk bu slotu #authBar'ın soluna taşır; p3-app id ile bulur. -->
+  <div data-be-slot class="p3-view-slot">
+    <div class="seg seg--sm p3-view-seg" id="p3ViewSeg" role="group" aria-label="Görünüm">
+      <button type="button" class="seg-btn" data-view="full" aria-pressed="false" data-i18n="p3_view_full">Tam</button>
+      <button type="button" class="seg-btn" data-view="pads" aria-pressed="false" data-i18n="p3_view_pads">Pad</button>
+      <button type="button" class="seg-btn" data-view="controls" aria-pressed="false" data-i18n="p3_view_controls">Kontrol</button>
+    </div>
+  </div>
+  <div id="authBar"></div>
+</header>
 
-<section class="p3-modes" id="p3Modes" aria-labelledby="p3ModesTitle">
-  <div class="p3-modes-inner">
-    <header class="p3-modes-head">
-      <h1 class="h2" id="p3ModesTitle" data-i18n="p3_menu_title">Push 3 Laboratuvarı</h1>
-      <p class="p3-modes-lead" data-i18n="p3_menu_lead">Push 3'ü satın almadan, tarayıcında gerçeğine sadık bir kopyasıyla öğren ve çal. Kulaklık önerilir.</p>
-    </header>
-    <noscript><p class="p3-modes-lead">Push 3 Laboratuvarı JavaScript gerektirir. Tarayıcında JavaScript'i açıp sayfayı yenile.</p></noscript>
+<section class="p3-modes" id="p3Modes" aria-labelledby="p3ModesTitle" tabindex="-1">
+  <div class="p3-hero be-grid-bg">
+    <div class="be-glow be-drift p3-hero-glow" aria-hidden="true"></div>
+    <div class="be-wrap p3-hero-inner">
+      <a class="p3-hero-back be-rv" href="egitim"><span aria-hidden="true">←</span><span data-i18n="nav_egitim">Eğitim</span></a>
+      <h1 class="p3-title be-rv be-d1" id="p3ModesTitle" data-i18n-html="p3_menu_title_html">Push 3 <em class="be-ember-text">laboratuvarı</em></h1>
+      <p class="p3-lead be-rv be-d2" data-i18n="p3_menu_lead">Push 3'ü satın almadan, tarayıcında gerçeğine sadık bir kopyasıyla öğren ve çal. Kulaklık önerilir.</p>
+    </div>
+  </div>
 
-    <!-- Static text = first-visit defaults. p3-app (menuRender) rewrites meta, progress width, CTA
-         and the first-visit line from saved progress. -->
-    <div class="p3-mode-grid" id="p3ModeGrid">
-      <button type="button" class="card p3-mode-card" data-mode="tutorial">
-        <span class="badge accent p3-mode-badge" data-i18n="p3_card_tut_badge">Önerilen</span>
-        <span class="p3-mode-title" data-i18n="p3_card_tut_title">Öğretici</span>
-        <span class="p3-mode-desc" data-i18n="p3_card_tut_desc">Push 3'ü sıfırdan adım adım öğren: nota çalmaktan Wavetable ile ses tasarımına, davul programlamaktan kayda.</span>
-        <span class="p3-mode-meta">8 bölüm</span>
+  <div class="be-wrap p3-modes-body">
+    <noscript><p class="p3-noscript">Push 3 Laboratuvarı JavaScript gerektirir. Tarayıcında JavaScript'i açıp sayfayı yenile.</p></noscript>
+
+    <!-- Statik metin = ilk ziyaret varsayılanı. p3-app (menuRender) kayıtlı ilerlemeden meta'yı, ilerleme
+         genişliğini, eylem metnini ve "ilk kez" satırını yeniden yazar. -->
+    <div class="p3-mode-grid be-rv be-d3" id="p3ModeGrid">
+      <button type="button" class="p3-mode-card" data-mode="tutorial">
+        <span class="p3-mode-badge" data-i18n="p3_mode_tut_badge">Önerilen · Öğretici</span>
+        <span class="p3-mode-title" data-i18n="p3_mode_tut_title">Sıfırdan adım adım</span>
+        <span class="p3-mode-desc" data-i18n="p3_mode_tut_desc">Nota çalmaktan Wavetable ile ses tasarımına, davul programlamaktan kayda.</span>
         <span class="p3-mode-first" hidden data-i18n="p3_card_tut_first">İlk kez mi? Buradan başla.</span>
         <span class="p3-mode-bar" aria-hidden="true"><span class="p3-mode-fill"></span></span>
-        <span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+        <span class="p3-mode-foot"><span class="p3-mode-meta">8 bölüm</span><span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span></span>
       </button>
-      <button type="button" class="card p3-mode-card" data-mode="level1">
-        <span class="badge p3-mode-badge" data-i18n="p3_card_l1_badge">Oyun</span>
-        <span class="p3-mode-title" data-i18n="p3_card_l1_title">Seviye 1 · Kontrolü Bul</span>
-        <span class="p3-mode-desc" data-i18n="p3_card_l1_desc">Push 3'ün gerçek kontrollerini cihazın üstünde tek tek bul, her birinin ne işe yaradığını öğren.</span>
-        <span class="p3-mode-meta">27 kontrol · ~5 dk</span>
+      <button type="button" class="p3-mode-card" data-mode="level1">
+        <span class="p3-mode-badge" data-i18n="p3_mode_l1_badge">Oyun · Seviye 1</span>
+        <span class="p3-mode-title" data-i18n="p3_mode_l1_title">Kontrolü bul</span>
+        <span class="p3-mode-desc" data-i18n="p3_mode_l1_desc">Gerçek kontrolleri cihazın üstünde tek tek bul, her birinin ne işe yaradığını öğren.</span>
         <span class="p3-mode-bar" aria-hidden="true"><span class="p3-mode-fill"></span></span>
-        <span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+        <span class="p3-mode-foot"><span class="p3-mode-meta">27 kontrol · ~5 dk</span><span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span></span>
       </button>
-      <button type="button" class="card p3-mode-card" data-mode="level2">
-        <span class="badge p3-mode-badge" data-i18n="p3_card_l2_badge">Görev</span>
-        <span class="p3-mode-title" data-i18n="p3_card_l2_title">Seviye 2 · Görevler</span>
+      <button type="button" class="p3-mode-card" data-mode="level2">
+        <span class="p3-mode-badge" data-i18n="p3_mode_l2_badge">Görev · Seviye 2</span>
+        <span class="p3-mode-title" data-i18n="p3_mode_l2_title">Görevler</span>
         <span class="p3-mode-desc" data-i18n="p3_card_l2_desc">Tempoyu dokunarak ayarla, oktav değiştir, gamı seç, swing ver, track sustur, kayda başla.</span>
-        <span class="p3-mode-meta">6 görev · ~5 dk</span>
         <span class="p3-mode-bar" aria-hidden="true"><span class="p3-mode-fill"></span></span>
-        <span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+        <span class="p3-mode-foot"><span class="p3-mode-meta">6 görev · ~5 dk</span><span class="p3-mode-action"><span class="p3-mode-cta">Başla</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span></span>
       </button>
-      <button type="button" class="card p3-mode-card" data-mode="free">
-        <span class="badge p3-mode-badge" data-i18n="p3_card_free_badge">Emülatör</span>
-        <span class="p3-mode-title" data-i18n="p3_card_free_title">Serbest Çal</span>
-        <span class="p3-mode-desc" data-i18n="p3_card_free_desc">Kural yok, ipucu yok. Wavetable synth ve davul setiyle Push 3'ü gerçek bir cihaz gibi çal. Learn düğmesi seni derslere götürür.</span>
-        <span class="p3-mode-meta" data-i18n="p3_card_free_meta">Tüm kontroller açık</span>
+      <button type="button" class="p3-mode-card" data-mode="free">
+        <span class="p3-mode-badge" data-i18n="p3_card_free_badge">Emülatör</span>
+        <span class="p3-mode-title" data-i18n="p3_mode_free_title">Serbest çal</span>
+        <span class="p3-mode-desc" data-i18n="p3_mode_free_desc">Kural yok, ipucu yok. Wavetable synth ve davul setiyle gerçek bir cihaz gibi çal. Learn düğmesi seni derslere götürür.</span>
         <span class="p3-mode-bar" aria-hidden="true" hidden><span class="p3-mode-fill"></span></span>
-        <span class="p3-mode-action"><span class="p3-mode-cta">Aç</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span>
+        <span class="p3-mode-foot"><span class="p3-mode-meta" data-i18n="p3_card_free_meta">Tüm kontroller açık</span><span class="p3-mode-action"><span class="p3-mode-cta">Aç</span><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg></span></span>
       </button>
     </div>
-
-    <div class="p3-modes-foot">
-      <a href="egitim" class="btn btn-ghost btn-sm"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span data-i18n="p3_back_egitim">Eğitime dön</span></a>
-      <button type="button" class="btn btn-ghost btn-sm" id="p3ResetProgress"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg><span data-i18n="p3_reset">İlerlemeyi sıfırla</span></button>
-    </div>
-
-    <p class="p3-disclaimer" id="p3Disclaimer" data-i18n="p3_disclaimer">Ableton, Live ve Push, Ableton AG'nin ticari markalarıdır. Bu simülatör, Berkay Er Academy tarafından hazırlanmış bağımsız bir eğitim aracıdır; Ableton AG tarafından yetkilendirilmemiş, desteklenmemiş veya onaylanmamıştır.</p>
   </div>
+
+  <footer class="p3-foot">
+    <p class="p3-disclaimer" id="p3Disclaimer" data-i18n="p3_disclaimer">Ableton, Live ve Push, Ableton AG'nin ticari markalarıdır. Bu simülatör, Berkay Er Academy tarafından hazırlanmış bağımsız bir eğitim aracıdır; Ableton AG tarafından yetkilendirilmemiş, desteklenmemiş veya onaylanmamıştır.</p>
+    <div class="p3-foot-links">
+      <a class="p3-foot-link" href="egitim" data-i18n="p3_back_egitim">Eğitime dön</a>
+      <button type="button" class="p3-foot-link" id="p3ResetProgress" data-i18n="p3_reset">İlerlemeyi sıfırla</button>
+    </div>
+  </footer>
 </section>
 
 <main class="p3-game" id="p3Game" hidden>
+  <h1 class="sr-only" data-i18n="p3_menu_title">Push 3 Laboratuvarı</h1>
   <div class="p3-game-taskbar">
     <div class="p3-tb-group">
-      <button type="button" class="btn btn-ghost btn-sm" id="p3BackBtn" aria-label="Modlara dön"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span class="p3-hide-sm" data-i18n="p3_modes">Modlar</span></button>
+      <button type="button" class="btn btn-subtle btn-sm p3-tool" id="p3BackBtn" aria-label="Modlara dön"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span class="p3-hide-sm" data-i18n="p3_modes">Modlar</span></button>
       <div class="seg p3-mode-seg" id="p3ModeSeg" role="group" aria-label="Mod">
         <button type="button" class="seg-btn" data-mode="tutorial" aria-pressed="false" data-i18n="p3_seg_tut">Öğretici</button>
         <button type="button" class="seg-btn" data-mode="level1" aria-pressed="false" data-i18n="p3_seg_l1">Seviye 1</button>
@@ -339,40 +516,38 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
     </div>
     <div class="p3-game-task" id="p3TaskText" aria-live="polite">Yükleniyor…</div>
     <div class="p3-tb-group">
-      <button type="button" class="btn btn-sm p3-audio-chip" id="p3AudioBtn" hidden><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg><span>Sesi yeniden başlat</span></button>
-      <button type="button" class="btn btn-ghost btn-icon btn-sm" id="p3HintBtn" aria-pressed="true" aria-label="İpucunu gizle"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg></button>
+      <button type="button" class="btn btn-sm p3-audio-chip" id="p3AudioBtn" hidden><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg><span data-i18n="p3_audio_restart">Sesi yeniden başlat</span></button>
+      <button type="button" class="btn btn-subtle btn-sm btn-icon p3-tool" id="p3HintBtn" aria-pressed="true" aria-label="İpucunu gizle"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg></button>
       <select class="select p3-preset-sel" id="p3PresetSel" aria-label="Preset" hidden></select>
-      <button type="button" class="btn btn-ghost btn-sm p3-kb-toggle p3-hide-sm" id="p3KbToggle" role="switch" aria-checked="true" hidden><span data-i18n="p3_kb_toggle">Klavyeyle çal</span></button>
-      <button type="button" class="btn btn-ghost btn-sm p3-keys-btn p3-hide-sm" id="p3KeysBtn" aria-pressed="false" aria-controls="p3KeysLayer" title="Klavye kısayollarını göster (Shift + /)" hidden>Tuşlar</button>
-      <div class="seg p3-view-seg" id="p3ViewSeg" role="group" aria-label="Görünüm">
-        <button type="button" class="seg-btn" data-view="full" aria-pressed="false" data-i18n="p3_view_full">Tam</button>
-        <button type="button" class="seg-btn" data-view="pads" aria-pressed="false" data-i18n="p3_view_pads">Pad</button>
-        <button type="button" class="seg-btn" data-view="controls" aria-pressed="false" data-i18n="p3_view_controls">Kontrol</button>
-      </div>
+      <button type="button" class="btn btn-subtle btn-sm p3-tool p3-kb-toggle p3-hide-sm" id="p3KbToggle" role="switch" aria-checked="true" hidden><span data-i18n="p3_kb_toggle">Klavyeyle çal</span></button>
+      <button type="button" class="btn btn-subtle btn-sm p3-tool p3-keys-btn p3-hide-sm" id="p3KeysBtn" aria-pressed="false" aria-controls="p3KeysLayer" title="Klavye kısayollarını göster (Shift + /)" hidden><span data-i18n="p3_keys_btn">Tuşlar</span></button>
     </div>
   </div>
 
   <div class="p3-game-stage" id="p3Stage">
     <div class="p3-device-frame">
-      <!-- push3-device.svg is fetched, neutralised and injected here by P3.dev.load(); it is never
-           mutated afterwards (except P3.dev.setView), so its filter never re-rasterizes. -->
+      <!-- push3-device.svg'yi P3.dev.load() çeker, nötrleştirir ve buraya enjekte eder; sonra değiştirilmez
+           (P3.dev.setView hariç), filtresi yeniden taranmaz. -->
       <div class="p3-device-wrap" id="p3DeviceWrap" role="img" aria-label="Ableton Push 3 cihazı"></div>
-      <!-- Live layer: LEDs, pad colours, glyph clones. Same viewBox as the device (P3.K.VB). -->
+      <!-- Canlı katman: LED'ler, pad renkleri, glif klonları. Cihazla aynı viewBox (P3.K.VB). -->
       <svg class="p3-live" id="p3Live" viewBox="161 135 2116 1725" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false"></svg>
       <canvas class="p3-lcd-canvas" id="p3LcdCanvas" width="960" height="160" aria-hidden="true"></canvas>
       <div class="sr-only" id="p3LcdLive" aria-live="polite"></div>
       <div class="p3-hotspot-layer" id="p3HotspotLayer">
         <div class="p3-pad-surface" id="p3PadSurface" role="grid" aria-label="Pad ızgarası"></div>
       </div>
-      <!-- Keyboard-shortcut layer (#p3KeysBtn / Shift+/): key labels over pads and buttons + a legend.
-           Built by p3-app; positioned in the same px space as the hotspots (P3.dev.controlRect). -->
+      <!-- Klavye kısayolu katmanı (#p3KeysBtn / Shift+/): pad ve düğmelerin üstünde tuş etiketleri + lejant.
+           p3-app kurar; hotspot'larla aynı px uzayında (P3.dev.controlRect). -->
       <div class="p3-keys-layer" id="p3KeysLayer" hidden></div>
       <div class="p3-coach" id="p3Coach" role="note" hidden>
         <p class="p3-coach-text" id="p3CoachText"></p>
-        <button type="button" class="btn btn-ghost btn-sm" id="p3CoachClose" data-i18n="p3_close">Kapat</button>
+        <button type="button" class="btn btn-subtle btn-sm p3-tool" id="p3CoachClose" data-i18n="p3_close">Kapat</button>
       </div>
     </div>
-    <p class="p3-attribution"><span class="p3-indep">Bağımsız eğitim aracı · Ableton AG ile bağlantılı değildir</span><span class="p3-indep-sep" aria-hidden="true"> · </span>Görsel: <a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a> (CC BY 4.0)</p>
+    <div class="p3-stage-foot">
+      <p class="p3-stage-hint" data-i18n="p3_gesture_hint">Pad'e dokun · knob'ları yukarı/aşağı sürükle · touch strip'i kaydır</p>
+      <p class="p3-attribution"><span class="p3-indep"><span class="p3-indep-tool"><span data-i18n="p3_indep_tool">Bağımsız eğitim aracı</span><span aria-hidden="true"> · </span></span><span data-i18n="p3_indep_note">Ableton AG ile bağlantılı değildir</span></span><span class="p3-attr-sep" aria-hidden="true"> · </span><span class="p3-credit"><span data-i18n="p3_credit">Görsel</span>:&nbsp;<a href="https://www.figma.com/community/file/1358101347287286551/ableton-push-3-by-greg" target="_blank" rel="noopener">Greg Hadala</a>&nbsp;(CC BY 4.0)</span></p>
+    </div>
   </div>
 
   <div class="p3-game-bottom">
@@ -382,15 +557,15 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
       <button type="button" class="btn btn-primary btn-sm" id="p3ContinueBtn">Devam →</button>
     </div>
     <div class="p3-tut-panel" id="p3TutPanel" hidden>
-      <h2 class="h3 p3-tut-title" id="p3TutTitle" tabindex="-1"></h2>
+      <h2 class="p3-tut-title" id="p3TutTitle" tabindex="-1"></h2>
       <p class="p3-tut-body" id="p3TutBody"></p>
       <p class="p3-tut-listen" id="p3TutListen"></p>
       <div class="p3-tut-actions">
-        <button type="button" class="btn btn-ghost btn-sm" id="p3TutPrev"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span data-i18n="p3_tut_prev">Geri</span></button>
-        <button type="button" class="btn btn-ghost btn-sm" id="p3TutSkip" data-i18n="p3_tut_skip">Atla</button>
-        <button type="button" class="btn btn-ghost btn-sm" id="p3TutToc" aria-haspopup="dialog" aria-controls="p3Toc" data-i18n="p3_tut_toc">İçindekiler</button>
+        <button type="button" class="btn btn-subtle btn-sm p3-tool" id="p3TutPrev"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-left"/></svg><span data-i18n="p3_tut_prev">Geri</span></button>
+        <button type="button" class="btn btn-subtle btn-sm p3-tool" id="p3TutSkip" data-i18n="p3_tut_skip">Atla</button>
+        <button type="button" class="btn btn-subtle btn-sm p3-tool" id="p3TutToc" aria-haspopup="dialog" aria-controls="p3Toc" data-i18n="p3_tut_toc">İçindekiler</button>
         <div class="p3-tut-actions-end">
-          <button type="button" class="btn btn-ghost btn-sm" id="p3TutFree" data-i18n="p3_tut_free">Serbest Çal'da aç</button>
+          <button type="button" class="btn btn-subtle btn-sm p3-tool" id="p3TutFree" data-i18n="p3_tut_free">Serbest Çal'da aç</button>
           <button type="button" class="btn btn-primary btn-sm" id="p3TutNext">Devam →</button>
         </div>
       </div>
@@ -400,7 +575,7 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
 
 <div class="modal-overlay p3-toc" id="p3Toc" role="dialog" aria-modal="true" aria-labelledby="p3TocTitle" hidden>
   <div class="modal modal-lg">
-    <button type="button" class="modal-close" id="p3TocClose" aria-label="Kapat"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-x"/></svg></button>
+    <button type="button" class="modal-close" id="p3TocClose" aria-label="Kapat" data-be-aria="p3_close"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-x"/></svg></button>
     <h2 class="modal-title" id="p3TocTitle" data-i18n="p3_toc_title">İçindekiler</h2>
     <ol class="p3-toc-list" id="p3TocList"></ol>
   </div>
@@ -411,35 +586,27 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
     <h2 class="modal-title" id="p3ResetTitle" data-i18n="p3_reset_title">İlerleme sıfırlansın mı?</h2>
     <p class="modal-body" data-i18n="p3_reset_body">Öğretici ve seviyelerdeki ilerlemen ile Serbest Çal'daki kaydın bu tarayıcıdan silinir. Bu işlem geri alınamaz.</p>
     <div class="modal-actions">
-      <button type="button" class="btn btn-ghost" id="p3ResetCancel" data-i18n="p3_cancel">Vazgeç</button>
+      <button type="button" class="btn btn-subtle" id="p3ResetCancel" data-i18n="p3_cancel">Vazgeç</button>
       <button type="button" class="btn btn-danger" id="p3ResetConfirm" data-i18n="p3_reset_confirm">Sıfırla</button>
     </div>
   </div>
 </div>
 
-<div class="p3-win" id="p3Win" role="dialog" aria-modal="true" aria-labelledby="p3WinTitle" hidden>
-  <div class="p3-win-card">
-    <h2 class="h2" id="p3WinTitle">Tebrikler!</h2>
-    <p id="p3WinText"></p>
+<div class="modal-overlay p3-win" id="p3Win" role="dialog" aria-modal="true" aria-labelledby="p3WinTitle" hidden>
+  <div class="modal modal-sm">
+    <h2 class="modal-title" id="p3WinTitle">Tebrikler!</h2>
+    <p class="modal-body" id="p3WinText"></p>
     <div class="p3-win-actions">
       <button type="button" class="btn btn-primary btn-block" id="p3WinPrimary"></button>
-      <button type="button" class="btn btn-ghost btn-block" id="p3WinSecondary"></button>
+      <button type="button" class="btn btn-subtle btn-block" id="p3WinSecondary"></button>
     </div>
-    <p class="p3-win-free">Push 3 Laboratuvarı tamamen ücretsiz. <a href="egitim">Akademiyi keşfet</a></p>
+    <p class="p3-win-free"><span data-i18n="p3_win_free">Push 3 Laboratuvarı tamamen ücretsiz.</span> <a href="egitim" data-i18n="p3_win_explore">Akademiyi keşfet</a></p>
   </div>
 </div>
 
 <div class="toast-wrap" id="p3Toast" aria-live="polite"></div>
 
-<nav class="bottom-nav" data-active="egitim">
-  <a class="bnav-item" href="egitim" data-page="egitim"><span class="bnav-icon">🎓</span><span class="bnav-label" data-i18n="nav_egitim">Eğitim</span></a>
-  <a class="bnav-item" href="forum" data-page="forum"><span class="bnav-icon">💬</span><span class="bnav-label" data-i18n="nav_forum">Forum</span></a>
-  <a class="bnav-item" href="members" data-page="members"><span class="bnav-icon">👥</span><span class="bnav-label" data-i18n="nav_members">Üyeler</span></a>
-  <a class="bnav-item" href="ableton-lab" data-page="ableton-lab"><span class="bnav-icon">🎛️</span><span class="bnav-label" data-i18n="nav_lab">Lab</span></a>
-  <a class="bnav-item" id="bnavAdminItem" href="booking" data-page="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label" data-i18n="nav_lessons">Ders Paneli</span></a>
-  <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label" data-i18n="nav_profile">Profil</span></a>
-</nav>
-<script src="assets/js/i18n.js?v=202609261200"></script>
+<script src="assets/js/i18n.js?v=202609271200"></script>
 <script>
 (function() {
   var _fbCfg = {
@@ -471,9 +638,6 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
       var out = document.createElement('button'); out.className = 'auth-out-btn'; out.textContent = '✕';
       out.onclick = function() { _auth.signOut(); };
       wrap.append(img, name, out); bar.append(wrap);
-      var _ba=document.getElementById("bnavAdminItem");if(_ba)_ba.style.display="flex";
-      var av = document.getElementById('bnavProfileAv');
-      if (av && user.photoURL) { var _pi=document.createElement('img');_pi.src=user.photoURL;_pi.alt='';av.innerHTML='';av.appendChild(_pi); }
     } else {
       var btn = document.createElement('button'); btn.className = 'auth-sign-btn';
       btn.textContent = window._i18n?.t('auth_signin')||'Giriş Yap'; btn.onclick = doSignIn;
@@ -481,11 +645,21 @@ html .p3-toc .modal { height:100%; max-height:none; border-width:0 0 0 1px; }
     }
   }
   window.bkAuth.handleRedirectResult();
-  _auth.onAuthStateChanged(function(user) {
-    updateAuthBar(user);
-    var bAdm = document.getElementById('bnavAdminItem');
-    if (bAdm) bAdm.style.display = (user && isAdmin(user)) ? 'flex' : 'none';
-  });
+  _auth.onAuthStateChanged(updateAuthBar);
+
+  // "İçeriğe geç" (kabuk) href="#p3Game" ile adres hash'ini değiştirir. Bu sayfada hash p3-app'in
+  // yönlendiricisidir (#serbest, #ogretici…): bilinmeyen hash çalan modu kapatıp menüye döner. Bağlantı burada
+  // hash yazmadan görünen ekrana (oyun ya da menü) odak verir.
+  document.addEventListener('click', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('.be-skip') : null;
+    if (!a) return;
+    e.preventDefault();
+    var game = document.getElementById('p3Game'), menu = document.getElementById('p3Modes');
+    var t = game && !game.hidden ? game : menu;
+    if (!t) return;
+    if (!t.hasAttribute('tabindex')) t.setAttribute('tabindex', '-1');
+    try { t.focus({ preventScroll: true }); } catch (x) { t.focus(); }
+  }, true);
 })();
 </script>
 

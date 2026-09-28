@@ -12,115 +12,225 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609261200">
-<script src="assets/js/theme-init.js?v=202609261200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609261200">
-<script src="assets/js/auth-ui.js?v=202609261200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
+<script src="assets/js/theme-init.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
+<script src="assets/js/auth-ui.js?v=202609271200"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
-/* ── New post: page layout only. Controls, inputs and toasts come from ui.css; the nav shell from themes.css. ── */
+/* ── Yeni konu (tasarım: YeniKonu 1440 + M_YeniKonu 390). Kabuk themes.css'te, taban bileşenler ui.css'te.
+      Sayfaya özel: seçilebilir kategori çipi (.np-cat — seçili altın; ortak bileşene taşınmalı),
+      biçimlendirme düğmesi (.np-tool), önizleme / ipucu kartları. ── */
 
-/* ── Page top bar (<1024; theme-init.js mounts the hamburger inside it) ── */
-.topnav { position:fixed; top:0; left:0; right:0; z-index:var(--z-nav); height:var(--topbar-h); display:flex; align-items:center; padding:0 16px; background:var(--bg); border-bottom:1px solid var(--line); }
-.topnav-left { display:flex; align-items:center; gap:12px; min-width:0; }
-.topnav-back { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-2); text-decoration:none; white-space:nowrap; }
-.topnav-back:hover { color:var(--accent); }
-.topnav-sep { color:var(--line); }
-.topnav-brand { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.2em; text-transform:uppercase; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (min-width:1024px) { .topnav { display:none; } }
+/* sahne: ızgara zemin + ember ışığı, başlığın altını doldurur (bu sayfada footer yok).
+   overflow:clip — hidden kap scrollIntoView/odakla yatay kayabiliyordu (ışık sağdan taşar) */
+.np-stage { position:relative; overflow:hidden; overflow:clip; min-height:calc(100vh - var(--be-header-h)); }
+/* tasarımdaki tek seferlik ışık: rgba(212,114,42,.22) = --ember-2 %22 */
+.np-glow { position:absolute; width:700px; height:700px; right:-100px; top:-450px; border-radius:50%; background:radial-gradient(closest-side, rgba(212,114,42,.22), transparent 75%); pointer-events:none; }
 
-.page { max-width:var(--maxw); margin:0 auto; padding:calc(var(--topbar-h) + var(--s5)) var(--gutter) var(--s8); }
-.page-header { margin-bottom:var(--s5); }
-.page-header h1 { font-family:var(--ff-disp); font-size:var(--fs-h2); font-weight:400; line-height:var(--lh-tight); color:var(--fg); margin-bottom:6px; }
-.page-header p { font-size:var(--fs-small); color:var(--fg-2); }
-
-/* form */
-.form-card { background:var(--surface); border:1px solid var(--line); }
-.form-section { padding:var(--s4) var(--s5); border-bottom:1px solid var(--line); }
-.form-section:last-child { border-bottom:0; }
-.form-label { display:flex; align-items:center; gap:12px; margin-bottom:10px; font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-2); }
-.form-label > :nth-child(2) { margin-left:auto; }
-.form-label > span:not(:first-child) { color:var(--fg-3); letter-spacing:.04em; text-transform:none; }
-.form-section .title-input.field-error { border-color:var(--err); }
-.toolbar { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; align-items:center; }
-.tb-sep { width:1px; height:20px; background:var(--line); margin:0 4px; }
-.cat-chips { display:flex; flex-wrap:wrap; gap:8px; }
-.form-section .body-input { min-height:220px; }
-.preview-toggle { background:none; border:0; padding:0; color:var(--fg-2); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
-.preview-toggle:hover { color:var(--accent); }
-.preview-box { background:var(--surface-2); border:1px solid var(--line); padding:var(--s3) var(--s4); min-height:80px; font-size:var(--fs-small); line-height:var(--lh-body); color:var(--fg); white-space:pre-wrap; word-break:break-word; display:none; }
-.preview-box b { color:var(--accent); }
-.preview-box i { color:var(--info); }
-.preview-box code { background:var(--surface); border:1px solid var(--line); padding:1px 5px; font-family:var(--ff-mono); font-size:var(--fs-label); }
-.form-actions { padding:var(--s4) var(--s5); background:var(--surface-2); border-top:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:var(--s3); flex-wrap:wrap; }
-.form-actions-left { display:flex; gap:var(--s2); align-items:center; }
-.posting-as { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--fg-3); }
-.posting-as span { color:var(--accent); }
-
-/* login wall */
-.login-wall { text-align:center; padding:var(--s8) var(--s4); }
-.login-wall h2 { font-family:var(--ff-disp); font-size:var(--fs-h2); font-weight:400; line-height:var(--lh-tight); color:var(--fg); margin-bottom:8px; }
-.login-wall p { font-size:var(--fs-small); color:var(--fg-2); margin-bottom:var(--s4); }
-
-/* ── Toast stack (look comes from ui.css .toast) ── */
-.toast-container { position:fixed; bottom:var(--s5); right:var(--s5); z-index:var(--z-toast); display:flex; flex-direction:column-reverse; gap:var(--s2); pointer-events:none; max-width:min(92vw,360px); }
-@media (max-width:600px) { .toast-container { left:var(--s4); right:var(--s4); bottom:var(--s4); max-width:none; } }
-
-@media (max-width:600px) {
-  .form-section { padding:var(--s4); }
-  .form-actions { padding:var(--s4); flex-direction:column; align-items:stretch; }
-  .form-actions-left { flex-direction:column; }
-  .form-actions-left .btn-cancel, .form-actions-left .btn-submit { width:100%; }
+#npMain:focus { outline:none; }
+.np-grid {
+  display:grid; grid-template-columns:minmax(0, 1fr) 400px;
+  grid-template-areas:"head ." "form aside";
+  column-gap:40px; row-gap:28px; align-items:start;
+  padding-top:56px; padding-bottom:64px;
 }
-@media (min-width:1024px) { .page { padding-top:var(--s5); } }
+.np-head { grid-area:head; position:relative; display:flex; flex-direction:column; gap:14px; }
+.np-back { align-self:flex-start; padding:4px 0; font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-muted); }
+.np-back:hover { color:var(--fg); }
+.np-head .np-h1 { font-size:var(--fs-display); line-height:.92; letter-spacing:var(--tr-display); }
+.np-lead { font-size:16px; line-height:1.5; color:var(--fg-muted); }
+
+/* ana kart (form + giriş duvarı) */
+.np-card { grid-area:form; position:relative; padding:36px; border-radius:var(--r-28); background:var(--surface-0); border:1px solid var(--line); }
+.np-form { display:flex; flex-direction:column; gap:26px; }
+.np-stage .np-label { font-family:var(--ff-mono); font-size:var(--fs-label); font-weight:400; line-height:1.4; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-muted); }
+.np-field { display:flex; flex-direction:column; gap:10px; }
+.np-field-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+.np-count { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-label); color:var(--fg-faint); font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* tasarım >100'de #e0566b verir; küçük metinde 4.5:1 için --err */
+.np-count.is-warn { color:var(--err); }
+#npBodyCount { text-transform:uppercase; }
+.np-err { font-size:var(--fs-small); line-height:1.5; color:var(--err); }
+
+/* kategori: yerel radyo + çip görünümü (ok tuşları tarayıcıdan) */
+.np-cats { border:0; margin:0; padding:0; min-width:0; }
+.np-cats > legend { padding:0; margin-bottom:12px; }
+.np-cat-list { display:flex; flex-wrap:wrap; gap:8px; }
+.np-cat { position:relative; display:block; cursor:pointer; }
+.np-cat > span { display:inline-flex; align-items:center; justify-content:center; height:var(--ctl-md); padding:0 18px; border-radius:var(--r-pill); border:1px solid var(--line-strong); background:transparent; color:var(--fg-soft); font-size:var(--fs-ui); font-weight:500; line-height:1; white-space:nowrap; transition:background var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast); }
+.np-cat:hover > span { border-color:var(--accent-line-2); color:var(--fg); }
+.np-cat > input:checked + span { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+.np-cat > input:focus-visible + span { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* başlık + detay alanları */
+.np-input, .np-textarea { display:block; width:100%; max-width:100%; border-radius:var(--r-14); border:1px solid var(--line-ctl); background:var(--bg); color:var(--fg); outline:0; -webkit-appearance:none; appearance:none; transition:border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.np-input { height:60px; padding:0 18px; font-family:var(--ff-disp); font-size:26px; font-weight:400; line-height:1.2; }
+.np-textarea { padding:18px; font-family:var(--ff); font-size:var(--fs-body); line-height:1.6; resize:none; }
+.np-input:focus, .np-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+.np-input[aria-invalid="true"] { border-color:var(--err-strong); }
+.np-input[aria-invalid="true"]:focus { box-shadow:0 0 0 3px var(--err-soft); }
+
+/* alt satır: biçimlendirme (sol) + Vazgeç / Yayınla (sağ) */
+.np-actions { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+.np-tools { display:flex; gap:6px; }
+.np-tool { position:relative; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; height:var(--ctl-sm); min-width:var(--ctl-sm); padding:0 14px; border-radius:var(--r-10); border:1px solid var(--line-ctl); background:transparent; color:var(--fg-soft); font-family:var(--ff-mono); font-size:12px; line-height:1; cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
+.np-tool::after { content:''; position:absolute; inset:-2px; }
+.np-tool:hover { border-color:var(--accent-line-2); color:var(--fg); }
+.np-tool--b { font-family:var(--ff); font-weight:700; }
+.np-tool--i { font-family:var(--ff); font-style:italic; }
+.np-btns { display:flex; gap:10px; }
+.np-btns .np-cancel { color:var(--fg-soft); padding:0 22px; }
+.np-btns .np-submit { padding:0 26px; }
+
+/* giriş duvarı */
+.np-wall { display:flex; flex-direction:column; align-items:flex-start; gap:16px; }
+.np-wall p { font-size:var(--fs-body); line-height:1.6; color:var(--fg-muted); max-width:460px; }
+.np-wall .btn { margin-top:8px; }
+
+/* yan sütun: canlı önizleme + ipuçları */
+.np-aside { grid-area:aside; position:relative; display:flex; flex-direction:column; gap:14px; min-width:0; }
+.np-pv, .np-tips { display:flex; flex-direction:column; gap:14px; padding:28px; border-radius:var(--r-24); border:1px solid var(--line); }
+.np-pv { background:var(--surface); }
+.np-tips { background:var(--surface-0); }
+.np-pv-inline { display:none; }
+.np-pv-cat { align-self:flex-start; padding:5px 10px; border-radius:var(--r-pill); background:var(--accent-soft); color:var(--accent); font-size:12px; line-height:1.3; }
+.np-pv-title { font-family:var(--ff-disp); font-size:30px; line-height:1.1; min-height:66px; color:var(--fg); overflow-wrap:anywhere; }
+.np-caret { color:var(--accent); animation:np-blink 1s steps(1) infinite; }
+@keyframes np-blink { 50% { opacity:0; } }
+.np-pv-body { font-size:var(--fs-ui); line-height:1.6; color:var(--fg-muted); white-space:pre-wrap; overflow-wrap:anywhere; }
+.np-pv-body b { color:var(--fg); font-weight:600; }
+.np-pv-body code, .np-tips code { padding:2px 6px; border-radius:var(--r-6); background:var(--surface-4); color:var(--fg-soft); font-family:var(--ff-mono); font-size:12px; }
+.np-pv-by { padding-top:14px; border-top:1px solid var(--line-2); font-size:var(--fs-small); color:var(--fg-3); }
+.np-pv-by strong { color:var(--fg-soft); font-weight:600; }
+.np-tips-list { list-style:none; display:flex; flex-direction:column; gap:10px; font-family:var(--ff-mono); font-size:13px; color:var(--fg-soft); }
+.np-tips-list li { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.np-tips-list strong, .np-tips-list em { font-family:var(--ff); }
+.np-tips-note { font-size:13px; line-height:1.55; color:var(--fg-3); }
+
+/* mobil başlık eylemi (kabuk [data-be-slot] ile başlığa taşır) */
+.np-pub-top::after { content:''; position:absolute; inset:-2px; }
+html .np-pub-top[aria-disabled="true"], html .np-pub-top[aria-disabled="true"]:hover { opacity:1; background:var(--track-2); border-color:var(--track-2); color:var(--fg-faint); cursor:pointer; transform:none; box-shadow:none; }
+
+/* dar masaüstü */
+@media (max-width:1279px) {
+  .np-grid { grid-template-columns:minmax(0, 1fr) 340px; column-gap:32px; }
+}
+
+/* mobil kabuk (≤1024): M_YeniKonu — kartsız form, kaydırmalı araç satırı, önizleme en altta */
+@media (max-width:1024px) {
+  .np-stage.be-grid-bg { background-image:none; }
+  .np-glow, .np-back, .np-btns, .np-tips, .np-pv-cat, .np-caret { display:none; }
+  .np-grid { grid-template-columns:minmax(0, 1fr); grid-template-areas:"head" "form" "aside"; row-gap:18px; padding-top:32px; padding-bottom:calc(40px + env(safe-area-inset-bottom, 0px)); }
+  .np-card { padding:24px; border-radius:var(--r-20); }
+  .np-card.np-form { padding:0; border:0; border-radius:0; background:none; gap:18px; }
+  .np-field { gap:8px; }
+  .np-cats > legend { margin-bottom:10px; }
+  .np-cat-list { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:6px; }
+  .np-cat > span { display:flex; height:46px; padding:0 10px; border-radius:var(--r-12); }
+  .np-input { height:56px; padding:0 14px; background:var(--surface-0); }
+  html #npTitle { font-size:22px; } /* ui.css ≤1024 input 16px kuralını (iOS) serif boyla ezer */
+  .np-textarea { padding:14px; background:var(--surface-0); font-size:16px; }
+  .np-actions { display:block; }
+  .np-tools { overflow-x:auto; padding:4px; margin:-4px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .np-tools::-webkit-scrollbar { display:none; }
+  .np-pv { padding:16px; border-radius:var(--r-16); gap:8px; }
+  .np-pv-inline { display:inline; }
+  .np-pv-title { font-size:24px; line-height:1.15; min-height:0; }
+  .np-pv-by { padding-top:10px; }
+}
+@media (max-width:600px) {
+  .np-grid { padding-top:22px; }
+  .np-head .np-h1 { font-size:48px; } /* M_YeniKonu: 48px (--fs-display mobil 52) */
+  .np-lead { display:none; }
+  .np-cat-list { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
 </style>
-<script src="assets/js/i18n.js?v=202609261200"></script>
-<script src="assets/js/love-nav.js?v=202609261200"></script>
+<script src="assets/js/i18n.js?v=202609271200"></script>
+<script src="assets/js/love-nav.js?v=202609271200"></script>
 </head>
 <body>
+<header class="be-header" id="beHeader" data-be-page="new-post" data-be-back="/forum" data-be-back-label="nav_forum" data-be-tabs="off"><div data-be-slot class="be-slot--mobile" id="npSlot" hidden><button type="button" class="btn btn-primary btn-sm np-pub-top" id="npPublishTop" aria-disabled="true"><span data-i18n="np_publish_short">Yayınla</span></button></div><div id="authBar"></div></header>
 
-<div id="authBar"></div>
-<nav class="topnav">
-  <div class="topnav-left">
-    <a href="forum" class="topnav-back">← Forum</a>
-    <span class="topnav-sep">|</span>
-    <span class="topnav-brand">Konu Aç</span>
-  </div>
-</nav>
+<div class="np-stage be-grid-bg">
+<main class="np-grid be-wrap" id="npMain">
+  <div class="np-glow be-drift" aria-hidden="true"></div>
 
-<nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
-  <div class="lnav-items">
-    <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span><span data-i18n="nav_home">Ana Sayfa</span></a>
-    <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span><span data-i18n="nav_egitim">Eğitim</span></a>
-    <a class="lnav-item" href="egitmen" data-page="egitmen"><span class="lnav-icon">👤</span><span data-i18n="nav_egitmen">Eğitmen</span></a>
-    <a class="lnav-item" href="forum" data-page="forum"><span class="lnav-icon">💬</span><span data-i18n="nav_forum">Forum</span></a>
-    <a class="lnav-item" href="members" data-page="members"><span class="lnav-icon">👥</span><span data-i18n="nav_members">Üyeler</span></a>
-    <a class="lnav-item" href="ableton-lab" data-page="ableton-lab"><span class="lnav-icon">🎛️</span><span data-i18n="nav_lab">Lab</span></a>
-    <a class="lnav-item" href="sss" data-page="sss"><span class="lnav-icon">❓</span><span data-i18n="nav_sss">SSS</span></a>
-    <a class="lnav-item" id="lnavAdminItem" href="booking" data-page="booking" style="display:none;"><span class="lnav-icon">📅</span><span data-i18n="nav_lessons">Ders Paneli</span></a>
-    <a class="lnav-item" id="lnavLoveBtn" href="love" data-page="love" style="display:none;color:#e8527a;"><span class="lnav-icon">💌</span><span>Sana Olan Sevgim</span></a>
+  <div class="np-head">
+    <a class="np-back be-rv" href="/forum"><span aria-hidden="true">← </span><span data-i18n="nav_forum">Forum</span></a>
+    <h1 class="np-h1 be-rv be-d1" id="npH1"><span data-i18n="np_h1_a">Yeni</span> <em class="be-ember-text" data-i18n="np_h1_b">konu</em></h1>
+    <p class="np-lead be-rv be-d2" data-i18n="np_lead">Topluluğa sorunu veya paylaşımını yaz.</p>
   </div>
-  <div class="lnav-foot">
-    <div class="lnav-lang">
-      <button class="lang-btn" data-lang="tr" onclick="window._i18n?.setLang('tr')">TR</button>
-      <button class="lang-btn" data-lang="en" onclick="window._i18n?.setLang('en')">EN</button>
-    </div>
-    <a class="lnav-profile-link" href="profile" data-page="profile"><div class="lnav-profile-av" id="lnavProfileAv">👤</div><span data-i18n="nav_profile">Profil</span></a>
-  </div>
-</nav>
 
-<div class="page" id="pageContent">
-  <div class="login-wall">
-    <h2 data-i18n="np_signin_h2">Giriş Gerekli</h2>
+  <!-- girişsiz -->
+  <section class="np-card np-wall be-rv be-d3" id="npWall" aria-labelledby="npWallTitle" hidden>
+    <h2 id="npWallTitle" data-i18n="np_signin_h2">Giriş Gerekli</h2>
     <p data-i18n="np_signin_p">Konu açmak için önce giriş yapman gerekiyor.</p>
-    <button class="btn-signin" onclick="doSignIn()" data-i18n="auth_signin">Giriş Yap</button>
-  </div>
+    <button type="button" class="btn btn-primary btn-lg" id="npSignIn"><span data-i18n="auth_signin">Giriş Yap</span></button>
+  </section>
+
+  <!-- girişli -->
+  <form class="np-card np-form be-rv be-d3" id="npForm" aria-labelledby="npH1" novalidate hidden>
+    <fieldset class="np-cats">
+      <legend class="np-label" id="npCatLabel" data-i18n="np_cat_label">Kategori</legend>
+      <div class="np-cat-list" id="npCats"></div>
+    </fieldset>
+
+    <div class="np-field">
+      <div class="np-field-head">
+        <label class="np-label" for="npTitle" data-i18n="np_title_label">Başlık</label>
+        <span class="np-count" id="npTitleCount">0 / 120</span>
+      </div>
+      <input class="np-input" id="npTitle" type="text" maxlength="120" autocomplete="off" placeholder="Konunu kısaca özetle…" data-i18n-ph="np_title_placeholder" aria-describedby="npTitleCount" required>
+      <p class="np-err" id="npTitleErr" data-i18n="np_title_required" hidden>Konuya bir başlık yaz.</p>
+    </div>
+
+    <div class="np-field">
+      <div class="np-field-head">
+        <label class="np-label" for="npBody" data-i18n="np_details_label">Detaylar</label>
+        <span class="np-count" id="npBodyCount">0 karakter</span>
+      </div>
+      <textarea class="np-textarea" id="npBody" rows="9" placeholder="Detayları buraya yaz…" data-i18n-ph="np_body_placeholder" aria-describedby="npBodyCount"></textarea>
+    </div>
+
+    <div class="np-actions">
+      <div class="np-tools" role="group" id="npTools" data-np-aria="np_tb_group" aria-label="Biçimlendirme" aria-controls="npBody">
+        <button type="button" class="np-tool np-tool--b" data-tool="b" data-np-aria="np_tb_bold" aria-label="Kalın (**metin**)" title="Kalın (**metin**)">B</button>
+        <button type="button" class="np-tool np-tool--i" data-tool="i" data-np-aria="np_tb_italic" aria-label="İtalik (*metin*)" title="İtalik (*metin*)">I</button>
+        <button type="button" class="np-tool" data-tool="code" data-np-aria="np_tb_code" aria-label="Kod satırı" title="Kod satırı"><span data-i18n="np_tb_code_lbl" aria-hidden="true">`kod`</span></button>
+        <button type="button" class="np-tool" data-tool="hr" data-np-aria="np_tb_hr" aria-label="Yatay çizgi" title="Yatay çizgi"><span aria-hidden="true">―</span></button>
+      </div>
+      <div class="np-btns">
+        <a class="btn btn-subtle btn-lg np-cancel" href="/forum" data-i18n="np_cancel">Vazgeç</a>
+        <button type="button" class="btn btn-primary btn-lg np-submit" id="npSubmit"><span id="npSubmitLbl" data-i18n="np_publish">Konuyu yayınla</span><span aria-hidden="true">→</span></button>
+      </div>
+    </div>
+  </form>
+
+  <aside class="np-aside be-rv be-d3">
+    <div class="np-pv" id="npPreview" hidden>
+      <h2 class="np-label" id="npPvLabel"><span data-i18n="np_preview">Önizleme</span><span class="np-pv-inline"> · <span id="npPvCatInline">GENEL</span></span></h2>
+      <span class="np-pv-cat" id="npPvCat">Genel</span>
+      <p class="np-pv-title"><span id="npPvTitle">Konunu kısaca özetle</span><span class="np-caret" aria-hidden="true">|</span></p>
+      <div class="np-pv-body" id="npPvBody" hidden></div>
+      <p class="np-pv-by"><span data-i18n="np_posting_as">Paylaşan</span>: <strong id="npAuthor"></strong></p>
+    </div>
+    <div class="np-tips">
+      <h2 class="np-label" data-i18n="np_tips_label">Biçimlendirme ipuçları</h2>
+      <ul class="np-tips-list">
+        <li><span>**<span data-i18n="np_tip_bold">kalın</span>**</span><strong data-i18n="np_tip_bold">kalın</strong></li>
+        <li><span>*<span data-i18n="np_tip_italic">italik</span>*</span><em data-i18n="np_tip_italic">italik</em></li>
+        <li><span>`<span data-i18n="np_tip_code">kod</span>`</span><code data-i18n="np_tip_code">kod</code></li>
+      </ul>
+      <p class="np-tips-note" data-i18n="np_tips_note">Hata mesajını ve Live sürümünü yazmak yardımcı olur. Tekrar eden soruları forumda aramayı dene.</p>
+    </div>
+  </aside>
+</main>
 </div>
 
 <script type="module">
@@ -138,12 +248,59 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
+// ── Metinler: i18n.js'te anahtar varsa o; yoksa (yeni anahtar) buradaki [tr, en] ──
+// Anahtar listesi: scratchpad/tasarim/i18n/new-post.json
+const NP_T = {
+  np_h1_a:              [`Yeni`, `New`],
+  np_h1_b:              [`konu`, `topic`],
+  np_lead:              [`Topluluğa sorunu veya paylaşımını yaz.`, `Write your question or post for the community.`],
+  np_cat_label:         [`Kategori`, `Category`],
+  np_details_label:     [`Detaylar`, `Details`],
+  np_title_placeholder: [`Konunu kısaca özetle…`, `Summarise your topic briefly…`],
+  np_body_placeholder:  [`Detayları buraya yaz…`, `Write the details here…`],
+  np_title_required:    [`Konuya bir başlık yaz.`, `Give your topic a title.`],
+  np_preview_empty:     [`Konunu kısaca özetle`, `Summarise your topic briefly`],
+  np_publish:           [`Konuyu yayınla`, `Publish topic`],
+  np_publish_short:     [`Yayınla`, `Publish`],
+  np_cancel:            [`Vazgeç`, `Cancel`],
+  np_posting_as:        [`Paylaşan`, `Posting as`],
+  np_send_error:        [`Gönderilemedi`, `Could not publish`],
+  np_tb_group:          [`Biçimlendirme`, `Formatting`],
+  np_tb_bold:           [`Kalın (**metin**)`, `Bold (**text**)`],
+  np_tb_italic:         [`İtalik (*metin*)`, `Italic (*text*)`],
+  np_tb_code:           [`Kod satırı`, `Inline code`],
+  np_tb_code_lbl:       ['`kod`', '`code`'],
+  np_tb_hr:             [`Yatay çizgi`, `Horizontal line`],
+  np_tb_sample:         [`metin`, `text`],
+  np_tips_label:        [`Biçimlendirme ipuçları`, `Formatting tips`],
+  np_tip_bold:          [`kalın`, `bold`],
+  np_tip_italic:        [`italik`, `italic`],
+  np_tip_code:          [`kod`, `code`],
+  np_tips_note:         [`Hata mesajını ve Live sürümünü yazmak yardımcı olur. Tekrar eden soruları forumda aramayı dene.`, `Including the error message and your Live version helps. Try searching the forum for similar questions first.`],
+};
+function npLang() {
+  const g = window._i18n?.getLang?.();
+  return g === 'en' || (!g && document.documentElement.lang === 'en') ? 'en' : 'tr';
+}
+function L(k, fb) {
+  const v = window._i18n?.t?.(k);
+  if (v && v !== k) return v;
+  const e = NP_T[k];
+  return e ? e[npLang() === 'en' ? 1 : 0] : (fb ?? k);
+}
+// i18n.js'in tanımadığı (yeni) anahtarları dile göre bas
+function npApply() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.getAttribute('data-i18n'); if (NP_T[k]) el.textContent = L(k); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { const k = el.getAttribute('data-i18n-ph'); if (NP_T[k]) el.placeholder = L(k); });
+  document.querySelectorAll('[data-np-aria]').forEach(el => { const v = L(el.getAttribute('data-np-aria')); el.setAttribute('aria-label', v); if (el.hasAttribute('title')) el.title = v; });
+}
+
 function doSignIn() { window.bkAuth.openLogin(); }
 window.doSignIn = doSignIn;
 
 function showToast(msg, type='success', ms=3000) {
   let c = document.getElementById('toastCt');
-  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
+  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-wrap'; c.setAttribute('role','status'); c.setAttribute('aria-live','polite'); document.body.append(c); }
   const t = document.createElement('div'); t.className='toast'+(type!=='success'?' '+type:''); t.textContent=msg;
   c.append(t);
   setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
@@ -201,13 +358,15 @@ function initNotifications(user){
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar');
   bar.innerHTML = ''; _notifPanelEl = null;
-  if (!user) return;
+  if (!user) {
+    // girişsiz: kabuktaki kişi ikonlu giriş halkası (eskiden bu sayfada boştu)
+    const btn = document.createElement('button'); btn.className = 'auth-sign-btn'; btn.type = 'button';
+    btn.textContent = window._i18n?.t('ui_signin')||`Giriş Yap`; btn.onclick = doSignIn;
+    bar.append(btn);
+    return;
+  }
   const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
   const img  = document.createElement('img');  img.className = 'auth-avatar';
-      const _bnavAv = document.getElementById('bnavProfileAv');
-      const _bnavAdmin = document.getElementById('bnavAdminItem');
-      if (_bnavAdmin) _bnavAdmin.style.display = 'flex';
-      if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
   img.src = user.photoURL || ''; img.alt = '';
   const name = document.createElement('span'); name.className = 'auth-name';
   name.textContent = user.email === ADMIN_EMAIL ? 'Admin' : (user.displayName?.split(' ')[0] || 'Üye');
@@ -215,7 +374,7 @@ function updateAuthBar(user) {
   out.textContent = '✕'; out.onclick = () => auth.signOut();
   wrap.append(img, name, out);
   const bellWrap = document.createElement('div'); bellWrap.className = 'notif-bell-wrap';
-  const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.innerHTML = ic('bell'); bell.title = 'Bildirimler';
+  const bell = document.createElement('button'); bell.className = 'notif-bell'; bell.innerHTML = ic('bell'); bell.title = window._i18n?.t('ui_notifications')||`Bildirimler`;
   const badge = document.createElement('span'); badge.className = 'notif-badge'; badge.style.display = 'none';
   _notifPanelEl = document.createElement('div'); _notifPanelEl.className = 'notif-panel';
   _notifPanelEl.innerHTML = '<div class="notif-panel-head"><span class="notif-panel-title">Bildirimler</span><button class="notif-read-all">Tümünü Oku</button></div><div class="notif-list"></div>';
@@ -226,22 +385,17 @@ function updateAuthBar(user) {
   document.addEventListener('click', () => { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }, { once: true });
 }
 
-// ── Toolbar insert helper ─────────────────────────────────────────────
+// ── Biçimlendirme yardımcıları ───────────────────────────────────────
 function wrapSelection(ta, before, after = before) {
   const start = ta.selectionStart, end = ta.selectionEnd;
-  const sel = ta.value.slice(start, end) || 'metin';
+  const sel = ta.value.slice(start, end) || L('np_tb_sample', `metin`);
   ta.value = ta.value.slice(0, start) + before + sel + after + ta.value.slice(end);
   ta.focus();
   ta.setSelectionRange(start + before.length, start + before.length + sel.length);
-  updatePreview(ta);
+  updatePreview();
 }
 
-function updatePreview(ta) {
-  const box = document.getElementById('previewBox');
-  if (!box || box.style.display === 'none') return;
-  box.innerHTML = renderMarkdown(ta.value);
-}
-
+// post.html ile aynı alt küme: kalın / italik / kod / satır sonu (önce HTML kaçışı)
 function renderMarkdown(txt) {
   return txt
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -251,183 +405,164 @@ function renderMarkdown(txt) {
     .replace(/\n/g,'<br>');
 }
 
-// ── Render form ───────────────────────────────────────────────────────
-function renderForm(user) {
-  const page = document.getElementById('pageContent');
-  page.innerHTML = '';
+// ── Form (statik markup; bir kez bağlanır) ───────────────────────────
+const CATS = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
+const DEFAULT_CAT = 'Genel';
+const el = id => document.getElementById(id);
+const form = el('npForm'), wall = el('npWall'), slot = el('npSlot');
+const titleInput = el('npTitle'), bodyInput = el('npBody');
+const titleCount = el('npTitleCount'), bodyCount = el('npBodyCount'), titleErr = el('npTitleErr');
+const submitBtn = el('npSubmit'), submitLbl = el('npSubmitLbl'), topBtn = el('npPublishTop');
+const pv = el('npPreview'), pvTitle = el('npPvTitle'), pvBody = el('npPvBody'), pvCat = el('npPvCat'), pvCatInline = el('npPvCatInline'), pvAuthor = el('npAuthor');
+let currentUser = null, busy = false;
 
-  const header = document.createElement('div'); header.className = 'page-header';
-  header.innerHTML = `<h1>Yeni Konu</h1><p>Topluluğa sorunuzu veya paylaşımınızı yazın</p>`;
-  page.append(header);
+const catWrap = el('npCats');
+catWrap.setAttribute('role', 'radiogroup');
+catWrap.setAttribute('aria-labelledby', 'npCatLabel');
+CATS.forEach(c => {
+  const lbl = document.createElement('label'); lbl.className = 'np-cat';
+  const r = document.createElement('input'); r.type = 'radio'; r.name = 'npCat'; r.value = c; r.className = 'sr-only';
+  if (c === DEFAULT_CAT) r.checked = true;
+  const s = document.createElement('span'); s.textContent = c;
+  lbl.append(r, s); catWrap.append(lbl);
+});
+const selectedCat = () => catWrap.querySelector('input:checked')?.value || DEFAULT_CAT;
+catWrap.addEventListener('change', updatePreview);
 
-  const card = document.createElement('div'); card.className = 'form-card';
-
-  // ── Category section ──
-  const CATS = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
-  let selectedCat = 'Genel';
-  const secCat = document.createElement('div'); secCat.className = 'form-section';
-  const lblCat = document.createElement('div'); lblCat.className = 'form-label';
-  lblCat.innerHTML = '<span>'+(window._i18n?.t('np_tag_label')||'Kategori')+'</span>';
-  const catWrap = document.createElement('div'); catWrap.className = 'cat-chips';
-  CATS.forEach(c => {
-    const chip = document.createElement('button'); chip.type = 'button';
-    chip.className = 'cat-chip' + (c === selectedCat ? ' active' : '');
-    chip.textContent = c;
-    chip.onclick = () => { selectedCat = c; catWrap.querySelectorAll('.cat-chip').forEach(ch => ch.classList.remove('active')); chip.classList.add('active'); };
-    catWrap.append(chip);
-  });
-  secCat.append(lblCat, catWrap); card.append(secCat);
-
-  // ── Title section ──
-  const sec1 = document.createElement('div'); sec1.className = 'form-section';
-  const lbl1 = document.createElement('div'); lbl1.className = 'form-label';
-  const titleLeft = document.createElement('span'); titleLeft.textContent = window._i18n?.t('np_title_label')||'Başlık';
-  const titleCount = document.createElement('span'); titleCount.textContent = '0 / 120';
-  lbl1.append(titleLeft, titleCount);
-  const titleInput = document.createElement('input'); titleInput.className = 'title-input';
-  titleInput.type = 'text'; titleInput.maxLength = 120;
-  titleInput.placeholder = 'Konunuzu kısaca özetleyin...';
-  titleInput.oninput = () => { titleCount.textContent = `${titleInput.value.length} / 120`; titleInput.classList.remove('field-error'); };
-  sec1.append(lbl1, titleInput); card.append(sec1);
-
-  // ── Body section ──
-  const sec2 = document.createElement('div'); sec2.className = 'form-section';
-  const lbl2 = document.createElement('div'); lbl2.className = 'form-label';
-  const bodyLeft = document.createElement('span'); bodyLeft.textContent = window._i18n?.t('np_body_label')||'İçerik';
-  const bodyCount = document.createElement('span'); bodyCount.textContent = '0 '+(window._i18n?.t('np_body_chars')||'karakter');
-  const prevToggle = document.createElement('button'); prevToggle.className = 'preview-toggle';
-  prevToggle.textContent = window._i18n?.t('np_preview')||'Önizleme'; prevToggle.type = 'button';
-  lbl2.append(bodyLeft, bodyCount, prevToggle);
-
-  // Toolbar
-  const toolbar = document.createElement('div'); toolbar.className = 'toolbar';
-  const tools = [
-    { label: '<b>K</b>', title:'Kalın (**metin**)', fn: ta => wrapSelection(ta,'**') },
-    { label: '<i>İ</i>', title:'İtalik (*metin*)',   fn: ta => wrapSelection(ta,'*') },
-    { label: '`kd`',    title:'Kod satırı',          fn: ta => wrapSelection(ta,'`') },
-    { sep: true },
-    { label: '―',       title:'Yatay çizgi',         fn: ta => { ta.value += '\n---\n'; ta.focus(); } },
-  ];
-  const bodyInput = document.createElement('textarea'); bodyInput.className = 'body-input';
-  bodyInput.placeholder = 'Detayları buraya yaz...\n\nİpuçları:\n  **kalın**  *italik*  `kod`';
-  bodyInput.oninput = () => { bodyCount.textContent = `${bodyInput.value.length} karakter`; updatePreview(bodyInput); };
-
-  tools.forEach(t => {
-    if (t.sep) { const s = document.createElement('div'); s.className = 'tb-sep'; toolbar.append(s); return; }
-    const b = document.createElement('button'); b.className = 'tb-btn'; b.type = 'button';
-    b.innerHTML = t.label; b.title = t.title;
-    b.onclick = () => t.fn(bodyInput);
-    toolbar.append(b);
-  });
-
-  const previewBox = document.createElement('div'); previewBox.className = 'preview-box'; previewBox.id = 'previewBox';
-  let previewOn = false;
-  prevToggle.onclick = () => {
-    previewOn = !previewOn;
-    previewBox.style.display = previewOn ? 'block' : 'none';
-    bodyInput.style.display  = previewOn ? 'none'  : 'block';
-    prevToggle.textContent = previewOn ? (window._i18n?.t('np_edit')||'Düzenle') : (window._i18n?.t('np_preview')||'Önizleme');
-    if (previewOn) previewBox.innerHTML = renderMarkdown(bodyInput.value) || '<span class="muted">İçerik yok</span>';
-  };
-
-  sec2.append(lbl2, toolbar, bodyInput, previewBox); card.append(sec2);
-
-  // ── Actions ──
-  const actions = document.createElement('div'); actions.className = 'form-actions';
-  const postingAs = document.createElement('div'); postingAs.className = 'posting-as';
-  postingAs.textContent='Şu an: ';const _ps=document.createElement('span');_ps.textContent=user.displayName?.split(' ')[0]||'Üye';postingAs.append(_ps);
-  const btns = document.createElement('div'); btns.className = 'form-actions-left';
-  const cancelBtn = document.createElement('a'); cancelBtn.className = 'btn-cancel';
-  cancelBtn.href = 'forum'; cancelBtn.textContent = window._i18n?.t('ui_cancel')||'İptal';
-  const submitBtn = document.createElement('button'); submitBtn.className = 'btn-submit';
-  submitBtn.textContent = window._i18n?.t('np_submit')||'Yayınla';
-  submitBtn.onclick = async () => {
-    const title = titleInput.value.trim();
-    const body  = bodyInput.value.trim();
-    if (!title) { titleInput.focus(); titleInput.classList.add('field-error'); return; }
-    submitBtn.disabled = true; submitBtn.textContent = window._i18n?.t('np_submitting')||'Gönderiliyor…';
-    try {
-      const ref = await db.collection('forum').add({
-        title,
-        text:           body,
-        category:       selectedCat,
-        authorName:     user.displayName?.split(' ')[0] || 'Üye',
-        authorEmail:    user.email,
-        authorId:       user.uid,
-        authorPhotoURL: user.photoURL || '',
-        createdAt:      firebase.firestore.FieldValue.serverTimestamp(),
-        replyCount:     0,
-        solved:         false,
-      });
-      if (user.email === ADMIN_EMAIL) {
-        db.collection('announcements').add({
-          text: `Yeni Admin konusu: "${title}"`,
-          postId: ref.id,
-          fromName: user.displayName?.split(' ')[0] || 'Admin',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          type: 'forum',
-        }).catch(() => {});
-      }
-      // Notify followers
-      db.collection('follows').where('followeeId','==',user.uid).limit(100).get().then(followSnap => {
-        if (!followSnap || followSnap.empty) return;
-        const batch = db.batch();
-        const authorName = user.displayName?.split(' ')[0] || 'Biri';
-        followSnap.docs.forEach(d => {
-          const notifRef = db.collection('notifications').doc(d.data().followerId).collection('items').doc();
-          batch.set(notifRef, {
-            text: `${authorName} yeni bir konu açtı: "${title.slice(0,50)}"`,
-            postId: ref.id,
-            fromUid: user.uid,
-            fromName: authorName,
-            read: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          });
-        });
-        batch.commit().catch(() => {});
-      }).catch(() => {});
-      window.location.href = 'forum';
-    } catch(e) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Yayınla';
-      showToast('Gönderilemedi: ' + e.message, 'error', 5000);
-      console.error(e);
-    }
-  };
-  btns.append(cancelBtn, submitBtn);
-  actions.append(postingAs, btns);
-  card.append(actions);
-  page.append(card);
-
-  titleInput.focus();
+function updateCounts() {
+  const n = titleInput.value.length;
+  titleCount.textContent = `${n} / 120`;
+  titleCount.classList.toggle('is-warn', n > 100);
+  bodyCount.textContent = `${bodyInput.value.length} ${L('np_body_chars', `karakter`)}`;
+  const has = titleInput.value.trim().length > 0;
+  if (!busy) topBtn.setAttribute('aria-disabled', has ? 'false' : 'true');
 }
+function updatePreview() {
+  const t = titleInput.value.trim();
+  pvTitle.textContent = t || L('np_preview_empty');
+  const cat = selectedCat();
+  pvCat.textContent = cat;
+  pvCatInline.textContent = cat.toLocaleUpperCase(npLang() === 'en' ? 'en-US' : 'tr-TR');
+  const b = bodyInput.value;
+  pvBody.hidden = !b.trim();
+  pvBody.innerHTML = b.trim() ? renderMarkdown(b) : '';
+}
+function setTitleError(on) {
+  titleErr.hidden = !on;
+  if (on) { titleInput.setAttribute('aria-invalid', 'true'); titleInput.setAttribute('aria-describedby', 'npTitleCount npTitleErr'); }
+  else { titleInput.removeAttribute('aria-invalid'); titleInput.setAttribute('aria-describedby', 'npTitleCount'); }
+}
+titleInput.addEventListener('input', () => { setTitleError(false); updateCounts(); updatePreview(); });
+bodyInput.addEventListener('input', () => { updateCounts(); updatePreview(); });
+form.addEventListener('submit', e => e.preventDefault()); // Enter yayınlamaz (eski davranış)
+
+const TOOLS = {
+  b:    ta => wrapSelection(ta, '**'),
+  i:    ta => wrapSelection(ta, '*'),
+  code: ta => wrapSelection(ta, '`'),
+  hr:   ta => { ta.value += '\n---\n'; ta.focus(); updateCounts(); updatePreview(); },
+};
+el('npTools').addEventListener('click', e => {
+  const b = e.target.closest('[data-tool]'); if (!b) return;
+  TOOLS[b.dataset.tool]?.(bodyInput);
+  updateCounts();
+});
+
+function setBusy(on) {
+  busy = on;
+  submitBtn.disabled = on;
+  topBtn.disabled = on;
+  submitLbl.textContent = on ? L('np_submitting', `Gönderiliyor…`) : L('np_publish');
+  if (on) submitLbl.removeAttribute('data-i18n'); else submitLbl.setAttribute('data-i18n', 'np_publish');
+  if (!on) updateCounts();
+}
+
+async function submitPost() {
+  const user = currentUser;
+  if (!user || busy) return;
+  const title = titleInput.value.trim();
+  const body  = bodyInput.value.trim();
+  if (!title) { setTitleError(true); titleInput.focus(); return; }
+  const selectedCatVal = selectedCat();
+  setBusy(true);
+  try {
+    const ref = await db.collection('forum').add({
+      title,
+      text:           body,
+      category:       selectedCatVal,
+      authorName:     user.displayName?.split(' ')[0] || 'Üye',
+      authorEmail:    user.email,
+      authorId:       user.uid,
+      authorPhotoURL: user.photoURL || '',
+      createdAt:      firebase.firestore.FieldValue.serverTimestamp(),
+      replyCount:     0,
+      solved:         false,
+    });
+    if (user.email === ADMIN_EMAIL) {
+      db.collection('announcements').add({
+        text: `Yeni Admin konusu: "${title}"`,
+        postId: ref.id,
+        fromName: user.displayName?.split(' ')[0] || 'Admin',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        type: 'forum',
+      }).catch(() => {});
+    }
+    // Notify followers
+    db.collection('follows').where('followeeId','==',user.uid).limit(100).get().then(followSnap => {
+      if (!followSnap || followSnap.empty) return;
+      const batch = db.batch();
+      const authorName = user.displayName?.split(' ')[0] || 'Biri';
+      followSnap.docs.forEach(d => {
+        const notifRef = db.collection('notifications').doc(d.data().followerId).collection('items').doc();
+        batch.set(notifRef, {
+          text: `${authorName} yeni bir konu açtı: "${title.slice(0,50)}"`,
+          postId: ref.id,
+          fromUid: user.uid,
+          fromName: authorName,
+          read: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+      });
+      batch.commit().catch(() => {});
+    }).catch(() => {});
+    window.location.href = 'forum';
+  } catch(e) {
+    setBusy(false);
+    showToast(`${L('np_send_error')}: ${e.message}`, 'error', 5000);
+    console.error(e);
+  }
+}
+submitBtn.addEventListener('click', submitPost);
+topBtn.addEventListener('click', submitPost);
+el('npSignIn').addEventListener('click', doSignIn);
+
+// girişli → form, girişsiz → duvar (yazılanlar gizli formda korunur)
+function showState(user) {
+  const inn = !!user;
+  wall.hidden = inn;
+  form.hidden = !inn;
+  pv.hidden = !inn;
+  slot.hidden = !inn;
+  if (inn) {
+    pvAuthor.textContent = user.displayName?.split(' ')[0] || 'Üye';
+    updateCounts(); updatePreview();
+    titleInput.focus();
+  }
+}
+
+// dil değişince: yeni anahtarlar + dinamik metinler
+function relang() { npApply(); if (!busy) submitLbl.textContent = L('np_publish'); updateCounts(); updatePreview(); }
+new MutationObserver(relang).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+npApply(); updateCounts(); updatePreview();
 
 window.bkAuth.handleRedirectResult();
 auth.onAuthStateChanged(user => {
+  currentUser = user;
   updateAuthBar(user);
   initNotifications(user);
-  if (user) renderForm(user);
-  // else: keep login wall
+  showState(user);
 });
 </script>
 
-<nav class="bottom-nav" data-active="forum">
-  <a class="bnav-item" href="egitim" data-page="egitim"><span class="bnav-icon">🎓</span><span class="bnav-label" data-i18n="nav_egitim">Eğitim</span></a>
-  <a class="bnav-item" href="forum" data-page="forum"><span class="bnav-icon">💬</span><span class="bnav-label" data-i18n="nav_forum">Forum</span></a>
-  <a class="bnav-item" href="members" data-page="members"><span class="bnav-icon">👥</span><span class="bnav-label" data-i18n="nav_members">Üyeler</span></a>
-  <a class="bnav-item" href="ableton-lab" data-page="ableton-lab"><span class="bnav-icon">🎛️</span><span class="bnav-label" data-i18n="nav_lab">Lab</span></a>
-  <a class="bnav-item" id="bnavAdminItem" href="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label" data-i18n="nav_lessons">Ders Paneli</span></a>
-  <a class="bnav-item" id="bnavLoveBtn" href="love" style="display:none;color:#e8527a;"><span class="bnav-icon">💌</span><span class="bnav-label">Sevgim</span></a>
-  <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label" data-i18n="nav_profile">Profil</span></a>
-</nav>
-<script type="module">(function(){const a=document.querySelector('.bottom-nav')?.dataset.active;document.querySelectorAll('.bnav-item[data-page]').forEach(e=>{if(a===e.dataset.page)e.classList.add('active');});})();</script>
-<script>(function(){
-  var act=document.querySelector('.bottom-nav')?.dataset.active;
-  if(act){document.querySelectorAll('.lnav-item[data-page]').forEach(function(e){if(act===e.dataset.page)e.classList.add('active');});}
-  var bAv=document.getElementById('bnavProfileAv'),lAv=document.getElementById('lnavProfileAv');
-  if(bAv&&lAv){lAv.innerHTML=bAv.innerHTML;new MutationObserver(function(){lAv.innerHTML=bAv.innerHTML;}).observe(bAv,{childList:true,subtree:true});}
-  var bAdm=document.getElementById('bnavAdminItem'),lAdm=document.getElementById('lnavAdminItem');
-  if(bAdm&&lAdm){new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName==='style')lAdm.style.display=bAdm.style.display;});}).observe(bAdm,{attributes:true,attributeFilter:['style']});}
-})();</script>
 </body>
 </html>

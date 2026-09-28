@@ -14,244 +14,335 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609261200">
-<script src="assets/js/theme-init.js?v=202609261200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609261200">
-<script src="assets/js/auth-ui.js?v=202609261200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
+<script src="assets/js/theme-init.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
+<script src="assets/js/auth-ui.js?v=202609271200"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
-/* ── Profile: page layout only. Controls/inputs come from ui.css; nav shell from themes.css. ── */
+/* ── Profil — tasarım: Profil (1440) + M_Profil (390). Bileşenler ui.css'ten, kabuk themes.css'ten. ── */
 
-/* ── Page top bar (<1024; theme-init.js mounts the hamburger inside it) ── */
-.topnav { position:fixed; top:0; left:0; right:0; z-index:var(--z-nav); height:var(--topbar-h); display:flex; align-items:center; padding:0 16px; background:var(--bg); border-bottom:1px solid var(--line); }
-.topnav-left { display:flex; align-items:center; gap:12px; min-width:0; }
-.topnav-back { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-2); text-decoration:none; white-space:nowrap; }
-.topnav-back:hover { color:var(--accent); }
-.topnav-sep { color:var(--line); }
-.topnav-brand { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.2em; text-transform:uppercase; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (min-width:1024px) { .topnav { display:none; } }
+/* Kapak şeridi: sıcak koyu zemin + süzülen iki ışık + ekolayzer (statik HTML; kabuk ekran dışında duraklatır) */
+.pf { position:relative; padding-bottom:var(--s8); }
+.pf-hero { position:relative; height:300px; overflow:hidden; background:#120d0c; /* tasarım: kapak zemini (tek seferlik) */ }
+.pf-glow { position:absolute; width:900px; height:600px; border-radius:50%; pointer-events:none; --drift-x:60px; --drift-y:-20px; animation-duration:12s; }
+.pf-glow--a { left:-100px; top:-250px; background:radial-gradient(closest-side, rgba(184,45,69,.55), transparent 75%); /* ember-1 %55 */ }
+.pf-glow--b { right:-200px; top:-200px; background:radial-gradient(closest-side, var(--accent-line), transparent 75%); animation-delay:-6s; }
+.pf-eq { position:absolute; left:0; right:0; bottom:0; height:180px; padding:0 var(--page-x); gap:4px; }
+.pf-eq i { flex:1 1 0; width:auto; animation-duration:1.6s; }
+.pf-eq i:nth-child(2n) { animation-duration:1.1s; }
+.pf-eq i:nth-child(3n) { animation-duration:2s; animation-delay:-.6s; }
+.pf-eq i:nth-child(5n) { animation-duration:.8s; animation-delay:-.3s; }
+.pf-hero-fade { position:absolute; inset:0; background:linear-gradient(180deg, transparent 40%, var(--bg)); }
 
-.layout { max-width:var(--maxw-wide); margin:0 auto; padding:calc(var(--topbar-h) + var(--s5)) var(--gutter) var(--s8); display:grid; grid-template-columns:minmax(0,1fr); gap:var(--s5); align-items:start; }
-.empty-state { grid-column:1/-1; text-align:center; padding:var(--s7) var(--s4); color:var(--fg-3); font-size:var(--fs-small); }
+/* Kimlik satırı (kapağın üstüne biner) */
+.pf-layout { position:relative; z-index:1; }
+.pf-id { width:100%; max-width:var(--page-max); margin:-110px auto 0; padding:0 var(--page-x); display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px 32px; }
+.pf-id-main { display:flex; align-items:flex-end; gap:32px; min-width:0; }
+.pf-ava { position:relative; flex-shrink:0; width:184px; height:184px; }
+.pf-ring { position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg, var(--ember-1), var(--ember-2), var(--accent), var(--ember-1)); --spin-dur:8s; }
+.pf-ava-in { position:absolute; inset:5px; border-radius:50%; background:var(--surface-2); border:5px solid var(--bg); overflow:hidden; display:flex; align-items:center; justify-content:center; font-family:var(--ff-disp); font-size:64px; line-height:1; color:var(--accent); }
+.pf-ava-in img { width:100%; height:100%; object-fit:cover; display:block; }
+.pf-ava-sk { position:absolute; inset:5px; }
+.pf-id-text { display:flex; flex-direction:column; gap:10px; padding-bottom:12px; min-width:0; }
+.pf-badges { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.pf-rank { display:inline-flex; align-items:center; padding:6px 12px; border-radius:var(--r-pill); border:1px solid var(--accent-line-2); font-family:var(--ff-mono); font-size:var(--fs-label); line-height:1.3; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--accent); }
+.pf-status { position:relative; display:inline-flex; align-items:center; gap:8px; height:30px; padding:0 12px; border-radius:var(--r-pill); border:1px solid var(--line-strong); background:transparent; color:var(--fg-soft); font-family:var(--ff); font-size:var(--fs-small); line-height:1; white-space:nowrap; }
+button.pf-status { cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
+button.pf-status:hover { border-color:var(--accent-line-2); color:var(--fg); }
+button.pf-status::after { content:''; position:absolute; inset:-7px -2px; } /* 44px dokunma alanı */
+button.pf-status:disabled { opacity:.6; cursor:progress; }
+.pf-status .be-live--err { background:var(--err-strong); }
+.pf-name { font-size:clamp(44px, calc(44px + (100vw - 600px) * .0333), 72px); /* tasarım: 72 masaüstü / 44 mobil */ line-height:.95; letter-spacing:0; overflow-wrap:anywhere; }
+.pf-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; font-size:var(--fs-ui); color:var(--fg-muted); }
+.pf-meta-sep { color:var(--fg-deco); }
+.pf-soc { position:relative; }
+.pf-soc::after { content:''; position:absolute; inset:-12px -4px; } /* 44px dokunma alanı */
+.pf-actions { display:flex; gap:10px; padding-bottom:16px; flex-shrink:0; }
+html .pf-actions .btn { height:48px; } /* tasarım: 48px eylem düğmeleri */
+html .pf-actions .btn-primary { padding:0 22px; }
+.pf-btn-short { display:none; }
+html .btn.is-following { border-color:var(--accent-line-2); color:var(--accent); background:var(--accent-wash); }
+.pf-sk-badge { width:120px; height:28px; }
+.pf-sk-name { width:min(360px, 60vw); height:60px; }
+.pf-sk-line { width:200px; height:16px; }
+.pf-notfound { max-width:520px; margin:-60px auto 0; background:var(--bg); }
+.pf-notfound .icon { width:32px; height:32px; }
 
-/* profile card */
-.profile-card { background:var(--surface); border:1px solid var(--line); }
-.profile-cover { height:88px; background:var(--surface-2); border-bottom:1px solid var(--line); position:relative; }
-.profile-avatar-wrap { position:absolute; bottom:-36px; left:var(--s5); }
-.profile-avatar, .profile-avatar-ph { width:72px; height:72px; border-radius:50%; object-fit:cover; border:3px solid var(--surface); background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--fg-3); }
-.profile-avatar-ph .icon { width:28px; height:28px; }
-.profile-info { padding:48px var(--s5) var(--s5); }
-.profile-name { font-family:var(--ff-disp); font-size:28px; line-height:1.15; color:var(--fg); margin-bottom:4px; }
-.is-admin::after { content:'admin'; margin-left:6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); }
-.profile-joined { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-3); margin-bottom:var(--s3); }
-.profile-title-badge { display:inline-flex; align-items:center; gap:6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border:1px solid currentColor; margin-bottom:10px; }
-.profile-title-badge .icon { width:12px; height:12px; }
-.profile-about { font-size:var(--fs-small); color:var(--fg-2); line-height:var(--lh-body); margin-bottom:var(--s4); min-height:20px; white-space:pre-wrap; }
-.profile-genres { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:var(--s4); }
-.genre-tag { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; padding:3px 8px; border:1px solid var(--line); color:var(--fg-2); }
-.profile-socials { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:var(--s4); }
-.profile-social-link { display:inline-flex; align-items:center; height:var(--ctl-sm); padding:0 10px; border:1px solid var(--line); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; color:var(--fg-2); text-decoration:none; transition:color .15s, border-color .15s; }
-.profile-social-link:hover { border-color:var(--fg); color:var(--fg); }
-.profile-collab { display:inline-flex; align-items:center; gap:6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; text-transform:uppercase; color:var(--fg-2); margin-bottom:10px; }
-.profile-collab::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--ok); }
-.profile-collab.busy::before { background:var(--err); }
-.profile-stats { display:flex; border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin:var(--s4) 0; }
-.pstat { flex:1; text-align:center; padding:10px 0; border-right:1px solid var(--line); }
-.pstat:last-child { border-right:0; }
-.pstat-val { font-family:var(--ff-disp); font-size:24px; line-height:1; color:var(--fg); }
-.pstat-lbl { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-3); margin-top:4px; }
-.profile-info .msg-btn, .profile-info .follow-btn, .profile-info .collab-req-btn, .profile-info .booking-profile-btn, .profile-info .edit-btn, .profile-info .settings-btn, .profile-info .contact-btn { width:100%; margin-top:8px; }
-.profile-info .msg-btn { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
-.profile-info .msg-btn:hover { background:var(--accent-hover); border-color:var(--accent-hover); color:var(--accent-ink); }
-.profile-info .collab-req-btn { height:var(--ctl-md); padding:0 var(--ctl-px-md); font-size:var(--fs-ctl-md); }
-.profile-info .follow-btn.following { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+/* Gövde: ana sütun + 400px yan sütun */
+.pf-body { width:100%; max-width:var(--page-max); margin:0 auto; padding:48px var(--page-x) 0; display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:24px; align-items:start; }
+.pf-col { display:flex; flex-direction:column; gap:20px; min-width:0; }
+.pf-side { display:flex; flex-direction:column; gap:14px; min-width:0; }
 
-/* edit form */
-.edit-form { display:none; padding:0 var(--s5) var(--s5); border-top:1px solid var(--line); }
-.edit-form.open { display:block; }
-.ef-label { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-2); margin:var(--s4) 0 6px; }
-.edit-form .ef-ta { min-height:96px; }
-.ef-photo-row { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
-.ef-photo-preview { width:48px; height:48px; border-radius:50%; border:1px solid var(--line); object-fit:cover; background:var(--surface-2); }
-.ef-hint { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); margin-top:4px; line-height:1.5; }
-.ef-genres-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.ef-genre-chip { display:inline-flex; align-items:center; gap:6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; padding:3px 4px 3px 8px; border:1px solid var(--line); color:var(--fg); }
-.ef-genre-chip button { background:none; border:0; color:var(--fg-3); cursor:pointer; font-size:12px; padding:0 4px; line-height:1; }
-.ef-genre-chip button:hover { color:var(--err); }
-.ef-genre-add { display:flex; gap:8px; margin-top:8px; }
-.ef-genre-add .ef-genre-input { flex:1; }
-.ef-genre-add .ef-genre-add-btn { height:var(--ctl-md); padding:0 var(--ctl-px-md); font-size:var(--fs-ctl-md); }
-.ef-collab-row { display:flex; gap:6px; margin-top:4px; }
-.ef-collab-row .btn { flex:1; }
-.ef-collab-row .btn.is-on { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
-.edit-form .ef-save-btn { width:100%; margin-top:var(--s4); }
+.pf-stats { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
+.pf-stat { display:flex; flex-direction:column; gap:4px; padding:24px; border-radius:var(--r-20); background:var(--surface); border:1px solid var(--line); }
+.pf-stat-val { font-family:var(--ff-disp); font-size:48px; /* tasarım 48 / mobil 30 */ line-height:1; color:var(--fg); }
+.pf-stat-lbl { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-3); }
 
-/* settings */
-.settings-panel { display:none; border-top:1px solid var(--line); padding:var(--s4) var(--s5) var(--s5); }
-.settings-panel.open { display:block; }
-.settings-label { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-2); margin-bottom:12px; }
-.settings-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
-.settings-row:last-child { margin-bottom:0; }
-.settings-row-info { flex:1; }
-.settings-row-label { font-size:var(--fs-small); color:var(--fg); }
-.settings-row-sub { font-size:var(--fs-label); color:var(--fg-3); margin-top:2px; }
-.theme-btns { display:flex; gap:4px; }
-.theme-btns .theme-btn.active { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
-.toggle { position:relative; width:40px; height:22px; cursor:pointer; flex-shrink:0; }
-.toggle input { opacity:0; width:0; height:0; position:absolute; }
-.toggle-track { position:absolute; inset:0; background:var(--surface-2); border:1px solid var(--line); transition:background .15s, border-color .15s; }
-.toggle input:checked + .toggle-track { background:var(--accent); border-color:var(--accent); }
-.toggle-thumb { position:absolute; top:4px; left:4px; width:14px; height:14px; background:var(--fg); transition:transform .15s, background .15s; pointer-events:none; }
-.toggle input:checked ~ .toggle-thumb { transform:translateX(18px); background:var(--accent-ink); }
+.pf-box { border-radius:var(--r-24); background:var(--surface-0); border:1px solid var(--line); }
+.pf-rankbox { padding:28px; display:flex; flex-direction:column; gap:12px; }
+.pf-row-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+html .pf-lbl { font-family:var(--ff-mono); font-size:var(--fs-label); font-weight:400; line-height:1.4; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-muted); }
+.pf-rank-step { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--accent); white-space:nowrap; }
+.pf-steps { list-style:none; display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:6px; }
+.pf-steps li { position:relative; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.pf-step-bar { display:block; height:6px; border-radius:3px; background:var(--track-2); transition:background .4s; }
+.pf-steps li.is-done .pf-step-bar { background:var(--accent); }
+.pf-steps li.is-done:last-child .pf-step-bar { background:linear-gradient(90deg, var(--ember-1), var(--accent)); }
+.pf-step-lbl { font-size:12px; line-height:1.35; color:var(--fg-faint); }
+.pf-steps li.is-past .pf-step-lbl { color:var(--fg-muted); }
+.pf-steps li[aria-current] .pf-step-lbl { color:var(--fg); }
+.pf-rank-note { font-size:12px; line-height:1.5; color:var(--fg-3); }
 
-/* admin panels (title, e-mail, announcements) */
-.admin-title-panel, .admin-announce-panel { padding:var(--s4) var(--s5) var(--s5); border-top:1px solid var(--line); }
-.admin-title-label { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-2); margin-bottom:10px; }
-.title-grid { display:flex; flex-wrap:wrap; gap:6px; }
-.title-grid .title-opt.sel { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
-.admin-title-panel .title-save-btn { margin-top:12px; }
-.admin-announce-panel .input { margin-top:8px; }
-.admin-announce-panel .admin-announce-ta { margin-top:8px; min-height:72px; }
-.admin-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
-.admin-status { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); width:100%; }
-.admin-status.block { display:block; margin-top:6px; }
+.pf-tabsbox { overflow:hidden; }
+.pf-tablist { display:flex; gap:4px; padding:8px; border-bottom:1px solid var(--line-div); }
+.pf-tab { position:relative; height:44px; padding:0 18px; border:0; border-radius:var(--r-12); background:transparent; color:var(--fg-muted); font-family:var(--ff); font-size:var(--fs-ui); font-weight:500; line-height:1; white-space:nowrap; cursor:pointer; transition:background var(--dur-fast), color var(--dur-fast); }
+.pf-tab:hover { color:var(--fg); }
+.pf-tab[aria-selected="true"] { background:var(--surface-4); color:var(--fg); }
+.pf-tl-short { display:none; }
+.pf-panel:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.pf-empty { padding:64px 32px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
+.pf-empty-icon { width:40px; height:40px; color:var(--fg-deco); }
+.pf-empty p { max-width:440px; font-size:16px; line-height:1.5; color:var(--fg-muted); }
+.pf-empty-links { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 24px; }
+.pf-empty .btn-link { position:relative; }
+.pf-empty .btn-link::after { content:''; position:absolute; inset:-12px -4px; }
+.pf-list { list-style:none; padding:8px; display:flex; flex-direction:column; gap:2px; }
+a.pf-item { display:flex; align-items:center; gap:16px; padding:16px 18px; border-radius:var(--r-16); color:var(--fg); transition:background var(--dur-fast); }
+a.pf-item:hover { background:var(--surface-hi); color:var(--fg); }
+.pf-item-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.pf-item-title { font-size:var(--fs-body); font-weight:500; line-height:1.45; overflow-wrap:anywhere; }
+.pf-item-meta { display:flex; flex-wrap:wrap; gap:4px 12px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; text-transform:uppercase; color:var(--fg-3); }
+.pf-item-go { flex-shrink:0; width:16px; height:16px; color:var(--fg-3); transition:color var(--dur-fast), transform var(--dur-fast); }
+a.pf-item:hover .pf-item-go { color:var(--accent); transform:translateX(2px); }
 
-/* activity */
-.activity-section { margin-bottom:var(--s5); }
-.activity-title { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-2); letter-spacing:.14em; margin-bottom:var(--s3); padding-bottom:10px; border-bottom:1px solid var(--line); }
-.activity-item { background:var(--surface); border:1px solid var(--line); padding:var(--s3) var(--s4); margin-bottom:8px; cursor:pointer; transition:border-color .15s; }
-.activity-item:hover { border-color:var(--fg-3); }
-.activity-item-title { font-size:var(--fs-small); color:var(--fg); font-weight:500; margin-bottom:6px; line-height:1.45; }
-.activity-item-meta { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); display:flex; gap:12px; }
-.activity-empty { font-size:var(--fs-small); color:var(--fg-3); padding:var(--s4) 0; line-height:var(--lh-body); }
+/* Yan sütun kartları */
+.pf-card { padding:28px; border-radius:var(--r-24); background:var(--surface); border:1px solid var(--line); display:flex; flex-direction:column; gap:18px; }
+.pf-card--sunk { background:var(--surface-0); padding:24px 28px; gap:14px; }
+html .pf-card-title { font-family:var(--ff-disp); font-weight:400; font-size:30px; /* tasarım */ line-height:1.05; letter-spacing:0; }
+html .pf-card-h { font-family:var(--ff); font-size:var(--fs-h3); font-weight:600; line-height:1.35; letter-spacing:0; }
+.pf-about-text { font-size:var(--fs-body); line-height:var(--lh-body); color:var(--fg-2); white-space:pre-wrap; overflow-wrap:anywhere; }
+.pf-about-text.is-empty { color:var(--fg-3); }
+.pf-genres { list-style:none; display:flex; flex-wrap:wrap; gap:8px; }
+.pf-set { display:flex; flex-direction:column; gap:10px; }
+.pf-set-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.pf-set-name { display:block; font-size:var(--fs-ui); font-weight:600; }
+.pf-set-sub { display:block; margin-top:2px; font-size:var(--fs-small); line-height:1.45; color:var(--fg-3); }
+.pf-preview { height:120px; border-radius:var(--r-16); background:var(--bg); border:1px solid var(--line); padding:18px; display:flex; flex-direction:column; justify-content:space-between; }
+.pf-preview-lbl { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-3); }
+.pf-preview-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.pf-preview-text { font-family:var(--ff-disp); font-size:26px; line-height:1.1; color:var(--accent); }
+.pf-preview-btn { flex-shrink:0; height:36px; padding:0 14px; border-radius:var(--r-pill); background:var(--accent); color:var(--accent-ink); font-size:var(--fs-small); font-weight:600; display:inline-flex; align-items:center; }
+.pf-link-btn { position:relative; background:none; border:0; padding:6px 0; color:var(--accent); font-family:var(--ff); font-size:var(--fs-small); font-weight:600; cursor:pointer; white-space:nowrap; transition:color var(--dur-fast); }
+.pf-link-btn::after { content:''; position:absolute; inset:-8px -6px; }
+.pf-link-btn:hover { color:var(--accent-hover); }
+.pf-notif-none { font-size:var(--fs-ui); color:var(--fg-3); }
+.pf-notif-list { margin:0 -28px -24px; border-top:1px solid var(--line-2); }
+.pf-notif-list:empty { display:none; }
+html .pf-notif-list .notif-item:last-child { border-bottom:0; border-radius:0 0 var(--r-24) var(--r-24); }
+.pf-admin-grid { display:flex; flex-wrap:wrap; gap:8px; }
+html .pf-admin-grid .be-tab { height:var(--ctl-sm); padding:0 14px; font-size:var(--fs-small); }
+.pf-admin-grid .be-tab .icon { width:14px; height:14px; }
+.pf-form-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.pf-note { width:100%; font-size:12px; line-height:1.5; color:var(--fg-3); }
+.pf-note:empty { display:none; }
+.pf-note.is-ok { color:var(--ok); }
+.pf-note.is-err { color:var(--err); }
 
-/* chat panel */
-.chat-panel { background:var(--surface); border:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; position:relative; width:100%; height:580px; min-height:300px; }
-.chat-resize-grip { position:absolute; bottom:0; right:0; width:14px; height:14px; cursor:se-resize; z-index:10; border-right:2px solid var(--line); border-bottom:2px solid var(--line); }
-.chat-panel-hdr { padding:10px var(--s4); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; min-height:48px; }
-.chat-panel-title { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-2); letter-spacing:.14em; }
-.chat-close { display:none; }
-.chat-body { display:flex; flex:1; overflow:hidden; min-height:0; }
-.chat-sidebar { width:150px; border-right:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; background:var(--surface-2); }
-.chat-search-wrap { padding:8px; border-bottom:1px solid var(--line); flex-shrink:0; position:relative; }
-.chat-search-wrap .chat-search { height:var(--ctl-sm); padding:0 8px; }
-.chat-search-results { position:absolute; top:calc(100% + 2px); left:6px; right:6px; background:var(--surface); border:1px solid var(--line); z-index:20; max-height:200px; overflow-y:auto; display:none; }
-.chat-search-results.open { display:block; }
-.chat-search-result { padding:8px 10px; cursor:pointer; font-size:var(--fs-small); color:var(--fg); border-bottom:1px solid var(--line-2); display:flex; align-items:center; gap:8px; }
-.chat-search-result:hover { background:var(--surface-2); }
-.chat-search-result-av { width:24px; height:24px; border-radius:50%; background:var(--surface-2); overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; }
-.chat-search-result-av img { width:100%; height:100%; object-fit:cover; }
-.chat-threads { flex:1; overflow-y:auto; }
-.chat-thread { padding:10px 8px; cursor:pointer; border-bottom:1px solid var(--line-2); border-left:2px solid transparent; display:flex; gap:8px; align-items:center; transition:background .12s; }
-.chat-thread:hover { background:var(--surface); }
-.chat-thread.active { background:var(--surface); border-left-color:var(--accent); }
-.chat-thread.unread .chat-thread-name { color:var(--accent); }
-.chat-thread-av, .chat-main-av { width:32px; height:32px; border-radius:50%; background:var(--surface); border:1px solid var(--line); overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--accent); }
-.chat-main-av { width:28px; height:28px; }
-.chat-thread-av img, .chat-main-av img, .chat-msg-sender-av img { width:100%; height:100%; object-fit:cover; }
+/* Profili düzenle paneli (ana sütunun başında; "Profili düzenle" açar) */
+.pf-edit { padding:28px; border-radius:var(--r-24); background:var(--surface-0); border:1px solid var(--accent-line); display:flex; flex-direction:column; gap:20px; scroll-margin-top:calc(var(--be-sticky-top) + 16px); }
+.pf-edit-head { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.pf-edit-title { outline:0; }
+.pf-edit .field { margin:0; }
+.pf-edit-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; }
+.pf-photo-row { display:flex; flex-wrap:wrap; align-items:center; gap:14px; }
+.pf-photo-prev { width:56px; height:56px; border-radius:50%; object-fit:cover; background:var(--surface-2); border:1px solid var(--line-ctl); }
+.pf-file-btn:focus-within { outline:2px solid var(--accent); outline-offset:2px; }
+.pf-edit .pf-genres { margin-bottom:10px; }
+.pf-edit .pf-genres:empty { display:none; }
+.pf-chip-x { position:relative; display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; margin:-4px -6px -4px 0; border:0; border-radius:50%; background:transparent; color:var(--fg-3); cursor:pointer; transition:color var(--dur-fast), background var(--dur-fast); }
+.pf-chip-x::after { content:''; position:absolute; inset:-12px; }
+.pf-chip-x:hover { color:var(--err); background:var(--err-soft); }
+.pf-chip-x .icon { width:12px; height:12px; }
+.pf-genre-add { display:flex; gap:8px; }
+.pf-genre-add .input { flex:1; min-width:0; }
+.pf-edit .seg { display:flex; width:100%; }
+html .pf-edit .seg-btn { flex:1; padding:0 10px; }
+.pf-edit-actions { display:flex; flex-wrap:wrap; gap:10px; }
+
+/* ── Mesajlar çekmecesi: her genişlikte sağdan açılır ("Mesajlar" / "Mesaj gönder", mobilde yüzen düğme) ── */
+.chat-scrim { position:fixed; inset:0; z-index:calc(var(--z-modal) - 1); background:var(--overlay); opacity:0; visibility:hidden; transition:opacity var(--dur) ease, visibility 0s linear var(--dur); }
+html.pf-chat-open .chat-scrim { opacity:1; visibility:visible; transition:opacity var(--dur) ease; }
+.chat-panel { position:fixed; top:0; right:0; bottom:0; z-index:var(--z-modal); width:520px; max-width:100vw; display:flex; flex-direction:column; overflow:hidden; background:var(--surface); border-left:1px solid var(--line); box-shadow:var(--shadow-lift); transform:translateX(100%); visibility:hidden; transition:transform var(--dur-slow) var(--ease-out), visibility 0s linear var(--dur-slow); }
+.chat-panel.mobile-open { transform:none; visibility:visible; transition:transform var(--dur-slow) var(--ease-out); }
+.chat-panel::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--ember-grad); }
+.chat-resize-grip { position:absolute; top:0; bottom:0; left:0; width:10px; cursor:ew-resize; z-index:3; }
+.chat-resize-grip::after { content:''; position:absolute; left:3px; top:50%; width:3px; height:44px; margin-top:-22px; border-radius:var(--r-pill); background:var(--line-strong); transition:background var(--dur-fast); }
+.chat-resize-grip:hover::after { background:var(--accent-line-2); }
+.chat-panel-hdr { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-shrink:0; padding:20px 20px 16px 24px; border-bottom:1px solid var(--line-div); }
+.chat-panel-title { font-family:var(--ff-disp); font-size:var(--fs-panel); line-height:1.05; color:var(--fg); }
+.chat-body { display:flex; flex:1; min-height:0; overflow:hidden; }
+.chat-sidebar { width:184px; flex-shrink:0; display:flex; flex-direction:column; overflow:hidden; border-right:1px solid var(--line-div); background:var(--surface-0); }
+.chat-search-wrap { flex-shrink:0; padding:12px; border-bottom:1px solid var(--line-div); }
+.chat-threads { flex:1; overflow-y:auto; overscroll-behavior:contain; }
+.chat-thread { display:flex; align-items:center; gap:10px; padding:12px 12px 12px 10px; border-left:2px solid transparent; border-bottom:1px solid var(--line-2); cursor:pointer; transition:background var(--dur-fast); }
+.chat-thread:hover { background:var(--surface-hi); }
+.chat-thread:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.chat-thread.active { background:var(--surface-hi); border-left-color:var(--accent); }
+.chat-thread-av, .chat-main-av { width:36px; height:36px; flex-shrink:0; border-radius:50%; overflow:hidden; background:var(--surface-4); display:flex; align-items:center; justify-content:center; font-family:var(--ff); font-size:var(--fs-small); font-weight:700; color:var(--accent); }
+.chat-main-av { width:32px; height:32px; }
+.chat-thread-av img, .chat-main-av img, .chat-msg-sender-av img { width:100%; height:100%; object-fit:cover; display:block; }
 .chat-thread-info { flex:1; min-width:0; }
-.chat-thread-name { font-size:var(--fs-small); color:var(--fg); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.chat-thread-prev { font-size:var(--fs-label); color:var(--fg-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-.chat-thread-dot { width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; display:none; }
+.chat-thread-name { font-size:var(--fs-small); font-weight:600; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-thread.unread .chat-thread-name { color:var(--accent); }
+.chat-thread-prev { margin-top:2px; font-size:12px; color:var(--fg-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat-thread-dot { display:none; width:8px; height:8px; flex-shrink:0; border-radius:50%; background:var(--accent); }
 .chat-thread.unread .chat-thread-dot { display:block; }
-.chat-main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
-.chat-main-hdr { padding:8px var(--s3); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-shrink:0; min-height:48px; }
-.chat-main-name { font-size:var(--fs-small); font-weight:600; color:var(--fg); }
+.chat-main { flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+.chat-main-hdr { display:flex; align-items:center; gap:10px; flex-shrink:0; min-height:60px; padding:10px 16px; border-bottom:1px solid var(--line-div); }
+.chat-main-hdr:empty { display:none; }
+.chat-main-name { min-width:0; font-size:var(--fs-ui); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .chat-collab-btn { margin-left:auto; flex-shrink:0; }
-.chat-msgs { flex:1; overflow-y:auto; padding:var(--s3); display:flex; flex-direction:column; gap:6px; }
-.chat-msg { max-width:82%; display:flex; }
+.chat-msgs { flex:1; overflow-y:auto; overscroll-behavior:contain; padding:16px; display:flex; flex-direction:column; gap:10px; }
+.chat-msg { display:flex; max-width:82%; }
 .chat-msg.mine { align-self:flex-end; flex-direction:column; align-items:flex-end; }
-.chat-msg:not(.mine) { align-self:flex-start; flex-direction:row; align-items:flex-end; gap:7px; }
-.chat-msg-content { display:flex; flex-direction:column; }
-.chat-msg-sender-av { width:24px; height:24px; border-radius:50%; background:var(--surface-2); border:1px solid var(--line); font-family:var(--ff-mono); font-size:10px; color:var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; text-decoration:none; }
-.chat-msg-text { font-size:var(--fs-small); line-height:1.55; padding:8px 12px; color:var(--fg); word-break:break-word; border:1px solid var(--line); background:var(--surface-2); }
-.chat-msg.mine .chat-msg-text { border-color:var(--accent); background:var(--accent-soft); }
-.chat-msg-time { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); margin-top:3px; padding:0 2px; }
-.chat-empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--fg-3); font-size:var(--fs-small); text-align:center; padding:20px; line-height:1.8; gap:8px; }
-.chat-empty-state-icon .icon { width:28px; height:28px; }
-.chat-input-wrap { padding:8px var(--s3); border-top:1px solid var(--line); display:flex; gap:8px; align-items:flex-end; flex-shrink:0; }
-.chat-input-wrap .chat-input { flex:1; min-height:var(--ctl-md); max-height:120px; padding:9px 12px; resize:none; }
-.chat-input-wrap .chat-send-btn { width:var(--ctl-md); height:var(--ctl-md); padding:0; flex-shrink:0; }
-.collab-req-card { background:var(--surface-2); border:1px solid var(--purple); padding:10px 12px; min-width:0; }
+.chat-msg:not(.mine) { align-self:flex-start; flex-direction:row; align-items:flex-end; gap:8px; }
 .chat-msg:has(.collab-req-card) { max-width:100%; }
-.collab-req-card-label { font-size:var(--fs-small); color:var(--purple); margin-bottom:8px; font-weight:600; }
-.collab-req-card-btns { display:flex; gap:6px; flex-wrap:wrap; }
-.collab-req-card-btns .collab-req-accept, .collab-req-card-btns .collab-req-reject { flex:1; }
-.collab-req-card-status { font-family:var(--ff-mono); font-size:var(--fs-label); margin-top:4px; }
+.chat-msg-content { display:flex; flex-direction:column; min-width:0; }
+.chat-msg-sender-av { width:28px; height:28px; flex-shrink:0; border-radius:50%; overflow:hidden; background:var(--surface-4); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--accent); text-decoration:none; }
+.chat-msg-text { padding:10px 14px; font-size:var(--fs-ui); line-height:1.5; color:var(--fg); white-space:pre-wrap; overflow-wrap:anywhere; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-16) var(--r-16) var(--r-16) var(--r-6); }
+.chat-msg.mine .chat-msg-text { background:var(--accent-soft); border-color:var(--accent-line); border-radius:var(--r-16) var(--r-16) var(--r-6) var(--r-16); }
+.chat-msg-time { margin-top:4px; padding:0 4px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.04em; color:var(--fg-faint); }
+.chat-empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px; text-align:center; font-size:var(--fs-ui); line-height:1.7; color:var(--fg-muted); }
+.chat-empty-state-icon { color:var(--fg-3); }
+.chat-empty-state-icon .icon { width:28px; height:28px; }
+.chat-input-wrap { display:flex; align-items:flex-end; gap:10px; flex-shrink:0; padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); border-top:1px solid var(--line-div); }
+html .chat-input-wrap .chat-input { flex:1; max-height:120px; resize:none; }
+.chat-send-btn { flex-shrink:0; width:48px; height:48px; border:0; border-radius:50%; background:var(--accent); color:var(--accent-ink); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:transform var(--dur) ease, box-shadow var(--dur) ease; }
+.chat-send-btn:hover { transform:translateY(-2px); box-shadow:var(--shadow-glow); }
+.chat-send-btn .icon { width:18px; height:18px; }
+.collab-req-card { min-width:0; padding:12px 14px; border-radius:var(--r-14); background:var(--violet-soft); border:1px solid rgba(201,184,238,.35); /* violet %35 kenar */ }
+.collab-req-card-label { margin-bottom:10px; font-size:var(--fs-small); font-weight:600; color:var(--violet); }
+.collab-req-card-btns { display:flex; flex-wrap:wrap; gap:8px; }
+.collab-req-card-btns > button { flex:1; }
+.collab-req-card-status { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; }
 .collab-req-card-status.accepted { color:var(--ok); }
 .collab-req-card-status.rejected { color:var(--err); }
-.chat-mobile-btn { display:none; position:fixed; bottom:var(--s5); right:var(--s4); z-index:var(--z-pop); }
+.chat-mobile-btn { display:none; position:fixed; z-index:var(--z-fab); }
 
-/* ── Toast stack (look comes from ui.css .toast) ── */
-.toast-container { position:fixed; bottom:var(--s5); right:var(--s5); z-index:var(--z-toast); display:flex; flex-direction:column-reverse; gap:var(--s2); pointer-events:none; max-width:min(92vw,360px); }
-@media (max-width:600px) { .toast-container { left:var(--s4); right:var(--s4); bottom:var(--s4); max-width:none; } }
+/* Toast (görünüm ui.css .toast-wrap/.toast) */
+html .toast.is-out { opacity:0; transform:translateY(8px); transition:opacity .2s, transform .2s; }
 
-/* breakpoints: 3 columns only when the chat panel fits beside the sidebar nav; below that it is a drawer */
-@media (min-width:1400px) {
-  .layout { grid-template-columns:300px minmax(0,1fr) 340px; }
-  .profile-card, .chat-panel { position:sticky; top:var(--s5); align-self:start; }
-  .profile-card { max-height:calc(100vh - 48px); overflow-y:auto; }
+/* Hareket azaltmada ekolayzer durur: çubuklar sabit, farklı boylarda kalır (animasyon ui.css'te kapanır) */
+@media (prefers-reduced-motion: reduce) {
+  .pf-eq i { transform:scaleY(.35); }
+  .pf-eq i:nth-child(2n) { transform:scaleY(.6); }
+  .pf-eq i:nth-child(3n) { transform:scaleY(.22); }
+  .pf-eq i:nth-child(5n) { transform:scaleY(.8); }
+  .pf-eq i:nth-child(7n) { transform:scaleY(.45); }
 }
-@media (min-width:1024px) and (max-width:1399px) { .layout { grid-template-columns:280px minmax(0,1fr); } }
-@media (max-width:1399px) {
+
+/* ── ≤1024: ortalanmış kimlik, tek sütun ── */
+@media (max-width:1024px) {
+  .pf-hero { height:240px; }
+  .pf-id { flex-direction:column; flex-wrap:nowrap; align-items:center; text-align:center; margin-top:-80px; gap:16px; }
+  .pf-id-main { flex-direction:column; align-items:center; gap:12px; }
+  .pf-ava { width:150px; height:150px; }
+  .pf-ava-in, .pf-ava-sk { inset:4px; }
+  .pf-ava-in { border-width:4px; font-size:52px; }
+  .pf-id-text { align-items:center; padding-bottom:0; gap:12px; }
+  .pf-badges, .pf-meta { justify-content:center; }
+  .pf-badges { gap:8px; }
+  .pf-actions { width:100%; max-width:520px; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; padding:4px 0 0; }
+  .pf-actions > .btn:last-child:nth-child(odd) { grid-column:1 / -1; }
+  html .pf-actions .btn { height:46px; padding:0 14px; }
+  .pf-body { grid-template-columns:minmax(0,1fr); padding-top:18px; gap:12px; }
+  .pf-col { gap:12px; }
+  .pf-side { display:contents; }
+  .pf-about { order:-1; }
+  .pf-notifs { display:none; }
   .chat-mobile-btn { display:inline-flex; }
-  .chat-close { display:inline-flex; }
+  html.pf-chat-open .chat-mobile-btn { display:none; }
+  html.pf-chat-open body { overflow:hidden; }
   .chat-resize-grip { display:none; }
-  .chat-panel { position:fixed; top:0; right:0; bottom:0; width:min(360px,100vw); height:auto; min-height:0; border:0; border-left:1px solid var(--line); transform:translateX(100%); transition:transform .25s ease; z-index:var(--z-drawer); }
-  .chat-panel.mobile-open { transform:none; }
 }
-@media (min-width:1024px) { .layout { padding-top:calc(var(--ctl-md) + var(--s6)); } }
+/* ── ≤600: telefon (M_Profil) ── */
 @media (max-width:600px) {
-  .profile-info { padding:44px var(--s4) var(--s4); }
-  .profile-avatar-wrap { left:var(--s4); }
-  .edit-form, .settings-panel, .admin-title-panel, .admin-announce-panel { padding-left:var(--s4); padding-right:var(--s4); }
-  .activity-item { padding:var(--s3) var(--s4); }
+  .pf-hero { height:210px; }
+  .pf-glow { --drift-x:30px; --drift-y:-10px; animation-duration:10s; }
+  .pf-glow--a { width:500px; height:360px; left:-120px; top:-160px; }
+  .pf-glow--b { width:460px; height:360px; right:-160px; top:-120px; animation-delay:-5s; }
+  .pf-eq { height:120px; gap:3px; }
+  .pf-eq i:nth-child(n+25) { display:none; }
+  .pf-id { margin-top:-70px; gap:12px; }
+  .pf-ava { width:124px; height:124px; }
+  .pf-ava-in { font-size:44px; }
+  .pf-rank { padding:5px 10px; font-size:var(--fs-micro); letter-spacing:.12em; }
+  .pf-status { font-size:12px; }
+  .pf-meta { gap:6px 14px; }
+  .pf-btn-long { display:none; }
+  .pf-btn-short { display:inline; }
+  .pf-stats { gap:8px; }
+  .pf-stat { padding:14px; border-radius:var(--r-14); align-items:center; text-align:center; gap:2px; }
+  .pf-stat-val { font-size:30px; }
+  .pf-stat-lbl { font-size:9px; letter-spacing:.12em; }
+  .pf-box { border-radius:var(--r-16); }
+  .pf-rankbox { padding:16px; gap:10px; }
+  html .pf-lbl, .pf-rank-step { font-size:var(--fs-micro); letter-spacing:.12em; }
+  .pf-steps { gap:4px; }
+  .pf-steps li { height:28px; justify-content:center; }
+  .pf-step-lbl { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .pf-tablist { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); padding:6px; }
+  .pf-tab { height:42px; padding:0 6px; border-radius:var(--r-10); font-size:var(--fs-small); font-weight:400; }
+  .pf-tl-long { display:none; }
+  .pf-tl-short { display:inline; }
+  .pf-empty { padding:36px 20px; gap:8px; }
+  .pf-empty-icon { display:none; }
+  .pf-empty p { font-size:var(--fs-body); }
+  .pf-list { padding:6px; }
+  a.pf-item { padding:14px 12px; gap:12px; }
+  .pf-card { padding:16px; border-radius:var(--r-16); gap:14px; }
+  html .pf-card-title { font-size:26px; }
+  .pf-card--sunk { padding:16px; }
+  .pf-settings .pf-card-title, .pf-settings .pf-lbl, .pf-settings .pf-preview, .pf-settings .pf-set-sub { display:none; }
+  .pf-notif-list { margin:0 -16px -16px; }
+  .pf-edit { padding:20px 16px; border-radius:var(--r-20); }
+  .pf-edit-grid { grid-template-columns:minmax(0,1fr); }
+  .chat-sidebar { width:132px; }
+  .chat-search-wrap { padding:8px; }
+  .chat-panel-hdr { padding:14px 16px 12px; }
+  .chat-msgs { padding:12px; }
+  .chat-input-wrap { padding:10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); }
 }
 </style>
-<script src="assets/js/i18n.js?v=202609261200"></script>
-<script src="assets/js/love-nav.js?v=202609261200"></script>
+<script src="assets/js/i18n.js?v=202609271200"></script>
+<script src="assets/js/love-nav.js?v=202609271200"></script>
 </head>
 <body>
+<header class="be-header" id="beHeader" data-be-page="profile"><div id="authBar"></div></header>
 
-<div id="authBar"></div>
-<nav class="topnav">
-  <div class="topnav-left">
-    <a href="/" class="topnav-back">← Anasayfa</a>
-    <span class="topnav-sep">|</span>
-    <span class="topnav-brand">Profil</span>
+<main class="pf" id="pfMain">
+  <div class="pf-hero" aria-hidden="true">
+    <span class="pf-glow pf-glow--a be-drift"></span>
+    <span class="pf-glow pf-glow--b be-drift"></span>
+    <span class="pf-eq be-eq be-eq--muted"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="pf-hero-fade"></span>
   </div>
-</nav>
-
-<nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
-  <div class="lnav-items">
-    <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span><span data-i18n="nav_home">Ana Sayfa</span></a>
-    <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span><span data-i18n="nav_egitim">Eğitim</span></a>
-    <a class="lnav-item" href="egitmen" data-page="egitmen"><span class="lnav-icon">👤</span><span data-i18n="nav_egitmen">Eğitmen</span></a>
-    <a class="lnav-item" href="forum" data-page="forum"><span class="lnav-icon">💬</span><span data-i18n="nav_forum">Forum</span></a>
-    <a class="lnav-item" href="members" data-page="members"><span class="lnav-icon">👥</span><span data-i18n="nav_members">Üyeler</span></a>
-    <a class="lnav-item" href="ableton-lab" data-page="ableton-lab"><span class="lnav-icon">🎛️</span><span data-i18n="nav_lab">Lab</span></a>
-    <a class="lnav-item" href="sss" data-page="sss"><span class="lnav-icon">❓</span><span data-i18n="nav_sss">SSS</span></a>
-    <a class="lnav-item" id="lnavAdminItem" href="booking" data-page="booking" style="display:none;"><span class="lnav-icon">📅</span><span data-i18n="nav_lessons">Ders Paneli</span></a>
-    <a class="lnav-item" id="lnavLoveBtn" href="love" data-page="love" style="display:none;color:#e8527a;"><span class="lnav-icon">💌</span><span>Sana Olan Sevgim</span></a>
-  </div>
-  <div class="lnav-foot">
-    <div class="lnav-lang">
-      <button class="lang-btn" data-lang="tr" onclick="window._i18n?.setLang('tr')">TR</button>
-      <button class="lang-btn" data-lang="en" onclick="window._i18n?.setLang('en')">EN</button>
+  <div class="pf-layout" id="layout" aria-busy="true">
+    <div class="pf-id" aria-hidden="true">
+      <div class="pf-id-main">
+        <span class="pf-ava"><span class="pf-ava-sk be-sk be-sk--circle"></span></span>
+        <div class="pf-id-text"><span class="be-sk be-sk--pill pf-sk-badge"></span><span class="be-sk pf-sk-name"></span><span class="be-sk pf-sk-line"></span></div>
+      </div>
     </div>
-    <a class="lnav-profile-link" href="profile" data-page="profile"><div class="lnav-profile-av" id="lnavProfileAv">👤</div><span data-i18n="nav_profile">Profil</span></a>
+    <p class="sr-only" data-i18n="prof_loading">Profil yükleniyor...</p>
   </div>
-</nav>
-
-<div class="layout" id="layout">
-  <div class="empty-state">Yükleniyor...</div>
-</div>
+</main>
 
 <script type="module">
 'use strict';
@@ -273,6 +364,29 @@ let _user = null;
 function doSignIn() { window.bkAuth.openLogin(); }
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 
+// Metin: anahtar i18n.js'te varsa oradan, yoksa (yeni anahtarlar Metinler aşamasına kadar) TR/EN yedeği
+function L(key, tr, en) {
+  const v = window._i18n?.t(key);
+  if (v && v !== key) return v;
+  return window._i18n?.getLang?.() === 'en' ? (en ?? tr) : tr;
+}
+const _isEn = () => window._i18n?.getLang?.() === 'en';
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+const _reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+// Sosyal bağlantı: yalnız http(s); şemasız adres https:// alır, başka şema (javascript: vb.) bağlantı olmaz
+function safeUrl(u) {
+  const s = String(u || '').trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return s;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return null;
+  return 'https://' + s.replace(/^\/+/, '');
+}
+
 function _getTitleLabel(key) {
   return window._i18n?.t('prof_title_' + key) || key;
 }
@@ -285,13 +399,16 @@ const TITLES = [
   { key:'usta',    labelTr:'Usta',                  labelEn:'Master',                    icon:'bolt',       color:'var(--err)' },
   { key:'efsane',  labelTr:'Efsane',                labelEn:'Legend',                    icon:'crown',      color:'var(--accent)' },
 ];
+// Ünvan basamakları (ÜNVAN İLERLEMESİ) — admin listesiyle aynı sıra
+const RANK_KEYS = TITLES.filter(t => t.key !== 'none').map(t => t.key);
 
 function showToast(msg, type='success', ms=3000) {
   let c = document.getElementById('toastCt');
-  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
-  const t = document.createElement('div'); t.className='toast'+(type!=='success'?' '+type:''); t.textContent=msg;
+  if (!c) { c = el('div', 'toast-wrap'); c.id = 'toastCt'; c.setAttribute('role', 'status'); c.setAttribute('aria-live', 'polite'); document.body.append(c); }
+  const cls = type === 'error' ? 'err' : type === 'info' ? 'info' : 'ok';
+  const t = el('div', 'toast ' + cls, msg);
   c.append(t);
-  setTimeout(() => { t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
+  setTimeout(() => { t.classList.add('is-out'); setTimeout(() => t.remove(), 200); }, ms);
 }
 function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 const ic = n => '<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-' + n + '"/></svg>';
@@ -307,30 +424,38 @@ function fmtDateTime(ts) {
   const loc = window._i18n?.getLang() === 'en' ? 'en-US' : 'tr-TR';
   return d.toLocaleDateString(loc, {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
 }
+// Tıklanabilir div'i klavyeyle de kullanılabilir yap (Enter / Boşluk)
+function _btnify(node) {
+  node.setAttribute('role', 'button'); node.tabIndex = 0;
+  node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); node.click(); } });
+  return node;
+}
+// Avatar kutusu: fotoğraf ya da baş harf (fotoğraf yüklenemezse baş harfe düşer)
+function setAva(box, photo, name) {
+  box.replaceChildren();
+  const initial = () => { box.replaceChildren(); box.textContent = ((name || '?').trim()[0] || '?').toLocaleUpperCase('tr-TR'); };
+  if (photo) { const i = el('img'); i.alt = ''; i.onerror = initial; i.src = photo; box.append(i); }
+  else initial();
+}
 
 // ── Chat Panel ─────────────────────────────────────────────────────
 function _chatId(a, b) { return [a, b].sort().join('_'); }
-// Sohbet paneli 1400px altinda cekmece olarak acilir (CSS ile ayni esik)
-const _chatOverlay = () => window.matchMedia('(max-width:1399px)').matches;
-
-function _playMsgSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator(); const g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = 880; o.type = 'sine';
-    g.gain.setValueAtTime(0.18, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.25);
-  } catch(e) {}
-}
+// Yeni tasarımda sohbet paneli her genişlikte sağdan açılan çekmece
+const _chatOverlay = () => true;
 
 let _chatListUnsub = null, _msgUnsub = null;
 let _activeChatId = null, _activeChatOther = null;
 let _chatPanelEl = null, _chatThreadsEl = null, _chatMsgsEl = null, _chatMainEl = null;
+let _chatOpener = null;
+
+function openChatPanel(opener) {
+  if (!_chatPanelEl) return;
+  _chatOpener = opener || document.activeElement;
+  _chatPanelEl.classList.add('mobile-open');
+}
 
 async function _sendMsg(fromUid, fromName, fromPhoto, toUid, toName, toPhoto, text) {
-  if (fromUid === toUid) throw new Error(window._i18n?.getLang()==='en' ? 'You cannot message yourself.' : 'Kendinize mesaj gönderemezsiniz.');
+  if (fromUid === toUid) throw new Error(window._i18n?.getLang()==='en' ? 'You cannot message yourself.' : `Kendinize mesaj gönderemezsiniz.`);
   const cid = _chatId(fromUid, toUid);
   const chatRef = db.collection('chats').doc(cid);
   const msgRef = chatRef.collection('messages').doc();
@@ -358,7 +483,7 @@ async function _sendMsg(fromUid, fromName, fromPhoto, toUid, toName, toPhoto, te
 
 function _mkAvEl(photo, name, cls) {
   const av = document.createElement('div'); av.className = cls;
-  if (photo) { const i = document.createElement('img'); i.src = photo; av.append(i); }
+  if (photo) { const i = document.createElement('img'); i.src = photo; i.alt = ''; av.append(i); }
   else av.textContent = (name||'?')[0].toUpperCase();
   return av;
 }
@@ -372,13 +497,14 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
   _chatMainEl.querySelector('.chat-main-hdr').innerHTML = '';
   const hdr = _chatMainEl.querySelector('.chat-main-hdr');
   hdr.append(_mkAvEl(otherPhoto, otherName, 'chat-main-av'));
-  const nm = document.createElement('div'); nm.className = 'chat-main-name'; nm.textContent = otherName; hdr.append(nm);
+  const nm = document.createElement('div'); nm.className = 'chat-main-name'; nm.textContent = otherName || ''; hdr.append(nm);
   // Collab button in header (only when chatting with another user, not self)
   if (_user && otherId && otherId !== _user.uid) {
     const collabHdrBtn = document.createElement('button');
+    collabHdrBtn.type = 'button';
     collabHdrBtn.className = 'btn btn-sm btn-ghost chat-collab-btn';
     collabHdrBtn.textContent = 'Collab';
-    collabHdrBtn.title = window._i18n?.t('prof_collab_tooltip')||'Collab isteği gönder';
+    collabHdrBtn.title = window._i18n?.t('prof_collab_tooltip')||`Collab isteği gönder`;
     collabHdrBtn.onclick = async () => {
       collabHdrBtn.disabled = true; collabHdrBtn.textContent = '…';
       try {
@@ -388,7 +514,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         // Check for existing pending collab request
         const existingSnap = await chatRef.collection('messages').where('type','==','collab_request').where('status','==','pending').limit(1).get();
         if (!existingSnap.empty) {
-          showToast(window._i18n?.t('prof_collab_exists')||'Zaten bekleyen bir collab isteği var.', 'info');
+          showToast(window._i18n?.t('prof_collab_exists')||`Zaten bekleyen bir collab isteği var.`, 'info');
           collabHdrBtn.disabled = false; collabHdrBtn.textContent = 'Collab';
           return;
         }
@@ -396,17 +522,17 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         batch.set(chatRef, {
           participants:[_user.uid, otherId], names:{[_user.uid]:fromName,[otherId]:otherName},
           photos:{[_user.uid]:fromPhoto,[otherId]:otherPhoto||''},
-          lastMessage:'Collab isteği', lastAt:firebase.firestore.FieldValue.serverTimestamp(),
+          lastMessage:`Collab isteği`, lastAt:firebase.firestore.FieldValue.serverTimestamp(),
           unreadBy:firebase.firestore.FieldValue.arrayUnion(otherId),
         }, { merge:true });
         const msgRef = chatRef.collection('messages').doc();
-        batch.set(msgRef, { fromUid:_user.uid, type:'collab_request', status:'pending', text:'Collab isteği gönderdi', createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+        batch.set(msgRef, { fromUid:_user.uid, type:'collab_request', status:'pending', text:`Collab isteği gönderdi`, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
         await batch.commit();
         db.collection('notifications').doc(otherId).collection('items').add({
           text:`${fromName} sana collab isteği gönderdi`, fromUid:_user.uid, type:'collab', read:false,
           createdAt:firebase.firestore.FieldValue.serverTimestamp(),
         }).catch(()=>{});
-        collabHdrBtn.textContent = '✓ '+(window._i18n?.getLang()==='en'?'Sent':'Gönderildi');
+        collabHdrBtn.textContent = '✓ '+(window._i18n?.getLang()==='en'?'Sent':`Gönderildi`);
         setTimeout(() => { collabHdrBtn.disabled = false; collabHdrBtn.textContent = 'Collab'; }, 4000);
       } catch(e) {
         const c=errId(); showToast(`${window._i18n?.t('prof_collab_send_err')||'Gönderilemedi'} (${c}): `+(e.message||e.code), 'error');
@@ -435,6 +561,7 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
       const _mkSenderAv = (fromUid) => {
         const av = document.createElement('a'); av.className = 'chat-msg-sender-av';
         av.href = `profile?uid=${fromUid}`;
+        av.setAttribute('aria-label', _activeChatOther?.name || L('ui_member', 'Üye', 'Member'));
         av.onclick = e => { e.stopPropagation(); };
         const p = _activeChatOther?.photo;
         if (p) { const i = document.createElement('img'); i.src = p; i.alt = ''; av.append(i); }
@@ -447,12 +574,12 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
         if (m.type === 'collab_request') {
           const card = document.createElement('div'); card.className = 'collab-req-card';
           const label = document.createElement('div'); label.className = 'collab-req-card-label';
-          label.textContent = myMsg ? (window._i18n?.t('prof_collab_req_sent')||'Collab isteği gönderdin') : (window._i18n?.t('prof_collab_req_recv')||'Collab isteği aldın');
+          label.textContent = myMsg ? (window._i18n?.t('prof_collab_req_sent')||`Collab isteği gönderdin`) : (window._i18n?.t('prof_collab_req_recv')||`Collab isteği aldın`);
           card.append(label);
           if (m.status === 'pending' && !myMsg) {
             const btns = document.createElement('div'); btns.className = 'collab-req-card-btns';
-            const acceptBtn = document.createElement('button'); acceptBtn.className = 'collab-req-accept'; acceptBtn.textContent = window._i18n?.t('prof_collab_accept')||'Kabul Et';
-            const rejectBtn = document.createElement('button'); rejectBtn.className = 'collab-req-reject'; rejectBtn.textContent = window._i18n?.t('prof_collab_reject')||'Reddet';
+            const acceptBtn = document.createElement('button'); acceptBtn.type = 'button'; acceptBtn.className = 'collab-req-accept'; acceptBtn.textContent = window._i18n?.t('prof_collab_accept')||'Kabul Et';
+            const rejectBtn = document.createElement('button'); rejectBtn.type = 'button'; rejectBtn.className = 'collab-req-reject'; rejectBtn.textContent = window._i18n?.t('prof_collab_reject')||'Reddet';
             acceptBtn.onclick = async () => {
               try {
                 await d.ref.update({ status: 'accepted' });
@@ -461,9 +588,9 @@ function _openThread(cid, otherId, otherName, otherPhoto) {
                   fromUid: _user.uid, type: 'collab_accepted', read: false,
                   createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 }).catch(()=>{});
-              } catch(e) { alert('Hata: ' + (e.message || e.code)); }
+              } catch(e) { showToast(`Hata: ` + (e.message || e.code), 'error'); }
             };
-            rejectBtn.onclick = async () => { await d.ref.update({ status: 'rejected' }).catch(e => alert('Hata: ' + (e.message || e.code))); };
+            rejectBtn.onclick = async () => { await d.ref.update({ status: 'rejected' }).catch(e => showToast(`Hata: ` + (e.message || e.code), 'error')); };
             btns.append(acceptBtn, rejectBtn); card.append(btns);
           } else if (m.status === 'accepted') {
             const s = document.createElement('div'); s.className = 'collab-req-card-status accepted'; s.textContent = window._i18n?.t('prof_collab_accepted_s')||'✓ Kabul edildi'; card.append(s);
@@ -516,7 +643,7 @@ function _buildChatThread(chatDoc, myUid) {
   const otherPhoto = chat.photos?.[otherId] || null;
   const isUnread = chat.unreadBy?.includes(myUid);
   const el = document.createElement('div');
-  el.className = 'chat-thread' + (isUnread ? ' unread' : '');
+  el.className = 'chat-thread' + (isUnread ? ' unread' : '') + (chatDoc.id === _activeChatId ? ' active' : '');
   el.dataset.cid = chatDoc.id;
   el.append(_mkAvEl(otherPhoto, otherName, 'chat-thread-av'));
   const info = document.createElement('div'); info.className = 'chat-thread-info';
@@ -525,29 +652,38 @@ function _buildChatThread(chatDoc, myUid) {
   info.append(nm, prev); el.append(info);
   const dot = document.createElement('div'); dot.className = 'chat-thread-dot'; el.append(dot);
   el.onclick = () => { (_chatPanelEl?._openThread || _openThread)(chatDoc.id, otherId, otherName, otherPhoto); if (_chatOverlay()) _chatPanelEl?.classList.add('mobile-open'); };
-  return el;
+  return _btnify(el);
 }
 
 function initChatPanel(user) {
-  if (!user) { document.querySelector('.chat-panel')?.remove(); document.querySelector('.chat-mobile-btn')?.remove(); _chatPanelEl=null; if(_chatListUnsub){_chatListUnsub();_chatListUnsub=null;} if(_msgUnsub){_msgUnsub();_msgUnsub=null;} return; }
+  if (!user) {
+    document.querySelector('.chat-panel')?.remove(); document.querySelector('.chat-mobile-btn')?.remove(); document.querySelector('.chat-scrim')?.remove();
+    document.documentElement.classList.remove('pf-chat-open');
+    _chatPanelEl=null; if(_chatListUnsub){_chatListUnsub();_chatListUnsub=null;} if(_msgUnsub){_msgUnsub();_msgUnsub=null;} return;
+  }
   if (_chatPanelEl) return; // already initialized
   // Build panel
   const panel = document.createElement('div'); panel.className = 'chat-panel'; _chatPanelEl = panel;
+  panel.id = 'pfChat';
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-modal', 'true');
+  panel.setAttribute('aria-labelledby', 'pfChatTitle');
   // Header
   const hdr = document.createElement('div'); hdr.className = 'chat-panel-hdr';
-  const title = document.createElement('div'); title.className = 'chat-panel-title'; title.textContent = window._i18n?.t('prof_chat_title')||'Mesajlar';
+  const title = document.createElement('h2'); title.className = 'chat-panel-title'; title.id = 'pfChatTitle'; title.textContent = window._i18n?.t('prof_chat_title')||'Mesajlar';
   const closeBtn = document.createElement('button');
-  closeBtn.className = 'btn btn-sm btn-icon btn-ghost chat-close';
-  closeBtn.textContent = '✕';
+  closeBtn.type = 'button';
+  closeBtn.className = 'btn btn-subtle btn-sm btn-icon chat-close';
+  closeBtn.innerHTML = ic('x');
   closeBtn.title = window._i18n?.t('prof_close')||'Kapat';
   closeBtn.setAttribute('aria-label', closeBtn.title);
-  closeBtn.onclick = () => { panel.classList.remove('mobile-open'); if (typeof mobileBtn !== 'undefined') mobileBtn.style.display = 'flex'; };
+  closeBtn.onclick = () => { panel.classList.remove('mobile-open'); };
   hdr.append(title, closeBtn); panel.append(hdr);
   const body = document.createElement('div'); body.className = 'chat-body'; panel.append(body);
   // Sidebar
   const sidebar = document.createElement('div'); sidebar.className = 'chat-sidebar'; body.append(sidebar);
   const searchWrap = document.createElement('div'); searchWrap.className = 'chat-search-wrap'; sidebar.append(searchWrap);
-  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.placeholder = window._i18n?.t('prof_search_ph')||'Üye ara…'; searchWrap.append(searchInput);
+  const searchInput = document.createElement('input'); searchInput.className = 'chat-search'; searchInput.type = 'search'; searchInput.placeholder = window._i18n?.t('prof_search_ph')||'Üye ara…'; searchInput.setAttribute('aria-label', searchInput.placeholder); searchWrap.append(searchInput);
   _chatThreadsEl = document.createElement('div'); _chatThreadsEl.className = 'chat-threads'; sidebar.append(_chatThreadsEl);
   // All users cache for combined list
   let _allUsers = {}, _chatDocs = [], _searchTerm = '';
@@ -588,8 +724,8 @@ function initChatPanel(user) {
         const nm = document.createElement('div'); nm.className = 'chat-thread-name'; nm.textContent = u.name;
         const sub = document.createElement('div'); sub.className = 'chat-thread-prev'; sub.textContent = window._i18n?.t('prof_msg_hint')||'Mesaj gönder';
         info.append(nm, sub); item.append(info);
-        item.onclick = () => { const cid = _chatId(user.uid, uid); panel._openThread(cid, uid, u.name, u.photo); if (_chatOverlay()) { panel.classList.add('mobile-open'); mobileBtn.style.display='none'; } };
-        _chatThreadsEl.append(item);
+        item.onclick = () => { const cid = _chatId(user.uid, uid); panel._openThread(cid, uid, u.name, u.photo); if (_chatOverlay()) panel.classList.add('mobile-open'); };
+        _chatThreadsEl.append(_btnify(item));
       });
   }
   // Main area
@@ -600,8 +736,8 @@ function initChatPanel(user) {
   main.append(emptyState);
   _chatMsgsEl = document.createElement('div'); _chatMsgsEl.className = 'chat-msgs'; _chatMsgsEl.style.display='none'; main.append(_chatMsgsEl);
   const inputWrap = document.createElement('div'); inputWrap.className = 'chat-input-wrap'; main.append(inputWrap);
-  const chatInput = document.createElement('textarea'); chatInput.className = 'chat-input'; chatInput.placeholder = window._i18n?.t('prof_msg_ph')||'Mesaj yaz…'; chatInput.rows = 1; inputWrap.append(chatInput);
-  const sendBtn = document.createElement('button'); sendBtn.className = 'chat-send-btn'; sendBtn.innerHTML = ic('arrow-right'); sendBtn.setAttribute('aria-label', 'Gönder'); inputWrap.append(sendBtn);
+  const chatInput = document.createElement('textarea'); chatInput.className = 'chat-input'; chatInput.placeholder = window._i18n?.t('prof_msg_ph')||'Mesaj yaz…'; chatInput.setAttribute('aria-label', chatInput.placeholder); chatInput.rows = 1; inputWrap.append(chatInput);
+  const sendBtn = document.createElement('button'); sendBtn.type = 'button'; sendBtn.className = 'chat-send-btn'; sendBtn.innerHTML = ic('arrow-right'); sendBtn.setAttribute('aria-label', L('prof_send', 'Gönder', 'Send')); inputWrap.append(sendBtn);
   let _msgQueue = Promise.resolve();
   const doSend = () => {
     const txt = chatInput.value.trim();
@@ -614,60 +750,69 @@ function initChatPanel(user) {
     const myPhoto = _user?.photoURL || '';
     _msgQueue = _msgQueue.then(() =>
       _sendMsg(user.uid, myName, myPhoto, _activeChatOther.uid, _activeChatOther.name, _activeChatOther.photo||'', txt)
-      .catch(e => { const c=errId(); showToast(`${window._i18n?.t('prof_msg_send_err')||'Mesaj gönderilemedi'} (${c}): `+(e.message||e.code||(window._i18n?.getLang()==='en'?'Connection error':'Bağlantı hatası')), 'error'); })
+      .catch(e => { const c=errId(); showToast(`${window._i18n?.t('prof_msg_send_err')||'Mesaj gönderilemedi'} (${c}): `+(e.message||e.code||(window._i18n?.getLang()==='en'?'Connection error':`Bağlantı hatası`)), 'error'); })
     );
   };
   sendBtn.onclick = doSend;
   chatInput.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); doSend(); } });
   chatInput.addEventListener('input', () => { chatInput.style.height='auto'; chatInput.style.height=Math.min(chatInput.scrollHeight,120)+'px'; });
-  // Show msgs area when a thread is opened
-  const origOpenThread = _openThread;
-  // Patch: show/hide empty state
+  // Patch: show/hide empty state when a thread is opened
   const _patchOpenThread = (cid, otherId, otherName, otherPhoto) => {
     emptyState.style.display = 'none'; _chatMsgsEl.style.display = '';
     _openThread(cid, otherId, otherName, otherPhoto);
   };
-  // Re-assign open with patch
   panel._openThread = _patchOpenThread;
   // Search filters combined list
   searchInput.oninput = () => { _searchTerm = searchInput.value.trim(); _renderMemberList(); };
   document.addEventListener('click', e => {
-    // Re-show mobile btn if panel closed from outside tap
-    if (!panel.contains(e.target) && !e.target.closest('.msg-btn') && panel.classList.contains('mobile-open')) {
+    // Çekmece dışına dokununca kapanır (açan düğmeler [data-pf-chat] hariç)
+    if (!panel.contains(e.target) && !e.target.closest('[data-pf-chat]') && panel.classList.contains('mobile-open')) {
       panel.classList.remove('mobile-open');
-      mobileBtn.style.display = 'flex';
     }
   });
-  // Resize grip — grows RIGHT and DOWN
-  const grip = document.createElement('div'); grip.className = 'chat-resize-grip'; panel.append(grip);
+  document.addEventListener('keydown', e => {
+    if (!panel.classList.contains('mobile-open')) return;
+    if (e.key === 'Escape') { panel.classList.remove('mobile-open'); return; }
+    if (e.key !== 'Tab') return;
+    // Odak çekmecede döner
+    const f = [...panel.querySelectorAll('button, [href], input, textarea, [tabindex="0"]')].filter(x => !x.disabled && x.offsetParent !== null);
+    if (!f.length) return;
+    const a = f[0], z = f[f.length - 1];
+    if (!panel.contains(document.activeElement)) { e.preventDefault(); a.focus(); }
+    else if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+    else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+  });
+  // Genişlik tutamağı (sol kenar, >1024) — 360–640px
+  const grip = document.createElement('div'); grip.className = 'chat-resize-grip'; grip.setAttribute('aria-hidden', 'true'); panel.append(grip);
   grip.addEventListener('mousedown', e => {
     e.preventDefault();
-    const sx = e.clientX, sy = e.clientY, sw = panel.offsetWidth, sh = panel.offsetHeight;
-    const onMove = ev => {
-      const profileCard = document.querySelector('.profile-card');
-      const maxH = profileCard ? Math.floor(profileCard.getBoundingClientRect().height) : (window.innerHeight - 90);
-      panel.style.width  = Math.max(360, Math.min(sw + (ev.clientX - sx), 640)) + 'px';
-      panel.style.height = Math.max(300, Math.min(sh + (ev.clientY - sy), maxH)) + 'px';
-    };
+    const sx = e.clientX, sw = panel.offsetWidth;
+    const onMove = ev => { panel.style.width = Math.max(360, Math.min(sw + (sx - ev.clientX), 640)) + 'px'; };
     const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   });
-  // Insert panel into layout
-  const layout = document.getElementById('layout');
-  if (layout) layout.append(panel);
+  const scrim = document.createElement('div'); scrim.className = 'chat-scrim'; scrim.setAttribute('aria-hidden', 'true');
+  document.body.append(scrim, panel);
   // Mobile toggle button
-  const mobileBtn = document.createElement('button'); mobileBtn.className = 'chat-mobile-btn'; mobileBtn.innerHTML = ic('chat'); mobileBtn.setAttribute('aria-label', window._i18n?.t('prof_chat_title')||'Mesajlar'); document.body.append(mobileBtn);
+  const mobileBtn = document.createElement('button'); mobileBtn.type = 'button'; mobileBtn.className = 'chat-mobile-btn'; mobileBtn.innerHTML = ic('chat'); mobileBtn.setAttribute('aria-label', window._i18n?.t('prof_chat_title')||'Mesajlar'); mobileBtn.setAttribute('aria-controls', 'pfChat'); mobileBtn.setAttribute('aria-expanded', 'false'); document.body.append(mobileBtn);
   mobileBtn.onclick = e => {
     e.stopPropagation();
+    _chatOpener = mobileBtn;
     panel.classList.toggle('mobile-open');
-    const isOpen = panel.classList.contains('mobile-open');
-    mobileBtn.style.display = isOpen ? 'none' : 'flex';
   };
-  // Hide mobileBtn when panel closes via back-tap
-  panel.addEventListener('click', e => {
-    if (e.target === panel && !panel.classList.contains('mobile-open')) mobileBtn.style.display = 'flex';
-  });
+  // Açık/kapalı durumu: <html> sınıfı (zemin, yüzen düğme, kaydırma kilidi) + odak
+  new MutationObserver(() => {
+    const open = panel.classList.contains('mobile-open');
+    document.documentElement.classList.toggle('pf-chat-open', open);
+    mobileBtn.setAttribute('aria-expanded', String(open));
+    document.querySelectorAll('[data-pf-chat][aria-controls="pfChat"]').forEach(b => b.setAttribute('aria-expanded', String(open)));
+    if (open) { if (!panel.contains(document.activeElement)) closeBtn.focus({ preventScroll:true }); }
+    else if (panel.contains(document.activeElement)) {
+      const back = (_chatOpener && _chatOpener.isConnected && _chatOpener !== document.body) ? _chatOpener : null;
+      if (back) back.focus({ preventScroll:true }); else document.activeElement.blur();
+    }
+  }).observe(panel, { attributes:true, attributeFilter:['class'] });
   // Load chat list real-time — admin sees all, others see own
   const chatQuery = isAdmin(user)
     ? db.collection('chats').orderBy('lastAt','desc').limit(100)
@@ -680,18 +825,19 @@ function initChatPanel(user) {
 
 function openChatWith(toUid, toName, toPhoto) {
   if (!_chatPanelEl || !_user) return;
+  _chatOpener = document.activeElement;
   const cid = _chatId(_user.uid, toUid);
   _chatPanelEl._openThread(cid, toUid, toName, toPhoto||null);
-  if (_chatOverlay()) {
-    _chatPanelEl.classList.add('mobile-open');
-    document.querySelector('.chat-mobile-btn')?.style && (document.querySelector('.chat-mobile-btn').style.display = 'none');
-  }
+  if (_chatOverlay()) _chatPanelEl.classList.add('mobile-open');
 }
 
 let _notifUnsub = null, _annUnsub = null;
 let _notifPanelEl = null;
 let _personalNotifs = [], _announcements = [], _annSeenAt = null, _dismissedAnns = [];
 let _prevUnreadCount = 0;
+let _lastNotifAll = [], _lastAnnSec = 0;
+
+function _closePanels() { if (_notifPanelEl) _notifPanelEl.classList.remove('open'); }
 
 function updateAuthBar(user) {
   const bar = document.getElementById('authBar'); bar.innerHTML = '';
@@ -699,10 +845,6 @@ function updateAuthBar(user) {
   if (user) {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
     const img  = document.createElement('img');  img.className = 'auth-avatar';
-      const _bnavAv = document.getElementById('bnavProfileAv');
-      const _bnavAdmin = document.getElementById('bnavAdminItem');
-      if (_bnavAdmin) _bnavAdmin.style.display = 'flex';
-      if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
     img.src = user.photoURL || ''; img.alt = '';
     const name = document.createElement('span'); name.className = 'auth-name';
     name.textContent = isAdmin(user) ? 'Admin' : (user.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye'));
@@ -736,12 +878,52 @@ function toggleNotifPanel(user) {
   markAllNotifRead(user.uid);
 }
 
+// Bildirim satırı — zil paneli ve profildeki "Bildirimler" kartı aynı satırı kullanır
+function _notifItem(n, uid, annSec) {
+  const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
+  const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
+  const icon = n._t==='a' ? '📢 ' : '';
+  const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+  const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=icon+(n.text||L('prof_notif_new', 'Yeni bildirim', 'New notification'));const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
+  let act = null;
+  if (n.type === 'collab' && n.fromUid) act = () => { location.href = `profile?uid=${n.fromUid}`; };
+  else if (n.fromUid) { act = () => { _closePanels(); openChatWith(n.fromUid, n.fromName); }; item.setAttribute('data-pf-chat', ''); }
+  else if (n.postId) act = () => { location.href = `post?id=${n.postId}`; };
+  if (act) { item.onclick = act; _btnify(item); }
+  if (n._id) {
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil'; del.setAttribute('aria-label', L('prof_notif_del', 'Bildirimi sil', 'Delete notification'));
+    del.onclick = e => {
+      e.stopPropagation();
+      if (n._t === 'p') {
+        db.collection('notifications').doc(uid).collection('items').doc(n._id).delete().catch(() => {});
+      } else {
+        if (!_dismissedAnns.includes(n._id)) { _dismissedAnns.push(n._id); }
+        db.collection('users').doc(uid).update({ dismissedAnns: firebase.firestore.FieldValue.arrayUnion(n._id) }).catch(() => {});
+        _announcements = _announcements.filter(a => a._id !== n._id);
+        _mergeNotifs(uid);
+      }
+    };
+    item.append(del);
+  }
+  return item;
+}
+
+function _renderSideNotifs(uid) {
+  const list = document.getElementById('pfNotifList');
+  const none = document.getElementById('pfNotifNone');
+  if (!list || !none) return;
+  list.innerHTML = '';
+  none.hidden = _lastNotifAll.length > 0;
+  _lastNotifAll.slice(0, 6).forEach(n => list.append(_notifItem(n, uid, _lastAnnSec)));
+}
+
 function _mergeNotifs(uid) {
   const all = [
     ..._personalNotifs.map(n => ({...n, _t:'p'})),
     ..._announcements.filter(n => !_dismissedAnns.includes(n._id)).map(n => ({...n, _t:'a'}))
   ].sort((a,b) => ((b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)));
   const annSec = _annSeenAt?.seconds || 0;
+  _lastNotifAll = all; _lastAnnSec = annSec;
   const unread = _personalNotifs.filter(n => !n.read).length
     + _announcements.filter(n => (n.createdAt?.seconds||0) > annSec).length;
   const badge = document.querySelector('.notif-badge');
@@ -751,37 +933,13 @@ function _mergeNotifs(uid) {
     if (bell) { bell.classList.remove('ringing'); void bell.offsetWidth; bell.classList.add('ringing'); setTimeout(() => bell.classList.remove('ringing'), 1800); }
   }
   _prevUnreadCount = unread;
-  if (_notifPanelEl) {
-    const list = _notifPanelEl.querySelector('.notif-list'); if (!list) return;
+  const list = _notifPanelEl?.querySelector('.notif-list');
+  if (list) {
     list.innerHTML = '';
-    if (!all.length) { list.innerHTML = '<div class="notif-empty">Bildirim yok</div>'; return; }
-    all.forEach(n => {
-      const isUnread = n._t==='p' ? !n.read : (n.createdAt?.seconds||0) > annSec;
-      const item = document.createElement('div'); item.className = 'notif-item' + (isUnread ? ' unread' : '');
-      const icon = n._t==='a' ? '📢 ' : '';
-      const timeStr = n.createdAt ? n.createdAt.toDate().toLocaleDateString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-      const _nt=document.createElement('div');_nt.className='notif-item-text';_nt.textContent=icon+(n.text||'Yeni bildirim');const _ni=document.createElement('div');_ni.className='notif-item-time';_ni.textContent=timeStr;item.append(_nt,_ni);
-      if (n.type === 'collab' && n.fromUid) item.onclick = () => { location.href = `profile?uid=${n.fromUid}`; };
-      else if (n.fromUid) item.onclick = () => { _closePanels(); openChatWith(n.fromUid); };
-      else if (n.postId) item.onclick = () => { location.href = `post?id=${n.postId}`; };
-      if (n._id) {
-        const del = document.createElement('button'); del.className = 'notif-del-btn'; del.textContent = '×'; del.title = 'Sil';
-        del.onclick = e => {
-          e.stopPropagation();
-          if (n._t === 'p') {
-            db.collection('notifications').doc(uid).collection('items').doc(n._id).delete().catch(() => {});
-          } else {
-            if (!_dismissedAnns.includes(n._id)) { _dismissedAnns.push(n._id); }
-            db.collection('users').doc(uid).update({ dismissedAnns: firebase.firestore.FieldValue.arrayUnion(n._id) }).catch(() => {});
-            _announcements = _announcements.filter(a => a._id !== n._id);
-            _mergeNotifs(uid);
-          }
-        };
-        item.append(del);
-      }
-      list.append(item);
-    });
+    if (!all.length) list.append(el('div', 'notif-empty', L('prof_notif_empty', 'Bildirim yok', 'No notifications')));
+    else all.forEach(n => list.append(_notifItem(n, uid, annSec)));
   }
+  _renderSideNotifs(uid);
 }
 
 function markAllNotifRead(uid) {
@@ -799,6 +957,7 @@ function initNotifications(user) {
   if (_notifUnsub) { _notifUnsub(); _notifUnsub = null; }
   if (_annUnsub) { _annUnsub(); _annUnsub = null; }
   _personalNotifs = []; _announcements = []; _annSeenAt = null; _dismissedAnns = [];
+  _lastNotifAll = []; _lastAnnSec = 0;
   if (!user) return;
   db.collection('users').doc(user.uid).get().then(d => {
     _annSeenAt = d.data()?.announcementsSeenAt || null;
@@ -816,12 +975,43 @@ function initNotifications(user) {
     .onSnapshot(snap => { _announcements = snap.docs.map(d => ({...d.data(), _id: d.id})); _mergeNotifs(user.uid); }, () => {});
 }
 
+// Admin "Mail Gönder" için Functions SDK'sı yalnız gerektiğinde yüklenir (sayfa normalde yüklemiyor)
+let _fnLoad = null;
+function _loadFunctions() {
+  if (typeof firebase.functions === 'function') return Promise.resolve();
+  if (_fnLoad) return _fnLoad;
+  _fnLoad = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js';
+    s.onload = () => res();
+    s.onerror = () => { _fnLoad = null; rej(new Error('functions-sdk')); };
+    document.head.append(s);
+  });
+  return _fnLoad;
+}
+function setNote(node, text, kind) {
+  node.textContent = text || '';
+  node.classList.toggle('is-ok', kind === 'ok');
+  node.classList.toggle('is-err', kind === 'err');
+}
+
 let _renderSeq = 0;
+let _pfTab = 'konular';     // seçili etkinlik sekmesi (yeniden çizimde korunur)
+let _pfEditOpen = false;    // düzenleme paneli açık mı (kaydetten sonra yeniden açık gelir)
+let _pfReady = false;
+
 async function renderProfile() {
   const seq = ++_renderSeq;
   const uid = profileUid || _user?.uid;
+  const layout = document.getElementById('layout');
   if (!uid) {
-    document.getElementById('layout').innerHTML = `<div class="empty-state">${window._i18n?.t('prof_not_found')||'Profil bulunamadı.'}</div>`;
+    layout.removeAttribute('aria-busy');
+    layout.innerHTML = '';
+    const box = el('div', 'pf-notfound be-empty');
+    box.innerHTML = '<svg class="icon be-empty-icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-user"/></svg>';
+    box.append(el('p', null, _user ? (window._i18n?.t('prof_not_found')||'Profil bulunamadı.') : (window._i18n?.t('prof_signin_req')||'Bu profili görmek için giriş yapman gerekiyor.')));
+    if (!_user) { const b = el('button', 'btn btn-primary', window._i18n?.t('auth_signin')||'Giriş Yap'); b.type = 'button'; b.onclick = doSignIn; box.append(b); }
+    layout.append(box);
     return;
   }
 
@@ -848,10 +1038,8 @@ async function renderProfile() {
     .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).slice(0,10);
   // If userReplies is empty, fallback to collectionGroup (requires authorId collection-group index)
   let replyDocs = repliesSnap?.docs || [];
-  console.log('[replies] userReplies count:', replyDocs.length, 'uid:', uid);
   if (replyDocs.length === 0) {
-    const cgSnap = await db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(20).get().catch(e=>{console.error('[replies] collectionGroup error:',e);return null;});
-    console.log('[replies] cgSnap:', cgSnap ? (cgSnap.empty ? 'empty' : cgSnap.size + ' docs') : 'null');
+    const cgSnap = await db.collectionGroup('replies').where('authorId','==',uid).orderBy('createdAt','desc').limit(20).get().catch(e=>{console.warn('[replies] collectionGroup:',e?.code||e);return null;});
     if (cgSnap && !cgSnap.empty) {
       replyDocs = cgSnap.docs.map(d => ({ id: d.id, ...d.data(), postId: d.ref.parent.parent.id }));
     }
@@ -859,203 +1047,240 @@ async function renderProfile() {
     replyDocs = replyDocs.map(d => ({id:d.id,...d.data()}));
   }
   const replies = replyDocs.slice(0, 8);
-  console.log('[replies] final count:', replies.length);
 
   if (seq !== _renderSeq) return; // a newer render started, bail
-  const layout = document.getElementById('layout');
-  // Remove all children except chat panel (which persists across renders)
-  Array.from(layout.children).forEach(c => { if (c !== _chatPanelEl) c.remove(); });
+  layout.removeAttribute('aria-busy');
+  layout.innerHTML = '';
 
-  // ── Profile card ──
-  const pCard = document.createElement('div'); pCard.className = 'profile-card';
-
-  const cover = document.createElement('div'); cover.className = 'profile-cover';
-  const avWrap = document.createElement('div'); avWrap.className = 'profile-avatar-wrap';
-  if (photoURL) {
-    const img = document.createElement('img'); img.className = 'profile-avatar'; img.src = photoURL; img.alt = '';
-    avWrap.append(img);
-  } else {
-    const ph = document.createElement('div'); ph.className = 'profile-avatar-ph'; ph.innerHTML = ic('user');
-    avWrap.append(ph);
-  }
-  cover.append(avWrap); pCard.append(cover);
-
-  const info = document.createElement('div'); info.className = 'profile-info';
-  const nameDiv = document.createElement('div');
-  nameDiv.className = 'profile-name' + (prof.email === ADMIN_EMAIL || (_user?.uid===uid && isAdmin(_user)) ? ' is-admin' : '');
-  nameDiv.textContent = displayName;
-  const joined = document.createElement('div'); joined.className = 'profile-joined';
-  joined.textContent = prof.joinedAt ? (window._i18n?.t('prof_joined')||'Katılım:')+' '+fmtDate(prof.joinedAt) : '';
-
-  // Title badge
+  const member = L('ui_member', 'Üye', 'Member');
+  const first = displayName.split(' ')[0] || member;
+  const profIsAdmin = prof.email === ADMIN_EMAIL || (_user?.uid===uid && isAdmin(_user));
   const titleKey = prof.title && prof.title !== 'none' ? prof.title : null;
+  const rankIdx = titleKey ? RANK_KEYS.indexOf(titleKey) : -1;
+  let collab = prof.collabStatus || 'none';
+  const collabListeners = [];   // durum değişince güncellenecek parçalar (düzenleme formu, Collab sekmesi)
+  const arrow = () => { const s = el('span', null, '→'); s.setAttribute('aria-hidden', 'true'); return s; };
+  const linkTo = (href, text) => { const a = el('a', 'btn-link'); a.href = href; a.append(el('span', null, text), arrow()); return a; };
+
+  // ── Kimlik satırı ─────────────────────────────────────────────
+  const idSec = el('section', 'pf-id');
+  idSec.setAttribute('aria-labelledby', 'pfName');
+  const idMain = el('div', 'pf-id-main');
+  const ava = el('div', 'pf-ava be-rv');
+  const ring = el('span', 'pf-ring be-spin'); ring.setAttribute('aria-hidden', 'true');
+  const avIn = el('span', 'pf-ava-in');
+  setAva(avIn, photoURL, displayName);
+  ava.append(ring, avIn);
+
+  const idText = el('div', 'pf-id-text be-rv be-d1');
+  const badges = el('div', 'pf-badges');
   if (titleKey) {
     const td = TITLES.find(t => t.key === titleKey);
-    if (td) {
-      const tb = document.createElement('div'); tb.className = 'profile-title-badge';
-      tb.style.color = td.color;
-      tb.innerHTML = (td.icon ? ic(td.icon) : '') + '<span>' + _getTitleLabel(td.key) + '</span>';
-      info.append(tb);
-    }
+    if (td) badges.append(el('span', 'pf-rank', _getTitleLabel(td.key)));
   }
-
-  const aboutDiv = document.createElement('div'); aboutDiv.className = 'profile-about';
-  aboutDiv.textContent = prof.about || (isOwn ? (window._i18n?.t('prof_about_empty')||'Kendinden bahset...') : '');
-
-  const genresDiv = document.createElement('div'); genresDiv.className = 'profile-genres';
-  (prof.genres || []).forEach(g => {
-    const tag = document.createElement('span'); tag.className = 'genre-tag'; tag.textContent = g;
-    genresDiv.append(tag);
+  if (profIsAdmin) { const ab = el('span', 'badge accent', 'admin'); ab.lang = 'en'; badges.append(ab); }
+  // İşbirliği durumu: sahibine düğme (open → busy → none döngüsü), başkasına rozet
+  const statusLabel = v => v === 'open' ? L('prof_status_open', 'Projeye açık', 'Open to projects')
+    : v === 'busy' ? L('prof_status_busy', 'Meşgul', 'Busy')
+    : L('prof_status_set', 'Durum belirt', 'Set status');
+  const paintStatus = (node, v) => {
+    node.replaceChildren();
+    const dot = el('span', v === 'open' ? 'be-live be-live--ok' : v === 'busy' ? 'be-live be-live--err' : 'be-dot be-dot--muted');
+    dot.setAttribute('aria-hidden', 'true');
+    node.append(dot, el('span', null, statusLabel(v)));
+    if (node.tagName === 'BUTTON') node.append(el('span', 'sr-only', ' — ' + L('prof_status_toggle', 'İşbirliği durumunu değiştir', 'Change collab status')));
+  };
+  if (isOwn && _user) {
+    const st = el('button', 'pf-status'); st.type = 'button';
+    st.title = L('prof_status_toggle', 'İşbirliği durumunu değiştir', 'Change collab status');
+    paintStatus(st, collab);
+    st.onclick = async () => {
+      const next = { open:'busy', busy:'none', none:'open' }[collab] || 'open';
+      st.disabled = true;
+      try {
+        await db.collection('users').doc(uid).set({ collabStatus: next }, { merge: true });
+        collab = next; prof.collabStatus = next;
+        paintStatus(st, next);
+        collabListeners.forEach(fn => fn(next));
+      } catch (e) {
+        const c = errId(); showToast(`${L('prof_save_err', 'Kayıt başarısız', 'Save failed')} (${c})`, 'error');
+      }
+      st.disabled = false;
+    };
+    badges.append(st);
+  } else if (collab === 'open' || collab === 'busy') {
+    const st = el('span', 'pf-status'); paintStatus(st, collab); badges.append(st);
+  }
+  const nameEl = el('h1', 'pf-name', displayName); nameEl.id = 'pfName';
+  const meta = el('div', 'pf-meta');
+  const socials = [
+    ['instagram', 'Instagram'], ['spotify', 'Spotify'], ['soundcloudUrl', 'SoundCloud'], ['mixcloudUrl', 'Mixcloud'],
+  ].map(([f, label]) => [safeUrl(prof[f]), label]).filter(([u]) => u);
+  socials.forEach(([u, label], i) => {
+    if (i) { const s = el('span', 'pf-meta-sep', '·'); s.setAttribute('aria-hidden', 'true'); meta.append(s); }
+    const a = el('a', 'pf-soc', label); a.href = u; a.target = '_blank'; a.rel = 'noopener'; meta.append(a);
   });
+  if (prof.joinedAt) {
+    if (socials.length) { const s = el('span', 'pf-meta-sep', '·'); s.setAttribute('aria-hidden', 'true'); meta.append(s); }
+    meta.append(el('span', 'pf-joined', (window._i18n?.t('prof_joined')||'Katılım:') + ' ' + fmtDate(prof.joinedAt)));
+  }
+  if (badges.childElementCount) idText.append(badges);
+  idText.append(nameEl);
+  if (meta.childElementCount) idText.append(meta);
+  idMain.append(ava, idText);
+  idSec.append(idMain);
 
-  const statsDiv = document.createElement('div'); statsDiv.className = 'profile-stats';
-  const pst = document.createElement('div'); pst.className = 'pstat';
-  pst.innerHTML = `<div class='pstat-val'>${posts.length}</div><div class='pstat-lbl'>${window._i18n?.t('prof_topics')||'Konu'}</div>`;
-  const rst = document.createElement('div'); rst.className = 'pstat';
-  rst.innerHTML = `<div class='pstat-val'>${prof.replyCount || replyDocs.length || 0}</div><div class='pstat-lbl'>${window._i18n?.t('prof_replies')||'Yanıt'}</div>`;
-  const fst = document.createElement('div'); fst.className = 'pstat';
-  fst.innerHTML = `<div class='pstat-val'>${followerCount}</div><div class='pstat-lbl'>${window._i18n?.t('prof_followers')||'Takipçi'}</div>`;
-  statsDiv.append(pst, rst, fst);
+  // Eylemler
+  const actions = el('div', 'pf-actions be-rv be-d2');
+  const mkBtn = (cls, text, short) => {
+    const b = el('button', 'btn ' + cls); b.type = 'button';
+    if (short) b.append(el('span', 'pf-btn-long', text), el('span', 'pf-btn-short', short));
+    else b.textContent = text;
+    return b;
+  };
 
-  info.append(nameDiv, joined, aboutDiv, genresDiv);
-
-  // Social links
-  if (prof.instagram || prof.spotify || prof.soundcloudUrl || prof.mixcloudUrl) {
-    const socialsDiv = document.createElement('div'); socialsDiv.className = 'profile-socials';
-    if (prof.instagram) {
-      const igLink = document.createElement('a'); igLink.className = 'profile-social-link profile-social-ig';
-      igLink.href = prof.instagram; igLink.target = '_blank'; igLink.rel = 'noopener';
-      igLink.textContent = 'Instagram';
-      socialsDiv.append(igLink);
+  // Collab isteği (kimlik satırı + Collab sekmesi aynı akışı kullanır)
+  async function sendCollab(btn) {
+    const idle = [...btn.childNodes].map(n => n.cloneNode(true));
+    const restore = () => { btn.disabled = false; btn.replaceChildren(...idle.map(n => n.cloneNode(true))); };
+    btn.disabled = true; btn.textContent = window._i18n?.t('prof_collab_sending')||'Gönderiliyor…';
+    const fromName = _user.displayName?.split(' ')[0] || 'Biri';
+    const fromPhoto = _user.photoURL || '';
+    // Open/create chat and send collab request message
+    const chatId = [_user.uid, uid].sort().join('_');
+    const chatRef = db.collection('chats').doc(chatId);
+    try {
+      await chatRef.set({
+        participants: [_user.uid, uid],
+        names: { [_user.uid]: fromName, [uid]: first },
+        photos: { [_user.uid]: fromPhoto, [uid]: photoURL||'' },
+        lastMessage: `Collab isteği`,
+        lastAt: firebase.firestore.FieldValue.serverTimestamp(),
+        unreadBy: firebase.firestore.FieldValue.arrayUnion(uid),
+      }, { merge: true });
+    } catch (e) {
+      const c = errId(); showToast(`${window._i18n?.t('prof_collab_send_err')||'Gönderilemedi'} (${c}): ` + (e.message || e.code), 'error');
+      restore(); return;
     }
-    if (prof.spotify) {
-      const spLink = document.createElement('a'); spLink.className = 'profile-social-link profile-social-sp';
-      spLink.href = prof.spotify; spLink.target = '_blank'; spLink.rel = 'noopener';
-      spLink.textContent = 'Spotify';
-      socialsDiv.append(spLink);
-    }
-    if (prof.soundcloudUrl) {
-      const scLink = document.createElement('a'); scLink.className = 'profile-social-link profile-social-sc';
-      scLink.href = prof.soundcloudUrl; scLink.target = '_blank'; scLink.rel = 'noopener';
-      scLink.textContent = 'SoundCloud';
-      socialsDiv.append(scLink);
-    }
-    if (prof.mixcloudUrl) {
-      const mcLink = document.createElement('a'); mcLink.className = 'profile-social-link profile-social-mc';
-      mcLink.href = prof.mixcloudUrl; mcLink.target = '_blank'; mcLink.rel = 'noopener';
-      mcLink.textContent = 'Mixcloud';
-      socialsDiv.append(mcLink);
-    }
-    info.append(socialsDiv);
+    await chatRef.collection('messages').add({
+      fromUid: _user.uid,
+      type: 'collab_request',
+      status: 'pending',
+      text: `Collab isteği gönderdi`,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(console.error);
+    await db.collection('notifications').doc(uid).collection('items').add({
+      text: `${fromName} sana collab isteği gönderdi`,
+      fromUid: _user.uid,
+      type: 'collab',
+      read: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(console.error);
+    btn.textContent = window._i18n?.t('prof_collab_sent')||'✓ İstek Gönderildi';
+    setTimeout(restore, 5000);
   }
 
-  // Collab status
-  if (prof.collabStatus && prof.collabStatus !== 'none') {
-    const csDiv = document.createElement('div');
-    csDiv.className = 'profile-collab' + (prof.collabStatus === 'busy' ? ' busy' : '');
-    csDiv.textContent = prof.collabStatus === 'open' ? (window._i18n?.t('prof_open')||'Projeye Açık') : (window._i18n?.t('prof_busy')||'Meşgul');
-    info.append(csDiv);
-  }
-
-  info.append(statsDiv);
-
-  // Message + follow buttons (other people's profiles)
-  if (!isOwn && _user) {
-    const msgBtn = document.createElement('button'); msgBtn.className = 'msg-btn'; msgBtn.textContent = window._i18n?.t('prof_msg_btn')||'Mesaj Gönder';
-    msgBtn.onclick = e => { e.stopPropagation(); openChatWith(uid, displayName.split(' ')[0]||(window._i18n?.t('ui_member')||'Üye'), photoURL); };
-    info.append(msgBtn);
-
-    const followBtn = document.createElement('button');
-    followBtn.className = 'follow-btn' + (isFollowing ? ' following' : '');
-    followBtn.textContent = isFollowing ? (window._i18n?.t('prof_following')||'✓ Takip Ediliyor') : (window._i18n?.t('prof_follow')||'+ Takip Et');
+  let editBtn = null;
+  const followValRef = { el: null };
+  if (_user && !isOwn) {
+    const msgBtn = mkBtn('btn-ghost', L('prof_btn_msg', 'Mesaj gönder', 'Send message'));
+    msgBtn.setAttribute('data-pf-chat', ''); msgBtn.setAttribute('aria-controls', 'pfChat');
+    msgBtn.onclick = e => { e.stopPropagation(); openChatWith(uid, first, photoURL); };
+    const followBtn = mkBtn('btn-ghost', '');
+    const paintFollow = () => {
+      followBtn.textContent = isFollowing ? L('prof_btn_following', '✓ Takip ediliyor', '✓ Following') : L('prof_btn_follow', '+ Takip et', '+ Follow');
+      followBtn.classList.toggle('is-following', isFollowing);
+      followBtn.setAttribute('aria-pressed', String(isFollowing));
+    };
+    paintFollow();
     followBtn.onclick = async () => {
       followBtn.disabled = true;
       const fid = `${_user.uid}_${uid}`;
+      const fv = followValRef.el;
       if (isFollowing) {
         await db.collection('follows').doc(fid).delete().catch(console.error);
         isFollowing = false;
-        followBtn.classList.remove('following');
-        followBtn.textContent = window._i18n?.t('prof_follow')||'+ Takip Et';
-        fst.querySelector('.pstat-val').textContent = Math.max(0, parseInt(fst.querySelector('.pstat-val').textContent) - 1);
+        if (fv) fv.textContent = Math.max(0, parseInt(fv.textContent) - 1);
       } else {
         await db.collection('follows').doc(fid).set({ followerId: _user.uid, followeeId: uid, createdAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(console.error);
         isFollowing = true;
-        followBtn.classList.add('following');
-        followBtn.textContent = window._i18n?.t('prof_following')||'✓ Takip Ediliyor';
-        fst.querySelector('.pstat-val').textContent = parseInt(fst.querySelector('.pstat-val').textContent) + 1;
+        if (fv) fv.textContent = parseInt(fv.textContent) + 1;
       }
+      paintFollow();
       followBtn.disabled = false;
     };
-    info.append(followBtn);
-
-    {
-      const collabReqBtn = document.createElement('button');
-      collabReqBtn.className = 'collab-req-btn';
-      collabReqBtn.textContent = window._i18n?.t('prof_collab')||'Collab İsteği Gönder';
-      collabReqBtn.onclick = async () => {
-        collabReqBtn.disabled = true;
-        collabReqBtn.textContent = window._i18n?.t('prof_collab_sending')||'Gönderiliyor…';
-        const fromName = _user.displayName?.split(' ')[0] || 'Biri';
-        const fromPhoto = _user.photoURL || '';
-        // Open/create chat and send collab request message
-        const chatId = [_user.uid, uid].sort().join('_');
-        const chatRef = db.collection('chats').doc(chatId);
-        await chatRef.set({
-          participants: [_user.uid, uid],
-          names: { [_user.uid]: fromName, [uid]: displayName.split(' ')[0]||(window._i18n?.t('ui_member')||'Üye') },
-          photos: { [_user.uid]: fromPhoto, [uid]: photoURL||'' },
-          lastMessage: 'Collab isteği',
-          lastAt: firebase.firestore.FieldValue.serverTimestamp(),
-          unreadBy: firebase.firestore.FieldValue.arrayUnion(uid),
-        }, { merge: true });
-        await chatRef.collection('messages').add({
-          fromUid: _user.uid,
-          type: 'collab_request',
-          status: 'pending',
-          text: 'Collab isteği gönderdi',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        }).catch(console.error);
-        await db.collection('notifications').doc(uid).collection('items').add({
-          text: `${fromName} sana collab isteği gönderdi`,
-          fromUid: _user.uid,
-          type: 'collab',
-          read: false,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        }).catch(console.error);
-        collabReqBtn.textContent = window._i18n?.t('prof_collab_sent')||'✓ İstek Gönderildi';
-        setTimeout(() => { collabReqBtn.disabled = false; collabReqBtn.textContent = window._i18n?.t('prof_collab')||'Collab İsteği Gönder'; }, 5000);
-      };
-      info.append(collabReqBtn);
-    }
+    const collabBtn = mkBtn('btn-primary', L('prof_btn_collab', 'Collab isteği gönder', 'Send collab request'), L('prof_btn_collab_s', 'Collab isteği', 'Collab request'));
+    collabBtn.onclick = () => sendCollab(collabBtn);
+    actions.append(msgBtn, followBtn, collabBtn);
+  } else if (isOwn && _user) {
+    const msgsBtn = mkBtn('btn-ghost', window._i18n?.t('prof_chat_title')||'Mesajlar');
+    msgsBtn.setAttribute('data-pf-chat', ''); msgsBtn.setAttribute('aria-controls', 'pfChat'); msgsBtn.setAttribute('aria-expanded', 'false');
+    msgsBtn.onclick = e => { e.stopPropagation(); openChatPanel(msgsBtn); };
+    editBtn = mkBtn('btn-ghost', '');
+    editBtn.setAttribute('aria-controls', 'pfEdit');
+    const booking = el('a', 'btn btn-primary', L('prof_btn_booking', 'Ders paneli', 'Lesson panel')); booking.href = 'booking';
+    actions.append(msgsBtn, editBtn, booking);
+  } else if (!_user) {
+    // Girişsiz ziyaretçi: mesaj/takip/collab için giriş
+    const si = mkBtn('btn-primary', window._i18n?.t('auth_signin')||'Giriş Yap');
+    si.onclick = doSignIn;
+    actions.append(si);
   }
+  if (actions.childElementCount) idSec.append(actions);
+  layout.append(idSec);
 
-  // Edit button (own profile only)
-  if (isOwn) {
-    const bookingLink = document.createElement('a'); bookingLink.href = 'booking';
-    bookingLink.className = 'booking-profile-btn';
-    bookingLink.textContent = window._i18n?.t('prof_booking_btn')||'Ders Paneli';
-    info.append(bookingLink);
+  // ── Gövde ─────────────────────────────────────────────────────
+  const bodyGrid = el('div', 'pf-body');
+  const col = el('div', 'pf-col');
+  const side = el('aside', 'pf-side');
+  side.setAttribute('aria-label', L('prof_side', 'Profil ayrıntıları', 'Profile details'));
 
-    const editBtn = document.createElement('button'); editBtn.className = 'edit-btn'; editBtn.textContent = window._i18n?.t('prof_edit_btn')||'Profili Düzenle';
-    info.append(editBtn);
-
-    // Edit form
-    const editForm = document.createElement('div'); editForm.className = 'edit-form';
+  // Profili düzenle (yalnız kendi profili)
+  let editPanel = null, editTitle = null;
+  const setEdit = (open, focus) => {
+    _pfEditOpen = open;
+    if (!editPanel) return;
+    editPanel.hidden = !open;
+    if (editBtn) {
+      editBtn.setAttribute('aria-expanded', String(open));
+      editBtn.replaceChildren();
+      if (open) { editBtn.insertAdjacentHTML('beforeend', ic('x')); editBtn.append(el('span', null, L('prof_btn_cancel_edit', 'Vazgeç', 'Cancel'))); }
+      else editBtn.textContent = L('prof_btn_edit', 'Profili düzenle', 'Edit profile');
+    }
+    if (open && focus) {
+      editPanel.scrollIntoView({ block:'start', behavior: _reduced() ? 'auto' : 'smooth' });
+      editTitle?.focus({ preventScroll:true });
+    }
+  };
+  if (isOwn && _user) {
+    editPanel = el('section', 'pf-edit'); editPanel.id = 'pfEdit'; editPanel.setAttribute('aria-labelledby', 'pfEditTitle');
+    const head = el('div', 'pf-edit-head');
+    editTitle = el('h2', 'pf-card-title pf-edit-title', L('prof_btn_edit', 'Profili düzenle', 'Edit profile')); editTitle.id = 'pfEditTitle'; editTitle.tabIndex = -1;
+    const x = el('button', 'btn btn-subtle btn-sm btn-icon'); x.type = 'button'; x.innerHTML = ic('x'); x.setAttribute('aria-label', L('prof_btn_cancel_edit', 'Vazgeç', 'Cancel'));
+    x.onclick = () => { setEdit(false); editBtn?.focus(); };
+    head.append(editTitle, x);
+    editPanel.append(head);
+    const field = (labelText, ctl, id) => {
+      const f = el('div', 'field');
+      const lb = el('label', 'field-label', labelText);
+      if (id) { lb.htmlFor = id; ctl.id = id; }
+      f.append(lb, ctl);
+      return f;
+    };
     let editGenres = [...(prof.genres || [])];
 
     // Photo section
-    const photoLabel = document.createElement('div'); photoLabel.className = 'ef-label'; photoLabel.textContent = window._i18n?.t('prof_photo_label')||'Profil Fotoğrafı';
-    editForm.append(photoLabel);
-    const photoWrap = document.createElement('div'); photoWrap.className = 'ef-photo-row';
+    const photoF = el('div', 'field');
+    photoF.append(el('span', 'field-label', window._i18n?.t('prof_photo_label')||'Profil Fotoğrafı'));
+    const photoRow = el('div', 'pf-photo-row');
     const curPhoto = prof.customPhotoURL || prof.photoURL || _user?.photoURL || '';
-    const photoPreview = document.createElement('img'); photoPreview.className = 'ef-photo-preview'; photoPreview.alt = '';
+    const photoPreview = el('img', 'pf-photo-prev'); photoPreview.alt = '';
     if (curPhoto) photoPreview.src = curPhoto; else photoPreview.style.display = 'none';
-    const uploadBtn = document.createElement('label'); uploadBtn.className = 'btn btn-sm btn-ghost';
-    uploadBtn.textContent = window._i18n?.t('prof_photo_btn')||'Fotoğraf Seç';
-    const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
+    const uploadBtn = el('label', 'btn btn-subtle btn-sm pf-file-btn');
+    uploadBtn.append(el('span', null, window._i18n?.t('prof_photo_btn')||'Fotoğraf Seç'));
+    const fileInput = el('input', 'sr-only'); fileInput.type = 'file'; fileInput.accept = 'image/*';
     uploadBtn.append(fileInput);
-    const photoHint = document.createElement('div'); photoHint.className = 'ef-hint';
-    photoHint.textContent = window._i18n?.t('prof_photo_hint')||'Google fotoğrafın otomatik kullanılır. Değiştirmek için seç.';
+    const photoHint = el('p', 'field-help', window._i18n?.t('prof_photo_hint')||'Google fotoğrafın otomatik kullanılır. Değiştirmek için seç.');
     // Hidden field to hold processed data URL
     let _customPhotoData = prof.customPhotoURL || '';
     fileInput.onchange = e => {
@@ -1075,89 +1300,77 @@ async function renderProfile() {
       };
       reader.readAsDataURL(file);
     };
-    photoWrap.append(photoPreview, uploadBtn);
-    editForm.append(photoWrap, photoHint);
-    // Dummy photoInput object to keep save logic working
-    const photoInput = { get value() { return _customPhotoData; }, trim() { return _customPhotoData; } };
+    photoRow.append(photoPreview, uploadBtn);
+    photoF.append(photoRow, photoHint);
+    editPanel.append(photoF);
 
-    const aboutLabel2 = document.createElement('div'); aboutLabel2.className = 'ef-label'; aboutLabel2.textContent = window._i18n?.t('prof_about_label')||'Hakkında';
-    editForm.append(aboutLabel2);
-    const aboutInput = document.createElement('textarea'); aboutInput.className = 'ef-ta'; aboutInput.maxLength = 300; aboutInput.rows = 4;
+    const aboutInput = el('textarea', 'textarea'); aboutInput.maxLength = 300; aboutInput.rows = 4;
     aboutInput.placeholder = window._i18n?.t('prof_about_ph')||'Kendinden, müzik tarzından bahset...'; aboutInput.value = prof.about || '';
-    editForm.append(aboutInput);
+    editPanel.append(field(window._i18n?.t('prof_about_label')||'Hakkında', aboutInput, 'pfEfAbout'));
 
-    const genresLabel = document.createElement('div'); genresLabel.className = 'ef-label'; genresLabel.textContent = window._i18n?.t('prof_genres_label')||'Genreler';
-    editForm.append(genresLabel);
-    const genresWrap = document.createElement('div'); genresWrap.className = 'ef-genres-wrap';
+    const genresF = el('div', 'field');
+    const gInput = el('input', 'input'); gInput.placeholder = 'Techno, House, Ambient...'; gInput.maxLength = 30; gInput.id = 'pfEfGenre';
+    const gLbl = el('label', 'field-label', window._i18n?.t('prof_genres_label')||'Genreler'); gLbl.htmlFor = 'pfEfGenre';
+    const genresWrap = el('ul', 'pf-genres');
     function rebuildGenreChips() {
       genresWrap.innerHTML = '';
       editGenres.forEach((g, i) => {
-        const chip = document.createElement('div'); chip.className = 'ef-genre-chip';
-        const span = document.createElement('span'); span.textContent = g;
-        const del = document.createElement('button'); del.textContent = '✕';
-        del.onclick = () => { editGenres.splice(i,1); rebuildGenreChips(); };
-        chip.append(span, del); genresWrap.append(chip);
+        const chip = el('li', 'be-chip be-chip--fill');
+        const del = el('button', 'pf-chip-x'); del.type = 'button'; del.innerHTML = ic('x');
+        del.setAttribute('aria-label', L('prof_genre_remove', 'Kaldır', 'Remove') + ': ' + g);
+        del.onclick = () => { editGenres.splice(i,1); rebuildGenreChips(); gInput.focus(); };
+        chip.append(el('span', null, g), del); genresWrap.append(chip);
       });
     }
-    rebuildGenreChips(); editForm.append(genresWrap);
-
-    const addRow = document.createElement('div'); addRow.className = 'ef-genre-add';
-    const gInput = document.createElement('input'); gInput.className = 'ef-genre-input'; gInput.placeholder = 'Techno, House, Ambient...'; gInput.maxLength = 30;
-    const addBtn = document.createElement('button'); addBtn.className = 'ef-genre-add-btn'; addBtn.textContent = window._i18n?.t('prof_genres_add')||'+ Ekle';
+    rebuildGenreChips();
+    const addRow = el('div', 'pf-genre-add');
+    const addBtn = el('button', 'btn btn-subtle', window._i18n?.t('prof_genres_add')||'+ Ekle'); addBtn.type = 'button';
     addBtn.onclick = () => {
       const v = gInput.value.trim(); if (!v || editGenres.length >= 8) return;
       editGenres.push(v); gInput.value = ''; rebuildGenreChips();
     };
     gInput.onkeydown = e => { if (e.key==='Enter') { e.preventDefault(); addBtn.click(); } };
-    addRow.append(gInput, addBtn); editForm.append(addRow);
+    addRow.append(gInput, addBtn);
+    genresF.append(gLbl, genresWrap, addRow);
+    editPanel.append(genresF);
 
-    const igLabel = document.createElement('div'); igLabel.className = 'ef-label'; igLabel.textContent = 'Instagram URL';
-    editForm.append(igLabel);
-    const igInput = document.createElement('input'); igInput.className = 'ef-input'; igInput.type = 'url';
-    igInput.placeholder = 'https://instagram.com/kullaniciadi'; igInput.value = prof.instagram || '';
-    editForm.append(igInput);
+    const urlInput = (val, ph) => { const i = el('input', 'input'); i.type = 'url'; i.placeholder = ph; i.value = val || ''; i.autocomplete = 'url'; return i; };
+    const igInput = urlInput(prof.instagram, 'https://instagram.com/kullaniciadi');
+    const spInput = urlInput(prof.spotify, 'https://open.spotify.com/artist/...');
+    const scInput = urlInput(prof.soundcloudUrl, 'https://soundcloud.com/kullaniciadi');
+    const mcInput = urlInput(prof.mixcloudUrl, 'https://www.mixcloud.com/kullaniciadi');
+    const grid = el('div', 'pf-edit-grid');
+    grid.append(field('Instagram URL', igInput, 'pfEfIg'), field('Spotify URL', spInput, 'pfEfSp'), field('SoundCloud URL', scInput, 'pfEfSc'), field('Mixcloud URL', mcInput, 'pfEfMc'));
+    editPanel.append(grid);
 
-    const spLabel = document.createElement('div'); spLabel.className = 'ef-label'; spLabel.textContent = 'Spotify URL';
-    editForm.append(spLabel);
-    const spInput = document.createElement('input'); spInput.className = 'ef-input'; spInput.type = 'url';
-    spInput.placeholder = 'https://open.spotify.com/artist/...'; spInput.value = prof.spotify || '';
-    editForm.append(spInput);
-
-    const scLabel = document.createElement('div'); scLabel.className = 'ef-label'; scLabel.textContent = 'SoundCloud URL';
-    editForm.append(scLabel);
-    const scInput = document.createElement('input'); scInput.className = 'ef-input'; scInput.type = 'url';
-    scInput.placeholder = 'https://soundcloud.com/kullaniciadi'; scInput.value = prof.soundcloudUrl || '';
-    editForm.append(scInput);
-
-    const mcLabel = document.createElement('div'); mcLabel.className = 'ef-label'; mcLabel.textContent = 'Mixcloud URL';
-    editForm.append(mcLabel);
-    const mcInput = document.createElement('input'); mcInput.className = 'ef-input'; mcInput.type = 'url';
-    mcInput.placeholder = 'https://www.mixcloud.com/kullaniciadi'; mcInput.value = prof.mixcloudUrl || '';
-    editForm.append(mcInput);
-
-    const collabLabel = document.createElement('div'); collabLabel.className = 'ef-label'; collabLabel.textContent = window._i18n?.t('prof_collab_label')||'İşbirliği Durumu';
-    editForm.append(collabLabel);
-    const collabWrap = document.createElement('div'); collabWrap.className = 'ef-collab-row';
+    const collabF = el('div', 'field');
+    const cLbl = el('span', 'field-label', window._i18n?.t('prof_collab_label')||'İşbirliği Durumu'); cLbl.id = 'pfEfCollabLbl';
+    const collabWrap = el('div', 'seg seg--accent'); collabWrap.setAttribute('role', 'group'); collabWrap.setAttribute('aria-labelledby', 'pfEfCollabLbl');
     const collabOpts = [
       { val:'open',  textKey:'prof_open',        textFallback:'Projeye Açık' },
       { val:'busy',  textKey:'prof_busy',        textFallback:'Meşgul' },
       { val:'none',  textKey:'prof_collab_none', textFallback:'Belirtme' },
     ];
-    let selCollab = prof.collabStatus || 'none';
+    let selCollab = collab;
     function rebuildCollabBtns() {
       collabWrap.innerHTML = '';
       collabOpts.forEach(o => {
-        const b = document.createElement('button');
+        const b = el('button', 'seg-btn', window._i18n?.t(o.textKey)||o.textFallback);
         b.type = 'button';
-        b.className = 'btn btn-sm btn-ghost' + (selCollab===o.val ? ' is-on' : '');
-        b.textContent = window._i18n?.t(o.textKey)||o.textFallback;
-        b.onclick = () => { selCollab = o.val; rebuildCollabBtns(); };
+        b.setAttribute('aria-pressed', String(selCollab === o.val));
+        b.onclick = () => { selCollab = o.val; rebuildCollabBtns(); collabWrap.querySelector('[aria-pressed="true"]')?.focus(); };
         collabWrap.append(b);
       });
     }
-    rebuildCollabBtns(); editForm.append(collabWrap);
+    rebuildCollabBtns();
+    collabListeners.push(v => { selCollab = v; rebuildCollabBtns(); });
+    collabF.append(cLbl, collabWrap);
+    editPanel.append(collabF);
 
-    const saveBtn = document.createElement('button'); saveBtn.className = 'ef-save-btn'; saveBtn.textContent = window._i18n?.t('prof_save')||'Kaydet';
+    const acts = el('div', 'pf-edit-actions');
+    const saveBtn = el('button', 'btn btn-primary', window._i18n?.t('prof_save')||'Kaydet'); saveBtn.type = 'button';
+    const cancelBtn = el('button', 'btn btn-ghost', L('prof_btn_cancel_edit', 'Vazgeç', 'Cancel')); cancelBtn.type = 'button';
+    cancelBtn.onclick = () => { setEdit(false); editBtn?.focus(); };
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '…';
       try {
@@ -1177,85 +1390,267 @@ async function renderProfile() {
         if (!prof.joinedAt) update.joinedAt = firebase.firestore.FieldValue.serverTimestamp();
         await db.collection('users').doc(uid).set(update, { merge: true });
         // Immediately update avatar in DOM without waiting for re-render
-        if (_customPhotoData) {
-          const avWrap = document.querySelector('.profile-avatar-wrap');
-          if (avWrap) { const ex = avWrap.querySelector('img'); if (ex) { ex.src = _customPhotoData; } else { avWrap.innerHTML = ''; const ni = document.createElement('img'); ni.className = 'profile-avatar'; ni.src = _customPhotoData; avWrap.append(ni); } }
-        }
+        if (_customPhotoData) { const av = document.querySelector('.pf-ava-in'); if (av) setAva(av, _customPhotoData, displayName); }
         saveBtn.textContent = window._i18n?.t('prof_saved')||'✓ Kaydedildi';
         showToast(window._i18n?.t('prof_saved_toast')||'✓ Profil güncellendi!');
         setTimeout(async () => {
           // Force server read after save to reflect latest data
           await db.collection('users').doc(uid).get({ source: 'server' }).catch(() => {});
+          _pfEditOpen = true; // form yeniden açık gelsin ki kaydedilen değerler görünsün
           await renderProfile().catch(console.error);
-          // Re-open edit form so user can see saved values
-          document.querySelector('.edit-btn')?.click();
         }, 1000);
       } catch(e) { const c=errId(); console.error('[save]',c,e); saveBtn.disabled=false; saveBtn.textContent=`${window._i18n?.t('prof_save_err')||'Kayıt başarısız'} (${c})`; }
     };
-    editForm.append(saveBtn);
-
-    editBtn.onclick = () => {
-      editForm.classList.toggle('open');
-      editBtn.textContent = editForm.classList.contains('open') ? '✕ '+(window._i18n?.t('post_cancel')||'Kapat') : (window._i18n?.t('prof_edit_btn')||'Profili Düzenle');
-    };
-
-    // Settings button (own profile)
-    const settingsBtn = document.createElement('button'); settingsBtn.className = 'settings-btn'; settingsBtn.textContent = window._i18n?.t('prof_settings_btn')||'Görünüm Ayarları';
-    info.append(settingsBtn);
-    const settingsPanel = document.createElement('div'); settingsPanel.className = 'settings-panel';
-    // Theme row
-    const themeLabel = document.createElement('div'); themeLabel.className = 'settings-label'; themeLabel.textContent = window._i18n?.t('prof_theme_label')||'Tema';
-    const themeRow = document.createElement('div'); themeRow.className = 'settings-row';
-    const themeInfo = document.createElement('div'); themeInfo.className = 'settings-row-info';
-    themeInfo.innerHTML = `<div class="settings-row-label">${window._i18n?.t('prof_theme_title')||'Renk Teması'}</div><div class="settings-row-sub">${window._i18n?.t('prof_theme_sub')||'Koyu veya açık arka plan'}</div>`;
-    const themeBtns = document.createElement('div'); themeBtns.className = 'theme-btns';
-    const darkBtn = document.createElement('button'); darkBtn.className = 'btn btn-sm btn-ghost theme-btn dark-btn'; darkBtn.textContent = window._i18n?.t('prof_dark_btn')||'Koyu';
-    const lightBtn = document.createElement('button'); lightBtn.className = 'btn btn-sm btn-ghost theme-btn light-btn'; lightBtn.textContent = window._i18n?.t('prof_light_btn')||'Açık';
-    const curTheme = localStorage.getItem('site-theme') || 'dark';
-    if (curTheme === 'dark') darkBtn.classList.add('active'); else lightBtn.classList.add('active');
-    darkBtn.onclick = () => { localStorage.setItem('site-theme','dark'); document.documentElement.classList.remove('theme-light'); darkBtn.classList.add('active'); lightBtn.classList.remove('active'); };
-    lightBtn.onclick = () => { localStorage.setItem('site-theme','light'); document.documentElement.classList.add('theme-light'); lightBtn.classList.add('active'); darkBtn.classList.remove('active'); };
-    themeBtns.append(darkBtn, lightBtn); themeRow.append(themeInfo, themeBtns);
-    // Font clear row
-    const fontRow = document.createElement('div'); fontRow.className = 'settings-row';
-    const fontInfo = document.createElement('div'); fontInfo.className = 'settings-row-info';
-    fontInfo.innerHTML = `<div class="settings-row-label">${window._i18n?.t('prof_font_label')||'Font Netleştir'}</div><div class="settings-row-sub">${window._i18n?.t('prof_font_sub')||'Yazıları daha büyük ve okunaklı gösterir'}</div>`;
-    const toggleWrap = document.createElement('label'); toggleWrap.className = 'toggle';
-    const toggleInput = document.createElement('input'); toggleInput.type = 'checkbox';
-    toggleInput.checked = localStorage.getItem('site-font-clear') === '1';
-    const toggleTrack = document.createElement('div'); toggleTrack.className = 'toggle-track';
-    const toggleThumb = document.createElement('div'); toggleThumb.className = 'toggle-thumb';
-    toggleInput.onchange = () => {
-      if (toggleInput.checked) { localStorage.setItem('site-font-clear','1'); document.documentElement.classList.add('font-clear'); }
-      else { localStorage.setItem('site-font-clear','0'); document.documentElement.classList.remove('font-clear'); }
-    };
-    toggleWrap.append(toggleInput, toggleTrack, toggleThumb); fontRow.append(fontInfo, toggleWrap);
-    settingsPanel.append(themeLabel, themeRow, fontRow);
-    settingsBtn.onclick = () => { settingsPanel.classList.toggle('open'); settingsBtn.textContent = settingsPanel.classList.contains('open') ? ('✕ '+(window._i18n?.t('prof_close')||'Kapat')) : (window._i18n?.t('prof_settings_btn')||'Görünüm Ayarları'); };
-    pCard.append(info, settingsPanel, editForm);
-  } else {
-    pCard.append(info);
+    acts.append(saveBtn, cancelBtn);
+    editPanel.append(acts);
+    col.append(editPanel);
+    if (editBtn) editBtn.onclick = () => setEdit(editPanel.hidden, true);
+    setEdit(_pfEditOpen, false);
   }
 
-  // Admin title assignment panel (visible when admin views other profiles)
+  // İstatistikler
+  const stats = el('section', 'pf-stats');
+  stats.setAttribute('aria-label', L('prof_stats', 'İstatistikler', 'Stats'));
+  const stat = (val, label) => {
+    const s = el('div', 'pf-stat');
+    const v = el('span', 'pf-stat-val', String(val));
+    s.append(v, el('span', 'pf-stat-lbl', label));
+    stats.append(s);
+    return v;
+  };
+  stat(posts.length, window._i18n?.t('prof_topics')||'Konu');
+  stat(prof.replyCount || replyDocs.length || 0, window._i18n?.t('prof_replies')||'Yanıt');
+  followValRef.el = stat(followerCount, window._i18n?.t('prof_followers')||'Takipçi');
+  col.append(stats);
+
+  // Ünvan ilerlemesi (ünvanı yalnız admin verir; burada yalnız gösterilir)
+  const rankBox = el('section', 'pf-box pf-rankbox');
+  rankBox.setAttribute('aria-labelledby', 'pfRankLbl');
+  const rHead = el('div', 'pf-row-head');
+  const rLbl = el('h2', 'pf-lbl', L('prof_rank_progress', 'Ünvan ilerlemesi', 'Title progress')); rLbl.id = 'pfRankLbl';
+  rHead.append(rLbl, el('span', 'pf-rank-step', `${rankIdx + 1} / ${RANK_KEYS.length}`));
+  const steps = el('ol', 'pf-steps');
+  RANK_KEYS.forEach((k, i) => {
+    const li = el('li', [i <= rankIdx ? 'is-done' : '', i < rankIdx ? 'is-past' : ''].join(' ').trim());
+    if (i === rankIdx) li.setAttribute('aria-current', 'step');
+    const bar = el('span', 'pf-step-bar'); bar.setAttribute('aria-hidden', 'true');
+    li.append(bar, el('span', 'pf-step-lbl', _getTitleLabel(k)));
+    steps.append(li);
+  });
+  rankBox.append(rHead, steps);
+  if (rankIdx < 0 && _user) rankBox.append(el('p', 'pf-rank-note', L('prof_rank_none', 'Henüz ünvan yok. Ünvanları Berkay Er verir.', 'No title yet. Titles are given by Berkay Er.')));
+  col.append(rankBox);
+
+  // Etkinlik sekmeleri: Son konular · Son yorumlar · Collab
+  const tabsBox = el('section', 'pf-box pf-tabsbox');
+  const tabsH = el('h2', 'sr-only', L('prof_activity', 'Etkinlik', 'Activity')); tabsH.id = 'pfActH';
+  const tl = el('div', 'pf-tablist'); tl.setAttribute('role', 'tablist'); tl.setAttribute('aria-labelledby', 'pfActH');
+  const TABS = [
+    { id:'konular',  long:L('prof_tab_topics', 'Son konular', 'Recent topics'),   short:L('prof_tab_topics_s', 'Konular', 'Topics') },
+    { id:'yorumlar', long:L('prof_tab_replies', 'Son yorumlar', 'Recent replies'), short:L('prof_tab_replies_s', 'Yorumlar', 'Replies') },
+    { id:'collab',   long:'Collab', short:'Collab' },
+  ];
+  const panels = {}, tabBtns = [];
+  TABS.forEach(t => {
+    const b = el('button', 'pf-tab'); b.type = 'button'; b.id = 'pfTab-' + t.id;
+    b.setAttribute('role', 'tab'); b.setAttribute('aria-controls', 'pfPanel-' + t.id);
+    b.append(el('span', 'pf-tl-long', t.long), el('span', 'pf-tl-short', t.short));
+    b.onclick = () => selectTab(t.id, false);
+    tl.append(b); tabBtns.push(b);
+    const p = el('div', 'pf-panel'); p.id = 'pfPanel-' + t.id; p.setAttribute('role', 'tabpanel'); p.setAttribute('aria-labelledby', b.id); p.tabIndex = 0;
+    panels[t.id] = p;
+  });
+  function selectTab(id, focus) {
+    _pfTab = id;
+    TABS.forEach((t, i) => {
+      const on = t.id === id;
+      tabBtns[i].setAttribute('aria-selected', String(on));
+      tabBtns[i].tabIndex = on ? 0 : -1;
+      panels[t.id].hidden = !on;
+    });
+    if (focus) tabBtns[TABS.findIndex(t => t.id === id)]?.focus();
+  }
+  tl.addEventListener('keydown', e => {
+    const i = tabBtns.indexOf(document.activeElement); if (i < 0) return;
+    let j = null;
+    if (e.key === 'ArrowRight') j = (i + 1) % TABS.length;
+    else if (e.key === 'ArrowLeft') j = (i - 1 + TABS.length) % TABS.length;
+    else if (e.key === 'Home') j = 0;
+    else if (e.key === 'End') j = TABS.length - 1;
+    if (j === null) return;
+    e.preventDefault(); selectTab(TABS[j].id, true);
+  });
+  const emptyBox = (text, links) => {
+    const w = el('div', 'pf-empty be-rv');
+    w.insertAdjacentHTML('beforeend', '<svg class="pf-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/></svg>');
+    w.append(el('p', null, text));
+    const row = el('div', 'pf-empty-links');
+    (links || []).forEach(l => row.append(l));
+    if (row.childElementCount) w.append(row);
+    return w;
+  };
+  const itemRow = (href, title, metaParts) => {
+    const li = el('li');
+    const a = el('a', 'pf-item'); a.href = href;
+    const b = el('span', 'pf-item-body');
+    b.append(el('span', 'pf-item-title', title));
+    const m = el('span', 'pf-item-meta');
+    metaParts.filter(Boolean).forEach(t => m.append(el('span', null, t)));
+    b.append(m);
+    a.append(b);
+    a.insertAdjacentHTML('beforeend', '<svg class="icon pf-item-go" aria-hidden="true"><use href="/assets/img/icons.svg#i-arrow-right"/></svg>');
+    li.append(a);
+    return li;
+  };
+  // Son konular
+  if (posts.length === 0) {
+    panels.konular.append(emptyBox(window._i18n?.t('prof_no_topics')||'Henüz konu açılmamış.', [linkTo('forum', L('prof_go_forum', 'Foruma git', 'Go to forum'))]));
+  } else {
+    const ul = el('ul', 'pf-list');
+    posts.forEach(p => {
+      const rc = p.replyCount || 0;
+      ul.append(itemRow(`post?id=${p.id}`, p.title || (p.text?.slice(0,60)+'…') || '', [fmtDate(p.createdAt), L('prof_n_replies', '{n} yanıt', '{n} replies').replace('{n}', rc)]));
+    });
+    panels.konular.append(ul);
+  }
+  // Son yorumlar (yanıtlar)
+  if (replies.length === 0) {
+    const txt = isOwn
+      ? L('prof_no_replies_own', `Henüz yorum yapılmamış. Forum'da ilk yorumunu yaptıktan sonra burada görünür.`, 'No replies yet. Forum replies will appear here after your first post.')
+      : (window._i18n?.t('prof_no_replies')||'Henüz yanıt verilmemiş.');
+    panels.yorumlar.append(emptyBox(txt, [linkTo('forum', L('prof_browse_topics', 'Konulara göz at', 'Browse topics'))]));
+  } else {
+    const ul = el('ul', 'pf-list');
+    replies.forEach(r => {
+      const rtxt = r.text || r.content || '';
+      ul.append(itemRow(`post?id=${r.postId}`, rtxt.length > 80 ? rtxt.slice(0,80) + '…' : rtxt, [fmtDate(r.createdAt)]));
+    });
+    panels.yorumlar.append(ul);
+  }
+  // Collab: gerçek işbirliği durumuna göre
+  const renderCollabPanel = () => {
+    const p = panels.collab; p.innerHTML = '';
+    const nameFill = s => s.replace('{ad}', first);
+    const links = [];
+    let text;
+    if (isOwn) {
+      text = collab === 'open' ? L('prof_collab_own_open', 'Projelere açık görünüyorsun. Collab istekleri Mesajlar panelinde görünür.', 'You appear open to projects. Collab requests show up in Messages.')
+        : collab === 'busy' ? L('prof_collab_own_busy', 'Şu an meşgul görünüyorsun. Gelen collab istekleri yine Mesajlar panelinde görünür.', 'You appear busy. Incoming collab requests still show up in Messages.')
+        : L('prof_collab_own_none', 'İşbirliği durumunu belirtmedin. Yukarıdaki durum düğmesinden seçebilirsin.', 'You have not set a collab status. Pick one with the status button above.');
+      if (_user) {
+        const open = el('button', 'btn-link'); open.type = 'button'; open.setAttribute('data-pf-chat', ''); open.setAttribute('aria-controls', 'pfChat');
+        open.append(el('span', null, L('prof_open_messages', 'Mesajları aç', 'Open messages')), arrow());
+        open.onclick = e => { e.stopPropagation(); openChatPanel(open); };
+        links.push(open);
+      }
+      links.push(linkTo('members', L('prof_explore_members', 'Üyeleri keşfet', 'Explore members')));
+    } else if (!_user) {
+      text = L('prof_collab_signin', 'İşbirliği durumunu görmek ve collab isteği göndermek için giriş yap.', 'Sign in to see the collab status and send a collab request.');
+      const si = el('button', 'btn btn-primary btn-sm', window._i18n?.t('auth_signin')||'Giriş Yap'); si.type = 'button'; si.onclick = doSignIn;
+      links.push(si);
+    } else {
+      text = nameFill(collab === 'open' ? L('prof_collab_other_open', '{ad} yeni projelere açık.', '{ad} is open to new projects.')
+        : collab === 'busy' ? L('prof_collab_other_busy', '{ad} şu an meşgul; yine de istek gönderebilirsin.', '{ad} is busy right now; you can still send a request.')
+        : L('prof_collab_other_none', '{ad} işbirliği durumunu belirtmemiş.', '{ad} has not set a collab status.'));
+      const cb = el('button', 'btn btn-primary btn-sm', L('prof_btn_collab', 'Collab isteği gönder', 'Send collab request')); cb.type = 'button';
+      cb.onclick = () => sendCollab(cb);
+      links.push(cb, linkTo('members', L('prof_explore_members', 'Üyeleri keşfet', 'Explore members')));
+    }
+    const box = emptyBox(text, links);
+    box.classList.remove('be-rv');
+    p.append(box);
+  };
+  renderCollabPanel();
+  collabListeners.push(() => renderCollabPanel());
+  tabsBox.append(tabsH, tl, panels.konular, panels.yorumlar, panels.collab);
+  col.append(tabsBox);
+  selectTab(TABS.some(t => t.id === _pfTab) ? _pfTab : 'konular', false);
+
+  // ── Yan sütun ─────────────────────────────────────────────────
+  // Hakkında + türler
+  const about = el('section', 'pf-card pf-about'); about.setAttribute('aria-labelledby', 'pfAboutH');
+  const aboutH = el('h2', 'pf-card-title', window._i18n?.t('prof_about_label')||'Hakkında'); aboutH.id = 'pfAboutH';
+  about.append(aboutH);
+  const aboutTxt = prof.about || (isOwn ? (window._i18n?.t('prof_about_empty')||'Kendinden bahset...') : '');
+  const genres = prof.genres || [];
+  if (aboutTxt) { const p = el('p', 'pf-about-text' + (prof.about ? '' : ' is-empty'), aboutTxt); about.append(p); }
+  if (genres.length) {
+    const ul = el('ul', 'pf-genres');
+    genres.forEach(g => ul.append(el('li', 'be-chip', g)));
+    about.append(ul);
+  }
+  if (!aboutTxt && !genres.length) {
+    about.append(el('p', 'pf-about-text is-empty', _user ? L('prof_about_none', 'Henüz bilgi eklenmemiş.', 'Nothing added yet.')
+      : L('prof_about_signin', 'Profil ayrıntılarını görmek için giriş yap.', 'Sign in to see profile details.')));
+  }
+  side.append(about);
+
+  // Görünüm ayarları (kendi profili; yalnız bu tarayıcıda saklanır)
+  if (isOwn && _user) {
+    const set = el('section', 'pf-card pf-settings'); set.setAttribute('aria-labelledby', 'pfSetH');
+    const setH = el('h2', 'pf-card-title', L('prof_appearance', 'Görünüm ayarları', 'Appearance')); setH.id = 'pfSetH';
+    const blk = el('div', 'pf-set');
+    blk.append(el('span', 'pf-lbl', L('prof_set_text', 'Yazı', 'Text')));
+    const row = el('div', 'pf-set-row');
+    const info = el('div');
+    const nm = el('span', 'pf-set-name', window._i18n?.t('prof_font_label')||'Font Netleştir'); nm.id = 'pfFontLbl';
+    const sub = el('span', 'pf-set-sub', window._i18n?.t('prof_font_sub')||'Yazıları daha büyük ve okunaklı gösterir'); sub.id = 'pfFontSub';
+    info.append(nm, sub);
+    const sw = el('button', 'be-switch'); sw.type = 'button';
+    sw.setAttribute('role', 'switch'); sw.setAttribute('aria-labelledby', 'pfFontLbl'); sw.setAttribute('aria-describedby', 'pfFontSub');
+    let fontOn = false; try { fontOn = localStorage.getItem('site-font-clear') === '1'; } catch (e) {}
+    sw.setAttribute('aria-checked', String(fontOn));
+    sw.onclick = () => {
+      const on = sw.getAttribute('aria-checked') !== 'true';
+      sw.setAttribute('aria-checked', String(on));
+      try { localStorage.setItem('site-font-clear', on ? '1' : '0'); } catch (e) {}
+      document.documentElement.classList.toggle('font-clear', on);
+    };
+    row.append(info, sw);
+    blk.append(row);
+    const prev = el('div', 'pf-preview'); prev.setAttribute('aria-hidden', 'true');
+    const prow = el('div', 'pf-preview-row');
+    prow.append(el('span', 'pf-preview-text', L('prof_preview_text', 'Yazı önizlemesi', 'Text preview')), el('span', 'pf-preview-btn', L('prof_preview_btn', 'Buton', 'Button')));
+    prev.append(el('span', 'pf-preview-lbl', L('prof_preview', 'Önizleme', 'Preview')), prow);
+    set.append(setH, blk, prev);
+    side.append(set);
+
+    // Bildirimler (zil panelindekiyle aynı veri)
+    const nc = el('section', 'pf-card pf-card--sunk pf-notifs'); nc.setAttribute('aria-labelledby', 'pfNotifH');
+    const nh = el('div', 'pf-row-head');
+    const nTitle = el('h2', 'pf-card-h', window._i18n?.t('ui_notifications')||'Bildirimler'); nTitle.id = 'pfNotifH';
+    const ra = el('button', 'pf-link-btn', L('prof_read_all', 'Tümünü oku', 'Mark all read')); ra.type = 'button';
+    ra.onclick = () => markAllNotifRead(_user.uid);
+    nh.append(nTitle, ra);
+    const none = el('p', 'pf-notif-none', L('prof_notif_empty', 'Bildirim yok', 'No notifications')); none.id = 'pfNotifNone';
+    const list = el('div', 'pf-notif-list'); list.id = 'pfNotifList';
+    nc.append(nh, none, list);
+    side.append(nc);
+  }
+
+  // Admin: başkasının profilinde ünvan ata + mail gönder
+  const adminCard = (title) => {
+    const c = el('section', 'pf-card pf-card--sunk pf-admin');
+    const tag = el('span', 'be-label be-label--sm', 'Admin'); tag.lang = 'en';
+    c.append(tag, el('h2', 'pf-card-h', title));
+    return c;
+  };
   if (isAdmin(_user) && !isOwn) {
-    const panel = document.createElement('div'); panel.className = 'admin-title-panel';
-    const lbl = document.createElement('div'); lbl.className = 'admin-title-label'; lbl.textContent = 'Ünvan Ata';
-    const grid = document.createElement('div'); grid.className = 'title-grid';
+    const panel = adminCard('Ünvan Ata');
+    const grid = el('div', 'pf-admin-grid'); grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', 'Ünvan Ata');
     let selKey = prof.title || 'none';
     TITLES.forEach(t => {
-      const btn = document.createElement('button');
-      btn.className = 'btn btn-sm btn-ghost title-opt' + (selKey === t.key ? ' sel' : '');
-      btn.innerHTML = (t.icon ? ic(t.icon) : '') + '<span>' + t.labelTr + '</span>';
+      const btn = el('button', 'be-tab title-opt'); btn.type = 'button';
+      btn.setAttribute('aria-pressed', String(selKey === t.key));
+      if (t.icon) btn.insertAdjacentHTML('beforeend', ic(t.icon));
+      btn.append(el('span', null, t.labelTr));
       btn.onclick = () => {
         selKey = t.key;
-        grid.querySelectorAll('.title-opt').forEach(b => b.classList.remove('sel'));
-        btn.classList.add('sel');
+        grid.querySelectorAll('.title-opt').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
       };
       grid.append(btn);
     });
-    const saveBtn = document.createElement('button'); saveBtn.className = 'title-save-btn';
-    saveBtn.textContent = 'Ünvanı Kaydet';
+    const saveBtn = el('button', 'btn btn-primary btn-sm', 'Ünvanı Kaydet'); saveBtn.type = 'button';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; saveBtn.textContent = '…';
       try {
@@ -1267,53 +1662,51 @@ async function renderProfile() {
       }
       saveBtn.disabled = false; saveBtn.textContent = 'Ünvanı Kaydet';
     };
-    panel.append(lbl, grid, saveBtn);
-    pCard.append(panel);
+    const saveRow = el('div', 'pf-form-row'); saveRow.append(saveBtn);
+    panel.append(grid, saveRow);
+    side.append(panel);
 
     // Admin email panel
-    const emailPanel = document.createElement('div'); emailPanel.className = 'admin-announce-panel';
-    const emailLbl = document.createElement('div'); emailLbl.className = 'admin-title-label'; emailLbl.textContent = 'Mail Gönder';
-    const emailSubject = document.createElement('input'); emailSubject.type = 'text';
-    emailSubject.className = 'input';
-    emailSubject.placeholder = 'Konu (opsiyonel)';
-    const emailTa = document.createElement('textarea'); emailTa.className = 'admin-announce-ta';
-    emailTa.placeholder = 'Mesaj içeriği...';
-    const emailRow = document.createElement('div'); emailRow.className = 'admin-row';
-    const emailSend = document.createElement('button'); emailSend.className = 'admin-announce-send'; emailSend.textContent = 'Gönder';
-    const emailStatus = document.createElement('span'); emailStatus.className = 'admin-status';
+    const emailPanel = adminCard('Mail Gönder');
+    const emailSubject = el('input', 'input input-sm'); emailSubject.type = 'text';
+    emailSubject.placeholder = 'Konu (opsiyonel)'; emailSubject.setAttribute('aria-label', emailSubject.placeholder);
+    const emailTa = el('textarea', 'textarea');
+    emailTa.placeholder = 'Mesaj içeriği...'; emailTa.setAttribute('aria-label', emailTa.placeholder);
+    const emailRow = el('div', 'pf-form-row');
+    const emailSend = el('button', 'btn btn-primary btn-sm', 'Gönder'); emailSend.type = 'button';
+    const emailStatus = el('p', 'pf-note'); emailStatus.setAttribute('role', 'status');
     emailSend.onclick = async () => {
       const msg = emailTa.value.trim();
       if (!msg) { emailTa.focus(); return; }
       const toEmail = prof.email;
-      if (!toEmail) { emailStatus.style.color='var(--crimson)'; emailStatus.textContent='Bu üyenin email adresi bulunamadı'; return; }
+      if (!toEmail) { setNote(emailStatus, 'Bu üyenin email adresi bulunamadı', 'err'); return; }
       emailSend.disabled = true; emailSend.textContent = '…';
       try {
+        await _loadFunctions();
         const fn = firebase.app().functions('europe-west1').httpsCallable('sendCustomEmail');
         await fn({ toEmail, toName: displayName, subject: emailSubject.value.trim() || 'Berkay Er Academy', message: msg });
         emailTa.value = ''; emailSubject.value = '';
-        emailStatus.style.color = 'var(--green)'; emailStatus.textContent = '✓ Mail gönderildi: ' + toEmail;
-        setTimeout(() => { emailStatus.textContent = ''; }, 4000);
+        setNote(emailStatus, '✓ Mail gönderildi: ' + toEmail, 'ok');
+        setTimeout(() => { setNote(emailStatus, ''); }, 4000);
       } catch(e) {
-        emailStatus.style.color = 'var(--crimson)'; emailStatus.textContent = 'Hata: ' + (e.code || e.message);
+        setNote(emailStatus, 'Hata: ' + (e.code || e.message), 'err');
       }
       emailSend.disabled = false; emailSend.textContent = 'Gönder';
     };
     emailRow.append(emailSend, emailStatus);
-    emailPanel.append(emailLbl, emailSubject, emailTa, emailRow);
-    pCard.append(emailPanel);
+    emailPanel.append(emailSubject, emailTa, emailRow);
+    side.append(emailPanel);
   }
 
-  // Admin announcement panel (own profile only)
+  // Admin: kendi profilinde duyuru + mesaj yönetimi
   if (isAdmin(_user) && isOwn) {
-    const annPanel = document.createElement('div'); annPanel.className = 'admin-announce-panel';
-    const annLbl = document.createElement('div'); annLbl.className = 'admin-title-label'; annLbl.textContent = 'Tüm Üyelere Duyuru Gönder';
-    const annTa = document.createElement('textarea'); annTa.className = 'admin-announce-ta';
-    annTa.placeholder = 'Yeni özellik, güncelleme veya duyuru metni...';
-    const annRow = document.createElement('div'); annRow.className = 'admin-row';
-    const annSend = document.createElement('button'); annSend.className = 'admin-announce-send'; annSend.textContent = 'Gönder';
-    const annDelAll = document.createElement('button'); annDelAll.className = 'btn btn-danger';
-    annDelAll.textContent = 'Tümünü Sil';
-    const annStatus = document.createElement('span'); annStatus.className = 'admin-status';
+    const annPanel = adminCard('Tüm Üyelere Duyuru Gönder');
+    const annTa = el('textarea', 'textarea');
+    annTa.placeholder = 'Yeni özellik, güncelleme veya duyuru metni...'; annTa.setAttribute('aria-label', 'Duyuru metni');
+    const annRow = el('div', 'pf-form-row');
+    const annSend = el('button', 'btn btn-primary btn-sm', 'Gönder'); annSend.type = 'button';
+    const annDelAll = el('button', 'btn btn-danger btn-sm', 'Tümünü Sil'); annDelAll.type = 'button';
+    const annStatus = el('p', 'pf-note'); annStatus.setAttribute('role', 'status');
     annSend.onclick = async () => {
       const txt = annTa.value.trim();
       if (!txt) { annTa.focus(); return; }
@@ -1326,40 +1719,39 @@ async function renderProfile() {
           type: 'update',
         });
         annTa.value = '';
-        annStatus.style.color = 'var(--green)'; annStatus.textContent = '✓ Duyuru gönderildi';
-        setTimeout(() => { annStatus.textContent = ''; }, 3000);
+        setNote(annStatus, '✓ Duyuru gönderildi', 'ok');
+        setTimeout(() => { setNote(annStatus, ''); }, 3000);
       } catch(e) {
-        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = 'Hata: ' + (e.code || e.message);
+        setNote(annStatus, 'Hata: ' + (e.code || e.message), 'err');
       }
       annSend.disabled = false; annSend.textContent = 'Gönder';
     };
     annDelAll.onclick = async () => {
-      if (!confirm('Tüm duyuruları silmek istediğine emin misin?')) return;
+      if (!confirm(`Tüm duyuruları silmek istediğine emin misin?`)) return;
       annDelAll.disabled = true; annDelAll.textContent = '…';
       try {
         const snap = await db.collection('announcements').get();
         const batch = db.batch();
         snap.docs.forEach(d => batch.delete(d.ref));
         await batch.commit();
-        annStatus.style.color = 'var(--green)'; annStatus.textContent = '✓ Tüm duyurular silindi';
-        setTimeout(() => { annStatus.textContent = ''; }, 3000);
+        setNote(annStatus, '✓ Tüm duyurular silindi', 'ok');
+        setTimeout(() => { setNote(annStatus, ''); }, 3000);
       } catch(e) {
-        annStatus.style.color = 'var(--crimson)'; annStatus.textContent = 'Hata: ' + (e.code || e.message);
+        setNote(annStatus, 'Hata: ' + (e.code || e.message), 'err');
       }
       annDelAll.disabled = false; annDelAll.textContent = 'Tümünü Sil';
     };
     annRow.append(annSend, annDelAll, annStatus);
-    annPanel.append(annLbl, annTa, annRow);
-    pCard.append(annPanel);
+    annPanel.append(annTa, annRow);
+    side.append(annPanel);
 
     // Delete all chats panel
-    const msgPanel = document.createElement('div'); msgPanel.className = 'admin-announce-panel';
-    const msgLbl = document.createElement('div'); msgLbl.className = 'admin-title-label'; msgLbl.textContent = 'Mesaj Yönetimi';
-    const msgDelAll = document.createElement('button'); msgDelAll.className = 'btn btn-danger';
-    msgDelAll.textContent = 'Tüm Mesajları Sil';
-    const msgStatus = document.createElement('span'); msgStatus.className = 'admin-status block';
+    const msgPanel = adminCard('Mesaj Yönetimi');
+    const msgRow = el('div', 'pf-form-row');
+    const msgDelAll = el('button', 'btn btn-danger btn-sm', 'Tüm Mesajları Sil'); msgDelAll.type = 'button';
+    const msgStatus = el('p', 'pf-note'); msgStatus.setAttribute('role', 'status');
     msgDelAll.onclick = async () => {
-      if (!confirm('Tüm sohbet mesajlarını silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
+      if (!confirm(`Tüm sohbet mesajlarını silmek istediğine emin misin? Bu işlem geri alınamaz.`)) return;
       msgDelAll.disabled = true; msgDelAll.textContent = 'Siliniyor…';
       try {
         const chatSnap = await db.collection('chats').get();
@@ -1370,77 +1762,22 @@ async function renderProfile() {
           batch.delete(chatDoc.ref);
           await batch.commit();
         }
-        msgStatus.style.color = 'var(--green)'; msgStatus.textContent = '✓ Tüm mesajlar silindi (' + chatSnap.size + ' sohbet)';
-        setTimeout(() => { msgStatus.textContent = ''; }, 4000);
+        setNote(msgStatus, '✓ Tüm mesajlar silindi (' + chatSnap.size + ' sohbet)', 'ok');
+        setTimeout(() => { setNote(msgStatus, ''); }, 4000);
       } catch(e) {
-        msgStatus.style.color = 'var(--crimson)'; msgStatus.textContent = 'Hata: ' + (e.code || e.message);
+        setNote(msgStatus, 'Hata: ' + (e.code || e.message), 'err');
       }
       msgDelAll.disabled = false; msgDelAll.textContent = 'Tüm Mesajları Sil';
     };
-    msgPanel.append(msgLbl, msgDelAll, msgStatus);
-    pCard.append(msgPanel);
+    msgRow.append(msgDelAll, msgStatus);
+    msgPanel.append(msgRow);
+    side.append(msgPanel);
   }
 
-  layout.append(pCard);
-
-  // ── Activity column ──
-  const actCol = document.createElement('div'); actCol.className = 'activity-col';
-
-  // Recent posts
-  const postsSec = document.createElement('div'); postsSec.className = 'activity-section';
-  const postTitle = document.createElement('div'); postTitle.className = 'activity-title';
-  postTitle.textContent = window._i18n?.t('prof_recent_topics')||'Son Konular';
-  postsSec.append(postTitle);
-  if (posts.length === 0) {
-    const e = document.createElement('div'); e.className = 'activity-empty'; e.textContent = window._i18n?.t('prof_no_topics')||'Henüz konu açılmamış.';
-    postsSec.append(e);
-  } else {
-    posts.forEach(p => {
-      const item = document.createElement('div'); item.className = 'activity-item';
-      item.onclick = () => location.href = `post?id=${p.id}`;
-      const t = document.createElement('div'); t.className = 'activity-item-title';
-      t.textContent = p.title || (p.text?.slice(0,60)+'…') || '';
-      const m = document.createElement('div'); m.className = 'activity-item-meta';
-      const dateEl = document.createElement('span'); dateEl.textContent = fmtDate(p.createdAt);
-      const rcEl   = document.createElement('span'); rcEl.textContent = `${p.replyCount||0}`;
-      m.append(dateEl, rcEl);
-      item.append(t, m); postsSec.append(item);
-    });
-  }
-  actCol.append(postsSec);
-
-  // Recent replies
-  const repliesSec = document.createElement('div'); repliesSec.className = 'activity-section';
-  const repliesTitle = document.createElement('div'); repliesTitle.className = 'activity-title';
-  repliesTitle.textContent = window._i18n?.t('prof_recent_replies')||'Son Yorumlar';
-  repliesSec.append(repliesTitle);
-  console.log('[render] replies.length at render:', replies.length);
-  if (replies.length === 0) {
-    const e = document.createElement('div'); e.className = 'activity-empty';
-    const _en = window._i18n?.getLang()==='en';
-    e.textContent = isOwn
-      ? (_en ? 'No replies yet. Forum replies will appear here after your first post.' : 'Henüz yorum yapılmamış. Forum\'da ilk yorumunu yaptıktan sonra burada görünür.')
-      : (window._i18n?.t('prof_no_replies')||'Henüz yanıt verilmemiş.');
-    repliesSec.append(e);
-  } else {
-    replies.forEach(r => {
-      console.log('[render] reply item:', r.id, 'text:', (r.text||'').slice(0,30), 'postId:', r.postId);
-      const item = document.createElement('div'); item.className = 'activity-item';
-      item.onclick = () => location.href = `post?id=${r.postId}`;
-      const t = document.createElement('div'); t.className = 'activity-item-title';
-      const rtxt = r.text || r.content || '';
-      t.textContent = rtxt.length > 80 ? rtxt.slice(0,80) + '…' : rtxt;
-      const m = document.createElement('div'); m.className = 'activity-item-meta';
-      const dateEl = document.createElement('span'); dateEl.textContent = fmtDate(r.createdAt);
-      m.append(dateEl); item.append(t, m); repliesSec.append(item);
-    });
-  }
-  actCol.append(repliesSec);
-
-  layout.append(actCol);
-
-  // Chat panel goes last → right column (3rd)
-  if (_chatPanelEl) layout.append(_chatPanelEl);
+  bodyGrid.append(col, side);
+  layout.append(bodyGrid);
+  window.beShell?.observeAnim?.(layout);
+  if (isOwn && _user) _renderSideNotifs(_user.uid);
 }
 
 window.bkAuth.handleRedirectResult();
@@ -1457,26 +1794,18 @@ auth.onAuthStateChanged(async user => {
     await uref.set(update, { merge: true }).catch(console.error);
   }
   await renderProfile();
+  _pfReady = true;
 });
+
+// Dil değişince (i18n.js <html lang>'ı günceller) profil yeni dille yeniden çizilir; düzenleme açıkken dokunulmaz
+let _pfLang = document.documentElement.lang;
+new MutationObserver(() => {
+  const l = document.documentElement.lang;
+  if (l === _pfLang) return;
+  _pfLang = l;
+  if (_pfReady && !_pfEditOpen) renderProfile();
+}).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] });
 </script>
 
-<nav class="bottom-nav" data-active="profile">
-  <a class="bnav-item" href="egitim" data-page="egitim"><span class="bnav-icon">🎓</span><span class="bnav-label" data-i18n="nav_egitim">Eğitim</span></a>
-  <a class="bnav-item" href="forum" data-page="forum"><span class="bnav-icon">💬</span><span class="bnav-label" data-i18n="nav_forum">Forum</span></a>
-  <a class="bnav-item" href="members" data-page="members"><span class="bnav-icon">👥</span><span class="bnav-label" data-i18n="nav_members">Üyeler</span></a>
-  <a class="bnav-item" href="ableton-lab" data-page="ableton-lab"><span class="bnav-icon">🎛️</span><span class="bnav-label" data-i18n="nav_lab">Lab</span></a>
-  <a class="bnav-item" id="bnavAdminItem" href="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label" data-i18n="nav_lessons">Ders Paneli</span></a>
-  <a class="bnav-item" id="bnavLoveBtn" href="love" style="display:none;color:#e8527a;"><span class="bnav-icon">💌</span><span class="bnav-label">Sevgim</span></a>
-  <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label" data-i18n="nav_profile">Profil</span></a>
-</nav>
-<script type="module">(function(){const a=document.querySelector('.bottom-nav')?.dataset.active;document.querySelectorAll('.bnav-item[data-page]').forEach(e=>{if(a===e.dataset.page)e.classList.add('active');});})();</script>
-<script>(function(){
-  var act=document.querySelector('.bottom-nav')?.dataset.active;
-  if(act){document.querySelectorAll('.lnav-item[data-page]').forEach(function(e){if(act===e.dataset.page)e.classList.add('active');});var pl=document.querySelector('.lnav-profile-link');if(pl&&act==='profile')pl.classList.add('active');}
-  var bAv=document.getElementById('bnavProfileAv'),lAv=document.getElementById('lnavProfileAv');
-  if(bAv&&lAv){lAv.innerHTML=bAv.innerHTML;new MutationObserver(function(){lAv.innerHTML=bAv.innerHTML;}).observe(bAv,{childList:true,subtree:true});}
-  var bAdm=document.getElementById('bnavAdminItem'),lAdm=document.getElementById('lnavAdminItem');
-  if(bAdm&&lAdm){new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName==='style')lAdm.style.display=bAdm.style.display;});}).observe(bAdm,{attributes:true,attributeFilter:['style']});}
-})();</script>
 </body>
 </html>

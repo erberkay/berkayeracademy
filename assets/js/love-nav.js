@@ -1,30 +1,23 @@
-// love-nav.js — shared nav side-effects:
-//  1) secret love button visibility (specific users + admin)
-//  2) booking nav label flips to "Deneme Dersi" + blinks for users who
-//     haven't bought a lesson yet (no reservations doc, or only cancelled
-//     lessons in it).
+// love-nav.js — kabuğun kişiye bağlı iki durumu (menüyü çizmez; theme-init.js çizer):
+//  1) "Sana Olan Sevgim" bağlantıları yalnız belirli hesaplara + admin'e görünür
+//     → <html class="be-love">; kabuktaki [data-be-love] öğeleri CSS ile açılır.
+//  2) Henüz ders almamış kullanıcı (reservations dokümanı yok, ders listesi boş
+//     ya da hepsi iptal) → <html class="be-trial">; kabuk "Ders Paneli / Dersler"
+//     etiketlerini "Deneme Dersi / Deneme" yapar ve "Ücretsiz deneme" CTA'sını gösterir.
 (function () {
   var LOVE_EMAIL  = 'elifaras12@gmail.com';
   var ADMIN_EMAIL = 'berkayer032@gmail.com';
   var BORA_EMAIL  = 'bora1881aras@gmail.com';
+  var html = document.documentElement;
 
-  // Inject blink keyframes once. The animation runs on the nav item itself,
-  // tinting it gold so the trial CTA stands out without screaming.
-  if (!document.getElementById('navTrialBlinkStyles')) {
-    var st = document.createElement('style');
-    st.id = 'navTrialBlinkStyles';
-    st.textContent =
-      '@keyframes navTrialBlink { 0%,100%{color:#e8b84b;text-shadow:0 0 8px rgba(232,184,75,.45);} 50%{color:#fff5d2;text-shadow:0 0 14px rgba(232,184,75,.85);} }' +
-      '.nav-trial-blink { animation: navTrialBlink 1.4s ease-in-out infinite; color:#e8b84b !important; font-weight:700; }' +
-      '.nav-trial-blink .bnav-icon, .nav-trial-blink .lnav-icon { animation: navTrialBlink 1.4s ease-in-out infinite; }';
-    document.head.appendChild(st);
+  function refreshShell() {
+    if (window.beShell && typeof window.beShell.refresh === 'function') {
+      try { window.beShell.refresh(); } catch (e) { /* noop */ }
+    }
   }
 
   function applyLove(show) {
-    var lnav = document.getElementById('lnavLoveBtn');
-    var bnav = document.getElementById('bnavLoveBtn');
-    if (lnav) lnav.style.display = show ? 'flex' : 'none';
-    if (bnav) bnav.style.display = show ? 'flex' : 'none';
+    html.classList.toggle('be-love', !!show);
   }
 
   // True if the user has at least one non-cancelled lesson in their
@@ -38,33 +31,28 @@
   }
 
   function applyTrialNav(firstTimer) {
-    var ids = ['bnavAdminItem', 'lnavAdminItem'];
-    ids.forEach(function (id) {
-      var el = document.getElementById(id);
-      if (!el) return;
-      // The label lives in a child <span data-i18n=...>.
-      var span = el.querySelector('[data-i18n]');
-      if (!span) return;
-      var desired = firstTimer ? 'nav_trial_lesson' : 'nav_lessons';
-      if (span.getAttribute('data-i18n') !== desired) {
-        span.setAttribute('data-i18n', desired);
-      }
-      el.classList.toggle('nav-trial-blink', !!firstTimer);
-    });
-    // Re-translate so the swap is visible immediately.
-    if (window._i18n && typeof window._i18n.apply === 'function') {
-      try { window._i18n.apply(); } catch (e) { /* noop */ }
-    }
+    html.classList.toggle('be-trial', !!firstTimer);
+    refreshShell();
   }
 
+  // Firestore SDK'sı yüklenmeyen sayfalar (ders-ableton, ders-push3) için son bilinen
+  // durum oturum boyunca saklanır (yalnız '1'/'0'; kişisel veri yok).
+  function cacheKey(uid) { return 'be-trial:' + uid; }
+  function cacheGet(uid) { try { return window.sessionStorage.getItem(cacheKey(uid)); } catch (e) { return null; } }
+  function cacheSet(uid, v) { try { window.sessionStorage.setItem(cacheKey(uid), v ? '1' : '0'); } catch (e) { /* noop */ } }
+
   function syncTrialNav(user) {
-    // Signed-out visitors don't see the booking nav item at all — leave it.
+    // Girişsiz ziyaretçi için "Ücretsiz deneme" CTA'sı zaten görünür; etiket "Ders Paneli" kalır.
     if (!user) { applyTrialNav(false); return; }
     if (user.email === ADMIN_EMAIL) { applyTrialNav(false); return; }
-    if (typeof firebase === 'undefined' || !firebase.firestore) return;
+    if (typeof firebase === 'undefined' || !firebase.firestore) {
+      var c = cacheGet(user.uid);
+      if (c !== null) applyTrialNav(c === '1');
+      return;
+    }
     firebase.firestore().collection('reservations').doc(user.uid).get()
-      .then(function (snap) { applyTrialNav(isFirstTimer(snap)); })
-      .catch(function () { /* rule denial or offline — leave default */ });
+      .then(function (snap) { var ft = isFirstTimer(snap); cacheSet(user.uid, ft); applyTrialNav(ft); })
+      .catch(function () { /* kural reddi ya da çevrimdışı — varsayılan kalır */ });
   }
 
   function tryHook() {

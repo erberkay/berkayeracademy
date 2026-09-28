@@ -2,25 +2,89 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eski Mesajları Düzeltme</title>
+    <meta name="theme-color" content="#0b0b0e">
+    <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+    <link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
     <style>
-        body { font-family: monospace; background: #0c0c16; color: #eeebe6; padding: 20px; }
-        h1 { color: #e8b84b; }
-        #log { border: 1px solid #2a2a45; padding: 10px; height: 400px; overflow-y: scroll; background: #13131f; font-size: 0.8rem; line-height: 1.6; }
-        .log-item { margin-bottom: 5px; }
-        .log-item.error { color: #b82d45; }
-        .log-item.success { color: #6fc; }
-        .log-item.info { color: #8fc8e8; }
+        /* ═══════════════════════════════════════════════════════════
+           GÖÇ ARACI (migration) — tek seferlik yönetim aracı, tasarımı yok.
+           TASARIM.md token'ları; site kabuğu bilerek yok (bağlantısız araç).
+           ═══════════════════════════════════════════════════════════ */
+        .mg { max-width:960px; margin:0 auto; padding:var(--s6) var(--page-x) var(--s8); display:flex; flex-direction:column; gap:var(--s6); }
+
+        /* Marka satırı (kabuktaki .be-brand'in küçük eşi; ana sayfaya döner) */
+        .mg-brand { display:inline-flex; align-items:center; gap:var(--s3); min-height:44px; align-self:flex-start; color:var(--fg); }
+        .mg-brand:hover { color:var(--fg); }
+        .mg-mark { position:relative; overflow:hidden; width:40px; height:40px; border-radius:var(--r-10); display:flex; align-items:center; justify-content:center; background:var(--bg-ink); border:1px solid var(--line-ctl); font-weight:700; font-size:15px; letter-spacing:-.5px; color:var(--accent); }
+        .mg-mark::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background:var(--ember-grad); background-size:200% 100%; animation:be-flow 6s linear infinite; }
+        .mg-brand-text { font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-brand); text-transform:uppercase; }
+
+        .mg-head { display:flex; flex-direction:column; gap:var(--s4); padding-top:var(--s5); border-top:1px solid var(--line-div); }
+        html .mg-head h1 { font-size:var(--fs-title); line-height:1.02; }
+        html .mg-head h1 em { color:var(--accent); }
+        .mg-lead { font-size:var(--fs-body-lg); line-height:1.65; color:var(--fg-muted); max-width:62ch; }
+        .mg-lead code, .be-callout code { font-family:var(--ff-mono); font-size:.86em; padding:2px 8px; border-radius:var(--r-6); background:var(--surface-3); color:var(--fg-soft); }
+
+        .mg-actions { display:flex; align-items:center; gap:var(--s4); flex-wrap:wrap; }
+        html .mg-actions .btn:disabled { opacity:.5; cursor:not-allowed; transform:none; box-shadow:none; }
+
+        /* İşlem günlüğü */
+        .mg-log { display:flex; flex-direction:column; gap:var(--s3); }
+        .mg-log-title { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-3); }
+        #log {
+            height:400px; overflow-y:auto; overscroll-behavior:contain;
+            padding:var(--s4) var(--s5); border-radius:var(--r-16);
+            background:var(--bg); border:1px solid var(--line);
+            font-family:var(--ff-mono); font-size:12px; line-height:1.7; color:var(--fg-2);
+            white-space:pre-wrap; overflow-wrap:anywhere;
+        }
+        #log:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        .log-item { padding:2px 0; }
+        .log-item + .log-item { border-top:1px solid var(--line-faint); }
+        .log-item.error { color:var(--err); }
+        .log-item.success { color:var(--ok); }
+        .log-item.info { color:var(--info); }
+        .log-item.warn { color:var(--warn); }
+
+        @media (max-width:600px) {
+            .mg { gap:var(--s5); padding-top:var(--s4); }
+            .mg-actions .btn { width:100%; }
+            #log { height:320px; padding:var(--s3) var(--s4); }
+        }
     </style>
 </head>
 <body>
-    <h1>Eski Sohbet Mesajlarını Güncelleme Aracı</h1>
-    <p>Bu sayfa, veritabanınızdaki eski sohbet mesajlarına eksik olan `chatId` alanını ekleyecektir.</p>
-    <p><strong>Önemli:</strong> Bu işlemi çalıştırmak için lütfen siteye giriş yapmış olduğunuzdan emin olun.</p>
-    <button id="startButton">Güncellemeyi Başlat</button>
-    <hr>
-    <h3>İşlem Günlüğü:</h3>
-    <div id="log"></div>
+<main class="mg">
+    <a class="mg-brand" href="/" aria-label="Berkay Er Academy — Ana Sayfa">
+        <span class="mg-mark" aria-hidden="true">BE</span>
+        <span class="mg-brand-text" aria-hidden="true">Berkay Er Academy</span>
+    </a>
+
+    <header class="mg-head">
+        <h1>Eski Sohbet Mesajlarını <em>Güncelleme Aracı</em></h1>
+        <p class="mg-lead">Bu sayfa, veritabanınızdaki eski sohbet mesajlarına eksik olan <code>chatId</code> alanını ekleyecektir.</p>
+    </header>
+
+    <div class="be-callout be-callout--accent">
+        <span class="be-callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2h.01"/></svg></span>
+        <p><strong>Önemli:</strong> Bu işlemi çalıştırmak için lütfen siteye giriş yapmış olduğunuzdan emin olun.</p>
+    </div>
+
+    <div class="mg-actions">
+        <button id="startButton" class="btn btn-primary btn-lg" type="button">Güncellemeyi Başlat</button>
+    </div>
+
+    <section class="mg-log" aria-labelledby="logTitle">
+        <h2 class="mg-log-title" id="logTitle">İşlem Günlüğü:</h2>
+        <div id="log" role="log" aria-live="polite" aria-labelledby="logTitle" tabindex="0"></div>
+    </section>
+</main>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>

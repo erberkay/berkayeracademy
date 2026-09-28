@@ -13,245 +13,259 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <script src="assets/js/theme-init.js?v=202609261200"></script>
-    <link rel="stylesheet" href="assets/css/themes.css?v=202609261200">
-    <script src="assets/js/auth-ui.js?v=202609261200"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+    <link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
+    <script src="assets/js/theme-init.js?v=202609271200"></script>
+    <link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
+    <script src="assets/js/auth-ui.js?v=202609271200"></script>
     <style>
-        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+        /* ═══════════════════════════════════════════════════════════════
+           SITE_1 — Ableton Lab'ın eski (öksüz) kopyası. Yayında /site_1 ve
+           /site_1.html 301 ile /ableton-lab'a gider; tasarımı yok. Yalnız
+           TASARIM.md token'ları + ortak kabuk (#beHeader/#beFooter).
+           Kabuk, #authBar ve auth-* görünümü themes.css'ten gelir.
+           Modül içlerindeki satır içi stiller (JS) eski hâliyle kalır;
+           buradaki sınıflar token'a bağlandı. Değerler themes.css'teki
+           "GEÇİCİ Lab iç yamaları" bloğuyla uyumlu (o blok silinince de
+           sayfa kendi başına doğru görünür).
+           ═══════════════════════════════════════════════════════════════ */
         :root {
-            --black:#060609; --deep:#0c0c16; --panel:#111120;
-            --gold:#e8b84b;  --amber:#d4722a; --crimson:#b82d45;
-            --ice:#8fc8e8;   --white:#eeebe6; --mid:#2a2a45;
-            --green:#6fc;    --purple:#a855f7;
-            --dim:rgba(238,235,230,0.45);
+            /* JS'in beat/aranjman hücrelerinde kullandığı boş hücre tonları */
             --cell-off:    rgba(255,255,255,.03);
             --cell-off-4:  rgba(255,255,255,.07);
             --cell-off-bd: rgba(255,255,255,.1);
             --sect-bg:     rgba(255,255,255,.03);
         }
-        body { font-family:'Space Mono',monospace; background:var(--black); color:var(--white); min-height:100vh; overflow-x:hidden; }
-        body::before {
-            content:''; position:fixed; inset:0;
-            background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-            pointer-events:none; z-index:0;
-        }
-        #scrollProgress { position:fixed; top:0; left:0; height:3px; width:0; background:linear-gradient(90deg,var(--crimson),var(--amber),var(--gold)); z-index:101; transition:width .1s; }
-        .topnav { position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(6,6,9,.92); border-bottom:1px solid var(--mid); backdrop-filter:blur(8px); height:48px; display:flex; align-items:center; justify-content:space-between; padding:0 20px; }
-        .topnav-back { color:rgba(238,235,230,.45); font-size:.65rem; letter-spacing:.08em; text-decoration:none; transition:color .15s; }
-        .topnav-back:hover { color:var(--gold); }
-        .topnav-brand { font-family:'Bebas Neue',sans-serif; font-size:1rem; color:var(--gold); letter-spacing:.08em; }
-        .container { max-width:1400px; margin:0 auto; padding:24px; padding-top:108px; position:relative; z-index:1; }
-        /* ── Module nav ── */
-        .mnav-wrap { position:fixed; top:48px; left:0; right:0; z-index:98; }
-        .mnav-wrap::after { content:''; position:absolute; top:0; bottom:0; right:0; width:32px; background:linear-gradient(to right, transparent, rgba(6,6,9,.96)); pointer-events:none; }
-        #moduleNav { width:100%; background:rgba(6,6,9,.96); border-bottom:1px solid var(--mid); backdrop-filter:blur(10px); display:flex; justify-content:space-evenly; overflow-x:auto; scrollbar-width:none; }
+        #scrollProgress { position:fixed; top:0; left:0; width:100%; height:2px; background:var(--accent); transform:scaleX(0); transform-origin:left; z-index:var(--z-progress); pointer-events:none; }
+
+        /* ── Görünüm kabı ── */
+        #app { display:block; }
+        .container { max-width:var(--page-max); margin:0 auto; padding:var(--s5) var(--page-x) var(--s8); position:relative; }
+        .container :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+        /* ── Modül sekmeleri (Lab dili: yapışkan pill şerit) ── */
+        .mnav-wrap { position:sticky; top:var(--be-sticky-top); z-index:calc(var(--z-tabbar) - 1); background:linear-gradient(180deg, var(--bg) 72%, transparent); }
+        #moduleNav { max-width:var(--page-max); margin:0 auto; padding:14px var(--page-x); display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; }
         #moduleNav::-webkit-scrollbar { display:none; }
-        .mnav-item { flex:1 0 auto; padding:0 14px; height:34px; display:flex; align-items:center; justify-content:center; gap:6px; font-family:'Space Mono',monospace; font-size:.6rem; letter-spacing:.05em; color:rgba(238,235,230,.35); cursor:pointer; border:none; background:transparent; border-bottom:2px solid transparent; transition:color .15s,border-color .15s; white-space:nowrap; }
-        @media(max-width:480px) { .mnav-item { padding:0 10px; font-size:.55rem; } }
-        .mnav-item:hover { color:rgba(238,235,230,.7); }
-        .mnav-item.active { color:var(--gold); border-bottom-color:var(--gold); }
-        .mnav-sep { width:1px; height:14px; background:var(--mid); flex-shrink:0; align-self:center; margin:0 2px; }
-        .accent-bar { height:4px; background:linear-gradient(90deg,var(--crimson),var(--amber),var(--gold)); animation:shimmer 4s ease-in-out infinite alternate; }
-        @keyframes shimmer { from{filter:brightness(1)} to{filter:brightness(1.5)} }
-        @keyframes fadeUp  { from{opacity:0;transform:translateY(32px)} to{opacity:1;transform:translateY(0)} }
+        html .mnav-item { flex-shrink:0; gap:8px; }
+        .mnav-num { font-family:var(--ff-mono); font-size:10px; opacity:.7; }
+        .mnav-sep { display:none; }
+        .accent-bar { display:none; } /* eski üst şerit: yapışkan sekme şeridi ayırıcı görevini üstlendi */
 
-        /* ── Header ── */
-        .header { background:var(--deep); padding:28px 32px; margin-bottom:28px; border:1px solid var(--mid); border-top:none; animation:fadeUp .7s cubic-bezier(.16,1,.3,1) both; }
-        .header h1 { font-family:'Bebas Neue',sans-serif; color:var(--gold); font-size:clamp(2rem,5vw,3.2rem); letter-spacing:.04em; margin-bottom:6px; }
-        .header p  { color:var(--dim); font-size:.78rem; letter-spacing:.12em; text-transform:uppercase; }
+        /* ── Ana menü: hero + modül kartları ── */
+        .header { display:flex; flex-direction:column; gap:var(--s4); padding:var(--s6) 0 var(--s7); animation:be-up .9s var(--ease-out) both; }
+        .header p { font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-eyebrow); text-transform:uppercase; color:var(--fg-2); display:flex; align-items:center; gap:12px; }
+        .header p::before { content:''; width:8px; height:8px; border-radius:50%; background:var(--accent); flex-shrink:0; }
+        html .header h1 { font-size:var(--fs-display); color:var(--fg); }
+        html .header h1 em { color:var(--accent); }
 
-        /* ── Module grid ── */
-        .module-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-top:20px; }
-        .module-card { background:var(--deep); border:1px solid var(--mid); padding:20px; border-radius:2px; cursor:pointer; position:relative; overflow:hidden; transition:border-color .2s,transform .2s; animation:fadeUp .7s cubic-bezier(.16,1,.3,1) both; }
-        .module-card:hover { border-color:var(--gold); transform:translateY(-2px); }
-        .module-card-num { position:absolute; right:12px; bottom:8px; font-family:'Bebas Neue',sans-serif; font-size:3.5rem; color:rgba(255,255,255,.04); line-height:1; pointer-events:none; }
-        .module-card-status { display:inline-block; font-size:.62rem; padding:3px 8px; border-radius:2px; margin-top:10px; letter-spacing:.08em; text-transform:uppercase; }
-        .status-done  { background:rgba(100,200,100,.15); color:var(--green); border:1px solid rgba(100,200,100,.3); }
-        .status-active{ background:rgba(232,184,75,.12);  color:var(--gold); border:1px solid rgba(232,184,75,.3); }
-        .status-idle  { background:rgba(255,255,255,.06); color:var(--dim); border:1px solid rgba(255,255,255,.1); }
+        .module-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:20px; }
+        .module-card {
+            --c:var(--accent);
+            position:relative; overflow:hidden; display:flex; flex-direction:column; gap:10px; min-height:220px;
+            padding:28px; border-radius:var(--r-20); background:var(--surface); border:1px solid var(--line);
+            color:var(--fg); text-align:left; font:inherit; cursor:pointer;
+            transition:transform var(--dur) var(--ease-out), border-color var(--dur), background var(--dur);
+            animation:be-up .9s var(--ease-out) both;
+        }
+        .module-card:nth-child(2) { animation-delay:.08s; } .module-card:nth-child(3) { animation-delay:.16s; }
+        .module-card:nth-child(4) { animation-delay:.24s; } .module-card:nth-child(5) { animation-delay:.32s; }
+        .module-card:hover { transform:translateY(-6px); border-color:rgba(232,184,75,.45); background:var(--surface-hover); }
+        .module-card-kicker { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-label-wide); text-transform:uppercase; color:var(--c); }
+        .module-card-title { font-family:var(--ff-disp); font-weight:400; font-size:var(--fs-card); line-height:1.05; letter-spacing:-.01em; }
+        .module-card-desc { font-size:var(--fs-small); line-height:1.6; color:var(--fg-muted); }
+        .module-card-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:auto; padding-top:16px; border-top:1px solid var(--line-2); }
+        .module-card-bar { flex:1; max-width:120px; height:3px; border-radius:var(--r-2); background:var(--track); overflow:hidden; }
+        .module-card-bar i { display:block; height:100%; background:var(--c); }
+        .module-card-status { display:inline-flex; align-items:center; padding:4px 10px; border-radius:var(--r-10); font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:var(--tr-mono); text-transform:uppercase; }
+        .status-done  { background:var(--ok-soft); color:var(--ok); }
+        .status-active{ background:var(--accent-soft); color:var(--accent); }
+        .status-idle  { background:var(--surface-3); color:var(--fg-2); }
 
-        /* ── Synth shell ── */
-        .synth-container { background:var(--deep); border:1px solid var(--mid); padding:24px; margin-top:20px; animation:fadeUp .6s cubic-bezier(.16,1,.3,1) both; }
-        .synth-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
-        .synth-header h2 { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.5rem,3vw,2rem); color:var(--gold); letter-spacing:.05em; }
-        .back-btn { background:none; border:1px solid var(--mid); color:var(--dim); padding:8px 16px; font-family:'Space Mono',monospace; font-size:.75rem; cursor:pointer; letter-spacing:.08em; margin:8px 0; transition:border-color .2s,color .2s; }
-        .back-btn:hover { border-color:var(--gold); color:var(--gold); }
-        .home-back { display:inline-flex; align-items:center; gap:6px; color:var(--dim); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; text-decoration:none; padding:6px 0; margin:12px 0 4px; transition:color .2s; }
-        .home-back:hover { color:var(--gold); }
-        .home-back::before { content:'←'; font-size:.85rem; }
-        .power-button { background:var(--mid); border:none; color:var(--white); padding:10px 20px; font-family:'Space Mono',monospace; font-size:.78rem; cursor:pointer; letter-spacing:.1em; transition:background .2s; }
-        .power-button.active { background:var(--crimson); }
-        .power-button:hover { filter:brightness(1.2); }
+        /* ── Modül kabuğu ── */
+        .synth-container { position:relative; margin-top:var(--s4); padding:var(--s-40); border-radius:var(--r-28); background:var(--surface-0); border:1px solid var(--line); animation:be-up .8s var(--ease-out) both; }
+        .synth-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--s5); flex-wrap:wrap; gap:12px; }
+        html .synth-header h2 { font-family:var(--ff-disp); font-weight:400; font-size:48px; line-height:1; letter-spacing:-.01em; color:var(--fg); }
+        .back-btn { position:relative; display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 18px; margin:var(--s2) 0; border-radius:var(--r-pill); border:1px solid var(--line-strong); background:transparent; color:var(--fg-soft); font-family:var(--ff); font-size:var(--fs-small); font-weight:500; cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
+        .back-btn::after { content:''; position:absolute; inset:-2px 0; }
+        .back-btn:hover { border-color:var(--accent-line-2); color:var(--fg); }
+        .home-back { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-label); text-transform:uppercase; transition:color var(--dur-fast); }
+        .home-back:hover { color:var(--accent); }
+        .home-back::before { content:'←'; font-size:13px; }
+        .power-button { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:0 18px; border:1px solid var(--line-strong); border-radius:var(--r-10); background:var(--surface-2); color:var(--fg); font-family:var(--ff); font-size:var(--fs-small); font-weight:600; cursor:pointer; transition:background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); }
+        .power-button:hover { border-color:var(--accent-line-2); }
+        .power-button.active { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
 
-        /* ── Controls grid ── */
+        /* ── Kontrol ızgarası ── */
         .controls-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin:16px 0; }
-        .control-group { background:rgba(255,255,255,.03); border:1px solid var(--mid); padding:16px; border-radius:4px; }
-        .control-group h3 { color:var(--gold); font-size:.82rem; margin-bottom:10px; letter-spacing:.05em; }
-        .slider-label { display:flex; justify-content:space-between; margin-bottom:8px; font-size:.72rem; color:var(--dim); }
-        .hint-box { background:rgba(232,184,75,.08); border:1px solid rgba(232,184,75,.2); border-left:3px solid var(--gold); padding:12px 16px; font-size:.75rem; color:var(--dim); margin:16px 0; line-height:1.6; }
+        .control-group { background:var(--surface); border:1px solid var(--line-2); padding:20px; border-radius:var(--r-16); }
+        html .control-group h3 { color:var(--fg); font-size:14px; font-weight:600; margin-bottom:10px; }
+        .slider-label { display:flex; justify-content:space-between; margin-bottom:8px; font-size:12px; color:var(--fg-muted); }
+        .hint-box { background:var(--accent-wash); border:1px solid rgba(232,184,75,.25); padding:14px 18px; border-radius:var(--r-14); font-size:13px; color:var(--fg-2); margin:16px 0; line-height:1.6; }
 
-        /* ── Custom slider ── */
-        .adsr-track { position:relative; height:24px; display:flex; align-items:center; cursor:pointer; touch-action:none; user-select:none; margin:4px 0; }
-        .adsr-track::before { content:''; position:absolute; left:0; right:0; height:4px; background:var(--mid); border-radius:2px; pointer-events:none; }
-        .adsr-track:hover .adsr-thumb { box-shadow:0 0 14px rgba(232,184,75,.8); transform:translate(-50%,-50%) scale(1.2); }
-        .adsr-fill { position:absolute; left:0; top:50%; transform:translateY(-50%); height:4px; background:linear-gradient(90deg,var(--amber),var(--gold)); border-radius:2px; pointer-events:none; }
-        .adsr-thumb { position:absolute; top:50%; transform:translate(-50%,-50%); width:16px; height:16px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px rgba(232,184,75,.5); pointer-events:none; transition:box-shadow .15s,transform .15s; }
+        /* ── Özel kaydırıcı ── */
+        .adsr-track { position:relative; height:28px; display:flex; align-items:center; cursor:pointer; touch-action:none; user-select:none; margin:4px 0; }
+        .adsr-track::before { content:''; position:absolute; left:0; right:0; height:4px; background:var(--track); border-radius:var(--r-2); pointer-events:none; }
+        .adsr-track:hover .adsr-thumb { box-shadow:0 0 0 6px var(--accent-soft); transform:translate(-50%,-50%) scale(1.1); }
+        .adsr-fill { position:absolute; left:0; top:50%; transform:translateY(-50%); height:4px; background:var(--accent); border-radius:var(--r-2); pointer-events:none; }
+        .adsr-thumb { position:absolute; top:50%; transform:translate(-50%,-50%); width:16px; height:16px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px rgba(232,184,75,.18); pointer-events:none; transition:box-shadow var(--dur-fast), transform var(--dur-fast); }
 
-        /* ── Waveform selector ── */
+        /* ── Dalga seçici, preset, şablon düğmeleri (Lab .lab-opt dili) ── */
         .waveform-selector { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
-        .wave-btn { background:var(--panel); border:1px solid var(--mid); color:var(--dim); padding:10px 8px; cursor:pointer; font-family:'Space Mono',monospace; font-size:.75rem; letter-spacing:.06em; transition:all .15s; line-height:1.4; }
-        .wave-btn:hover,.wave-btn.active { background:rgba(232,184,75,.1); border-color:var(--gold); color:var(--gold); }
+        .wave-btn, .preset-btn, .genre-btn { position:relative; min-height:40px; padding:8px 14px; border-radius:var(--r-10); border:1px solid var(--line-strong); background:transparent; color:var(--fg-soft); font-family:var(--ff); font-size:13px; font-weight:500; line-height:1.35; cursor:pointer; transition:background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); }
+        .wave-btn:hover, .preset-btn:hover, .genre-btn:hover { border-color:var(--accent-line-2); color:var(--fg); }
+        .wave-btn.active, .preset-btn.active { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+        .wave-btn:disabled, .preset-btn:disabled, .genre-btn:disabled { opacity:.5; cursor:not-allowed; }
+        .preset-row, .genre-row { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 16px; }
+        .preset-btn { background:var(--surface); }
 
-        /* ── Keyboard ── */
-        .keyboard { display:flex; gap:4px; margin-top:16px; }
-        .key { flex:1; background:var(--white); border:2px solid #aaa; height:80px; cursor:pointer; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; border-radius:0 0 4px 4px; transition:background .1s,transform .1s; min-width:0; }
-        .key:hover { background:#f0e8d0; }
-        .key.playing { background:var(--gold); transform:scaleY(.95); }
-        .key-label { font-size:.65rem; color:#333; text-align:center; line-height:1.3; font-family:'Space Mono',monospace; }
+        /* ── Klavye ── */
+        .keyboard { display:flex; gap:6px; margin-top:16px; }
+        .key { flex:1; min-width:0; height:88px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:8px; border-radius:0 0 var(--r-10) var(--r-10); background:var(--fg); border:1px solid var(--fg-muted); cursor:pointer; transition:background .1s, transform .1s; }
+        .key:hover { background:var(--fg-soft); }
+        .key.playing { background:var(--accent); transform:scaleY(.96); transform-origin:top; }
+        .key-label { font-family:var(--ff-mono); font-size:10px; line-height:1.3; text-align:center; color:var(--bg); }
 
-        /* ── ADSR explanation ── */
-        .adsr-explanation { background:rgba(255,255,255,.03); border:1px solid var(--mid); padding:20px; margin:16px 0; }
+        /* ── ADSR açıklaması, osiloskop ── */
+        .adsr-explanation { background:var(--surface); border:1px solid var(--line-2); padding:24px; margin:16px 0; border-radius:var(--r-20); }
+        .adsr-explanation svg { display:block; max-height:260px; }
+        .oscilloscope-wrap { position:relative; margin:0 0 20px; border:1px solid var(--line-2); border-radius:var(--r-16); overflow:hidden; }
+        .oscilloscope-label { position:absolute; top:8px; left:12px; z-index:1; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-3); pointer-events:none; }
+        canvas.oscilloscope { display:block; width:100%; height:88px; background:var(--bg-ink); }
 
-        /* ── Oscilloscope ── */
-        .oscilloscope-wrap { margin:0 0 16px; border:1px solid var(--mid); border-radius:6px; overflow:hidden; position:relative; }
-        .oscilloscope-label { position:absolute; top:6px; left:10px; font-size:.58rem; letter-spacing:.12em; color:rgba(232,184,75,.4); text-transform:uppercase; pointer-events:none; z-index:1; }
-        canvas.oscilloscope { display:block; width:100%; height:80px; background:#060609; }
-
-        /* ── Preset buttons ── */
-        .preset-row { display:flex; flex-wrap:wrap; gap:7px; margin:4px 0 16px; }
-        .preset-btn { background:var(--deep); border:1px solid var(--mid); color:var(--dim); padding:7px 13px; border-radius:4px; font-family:'Space Mono',monospace; font-size:.68rem; cursor:pointer; transition:border-color .15s,color .15s,box-shadow .15s; letter-spacing:.04em; }
-        .preset-btn:hover,.preset-btn.active { border-color:var(--gold); color:var(--gold); box-shadow:0 0 8px rgba(232,184,75,.25); }
-
-        /* ── Filter section ── */
-        .filter-section { background:rgba(184,45,69,.06); border:1px solid rgba(184,45,69,.25); border-radius:6px; padding:14px; margin:8px 0; grid-column:1/-1; }
-        .filter-section h3 { color:var(--crimson); margin-bottom:10px; font-size:.85rem; }
+        /* ── Filtre ── */
+        .filter-section { grid-column:1/-1; margin:8px 0; padding:20px; border-radius:var(--r-16); background:var(--err-wash); border:1px solid rgba(201,72,92,.35); }
+        html .filter-section h3 { color:var(--err); font-size:14px; font-weight:600; margin-bottom:10px; }
         .filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 
-        /* ── Theory card ── */
-        .theory-card { background:rgba(8,8,18,.9); border:1px solid rgba(232,184,75,.18); border-left:3px solid var(--gold); border-radius:4px; margin:14px 0; overflow:hidden; }
-        .theory-toggle { width:100%; background:none; border:none; color:rgba(232,184,75,.8); font-family:'Space Mono',monospace; font-size:.72rem; padding:11px 14px; text-align:left; cursor:pointer; display:flex; justify-content:space-between; letter-spacing:.06em; }
-        .theory-toggle:hover { background:rgba(232,184,75,.04); }
-        .theory-body { padding:12px 14px; font-size:.75rem; line-height:1.7; color:var(--dim); border-top:1px solid rgba(232,184,75,.1); }
-        .theory-body strong { color:var(--white); }
-        .theory-ableton { margin-top:10px; padding:8px 11px; background:rgba(232,184,75,.06); border-radius:3px; font-size:.68rem; color:var(--gold); letter-spacing:.04em; }
+        /* ── "Ableton'da Nasıl?" teori kartı (akordeon dili) ── */
+        .theory-card { margin:16px 0; border-radius:var(--r-16); background:var(--surface-0); border:1px solid var(--line); overflow:hidden; }
+        .theory-toggle { width:100%; min-height:52px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 20px; border:0; background:none; color:var(--fg); font-family:var(--ff); font-size:14px; font-weight:500; text-align:left; cursor:pointer; transition:background var(--dur-fast); }
+        .theory-toggle:hover { background:var(--surface-hi); }
+        .tc-arr { color:var(--accent); font-size:11px; }
+        .theory-body { padding:14px 20px 18px; font-size:13px; line-height:1.7; color:var(--fg-muted); border-top:1px solid var(--line-2); }
+        .theory-body strong { color:var(--fg); }
+        .theory-ableton { margin-top:12px; padding:10px 14px; border-radius:var(--r-10); background:var(--accent-wash); font-family:var(--ff-mono); font-size:11px; letter-spacing:.04em; color:var(--accent); }
 
-        /* ── Genre templates ── */
-        .genre-row { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
-        .genre-btn { background:var(--deep); border:1px solid var(--mid); color:var(--dim); padding:7px 13px; border-radius:4px; font-family:'Space Mono',monospace; font-size:.68rem; cursor:pointer; transition:border-color .15s,color .15s; letter-spacing:.04em; }
-        .genre-btn:hover { border-color:var(--amber); color:var(--amber); }
-
-        /* ── Swing row ── */
-        .swing-row { display:flex; align-items:center; gap:12px; font-size:.72rem; color:var(--dim); }
+        /* ── Swing ── */
+        .swing-row { display:flex; align-items:center; gap:12px; font-size:12px; color:var(--fg-muted); }
         .swing-row label { white-space:nowrap; min-width:60px; }
-        .swing-val { min-width:36px; color:var(--gold); font-weight:bold; }
+        .swing-val { min-width:36px; color:var(--accent); font-family:var(--ff-mono); font-weight:700; }
 
-        /* ── Beat grid ── */
+        /* ── Beat ızgarası ── */
         .beat-grid-wrap { overflow-x:auto; margin:16px 0; }
         .beat-grid { min-width:640px; }
-        .beat-row { display:grid; grid-template-columns:80px repeat(16,1fr); gap:3px; margin-bottom:3px; }
-        .beat-cell { position:relative; aspect-ratio:1; border-radius:5px; cursor:ns-resize; overflow:hidden; user-select:none; }
+        .beat-row { display:grid; grid-template-columns:88px repeat(16,1fr); gap:4px; margin-bottom:4px; }
+        .beat-cell { position:relative; height:clamp(30px, 3.2vw, 46px); border-radius:var(--r-8); cursor:ns-resize; overflow:hidden; user-select:none; }
 
-        /* ── Task panel ── */
-        .task-panel { background:var(--deep); border:1px solid var(--mid); padding:20px; margin-top:20px; animation:fadeUp .8s cubic-bezier(.16,1,.3,1) both; }
-        .task-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-        .task-panel-header span:first-child { color:var(--gold); font-size:.85rem; letter-spacing:.08em; }
-        .task-progress-label { color:var(--dim); font-size:.72rem; }
-        .task-list { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
-        .task-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:rgba(255,255,255,.03); border:1px solid var(--mid); border-radius:4px; cursor:pointer; transition:border-color .15s,background .15s; font-size:.75rem; line-height:1.5; }
-        .task-item:hover { border-color:rgba(232,184,75,.3); background:rgba(232,184,75,.04); }
-        .task-item.done { background:rgba(100,200,100,.06); border-color:rgba(100,200,100,.25); }
-        .task-check { color:var(--dim); min-width:16px; font-size:.9rem; }
-        .task-item.done .task-check { color:var(--green); }
-        .task-text { color:var(--dim); }
-        .task-item.done .task-text { color:rgba(100,200,100,.7); text-decoration:line-through; }
-        .task-progress-bar { height:4px; background:var(--mid); border-radius:2px; overflow:hidden; }
-        .task-progress-fill { height:100%; background:linear-gradient(90deg,var(--crimson),var(--amber),var(--gold)); border-radius:2px; transition:width .4s cubic-bezier(.16,1,.3,1); }
+        /* ── Görev paneli ── */
+        .task-panel { margin-top:20px; padding:28px; border-radius:var(--r-22); background:var(--surface-0); border:1px solid var(--line); animation:be-up .9s var(--ease-out) both; }
+        .task-panel-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px; }
+        .task-panel-header span:first-child { font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--accent); }
+        .task-progress-label { font-family:var(--ff-mono); font-size:12px; color:var(--fg-3); }
+        .task-list { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+        .task-item { display:flex; align-items:flex-start; gap:12px; width:100%; min-height:44px; padding:12px 16px; border-radius:var(--r-12); background:var(--bg); border:1px solid var(--line-2); color:inherit; font:inherit; font-size:13px; line-height:1.5; text-align:left; cursor:pointer; transition:border-color var(--dur-fast), background var(--dur-fast); }
+        .task-item:hover { border-color:var(--accent-line); background:var(--surface-hi); }
+        .task-item.done { background:var(--ok-soft); border-color:var(--ok-line); }
+        .task-check { min-width:16px; color:var(--fg-3); font-size:14px; line-height:1.4; }
+        .task-item.done .task-check { color:var(--ok); }
+        .task-text { color:var(--fg-2); }
+        .task-item.done .task-text { color:var(--ok); text-decoration:line-through; text-decoration-color:rgba(127,217,156,.5); }
+        .task-progress-bar { height:4px; border-radius:var(--r-2); background:var(--track); overflow:hidden; }
+        .task-progress-fill { height:100%; border-radius:var(--r-2); background:var(--accent); transition:width .4s var(--ease-out); }
+        .module-complete-badge { display:inline-flex; align-items:center; gap:6px; margin-top:12px; padding:6px 12px; border-radius:var(--r-pill); background:var(--accent-soft); border:1px solid var(--accent-line); font-family:var(--ff-mono); font-size:11px; letter-spacing:var(--tr-mono); text-transform:uppercase; color:var(--accent); }
+        .module-complete-badge svg { width:14px; height:14px; }
 
-        /* ── Mixer theory cards ── */
-        .mix-concept-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-top:14px; }
-        .mix-concept { background:rgba(255,255,255,.03); border:1px solid var(--mid); border-radius:4px; padding:14px; }
-        .mix-concept strong { color:var(--gold); display:block; margin-bottom:6px; font-size:.8rem; }
-        .mix-concept p { color:var(--dim); font-size:.72rem; line-height:1.6; }
+        /* ── Mixing kavram kartları ── */
+        .mix-concept-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-top:14px; }
+        .mix-concept { background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r-16); padding:18px; }
+        .mix-concept strong { display:block; margin-bottom:6px; font-size:14px; color:var(--accent); }
+        .mix-concept p { color:var(--fg-muted); font-size:13px; line-height:1.6; }
 
-        /* ── Arrangement sections ── */
-        .arr-section { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:4px; margin-bottom:8px; }
-
-        /* ── Interactive EQ ── */
-        .eq-axis { display:flex; justify-content:space-between; padding:2px 6px; font-size:.55rem; color:rgba(255,255,255,.22); margin-top:2px; }
-
-        /* ── Mixer strips ── */
+        /* ── Aranjman, EQ, mikser ── */
+        .arr-section { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:var(--r-12); margin-bottom:8px; }
+        .eq-axis { display:flex; justify-content:space-between; padding:2px 6px; margin-top:2px; font-family:var(--ff-mono); font-size:9px; color:var(--fg-3); }
         .mixer-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:4px; }
-        .mixer-strip { border-radius:6px; padding:14px 10px; display:flex; flex-direction:column; align-items:center; gap:10px; }
-        .vu-wrap { width:100%; height:44px; border-radius:3px; overflow:hidden; position:relative; background:rgba(0,0,0,.4); }
-        .vu-bar { position:absolute; bottom:0; left:0; right:0; height:0%; border-radius:2px; transition:height 70ms; }
-        .eq-canvas { width:100%; height:54px; border-radius:4px; background:rgba(0,0,0,.5); display:block; }
-
-        /* ── Arrangement builder ── */
+        .mixer-strip { border-radius:var(--r-16); padding:14px 10px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+        .vu-wrap { position:relative; width:100%; height:44px; border-radius:var(--r-6); overflow:hidden; background:var(--bg-ink); }
+        .vu-bar { position:absolute; bottom:0; left:0; right:0; height:0%; border-radius:var(--r-2); transition:height 70ms; }
+        .eq-canvas { display:block; width:100%; height:54px; border-radius:var(--r-8); background:var(--bg-ink); }
         .arr-build-scroll { overflow-x:auto; margin:14px 0; }
-        .arr-build-grid { display:flex; flex-direction:column; gap:3px; min-width:620px; }
-        .arr-build-row { display:grid; grid-template-columns:80px repeat(8,1fr); gap:3px; align-items:center; }
-        .arr-build-cell { height:34px; border-radius:4px; cursor:pointer; border:1px solid var(--cell-off-bd); background:var(--cell-off); transition:background .12s,border-color .12s,filter .12s; display:flex; align-items:center; justify-content:center; }
+        .arr-build-grid { display:flex; flex-direction:column; gap:4px; min-width:620px; }
+        .arr-build-row { display:grid; grid-template-columns:88px repeat(8,1fr); gap:4px; align-items:center; }
+        .arr-build-cell { height:36px; border-radius:var(--r-8); cursor:pointer; border:1px solid var(--cell-off-bd); background:var(--cell-off); transition:background .12s, border-color .12s; display:flex; align-items:center; justify-content:center; }
 
-        @media(max-width:600px) {
-            .controls-grid { grid-template-columns:1fr; }
-            .filter-grid { grid-template-columns:1fr; }
-            .keyboard .key { height:60px; }
+        /* ── Sayfa içi modal (ui.css .modal dili) ── */
+        .lab-modal-overlay { position:fixed; inset:0; z-index:var(--z-modal); display:flex; align-items:center; justify-content:center; padding:16px; background:var(--overlay); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); animation:be-fade .25s ease both; }
+        .lab-modal { position:relative; width:100%; max-width:480px; max-height:min(90vh, 720px); overflow:auto; padding:32px; border-radius:var(--r-24); background:linear-gradient(90deg,#b82d45,#d4722a,#e8b84b) top / 100% 3px no-repeat, var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-lift); animation:be-modal-in .35s var(--ease-out) both; overscroll-behavior:contain; }
+        html .lab-modal-close { position:absolute; top:18px; right:18px; }
+        .lab-modal-close svg { width:16px; height:16px; }
+        html .lab-modal h4 { font-family:var(--ff-disp); font-weight:400; font-size:32px; line-height:1.05; letter-spacing:-.01em; color:var(--fg); margin-bottom:12px; padding-right:48px; }
+        .lab-modal p, .lab-modal ul { font-size:14px; line-height:1.7; color:var(--fg-muted); }
+        .lab-modal ul { padding-left:18px; margin-top:8px; }
+        .lab-modal li { margin-bottom:6px; }
+        .lab-modal strong { color:var(--fg); }
+        .lab-modal-actions { display:flex; gap:10px; margin-top:var(--s5); justify-content:flex-end; flex-wrap:wrap; }
+
+        /* Modül tamamlandı kutlaması */
+        .lab-modal--celeb { max-width:400px; text-align:center; }
+        .lab-celeb-icon { width:72px; height:72px; margin:4px auto 16px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--accent-soft); border:1px solid var(--accent-line); color:var(--accent); animation:be-pop .5s var(--ease-out) .1s both; }
+        .lab-celeb-icon svg { width:32px; height:32px; }
+        html .lab-modal--celeb h4 { padding:0; font-size:40px; }
+        .lab-celeb-sub { font-size:14px; color:var(--fg-muted); }
+        .lab-celeb-mod { margin:8px 0 18px; font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-soft); }
+        .lab-modal--celeb .module-complete-badge { margin:0 0 24px; }
+        .lab-modal--celeb .lab-modal-actions { justify-content:center; }
+
+        /* ── Bulut kaydet/yükle satırları ── */
+        .cloud-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0; }
+        .cloud-hint { font-size:12px; color:var(--fg-faint); }
+        .saved-list { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; width:100%; }
+        .saved-item-wrap { display:flex; align-items:center; gap:2px; }
+        .saved-del { position:relative; min-width:32px; min-height:32px; padding:0 8px; border-radius:var(--r-10); border:1px solid var(--err-line); background:transparent; color:var(--err); font-family:var(--ff); font-size:12px; cursor:pointer; transition:background var(--dur-fast); }
+        .saved-del::after { content:''; position:absolute; inset:-6px -2px; }
+        .saved-del:hover { background:var(--err-soft); }
+
+        @media (max-width:1024px) {
+            .module-grid { grid-template-columns:repeat(2, minmax(0,1fr)); }
             .mixer-grid { grid-template-columns:repeat(2,1fr); }
-            .container { padding:12px; padding-top:94px; }
-            .synth-container { padding:16px 14px; }
-            .module-cards { grid-template-columns:1fr; }
-            .header { padding:20px 14px 16px; }
-            .header p { font-size:.7rem; }
         }
-        @media(max-height:500px) and (orientation:landscape) {
+        @media (max-width:600px) {
+            .container { padding-top:var(--s3); }
+            .header { padding:var(--s4) 0 var(--s6); gap:var(--s3); }
+            .module-grid { grid-template-columns:1fr; gap:12px; }
+            .module-card { min-height:0; padding:22px 20px; border-radius:var(--r-18); }
+            .synth-container { padding:20px 16px; border-radius:var(--r-20); }
+            html .synth-header h2 { font-size:32px; }
+            .controls-grid, .filter-grid { grid-template-columns:1fr; }
+            .keyboard { gap:4px; }
+            .keyboard .key { height:64px; }
+            .task-panel { padding:20px 16px; border-radius:var(--r-18); }
+            .lab-modal { padding:24px 20px; border-radius:var(--r-22); }
+            html .lab-modal h4 { font-size:28px; }
+            .lab-modal-actions { flex-direction:column-reverse; }
+            .lab-modal-actions .btn { width:100%; }
+        }
+        @media (max-height:500px) and (orientation:landscape) {
             .keyboard .key { height:44px; }
             .keyboard { margin-top:8px; }
         }
-        /* ── Auth bar ── */
-        #authBar { position:fixed; top:12px; right:16px; z-index:300; display:flex; align-items:center; gap:8px; }
-        .auth-sign-btn { background:var(--mid); border:1px solid var(--gold); color:var(--gold); font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.06em; padding:6px 14px; border-radius:4px; cursor:pointer; transition:background .18s,color .18s; }
-        .auth-sign-btn:hover { background:var(--gold); color:var(--black); }
-        .auth-user-wrap { display:flex; align-items:center; gap:8px; }
-        .auth-avatar { width:28px; height:28px; border-radius:50%; border:2px solid var(--gold); object-fit:cover; }
-        .auth-name { font-size:.65rem; color:var(--white); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .auth-out-btn { background:transparent; border:1px solid rgba(255,255,255,.2); color:var(--dim); font-family:'Space Mono',monospace; font-size:.58rem; padding:4px 8px; border-radius:4px; cursor:pointer; }
-        .auth-out-btn:hover { border-color:var(--crimson); color:var(--crimson); }
-        /* ── In-page modal ── */
-        .lab-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.78); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn .15s ease; }
-        .lab-modal { background:var(--panel); border:1px solid var(--mid); border-radius:6px; max-width:480px; width:100%; padding:24px 24px 20px; position:relative; animation:fadeUp .22s cubic-bezier(.16,1,.3,1); }
-        .lab-modal-close { position:absolute; top:10px; right:14px; background:transparent; border:none; color:var(--dim); font-size:1.1rem; cursor:pointer; line-height:1; padding:4px; }
-        .lab-modal-close:hover { color:var(--white); }
-        .lab-modal h4 { font-family:'Bebas Neue',sans-serif; letter-spacing:.08em; font-size:1.15rem; color:var(--gold); margin-bottom:12px; padding-right:24px; }
-        .lab-modal p { font-size:.76rem; color:var(--dim); line-height:1.7; }
-        .lab-modal ul { font-size:.76rem; color:var(--dim); line-height:1.7; padding-left:18px; margin-top:8px; }
-        .lab-modal li { margin-bottom:6px; }
-        .lab-modal-actions { display:flex; gap:8px; margin-top:18px; justify-content:flex-end; flex-wrap:wrap; }
-        /* ── Cloud save rows ── */
-        .cloud-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0; }
-        .cloud-hint { font-size:.62rem; color:var(--dim); opacity:.5; }
-        .saved-list { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; width:100%; }
-        .saved-item-wrap { display:flex; align-items:center; gap:2px; }
-        .saved-del { padding:3px 7px; font-size:.55rem; color:var(--crimson); border:1px solid var(--crimson); background:transparent; border-radius:3px; cursor:pointer; font-family:'Space Mono',monospace; }
-        .saved-del:hover { background:var(--crimson); color:var(--white); }
     </style>
     <!-- Firebase compat SDK (no build step required) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="assets/js/love-nav.js?v=202609271200"></script>
 </head>
 <body>
+<header class="be-header" id="beHeader" data-be-page="site_1"><div id="authBar"></div></header>
 <div id="scrollProgress"></div>
-<nav class="topnav">
-  <div style="display:flex;align-items:center;gap:14px;">
-    <a href="/" class="topnav-back">← Anasayfa</a>
-    <span style="color:var(--mid);">|</span>
-    <span class="topnav-brand">Ableton Lab</span>
-  </div>
-  <div id="authBar"></div>
-</nav>
-<div class="mnav-wrap"><nav id="moduleNav"></nav></div>
-<div id="app"></div>
+<div class="mnav-wrap"><nav id="moduleNav" aria-label="Lab modülleri"></nav></div>
+<main id="app"></main>
+
+<script src="assets/js/i18n.js?v=202609271200"></script>
 
 <script type="module">
 'use strict';
@@ -309,11 +323,18 @@ async function saveBeat(name) {
     if (!currentUser || !_db) return;
     await userDoc().collection('beats').add({
         name,
-        patterns: state.beatPatterns,
+        // Firestore iç içe dizi kabul etmez → satırlar { "0":[…], "1":[…] } haritası olarak yazılır
+        patterns: Object.fromEntries(state.beatPatterns.map((row, i) => [String(i), [...row]])),
         bpm: state.bpm,
         swing: state.swing,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
+}
+
+// Kayıtlı beat desenini diziye çevirir (eski dizi biçimi ya da satır haritası)
+function beatRows(p) {
+    if (Array.isArray(p)) return p.map(r => [...r]);
+    return Object.keys(p || {}).sort((a, b) => a - b).map(k => [...p[k]]);
 }
 
 async function loadBeats() {
@@ -359,20 +380,16 @@ function updateAuthBar() {
         bar.innerHTML = '';
         const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
         const img  = document.createElement('img');  img.className = 'auth-avatar';
-      const _bnavAv = document.getElementById('bnavProfileAv');
-      const _bnavAdmin = document.getElementById('bnavAdminItem');
-      if (_bnavAdmin) _bnavAdmin.style.display = 'flex';
-      if (_bnavAv) { if (currentUser.photoURL) { const _ai=document.createElement('img');_ai.src=currentUser.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
         img.src = currentUser.photoURL || ''; img.alt = '';
         const name = document.createElement('span'); name.className = 'auth-name';
-        name.textContent = currentUser.displayName?.split(' ')[0] || 'Kullanıcı';
+        name.textContent = currentUser.displayName?.split(' ')[0] || `Kullanıcı`;
         const out = document.createElement('button'); out.className = 'auth-out-btn';
-        out.textContent = 'Çıkış'; out.onclick = signOut;
+        out.type = 'button'; out.textContent = window._i18n?.t('auth_signout') || `Çıkış`; out.onclick = signOut;
         wrap.append(img, name, out); bar.append(wrap);
     } else {
         bar.innerHTML = '';
         const btn = document.createElement('button'); btn.className = 'auth-sign-btn';
-        btn.textContent = 'Giriş Yap'; btn.onclick = signInWithGoogle;
+        btn.type = 'button'; btn.textContent = window._i18n?.t('auth_signin') || `Giriş Yap`; btn.onclick = signInWithGoogle;
         bar.append(btn);
     }
 }
@@ -797,29 +814,61 @@ function toggleTask(mid, tid) {
 }
 
 const MODULE_NAMES = { 1: 'Synthesizer', 2: 'Beat Maker', 3: 'Mixing', 4: 'Arrangement Builder', 5: 'Mastering' };
+// Yeni metinler: i18n.js'te anahtar varsa o, yoksa (Metinler aşamasına kadar) buradaki TR/EN yedeği
+// (anahtarlar: tasarim/i18n/diger.json)
+const S1_TEXT = {
+    lab_tabs_aria:   [`Lab modülleri`, 'Lab modules'],
+    lab_close:       [`Kapat`, 'Close'],
+    lab_save_failed: [`Kaydedilemedi`, 'Could not save'],
+};
+function tt(key) {
+    const v = window._i18n?.t(key);
+    if (v && v !== key) return v;
+    const e = S1_TEXT[key] || [key, key];
+    return (window._i18n?.getLang?.() === 'en') ? e[1] : e[0];
+}
+
+// Satır içi SVG ikonlar (emoji yerine; stroke = currentColor)
+const LAB_ICONS = {
+    trophy: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/></svg>`,
+    close:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+};
+
+// Sayfa içi diyalog: Esc / dış tık / kapat düğmesi kapatır, odak içeride başlar ve açan öğeye döner
+function openLabDialog(overlay, box, focusEl) {
+    const prev = document.activeElement;
+    const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); if (prev && prev.focus) prev.focus({ preventScroll:true }); };
+    const onKey = e => {
+        if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+        if (e.key !== 'Tab') return;
+        const f = [...box.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(el => !el.disabled);
+        if (!f.length) return;
+        if (e.shiftKey && document.activeElement === f[0]) { e.preventDefault(); f[f.length-1].focus(); }
+        else if (!e.shiftKey && document.activeElement === f[f.length-1]) { e.preventDefault(); f[0].focus(); }
+    };
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.append(overlay);
+    (focusEl || box).focus({ preventScroll:true });
+    return close;
+}
+
 function showModuleCompletion(mid) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
-    const box = document.createElement('div');
-    box.style.cssText = 'background:#13131f;border:1px solid #e8b84b;border-radius:12px;padding:36px 32px;text-align:center;max-width:380px;width:100%;animation:celebIn .35s cubic-bezier(.34,1.56,.64,1);';
+    const overlay = mk('div','lab-modal-overlay');
+    const box = mk('div','lab-modal lab-modal--celeb');
+    box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true'); box.setAttribute('aria-labelledby','labCelebTitle');
     box.innerHTML = `
-        <div style="font-size:3rem;margin-bottom:12px">🏆</div>
-        <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.8rem;color:#e8b84b;letter-spacing:.06em;margin-bottom:8px">${window._i18n?.t('lab_mod_complete')||'Modül Tamamlandı!'}</div>
-        <div style="font-size:.85rem;color:rgba(238,235,230,.6);margin-bottom:4px">${window._i18n?.t('lab_congrats')||'Tebrikler!'}</div>
-        <div style="font-family:\'Bebas Neue\',sans-serif;font-size:1.1rem;color:#fff;margin-bottom:20px;letter-spacing:.04em">${MODULE_NAMES[mid] || 'Modül'} ✓</div>
-        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4);border-radius:20px;padding:6px 18px;font-size:.72rem;color:#e8b84b;margin-bottom:24px;">${window._i18n?.t('lab_badge_earned')||'🎖️ Rozet Kazanıldı'}</div>
-        <br>
-        <button id="celebClose" style="padding:10px 28px;background:#e8b84b;color:#060609;border:none;border-radius:6px;font-family:\'Space Mono\',monospace;font-size:.75rem;font-weight:bold;cursor:pointer;">${window._i18n?.t('lab_awesome')||'Harika!'}</button>
+        <div class="lab-celeb-icon">${LAB_ICONS.trophy}</div>
+        <h4 id="labCelebTitle">${window._i18n?.t('lab_mod_complete')||'Modül Tamamlandı!'}</h4>
+        <p class="lab-celeb-sub">${window._i18n?.t('lab_congrats')||'Tebrikler!'}</p>
+        <p class="lab-celeb-mod" lang="en">${MODULE_NAMES[mid] || 'Modül'} ✓</p>
+        <div class="module-complete-badge">${LAB_ICONS.trophy}<span>${window._i18n?.t('lab_badge_earned')||'Rozet Kazanıldı'}</span></div>
+        <div class="lab-modal-actions"><button id="celebClose" class="btn btn-primary" type="button">${window._i18n?.t('lab_awesome')||'Harika!'}</button></div>
     `;
     overlay.append(box);
-    document.body.append(overlay);
-    overlay.querySelector('#celebClose').onclick = () => overlay.remove();
-    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
-    if (!document.getElementById('celebKeyframes')) {
-        const s = document.createElement('style'); s.id = 'celebKeyframes';
-        s.textContent = '@keyframes celebIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}';
-        document.head.append(s);
-    }
+    const btn = box.querySelector('#celebClose');
+    const close = openLabDialog(overlay, box, btn);
+    btn.onclick = close;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -832,39 +881,47 @@ function mk(tag, cls, html) {
     return e;
 }
 
+let _labModalSeq = 0;
 function showModal(title, html, actions) {
     const overlay = mk('div','lab-modal-overlay');
     const box = mk('div','lab-modal');
-    const closeBtn = mk('button','lab-modal-close','✕');
-    closeBtn.onclick = () => overlay.remove();
-    overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
-    const h4 = mk('h4');h4.className='';h4.textContent=title;
+    const hid = 'labModalTitle' + (++_labModalSeq);
+    box.setAttribute('role','dialog'); box.setAttribute('aria-modal','true'); box.setAttribute('aria-labelledby', hid);
+    const closeBtn = mk('button','lab-modal-close', LAB_ICONS.close);
+    closeBtn.type = 'button'; closeBtn.setAttribute('aria-label', tt('lab_close'));
+    const h4 = mk('h4'); h4.id = hid; h4.textContent = title;
     const body = mk('div'); body.innerHTML = html;
     const actDiv = mk('div','lab-modal-actions');
-    (actions||[]).forEach(a => {
-        const btn = mk('button','power-button',a.label);
-        btn.onclick = () => { overlay.remove(); a.fn && a.fn(); };
-        actDiv.append(btn);
-    });
-    const closeDefault = mk('button','wave-btn','Kapat');
-    closeDefault.onclick = () => overlay.remove();
-    actDiv.append(closeDefault);
     box.append(closeBtn, h4, body, actDiv);
     overlay.append(box);
-    document.body.append(overlay);
+    const close = openLabDialog(overlay, box, closeBtn);
+    closeBtn.onclick = close;
+    (actions||[]).forEach(a => {
+        const btn = mk('button','btn btn-primary',a.label); btn.type = 'button';
+        btn.onclick = () => { close(); a.fn && a.fn(); };
+        actDiv.append(btn);
+    });
+    const closeDefault = mk('button','btn btn-subtle',tt('lab_close')); closeDefault.type = 'button';
+    closeDefault.onclick = close;
+    actDiv.append(closeDefault);
 }
 
+let _theorySeq = 0;
 function theoryCard(title, body, path) {
     const card = mk('div','theory-card');
+    const bid  = 'labTheory' + (++_theorySeq);
     const btn  = mk('button','theory-toggle',
-        `<span>💡 Ableton'da Nasıl?</span><span class="tc-arr">▼</span>`);
+        `<span>💡 Ableton'da Nasıl?</span><span class="tc-arr" aria-hidden="true">▼</span>`);
+    btn.type = 'button'; btn.setAttribute('aria-expanded','false'); btn.setAttribute('aria-controls', bid);
     const bd   = mk('div','theory-body',
         `<strong>${title}</strong><p style="margin-top:8px">${body}</p>` +
         (path ? `<div class="theory-ableton">📍 ${path}</div>` : ''));
+    bd.id = bid;
     bd.style.display = 'none';
     btn.onclick = () => {
         const open = bd.style.display !== 'none';
         bd.style.display = open ? 'none' : 'block';
+        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
         btn.querySelector('.tc-arr').textContent = open ? '▼' : '▲';
     };
     card.append(btn, bd);
@@ -875,20 +932,23 @@ function makeTaskPanel(mid) {
     const tasks  = TASKS[mid] || [];
     const panel  = mk('div','task-panel');
     const hdr    = mk('div','task-panel-header');
-    const title  = mk('span','',`📋 ${window._i18n?.t('lab_mod_tasks')||'Görevler'} ${mid}`);
+    const title  = mk('span','',`${window._i18n?.t('lab_mod_tasks')||'Görevler'} ${mid}`);
     const pLabel = mk('span','task-progress-label','');
     hdr.append(title, pLabel);
     panel.append(hdr);
 
     const list = mk('div','task-list');
     tasks.forEach(task => {
-        const item  = mk('div','task-item');
+        const item  = mk('button','task-item');
+        item.type = 'button';
         const chk   = mk('span','task-check','○');
+        chk.setAttribute('aria-hidden','true');
         const txt   = mk('span','task-text', task.text);
         item.append(chk, txt);
         const update = () => {
             const done = !!state.completedTasks[`${mid}-${task.id}`];
             item.classList.toggle('done', done);
+            item.setAttribute('aria-pressed', done ? 'true' : 'false');
             chk.textContent = done ? '✓' : '○';
         };
         update();
@@ -909,9 +969,7 @@ function makeTaskPanel(mid) {
         let badge = panel.querySelector('.module-complete-badge');
         if (p === 100) {
             if (!badge) {
-                badge = mk('div','module-complete-badge');
-                badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;background:rgba(232,184,75,.12);border:1px solid rgba(232,184,75,.4);border-radius:12px;padding:4px 12px;font-size:.62rem;color:var(--gold);margin-top:8px;';
-                badge.textContent = '🏆 ' + (window._i18n?.t('lab_mod_complete')||'Modül Tamamlandı');
+                badge = mk('div','module-complete-badge', LAB_ICONS.trophy + `<span>${window._i18n?.t('lab_mod_complete')||'Modül Tamamlandı'}</span>`);
                 panel.append(badge);
             }
         } else if (badge) { badge.remove(); }
@@ -930,23 +988,24 @@ let _m4StopAudio = null;
 let _m5StopAudio = null;
 
 const MODULE_NAV_ITEMS = [
-    { mod: null, icon: '⌂',  label: 'Menü'        },
-    { mod: 1,    icon: '🎹', label: 'Synth'        },
-    { mod: 2,    icon: '🥁', label: 'Beat Maker'   },
-    { mod: 4,    icon: '🎵', label: 'Arrangement'  },
-    { mod: 3,    icon: '🎚️', label: 'Mixing'       },
-    { mod: 5,    icon: '🎚', label: 'Mastering'    },
+    { mod: null, label: 'Menü'        },
+    { mod: 1,    label: 'Synth'        },
+    { mod: 2,    label: 'Beat Maker'   },
+    { mod: 4,    label: 'Arrangement'  },
+    { mod: 3,    label: 'Mixing'       },
+    { mod: 5,    label: 'Mastering'    },
 ];
 
 function updateModuleNav() {
     const nav = document.getElementById('moduleNav');
     if (!nav) return;
+    nav.setAttribute('aria-label', tt('lab_tabs_aria'));
     nav.innerHTML = '';
-    MODULE_NAV_ITEMS.forEach((item, i) => {
-        if (i === 1) { const sep = mk('div','mnav-sep'); nav.append(sep); }
-        const btn = mk('button','mnav-item');
-        btn.innerHTML = `<span>${item.icon}</span><span>${item.label}</span>`;
-        if (state.currentModule === item.mod) btn.classList.add('active');
+    MODULE_NAV_ITEMS.forEach(item => {
+        const btn = mk('button','be-tab mnav-item');
+        btn.type = 'button';
+        btn.innerHTML = (item.mod ? `<span class="mnav-num" aria-hidden="true">${String(item.mod).padStart(2,'0')}</span>` : '') + `<span>${item.label}</span>`;
+        if (state.currentModule === item.mod) { btn.classList.add('active'); btn.setAttribute('aria-current','true'); }
         btn.onclick = () => navigate(item.mod);
         nav.append(btn);
     });
@@ -1055,7 +1114,7 @@ function renderModule1() {
 
     // ADSR Explanation + SVG
     const adsrExp = mk('div','adsr-explanation');
-    adsrExp.innerHTML=`<h3 style="color:var(--gold);margin-bottom:12px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">📊 ADSR Zarfı — Ses Nasıl Şekillenir?</h3>
+    adsrExp.innerHTML=`<h3 style="color:var(--gold);margin-bottom:12px;font-family:var(--ff-disp);font-weight:400;font-size:28px;line-height:1.1;letter-spacing:-.01em">📊 ADSR Zarfı — Ses Nasıl Şekillenir?</h3>
     <p style="margin-bottom:12px;line-height:1.6;font-size:.82rem"><strong>ADSR</strong> — sesin doğuşunu, yükselişini, tutunma seviyesini ve sönüşünü belirleyen zarf sistemi. Sliderları sürükle, eğriyi izle.</p>`;
     const svgWrap = mk('div'); adsrExp.append(svgWrap); shell.append(adsrExp);
 
@@ -1283,8 +1342,8 @@ function renderModule2() {
             // Reset scheduler after prompt() to prevent note burst (prompt freezes JS but AudioContext keeps running)
             if(beatCtx) beatNextTime = beatCtx.currentTime + 0.05;
             saveBtn.disabled=true; saveBtn.textContent='⏳';
-            await saveBeat(name.trim());
-            saveBtn.textContent='✓ Kaydedildi';
+            try { await saveBeat(name.trim()); saveBtn.textContent='✓ Kaydedildi'; }
+            catch (e) { console.warn('saveBeat:', e); saveBtn.textContent=tt('lab_save_failed'); }
             setTimeout(()=>{ saveBtn.textContent='💾 '+(window._i18n?.t('lab_beat_save')||'Beat Kaydet'); saveBtn.disabled=false; },1400);
         };
         const loadBtn = mk('button','genre-btn','📂 Beatlerim');
@@ -1300,7 +1359,7 @@ function renderModule2() {
                 const wrap=mk('div','saved-item-wrap');
                 const btn=mk('button','genre-btn',b.name);
                 btn.onclick=()=>{
-                    state.beatPatterns=b.patterns.map(p=>[...p]);
+                    state.beatPatterns=beatRows(b.patterns);
                     state.bpm=b.bpm; state.swing=b.swing||0;
                     if(bpmInput) bpmInput.value=state.bpm;
                     if(bpmSpan)  bpmSpan.textContent=state.bpm;
@@ -1433,7 +1492,7 @@ function renderModule2() {
 // ═══════════════════════════════════════════════════════════════════
 function buildEQSection() {
     const wrap = mk('div','adsr-explanation'); wrap.style.marginTop='20px';
-    wrap.innerHTML=`<h3 style="color:var(--amber);margin-bottom:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎛️ İnteraktif 3-Band EQ</h3>`;
+    wrap.innerHTML=`<h3 style="color:var(--amber);margin-bottom:6px;font-family:var(--ff-disp);font-weight:400;font-size:28px;line-height:1.1;letter-spacing:-.01em">🎛️ İnteraktif 3-Band EQ</h3>`;
     const hint=mk('div','hint-box');
     hint.innerHTML='<strong>Noktaları sürükle</strong> → Sol/Sağ: frekans değiştir · Yukarı/Aşağı: boost/cut uygula. <span style="color:var(--gold)">●</span> LOW &nbsp;<span style="color:var(--amber)">●</span> MID &nbsp;<span style="color:var(--ice)">●</span> HIGH';
     wrap.append(hint);
@@ -1654,7 +1713,7 @@ function buildEQSection() {
 // ═══════════════════════════════════════════════════════════════════
 function buildMixerSection() {
     const wrap=mk('div','adsr-explanation'); wrap.style.marginTop='20px';
-    wrap.innerHTML=`<h3 style="color:var(--ice);margin-bottom:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎚️ İnteraktif Mixer — 6 Kanal</h3>`;
+    wrap.innerHTML=`<h3 style="color:var(--ice);margin-bottom:6px;font-family:var(--ff-disp);font-weight:400;font-size:28px;line-height:1.1;letter-spacing:-.01em">🎚️ İnteraktif Mixer — 6 Kanal</h3>`;
     const hint=mk('div','hint-box');
     hint.innerHTML=`
         <strong>6 Kanal:</strong> KICK &nbsp;·&nbsp; SNARE &nbsp;·&nbsp; CL.HAT &nbsp;·&nbsp; OP.HAT &nbsp;·&nbsp; BASS &nbsp;·&nbsp; LEAD LOOP<br>
@@ -1927,7 +1986,7 @@ function buildMixerSection() {
 // ═══════════════════════════════════════════════════════════════════
 function buildArrangementBuilder() {
     const wrap=mk('div','adsr-explanation'); wrap.style.marginTop='20px';
-    wrap.innerHTML=`<h3 style="color:var(--ice);margin-bottom:6px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎵 Arrangement Builder</h3>`;
+    wrap.innerHTML=`<h3 style="color:var(--ice);margin-bottom:6px;font-family:var(--ff-disp);font-weight:400;font-size:28px;line-height:1.1;letter-spacing:-.01em">🎵 Arrangement Builder</h3>`;
     const hint=mk('div','hint-box');
     hint.innerHTML='Kutulara tıkla → track\'i o bölüme ekle/çıkar. <strong>▶ PLAY</strong> ile playhead\'i izle (her sütun ~4 bar). Şablon yükle veya sıfırdan başla.';
     wrap.append(hint);
@@ -2148,7 +2207,7 @@ function buildArrangementBuilder() {
 // ═══════════════════════════════════════════════════════════════════
 function buildInteractiveConcepts() {
     const wrap=mk('div','adsr-explanation');
-    wrap.innerHTML=`<h3 style="color:var(--gold);margin-bottom:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">📖 Mixing Kavramları — Dene</h3>`;
+    wrap.innerHTML=`<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff-disp);font-weight:400;font-size:28px;line-height:1.1;letter-spacing:-.01em">📖 Mixing Kavramları — Dene</h3>`;
 
     let demoCtx=null;
     function getDCtx(){ if(!demoCtx) demoCtx=new(window.AudioContext||window.webkitAudioContext)(); if(demoCtx.state==='suspended') demoCtx.resume(); return demoCtx; }
@@ -2846,7 +2905,7 @@ function renderModule4() {
         {name:'Outro',      color:_sLight?'#1a5a88':'#8fc8e8', bars:'4–8 bar',  desc:'Elementleri teker teker çıkar. Fade-out veya hard stop.'},
     ];
     const wrap=mk('div','adsr-explanation');
-    wrap.innerHTML=`<h3 style="color:var(--gold);margin-bottom:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">🎵 Şarkı Yapısı Rehberi</h3>`;
+    wrap.innerHTML=`<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff-disp);font-weight:400;font-size:28px;line-height:1.1;letter-spacing:-.01em">🎵 Şarkı Yapısı Rehberi</h3>`;
     const slist=mk('div'); slist.style.cssText='display:flex;flex-direction:column;gap:8px;font-size:.78rem';
     sections.forEach(s=>{
         const row=mk('div','arr-section');
@@ -2860,7 +2919,7 @@ function renderModule4() {
 
     // Ableton workflow steps
     const flow=mk('div','adsr-explanation'); flow.style.marginTop='16px';
-    flow.innerHTML=`<h3 style="color:var(--gold);margin-bottom:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:.06em">⚡ Ableton Çalışma Akışı</h3>`;
+    flow.innerHTML=`<h3 style="color:var(--gold);margin-bottom:14px;font-family:var(--ff-disp);font-weight:400;font-size:28px;line-height:1.1;letter-spacing:-.01em">⚡ Ableton Çalışma Akışı</h3>`;
     const steps=[
         {n:'1', title:'Tempo + Key Seç', desc:'BPM ve tonaliteyi belirle. Genellikle 120-140bpm dance, 70-100bpm hip-hop.'},
         {n:'2', title:'Drum Pattern',    desc:'Beat Maker\'da ritim kur. 4-8 bar loop oluştur, groove ekle.'},
@@ -2919,7 +2978,7 @@ function buildMasteringSection_UNUSED() { // kept for reference
     function stageCard(title, color, obj, buildFn){
         const card=mk('div'); card.style.cssText=CARD_S;
         const hdr=mk('div'); hdr.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:10px;';
-        const lbl=mk('span'); lbl.style.cssText=`color:${color};font-family:'Bebas Neue',sans-serif;letter-spacing:.06em;font-size:.88rem;flex:1;`; lbl.textContent=title;
+        const lbl=mk('span'); lbl.style.cssText=`color:${color};font-family:var(--ff-disp);font-weight:400;letter-spacing:0;font-size:1.25rem;flex:1;`; lbl.textContent=title;
         const tog=document.createElement('input'); tog.type='checkbox'; tog.checked=obj.on; tog.style.cssText='accent-color:'+color+';width:14px;height:14px;cursor:pointer;';
         const togLbl=mk('span'); togLbl.style.cssText=`font-size:.52rem;letter-spacing:.06em;color:${obj.on?'#6fc':'#666'};`;
         togLbl.textContent=obj.on?'ON':'BYPASS';
@@ -3196,7 +3255,7 @@ function renderModule5() {
     // ── What is mastering ─────────────────────────────────────────
     const intro = mk('div'); intro.style.cssText = S;
     intro.innerHTML = `
-      <div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:var(--gold);font-size:1.1rem;margin-bottom:10px">🎯 Mastering Nedir?</div>
+      <div style="font-family:var(--ff-disp);font-weight:400;letter-spacing:-.01em;color:var(--gold);font-size:1.75rem;line-height:1.1;margin-bottom:10px">🎯 Mastering Nedir?</div>
       <p style="font-size:.8rem;color:var(--dim);line-height:1.8">Mastering, mikslenmiş ses dosyasını her platformda (Spotify, YouTube, vinyl, kulüp sistemi) doğru ve güçlü çalacak hale getirme sürecidir.
       Ses mühendisi gözünden bakıldığında üç temel amaç vardır: <strong style="color:var(--white)">tonal denge</strong>, <strong style="color:var(--white)">dinamik kontrol</strong> ve <strong style="color:var(--white)">seviye standardı</strong>.</p>
       <div style="margin-top:12px;padding:10px 14px;background:rgba(232,184,75,.06);border-left:2px solid var(--gold);border-radius:0 4px 4px 0;font-size:.76rem;color:var(--gold);line-height:1.7">
@@ -3206,7 +3265,7 @@ function renderModule5() {
 
     // ── Chain visual ──────────────────────────────────────────────
     const chainWrap = mk('div'); chainWrap.style.cssText = S;
-    chainWrap.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:var(--ice);font-size:1.1rem;margin-bottom:14px">⛓ Mastering Zinciri — Ableton Master Track</div>`;
+    chainWrap.innerHTML = `<div style="font-family:var(--ff-disp);font-weight:400;letter-spacing:-.01em;color:var(--ice);font-size:1.75rem;line-height:1.1;margin-bottom:14px">⛓ Mastering Zinciri — Ableton Master Track</div>`;
     const _mLight = document.documentElement.classList.contains('theme-light');
     const CHAIN_TOOLS = [
         { icon:'🔊', name:'EQ Eight', color:_mLight?'#8c6200':'#e8b84b', sub:'Giriş EQ\'su', desc:'20-30 Hz HPF — rumble sil · 16 kHz Shelf +1.5 dB — hava ekle · Sorunlu frekansları (200-400 Hz) keş', detail:'Master track\'e ilk yüklenen araç. Alçak frekanslardaki istenmeyen titreşimi (mikrofon gürültüsü, stüdyo uğultusu) temizler.' },
@@ -3222,11 +3281,11 @@ function renderModule5() {
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
             <span style="font-size:1.4rem">${t.icon}</span>
             <div>
-              <div style="font-family:'Bebas Neue',sans-serif;color:${t.color};font-size:1.05rem;letter-spacing:.06em">${t.name}</div>
+              <div style="font-family:var(--ff-disp);font-weight:400;color:${t.color};font-size:1.4rem;letter-spacing:0">${t.name}</div>
               <div style="font-size:.7rem;color:var(--dim)">${t.sub}</div>
             </div>
           </div>
-          <div style="font-size:.72rem;color:var(--dim);line-height:1.65;font-family:'Space Mono',monospace;background:rgba(0,0,0,.12);padding:8px 10px;border-radius:4px;margin-bottom:7px">${t.desc}</div>
+          <div style="font-size:.72rem;color:var(--dim);line-height:1.65;font-family:var(--ff-mono);background:rgba(0,0,0,.12);padding:8px 10px;border-radius:4px;margin-bottom:7px">${t.desc}</div>
           <div style="font-size:.74rem;color:var(--dim);line-height:1.65">${t.detail}</div>
         `;
         chainFlow.append(card);
@@ -3237,7 +3296,7 @@ function renderModule5() {
 
     // ── Ableton tools visual ───────────────────────────────────────
     const toolsWrap = mk('div'); toolsWrap.style.cssText = S;
-    toolsWrap.innerHTML = `<div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:${_mLight?'#7030c0':'#a855f7'};font-size:1.1rem;margin-bottom:14px">🔧 Ableton'daki Araçlar — Nerede Bulunur?</div>`;
+    toolsWrap.innerHTML = `<div style="font-family:var(--ff-disp);font-weight:400;letter-spacing:-.01em;color:${_mLight?'#7030c0':'#a855f7'};font-size:1.75rem;line-height:1.1;margin-bottom:14px">🔧 Ableton'daki Araçlar — Nerede Bulunur?</div>`;
     const TOOLS_DETAIL = [
         { name:'EQ Eight', path:'Audio Effects → EQ Eight', color:_mLight?'#8c6200':'#e8b84b', tip:'Her bant sürüklenebilir. Sağ tık → Bell/Shelf/Notch. Spectrum tuşu ile frekans içeriğini göster.' },
         { name:'Glue Compressor', path:'Audio Effects → Dynamics → Glue Compressor', color:_mLight?'#a04a08':'#d4722a', tip:'SSL bus compressor emulatörü. "Glue" knob ile bant tutkalını ayarla. Soft Clip ile doğal sınırlama.' },
@@ -3251,7 +3310,7 @@ function renderModule5() {
           <div style="min-width:9px;height:9px;border-radius:50%;background:${t.color};margin-top:6px;flex-shrink:0"></div>
           <div>
             <div style="font-size:.82rem;color:${t.color};font-weight:700">${t.name}</div>
-            <div style="font-size:.68rem;color:var(--dim);margin:2px 0 5px;font-family:'Space Mono',monospace">${t.path}</div>
+            <div style="font-size:.68rem;color:var(--dim);margin:2px 0 5px;font-family:var(--ff-mono)">${t.path}</div>
             <div style="font-size:.75rem;color:var(--dim);line-height:1.65">${t.tip}</div>
           </div>`;
         toolsWrap.append(row);
@@ -3261,7 +3320,7 @@ function renderModule5() {
     // ── Common mistakes ───────────────────────────────────────────
     const mistakesWrap = mk('div'); mistakesWrap.style.cssText = S;
     mistakesWrap.innerHTML = `
-      <div style="font-family:'Bebas Neue',sans-serif;letter-spacing:.08em;color:var(--crimson);font-size:1.1rem;margin-bottom:12px">⚠ Sık Yapılan Hatalar</div>
+      <div style="font-family:var(--ff-disp);font-weight:400;letter-spacing:-.01em;color:var(--crimson);font-size:1.75rem;line-height:1.1;margin-bottom:12px">⚠ Sık Yapılan Hatalar</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${[
           ['Çok yüksek mastering', 'Limiter\'ı aşırı itmek transientları yok eder — ses "yorucu" hale gelir. Hedef: −14 LUFS, zorlama.'],
@@ -3285,32 +3344,33 @@ function renderModule5() {
 function renderHome() {
     const root=mk('div','container'); root.append(mk('div','accent-bar'));
     const bk=mk('a','home-back','Anasayfa'); bk.href='index'; root.append(bk);
-    const hdr=mk('div','header','<h1>Ableton Lab</h1><p>İnteraktif Öğrenme Platformu</p>');
+    const hdr=mk('div','header','<p>İnteraktif Öğrenme Platformu</p><h1>Ableton <em>Lab</em></h1>');
     root.append(hdr);
 
     const modules=[
-        {id:1, title:'🎹 Synthesizer & ADSR',   desc:'Ses üretimi, envelope, filter ve presets',  color:'var(--gold)'},
-        {id:2, title:'🥁 Beat Yapımı',           desc:'Step sequencer, velocity, groove ve swing',  color:'var(--amber)'},
-        {id:3, title:'🎚️ Mixing Kavramları',     desc:'EQ, kompresör, reverb ve stereo field',      color:'var(--crimson)'},
-        {id:5, title:'🎚 Mastering',             desc:'HPF, shelf, compressor ve limiter zinciri',  color:'var(--gold)'},
-        {id:4, title:'🎵 Song Arrangement',      desc:'Şarkı yapısı ve Ableton çalışma akışı',     color:'var(--ice)'},
+        {id:1, kicker:'Synthesizer', title:'Synthesizer & ADSR',   desc:'Ses üretimi, envelope, filter ve presets',  color:'var(--accent)'},
+        {id:2, kicker:'Beat Maker',  title:'Beat Yapımı',          desc:'Step sequencer, velocity, groove ve swing',  color:'var(--warn)'},
+        {id:3, kicker:'Mixing',      title:'Mixing Kavramları',    desc:'EQ, kompresör, reverb ve stereo field',      color:'var(--err)'},
+        {id:5, kicker:'Mastering',   title:'Mastering',            desc:'HPF, shelf, compressor ve limiter zinciri',  color:'var(--accent)'},
+        {id:4, kicker:'Arrangement', title:'Song Arrangement',     desc:'Şarkı yapısı ve Ableton çalışma akışı',     color:'var(--info)'},
     ];
     const grid=mk('div','module-grid');
     modules.forEach(m=>{
         const pct=getProgress(m.id);
         const tasks=TASKS[m.id]||[];
         const done=tasks.filter(t=>state.completedTasks[`${m.id}-${t.id}`]).length;
-        const card=mk('div','module-card');
+        const num=String(m.id).padStart(2,'0');
+        const card=mk('button','module-card');
+        card.type='button';
+        card.style.setProperty('--c', m.color);
         card.innerHTML=`
-            <div class="module-card-num">${String(m.id).padStart(2,'0')}</div>
-            <div style="position:relative;z-index:1">
-                <div style="color:${m.color};font-size:1.05rem;font-weight:bold;margin-bottom:6px">${m.title}</div>
-                <div style="color:var(--dim);font-size:.74rem;margin-bottom:14px">${m.desc}</div>
+            <span class="module-card-kicker">${num} · <span lang="en">${m.kicker}</span></span>
+            <span class="module-card-title">${m.title}</span>
+            <span class="module-card-desc">${m.desc}</span>
+            <span class="module-card-foot">
                 <span class="module-card-status ${pct===100?'status-done':done>0?'status-active':'status-idle'}">${pct===100?(window._i18n?.t('lab_status_done')||'✓ Tamamlandı'):`${done}/${tasks.length} ${window._i18n?.t('lab_task_word')||'Görev'}`}</span>
-            </div>
-            <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--mid)">
-                <div style="height:100%;width:${pct}%;background:${m.color};border-radius:2px;transition:width .3s"></div>
-            </div>`;
+                <span class="module-card-bar" aria-hidden="true"><i style="width:${pct}%"></i></span>
+            </span>`;
         card.onclick=()=>navigate(m.id);
         grid.append(card);
     });
@@ -3332,36 +3392,13 @@ function render() {
 window.addEventListener('scroll', () => {
     const el=document.getElementById('scrollProgress');
     if (!el) return;
-    const p=window.scrollY/(document.documentElement.scrollHeight-window.innerHeight)*100;
-    el.style.width=p+'%';
+    const max=document.documentElement.scrollHeight-window.innerHeight;
+    el.style.transform=`scaleX(${max>0?Math.min(1,window.scrollY/max):0})`;
 }, {passive:true});
 
 render();
 </script>
 
-<style>
-.bottom-nav { position:fixed; bottom:0; left:0; right:0; z-index:500; background:rgba(6,6,9,.96); border-top:1px solid var(--mid); backdrop-filter:blur(16px); display:flex; height:58px; }
-.bnav-item { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; text-decoration:none; color:rgba(238,235,230,.3); transition:color .15s; position:relative; }
-.bnav-item:hover { color:rgba(238,235,230,.65); }
-.bnav-item.active { color:var(--gold); }
-.bnav-item.active::after { content:''; position:absolute; top:0; left:28%; right:28%; height:2px; background:var(--gold); border-radius:0 0 3px 3px; }
-.bnav-icon { font-size:1.15rem; line-height:1; }
-.bnav-label { font-family:'Space Mono',monospace; font-size:.48rem; letter-spacing:.04em; text-transform:uppercase; }
-    .bnav-profile { flex:1; }
-    .bnav-profile-av { width:24px; height:24px; border-radius:50%; border:1.5px solid rgba(232,184,75,.35); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:.85rem; background:rgba(255,255,255,.04); transition:border-color .15s; }
-    .bnav-profile.active .bnav-profile-av, .bnav-profile:hover .bnav-profile-av { border-color:var(--gold); }
-    .bnav-profile-av img { width:100%; height:100%; object-fit:cover; }
-    #homeLogo { position:fixed; top:10px; left:14px; z-index:400; font-family:'Bebas Neue',sans-serif; font-size:1.05rem; color:#e8b84b; text-decoration:none; letter-spacing:.06em; background:rgba(6,6,9,.7); padding:4px 9px 3px; border-radius:5px; border:1px solid rgba(232,184,75,.2); backdrop-filter:blur(8px); transition:all .15s; }
-    #homeLogo:hover { border-color:rgba(232,184,75,.5); background:rgba(232,184,75,.08); }
-</style>
-<nav class="bottom-nav" data-active="site_1">
-  <a class="bnav-item" href="egitim" data-page="egitim"><span class="bnav-icon">🎓</span><span class="bnav-label">Eğitim</span></a>
-  <a class="bnav-item" href="forum" data-page="forum"><span class="bnav-icon">💬</span><span class="bnav-label">Forum</span></a>
-  <a class="bnav-item" href="members" data-page="members"><span class="bnav-icon">👥</span><span class="bnav-label">Üyeler</span></a>
-  <a class="bnav-item" href="site_1" data-page="site_1"><span class="bnav-icon">🎛️</span><span class="bnav-label">Lab</span></a>
-  <a class="bnav-item" id="bnavAdminItem" href="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label">Ders Paneli</span></a>
-  <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label">Profil</span></a>
-</nav>
-<script type="module">(function(){const a=document.querySelector('.bottom-nav')?.dataset.active;document.querySelectorAll('.bnav-item[data-page]').forEach(e=>{if(a===e.dataset.page)e.classList.add('active');});})();</script>
+<footer class="be-footer" id="beFooter" data-be-footer="compact"></footer>
 </body>
 </html>

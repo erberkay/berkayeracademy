@@ -3,7 +3,8 @@
    so firebase.auth() is only touched inside functions. API: window.bkAuth
      openLogin({ mode:'signin'|'signup'|'reset', error }) → Promise<user|null>
      signInGoogle() · handleRedirectResult() · isEmbeddedBrowser() · errorMessage(err)
-   Markup uses ui.css components only (.modal* .btn* .input .field-label .eyebrow .toast). */
+   Markup uses ui.css components only (.modal* .btn* .input .field-label .be-or .toast);
+   the modal carries .be-auth (themes.css) for the new design's header. */
 (function () {
   'use strict';
 
@@ -14,6 +15,7 @@
   var EMBEDDED_UA = /FBAN|FBAV|FB_IAB|FBIOS|FB4A|Instagram|Barcelona|TikTok|musical_ly|BytedanceWebview|LinkedInApp|\bLine\/|MicroMessenger|Snapchat|Twitter|Pinterest|KAKAOTALK|; wv\)/i;
 
   var STR = {
+    eyebrow:       { tr: `Berkay Er Academy`, en: `Berkay Er Academy` },
     title_signin:  { tr: `Giriş Yap`, en: `Sign in` },
     title_signup:  { tr: `Hesap Oluştur`, en: `Create account` },
     title_reset:   { tr: `Şifre Sıfırla`, en: `Reset password` },
@@ -218,7 +220,7 @@
 
   function build() {
     var overlay = h('div', { class: 'modal-overlay', id: 'bkAuthOverlay' });
-    var dialog = h('div', { class: 'modal modal-sm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'bkAuthTitle', tabindex: '-1' });
+    var dialog = h('div', { class: 'modal modal-sm be-auth', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'bkAuthTitle', tabindex: '-1' });
     overlay.appendChild(dialog);
     var downOnOverlay = false;
     overlay.addEventListener('mousedown', function (e) { downOnOverlay = e.target === overlay; });
@@ -308,10 +310,10 @@
   }
 
   function webviewBlock() {
-    var copyBtn = h('button', { type: 'button', class: 'btn btn-ghost' }, [icon('copy'), t('copy_link')]);
+    var copyBtn = h('button', { type: 'button', class: 'btn btn-subtle' }, [icon('copy'), t('copy_link')]);
     copyBtn.onclick = copyLink;
     var link = browserLink();
-    var openBtn = link ? h('a', { class: 'btn btn-ghost', href: link.url }, [icon('external'), link.label]) : null;
+    var openBtn = link ? h('a', { class: 'btn btn-subtle', href: link.url }, [icon('external'), link.label]) : null;
     return [
       h('div', { class: 'toast info field' }, [h('strong', null, t('wv_title')), ' ', t('wv_body'), h('br'), t('wv_howto')]),
       h('div', { class: 'btn-row field' }, [copyBtn, openBtn])
@@ -347,7 +349,7 @@
       pwIn = h('input', { id: 'bkAuthPw', class: 'input', type: 'password', autocomplete: mode === 'signup' ? 'new-password' : 'current-password', minlength: '6', required: true, placeholder: mode === 'signup' ? t('pw_hint') : null });
       form.appendChild(field('bkAuthPw', t('password'), pwIn));
     }
-    var submit = h('button', { type: 'submit', class: 'btn btn-block ' + (googleFirst ? 'btn-ghost' : 'btn-primary') }, t('submit_' + mode));
+    var submit = h('button', { type: 'submit', class: 'btn btn-block btn-lg ' + (googleFirst ? 'btn-ghost' : 'btn-primary') }, t('submit_' + mode));
     // in-app browser: Google sits below the form, so the submit needs the .field gap
     form.appendChild(wv && mode !== 'reset' ? h('div', { class: 'field' }, submit) : submit);
     form.addEventListener('submit', function (e) {
@@ -380,13 +382,13 @@
     // Google
     var gBtn = null;
     if (mode !== 'reset') {
-      gBtn = h('button', { type: 'button', class: 'btn btn-block ' + (googleFirst ? 'btn-primary' : 'btn-ghost') }, t('google'));
+      gBtn = h('button', { type: 'button', class: 'btn btn-block btn-lg ' + (googleFirst ? 'btn-primary' : 'btn-ghost') }, t('google'));
       gBtn.onclick = function () { signInGoogle(); };
     }
 
     // secondary actions
     function modeBtn(label, target) {
-      var b = h('button', { type: 'button', class: 'btn btn-ghost btn-sm' }, label);
+      var b = h('button', { type: 'button', class: 'btn btn-subtle btn-sm' }, label);
       b.onclick = function () { if (M && !M.busy) render(target, { focusInput: true }); };
       return b;
     }
@@ -400,12 +402,12 @@
       body.append(M.errBox, M.okBox, form);
     } else if (wv) {
       webviewBlock().forEach(function (n) { body.appendChild(n); });
-      body.append(M.errBox, form, h('div', { class: 'eyebrow field' }, t('or')), gBtn);
+      body.append(M.errBox, form, h('div', { class: 'be-or field' }, t('or')), gBtn);
     } else {
-      body.append(M.errBox, h('div', { class: 'field' }, gBtn), h('div', { class: 'eyebrow field' }, t('or_email')), form);
+      body.append(M.errBox, h('div', { class: 'field' }, gBtn), h('div', { class: 'be-or field' }, t('or_email')), form);
     }
 
-    d.append(closeBtn, h('div', { class: 'modal-title', id: 'bkAuthTitle' }, t('title_' + mode)), body, actions);
+    d.append(closeBtn, h('div', { class: 'modal-eyebrow', 'aria-hidden': 'true' }, t('eyebrow')), h('h2', { class: 'modal-title', id: 'bkAuthTitle' }, t('title_' + mode)), body, actions);
 
     if (opts.error) report(opts.error);
     var target = opts.focusInput ? (nameIn || emailIn) : (googleFirst ? gBtn : d);

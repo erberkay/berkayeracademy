@@ -17,222 +17,344 @@
 <link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
 <link rel="manifest" href="/site.webmanifest">
-<link rel="stylesheet" href="assets/css/ui.css?v=202609261200">
-<script src="assets/js/theme-init.js?v=202609261200"></script>
-<link rel="stylesheet" href="assets/css/themes.css?v=202609261200">
-<script src="assets/js/auth-ui.js?v=202609261200"></script>
+<link rel="stylesheet" href="assets/css/ui.css?v=202609271200">
+<script src="assets/js/theme-init.js?v=202609271200"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202609271200">
+<script src="assets/js/auth-ui.js?v=202609271200"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
-/* ── Forum: page layout only. Controls, inputs, badges and toasts come from ui.css; the nav shell from themes.css. ── */
+/* ── Forum (tasarım: Forum + M_Forum). Bileşenler ui.css'ten; burada yalnız sayfa yerleşimi. ── */
 
-/* ── Page top bar (<1024; theme-init.js mounts the hamburger inside it) ── */
-.topnav { position:fixed; top:0; left:0; right:0; z-index:var(--z-nav); height:var(--topbar-h); display:flex; align-items:center; padding:0 16px; background:var(--bg); border-bottom:1px solid var(--line); }
-.topnav-left { display:flex; align-items:center; gap:12px; min-width:0; }
-.topnav-back { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-2); text-decoration:none; white-space:nowrap; }
-.topnav-back:hover { color:var(--accent); }
-.topnav-sep { color:var(--line); }
-.topnav-brand { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.2em; text-transform:uppercase; color:var(--fg); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (min-width:1024px) { .topnav { display:none; } }
-
-/* header */
-.banner { padding-top:calc(var(--topbar-h) + var(--s5)); border-bottom:1px solid var(--line); }
-.banner-inner { max-width:var(--maxw-wide); margin:0 auto; padding:0 var(--gutter) var(--s5); display:flex; align-items:flex-end; gap:var(--s5); }
-.banner-info h1 { font-family:var(--ff-disp); font-size:var(--fs-h2); font-weight:400; line-height:var(--lh-tight); color:var(--fg); margin-bottom:6px; }
-.banner-info p { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); }
-
-/* layout */
-.layout { max-width:var(--maxw-wide); margin:0 auto; padding:var(--s5) var(--gutter) var(--s8); display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:var(--s5); align-items:start; }
-.new-post-btn { margin-bottom:var(--s4); }
-.filter-bar { display:flex; gap:var(--s2); margin-bottom:var(--s3); flex-wrap:wrap; }
-
-/* post card */
-.pcard { background:var(--surface); border:1px solid var(--line); margin-bottom:var(--s3); cursor:pointer; transition:border-color .15s; }
-.pcard:hover { border-color:var(--fg-3); }
-.pcard.is-solved { border-left:2px solid var(--ok); }
-.pcard.is-pinned { border-left:2px solid var(--accent); }
-.pcard-body { padding:var(--s4) var(--s5) var(--s3); display:flex; gap:var(--s4); align-items:flex-start; }
-.pcard-avatar, .pcard-avatar-placeholder { width:40px; height:40px; border-radius:50%; flex-shrink:0; background:var(--surface-2); border:1px solid var(--line); object-fit:cover; }
-.pcard-avatar-placeholder { display:flex; align-items:center; justify-content:center; font-family:var(--ff-mono); font-size:var(--fs-small); color:var(--accent); }
-.pcard-content { flex:1; min-width:0; }
-.pcard-meta { display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap; font-family:var(--ff-mono); font-size:var(--fs-label); }
-.pcard-author { color:var(--accent); }
-.pcard-author:hover { text-decoration:underline; }
-.is-admin::after { content:'admin'; margin-left:6px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); }
-.pcard-date { color:var(--fg-3); }
-.pcard-title { font-family:var(--ff-disp); font-size:22px; font-weight:400; color:var(--fg); margin-bottom:6px; line-height:1.25; }
-.pcard-text { font-size:var(--fs-small); color:var(--fg-2); line-height:var(--lh-body); word-break:break-word; }
-.pcard-actions { padding:0 var(--s5) var(--s4) 80px; display:flex; gap:var(--s2); align-items:center; flex-wrap:wrap; }
-.pcard-actions .pcard-delete-btn { margin-left:auto; }
-.pcard-actions .pcard-like-btn.liked { border-color:var(--err); color:var(--err); background:var(--err-soft); }
-.pcard-actions .pcard-pin-btn.active { border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
-
-/* replies inside a card */
-.replies-wrap { border-top:1px solid var(--line); background:var(--surface-2); }
-.replies-list { padding:0 var(--s5); }
-.reply-item { border-bottom:1px solid var(--line); padding:var(--s3) 0; }
-.reply-item:last-child { border-bottom:0; }
-.reply-meta { display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap; font-family:var(--ff-mono); font-size:var(--fs-label); }
-.reply-author { color:var(--info); }
-.reply-author.is-admin { color:var(--accent); }
-.reply-date { color:var(--fg-3); }
-.reply-text { font-size:var(--fs-small); color:var(--fg); line-height:var(--lh-body); word-break:break-word; }
-.reply-del { margin-left:auto; background:none; border:0; padding:0; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; text-transform:uppercase; cursor:pointer; }
-.reply-del:hover { color:var(--err); }
-.reply-form { padding:var(--s3) var(--s5) var(--s4); border-top:1px solid var(--line); display:flex; gap:var(--s3); align-items:flex-end; }
-.reply-form .reply-ta { flex:1; min-height:64px; }
-.replies-closed { padding:10px var(--s5) var(--s3); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.06em; color:var(--ok); }
-.loading-replies { padding:var(--s3) var(--s5); font-size:var(--fs-small); color:var(--fg-3); }
-
-/* search */
-.search-wrap { position:relative; margin-bottom:var(--s3); }
-.search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--fg-3); pointer-events:none; display:flex; }
-.search-icon .icon { width:16px; height:16px; }
-.search-wrap .search-input { padding-left:38px; padding-right:40px; }
-.search-clear { position:absolute; right:4px; top:50%; transform:translateY(-50%); width:var(--ctl-sm); height:var(--ctl-sm); display:none; align-items:center; justify-content:center; background:none; border:0; color:var(--fg-3); cursor:pointer; }
-.search-clear.visible { display:inline-flex; }
-.search-clear:hover { color:var(--fg); }
-
-/* inline edit */
-.inline-edit-form { padding:0 var(--s5) var(--s4) 80px; }
-.inline-edit-actions { display:flex; gap:var(--s2); margin-top:var(--s2); }
-
-/* login wall / empty */
-.login-wall { background:var(--surface); border:1px solid var(--line); padding:var(--s7) var(--s5); text-align:center; }
-.login-wall p { font-size:var(--fs-body); color:var(--fg-2); line-height:var(--lh-body); margin-bottom:var(--s4); }
-.empty-state { text-align:center; padding:var(--s7) var(--s4); color:var(--fg-3); font-size:var(--fs-small); }
-
-/* sidebar */
-.sidebar { display:flex; flex-direction:column; gap:var(--s4); }
-.sc { background:var(--surface); border:1px solid var(--line); }
-.sc-head { padding:var(--s3) var(--s4); border-bottom:1px solid var(--line); }
-.sc-title { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.14em; text-transform:uppercase; color:var(--fg-2); }
-.sc-title.gold { color:var(--accent); }
-.sc-body { padding:var(--s4); }
-.sc-body p { font-size:var(--fs-small); color:var(--fg-2); line-height:var(--lh-body); margin-bottom:var(--s3); }
-.sc-empty { font-size:var(--fs-small); color:var(--fg-3); }
-.sc-stat { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line-2); font-size:var(--fs-small); }
-.sc-stat:last-of-type { border-bottom:0; }
-.sc-stat-lbl { color:var(--fg-2); }
-.sc-stat-val { color:var(--fg); font-family:var(--ff-mono); }
-.sc-rules { list-style:none; }
-.sc-rules li { font-size:var(--fs-small); color:var(--fg-2); padding:8px 0; border-bottom:1px solid var(--line-2); line-height:1.6; display:flex; gap:10px; }
-.sc-rules li:last-child { border-bottom:0; }
-.sc-rules li::before { content:'\2014'; color:var(--accent); flex-shrink:0; }
-.member-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line-2); text-decoration:none; }
-.member-row:last-of-type { border-bottom:0; }
-.member-row:hover .member-name { color:var(--accent); }
-.member-av, .member-av-ph { width:32px; height:32px; border-radius:50%; object-fit:cover; flex-shrink:0; background:var(--surface-2); border:1px solid var(--line); }
-.member-av-ph { display:flex; align-items:center; justify-content:center; font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--accent); }
-.member-info { min-width:0; }
-.member-name { font-size:var(--fs-small); font-weight:500; color:var(--fg); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; transition:color .15s; }
-.member-title-sm { display:flex; align-items:center; gap:5px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.06em; text-transform:uppercase; margin-top:2px; }
-.member-title-sm .icon { width:12px; height:12px; }
-.sidebar .sc-all-btn { width:100%; margin-top:var(--s3); }
-
-/* ── Toast stack (look comes from ui.css .toast) ── */
-.toast-container { position:fixed; bottom:var(--s5); right:var(--s5); z-index:var(--z-toast); display:flex; flex-direction:column-reverse; gap:var(--s2); pointer-events:none; max-width:min(92vw,360px); }
-@media (max-width:600px) { .toast-container { left:var(--s4); right:var(--s4); bottom:var(--s4); max-width:none; } }
-
-/* breakpoints */
-@media (max-width:900px) { .layout { grid-template-columns:1fr; } }
-@media (max-width:600px) {
-  .banner-inner { padding-bottom:var(--s4); }
-  .pcard-body { padding:var(--s4); }
-  .pcard-actions, .inline-edit-form { padding:0 var(--s4) var(--s4); }
-  .replies-list { padding:0 var(--s4); }
-  .reply-form { padding:var(--s3) var(--s4) var(--s4); flex-wrap:wrap; }
-  .reply-form .reply-send { width:100%; }
-  .replies-closed, .loading-replies { padding-left:var(--s4); padding-right:var(--s4); }
+/* ── Hero ── */
+.fr-hero {
+  position:relative; overflow:hidden;
+  display:flex; justify-content:space-between; align-items:flex-end; gap:var(--s-40);
+  padding:72px max(var(--page-x), calc((100% - var(--page-max)) / 2 + var(--page-x))) var(--s7);
+  border-bottom:1px solid var(--line-div);
 }
-@media (min-width:1024px) { .banner { padding-top:var(--s6); } }
+/* tasarım: sağ üstte süzülen gül rengi ışık (tek seferlik değer) */
+.fr-glow { position:absolute; right:0; top:-380px; width:700px; height:700px; border-radius:50%; pointer-events:none; background:radial-gradient(closest-side, rgba(184,45,69,.22), transparent 75%); }
+.fr-hero-text { position:relative; flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:18px; }
+/* tasarım: Forum h1 96px (masaüstü) → 52px (≤600); --fs-display 88px'ten büyük, sayfaya özgü */
+html .fr-h1 { font-size:clamp(52px, calc(52px + (100vw - 600px) * .0524), 96px); line-height:.92; }
+/* metin zaten BÜYÜK harf (i18n): CSS büyütmesi Türkçede "MIX"i "MİX" yapardı */
+.fr-sub { font-family:var(--ff-mono); font-size:13px; letter-spacing:var(--tr-mono); color:var(--fg-muted); }
+.fr-hero-actions { position:relative; flex-shrink:0; display:flex; align-items:center; gap:var(--s3); }
+.fr-search { width:320px; }
+.fr-search input { padding-right:52px; }
+.fr-search input::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
+.fr-search-clear { position:absolute; right:4px; top:50%; transform:translateY(-50%); width:var(--ctl-md); height:var(--ctl-md); border-radius:50%; border:0; background:transparent; color:var(--fg-3); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:color var(--dur-fast), background var(--dur-fast); }
+.fr-search-clear:hover { color:var(--fg); background:var(--surface-hi); }
+.fr-search-clear svg { width:14px; height:14px; }
+html .fr-new { gap:8px; padding:0 22px; }
+.fr-new svg { width:14px; height:14px; }
+
+/* ── Yerleşim ── */
+.fr-layout { max-width:var(--page-max); margin:0 auto; padding:var(--s-40) var(--page-x) var(--s8); display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:var(--s-40); align-items:start; }
+/* sığmazsa önce durum filtresi alt satıra iner, sekmeler ancak daha dar kapta sarılır */
+.fr-feed { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s-20) var(--s3); min-width:0; }
+
+/* filtreler: kategori sekmeleri + durum (mono) */
+.fr-cats { flex:0 1 auto; max-width:100%; min-width:0; }
+.fr-status { display:flex; align-items:center; gap:2px; margin-left:auto; }
+.fr-sbtn { display:inline-flex; align-items:center; gap:8px; height:var(--ctl-md); padding:0 6px; border:0; border-radius:var(--r-pill); background:transparent; color:var(--fg-3); font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-mono); text-transform:uppercase; cursor:pointer; white-space:nowrap; transition:color var(--dur-fast); }
+.fr-sbtn:hover { color:var(--fg-soft); }
+.fr-sbtn[aria-pressed="true"] { color:var(--fg); }
+.fr-sbtn[aria-pressed="true"]::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); }
+.fr-sbtn-n { color:var(--fg-faint); }
+.fr-sbtn[aria-pressed="true"] .fr-sbtn-n { color:var(--accent); }
+
+/* liste kabı */
+.fr-listwrap { flex:1 1 100%; position:relative; min-width:0; }
+.fr-list { border-radius:var(--r-24); border:1px solid var(--line); background:var(--surface-0); overflow:hidden; }
+
+/* satır: 48 | içerik | kategori | yanıt */
+.fr-row {
+  position:relative; display:grid; grid-template-columns:48px minmax(0,1fr) 112px 112px;
+  grid-template-areas:"av main cat rep" ". acts acts acts" ". edit edit edit" ". rp rp rp";
+  column-gap:var(--s-20); align-items:center; padding:22px 28px; border-bottom:1px solid var(--line-2);
+  cursor:pointer; transition:background var(--dur-fast);
+}
+.fr-row:last-child { border-bottom:0; }
+.fr-row:hover { background:var(--surface-hi); }
+.fr-row.is-pinned { box-shadow:inset 3px 0 0 var(--accent); }
+.fr-row.is-solved { box-shadow:inset 3px 0 0 var(--ok-strong); }
+.fr-av { grid-area:av; width:48px; height:48px; border-radius:50%; overflow:hidden; background:var(--surface-4); color:var(--fg); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:var(--fs-ui); text-decoration:none; }
+.fr-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.fr-av.is-admin { background:var(--accent); color:var(--accent-ink); font-weight:700; }
+.fr-main { grid-area:main; min-width:0; }
+html .fr-title { font-size:var(--fs-h3); font-weight:600; line-height:1.35; }
+.fr-title a { color:var(--fg); }
+.fr-title a:hover { color:var(--accent-hover); }
+.fr-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:8px; }
+.fr-author { font-size:var(--fs-small); font-weight:600; color:var(--fg-soft); }
+a.fr-author:hover { color:var(--accent); }
+.fr-date { font-family:var(--ff-mono); font-size:11px; color:var(--fg-3); }
+.fr-text { margin-top:8px; font-size:var(--fs-ui); line-height:1.55; color:var(--fg-muted); word-break:break-word; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; }
+.fr-catcol { grid-area:cat; min-width:0; }
+.fr-cat { display:inline-flex; align-items:center; max-width:100%; height:26px; padding:0 10px; border-radius:var(--r-pill); background:var(--surface-3); color:var(--fg-soft); font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fr-cat--inline { display:none; }
+.fr-repcol { grid-area:rep; justify-self:end; }
+.fr-rep-btn { display:inline-flex; align-items:center; gap:8px; height:var(--ctl-md); padding:0 14px; border-radius:var(--r-pill); border:1px solid transparent; background:transparent; color:var(--fg-2); font-size:var(--fs-small); font-weight:500; white-space:nowrap; cursor:pointer; transition:color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast); }
+.fr-rep-btn svg { width:16px; height:16px; }
+.fr-rep-btn:hover { color:var(--fg); border-color:var(--line-strong); }
+.fr-rep-btn[aria-expanded="true"] { color:var(--accent); border-color:var(--accent-line); background:var(--accent-wash); }
+.fr-acts { grid-area:acts; display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2); margin-top:14px; }
+.fr-acts .btn svg { width:15px; height:15px; }
+.fr-own { display:flex; flex-wrap:wrap; align-items:center; gap:var(--s2); }
+.fr-rep-btn--m { display:none; }
+.fr-like svg { fill:none; stroke:currentColor; stroke-width:1.8; }
+html .fr-like[aria-pressed="true"] { color:var(--err-strong); border-color:var(--err-line); }
+.fr-like[aria-pressed="true"] svg { fill:currentColor; }
+html .fr-pin[aria-pressed="true"] { color:var(--accent); border-color:var(--accent-line); background:var(--accent-wash); }
+html .fr-solve[aria-pressed="true"] { background:var(--ok-soft); }
+html .fr-goto { margin-left:auto; min-height:var(--ctl-md); }
+.fr-edit { grid-area:edit; margin-top:14px; cursor:auto; }
+.fr-edit-actions { display:flex; gap:var(--s2); margin-top:10px; }
+
+/* satır içi yanıtlar */
+.fr-replies { grid-area:rp; margin-top:var(--s4); padding:var(--s4); border-radius:var(--r-16); background:var(--bg); border:1px solid var(--line-div); cursor:auto; }
+.fr-rp-list { display:flex; flex-direction:column; gap:10px; }
+.fr-rp-list:empty { display:none; }
+.fr-rp { padding:14px 16px; border-radius:var(--r-14); background:var(--surface-0); border:1px solid var(--line-div); }
+.fr-rp.is-admin { border-color:var(--accent-line); }
+.fr-rp-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; }
+.fr-rp-author { font-size:var(--fs-ui); font-weight:600; color:var(--fg); }
+.fr-rp-date { font-family:var(--ff-mono); font-size:11px; color:var(--fg-3); }
+html .fr-rp-del { margin-left:auto; min-height:var(--ctl-sm); font-size:var(--fs-small); color:var(--err); }
+html .fr-rp-del:hover { color:var(--err-strong); }
+.fr-rp-text { margin-top:6px; font-size:var(--fs-ui); line-height:1.65; color:var(--fg-soft); white-space:pre-line; word-break:break-word; }
+.fr-rp-loading { font-size:var(--fs-small); color:var(--fg-3); }
+.fr-rp-form { display:flex; gap:var(--s3); align-items:flex-end; margin-top:var(--s3); }
+.fr-rp-list:empty + .fr-rp-form, .fr-rp-list:empty + .fr-rp-closed { margin-top:0; }
+html .fr-rp-ta { flex:1; min-height:48px; }
+.fr-rp-closed { margin-top:var(--s3); padding:14px 16px; border-radius:var(--r-14); background:var(--ok-wash); border:1px solid var(--ok-line); color:var(--ok); font-size:var(--fs-ui); font-weight:500; }
+
+/* boş durum */
+.fr-empty { display:flex; flex-direction:column; align-items:center; gap:10px; padding:var(--s7) var(--s5); text-align:center; font-size:var(--fs-ui); color:var(--fg-muted); cursor:auto; }
+.fr-empty svg { width:28px; height:28px; color:var(--fg-3); }
+
+/* iskelet satırları */
+.fr-row--sk { cursor:default; }
+.fr-row--sk:hover { background:transparent; }
+.fr-sk-av { grid-area:av; width:48px; height:48px; }
+.fr-sk-main { display:flex; flex-direction:column; gap:10px; }
+.fr-sk-t { width:var(--w, 60%); height:16px; }
+.fr-sk-m { width:var(--w, 30%); height:11px; }
+.fr-sk-cat { grid-area:cat; height:26px; }
+.fr-sk-rep { grid-area:rep; justify-self:stretch; height:14px; }
+
+/* girişsiz: iskelet üstünde cam kart */
+.fr-wall { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; padding:var(--s5); border-radius:var(--r-24); background:linear-gradient(180deg, rgba(11,11,14,.1), rgba(11,11,14,.85) 55%); }
+.fr-join { width:460px; max-width:100%; padding:var(--s-40); border-radius:var(--r-24); background:var(--glass-bar); border:1px solid var(--accent-line); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); box-shadow:var(--shadow-lift); display:flex; flex-direction:column; align-items:center; gap:var(--s4); text-align:center; }
+.fr-join-icon { width:56px; height:56px; border-radius:50%; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; }
+.fr-join-icon svg { width:24px; height:24px; }
+/* tasarım: 38px serif başlık (tek seferlik) */
+html .fr-join-title { font-size:38px; line-height:1.05; }
+.fr-join-text { font-size:var(--fs-body); line-height:1.6; color:var(--fg-muted); }
+
+/* ── Yan sütun ── */
+.fr-side { display:flex; flex-direction:column; gap:var(--s4); min-width:0; }
+.fr-stats { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:var(--s3); }
+.fr-stat { padding:22px; border-radius:var(--r-20); background:var(--surface); border:1px solid var(--line); display:flex; flex-direction:column; gap:6px; }
+.fr-stat-val { font-family:var(--ff-disp); font-size:var(--fs-stat); line-height:1; color:var(--fg); }
+.fr-stat-lbl { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-3); }
+.fr-card { padding:var(--s5); border-radius:var(--r-20); background:var(--surface); border:1px solid var(--line); display:flex; flex-direction:column; gap:var(--s4); }
+.fr-card-head { display:flex; justify-content:space-between; align-items:center; gap:var(--s3); }
+.fr-card-link { display:inline-flex; align-items:center; min-height:var(--ctl-md); font-size:var(--fs-small); font-weight:600; }
+.fr-eq { height:16px; }
+
+/* son üyeler */
+.fr-mem-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(48px, 1fr)); gap:14px var(--s2); }
+.fr-mem { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:0; color:var(--fg-3); text-decoration:none; }
+.fr-mem-av { position:relative; width:44px; height:44px; border-radius:50%; background:var(--surface-4); color:var(--fg); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:var(--fs-ui); transition:box-shadow var(--dur-fast); }
+.fr-mem-av img { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; }
+.fr-mem:hover .fr-mem-av, .fr-mem:focus-visible .fr-mem-av { box-shadow:0 0 0 2px var(--accent-line-2); }
+.fr-mem:hover { color:var(--fg); }
+.fr-mem-badge { position:absolute; right:-4px; bottom:-4px; width:20px; height:20px; border-radius:50%; background:var(--surface); border:1px solid var(--line-ctl); display:flex; align-items:center; justify-content:center; }
+.fr-mem-badge .icon { width:11px; height:11px; }
+.fr-mem-name { max-width:100%; font-size:11px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fr-t-acemi { color:var(--ok); } .fr-t-merakli { color:var(--info); } .fr-t-uretici { color:var(--accent); }
+.fr-t-veteran { color:var(--warn); } .fr-t-usta { color:var(--err); } .fr-t-efsane { color:var(--accent); }
+.fr-mem-sk { display:flex; gap:var(--s2); }
+.fr-mem-sk .be-sk { width:44px; height:44px; flex-shrink:0; }
+.fr-mem-note { font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-mono); text-transform:uppercase; color:var(--fg-3); }
+.fr-mem-text { font-size:var(--fs-small); line-height:1.55; color:var(--fg-muted); }
+html .fr-mem-signin { min-height:var(--ctl-md); font-size:var(--fs-small); }
+
+/* kurallar */
+.fr-rules { list-style:none; display:flex; flex-direction:column; gap:var(--s3); font-size:var(--fs-ui); line-height:1.5; color:var(--fg-2); }
+.fr-rules li { display:flex; gap:var(--s3); }
+.fr-rule-n { flex-shrink:0; padding-top:2px; font-family:var(--ff-mono); font-size:12px; color:var(--accent); }
+.fr-rules-acc { display:none; border-radius:var(--r-16); background:var(--surface); border:1px solid var(--line); }
+.fr-rules-acc > summary { padding:var(--s4); min-height:var(--ctl-md); font-size:var(--fs-body); font-weight:600; color:var(--fg); cursor:pointer; }
+.fr-rules-acc > ol { padding:0 var(--s4) var(--s4) 34px; display:flex; flex-direction:column; gap:var(--s2); font-size:var(--fs-ui); line-height:1.5; color:var(--fg-2); }
+
+/* mobil yüzen "Yeni konu" */
+.fr-fab { display:none; }
+
+/* toast çıkışı */
+.toast.is-out { opacity:0; transform:translateY(8px); transition:opacity var(--dur-fast), transform var(--dur-fast); }
+
+/* ── Dar masaüstü ── */
+@media (max-width:1279px) {
+  .fr-layout { grid-template-columns:minmax(0,1fr) 320px; gap:var(--s6); }
+}
+
+/* ── Mobil kabuk (≤1024) ── */
+@media (max-width:1024px) {
+  .fr-hero { flex-direction:column; align-items:stretch; gap:var(--s3); padding:28px var(--page-x) 0; border-bottom:0; background-image:none; }
+  .fr-glow { display:none; }
+  .fr-hero-text { gap:var(--s3); }
+  .fr-hero-actions { margin-top:6px; }
+  .fr-search { width:100%; }
+  html .fr-new { display:none; }
+  .fr-layout { grid-template-columns:minmax(0,1fr); gap:var(--s3); padding:0 var(--page-x) var(--s7); }
+  .fr-feed { flex-direction:column; flex-wrap:nowrap; align-items:stretch; gap:var(--s3); }
+  .fr-cats { position:sticky; top:var(--be-sticky-top); z-index:3; margin:0 calc(-1 * var(--page-x)); padding:14px var(--page-x); gap:6px; background:linear-gradient(180deg, var(--bg) 70%, transparent); flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .fr-cats::-webkit-scrollbar { display:none; }
+  .fr-cats .be-tab { position:relative; }
+  .fr-cats .be-tab::after { content:''; position:absolute; inset:-2px 0; }
+  .fr-status { margin:-10px 0 -4px -6px; }
+  .fr-list { border-radius:var(--r-18); }
+  .fr-row { grid-template-columns:40px minmax(0,1fr); grid-template-areas:"av main" ". acts" "edit edit" "rp rp"; column-gap:var(--s3); padding:var(--s-20); }
+  .fr-av { width:40px; height:40px; font-size:var(--fs-small); align-self:start; }
+  .fr-sk-av { width:40px; height:40px; }
+  .fr-catcol, .fr-repcol, .fr-sk-cat, .fr-sk-rep { display:none; }
+  .fr-cat--inline { display:inline-flex; height:24px; font-size:11px; }
+  .fr-acts { margin-top:10px; }
+  .fr-rep-btn--m { display:inline-flex; order:0; margin-left:-14px; }
+  .fr-like { order:1; }
+  html .fr-goto { order:2; }
+  .fr-own { order:3; flex-basis:100%; }
+  .fr-sk-main { gap:8px; }
+  .fr-sk-t { height:14px; }
+  .fr-sk-m { height:10px; }
+  .fr-side { gap:var(--s3); }
+  .fr-rules-card { display:none; }
+  .fr-rules-acc { display:block; }
+  .fr-fab { position:fixed; right:18px; bottom:calc(var(--be-tabbar-space) + 4px); z-index:var(--z-fab); display:flex; align-items:center; justify-content:center; width:56px; height:56px; border-radius:50%; background:var(--accent); color:var(--accent-ink); box-shadow:0 12px 30px -8px rgba(232,184,75,.6); transition:transform var(--dur) ease; }
+  .fr-fab:hover { color:var(--accent-ink); transform:translateY(-2px); }
+  .fr-fab svg { width:22px; height:22px; }
+}
+
+/* ── Telefon (≤600) ── */
+@media (max-width:600px) {
+  .fr-sub { font-size:var(--fs-label); }
+  .fr-row { padding:var(--s4); }
+  .fr-row--sk:nth-child(n+5) { display:none; }
+  .fr-listwrap { display:flex; flex-direction:column; gap:var(--s3); }
+  .fr-wall { position:static; order:-1; padding:0; background:none; border-radius:0; }
+  .fr-join { width:100%; padding:22px; gap:var(--s3); border-radius:var(--r-20); background:var(--surface); -webkit-backdrop-filter:none; backdrop-filter:none; box-shadow:none; }
+  .fr-join-icon { width:48px; height:48px; }
+  .fr-join-icon svg { width:22px; height:22px; }
+  html .fr-join-title { font-size:30px; }
+  .fr-join-text { font-size:var(--fs-ui); line-height:1.55; }
+  .fr-join-more { display:none; }
+  html .fr-join .btn { height:50px; }
+  html .fr-goto { width:var(--ctl-sm); min-height:var(--ctl-sm); justify-content:center; border:1px solid var(--accent-line); border-radius:50%; }
+  .fr-goto-t { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+  .fr-rp-form { flex-wrap:wrap; }
+  .fr-rp-form .btn { width:100%; }
+  .fr-replies { padding:var(--s3); }
+  .fr-rp { padding:12px 14px; }
+  .fr-stats { gap:var(--s2); }
+  .fr-stat { padding:var(--s4); border-radius:var(--r-16); gap:2px; }
+  .fr-stat-lbl { font-size:var(--fs-micro); }
+  .fr-card { padding:var(--s4); border-radius:var(--r-16); gap:var(--s3); }
+}
 </style>
-<script src="assets/js/i18n.js?v=202609261200"></script>
-<script src="assets/js/love-nav.js?v=202609261200"></script>
+<script src="assets/js/i18n.js?v=202609271200"></script>
+<script src="assets/js/love-nav.js?v=202609271200"></script>
 </head>
 <body>
+<header class="be-header" id="beHeader" data-be-page="forum"><div id="authBar"></div></header>
 
-<div id="authBar"></div>
-<nav class="topnav">
-  <div class="topnav-left">
-    <a href="/" class="topnav-back">← <span class="topnav-back-text" data-i18n="nav_home">Anasayfa</span></a>
-    <span class="topnav-sep">|</span>
-    <span class="topnav-brand" data-i18n="forum_brand">Topluluk Forumu</span>
-  </div>
-</nav>
-
-<nav class="left-nav">
-  <a class="lnav-brand" href="/">BERKAY ER ACADEMY</a>
-  <div class="lnav-items">
-    <a class="lnav-item" href="/" data-page="index"><span class="lnav-icon">🏠</span><span data-i18n="nav_home">Ana Sayfa</span></a>
-    <a class="lnav-item" href="egitim" data-page="egitim"><span class="lnav-icon">🎓</span><span data-i18n="nav_egitim">Eğitim</span></a>
-    <a class="lnav-item" href="egitmen" data-page="egitmen"><span class="lnav-icon">👤</span><span data-i18n="nav_egitmen">Eğitmen</span></a>
-    <a class="lnav-item" href="forum" data-page="forum"><span class="lnav-icon">💬</span><span data-i18n="nav_forum">Forum</span></a>
-    <a class="lnav-item" href="members" data-page="members"><span class="lnav-icon">👥</span><span data-i18n="nav_members">Üyeler</span></a>
-    <a class="lnav-item" href="ableton-lab" data-page="ableton-lab"><span class="lnav-icon">🎛️</span><span data-i18n="nav_lab">Lab</span></a>
-    <a class="lnav-item" href="sss" data-page="sss"><span class="lnav-icon">❓</span><span data-i18n="nav_sss">SSS</span></a>
-    <a class="lnav-item" id="lnavAdminItem" href="booking" data-page="booking" style="display:none;"><span class="lnav-icon">📅</span><span data-i18n="nav_lessons">Ders Paneli</span></a>
-    <a class="lnav-item" id="lnavLoveBtn" href="love" data-page="love" style="display:none;color:#e8527a;"><span class="lnav-icon">💌</span><span>Sana Olan Sevgim</span></a>
-  </div>
-  <div class="lnav-foot">
-    <div class="lnav-lang">
-      <button class="lang-btn" data-lang="tr" onclick="window._i18n?.setLang('tr')">TR</button>
-      <button class="lang-btn" data-lang="en" onclick="window._i18n?.setLang('en')">EN</button>
+<main id="forumMain">
+  <section class="fr-hero be-grid-bg" aria-labelledby="frTitle">
+    <div class="fr-glow be-drift" aria-hidden="true"></div>
+    <div class="fr-hero-text">
+      <p class="be-eyebrow be-rv"><span class="be-live" aria-hidden="true"></span><span data-i18n="forum_brand">Topluluk Forumu</span></p>
+      <h1 class="fr-h1 be-rv be-d1" id="frTitle" data-i18n-html="forum_hero_title">Elektronik müzik <em class="be-ember-text">topluluğu</em></h1>
+      <p class="fr-sub be-rv be-d2" data-i18n="forum_hero_sub">ABLETON · SES TASARIMI · MIX · PRODÜKSİYON</p>
     </div>
-    <a class="lnav-profile-link" href="profile" data-page="profile"><div class="lnav-profile-av" id="lnavProfileAv">👤</div><span data-i18n="nav_profile">Profil</span></a>
-  </div>
-</nav>
-
-<div class="banner">
-  <div class="banner-inner">
-    <div class="banner-info">
-      <h1 data-i18n="forum_community">Elektronik Müzik Topluluğu</h1>
-      <p data-i18n="forum_sub">Ableton · Ses Tasarımı · Mix · Prodüksiyon</p>
+    <div class="fr-hero-actions be-rv be-d2">
+      <label class="be-search fr-search">
+        <span class="be-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+        <input type="search" id="forumSearch" placeholder="Konularda ara" data-i18n-ph="forum_search_label" aria-label="Konularda ara" data-fr-aria="forum_search_label" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="fr-search-clear" id="forumSearchClear" hidden aria-label="Aramayı temizle" data-fr-aria="forum_search_clear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </label>
+      <a class="btn btn-primary btn-lg fr-new" href="new-post" data-new-topic><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg><span data-i18n="forum_new_topic_btn">Yeni konu</span></a>
     </div>
-  </div>
-</div>
+  </section>
 
-<div class="layout">
-
-  <div id="feed">
-    <div class="login-wall">
-      <p data-i18n="forum_signin_msg">Topluluğa katılmak için giriş yap.</p>
-      <button class="login-wall-btn" onclick="doSignIn()" data-i18n="forum_login_btn">Giriş Yap</button>
-    </div>
-  </div>
-
-  <aside class="sidebar">
-    <div class="sc">
-      <div class="sc-head sc-head-gold"><div class="sc-title gold" data-i18n="forum_sidebar_comm">Topluluk</div></div>
-      <div class="sc-body">
-        <p data-i18n="forum_desc">Elektronik müzik üretimi, Ableton ve prodüksiyon hakkında sor, yanıtla, paylaş.</p>
-        <div class="sc-stat"><span class="sc-stat-lbl" data-i18n="forum_stat_total_topics">Toplam Konu</span><span class="sc-stat-val" id="sStatPosts">—</span></div>
-        <div class="sc-stat"><span class="sc-stat-lbl" data-i18n="forum_stat_total">Toplam Yanıt</span><span class="sc-stat-val" id="sStatReplies">—</span></div>
+  <div class="fr-layout">
+    <section class="fr-feed" aria-labelledby="frListTitle">
+      <h2 class="sr-only" id="frListTitle" data-i18n="forum_list_label">Konular</h2>
+      <div class="be-tabs fr-cats" id="catBar" role="group" aria-label="Kategori" data-fr-aria="forum_cat_group"></div>
+      <div class="fr-status" id="filterBar" role="group" aria-label="Durum" data-fr-aria="forum_status_group"></div>
+      <div class="fr-listwrap" id="feed">
+        <div class="fr-list" id="postList" aria-busy="true"></div>
+        <div class="fr-wall" id="loginWall" hidden>
+          <div class="fr-join be-rv be-d3" role="region" aria-labelledby="frJoinTitle">
+            <span class="fr-join-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>
+            <h2 class="fr-join-title" id="frJoinTitle" data-i18n="forum_join_title">Topluluğa katıl</h2>
+            <p class="fr-join-text"><span data-i18n="forum_join_desc">Soruları görmek ve konu açmak için giriş yap.</span><span class="fr-join-more"> <span data-i18n="forum_desc">Elektronik müzik üretimi, Ableton ve prodüksiyon hakkında sor, yanıtla, paylaş.</span></span></p>
+            <button type="button" class="btn btn-primary btn-lg btn-block" onclick="doSignIn()" data-i18n="forum_join_btn">Giriş yap</button>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="sc">
-      <div class="sc-head sc-head-dark"><div class="sc-title white" data-i18n="forum_recent_members">Son Üyeler</div></div>
-      <div class="sc-body" id="membersSidebar"><div class="sc-empty" data-i18n="ui_loading">Yükleniyor...</div></div>
-    </div>
-    <div class="sc">
-      <div class="sc-head sc-head-dark"><div class="sc-title white" data-i18n="forum_rules_title">Kurallar</div></div>
-      <div class="sc-body">
-        <ul class="sc-rules">
+    </section>
+
+    <aside class="fr-side" aria-labelledby="frSideTitle">
+      <h2 class="sr-only" id="frSideTitle" data-i18n="forum_sidebar_comm">Topluluk</h2>
+      <div class="fr-stats">
+        <div class="fr-stat"><span class="fr-stat-val" id="sStatPosts">—</span><span class="fr-stat-lbl" data-i18n="forum_stat_total_topics">Toplam Konu</span></div>
+        <div class="fr-stat"><span class="fr-stat-val" id="sStatReplies">—</span><span class="fr-stat-lbl" data-i18n="forum_stat_total">Toplam Yanıt</span></div>
+      </div>
+      <section class="fr-card" aria-labelledby="frMembersTitle">
+        <div class="fr-card-head">
+          <h3 id="frMembersTitle" data-i18n="forum_members_title">Son üyeler</h3>
+          <a class="fr-card-link" href="members" aria-label="Tüm üyeleri gör" data-fr-aria="forum_members_all_aria"><span data-i18n="forum_members_all">Tümü</span>&nbsp;<span aria-hidden="true">→</span></a>
+        </div>
+        <div id="membersSidebar">
+          <div class="fr-mem-sk" aria-hidden="true"><span class="be-sk be-sk--circle"></span><span class="be-sk be-sk--circle"></span><span class="be-sk be-sk--circle"></span><span class="be-sk be-sk--circle"></span><span class="be-sk be-sk--circle"></span><span class="be-sk be-sk--circle"></span></div>
+          <p class="fr-mem-note" data-i18n="ui_loading">Yükleniyor...</p>
+        </div>
+      </section>
+      <section class="fr-card fr-rules-card" aria-labelledby="frRulesTitle">
+        <div class="fr-card-head">
+          <h3 id="frRulesTitle" data-i18n="forum_rules_title">Kurallar</h3>
+          <div class="be-eq fr-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </div>
+        <ol class="fr-rules">
+          <li><span class="fr-rule-n" aria-hidden="true">01</span><span data-i18n="forum_rule1">Ableton ve prodüksiyon odaklı konular aç</span></li>
+          <li><span class="fr-rule-n" aria-hidden="true">02</span><span data-i18n="forum_rule2">Saygılı ol, yapıcı konuş</span></li>
+          <li><span class="fr-rule-n" aria-hidden="true">03</span><span data-i18n="forum_rule3">Tekrar eden soruları aramayı dene</span></li>
+          <li><span class="fr-rule-n" aria-hidden="true">04</span><span data-i18n="forum_rule4">Uygunsuz içerik admin tarafından silinebilir</span></li>
+          <li><span class="fr-rule-n" aria-hidden="true">05</span><span data-i18n="forum_rule5">Ekran görüntüsü veya hata mesajı paylaşmak yardımcı olur</span></li>
+        </ol>
+      </section>
+      <details class="fr-rules-acc">
+        <summary data-i18n="forum_rules_title">Kurallar</summary>
+        <ol>
           <li data-i18n="forum_rule1">Ableton ve prodüksiyon odaklı konular aç</li>
           <li data-i18n="forum_rule2">Saygılı ol, yapıcı konuş</li>
           <li data-i18n="forum_rule3">Tekrar eden soruları aramayı dene</li>
           <li data-i18n="forum_rule4">Uygunsuz içerik admin tarafından silinebilir</li>
           <li data-i18n="forum_rule5">Ekran görüntüsü veya hata mesajı paylaşmak yardımcı olur</li>
-        </ul>
-      </div>
-    </div>
-  </aside>
+        </ol>
+      </details>
+    </aside>
+  </div>
+</main>
 
-</div>
+<a class="fr-fab" href="new-post" data-new-topic aria-label="Yeni konu aç" data-fr-aria="forum_new_topic_aria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg></a>
 
 <script type="module">
 'use strict';
@@ -250,6 +372,7 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 
 let _user = null;
+let _authReady = false;
 const _unsubReplyMap = {};
 
 function doSignIn() { window.bkAuth.openLogin(); }
@@ -257,21 +380,72 @@ window.doSignIn = doSignIn;
 
 function isAdmin(u) { return u?.email === ADMIN_EMAIL; }
 
+// i18n: yeni anahtarlar (tasarim/i18n/forum.json) i18n.js'e eklenene kadar dile göre yedek metin.
+// Anahtar i18n.js'te varsa her zaman o kullanılır.
+const FB = {
+  forum_hero_title:       [`Elektronik müzik <em class="be-ember-text">topluluğu</em>`, 'Electronic music <em class="be-ember-text">community</em>'],
+  forum_hero_sub:         [`ABLETON · SES TASARIMI · MIX · PRODÜKSİYON`, 'ABLETON · SOUND DESIGN · MIX · PRODUCTION'],
+  forum_search_label:     [`Konularda ara`, 'Search topics'],
+  forum_search_clear:     [`Aramayı temizle`, 'Clear search'],
+  forum_new_topic_btn:    [`Yeni konu`, 'New topic'],
+  forum_new_topic_aria:   [`Yeni konu aç`, 'Start a new topic'],
+  forum_list_label:       [`Konular`, 'Topics'],
+  forum_cat_group:        [`Kategori`, 'Category'],
+  forum_status_group:     [`Durum`, 'Status'],
+  forum_join_title:       [`Topluluğa katıl`, 'Join the community'],
+  forum_join_desc:        [`Soruları görmek ve konu açmak için giriş yap.`, 'Sign in to see questions and start topics.'],
+  forum_join_btn:         [`Giriş yap`, 'Sign in'],
+  forum_members_title:    [`Son üyeler`, 'Recent members'],
+  forum_members_all:      [`Tümü`, 'All'],
+  forum_members_all_aria: [`Tüm üyeleri gör`, 'See all members'],
+  forum_members_signin:   [`Üyeleri görmek için giriş yap.`, 'Sign in to see members.'],
+  forum_goto_btn:         [`Konuya git`, 'Open topic'],
+  forum_like_aria:        [`Beğen`, 'Like'],
+  forum_admin_badge:      [`Eğitmen`, 'Instructor'],
+  forum_reply_one:        [`Yanıt`, 'Reply'],
+  forum_cat_general:      [`Genel`, 'General'],
+  forum_cat_sound:        [`Ses Tasarımı`, 'Sound Design'],
+  forum_cat_other:        [`Diğer`, 'Other'],
+};
+const _has = k => { const v = window._i18n?.t(k); return !!v && v !== k; };
+const _en = () => window._i18n?.getLang() === 'en';
+function L(key, tr, en) {
+  if (_has(key)) return window._i18n.t(key);
+  if (FB[key]) return FB[key][_en() ? 1 : 0];
+  return _en() ? (en ?? tr) : tr;
+}
+function applyLocal() {
+  const i = _en() ? 1 : 0;
+  document.querySelectorAll('[data-i18n]').forEach(el => { const k = el.dataset.i18n; if (FB[k] && !_has(k)) el.textContent = FB[k][i]; });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { const k = el.dataset.i18nHtml; if (FB[k] && !_has(k)) el.innerHTML = FB[k][i]; });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { const k = el.dataset.i18nPh; if (FB[k] && !_has(k)) el.placeholder = FB[k][i]; });
+  document.querySelectorAll('[data-fr-aria]').forEach(el => el.setAttribute('aria-label', L(el.dataset.frAria, el.getAttribute('aria-label'))));
+}
+
 function showToast(msg, type='success', ms=3500) {
   let c = document.getElementById('toastCt');
-  if (!c) { c = document.createElement('div'); c.id='toastCt'; c.className='toast-container'; document.body.append(c); }
-  const t = document.createElement('div'); t.className='toast'+(type==='error'?' err':''); t.textContent=msg;
+  if (!c) { c = document.createElement('div'); c.id = 'toastCt'; c.className = 'toast-wrap'; c.setAttribute('role', 'status'); c.setAttribute('aria-live', 'polite'); document.body.append(c); }
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type === 'error' ? 'err' : type === 'info' ? 'info' : 'ok');
+  t.textContent = msg;
   c.append(t);
-  setTimeout(()=>{ t.style.cssText='opacity:0;transform:translateY(8px);transition:.2s;'; setTimeout(()=>t.remove(),200); }, ms);
+  setTimeout(() => { t.classList.add('is-out'); setTimeout(() => t.remove(), 200); }, ms);
 }
 function errId() { return '#' + Math.random().toString(36).slice(2,5).toUpperCase(); }
 const ic = n => '<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-' + n + '"/></svg>';
+const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-8-5.3-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.7-8 11-8 11z"/></svg>';
+const BUBBLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>';
 
 function fmtDate(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   const loc = window._i18n?.getLang() === 'en' ? 'en-US' : 'tr-TR';
   return d.toLocaleDateString(loc, {day:'numeric', month:'short', year:'numeric'});
+}
+function isoDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return isNaN(d) ? '' : d.toISOString();
 }
 
 let _notifUnsub = null, _annUnsub = null;
@@ -286,10 +460,6 @@ function updateAuthBar(user) {
   if (user) {
     const wrap = document.createElement('div'); wrap.className = 'auth-user-wrap';
     const img  = document.createElement('img');  img.className = 'auth-avatar';
-      const _bnavAv = document.getElementById('bnavProfileAv');
-      const _bnavAdmin = document.getElementById('bnavAdminItem');
-      if (_bnavAdmin) _bnavAdmin.style.display = 'flex';
-      if (_bnavAv) { if (user.photoURL) { const _ai=document.createElement('img');_ai.src=user.photoURL;_ai.alt='';_bnavAv.innerHTML='';_bnavAv.append(_ai); } else { _bnavAv.textContent='👤'; } }
     img.src = user.photoURL || ''; img.alt = '';
     img.style.cursor = 'pointer'; img.onclick = () => location.href = `profile?uid=${user.uid}`;
     const name = document.createElement('span'); name.className = 'auth-name';
@@ -406,94 +576,137 @@ function updateStats(posts, totalReplies) {
   ['bStatReplies','sStatReplies'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=totalReplies; });
 }
 
-// ── Render ────────────────────────────────────────────────────────────
+// ── Durum ─────────────────────────────────────────────────────────────
 let _filter    = 'all';
 let _catFilter = 'all';
 let _search    = '';
 let _allPosts  = [];
+let _loaded    = false;
 let _unsubscribe = null;
+let _popLike   = null;
+const _openReplies = new Set();
+const _drafts = {};
 const CAT_LIST = ['Genel','Ableton','Ses Tasarımı','Mixing','Live Set','Diğer'];
+// kategori değeri Firestore'da Türkçe kalır; yalnız görünen ad çevrilir
+const CAT_KEY = { 'Genel':'forum_cat_general', 'Ses Tasarımı':'forum_cat_sound', 'Diğer':'forum_cat_other' };
+const catLabel = c => CAT_KEY[c] ? L(CAT_KEY[c], c) : c;
 const TITLES = {
-  acemi:   { label: window._i18n?.t('mem_acemi')||'Acemi',                 icon:'seed',       color:'var(--ok)' },
-  merakli: { label: window._i18n?.t('mem_merakli')||'Prodüksiyon Meraklısı', icon:'headphones', color:'var(--info)' },
-  uretici: { label: window._i18n?.t('mem_uretici')||'Üretici',               icon:'knobs',      color:'var(--accent)' },
-  veteran: { label: window._i18n?.t('mem_veteran')||'Veteran',               icon:'flame',      color:'var(--warn)' },
-  usta:    { label: window._i18n?.t('mem_usta')||'Usta',                  icon:'bolt',       color:'var(--err)' },
-  efsane:  { label: window._i18n?.t('mem_efsane')||'Efsane',               icon:'crown',      color:'var(--accent)' },
+  acemi:   { key:'mem_acemi',   tr:`Acemi`,                 en:'Beginner', icon:'seed',       color:'var(--ok)' },
+  merakli: { key:'mem_merakli', tr:`Prodüksiyon Meraklısı`, en:'Production Enthusiast', icon:'headphones', color:'var(--info)' },
+  uretici: { key:'mem_uretici', tr:`Üretici`,               en:'Producer', icon:'knobs',      color:'var(--accent)' },
+  veteran: { key:'mem_veteran', tr:`Veteran`,               en:'Veteran',  icon:'flame',      color:'var(--warn)' },
+  usta:    { key:'mem_usta',    tr:`Usta`,                  en:'Master',   icon:'bolt',       color:'var(--err)' },
+  efsane:  { key:'mem_efsane',  tr:`Efsane`,                en:'Legend',   icon:'crown',      color:'var(--accent)' },
 };
+const titleLabel = k => L(TITLES[k].key, TITLES[k].tr, TITLES[k].en);
 
-async function renderFeed() {
-  const feed = document.getElementById('feed');
-  feed.innerHTML = '';
-  if (!_user) {
-    feed.innerHTML = `<div class="login-wall"><p>${window._i18n?.t('forum_signin_msg')||'Topluluğa katılmak için giriş yap.'}</p><button class="login-wall-btn" onclick="doSignIn()">${window._i18n?.t('forum_login_btn')||'Giriş Yap'}</button></div>`;
-    return;
-  }
-
-  const npBtn = document.createElement('a'); npBtn.className = 'new-post-btn';
-  npBtn.textContent = window._i18n?.t('forum_new_topic') || '+ Yeni Konu'; npBtn.href = 'new-post';
-  feed.append(npBtn);
-
-  // (data loaded via onSnapshot below)
-
-  // Search input
-  const sw = document.createElement('div'); sw.className = 'search-wrap';
-  const si = document.createElement('span'); si.className = 'search-icon'; si.innerHTML = ic('search');
-  const sinp = document.createElement('input'); sinp.className = 'search-input'; sinp.type = 'text';
-  sinp.placeholder = window._i18n?.t('forum_search_ph')||'Konularda ara...'; sinp.value = _search;
-  const scl = document.createElement('button'); scl.className = 'search-clear' + (_search?' visible':''); scl.textContent = '✕'; scl.type = 'button';
-  sinp.oninput = () => { _search = sinp.value.trim().toLowerCase(); scl.classList.toggle('visible', !!_search); renderPosts(); };
-  scl.onclick = () => { _search=''; sinp.value=''; scl.classList.remove('visible'); renderPosts(); };
-  sw.append(si, sinp, scl); feed.append(sw);
-
-  const fbar = document.createElement('div'); fbar.className = 'filter-bar'; fbar.id = 'filterBar';
-  feed.append(fbar);
-
-  // Category filter
-  const cfbar = document.createElement('div'); cfbar.className = 'filter-bar';
-  ['Tümü', ...CAT_LIST].forEach(c => {
-    const key = c === 'Tümü' ? 'all' : c;
-    const b = document.createElement('button');
-    b.className = 'fbtn' + (_catFilter===key?' active':'');
-    b.textContent = c === 'Tümü' ? (window._i18n?.t('forum_cat_all')||'# Tümü') : c;
-    b.onclick = () => { _catFilter=key; renderPosts(); };
-    cfbar.append(b);
-  });
-  feed.append(cfbar);
-
-  const postList = document.createElement('div'); postList.id = 'postList';
-  feed.append(postList);
-
-  // Realtime listener
-  if (_unsubscribe) { _unsubscribe(); }
-  _unsubscribe = db.collection('forum').orderBy('createdAt','desc').limit(60)
-    .onSnapshot(snap => {
-      _allPosts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      updateStats(_allPosts.length, _allPosts.reduce((s,p) => s + (p.replyCount||0), 0));
-      renderPosts();
-    }, e => {
-      if (e.code !== 'permission-denied') showToast('Forum yüklenemedi: ' + (e.message || e.code), 'error');
+// ── Filtreler (bir kez kurulur, durum yerinde güncellenir) ─────────────
+function buildFilters() {
+  const cb = document.getElementById('catBar');
+  if (cb) {
+    cb.innerHTML = '';
+    ['all', ...CAT_LIST].forEach(key => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'be-tab'; b.dataset.cat = key;
+      b.textContent = key === 'all' ? L('forum_filter_all', `Tümü`, 'All') : catLabel(key);
+      b.onclick = () => { _catFilter = key; syncFilters(); renderPosts(); };
+      cb.append(b);
     });
+  }
+  const fb = document.getElementById('filterBar');
+  if (fb) {
+    fb.innerHTML = '';
+    [['all','forum_filter_all',`Tümü`,'All'], ['open','forum_filter_open',`Açık`,'Open'], ['solved','forum_filter_solved',`Çözüldü`,'Solved']].forEach(([key, k, tr, en]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'fr-sbtn'; b.dataset.status = key;
+      const s = document.createElement('span'); s.textContent = L(k, tr, en);
+      const n = document.createElement('span'); n.className = 'fr-sbtn-n';
+      b.append(s, n);
+      b.onclick = () => { _filter = key; syncFilters(); renderPosts(); };
+      fb.append(b);
+    });
+  }
+  syncFilters();
+}
+function syncFilters() {
+  document.querySelectorAll('#catBar .be-tab').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === _catFilter)));
+  const solved = _allPosts.filter(p => p.solved).length;
+  const counts = { all: _allPosts.length, open: _allPosts.length - solved, solved };
+  document.querySelectorAll('#filterBar .fr-sbtn').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.status === _filter));
+    const n = b.querySelector('.fr-sbtn-n'); if (n) n.textContent = _loaded ? String(counts[b.dataset.status]) : '';
+  });
 }
 
-function renderPosts(postList) {
-  if (!postList) postList = document.getElementById('postList');
-  if (!postList) return;
-  // Update filter bar counts
-  const fbar = document.getElementById('filterBar');
-  if (fbar) {
-    const solved = _allPosts.filter(p => p.solved).length;
-    const open   = _allPosts.length - solved;
-    fbar.innerHTML = '';
-    [{key:'all',label:`${window._i18n?.t('forum_filter_all')||'Tümü'} (${_allPosts.length})`},{key:'open',label:`${window._i18n?.t('forum_filter_open')||'Açık'} (${open})`},{key:'solved',label:`✓ ${window._i18n?.t('forum_filter_solved')||'Çözüldü'} (${solved})`}]
-      .forEach(f => {
-        const b = document.createElement('button');
-        b.className = 'fbtn' + (_filter===f.key?' active':'');
-        b.textContent = f.label;
-        b.onclick = () => { _filter=f.key; renderPosts(); };
-        fbar.append(b);
-      });
+// ── Arama ─────────────────────────────────────────────────────────────
+function initSearch() {
+  const inp = document.getElementById('forumSearch');
+  const clr = document.getElementById('forumSearchClear');
+  if (!inp) return;
+  const q = new URLSearchParams(location.search).get('q');
+  if (q) { inp.value = q; _search = q.trim().toLowerCase(); }
+  clr.hidden = !_search;
+  inp.addEventListener('input', () => { _search = inp.value.trim().toLowerCase(); clr.hidden = !_search; renderPosts(); });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (_authReady && !_user) doSignIn(); } });
+  clr.addEventListener('click', () => { _search = ''; inp.value = ''; clr.hidden = true; inp.focus(); renderPosts(); });
+}
+
+// Yeni konu: girişsizken giriş penceresini aç
+document.querySelectorAll('[data-new-topic]').forEach(a => a.addEventListener('click', e => {
+  if (_authReady && !_user) { e.preventDefault(); doSignIn(); }
+}));
+
+// ── Akış ──────────────────────────────────────────────────────────────
+function skeletonRows(n) {
+  const w = [[62,34],[48,28],[70,30],[54,22],[44,26],[66,32],[50,24],[58,20]];
+  let h = '';
+  for (let i = 0; i < n; i++) {
+    const [a, b] = w[i % w.length];
+    h += `<div class="fr-row fr-row--sk" aria-hidden="true"><span class="be-sk be-sk--circle fr-sk-av"></span><div class="fr-main fr-sk-main"><span class="be-sk fr-sk-t" style="--w:${a}%"></span><span class="be-sk fr-sk-m" style="--w:${b}%"></span></div><span class="be-sk be-sk--pill fr-sk-cat"></span><span class="be-sk fr-sk-rep"></span></div>`;
   }
+  return h;
+}
+
+function renderFeed() {
+  const list = document.getElementById('postList');
+  const wall = document.getElementById('loginWall');
+  if (!list) return;
+  if (!_user) {
+    if (_unsubscribe) { _unsubscribe(); _unsubscribe = null; }
+    _allPosts = []; _loaded = false;
+    updateStats('—', '—');
+    syncFilters();
+    list.innerHTML = skeletonRows(8);
+    list.removeAttribute('aria-busy');
+    list.setAttribute('aria-hidden', 'true');
+    if (wall) wall.hidden = !_authReady;
+    return;
+  }
+  if (wall) wall.hidden = true;
+  list.removeAttribute('aria-hidden');
+  if (!_unsubscribe) {
+    _loaded = false;
+    list.setAttribute('aria-busy', 'true');
+    list.innerHTML = skeletonRows(6);
+    _unsubscribe = db.collection('forum').orderBy('createdAt','desc').limit(60)
+      .onSnapshot(snap => {
+        _allPosts = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+        _loaded = true;
+        updateStats(_allPosts.length, _allPosts.reduce((s,p) => s + (p.replyCount||0), 0));
+        syncFilters();
+        renderPosts();
+      }, e => {
+        _loaded = true;
+        syncFilters(); renderPosts();
+        if (e.code !== 'permission-denied') showToast(`Forum yüklenemedi: ` + (e.message || e.code), 'error');
+      });
+  } else if (_loaded) {
+    renderPosts();
+  }
+}
+
+function renderPosts() {
+  const postList = document.getElementById('postList');
+  if (!postList || !_user || !_loaded) return;
+  postList.removeAttribute('aria-busy');
   postList.innerHTML = '';
 
   let visible = _allPosts;
@@ -507,159 +720,188 @@ function renderPosts(postList) {
   );
 
   if (!visible.length) {
-    const e = document.createElement('div'); e.className = 'empty-state';
-    e.textContent = _search ? `"${_search}" ${window._i18n?.t('mem_no_results')||'için sonuç bulunamadı.'}` : (window._i18n?.t('forum_no_posts') || 'Henüz konu yok.');
-    postList.append(e); return;
+    const e = document.createElement('div'); e.className = 'fr-empty';
+    e.innerHTML = _search ? ic('search') : BUBBLE;
+    const p = document.createElement('p');
+    p.textContent = _search ? `"${_search}" ${L('mem_no_results', `için sonuç bulunamadı.`, 'no results found.')}` : L('forum_no_posts', `Henüz konu yok.`, 'No topics yet.');
+    e.append(p); postList.append(e); return;
   }
-  visible.sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0));
+  visible = [...visible].sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0));
   visible.forEach(post => renderPost(post, postList));
+  _popLike = null;
 }
 
 function renderPost(post, container) {
-  const card = document.createElement('div');
-  card.className = 'pcard' + (post.solved ? ' is-solved' : '') + (post.pinned ? ' is-pinned' : '');
-  card.onclick = e => { if (!e.target.closest('button')) location.href = `post?id=${post.id}`; };
+  const row = document.createElement('article');
+  row.className = 'fr-row' + (post.pinned ? ' is-pinned' : (post.solved ? ' is-solved' : ''));
+  const postUrl = `post?id=${post.id}`;
+  const profUrl = post.authorId ? `profile?uid=${post.authorId}` : '';
+  row.addEventListener('click', e => {
+    if (e.target.closest('a, button, input, textarea, .fr-replies, .fr-edit')) return;
+    location.href = postUrl;
+  });
+  const authorIsAdmin = post.authorEmail === ADMIN_EMAIL;
 
-  // Body
-  const body = document.createElement('div'); body.className = 'pcard-body';
+  // Avatar (fare için profil bağlantısı; klavyede yazar adı bağlantısı kullanılır)
+  const av = document.createElement(profUrl ? 'a' : 'span');
+  av.className = 'fr-av' + (authorIsAdmin && !post.authorPhotoURL ? ' is-admin' : '');
+  av.setAttribute('aria-hidden', 'true');
+  if (profUrl) { av.href = profUrl; av.tabIndex = -1; }
+  if (post.authorPhotoURL) { const img = document.createElement('img'); img.src = post.authorPhotoURL; img.alt = ''; img.loading = 'lazy'; av.append(img); }
+  else av.textContent = (post.authorName || '?')[0].toUpperCase();
+  row.append(av);
 
-  // Avatar
-  const goAuthor = () => { if (post.authorId) location.href = `profile?uid=${post.authorId}`; };
-  if (post.authorPhotoURL) {
-    const av = document.createElement('img'); av.className = 'pcard-avatar';
-    av.src = post.authorPhotoURL; av.alt = ''; av.onclick = goAuthor;
-    body.append(av);
-  } else {
-    const av = document.createElement('div'); av.className = 'pcard-avatar-placeholder';
-    av.textContent = (post.authorName || '?')[0].toUpperCase(); av.onclick = goAuthor;
-    body.append(av);
-  }
+  // İçerik
+  const main = document.createElement('div'); main.className = 'fr-main';
+  const h = document.createElement('h3'); h.className = 'fr-title';
+  const tl = document.createElement('a'); tl.href = postUrl;
+  const fallbackTitle = (post.text || '').slice(0, 80) + ((post.text || '').length > 80 ? '…' : '');
+  tl.textContent = post.title || fallbackTitle || '—';
+  h.append(tl); main.append(h);
 
-  const content = document.createElement('div'); content.className = 'pcard-content';
+  const meta = document.createElement('div'); meta.className = 'fr-meta';
+  const au = document.createElement(profUrl ? 'a' : 'span'); au.className = 'fr-author';
+  if (profUrl) au.href = profUrl;
+  au.textContent = post.authorName || L('ui_member', `Üye`, 'Member');
+  meta.append(au);
+  if (authorIsAdmin) {
+    const ab = document.createElement('span'); ab.className = 'badge badge-solid'; ab.textContent = L('forum_admin_badge', `Eğitmen`, 'Instructor');
+    meta.append(ab);
+  }
+  const dt = document.createElement('time'); dt.className = 'fr-date'; dt.textContent = fmtDate(post.createdAt);
+  const iso = isoDate(post.createdAt); if (iso) dt.dateTime = iso;
+  meta.append(dt);
+  const cat = post.category || 'Genel';
+  const ci = document.createElement('span'); ci.className = 'fr-cat fr-cat--inline'; ci.textContent = catLabel(cat); meta.append(ci);
+  if (post.pinned) { const pb = document.createElement('span'); pb.className = 'badge accent'; pb.textContent = L('forum_pinned', `Sabitlendi`, 'Pinned'); meta.append(pb); }
+  if (post.solved) { const sb = document.createElement('span'); sb.className = 'badge ok'; sb.textContent = L('forum_is_solved', `✓ Çözüldü`, '✓ Solved'); meta.append(sb); }
+  main.append(meta);
+  if (post.title && post.text) {
+    const txt = document.createElement('p'); txt.className = 'fr-text';
+    txt.textContent = post.text.length > 300 ? post.text.slice(0,300)+'…' : post.text;
+    main.append(txt);
+  }
+  row.append(main);
 
-  const meta = document.createElement('div'); meta.className = 'pcard-meta';
-  const au   = document.createElement('span');
-  au.className = 'pcard-author' + (post.authorEmail === ADMIN_EMAIL ? ' is-admin' : '');
-  au.textContent = post.authorName; au.onclick = goAuthor;
-  const dt = document.createElement('span'); dt.className = 'pcard-date'; dt.textContent = fmtDate(post.createdAt);
-  meta.append(au, dt);
-  if (post.solved) {
-    const sb = document.createElement('span'); sb.className = 'badge ok'; sb.textContent = window._i18n?.t('forum_is_solved')||'✓ Çözüldü';
-    meta.append(sb);
-  }
-  if (post.category && post.category !== 'Genel') {
-    const cb = document.createElement('span'); cb.className = 'badge info'; cb.textContent = post.category;
-    meta.append(cb);
-  }
-  if (post.pinned) {
-    const pb = document.createElement('span'); pb.className = 'badge accent'; pb.textContent = window._i18n?.t('forum_pinned')||'Sabitlendi';
-    meta.append(pb);
-  }
-  content.append(meta);
-  if (post.title) {
-    const ttl = document.createElement('div'); ttl.className = 'pcard-title'; ttl.textContent = post.title;
-    content.append(ttl);
-  }
-  if (post.text) {
-    const txt = document.createElement('div'); txt.className = 'pcard-text'; txt.textContent = post.text.length > 300 ? post.text.slice(0,300)+'…' : post.text;
-    content.append(txt);
-  }
-  body.append(content);
-  card.append(body);
+  // Kategori sütunu (masaüstü)
+  const cc = document.createElement('div'); cc.className = 'fr-catcol';
+  const cp = document.createElement('span'); cp.className = 'fr-cat'; cp.textContent = catLabel(cat); cp.title = cp.textContent;
+  cc.append(cp); row.append(cc);
 
-  // Actions bar
-  const actions = document.createElement('div'); actions.className = 'pcard-actions';
-  const repliesWrap = document.createElement('div'); repliesWrap.className = 'replies-wrap';
-  let repliesLoaded = false, repliesVisible = false;
-
-  const toggleBtn = document.createElement('button'); toggleBtn.className = 'pcard-reply-toggle';
+  // Yanıtlar aç/kapat
+  const rp = document.createElement('div'); rp.className = 'fr-replies'; rp.id = `rp-${post.id}`; rp.hidden = true;
+  const repCol = document.createElement('div'); repCol.className = 'fr-repcol';
+  const rep = document.createElement('button'); rep.type = 'button'; rep.className = 'fr-rep-btn';
+  rep.setAttribute('aria-controls', rp.id); rep.setAttribute('aria-expanded', 'false');
   const cnt = post.replyCount || 0;
-  toggleBtn.textContent = cnt === 0 ? (window._i18n?.t('forum_reply_btn')||'Yanıtla') : `${cnt} ${window._i18n?.t('forum_reply_n')||'Yanıt'}`;
-  toggleBtn.onclick = async () => {
-    repliesVisible = !repliesVisible;
-    if (!repliesVisible) { repliesWrap.style.display='none'; return; }
-    repliesWrap.style.display='block';
-    if (!repliesLoaded) { repliesLoaded = true; await loadReplies(post.id, repliesWrap, post.solved); }
+  const repLbl = document.createElement('span');
+  repLbl.textContent = cnt === 0 ? L('forum_reply_btn', `Yanıtla`, 'Reply') : `${cnt} ${cnt === 1 ? L('forum_reply_one') : L('forum_reply_n', `Yanıt`, 'Replies')}`;
+  rep.innerHTML = BUBBLE; rep.append(repLbl);
+  // mobilde aynı düğme eylem satırında (masaüstündeki gizlenir; ikisi aynı paneli yönetir)
+  const repM = rep.cloneNode(true); repM.classList.add('fr-rep-btn--m');
+  const openReplies = open => {
+    rp.hidden = !open;
+    [rep, repM].forEach(b => b.setAttribute('aria-expanded', String(open)));
+    if (open) { _openReplies.add(post.id); if (!rp.dataset.loaded) { rp.dataset.loaded = '1'; loadReplies(post.id, rp, post.solved); } }
+    else _openReplies.delete(post.id);
   };
-  const gotoBtn = document.createElement('button'); gotoBtn.className = 'pcard-goto-btn';
-  gotoBtn.textContent = window._i18n?.t('forum_goto_topic')||'→ Konuya Git';
-  gotoBtn.onclick = () => location.href = `post?id=${post.id}`;
+  rep.onclick = repM.onclick = () => openReplies(rp.hidden);
+  repCol.append(rep); row.append(repCol);
 
-  // Like button
+  // Eylemler: [yanıt (mobil)] beğen · [kendi/admin araçları] · konuya git
+  const acts = document.createElement('div'); acts.className = 'fr-acts';
+  const own = document.createElement('div'); own.className = 'fr-own';
+  acts.append(repM);
+
   const likedBy = post.likedBy || [];
-  const isLiked = _user && likedBy.includes(_user.uid);
-  const likeBtn = document.createElement('button');
-  likeBtn.className = 'pcard-like-btn' + (isLiked ? ' liked' : '');
-  likeBtn.innerHTML = ic('heart') + ' ' + (post.likeCount || 0);
-  likeBtn.onclick = async () => {
+  const isLiked = !!(_user && likedBy.includes(_user.uid));
+  const like = document.createElement('button'); like.type = 'button';
+  like.className = 'btn btn-sm btn-subtle fr-like' + (_popLike === post.id ? ' be-pop-in' : '');
+  like.setAttribute('aria-pressed', String(isLiked));
+  like.setAttribute('aria-label', `${L('forum_like_aria', `Beğen`, 'Like')} (${post.likeCount || 0})`);
+  like.innerHTML = HEART; const lc = document.createElement('span'); lc.textContent = post.likeCount || 0; like.append(lc);
+  like.onclick = async () => {
     if (!_user) { showToast(window._i18n?.t('forum_like_signin')||'Beğenmek için giriş yap', 'info'); return; }
+    _popLike = post.id;
     const ref = db.collection('forum').doc(post.id);
-    if (isLiked) {
-      await ref.update({ likedBy: firebase.firestore.FieldValue.arrayRemove(_user.uid), likeCount: firebase.firestore.FieldValue.increment(-1) });
-    } else {
-      await ref.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(_user.uid), likeCount: firebase.firestore.FieldValue.increment(1) });
-    }
+    try {
+      if (isLiked) {
+        await ref.update({ likedBy: firebase.firestore.FieldValue.arrayRemove(_user.uid), likeCount: firebase.firestore.FieldValue.increment(-1) });
+      } else {
+        await ref.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(_user.uid), likeCount: firebase.firestore.FieldValue.increment(1) });
+      }
+    } catch(e) { _popLike = null; showToast(`Beğeni kaydedilemedi: ` + (e.code || e.message || ''), 'error'); }
   };
+  acts.append(like);
 
-  actions.append(toggleBtn, gotoBtn, likeBtn);
-
-  // Edit own post button
+  // Kendi konusunu düzenle
+  const editSlot = document.createElement('div'); editSlot.className = 'fr-edit'; editSlot.hidden = true;
   if (_user && post.authorId === _user.uid) {
-    const editBtn = document.createElement('button'); editBtn.className = 'pcard-edit-btn'; editBtn.textContent = window._i18n?.t('post_edit')||'Düzenle';
-    editBtn.title = window._i18n?.t('post_edit')||'Düzenle';
-    let editFormEl = null;
+    const editBtn = document.createElement('button'); editBtn.type = 'button'; editBtn.className = 'btn btn-sm btn-subtle';
+    editBtn.innerHTML = ic('edit'); const el = document.createElement('span'); el.textContent = window._i18n?.t('post_edit')||'Düzenle'; editBtn.append(el);
+    editBtn.setAttribute('aria-expanded', 'false');
     editBtn.onclick = () => {
-      if (editFormEl) { editFormEl.remove(); editFormEl = null; return; }
-      editFormEl = document.createElement('div'); editFormEl.className = 'inline-edit-form';
-      const ta = document.createElement('textarea'); ta.className = 'inline-edit-ta';
+      if (!editSlot.hidden) { editSlot.hidden = true; editSlot.innerHTML = ''; editBtn.setAttribute('aria-expanded', 'false'); return; }
+      editSlot.hidden = false; editBtn.setAttribute('aria-expanded', 'true');
+      const ta = document.createElement('textarea'); ta.className = 'textarea';
       ta.value = post.text || ''; ta.placeholder = window._i18n?.t('forum_edit_ph')||'Konu içeriği...';
-      const btns = document.createElement('div'); btns.className = 'inline-edit-actions';
-      const saveB = document.createElement('button'); saveB.className = 'btn btn-sm btn-primary'; saveB.textContent = window._i18n?.t('post_save')||'Kaydet';
-      const cancelB = document.createElement('button'); cancelB.className = 'btn btn-sm btn-ghost'; cancelB.textContent = window._i18n?.t('post_cancel')||'Vazgeç';
-      cancelB.onclick = () => { editFormEl.remove(); editFormEl = null; };
+      ta.setAttribute('aria-label', window._i18n?.t('forum_edit_ph')||'Konu içeriği...');
+      const btns = document.createElement('div'); btns.className = 'fr-edit-actions';
+      const saveB = document.createElement('button'); saveB.type = 'button'; saveB.className = 'btn btn-sm btn-primary'; saveB.textContent = window._i18n?.t('post_save')||'Kaydet';
+      const cancelB = document.createElement('button'); cancelB.type = 'button'; cancelB.className = 'btn btn-sm btn-ghost'; cancelB.textContent = window._i18n?.t('post_cancel')||'Vazgeç';
+      cancelB.onclick = () => { editSlot.hidden = true; editSlot.innerHTML = ''; editBtn.setAttribute('aria-expanded', 'false'); editBtn.focus(); };
       saveB.onclick = async () => {
         const newText = ta.value.trim(); if (!newText) return;
         saveB.disabled = true; saveB.textContent = '…';
         try {
           await db.collection('forum').doc(post.id).update({ text: newText, editedAt: firebase.firestore.FieldValue.serverTimestamp() });
-          editFormEl.remove(); editFormEl = null;
+          editSlot.hidden = true; editSlot.innerHTML = '';
           showToast(window._i18n?.t('forum_post_updated')||'✓ Konu güncellendi');
         } catch(e) {
-          showToast('Güncelleme hatası: ' + (e.message||e.code), 'error');
-          saveB.disabled = false; saveB.textContent = 'Kaydet';
+          showToast(`Güncelleme hatası: ` + (e.message||e.code), 'error');
+          saveB.disabled = false; saveB.textContent = window._i18n?.t('post_save')||'Kaydet';
         }
       };
-      btns.append(saveB, cancelB); editFormEl.append(ta, btns);
-      card.insertBefore(editFormEl, repliesWrap);
+      btns.append(saveB, cancelB); editSlot.append(ta, btns);
+      ta.focus();
     };
-    actions.append(editBtn);
+    own.append(editBtn);
   }
 
   if (isAdmin(_user)) {
-    // Pin toggle
-    const pinBtn = document.createElement('button');
-    pinBtn.className = 'pcard-pin-btn' + (post.pinned ? ' active' : '');
-    pinBtn.textContent = post.pinned ? (window._i18n?.t('forum_pin_active')||'Sabitti') : (window._i18n?.t('forum_pin_btn')||'Sabitle');
+    // Sabitle
+    const pinBtn = document.createElement('button'); pinBtn.type = 'button';
+    pinBtn.className = 'btn btn-sm btn-subtle fr-pin'; pinBtn.setAttribute('aria-pressed', String(!!post.pinned));
+    pinBtn.innerHTML = ic('pin'); const pl = document.createElement('span');
+    pl.textContent = post.pinned ? (window._i18n?.t('forum_pin_active')||'Sabitti') : (window._i18n?.t('forum_pin_btn')||'Sabitle');
+    pinBtn.append(pl);
     pinBtn.onclick = async () => {
-      await db.collection('forum').doc(post.id).update({ pinned: !post.pinned });
-      showToast(post.pinned ? 'Sabitleme kaldırıldı' : 'Konu sabitlendi');
+      try {
+        await db.collection('forum').doc(post.id).update({ pinned: !post.pinned });
+        showToast(post.pinned ? `Sabitleme kaldırıldı` : `Konu sabitlendi`);
+      } catch(e) { showToast(`Hata (${errId()}): ` + (e.code || e.message || ''), 'error'); }
     };
-    actions.append(pinBtn);
+    own.append(pinBtn);
 
-    // Solve toggle
-    const solveBtn = document.createElement('button');
-    solveBtn.className = 'pcard-solve-btn' + (post.solved ? ' active' : '');
-    solveBtn.textContent = post.solved ? (window._i18n?.t('forum_is_solved')||'✓ Çözüldü') : (window._i18n?.t('forum_mark_solved')||'Çözüldü işaretle');
+    // Çözüldü
+    const solveBtn = document.createElement('button'); solveBtn.type = 'button';
+    solveBtn.className = 'btn btn-sm btn-ok fr-solve'; solveBtn.setAttribute('aria-pressed', String(!!post.solved));
+    solveBtn.innerHTML = ic('check'); const sl = document.createElement('span');
+    sl.textContent = post.solved ? (window._i18n?.t('forum_is_solved')||'✓ Çözüldü') : (window._i18n?.t('forum_mark_solved')||'Çözüldü işaretle');
+    solveBtn.append(sl);
     solveBtn.onclick = async () => {
-      await db.collection('forum').doc(post.id).update({ solved: !post.solved });
-      showToast(post.solved ? 'Konu yeniden açıldı' : '✓ Konu çözüldü olarak işaretlendi');
+      try {
+        await db.collection('forum').doc(post.id).update({ solved: !post.solved });
+        showToast(post.solved ? `Konu yeniden açıldı` : `✓ Konu çözüldü olarak işaretlendi`);
+      } catch(e) { showToast(`Hata (${errId()}): ` + (e.code || e.message || ''), 'error'); }
     };
-    actions.append(solveBtn);
+    own.append(solveBtn);
 
-    // Delete
-    const del = document.createElement('button'); del.className = 'pcard-delete-btn'; del.textContent = window._i18n?.t('post_delete')||'Sil';
+    // Sil
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'btn btn-sm btn-danger';
+    del.innerHTML = ic('trash'); const dl = document.createElement('span'); dl.textContent = window._i18n?.t('post_delete')||'Sil'; del.append(dl);
     del.onclick = async () => {
-      if (!confirm(window._i18n?.getLang()==='en'?'Are you sure you want to delete this topic and all its replies?':'Bu konuyu ve tüm yanıtlarını silmek istediğine emin misin?')) return;
+      if (!confirm(window._i18n?.getLang()==='en'?'Are you sure you want to delete this topic and all its replies?':`Bu konuyu ve tüm yanıtlarını silmek istediğine emin misin?`)) return;
       try {
         const rSnap = await db.collection('forum').doc(post.id).collection('replies').get();
         // Batch in chunks of 400 to stay under Firestore 500-op limit
@@ -671,41 +913,51 @@ function renderPost(post, container) {
           await b.commit();
         }
         await db.collection('forum').doc(post.id).delete();
-        showToast('Konu silindi', 'info');
+        _openReplies.delete(post.id);
+        showToast(`Konu silindi`, 'info');
       } catch(e) { const c=errId(); showToast(`Silme hatası (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
     };
-    actions.append(del);
+    own.append(del);
   }
+  if (own.childElementCount) acts.append(own);
 
-  card.append(actions);
-  repliesWrap.style.display = 'none';
-  card.append(repliesWrap);
-  container.append(card);
+  const go = document.createElement('a'); go.className = 'btn-link fr-goto'; go.href = postUrl;
+  const gl = document.createElement('span'); gl.className = 'fr-goto-t'; gl.textContent = L('forum_goto_btn', `Konuya git`, 'Open topic');
+  const ga = document.createElement('span'); ga.setAttribute('aria-hidden', 'true'); ga.textContent = '→';
+  go.append(gl, ga);
+  acts.append(go);
+
+  row.append(acts, editSlot, rp);
+  container.append(row);
+  if (_openReplies.has(post.id)) openReplies(true);
 }
 
 function loadReplies(postId, wrap, solved) {
   if (_unsubReplyMap[postId]) { _unsubReplyMap[postId](); delete _unsubReplyMap[postId]; }
   wrap.innerHTML = '';
 
-  const list = document.createElement('div'); list.className = 'replies-list';
-  list.innerHTML = `<div class="loading-replies">${window._i18n?.t('post_replies_loading')||'Yanıtlar yükleniyor...'}</div>`;
+  const list = document.createElement('div'); list.className = 'fr-rp-list';
+  list.innerHTML = `<div class="fr-rp-loading">${window._i18n?.t('post_replies_loading')||'Yanıtlar yükleniyor...'}</div>`;
   wrap.append(list);
 
-  // Reply form (created once)
   if (solved) {
     const notice = document.createElement('div');
-    notice.className = 'replies-closed';
+    notice.className = 'fr-rp-closed';
     notice.textContent = window._i18n?.t('forum_solved_closed')||'✓ Bu konu çözüldü — yanıt kapalı';
     wrap.append(notice);
   } else {
-    const form = document.createElement('div'); form.className = 'reply-form';
-    const ta   = document.createElement('textarea'); ta.className = 'reply-ta'; ta.rows = 2;
+    const form = document.createElement('div'); form.className = 'fr-rp-form';
+    const ta   = document.createElement('textarea'); ta.className = 'textarea fr-rp-ta'; ta.rows = 2;
     ta.placeholder = window._i18n?.t('post_reply_ph')||'Yanıtını yaz...';
-    const btn  = document.createElement('button'); btn.className = 'reply-send'; btn.textContent = window._i18n?.t('post_reply_btn')||'Yanıtla';
+    ta.setAttribute('aria-label', ta.placeholder);
+    ta.value = _drafts[postId] || '';
+    ta.addEventListener('input', () => { _drafts[postId] = ta.value; });
+    const btn  = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-primary'; btn.textContent = window._i18n?.t('post_reply_btn')||'Yanıtla';
     ta.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') btn.click(); });
     btn.onclick = async () => {
       const txt = ta.value.trim(); if (!txt) return;
       btn.disabled = true; btn.textContent = '…';
+      delete _drafts[postId];
       try {
         const admin = isAdmin(_user);
         await db.collection('forum').doc(postId).collection('replies').add({
@@ -724,6 +976,7 @@ function loadReplies(postId, wrap, solved) {
         }, { merge: true }).catch(() => {});
         ta.value = '';
       } catch(e) {
+        _drafts[postId] = txt;
         const c=errId(); showToast(`Yanıt gönderilemedi (${c}): `+(e.message||e.code||'Hata'), 'error');
       } finally {
         btn.disabled = false; btn.textContent = window._i18n?.t('post_reply_btn')||'Yanıtla';
@@ -738,88 +991,104 @@ function loadReplies(postId, wrap, solved) {
       list.innerHTML = '';
       snap.docs.forEach(d => {
         const r = { id:d.id, ...d.data() };
-        list.append(buildReplyEl(postId, r, list));
+        list.append(buildReplyEl(postId, r));
       });
     }, e => {
-      if (e.code !== 'permission-denied') showToast('Yanıtlar yüklenemedi: ' + (e.message || e.code), 'error');
+      list.innerHTML = '';
+      if (e.code !== 'permission-denied') showToast(`Yanıtlar yüklenemedi: ` + (e.message || e.code), 'error');
     });
 }
 
-function buildReplyEl(postId, r, list) {
-  const item = document.createElement('div'); item.className = 'reply-item';
-  const meta = document.createElement('div'); meta.className = 'reply-meta';
-  const au   = document.createElement('span');
-  au.className = 'reply-author' + (r.isAdmin ? ' is-admin' : '');
-  au.textContent = r.authorName;
-  const dt = document.createElement('span'); dt.className = 'reply-date'; dt.textContent = fmtDate(r.createdAt);
-  meta.append(au, dt);
+function buildReplyEl(postId, r) {
+  const item = document.createElement('div'); item.className = 'fr-rp' + (r.isAdmin ? ' is-admin' : '');
+  const meta = document.createElement('div'); meta.className = 'fr-rp-meta';
+  const au   = document.createElement('span'); au.className = 'fr-rp-author';
+  au.textContent = r.authorName || L('ui_member', `Üye`, 'Member');
+  meta.append(au);
+  if (r.isAdmin) {
+    const b = document.createElement('span'); b.className = 'badge badge-solid'; b.textContent = L('forum_admin_badge', `Eğitmen`, 'Instructor');
+    meta.append(b);
+  }
+  const dt = document.createElement('time'); dt.className = 'fr-rp-date'; dt.textContent = fmtDate(r.createdAt);
+  const iso = isoDate(r.createdAt); if (iso) dt.dateTime = iso;
+  meta.append(dt);
   if (isAdmin(_user)) {
-    const del = document.createElement('button'); del.className = 'reply-del'; del.textContent = window._i18n?.t('post_delete')||'Sil';
+    const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-link fr-rp-del'; del.textContent = window._i18n?.t('post_delete')||'Sil';
     del.onclick = async () => {
-      await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
-      await db.collection('forum').doc(postId).update({
-        replyCount: firebase.firestore.FieldValue.increment(-1),
-      });
-      if (r.authorId) {
-        db.collection('users').doc(r.authorId).set({
+      try {
+        await db.collection('forum').doc(postId).collection('replies').doc(r.id).delete();
+        await db.collection('forum').doc(postId).update({
           replyCount: firebase.firestore.FieldValue.increment(-1),
-        }, { merge: true }).catch(() => {});
-      }
-      item.remove();
+        });
+        if (r.authorId) {
+          db.collection('users').doc(r.authorId).set({
+            replyCount: firebase.firestore.FieldValue.increment(-1),
+          }, { merge: true }).catch(() => {});
+        }
+        item.remove();
+      } catch(e) { const c=errId(); showToast(`Silme hatası (${c}): `+(e.code||e.message||'Bilinmeyen'), 'error'); }
     };
     meta.append(del);
   }
-  const txt = document.createElement('div'); txt.className = 'reply-text'; txt.textContent = r.text;
+  const txt = document.createElement('p'); txt.className = 'fr-rp-text'; txt.textContent = r.text;
   item.append(meta, txt);
   return item;
 }
 
+// ── Son üyeler ────────────────────────────────────────────────────────
 async function loadMembersSidebar() {
   const c = document.getElementById('membersSidebar');
   if (!c) return;
+  if (!_authReady) return;
+  if (!_user) {
+    c.innerHTML = '';
+    const p = document.createElement('p'); p.className = 'fr-mem-text';
+    p.textContent = L('forum_members_signin', `Üyeleri görmek için giriş yap.`, 'Sign in to see members.');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-link fr-mem-signin';
+    b.textContent = L('forum_join_btn', `Giriş yap`, 'Sign in'); b.onclick = doSignIn;
+    const ar = document.createElement('span'); ar.setAttribute('aria-hidden', 'true'); ar.textContent = '→'; b.append(ar);
+    c.append(p, b);
+    return;
+  }
   try {
     const snap = await db.collection('users').limit(20).get();
-    if (snap.empty) { c.innerHTML = '<div class="sc-empty">'+(window._i18n?.t('members_no_members')||'Henüz üye yok.')+'</div>'; return; }
-    c.innerHTML = '';
+    if (snap.empty) { c.innerHTML = ''; const p = document.createElement('p'); p.className = 'fr-mem-text'; p.textContent = L('members_no_members', `Henüz üye yok.`, 'No members found.'); c.append(p); return; }
+    const grid = document.createElement('div'); grid.className = 'fr-mem-grid';
     snap.docs.forEach(d => {
       const m = d.data();
-      const a = document.createElement('a'); a.className = 'member-row'; a.href = `profile?uid=${d.id}`;
-      if (m.photoURL) {
-        const img = document.createElement('img'); img.className = 'member-av'; img.src = m.photoURL; img.alt = '';
-        a.append(img);
-      } else {
-        const ph = document.createElement('div'); ph.className = 'member-av-ph';
-        ph.textContent = (m.displayName||'?')[0].toUpperCase();
-        a.append(ph);
-      }
-      const inf = document.createElement('div'); inf.className = 'member-info';
-      const nm = document.createElement('div'); nm.className = 'member-name'; nm.textContent = m.displayName?.split(' ')[0] || (window._i18n?.t('ui_member')||'Üye');
-      inf.append(nm);
-      if (m.title && TITLES[m.title]) {
-        const td = TITLES[m.title];
-        const ts = document.createElement('div'); ts.className = 'member-title-sm';
-        ts.style.color = td.color;
-        ts.innerHTML = ic(td.icon) + '<span>' + td.label + '</span>';
-        inf.append(ts);
-      }
-      a.append(inf); c.append(a);
+      const name = m.displayName?.split(' ')[0] || L('ui_member', `Üye`, 'Member');
+      const td = m.title && TITLES[m.title] ? m.title : '';
+      const label = td ? `${name} · ${titleLabel(td)}` : name;
+      const a = document.createElement('a'); a.className = 'fr-mem'; a.href = `profile?uid=${d.id}`;
+      a.title = label; a.setAttribute('aria-label', label);
+      const av = document.createElement('span'); av.className = 'fr-mem-av'; av.setAttribute('aria-hidden', 'true');
+      if (m.photoURL) { const img = document.createElement('img'); img.src = m.photoURL; img.alt = ''; img.loading = 'lazy'; av.append(img); }
+      else av.textContent = (m.displayName || '?')[0].toUpperCase();
+      if (td) { const b = document.createElement('span'); b.className = 'fr-mem-badge fr-t-' + td; b.innerHTML = ic(TITLES[td].icon); av.append(b); }
+      const nm = document.createElement('span'); nm.className = 'fr-mem-name'; nm.setAttribute('aria-hidden', 'true'); nm.textContent = name;
+      a.append(av, nm); grid.append(a);
     });
-    const all = document.createElement('a'); all.className = 'sc-all-btn'; all.href = 'members';
-    all.textContent = window._i18n?.t('forum_all_members')||'Tüm Üyeleri Gör →';
-    c.append(all);
+    c.innerHTML = ''; c.append(grid);
   } catch(e) { c.innerHTML = ''; }
 }
 
-window._forumRenderFeed = () => renderFeed();
+window._forumRenderFeed = () => { applyLocal(); buildFilters(); renderFeed(); };
 window._forumLoadSidebar = () => loadMembersSidebar();
 window._forumUpdateAuth = () => updateAuthBar(_user);
+
+applyLocal();
+buildFilters();
+initSearch();
+renderFeed();
 
 window.bkAuth.handleRedirectResult();
 auth.onAuthStateChanged(async user => {
   _user = user;
+  _authReady = true;
   if (!user) {
     Object.values(_unsubReplyMap).forEach(u => { try { u?.(); } catch(_){} });
     Object.keys(_unsubReplyMap).forEach(k => delete _unsubReplyMap[k]);
+    _openReplies.clear();
   }
   updateAuthBar(user);
   initNotifications(user);
@@ -832,29 +1101,12 @@ auth.onAuthStateChanged(async user => {
     }).catch(() => {});
   }
   if (!user && _unsubscribe) { _unsubscribe(); _unsubscribe = null; }
-  await renderFeed();
+  renderFeed();
   loadMembersSidebar();
 });
 </script>
 
-<nav class="bottom-nav" data-active="forum">
-  <a class="bnav-item" href="egitim" data-page="egitim"><span class="bnav-icon">🎓</span><span class="bnav-label" data-i18n="nav_egitim">Eğitim</span></a>
-  <a class="bnav-item" href="forum" data-page="forum"><span class="bnav-icon">💬</span><span class="bnav-label" data-i18n="nav_forum">Forum</span></a>
-  <a class="bnav-item" href="members" data-page="members"><span class="bnav-icon">👥</span><span class="bnav-label" data-i18n="nav_members">Üyeler</span></a>
-  <a class="bnav-item" href="ableton-lab" data-page="ableton-lab"><span class="bnav-icon">🎛️</span><span class="bnav-label" data-i18n="nav_lab">Lab</span></a>
-  <a class="bnav-item" id="bnavAdminItem" href="booking" style="display:none;"><span class="bnav-icon">📅</span><span class="bnav-label" data-i18n="nav_lessons">Ders Paneli</span></a>
-  <a class="bnav-item" id="bnavLoveBtn" href="love" style="display:none;color:#e8527a;"><span class="bnav-icon">💌</span><span class="bnav-label">Sevgim</span></a>
-  <a class="bnav-item bnav-profile" href="profile" data-page="profile"><div class="bnav-profile-av" id="bnavProfileAv">👤</div><span class="bnav-label" data-i18n="nav_profile">Profil</span></a>
-</nav>
-<script type="module">(function(){const a=document.querySelector('.bottom-nav')?.dataset.active;document.querySelectorAll('.bnav-item[data-page]').forEach(e=>{if(a===e.dataset.page)e.classList.add('active');});})();</script>
-<script>(function(){
-  var act=document.querySelector('.bottom-nav')?.dataset.active;
-  if(act){document.querySelectorAll('.lnav-item[data-page]').forEach(function(e){if(act===e.dataset.page)e.classList.add('active');});var pl=document.querySelector('.lnav-profile-link');if(pl&&act==='profile')pl.classList.add('active');}
-  var bAv=document.getElementById('bnavProfileAv'),lAv=document.getElementById('lnavProfileAv');
-  if(bAv&&lAv){lAv.innerHTML=bAv.innerHTML;new MutationObserver(function(){lAv.innerHTML=bAv.innerHTML;}).observe(bAv,{childList:true,subtree:true});}
-  var bAdm=document.getElementById('bnavAdminItem'),lAdm=document.getElementById('lnavAdminItem');
-  if(bAdm&&lAdm){new MutationObserver(function(m){m.forEach(function(x){if(x.attributeName==='style')lAdm.style.display=bAdm.style.display;});}).observe(bAdm,{attributes:true,attributeFilter:['style']});}
-})();</script>
+<footer class="be-footer" id="beFooter" data-be-footer="compact"></footer>
 <script>(function(){
   function init(){
     if(window._i18n){
