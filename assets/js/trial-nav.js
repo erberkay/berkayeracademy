@@ -1,23 +1,15 @@
-// love-nav.js — kabuğun kişiye bağlı iki durumu (menüyü çizmez; theme-init.js çizer):
-//  1) "Sana Olan Sevgim" bağlantıları yalnız belirli hesaplara + admin'e görünür
-//     → <html class="be-love">; kabuktaki [data-be-love] öğeleri CSS ile açılır.
-//  2) Henüz ders almamış kullanıcı (reservations dokümanı yok, ders listesi boş
+// trial-nav.js — kabuğun kişiye bağlı durumu (menüyü çizmez; theme-init.js çizer):
+//  Henüz ders almamış kullanıcı (reservations dokümanı yok, ders listesi boş
 //     ya da hepsi iptal) → <html class="be-trial">; kabuk "Ders Paneli / Dersler"
 //     etiketlerini "Deneme Dersi / Deneme" yapar ve "Ücretsiz deneme" CTA'sını gösterir.
 (function () {
-  var LOVE_EMAIL  = 'elifaras12@gmail.com';
   var ADMIN_EMAIL = 'berkayer032@gmail.com';
-  var BORA_EMAIL  = 'bora1881aras@gmail.com';
   var html = document.documentElement;
 
   function refreshShell() {
     if (window.beShell && typeof window.beShell.refresh === 'function') {
       try { window.beShell.refresh(); } catch (e) { /* noop */ }
     }
-  }
-
-  function applyLove(show) {
-    html.classList.toggle('be-love', !!show);
   }
 
   // True if the user has at least one non-cancelled lesson in their
@@ -61,8 +53,6 @@
   function tryHook() {
     if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
       firebase.auth().onAuthStateChanged(function (user) {
-        var show = !!user && (user.email === LOVE_EMAIL || user.email === ADMIN_EMAIL || user.email === BORA_EMAIL);
-        applyLove(show);
         syncTrialNav(user);
       });
     } else {

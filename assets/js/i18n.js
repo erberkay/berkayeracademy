@@ -616,8 +616,6 @@
     be_cta_trial:     { tr: 'Ücretsiz deneme', en: 'Free trial' },
     be_tab_lessons:   { tr: 'Dersler', en: 'Lessons' },
     be_tab_trial:     { tr: 'Deneme', en: 'Trial' },
-    be_love:          { tr: 'Sana Olan Sevgim', en: 'Sana Olan Sevgim' },
-    be_love_short:    { tr: 'Sevgim', en: 'Sevgim' },
     be_skip:          { tr: 'İçeriğe geç', en: 'Skip to content' },
     be_lab_title:     { tr: 'Ableton Lab', en: 'Ableton Lab' },
     be_open_profile:  { tr: 'Profilini aç', en: 'Open your profile' },

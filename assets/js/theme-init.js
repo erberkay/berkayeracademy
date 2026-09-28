@@ -51,8 +51,6 @@
     be_cta_trial: [`Ücretsiz deneme`, 'Free trial'],
     be_tab_lessons: ['Dersler', 'Lessons'],
     be_tab_trial: ['Deneme', 'Trial'],
-    be_love: ['Sana Olan Sevgim', 'Sana Olan Sevgim'],
-    be_love_short: ['Sevgim', 'Sevgim'],
     be_skip: [`İçeriğe geç`, 'Skip to content'],
     be_lab_title: ['Ableton Lab', 'Ableton Lab'],
     be_open_profile: [`Profilini aç`, 'Open your profile'],
@@ -193,7 +191,6 @@
       if (n.id === navId) a.setAttribute('aria-current', n.id === page ? 'page' : 'true');
       nav.appendChild(a);
     });
-    nav.appendChild(tx('a', 'be_love_short', { href: '/love', 'class': 'be-nav-love', 'data-be-love': '' }));
 
     // eylemler
     var actions = el('div', { 'class': 'be-actions' });
@@ -248,7 +245,6 @@
       if (n.id === navId) a.setAttribute('aria-current', n.id === state.page ? 'page' : 'true');
       links.appendChild(a);
     });
-    links.appendChild(tx('a', 'be_love', { 'class': 'be-drawer-link be-drawer-love', href: '/love', 'data-be-love': '' }));
     var foot = el('div', { 'class': 'be-drawer-foot' });
     foot.appendChild(langGroup('be-lang--lg'));
     var prof = el('a', { 'class': 'be-drawer-profile', href: '/profile' });
@@ -353,14 +349,13 @@
         items.forEach(function (it) { c.appendChild(it); });
         return c;
       }
-      var loveA = tx('a', 'be_love_short', { href: '/love', 'data-be-love': '' });
       cols.appendChild(col('be_ft_academy', [
         tx('a', 'nav_egitim', { href: '/egitim' }), tx('a', 'nav_egitmen', { href: '/egitmen' }),
         tx('a', 'nav_sss', { href: '/sss' }), trialize(tx('a', 'nav_lessons', { href: '/booking' }), 'nav_lessons', 'nav_trial_lesson')
       ]));
       cols.appendChild(col('be_ft_community', [
         tx('a', 'nav_forum', { href: '/forum' }), tx('a', 'nav_members', { href: '/members' }),
-        tx('a', 'be_lab_title', { href: '/ableton-lab' }), loveA
+        tx('a', 'be_lab_title', { href: '/ableton-lab' })
       ]));
       cols.appendChild(col('be_ft_follow', SOCIAL.map(function (s) { return ext(el('a', { href: s.href }, s.text)); })));
       top.appendChild(about); top.appendChild(cols);

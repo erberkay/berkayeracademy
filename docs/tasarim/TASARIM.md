@@ -276,12 +276,12 @@ Ok işareti: `<span aria-hidden="true">→</span>`. Birincil + ghost ikilisi her
 ## 6. Kabuk (tüm sayfalar)
 
 ### Masaüstü başlık (>1024px) — `.be-header`
-88px, dolgu `0 var(--page-x)`, alt çizgi `--line-div`, akışta (yapışkan değil). Sol: `.be-brand` = `.be-mark` (40px kutu, radius 10, `--bg-ink`, kenar `--line-ctl`, üstte 4px ember şeridi, "BE" 15px/700 altın, -.5px) + `.be-brand-text` (mono 12px .22em "BERKAY ER ACADEMY"). Orta: `.be-nav` — Ana Sayfa · Eğitim · Eğitmen · Forum · Üyeler · Lab · SSS · Ders Paneli (14px/500, `--fg-2`, gap 28 — 1025–1279'da 14→20px akışkan; hover `--fg`; aktif altın: bu sayfa `aria-current="page"`, alt sayfada üst bölüm `aria-current="true"` — post/new-post → Forum, ders-ableton/ders-push3 → Eğitim, site_1 → Lab; çekmece ve sekme çubuğu da aynı). Sağ `.be-actions`: `.be-lang` (TR|EN mono kapsül; aktif krem) · `#authBar` (bildirim zili + profil) · `.be-cta` "Ücretsiz deneme" (44px altın pill → /booking; yalnız girişsiz ya da deneme adayında). Kişiye bağlı durumlar (`be-trial`, `be-love`) `love-nav.js`'ten gelir; kabuklu **tüm** sayfalar onu yükler (Firestore SDK'sı olmayan ders-ableton/ders-push3 son bilinen deneme durumunu `sessionStorage['be-trial:<uid>']`'den okur).
+88px, dolgu `0 var(--page-x)`, alt çizgi `--line-div`, akışta (yapışkan değil). Sol: `.be-brand` = `.be-mark` (40px kutu, radius 10, `--bg-ink`, kenar `--line-ctl`, üstte 4px ember şeridi, "BE" 15px/700 altın, -.5px) + `.be-brand-text` (mono 12px .22em "BERKAY ER ACADEMY"). Orta: `.be-nav` — Ana Sayfa · Eğitim · Eğitmen · Forum · Üyeler · Lab · SSS · Ders Paneli (14px/500, `--fg-2`, gap 28 — 1025–1279'da 14→20px akışkan; hover `--fg`; aktif altın: bu sayfa `aria-current="page"`, alt sayfada üst bölüm `aria-current="true"` — post/new-post → Forum, ders-ableton/ders-push3 → Eğitim, site_1 → Lab; çekmece ve sekme çubuğu da aynı). Sağ `.be-actions`: `.be-lang` (TR|EN mono kapsül; aktif krem) · `#authBar` (bildirim zili + profil) · `.be-cta` "Ücretsiz deneme" (44px altın pill → /booking; yalnız girişsiz ya da deneme adayında). Kişiye bağlı durum (`be-trial`) `trial-nav.js`'ten gelir; kabuklu **tüm** sayfalar onu yükler (Firestore SDK'sı olmayan ders-ableton/ders-push3 son bilinen deneme durumunu `sessionStorage['be-trial:<uid>']`'den okur).
 Auth bar görünümü: girişsiz = 44px halka içinde kişi ikonu (`.auth-sign-btn`, metni ekran okuyucuda kalır); girişli = `.notif-bell` 44px halka + `.auth-user-wrap` kapsül (36px avatar, fotoğraf yoksa altın baş harf, ad, çıkış ✕).
 
 ### Mobil (≤1024px)
 - **Üst çubuk:** 64px, `position:sticky; top:0`, `--glass-header` + blur 14px, alt çizgi. Sol: 34px işaret (radius 9, 3px şerit) + mono 10px .2em sayfa etiketi ("EĞİTİM", "FORUM"; ana sayfada "BERKAY ER ACADEMY"). Geri varyantı: mono 11px "← FORUM". Sağ: `#authBar` (40px zil + avatar/giriş halkası) + 44px daire menü düğmesi (≡ ↔ ✕).
-- **Çekmece** `#beDrawer.be-drawer`: üst çubuğun altından tam ekran (`--scrim`), dolgu 24 16; serif 38px bağlantılar (aktif altın), [Sevgim — özel hesaplar], altta TR/EN (40px pill) + "Profil" bağlantısı. Açılış `.be-slide`. Esc / bağlantı / menü düğmesi kapatır; odak içeride döner; kapanınca odak menü düğmesine döner; gövde kaydırması kilitli.
+- **Çekmece** `#beDrawer.be-drawer`: üst çubuğun altından tam ekran (`--scrim`), dolgu 24 16; serif 38px bağlantılar (aktif altın), altta TR/EN (40px pill) + "Profil" bağlantısı. Açılış `.be-slide`. Esc / bağlantı / menü düğmesi kapatır; odak içeride döner; kapanınca odak menü düğmesine döner; gövde kaydırması kilitli.
 - **Alt sekme çubuğu** `.be-tabbar`: sol/sağ/alt 12px (+ güvenli alan), 68px, radius 22, `--glass-bar` + blur 16px, kenar `--line-3`; 5 sütun: Eğitim · Forum · Lab · Dersler (/booking; deneme adayında "Deneme") · Profil (girişliyse fotoğraf). İkon 20px + 10px etiket; aktif altın + `aria-current`. Gövdeye `padding-bottom` eklenir.
 - **Footer** mobilde de görünür (tek sütun), sekme çubuğunun üstünde biter.
 
@@ -297,7 +297,7 @@ Auth bar görünümü: girişsiz = 44px halka içinde kişi ikonu (`.auth-sign-b
 ## 7. Sayfa ajanları için
 
 ### 7.1 Kabuk nasıl çalışıyor
-Her sayfada (love, app-bridge, migration hariç) yalnız iki yer tutucu var — kabuk ajanı koydu; **silme / yerini değiştirme**, yalnız öznitelik ayarlayabilirsin:
+Her sayfada (app-bridge, migration hariç) yalnız iki yer tutucu var — kabuk ajanı koydu; **silme / yerini değiştirme**, yalnız öznitelik ayarlayabilirsin:
 ```html
 <body>
 <header class="be-header" id="beHeader" data-be-page="forum"><div id="authBar"></div></header>
@@ -325,7 +325,7 @@ Diğer öznitelikler: `data-be-label="i18n_anahtarı"` (mobil etiketi değiştir
 **Başlığa sayfa eylemi** (Push3 görünüm seçici, YeniKonu "Yayınla", KonuDetay "Paylaş", Admin "ADMİN" rozeti…): `#beHeader` içine `<div data-be-slot class="be-slot--mobile">…</div>` (yalnız mobil) / `be-slot--desktop` / sınıfsız (ikisi) koy → kabuk `#authBar`'ın soluna taşır.
 
 **JS API `window.beShell`:** `hide('header'|'tabs'|'footer')` / `show(...)` (ör. AdminPaneli tasarımı kendi yan paneliyle başlıksız: `beShell.hide('header')`), `setLabel(metin)` (mobil etiket), `refresh()`, `closeDrawer()`, `t(anahtar)`, `observeAnim(kök)` (sonradan eklenen `.be-marq/.be-spin/.be-drift/.be-eq/.be-playhead/.be-bob` ekran dışında duraklasın).
-**`<html>` durum sınıfları:** `be-js`, `be-authed`, `be-trial` (deneme adayı — love-nav; "Ders Paneli"→"Deneme Dersi", sekme "Dersler"→"Deneme", CTA görünür), `be-love` (özel hesap — Sevgim bağlantıları), `be-has-tabs`, `be-drawer-open`, `be-hide-*`, `font-clear`.
+**`<html>` durum sınıfları:** `be-js`, `be-authed`, `be-trial` (deneme adayı — trial-nav; "Ders Paneli"→"Deneme Dersi", sekme "Dersler"→"Deneme", CTA görünür), `be-has-tabs`, `be-drawer-open`, `be-hide-*`, `font-clear`.
 
 ### 7.2 Yerleşim kuralları
 - Başlık akışta (masaüstü statik 88px, mobil `sticky` 64px). İçeriği **ofsetleme**: `--topbar-h:0`, `--nav-w:0` (eski `calc(var(--topbar-h) + X)` kalıpları X'e indi — kendi sayfanda temizle). Yapışkan öğe: `top:var(--be-sticky-top)` (mobil 64, masaüstü 0) + `z-index` < `--z-header`. Tam ekran kutu: `height:calc(100dvh - var(--be-header-h))`.
@@ -338,15 +338,15 @@ Diğer öznitelikler: `data-be-label="i18n_anahtarı"` (mobil etiketi değiştir
 ### 7.3 Kabuk ajanının sayfalarda yaptığı (içerik dışı) değişiklikler
 - Kaldırılan: `.left-nav`, `.bottom-nav`, `.topnav`, `#homeLogo`, `.mobile-lang-toggle`, içerik içi eski `.footer` ("Berkay Er · Producer / Aktif Karakter"), bottom-nav/left-nav senkron betikleri, egitim/booking'deki sayfa içi `.wa-fab` `<style>`'ı (stil `ui.css`'te; `data-be-aria="be_wa_fab"` eklendi). Sayfa JS'indeki `bnavAdminItem/bnavProfileAv` referansları null-güvenli olduğundan olduğu gibi duruyor (artık no-op) — temizleyebilirsin.
 - Sayfa CSS'inde ölü kalanlar (temizle): `.topnav*`, `html.theme-light …` (egitim), push3'ün `#authBar` yorumları.
-- `love-nav.js` artık egitim, egitmen, sss, ableton-lab, ders-ableton, ders-push3, site_1'de de yüklü (Firebase SDK etiketlerinin hemen ardında).
+- `trial-nav.js` artık egitim, egitmen, sss, ableton-lab, ders-ableton, ders-push3, site_1'de de yüklü (Firebase SDK etiketlerinin hemen ardında).
 - `ders-ableton.html`: `body`'deki yan dolgu `.lesson-wrap`'e taşındı (`width:calc(100% - 2*var(--page-x))`, alt boşluk `--s8`) — başlık artık tam genişlik.
 - "İçeriğe geç" hedefi: ilk `<main>`; yoksa başlıktan sonraki ilk akış içi, görünür öğe (sabit `#scrollProgress` gibi öğeler atlanır). Sayfana `<main>` koyarsan hedef o olur.
 - Geçici uyum yamaları: `ableton-lab.html` `#moduleNav` fixed → `sticky; top:var(--be-sticky-top)` + `.container` üst dolgusu; `ders-push3.html` `--p3-shell-bottom: var(--be-header-h)` (menü/oyun kutuları başlık kadar kısalır), taskbar'daki 200px authBar boşluğu kaldırıldı.
-- `app-bridge.html`, `migration.html`: yalnız font + `ui.css` + token'lı küçük stil (kabuk yok). `love.html`: dokunulmadı (Sevgim tasarımında ortak kabuk yok; sayfa ajanı `ui.css` + tasarımdaki "← GERİ" başlığını kendisi kurar).
+- `app-bridge.html`, `migration.html`: yalnız font + `ui.css` + token'lı küçük stil (kabuk yok).
 - Ortak damga `?v=202609261900` (Temel); Metin birleştirmede tüm sayfalarda `?v=202609271200`'e çekildi. Instrument Sans linkine 700 eklendi.
 
 ### 7.4 Dokunma
-- `theme-init.js`, `themes.css`, `love-nav.js`, `auth-ui.js`, `ui.css`'e sayfa kuralı ekleme; eksik kabuk davranışı/bileşeni görürsen raporla. Sayfa CSS'i sayfanın `<style>`'ında.
+- `theme-init.js`, `themes.css`, `trial-nav.js`, `auth-ui.js`, `ui.css`'e sayfa kuralı ekleme; eksik kabuk davranışı/bileşeni görürsen raporla. Sayfa CSS'i sayfanın `<style>`'ında.
 - `#authBar` içeriğinin sınıf adlarını (`auth-*`, `notif-*`) değiştirme; kabuk CSS'i ve geliştirici betiği bunlara bağlı.
 - Profil sayfasındaki tema (Koyu/Açık) kontrolünü kaldır (tema yok); "Font Netleştir" (`site-font-clear` → `html.font-clear`) kalır.
 - `assets/js/push3/*` ve push3 `?v=` damgaları (P3.K.V) değişmez.
