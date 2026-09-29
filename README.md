@@ -1,173 +1,132 @@
-# Berkay Er — Producer.School
+# Berkay Er Academy
 
-Kişisel portfolyo ve öğrenci topluluğu sitesi. GitHub Pages üzerinde barındırılır, backend olarak Firebase (Auth + Firestore) kullanır.
+Berkay Er'in birebir Ableton Live / müzik prodüksiyonu eğitim sitesi: tanıtım sayfaları, öğrenci ders paneli, topluluk forumu, tarayıcıda çalışan Ableton Lab ve Push 3 Laboratuvarı.
 
-🌐 **Canlı site:** [erberkay.github.io/Producer.School](https://erberkay.github.io/Producer.School/)
+**Canlı site:** [berkayeracademy.com](https://berkayeracademy.com)
 
----
-
-## Sayfalar
-
-| Sayfa | Açıklama |
-|---|---|
-| `index.html` | Ana sayfa — biyografi, eğitim müfredatı, öğrenci yorumları, prodüksiyon dergisi, forum önizlemesi |
-| `forum.html` | Topluluk forumu — konu listesi, arama, kategori filtresi |
-| `post.html` | Konu detay sayfası — yanıtlar, markdown destek |
-| `new-post.html` | Yeni konu oluşturma — başlık, içerik editörü, kategori seçici |
-| `members.html` | Üyeler sayfası — skeleton loader, sort, collab filtresi, sosyal linkler |
-| `profile.html` | Kullanıcı profili — hakkında, genreler, collab durumu, konu geçmişi |
-| `site_1.html` | Ableton Lab — 4 modüllü interaktif prodüksiyon araçları (Web Audio API) |
-| `ders-ableton.html` | Ücretsiz Ableton Live dersi sayfası |
-
----
-
-## Özellikler
-
-### Kimlik Doğrulama
-- Google OAuth (`signInWithPopup`) — Firebase Auth
-- Tüm sayfalarda tutarlı auth bar (avatar, isim, çıkış)
-- Popup çakışmasını önleyen `_signingIn` guard
-
-### Topluluk Forumu
-- Gerçek zamanlı Firestore veritabanı
-- Konu arama (başlık, içerik, yazar)
-- Kategori filtreleri: Genel · Ableton · Ses Tasarımı · Mixing · Live Set · Diğer
-- Çözüldü / Açık filtresi
-- Yanıtlar + yanıt sayacı
-- **Ctrl+Enter** ile hızlı yanıt gönderimi
-- Admin özellikleri: çözüldü işaretleme, konu/yanıt silme
-- Çözülmüş konularda yanıt formu kapalı
-
-### Admin Paneli
-- Admin e-postası: `berkayer032@gmail.com`
-- ⚡ rozeti ile ayırt edilir
-- Konuları çözüldü olarak işaretleyebilir, silebilir, yanıtları silebilir
-
-### Kullanıcı Profilleri
-- Profil fotoğrafı, isim, katılım tarihi
-- Hakkında metni (maks. 300 karakter)
-- Tür/genre etiketleri (maks. 8)
-- Collab durumu: Projeye Açık / Meşgul / Belirtilmemiş
-- Instagram + Spotify linkleri
-- Açılan konu geçmişi
-
-### Üyeler Sayfası
-- Skeleton loader (yükleme sırasında shimmer kartlar)
-- Üye sayısı fade-in animasyonu
-- Sıralama: En Yeni / En Eski / A-Z
-- Collab filtresi: "Projeye Açık" üyeleri filtrele
-- Arama: isim + genre eşleşmesi
-- Kart üzerinde collab durumu göstergesi (yeşil/kırmızı nokta)
-- Instagram ve Spotify linkleri kartlarda
-
-### Ableton Lab (`site_1.html`) — 4 Modül
-Tüm araçlar Web Audio API tabanlı, framework yok.
-
-#### Modül 1 — Synthesizer
-- Waveform seçici: sine / square / sawtooth / triangle
-- ADSR zarfı (Attack, Decay, Sustain, Release)
-- Low-pass filtre: cutoff + resonance
-- Oktav kaydırma, klavye (A–K tuşları)
-- Preset kaydet/yükle (Firebase Firestore)
-
-#### Modül 2 — Beat Maker
-- 16 adımlı step sequencer: Kick, Snare, Open Hat, Close Hat, Bass, Lead
-- Velocity sürükleme (adımı yukarı sürükle)
-- BPM kontrolü, swing ayarı
-- Beat Burst modu (anlık ritim patlaması)
-- Beat kaydet/yükle (Firebase Firestore)
-- Trap / House / Minimal hazır şablonlar
-
-#### Modül 3 — Mixing
-- **İnteraktif 3-Band EQ**: Noktaları sürükle → frekans (X) + gain (Y) değişir
-  - LOW: 20–500Hz, MID: 200–8000Hz, HIGH: 2000–20000Hz
-  - Gain: ±18dB, gerçek Web Audio BiquadFilter
-- **İnteraktif Mixer — 4 Kanal**:
-  - KICK, SNARE, BASS, LEAD LOOP kanalları
-  - VOL slider (ses seviyesi), PAN slider (stereo konum), MUTE butonu
-  - VU meter animasyonu
-  - "MIX ÇAL" → Beat Maker pattern'ini + Lead Loop'u gerçek seslerle çalar
-  - Slider/Mute değişiklikleri çalarken anında etkili
-
-#### Modül 4 — Arrangement Builder
-- Çok parçalı arrangement grid (Intro, Verse, Pre-Chorus, Chorus, Bridge, Drop, Outro)
-- Trackler: KICK (1/4), HI-HAT (1/16), BASS (E1→A1 pattern), LEAD (loop), PAD (loop)
-- BPM-senkronize 4 bar döngüsü (Web Audio API precise timing)
-- Hücreye tıkla = track'i o bölüme ekle/çıkar
-- Playhead animasyonu, şablon yükle, sıfırla
-
-### İçerik
-- Prodüksiyon Dergisi PDF (35 sayfa) — okuma ve indirme
-- Ücretsiz Ableton Live video dersi (Google Drive embed)
-- Live set video
-
----
-
-## Klasör Yapısı
-
-```
-Producer.School/
-├── index.html
-├── forum.html
-├── post.html
-├── new-post.html
-├── members.html
-├── profile.html
-├── site_1.html
-├── ders-ableton.html
-├── assets/
-│   ├── css/
-│   │   ├── ui.css                 # Tasarım sistemi: token'lar, .btn/.input/.modal, alias grupları (her sayfa)
-│   │   ├── style.css              # Landing bileşenleri (index, egitim, egitmen, sss)
-│   │   └── themes.css             # Nav kabuğu, auth/bildirim bloğu, Lab modül-içi yamaları
-│   ├── img/
-│   │   ├── DSC00141.jpg           # Profil fotoğrafı
-│   │   ├── og-logo.png            # OG paylaşım görseli
-│   │   └── favicon.svg            # SVG favicon
-│   ├── audio/
-│   │   ├── Kick.wav
-│   │   ├── Snare.wav
-│   │   ├── Close Hat.wav
-│   │   ├── Open Hat (1).wav
-│   │   ├── bass.wav
-│   │   ├── Lead.wav
-│   │   ├── Lead Loop.wav          # Mixer + Arrangement için 125 BPM loop
-│   │   └── Pad Loop.wav           # Arrangement PAD track için 125 BPM loop (Gm)
-│   ├── video/
-│   │   └── live.mov               # Live set videosu
-│   └── pdf/
-│       └── produksiyon-dergisi.pdf
-└── README.md
-```
+Geliştirme kuralları ve mimari ayrıntıları için **[`CLAUDE.md`](CLAUDE.md)**, tasarım sistemi için **[`docs/tasarim/TASARIM.md`](docs/tasarim/TASARIM.md)**. Arayüzün kaynağı Claude Design'daki "Berkay Er Academy — Yeni Tasarım" tuvalidir.
 
 ---
 
 ## Teknoloji
 
-- **Frontend:** Vanilla HTML/CSS/JS — framework yok
-- **Font:** Instrument Serif (başlık) + Instrument Sans (metin, arayüz) + Space Mono (etiket) — Google Fonts
-- **Backend:** Firebase (Firestore + Auth) — compat SDK v10.12.2
-- **Hosting:** GitHub Pages
-- **Tasarım:** Koyu tema, grain noise doku, altın/kırmızı/amber renk paleti
+- **Ön yüz:** düz HTML / CSS / JavaScript. Framework ve build adımı yok; her sayfa doğrudan yayınlanır.
+- **Firebase** (`ableton-tutorial` projesi, `europe-west1`):
+  - **Hosting:** `cleanUrls` açık (`/booking`, `.html` yok), özel alan adı `berkayeracademy.com`
+  - **Auth:** Google ve e-posta/şifre; ortak giriş penceresi `assets/js/auth-ui.js`
+  - **Firestore:** veri ve güvenlik kuralları `firestore.rules`
+  - **Cloud Functions v2:** Node 24, `functions/`
+  - İstemci SDK'sı: compat v10.12.2, CDN'den
+- **Entegrasyonlar:** Twilio WhatsApp (hatırlatmalar, admin sohbeti), Zoom (ders bağlantısı), Gmail/Nodemailer (e-postalar).
+- **Ses:** Web Audio API (Ableton Lab, Push 3 emülatörü; AudioWorklet + Web Worker).
+- **Dil:** Türkçe / İngilizce (`assets/js/i18n.js`, `data-i18n`).
 
----
+## Sayfalar
 
-## Firebase Firestore Koleksiyonları
+| Dosya | Adres | İçerik |
+|---|---|---|
+| `index.html` | `/` | Ana sayfa: hero döngü videosu, eğitim tanıtımı, öğrenci yorumları |
+| `egitim.html` | `/egitim` | Eğitim programı, müfredat, üye içerikleri |
+| `egitmen.html` | `/egitmen` | Eğitmen: biyografi, yolculuk, canlı set videosu |
+| `sss.html` | `/sss` | Sık sorulan sorular |
+| `booking.html` | `/booking` | **Ders Paneli** (öğrenci) + **Admin Paneli** + WhatsApp sohbeti |
+| `forum.html` · `post.html` · `new-post.html` | `/forum` · `/post?id=` · `/new-post` | Topluluk forumu |
+| `members.html` · `profile.html` | `/members` · `/profile?uid=` | Üyeler, profil, mesajlaşma, collab istekleri |
+| `ableton-lab.html` | `/ableton-lab` | **Ableton Lab:** 5 interaktif modül |
+| `ders-ableton.html` | `/ders-ableton` | Ücretsiz Ableton Live dersi |
+| `ders-push3.html` | `/ders-push3` | **Push 3 Laboratuvarı:** öğretici, seviyeler, emülatör |
+| `app-bridge.html` | `/app-bridge` | Uygulamalar arası veri köprüsü |
 
-| Koleksiyon | Alanlar |
+`site_1.html` eski Lab sayfasıdır; `/site_1` adresi `/ableton-lab`'a yönlenir.
+
+## Öne çıkanlar
+
+### Ders Paneli (`booking.html`)
+
+- **Talepler ve deneme dersi:** deneme dersi, aylık plan ya da tek ders talebi. Tek ders seçilince aylık plana geçiş önerisi çıkar.
+- **Seviye belirleme sınavı:** 20 soru, zorunlu.
+- **Ödeme ve kurallar:** ödeme bildirimi, akademi kuralları onayı.
+- **Derslerim · Bu hafta:** öğrenci dersinin saatini kendisi değiştirebilir. Aynı hafta içinde, ders başına bir kez, dersten en az 5 saat önce. Kurallar sunucuda (`studentSelfReschedule`) uygulanır.
+- **Erteleme:** erteleme talebi gönderilir, admin onaylar. Erteleme hakları paket bazında tutulur.
+- **Zoom:** ders saati yaklaşınca katılma düğmesi açılır.
+- **Admin:** öğrenci ve ders yönetimi, gelen talepler, ödeme onayı, e-posta ve WhatsApp gönderimi, Zoom toplantısı oluşturma.
+
+### Ableton Lab (`ableton-lab.html`)
+
+Her modül profesyonel bir eklenti penceresi olarak çalışır. Altında akış diyagramı ve parametre tablosuyla bir **"Çalışma mantığı"** bölümü bulunur.
+
+| Modül | Adres | Eklenti | İçerik |
+|---|---|---|---|
+| 01 Synthesizer | `#synth` | BE·SYNTH 01 | 2 OSC + sub + noise, her notada ayrı filtre ve zarf (16 ses), MOD ENV, LFO, FX rafı, preset tarayıcı, A/B, geri al |
+| 02 Beat Maker | `#beat` | BE·RHYTHM 02 | Lookahead zamanlayıcı, 4 pattern slotu, 16/32 adım, sentezlenmiş veya sample davul, ses editörü, choke, tap tempo |
+| 03 Mixing | `#mixing` | BE·CONSOLE 03 | 6 kanal (EQ, kompresör, pan, send), reverb/delay return'leri, sidechain, master limiter |
+| 04 Arrangement | `#arrangement` | BE·ARRANGER 04 | 8 bölümlük şarkı yapısı, bölüm otomasyonu, loop, tür şablonları |
+| 05 Mastering | `#mastering` | BE·MASTER 05 | EQ, glue, multiband, stereo ve limiter zinciri; K-weighting LUFS ve true peak ölçümü, seviye eşli REF |
+
+- **Görevler:** her modülde görev listesi var. İlerleme `localStorage`'da ve Firestore'da saklanır.
+- **Presetler:** Synth, Beat, Mix ve Master presetleri kullanıcı hesabına kaydedilir.
+
+### Push 3 Laboratuvarı (`ders-push3.html`)
+
+Tarayıcıda çalan bir Push 3 emülatörü (Wavetable synth, drum rack, sequencer), öğretici ve iki seviyeden oluşur. Kod `assets/js/push3/` altında, sözleşme `docs/push3/README.md`'de.
+
+## Klasör yapısı
+
+```
+├── *.html                    # Sayfalar (build yok)
+├── assets/
+│   ├── css/                  # ui.css (tasarım sistemi) · style.css (tanıtım sayfaları) · themes.css (menü kabuğu)
+│   ├── js/                   # theme-init · i18n · auth-ui · trial-nav · placement-quiz · push3/
+│   ├── img/                  # icons.svg sprite, favicon, fotoğraflar, push3-device.svg
+│   ├── audio/                # Lab sample'ları ve loop'ları
+│   ├── video/                # live.mp4 (döngü videoları)
+│   └── pdf/                  # Prodüksiyon dergisi
+├── functions/                # Cloud Functions (index.js, whatsapp.js)
+├── docs/                     # Tasarım ve Push 3 dokümanları (yayınlanmaz)
+├── firebase.json             # Hosting ayarları (cleanUrls, ignore, başlıklar)
+├── firestore.rules           # Güvenlik kuralları
+└── CLAUDE.md                 # Geliştirici rehberi
+```
+
+## Geliştirme
+
+```bash
+# Yerel önizleme
+firebase serve --only hosting --port 8123
+
+# Cloud Functions
+cd functions
+npm ci
+npm run lint
+npm run serve   # emülatör
+```
+
+Firebase web API anahtarı yalnızca izin verilen alan adlarından gelen isteklere yanıt verir. Bu yüzden `localhost`'ta giriş ve Firestore çalışmaz (403). Bu akışlar Firebase emülatörüyle ya da canlı sitede test edilir.
+
+## Yayına alma
+
+```bash
+firebase deploy --only hosting            # HTML / CSS / JS değişiklikleri
+firebase deploy --only functions          # Cloud Functions
+firebase deploy --only firestore:rules    # Güvenlik kuralları
+```
+
+`git push` yalnızca GitHub'ı günceller; site ayrıca deploy edilir. Ortak bir CSS/JS dosyası değiştiğinde tüm sayfalardaki `?v=` damgası birlikte artırılır.
+
+## Cloud Functions
+
+| Tür | Fonksiyonlar |
 |---|---|
-| `forum` | title, text, category, authorName, authorEmail, authorId, authorPhotoURL, createdAt, replyCount, solved |
-| `forum/{id}/replies` | text, authorName, authorEmail, authorId, isAdmin, createdAt |
-| `users` | displayName, photoURL, email, about, genres, joinedAt, replyCount, instagramUrl, spotifyUrl, collabStatus |
-| `testimonials` | name, text, createdAt |
+| Zamanlanmış (İstanbul saati) | `paymentReminder`, `lessonReminder24h`, `lessonReminder1h`, `lessonEndFollowUp` |
+| Firestore tetikleyici | `notifyAdminOnNewRequest`, `notifyStudentOnRequestStatus` |
+| Çağrılabilir (`onCall`) | `studentSelfReschedule`, `checkTrialEligibility`, `createZoomMeeting`, `sendWhatsAppMessage`, `sendWhatsAppAdmin`, `markWhatsAppConvoRead`, `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle` |
+| HTTP | `twilioWhatsAppWebhook` |
 
----
+## Güvenlik
 
-## Geliştirme Notları
-
-- Tüm sayfalar statik HTML — build adımı yok
-- Firebase `signInWithRedirect` yerine `signInWithPopup` kullanılır (cross-origin cookie sorunu nedeniyle)
-- Post cache (`_allPosts`) sayesinde forum'da filtre/arama değişince Firestore'a tekrar istek atılmaz
-- Admin kontrolü e-posta karşılaştırmasıyla yapılır (`ADMIN_EMAIL` sabiti)
-- `site_1.html` içindeki tüm browser `alert()` çağrıları in-page modal (`showModal`) ile değiştirildi
-- Pad Loop.wav ve Lead Loop.wav 125 BPM Gm — arrangement ve mixer BPM sabiti 125
+- **Firebase web API anahtarı** (`AIza…`) sayfalarda bilerek açıktır. Tarayıcının Firebase'e bağlanması için gereklidir ve gizli bilgi sayılmaz. Anahtar iki yönden kısıtlıdır:
+  - **Alan adı:** yalnızca izin verilen alan adlarından gelen istekleri kabul eder.
+  - **API:** yalnızca izin verilen API'leri çağırabilir. Örneğin Gemini ve YouTube engelli, Maps ve Translate projede kapalı.
+  - GitHub'ın "secret scanning" uyarısı bu anahtar içindir. Uyarı "Won't fix" olarak kapatılabilir.
+- **Veri erişimi** `firestore.rules` ile korunur. Admin yetkisi sunucu tarafında, oturum tokenındaki e-postayla kontrol edilir.
+- **Gerçek gizli bilgiler** (Twilio, Zoom, Gmail) yalnızca `functions/.env.ableton-tutorial` dosyasındadır. Bu dosya `.gitignore`'da olduğu için repoya girmez.
