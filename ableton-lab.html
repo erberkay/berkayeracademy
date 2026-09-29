@@ -538,6 +538,31 @@
             .lab-cta-wrap { padding-bottom:var(--s6); }
             .lab-card-foot { padding-top:14px; }
         }
+
+        /* ═══ LAB KABUK (ortak: sekmeler, modül başlığı, görev paneli, alt gezinme, genel bakış) ═══ */
+
+        /* ═══ /LAB KABUK ═══ */
+
+        /* ═══ LAB M1 · Synthesizer ═══ */
+
+        /* ═══ /LAB M1 ═══ */
+
+        /* ═══ LAB M2 · Beat Maker ═══ */
+
+        /* ═══ /LAB M2 ═══ */
+
+        /* ═══ LAB M3 · Mixing ═══ */
+
+        /* ═══ /LAB M3 ═══ */
+
+        /* ═══ LAB M4 · Arrangement ═══ */
+
+        /* ═══ /LAB M4 ═══ */
+
+        /* ═══ LAB M5 · Mastering ═══ */
+
+        /* ═══ /LAB M5 ═══ */
+
     </style>
     <!-- Firebase compat SDK (no build step required) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -1606,42 +1631,9 @@ const GENRE_TEMPLATES = [
     ]},
 ];
 
-const TASKS = {
-    1:[
-        {id:1, text:"4 waveform'u sırayla dene: Sine → Square → Sawtooth → Triangle, her birini klavyeden çal"},
-        {id:2, text:"Attack'ı sürükleyerek sıfıra çek, sonra 1.5s'ye getir — başlangıç farkını duyumsa"},
-        {id:3, text:"Sustain'i %0'a indir, Decay'i 0.3s'ye ayarla — nota tutunca sesin nasıl kesildiğini dinle"},
-        {id:4, text:"Release'i 2s'nin üzerine çıkar, bir nota bas ve bırak — sesin yavaşça söndüğünü duymalısın"},
-        {id:5, text:"Bass preset'ini yükle, Cutoff'u 200Hz'e düşür — sesin nasıl karardığını duyumsa"},
-        // Extended-engine tasks
-        {id:6, text:"OSC2'yi aç, farklı bir dalga seç ve detune'u ±7 cent yap — 'fat' hissi duy"},
-        {id:7, text:"Filter tipini Lowpass'tan Highpass'a değiştir, cutoff'u sweep et — sesin nasıl açıldığını dinle"},
-        {id:8, text:"LFO'nun → Cutoff amount'unu %70 yap → wobble bass (Square dalga + sub osc önerilir)"},
-        {id:9, text:"Env → Cutoff amount'ı %80'e çıkar, Decay 0.4s — klassik acid sweep'i dinle"},
-        {id:10, text:"Pad preset'inde Reverb wet'i %60'a çıkar — ses derinleşsin, ambient hisset"},
-    ],
-    2:[
-        {id:1, text:"4/4 kick paterni: Kick satırında 1., 5., 9. ve 13. kutulara tıkla"},
-        {id:2, text:"Backbeat snare: Snare satırında yalnızca 5. ve 13. kutulara bas"},
-        {id:3, text:"Hi-Hat'e 16 kutunun tamamını doldur (düz sekizlikler)"},
-        {id:4, text:"Bir kick kutusunu yukarı sürükleyerek velocity'sini 80'in üzerine çıkar"},
-        {id:5, text:"Swing'i %30'a getir ve Boom Bap template'ini yükle — groove farkını duyumsa"},
-    ],
-    3:[
-        {id:1, text:"EQ: LOW bandını +8dB'e sürükle, test sesini çal — sesin nasıl baslaştığını duyumsa"},
-        {id:2, text:"EQ: MID bandını -6dB'e çek, HIGH'ı +6dB'e getir — frekans dengesini karşılaştır"},
-        {id:3, text:"Mixer: BASS kanalını MUTE et, test sesini çal — sesin ne kadar değiştiğini fark et"},
-        {id:4, text:"Mixer: LEAD pan'ını R40'a, SNARE pan'ını L30'a getir — stereo genişliği hisset"},
-        {id:5, text:"Mix: Tüm kanalları açık tut, her kanalın VOL'ünü dengele — net ve temiz mix elde et"},
-    ],
-    4:[
-        {id:1, text:"Arrangement Builder'da 'House' şablonunu yükle ve ▶ PLAY ile playhead animasyonunu izle"},
-        {id:2, text:"Kendi arrangement'ını yap: Intro'da sadece DRUMS, Chorus'ta tüm 5 track açık olsun"},
-        {id:3, text:"PAD trackini Intro ve Bridge sütunlarına ekle, LEAD'i yalnızca Chorus ve Drop'ta bırak"},
-        {id:4, text:"Beat Maker'da Trap template yükle, Play'e bas — arrangement ile beat'i zihinsel olarak birleştir"},
-        {id:5, text:"Tüm modülleri tamamla — kendi EQ + Mix + Arrangement kombinasyonunu oluştur"},
-    ],
-};
+// Her modülün görevleri kendi bölümünde tanımlanır: TASKS[n] = [...] (modül ajanları
+// birbirinin satırına dokunmadan paralel çalışabilsin diye). render() hepsinden sonra çağrılır.
+const TASKS = {};
 
 // ═══════════════════════════════════════════════════════════════════
 // TASK SYSTEM
@@ -2010,16 +2002,31 @@ function teardownView() {
     if (m === 5 && _m5StopAudio) { _m5StopAudio(); _m5StopAudio = null; }
 }
 
-function navigate(mod, scroll) {
+// Her modül ayrı ekran ve kendi adresi var: #synth, #beat, #mixing, #arrangement, #mastering
+// (Genel bakış = hash yok). Doğrudan bağlantı ve tarayıcının geri/ileri tuşu çalışır.
+const MODULE_SLUGS = { 1: 'synth', 2: 'beat', 3: 'mixing', 4: 'arrangement', 5: 'mastering' };
+function modFromHash() {
+    const h = (location.hash || '').replace(/^#/, '').toLowerCase();
+    for (const [m, slug] of Object.entries(MODULE_SLUGS)) if (slug === h) return Number(m);
+    return null;
+}
+function navigate(mod, scroll, fromHistory) {
     const from = state.currentModule;
     // Beat yalnız Genel bakış ↔ Beat Maker arasında çalmaya devam eder
     const beatViews = v => v === null || v === 2;
     if (from !== mod && beatViews(from) && !beatViews(mod)) stopBeat(false);
     teardownView();
     state.currentModule = mod;
+    if (!fromHistory) {
+        const want = mod ? '#' + MODULE_SLUGS[mod] : '';
+        if (location.hash !== want) history.pushState({ labMod: mod }, '', want || (location.pathname + location.search));
+    }
     render();
     if (scroll !== false) scrollToApp();
 }
+const _onLabHistory = () => { const m = modFromHash(); if (m !== state.currentModule) navigate(m, true, true); };
+window.addEventListener('popstate', _onLabHistory);
+window.addEventListener('hashchange', _onLabHistory);
 function scrollToApp() {
     const nav = document.getElementById('moduleNav'), app = document.getElementById('app');
     if (!nav || !app) { window.scrollTo(0, 0); return; }
@@ -2032,6 +2039,23 @@ function scrollToApp() {
 // ═══════════════════════════════════════════════════════════════════
 // MODULE 1 — SYNTHESIZER
 // ═══════════════════════════════════════════════════════════════════
+// Modül 1 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
+TASKS[1] = [
+        {id:1, text:"4 waveform'u sırayla dene: Sine → Square → Sawtooth → Triangle, her birini klavyeden çal"},
+        {id:2, text:"Attack'ı sürükleyerek sıfıra çek, sonra 1.5s'ye getir — başlangıç farkını duyumsa"},
+        {id:3, text:"Sustain'i %0'a indir, Decay'i 0.3s'ye ayarla — nota tutunca sesin nasıl kesildiğini dinle"},
+        {id:4, text:"Release'i 2s'nin üzerine çıkar, bir nota bas ve bırak — sesin yavaşça söndüğünü duymalısın"},
+        {id:5, text:"Bass preset'ini yükle, Cutoff'u 200Hz'e düşür — sesin nasıl karardığını duyumsa"},
+        // Extended-engine tasks
+        {id:6, text:"OSC2'yi aç, farklı bir dalga seç ve detune'u ±7 cent yap — 'fat' hissi duy"},
+        {id:7, text:"Filter tipini Lowpass'tan Highpass'a değiştir, cutoff'u sweep et — sesin nasıl açıldığını dinle"},
+        {id:8, text:"LFO'nun → Cutoff amount'unu %70 yap → wobble bass (Square dalga + sub osc önerilir)"},
+        {id:9, text:"Env → Cutoff amount'ı %80'e çıkar, Decay 0.4s — klassik acid sweep'i dinle"},
+        {id:10, text:"Pad preset'inde Reverb wet'i %60'a çıkar — ses derinleşsin, ambient hisset"},
+];
+Object.assign(LAB_TXT, {
+    // Modül 1 · Synthesizer metinleri: anahtar: [`TR`, `EN`],
+});
 // White-key frequencies at C4 reference. Octave shifts these via state.keyboardOctave.
 const _WHITE_KEYS_C4 = [
     {ratio:1.0,    label:'C', key:'A'}, {ratio:1.122, label:'D', key:'S'},
@@ -3113,6 +3137,17 @@ function renderModule1() {
 // ═══════════════════════════════════════════════════════════════════
 // MODULE 2 — BEAT MAKER
 // ═══════════════════════════════════════════════════════════════════
+// Modül 2 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
+TASKS[2] = [
+        {id:1, text:"4/4 kick paterni: Kick satırında 1., 5., 9. ve 13. kutulara tıkla"},
+        {id:2, text:"Backbeat snare: Snare satırında yalnızca 5. ve 13. kutulara bas"},
+        {id:3, text:"Hi-Hat'e 16 kutunun tamamını doldur (düz sekizlikler)"},
+        {id:4, text:"Bir kick kutusunu yukarı sürükleyerek velocity'sini 80'in üzerine çıkar"},
+        {id:5, text:"Swing'i %30'a getir ve Boom Bap template'ini yükle — groove farkını duyumsa"},
+];
+Object.assign(LAB_TXT, {
+    // Modül 2 · Beat Maker metinleri: anahtar: [`TR`, `EN`],
+});
 // ─── Ortak step sequencer ızgarası (Genel bakış kartı + Modül 2) ───
 // Tıkla = aç/kapat · yukarı sürükle = velocity · satır adı = önizle · Enter/Boşluk = aç/kapat.
 // Fare olayları (mousedown/move/up) — dokunmatikte dokunuş da mousedown/up üretir.
@@ -4722,6 +4757,17 @@ registerProcessor('sidechain-processor',SidechainProcessor);`;
 // ═══════════════════════════════════════════════════════════════════
 // MODULE 3 — MIXING TEORİSİ
 // ═══════════════════════════════════════════════════════════════════
+// Modül 3 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
+TASKS[3] = [
+        {id:1, text:"EQ: LOW bandını +8dB'e sürükle, test sesini çal — sesin nasıl baslaştığını duyumsa"},
+        {id:2, text:"EQ: MID bandını -6dB'e çek, HIGH'ı +6dB'e getir — frekans dengesini karşılaştır"},
+        {id:3, text:"Mixer: BASS kanalını MUTE et, test sesini çal — sesin ne kadar değiştiğini fark et"},
+        {id:4, text:"Mixer: LEAD pan'ını R40'a, SNARE pan'ını L30'a getir — stereo genişliği hisset"},
+        {id:5, text:"Mix: Tüm kanalları açık tut, her kanalın VOL'ünü dengele — net ve temiz mix elde et"},
+];
+Object.assign(LAB_TXT, {
+    // Modül 3 · Mixing metinleri: anahtar: [`TR`, `EN`],
+});
 function renderModule3() {
     const root=mk('div','lab-view be-wrap');
     const shell=mk('section','lab-mod'); shell.setAttribute('aria-label','Mixing & Efektler');
@@ -4746,6 +4792,17 @@ function renderModule3() {
 // ═══════════════════════════════════════════════════════════════════
 // MODULE 4 — ARRANGEMENT
 // ═══════════════════════════════════════════════════════════════════
+// Modül 4 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
+TASKS[4] = [
+        {id:1, text:"Arrangement Builder'da 'House' şablonunu yükle ve ▶ PLAY ile playhead animasyonunu izle"},
+        {id:2, text:"Kendi arrangement'ını yap: Intro'da sadece DRUMS, Chorus'ta tüm 5 track açık olsun"},
+        {id:3, text:"PAD trackini Intro ve Bridge sütunlarına ekle, LEAD'i yalnızca Chorus ve Drop'ta bırak"},
+        {id:4, text:"Beat Maker'da Trap template yükle, Play'e bas — arrangement ile beat'i zihinsel olarak birleştir"},
+        {id:5, text:"Tüm modülleri tamamla — kendi EQ + Mix + Arrangement kombinasyonunu oluştur"},
+];
+Object.assign(LAB_TXT, {
+    // Modül 4 · Arrangement metinleri: anahtar: [`TR`, `EN`],
+});
 function renderModule4() {
     const root=mk('div','lab-view be-wrap');
     const shell=mk('section','lab-mod'); shell.setAttribute('aria-label','Song Arrangement');
@@ -4809,6 +4866,12 @@ function renderModule4() {
 // ═══════════════════════════════════════════════════════════════════
 // MODULE 5 — MASTERING (Educational)
 // ═══════════════════════════════════════════════════════════════════
+// Modül 5 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
+TASKS[5] = [
+];
+Object.assign(LAB_TXT, {
+    // Modül 5 · Mastering metinleri: anahtar: [`TR`, `EN`],
+});
 function buildMasteringSection_UNUSED() { // kept for reference
     // ── Chain state ────────────────────────────────────────────────
     const chain = {
@@ -5458,8 +5521,11 @@ window.addEventListener('scroll', () => {
     el.style.transform='scaleX(' + (max > 0 ? Math.min(1, window.scrollY/max) : 0).toFixed(4) + ')';
 }, {passive:true});
 
+// Adresle gelindiyse (ör. /ableton-lab#mixing) doğrudan o modül ekranı açılır
+state.currentModule = modFromHash();
 render();
 labApplyLang();
+if (state.currentModule !== null) requestAnimationFrame(scrollToApp);
 
 // "Hemen başla ↓" → modül kartlarına in (tasarım)
 document.getElementById('labHeroStart')?.addEventListener('click', () => {
