@@ -1217,10 +1217,10 @@
         .lab-m4-th-strip { background:var(--c); }
         .lab-m4-th-in { display:flex; flex-direction:column; justify-content:space-between; gap:4px; min-width:0; padding:6px 8px; }
         .lab-m4-th-top { display:flex; align-items:center; gap:6px; min-width:0; }
-        .lab-m4-th-no { font-family:var(--ff-mono); font-size:9px; color:var(--fg-faint); }
+        .lab-m4-th-no { font-family:var(--ff-mono); font-size:9px; color:var(--fg-muted); }
         .lab-m4-th-n { font-size:12px; font-weight:700; color:var(--fg); white-space:nowrap; }
         .lab-m4-th.is-dim .lab-m4-th-n { color:var(--fg-faint); }
-        .lab-m4-th-s { flex:1; min-width:0; font-family:var(--ff-mono); font-size:8px; color:var(--fg-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .lab-m4-th-s { flex:1; min-width:0; font-family:var(--ff-mono); font-size:8px; color:var(--fg-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .lab-m4-led .lp-z-ok { --z:var(--c); }
         .lab-m4-led .lp-mtr-s { background:var(--track); }
         .lab-m4-led .lp-mtr-s.on { background:var(--z); }
@@ -1244,17 +1244,17 @@
         .lab-m4-mbox-n { font-size:12px; font-weight:700; }
         .lab-m4-mbox-w { font-family:var(--ff-mono); font-size:8px; color:var(--fg-3); }
         .lab-m4-mbox-p { font-family:var(--ff-mono); font-size:9px; color:var(--accent); }
-        .lab-m4-mbox-hint { font-family:var(--ff-mono); font-size:8px; line-height:1.5; color:var(--fg-faint); }
+        .lab-m4-mbox-hint { font-family:var(--ff-mono); font-size:8px; line-height:1.5; color:var(--fg-muted); }
         .lab-m4-mbox.is-byp .lab-m4-mbox-p { color:var(--fg-3); }
 
         /* Klip alanı */
         .lab-m4-lanes { position:relative; display:flex; flex-direction:column; gap:4px; min-width:0; padding:10px 12px; background:var(--m4-lane); }
         .lab-m4-ruler { position:relative; height:26px; border-radius:var(--r-2); background:var(--surface-hover); overflow:hidden; }
-        .lab-m4-brace { position:absolute; top:0; left:0; width:12.5%; height:6px; border-radius:0 0 var(--r-2) var(--r-2); background:var(--fg-3); opacity:.35; transition:left var(--dur-fast) var(--ease-out); }
+        .lab-m4-brace { position:absolute; top:0; left:0; width:12.5%; height:6px; border-radius:0 0 var(--r-2) var(--r-2); background:var(--fg-3); opacity:.35; transition:transform var(--dur-fast) var(--ease-out); }
         .lab-m4-brace.is-on { background:var(--accent); opacity:1; }
         .lab-m4-rbars { position:absolute; inset:0; display:grid; grid-template-columns:repeat(16, minmax(0,1fr)); }
         .lab-m4-rbar { position:relative; padding:9px 0 0 4px; border-left:1px solid var(--line-hi); font-family:var(--ff-mono); font-size:9px; color:var(--fg-muted); }
-        .lab-m4-rbar.is-odd { border-left-color:var(--line-2); color:var(--fg-faint); }
+        .lab-m4-rbar.is-odd { border-left-color:var(--line-2); }   /* tek barlar yalnız ince çizgiyle ayrılır (yazı ≥4.5:1 için --fg-muted kalır) */
         .lab-m4-rbar.is-cur { color:var(--fg); }
         .lab-m4-rbar i { position:absolute; bottom:0; width:1px; height:5px; background:var(--line); }
         .lab-m4-rbar i:nth-child(1) { left:25%; } .lab-m4-rbar i:nth-child(2) { left:50%; } .lab-m4-rbar i:nth-child(3) { left:75%; }
@@ -1437,7 +1437,7 @@
             .lab-m4 .lab-m4-th .lp-fader-track::after { inset:-12px 0; }
             .lab-m4 .lab-m4-tb, .lab-m4 .lab-m4-tb--play { width:44px; height:44px; }
             .lab-m4 .lab-m4-etgl { height:44px; }
-            .lab-m4-pt::after { content:''; position:absolute; inset:-15px; border-radius:50%; }
+            .lab-m4-pt::after { content:''; position:absolute; inset:-17px; border-radius:50%; }
             .lab-m4-clip-h { height:16px; line-height:16px; font-size:9px; }
             .lab-m4-clip svg { top:20px; height:calc(100% - 26px); }
             .lab-m4-tplb, .lab-m4-reset, .lab-m4-ins-loop, .lab-m4-step { height:44px; }
@@ -6101,6 +6101,7 @@ const m4S = {
     resume: -1,                         // duraklatılan adım (−1 = seçili bölümün başı)
     played: false, tplUsed: false, dirty: false,
     cols: [false, false, false, false, false, false, false, false],   // kullanıcının klip düzenlediği bölümler (görev 8)
+    bdKick: false,                      // kullanıcı B-Down'daki kick klibini kendisi değiştirdi (görev 9)
 };
 
 // ── Ses motoru (arrCtx): generator ×5 → trackGain ×5 → masterFilter → comp → outGain → çıkış ──
@@ -6109,7 +6110,7 @@ const arrAB = {};            // dosya → Promise<ArrayBuffer|null> (bağlamsız
 const arrBufP = {};          // dosya → Promise<AudioBuffer|null>
 const arrBufs = {};          // dosya → AudioBuffer (yoksa o iz sentez yedeğiyle çalar)
 const arrRun = { playing: false, i: 0, last: -2, nextT: 0, fromStart: false, jump: null, endAt: 0,
-    timer: 0, raf: 0, suspendT: 0, queue: [], srcs: [], loops: [null, null, null, null, null], pos: -1 };
+    timer: 0, raf: 0, suspendT: 0, waitT: 0, gen: 0, queue: [], srcs: [], loops: [null, null, null, null, null], pos: -1 };
 let _m4ui = null;            // açık modül 4 görünümünün DOM referansları
 
 function arrAudioOK() { return !!(window.AudioContext || window.webkitAudioContext); }
@@ -6132,25 +6133,41 @@ function arrEnergy(j) {
     state.arrCells.forEach((row, i) => { if (row[j]) e += ARR_W[i] * arrEff(i); });
     return Math.min(1, e / 3.2) * (0.55 + 0.45 * (m4S.bypass ? 1 : m4S.auto[j]));
 }
-// Örnekler: dosyalar ilk etkileşimde indirilir (bağlam gerekmez), çözme bağlam kurulunca
+// Örnekler ilk etkileşimde (pointerdown/focusin) indirilir VE çözülür: çözme, jest gerektirmeyen
+// tek kullanımlık bir OfflineAudioContext ile yapılır (AudioBuffer bağlamlar arası kullanılabilir),
+// böylece ilk ▶'da tamponlar hazırdır. OfflineAudioContext yoksa çözme arrCtx kurulunca yapılır.
+const arrFail = {};          // dosya → true: indirme/çözme gerçekten başarısız (yalnız o zaman sentez yedeği)
+let arrDecoder = null;       // paylaşılan çözücü bağlam (OfflineAudioContext)
+function arrFetchAB(file) {
+    if (!arrAB[file]) arrAB[file] = fetch('assets/audio/' + encodeURIComponent(file))
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+        .catch(e => { console.warn('[lab] arrangement sample:', file, e); return null; });
+    return arrAB[file];
+}
+// decodeAudioData: vaat + eski geri çağırmalı (webkit) biçimi birlikte
+function arrDecodeWith(ctx, ab) {
+    return new Promise((res, rej) => { const p = ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+}
+function arrLoadBuf(file, dec) {
+    if (arrBufP[file]) return;
+    arrBufP[file] = arrFetchAB(file)
+        .then(ab => ab ? arrDecodeWith(dec, ab) : null)
+        .catch(e => { console.warn('[lab] arrangement decode:', file, e); return null; })
+        .then(buf => { if (buf) arrBufs[file] = buf; else arrFail[file] = true; return buf; });
+}
 function arrPrefetch() {
-    ARR_TRACKS.forEach(t => {
-        if (arrAB[t.file]) return;
-        arrAB[t.file] = fetch('assets/audio/' + encodeURIComponent(t.file))
-            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
-            .catch(e => { console.warn('[lab] arrangement sample:', t.file, e); return null; });
-    });
+    if (!arrDecoder && !arrCtx) {
+        const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        // 48 kHz: çoğu donanımın hızı; çözülen tampon her bağlamda çalar
+        if (OAC) { try { arrDecoder = new OAC(2, 1, 48000); } catch (e) { arrDecoder = null; } }
+    }
+    const dec = arrDecoder || arrCtx;
+    ARR_TRACKS.forEach(t => { if (dec) arrLoadBuf(t.file, dec); else arrFetchAB(t.file); });
 }
 function arrDecode() {
     if (!arrCtx) return;
     arrPrefetch();
-    ARR_TRACKS.forEach(t => {
-        if (arrBufP[t.file]) return;
-        arrBufP[t.file] = arrAB[t.file]
-            .then(ab => ab ? arrCtx.decodeAudioData(ab) : null)
-            .catch(e => { console.warn('[lab] arrangement decode:', t.file, e); return null; })
-            .then(buf => { if (buf) arrBufs[t.file] = buf; return buf; });
-    });
+    ARR_TRACKS.forEach(t => arrLoadBuf(t.file, arrCtx));
 }
 // Bağlam + kalıcı grafik bir kez (ensureArrGraph); yalnız kullanıcı hareketinde çağrılır
 function getArrCtx() {
@@ -6231,7 +6248,7 @@ function arrLoopStep(tr, t, i, buf) {
     s.connect(g); s.start(a, off); s.stop(tEnd + ARR_XF);
     R.loops[tr] = arrKeep({ n: [s], g, tr, sec: i >> 5, st: a, end: tEnd + ARR_XF, to: secEnd });
 }
-// Örnek yüklenemezse (ya da henüz inmediyse) tasarımdaki sentez üreteci çalar — iz asla sessiz kalmaz
+// Örnek yüklenemezse (indirme/çözme hatası, 404) tasarımdaki sentez üreteci çalar — iz sessiz kalmaz
 function arrSynth(tr, t, i) {
     const ctx = arrCtx, s16 = i & 15, bar = i >> 4, sec = i >> 5;
     const g = ctx.createGain(), n = [];
@@ -6288,6 +6305,7 @@ function arrStep(i, t) {
             if (buf) { arrLoopStep(tr, t, i, buf); return; }
         }
         if (!on || arrEff(tr) < 0.001) return;
+        if (!buf && !arrFail[T.file]) return;      // örnek hâlâ yükleniyor: bu adımda iz susar (sentez yalnız gerçek hata için)
         const s16 = i & 15;
         if (buf && tr === 0) { if (s16 % 4 === 0) arrHit(tr, sec, buf, t, 0.8); }
         else if (buf && tr === 1) arrHit(tr, sec, buf, t, s16 % 4 === 2 ? 0.5 : 0.26);
@@ -6320,6 +6338,9 @@ function arrTick() {
     }
     R.timer = setTimeout(arrTick, 25);
 }
+// Başlat: bağlam tıklama içinde (senkron) açılır/devam ettirilir; ilk adımdan önce örnek çözümleri
+// en çok 120 ms beklenir (çoğu zaman ön yüklemeden zaten hazırdır). Bekleme sırasında durdurulursa
+// (arrRun.gen değişir) hiçbir şey planlanmaz.
 function arrStart() {
     const R = arrRun;
     if (R.playing) return;
@@ -6327,22 +6348,33 @@ function arrStart() {
     try { ctx = getArrCtx(); } catch (e) { console.warn('[lab] arrangement audio:', e); m4NoAudio(); return; }
     arrDecode();
     clearTimeout(R.suspendT); R.suspendT = 0;
-    const now = ctx.currentTime;
     const resume = m4S.resume >= 0;
     const i = resume ? m4S.resume : m4S.sel * ARR_SEC_STEPS;
     if (!resume) R.fromStart = i === 0 && !m4S.loop;
     m4S.resume = -1;
-    Object.assign(R, { playing: true, i, last: -2, jump: null, endAt: 0, queue: [], loops: [null, null, null, null, null], pos: i, nextT: now + 0.03 });
-    const g = arrG.out.gain;
-    g.cancelScheduledValues(now); g.setTargetAtTime(lpLin(m4S.outDb), now, 0.005);
-    arrApplyMix();
-    arrTick();
-    R.raf = requestAnimationFrame(m4Frame);
+    const gen = ++R.gen;
+    Object.assign(R, { playing: true, i, last: -2, jump: null, endAt: 0, queue: [], loops: [null, null, null, null, null], pos: i, nextT: 0 });
     m4PaintTransport(); m4PaintPos(true);
+    const all = Promise.all(ARR_TRACKS.map(t => arrBufP[t.file] || null));
+    Promise.race([all, new Promise(r => { R.waitT = setTimeout(r, 120); })]).then(() => {
+        if (!R.playing || R.gen !== gen || ctx !== arrCtx) return;
+        const now = ctx.currentTime, st = R.jump != null ? R.jump : R.i;
+        // Filtre başlangıç değeri: çıkış hâlâ 0'dayken sert ayar (tık yok) → ilk vuruş doğru kesimle çalar
+        const f = arrG.flt.frequency;
+        f.cancelScheduledValues(now); f.setValueAtTime(m4S.bypass ? 20000 : arrHz(arrAutoAt(st + 0.5)), now);
+        const g = arrG.out.gain;
+        g.cancelScheduledValues(now); g.setTargetAtTime(lpLin(m4S.outDb), now, 0.005);
+        R.nextT = now + 0.03;
+        arrApplyMix();
+        arrTick();
+        R.raf = requestAnimationFrame(m4Frame);
+    });
 }
 // mode: 'pause' (konum korunur) | 'stop' (seçili bölüm başına) | 'end' (sona geldi) | 'teardown' (gezinme)
 function arrStop(mode) {
     const R = arrRun, was = R.playing;
+    R.gen++;                                 // bekleyen başlatmayı iptal et
+    clearTimeout(R.waitT); R.waitT = 0;
     clearTimeout(R.timer); R.timer = 0;
     if (R.raf) cancelAnimationFrame(R.raf);
     R.raf = 0;
@@ -7692,13 +7724,20 @@ function m4ToggleClip(r, c) {
     state.arrCells[r][c] = !state.arrCells[r][c];
     if (!state.arrCells[r][c]) arrCellOff(r, c);
     m4S.tpl = ''; m4S.dirty = true; m4S.cols[c] = true;
+    if (r === 0 && c === 6) m4S.bdKick = true;
     m4Changed();
 }
 function m4FillRow(r) {
     const ui = _m4ui; if (ui) ui.hist.push();
     const full = state.arrCells[r].every(Boolean);
-    state.arrCells[r].forEach((v, c) => { state.arrCells[r][c] = !full; if (full) arrCellOff(r, c); });
-    m4S.tpl = ''; m4S.dirty = true; m4S.cols.fill(true);
+    // Yalnız gerçekten değişen bölümler "düzenlendi" sayılır (görev 8/9 toplu işlemle kendiliğinden geçmesin)
+    state.arrCells[r].forEach((v, c) => {
+        if (!!v === !full) return;
+        state.arrCells[r][c] = !full; m4S.cols[c] = true;
+        if (r === 0 && c === 6) m4S.bdKick = true;
+        if (full) arrCellOff(r, c);
+    });
+    m4S.tpl = ''; m4S.dirty = true;
     m4Changed();
 }
 function m4PickTpl(name) {
@@ -7719,7 +7758,7 @@ function m4Reset() {
     const ui = _m4ui; if (ui) ui.hist.push();
     state.arrCells.forEach((row, r) => row.forEach((v, c) => { if (v) { row[c] = false; arrCellOff(r, c); } }));
     m4S.auto = [1, 1, 1, 1, 1, 1, 1, 1];
-    m4S.tpl = ''; m4S.dirty = true; m4S.cols.fill(true);
+    m4S.tpl = ''; m4S.dirty = true;          // bölüm düzenlemesi sayılmaz → Sıfırla görev 8/9'u tamamlamaz
     m4Changed(); arrApplyFilterNow();
 }
 function m4SetAuto(j, v) {
@@ -7760,7 +7799,7 @@ function m4Auto() {
         m4S.tplUsed,
         d && c[0][0] && c[1][0] && !c[2][0] && !c[3][0] && !c[4][0],
         m4S.cols[3] && c.every(row => row[3]),     // Chorus 1'de klip düzenleyip hepsini açtı
-        d && !c[0][6],
+        m4S.bdKick && !c[0][6],                    // Breakdown'daki kick'i kullanıcı kendisi kapattı
         m4S.played,
     ];
 }
@@ -7869,7 +7908,7 @@ function m4PaintSel() {
     const ui = _m4ui; if (!ui) return;
     const j = m4S.sel, s = ARR_SECTIONS[j], g = ARR_GUIDE[ARR_SEC_GUIDE[j]];
     ui.locs.forEach((b, k) => b.setAttribute('aria-pressed', String(k === j)));
-    ui.brace.style.left = (j * 12.5) + '%';
+    ui.brace.style.transform = `translateX(${j * 100}%)`;   // genişlik %12.5 → %100 = bir bölüm
     ui.brace.classList.toggle('is-on', m4S.loop);
     ui.insCard.style.setProperty('--sc', `var(${s.col})`);
     ui.insCard.style.setProperty('--sct', `var(${s.txt})`);
@@ -7995,6 +8034,20 @@ function m4Relang() {
     ui.eTgl.el.title = L('lab_m4_energy_t');
     ui.pwr.el.setAttribute('aria-label', L('lab_m4_pwr')); ui.pwr.el.title = L('lab_m4_pwr_t');
     ui.win.root.setAttribute('aria-label', L('lab_m4_win_aria'));
+    // Kit bileşenlerinin oluştururken yazdığı etiketler (tarayıcı, A/B, geri al, metre, fader ipuçları)
+    const pbA = ui.pb.el.querySelectorAll('.lp-pb-arrow');
+    if (pbA[0]) pbA[0].setAttribute('aria-label', L('lab_m4_tpl_prev'));
+    if (pbA[1]) pbA[1].setAttribute('aria-label', L('lab_m4_tpl_next'));
+    const pbPop = ui.pb.el.querySelector('.lp-pb-pop'), pbCap = ui.pb.el.querySelector('.lp-pb-cap');
+    if (pbPop) pbPop.setAttribute('aria-label', L('lab_m4_preset'));
+    if (pbCap) pbCap.textContent = L('lp_preset_cap');
+    Object.assign(ui.pbOpts, { label: L('lab_m4_preset'), prevLabel: L('lab_m4_tpl_prev'), nextLabel: L('lab_m4_tpl_next'), capLabel: L('lp_preset_cap') });
+    ui.ab.el.setAttribute('aria-label', L('lp_ab_aria'));
+    ui.ab.buttons.forEach(b => b.setAttribute('aria-label', Lf('lp_ab_slot', { slot: b.textContent })));
+    [[ui.undo, 'lp_undo'], [ui.redo, 'lp_redo']].forEach(([b, k]) => { b.setAttribute('aria-label', L(k)); b.title = L(k); });
+    ui.outM.el.setAttribute('aria-label', L('lab_m4_out_aria'));
+    ui.vols.forEach(v => { v.track.title = L('lp_knob_tip'); });
+    ui.live.textContent = '';
     m4PaintTpl(); m4PaintTransport(); m4PaintSel(); m4PaintAuto(); m4PaintGrid(); m4PaintPos(true);
     m4PaintGuide(); m4PaintFlow();
     if (ui.hiw) ui.hiw.rebuild(m4HiwOpts());
@@ -8007,15 +8060,18 @@ function m4Window(ui) {
         transport: true, status: true, cls: 'lab-m4-win' });
     ui.pwr = win.power;
     // Başlık çubuğu: şablon tarayıcı · A|B · ↶ ↷
-    ui.pb = makePresetBrowser({ items: m4PresetItems(), value: m4S.tpl || '_custom', width: 190, capLabel: L('lp_preset_cap'),
+    // Seçenek nesnesi saklanır: tarayıcı etiketi her boyamada o.label'dan okur → m4Relang yerinde çevirir
+    ui.pbOpts = { items: m4PresetItems(), value: m4S.tpl || '_custom', width: 190, capLabel: L('lp_preset_cap'),
         label: L('lab_m4_preset'), prevLabel: L('lab_m4_tpl_prev'), nextLabel: L('lab_m4_tpl_next'),
         onPick: it => { if (it.id !== '_custom') m4PickTpl(it.id); else m4PaintTpl(); },
-        onPrev: () => m4StepTpl(-1), onNext: () => m4StepTpl(1) });
+        onPrev: () => m4StepTpl(-1), onNext: () => m4StepTpl(1) };
+    ui.pb = makePresetBrowser(ui.pbOpts);
     ui.hist = makeHistory({ get: m4Snap, apply: m4Load, max: 40 });
     const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: L('lp_ab_aria') });
     ab.buttons.forEach(b => b.setAttribute('aria-label', Lf('lp_ab_slot', { slot: b.textContent })));
     const un = lpBtn({ icon: 'undo', label: L('lp_undo'), title: L('lp_undo') });
     const re = lpBtn({ icon: 'redo', label: L('lp_redo'), title: L('lp_redo') });
+    ui.ab = ab; ui.undo = un; ui.redo = re;
     ui.hist.bind({ undo: un, redo: re, ab, keys: win.root });
     win.left.append(ui.pb.el, ab.el, un, re);
     // Sağ: KLİP x/40 · SES y/5 · OUT L/R metre + dB
