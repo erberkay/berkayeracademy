@@ -849,7 +849,7 @@
         .lab-m1-octv { min-width:34px; font-family:var(--ff-mono); font-size:12px; text-align:center; color:var(--accent); }
         .lab-m1-kb { position:relative; flex:1; min-width:0; touch-action:none; -webkit-user-select:none; user-select:none; }
         .lab-m1-whites { display:grid; grid-template-columns:repeat(var(--nw, 15), minmax(0,1fr)); gap:2px; }
-        .lab-m1-wk, .lab-m1-bk { position:relative; border:0; cursor:pointer; font-family:var(--ff-mono); touch-action:none; -webkit-tap-highlight-color:transparent; transition:transform .08s, background .08s; }
+        .lab-m1-wk, .lab-m1-bk { position:relative; border:0; cursor:pointer; font-family:var(--ff-mono); touch-action:none; -webkit-tap-highlight-color:transparent; transition:transform .08s; }
         .lab-m1-wk { height:128px; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; padding:0 0 8px; border-radius:0 0 var(--r-6) var(--r-6); background:var(--m1-key-w); box-shadow:inset 0 -5px 0 var(--m1-key-sh); font-size:9px; color:var(--fg-off); }
         .lab-m1-bk { position:absolute; top:0; z-index:2; width:calc(100% / var(--nw, 15) * .585); margin-left:calc(100% / var(--nw, 15) * -.2925); height:78px; display:flex; align-items:flex-end; justify-content:center; padding:0 0 6px; border-radius:0 0 var(--r-6) var(--r-6); background:var(--surface-4); box-shadow:0 4px 8px var(--bg-ink); font-size:8px; color:var(--fg-3); }
         .lab-m1-wk:active, .lab-m1-bk:active { transform:translateY(2px); }
@@ -870,6 +870,11 @@
         @media (max-width:1024px) {
             .lab-m1-strip::after { content:''; position:absolute; inset:0 -6px; }
             .lab-m1-pth { r:18px; }
+            /* isabet alanı ≥44 px (kit ::after dolgu kutusundan 42 px veriyordu) */
+            .lab-m1 .lp-btn::after { inset:-9px -4px; }
+            .lab-m1 .lp-pwr::after { inset:-7px; }
+            .lab-m1 .lp-ledb::after { inset:-12px; }
+            .lab-m1 .lp-pwr--sm::after { inset:-11px; }
         }
         @media (max-width:900px) {
             .lab-m1-grid { grid-template-columns:minmax(0,1fr); grid-template-areas:"l" "c" "r"; }
@@ -883,6 +888,8 @@
             .lab-m1-caps { display:none; }
             .lab-m1-hint { text-align:left; }
             .lab-m1-disp { min-height:180px; }
+            .lab-m1 .lab-m1-play { padding-inline:8px; }
+            .lab-m1-whites { gap:1px; }
             .lab-m1-bk { width:44px; margin-left:-22px; }
             .lab-m1-dest { margin-left:0; }
             .lab-m1-ctl { width:auto; flex-direction:row; flex-wrap:wrap; justify-content:flex-start; align-items:center; gap:10px 16px; }
@@ -1771,11 +1778,12 @@ setOsc1Wave(state.osc1.wave);
 let synthCtx = null, analyserNode = null, noiseBuffer = null;
 let synthBus = null, synthTrem = null, synthPan = null, distShaper = null, distDry = null, distWet = null, synthPost = null;
 let delayNode = null, delayFb = null, delayWetG = null, convolverNode = null, reverbWetG = null;
-let synthMaster = null, synthLimiter = null, analyserL = null, analyserR = null;
+let synthMaster = null, synthLimiter = null, synthClipIn = null, synthClip = null, analyserL = null, analyserR = null;
 let lfoOsc = null, lfoCutG = null, lfoPitG = null, lfoAmpG = null, lfoPanG = null, bendSrc = null;
 const SYNTH_MAX_VOICES = 16;
-// voiceMix ×0.3 dört kaynağa pay bırakır; master bunu ≈ +16 dB telafi eder (tek nota ≈ −27 dBFS RMS / −12 tepe, akorlar limiter'a)
-const SYNTH_MAKEUP = 6;
+// voiceMix ×0.3 dört kaynağa pay bırakır; master bunu telafi eder: MASTER %100 = ×3.6 (+11 dB, eski %70 düzeyi),
+// varsayılan %70 = ×2.5 (+8 dB; tek nota ≈ −15 dBFS tepe). Akorlar kompresör + yumuşak tavana (synthSoftClip) gider.
+const SYNTH_MAKEUP = 4;
 const _voices = {};            // anahtar (midi | 'mono') → voice
 let _synthTail = 0;            // son sesin (release + FX kuyruğu) biteceği ctx zamanı — ekran canlı/önizleme
 let _synthMuted = false;       // modülden çıkınca master 0'a iner; ilk notada applySynthParams geri getirir
@@ -1834,6 +1842,16 @@ function synthTanh(k) {
     for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; c[i] = Math.tanh(k * x) / z; }
     return c;
 }
+// Son güvenlik katı: 0.5 ön kazanç sonrası eğri, girişi ±2 aralığında görür (u = 2x).
+// |u| ≤ 0.6 doğrusal (dokunulmaz), üstü türevi sürekli tanh dizine yumuşar; tavan 0.95 (4× oversample taşmasına pay).
+function synthSoftClip() {
+    const n = 4096, c = new Float32Array(n), K = 0.6, H = 0.35;
+    for (let i = 0; i < n; i++) {
+        const u = (i / (n - 1) * 2 - 1) * 2, a = Math.abs(u);
+        c[i] = a <= K ? u : Math.sign(u) * (K + H * Math.tanh((a - K) / H));
+    }
+    return c;
+}
 // Overview Synth kartı (cutoff/resonance kaydırıcıları) bunu çağırır — hepsi applySynthParams'ta.
 function syncFilterNodes() { applySynthParams(); }
 const synthHz = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -1852,6 +1870,8 @@ function getSynthCtx() {
             delayNode = c.createDelay(2); delayFb = G(); delayWetG = G();
             convolverNode = c.createConvolver(); reverbWetG = G();
             synthMaster = G(); synthLimiter = c.createDynamicsCompressor();
+            synthClipIn = G(); synthClipIn.gain.value = 0.5;
+            synthClip = c.createWaveShaper(); synthClip.curve = synthSoftClip(); synthClip.oversample = '4x';
             analyserNode = c.createAnalyser(); analyserNode.fftSize = 2048;
             synthBus.connect(synthTrem); synthTrem.connect(synthPan);
             synthPan.connect(distDry); synthPan.connect(distShaper); distShaper.connect(distWet);
@@ -1863,7 +1883,9 @@ function getSynthCtx() {
             // Limiter: bağlam kurulurken (ses yokken) sabit değerler
             synthLimiter.threshold.value = -6; synthLimiter.knee.value = 0; synthLimiter.ratio.value = 20;
             synthLimiter.attack.value = 0.001; synthLimiter.release.value = 0.12;
-            synthMaster.connect(synthLimiter); synthLimiter.connect(analyserNode); analyserNode.connect(c.destination);
+            // master → kompresör (−6 dB, 20:1) → yumuşak tavan (≤ 0.95) → analizör → çıkış
+            synthMaster.connect(synthLimiter); synthLimiter.connect(synthClipIn); synthClipIn.connect(synthClip);
+            synthClip.connect(analyserNode); analyserNode.connect(c.destination);
             const sp = c.createChannelSplitter(2);
             analyserNode.connect(sp);
             analyserL = c.createAnalyser(); analyserR = c.createAnalyser();
@@ -2517,7 +2539,8 @@ function synthPatchFrom(p) {
     else grab('modEnv');
     grab('lfo');
     const lf = p.lfo || {};
-    if (lf.dest == null) {
+    // Yalnız eski kayıtlar: v2 (fabrika dahil) dest vermezse INIT'in hedefi (CUTOFF) ve kendi amount'u kalır
+    if (legacy && lf.dest == null) {
         // Eski LFO: hedef başına amount (cutoff Hz, volume tremolo, pitch ±100 ct) ya da {target, depth}
         const c = +lf.cutoffAmt || 0, vo = +lf.volumeAmt || 0, pi = (+lf.pitchAmt || 0) / 2;
         let dest = 'cutoff', amt = 0;
@@ -4922,6 +4945,7 @@ function renderModule1() {
     // ── Düzenleme akışı: state → ses (applySynthParams) → görseller → preset "*" → görevler ──
     function edited(what, o) {
         state.activePreset = null; ui.dirty = true;
+        tkMark(what);
         applySynthParams();
         if (o && o.knobs) syncKnobs();
         syncVisuals();
@@ -4982,6 +5006,7 @@ function renderModule1() {
         histPush();
         if (it.group === 'user') { applyPreset(it.data); ui.presetId = it.id; ui.presetName = it.name; tk.from = null; }
         else { applyPreset(SYNTH_PRESETS.find(p => p.id === it.id)); ui.presetName = null; tk.from = it.id; }
+        tkReset();
         syncAll(); previewNote(); checkTasks('preset');
     }
     function setUserPresets(list) { userPresets = (list || []).slice(); pb.setItems(pbItems(), ui.presetId); paintPreset(); }
@@ -5001,7 +5026,7 @@ function renderModule1() {
     ab.el.setAttribute('data-i18n-aria', 'lp_ab_aria');
     const cp = lpBtn({ text: 'A→B', title: L('lp_ab_copy') });
     const initB = lpBtn({ text: L('lp_init'), title: L('lab_s1_init_t'), onClick: () => {
-        histPush(); applyPreset(Object.assign(synthClone(SYNTH_INIT), { v: 2 })); ui.presetName = null; tk.from = null; syncAll();
+        histPush(); applyPreset(Object.assign(synthClone(SYNTH_INIT), { v: 2 })); ui.presetName = null; tk.from = null; tkReset(); syncAll();
     } });
     const un = lpBtn({ icon: 'undo', label: L('lp_undo') }), re = lpBtn({ icon: 'redo', label: L('lp_redo') });
     un.setAttribute('data-i18n-aria', 'lp_undo'); re.setAttribute('data-i18n-aria', 'lp_redo');
@@ -5285,7 +5310,8 @@ function renderModule1() {
     const whites = mk('div', 'lab-m1-whites');
     kb.append(whites);
     const keyEls = new Map();
-    const mqPhone = window.matchMedia ? window.matchMedia('(max-width:600px)') : null;
+    // ≤900 px (site kırılımı; rehber <720 px): 1 oktav, 7 beyaz tuş → her tuş ≥44 px
+    const mqPhone = window.matchMedia ? window.matchMedia('(max-width:900px)') : null;
     function keyPress(e) {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.preventDefault();
@@ -5379,9 +5405,14 @@ function renderModule1() {
             SYNTH_PATCH_KEYS.forEach(k => { if (s.p[k] !== undefined) state[k] = s.p[k]; });
             setOsc1Wave(state.osc1.wave);
             ui.presetId = s.id; ui.presetName = s.nm; ui.dirty = s.d; state.activePreset = s.a;
+            tkReset();                          // A/B, geri al/yinele: başka bir patch — görev düzenlemeleri sıfırdan
             applySynthParams(); syncAll();
         } });
     hist.bind({ undo: un, redo: re, ab, copy: cp, keys: win.root });
+    // A/B aynı patch'i gösterse bile (boş B slotu) geçiş = yeni deneme → görev düzenlemeleri sıfırlanır
+    let abSlot = hist.ab.slot;
+    const abSeen = () => { if (hist.ab.slot !== abSlot) { abSlot = hist.ab.slot; tkReset(); } };
+    ab.el.addEventListener('click', abSeen); ab.el.addEventListener('keyup', abSeen);
 
     // ── Görseller ────────────────────────────────────────────────────
     function oscPath(w, off) {
@@ -5509,7 +5540,16 @@ function renderModule1() {
     if (io) io.observe(win.root); else startLoop();
 
     // ── Görevler: yapılanlar algılanınca kalıcı tamamlanır (elle de işaretlenebilir) ──
-    const tk = { waves: new Set(), att0: false, from: ui.presetId && !String(ui.presetId).startsWith('u:') ? ui.presetId : null, hpLo: null, hpHi: null };
+    // e6/e8/e9: o görevin kendi kontrolüne bu patch'te dokunuldu mu (preset, INIT, A/B, geri al → sıfırlanır)
+    const tk = { waves: new Set(), att0: false, from: ui.presetId && !String(ui.presetId).startsWith('u:') ? ui.presetId : null, hpLo: null, hpHi: null,
+        e6: false, e8: false, e9: false };
+    function tkReset() { tk.e6 = tk.e8 = tk.e9 = false; }
+    function tkMark(what) {
+        const w = String(what || '');
+        if (w.startsWith('osc2.')) tk.e6 = true;
+        if (w === 'lfo.amount' || w === 'lfo.dest') tk.e8 = true;
+        if (w === 'filterEnv.amount' || w === 'modEnv.decay') tk.e9 = true;
+    }
     function checkTasks(what, ev) {
         const s = state, done = id => completeTask(1, id);
         if (ev === 'note' && s.osc1.enabled !== false) { tk.waves.add(s.osc1.wave); if (tk.waves.size >= 4) done(1); }
@@ -5517,9 +5557,9 @@ function renderModule1() {
         if (ev === 'note' && s.adsr.sustain <= 0.01 && s.adsr.decay >= 0.25 && s.adsr.decay <= 0.4) done(3);
         if (ev === 'off' && s.adsr.release > 2) done(4);
         if (tk.from === 'bass' && s.filter.cutoff <= 210) done(5);
-        // 6, 8, 9: kendi ayarınla (preset yüklemek yetmez) bir nota çalınca
-        const heard = ev === 'note' && ui.dirty;
-        if (heard && s.osc2.enabled && s.osc2.wave !== s.osc1.wave && Math.abs(Math.abs(s.osc2.detune) - 7) <= 1) done(6);
+        // 6, 8, 9: o görevin kontrolünü bu patch'te kendin değiştirip bir nota çalınca (preset yüklemek, başka düğme yetmez)
+        const heard = ev === 'note';
+        if (heard && tk.e6 && s.osc2.enabled && s.osc2.wave !== s.osc1.wave && Math.abs(Math.abs(s.osc2.detune) - 7) <= 1) done(6);
         if (s.filter.type === 'highpass') {
             if (what === 'filter.cutoff') {
                 const c = s.filter.cutoff;
@@ -5527,8 +5567,8 @@ function renderModule1() {
                 if (tk.hpHi / tk.hpLo >= 4) done(7);
             }
         } else { tk.hpLo = tk.hpHi = null; }
-        if (heard && s.lfo.dest === 'cutoff' && s.lfo.amount >= 0.68) done(8);
-        if (heard && s.filterEnv.amount >= 78 && s.modEnv.decay >= 0.35 && s.modEnv.decay <= 0.45) done(9);
+        if (heard && tk.e8 && s.lfo.dest === 'cutoff' && s.lfo.amount >= 0.68) done(8);
+        if (heard && tk.e9 && s.filterEnv.amount >= 78 && s.modEnv.decay >= 0.35 && s.modEnv.decay <= 0.45) done(9);
         if (tk.from === 'pad' && s.fx.reverbWet >= 0.58) done(10);
     }
 
@@ -5582,7 +5622,7 @@ function renderModule1() {
         load: async () => { const items = await loadUserPresets(); setUserPresets(items); return items; },
         save: name => saveUserPreset(name),
         del: async p => { await deleteUserPreset(p.id); setUserPresets(userPresets.filter(x => x.id !== p.id)); },
-        apply: p => { histPush(); applyPreset(p); ui.presetId = 'u:' + p.id; ui.presetName = p.name || null; tk.from = null; syncAll(); previewNote(); } });
+        apply: p => { histPush(); applyPreset(p); ui.presetId = 'u:' + p.id; ui.presetName = p.name || null; tk.from = null; tkReset(); syncAll(); previewNote(); } });
     side.append(tasks, where, saved);
 
     // ── Dil / giriş değişimi: yerinde tazele (ses sürer) ─────────────
@@ -5611,7 +5651,7 @@ function renderModule1() {
     buildKeys(); paintView(); syncAll();
     _m1Update = syncAll;
     // Tanılama (yalnız ?m1debug=1): headless doğrulama için motor + durum
-    if (/[?&]m1debug=1\b/.test(location.search)) window.__m1 = { state, voices: () => _voices, ctx: () => synthCtx, noteOn, noteOff, synthSetPedal, applyPreset, SYNTH_PRESETS, SYNTH_INIT, synthFilterMag, hist: () => hist };
+    if (/[?&]m1debug=1\b/.test(location.search)) window.__m1 = { state, voices: () => _voices, ctx: () => synthCtx, apply: applySynthParams, noteOn, noteOff, synthSetPedal, applyPreset, SYNTH_PRESETS, SYNTH_INIT, synthFilterMag, hist: () => hist };
 
     // Görünümden çıkış (teardownView): dinleyiciler, döngü, gözlemci ve sesler
     _m1StopAudio = () => {
@@ -5624,6 +5664,7 @@ function renderModule1() {
         _m1HeldChanged = null; _m1Update = null;
         synthStopAll();
         state.modWheel = 0;                 // LFO derinliği ilk notadaki applySynthParams ile tazelenir
+        ui.power = true;                    // bypass yalnız bu görünümde; genel bakış kartı sessiz kalmasın
     };
     return root;
 }
