@@ -358,16 +358,20 @@
         .lab-taskcount:hover { color:var(--fg); }
 
         /* ── Modül başlığı (modHeader) ─────────────────────────────────── */
-        .lab-mhead { display:flex; justify-content:space-between; align-items:flex-end; gap:40px; padding-top:44px; padding-bottom:24px; }
-        .lab-mhead-copy { display:flex; flex-direction:column; gap:12px; min-width:0; }
+        /* Lab_*.dc.html (eklenti sürümü): h1 64–72px, açıklama 15px; Beat/Mixing/Arrangement/Mastering'de sağda */
+        .lab-mhead { display:flex; justify-content:space-between; align-items:flex-end; gap:40px; padding-top:36px; padding-bottom:22px; }
+        .lab-mhead-copy { display:flex; flex-direction:column; gap:10px; min-width:0; }
         .lab-mhead-kicker { font-family:var(--ff-mono); font-size:12px; letter-spacing:var(--tr-label-wide); color:var(--accent); }
-        .lab-mhead-title { font-size:var(--fs-display); line-height:.9; letter-spacing:var(--tr-display); }
+        .lab-mhead-title { font-size:clamp(52px, calc(52px + (100vw - 600px) * .0238), 72px); line-height:.9; letter-spacing:var(--tr-display); }
         .lab-mhead-title em { font-style:italic; }
-        .lab-mhead-desc { max-width:660px; font-size:16px; /* tasarım: tek seferlik */ line-height:1.6; color:var(--fg-muted); }
-        .lab-mview[data-mod="1"] .lab-mhead-desc, .lab-mview[data-mod="2"] .lab-mhead-desc { max-width:640px; }
-        .lab-mview[data-mod="3"] .lab-mhead-desc { max-width:680px; }
+        .lab-mhead-desc { max-width:620px; font-size:15px; /* tasarım: tek seferlik */ line-height:1.6; color:var(--fg-muted); }
+        .lab-mhead--side .lab-mhead-desc { flex:0 1 560px; max-width:560px; }
+        .lab-mview[data-mod="5"] .lab-mhead-desc { flex-basis:620px; max-width:620px; }
         .lab-mhead-actions { display:flex; align-items:center; gap:12px; flex-shrink:0; }
         .lab-mhead-actions:empty { display:none; }
+        /* Eklenti penceresi yuvası (modLayout().top) — tam genişlik, altında Çalışma mantığı ızgarası */
+        .lab-mtop { display:flex; flex-direction:column; gap:20px; min-width:0; margin-bottom:28px; }
+        .lab-mtop:empty { display:none; }
 
         /* ── Modül yerleşimi (modLayout): içerik + 340px yan panel ─────────── */
         .lab-mview { padding-bottom:var(--s8); }
@@ -470,12 +474,15 @@
         }
         @media (max-width:1024px) {
             .lab-mhead { flex-wrap:wrap; gap:20px; padding-top:28px; }
+            .lab-mhead--side .lab-mhead-desc { flex-basis:100%; }
+            .lab-mtop { margin-bottom:20px; }
             .lab-mgrid { grid-template-columns:minmax(0,1fr); }
             .lab-mside { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; }
             .lab-mside > .lab-tasks { grid-column:1 / -1; }
         }
         @media (max-width:600px) {
             .lab-mhead { gap:16px; padding-top:20px; padding-bottom:16px; }
+            .lab-mtop { margin-bottom:16px; gap:12px; }
             .lab-mhead-kicker { font-size:var(--fs-label); }
             .lab-mhead-actions { width:100%; justify-content:flex-start; flex-wrap:wrap; }
             .lab-mview { padding-bottom:var(--s6); }
@@ -496,6 +503,256 @@
         }
 
         /* ═══ /LAB KABUK ═══ */
+
+        /* ═══ LAB PRO KİT (eklenti pencereleri: pluginWindow, makePanel, makeKnob, makeFader, makeMeter,
+           makeSeg, makePresetBrowser, makeReadout, howItWorks, flowDiagram) ═══
+           Sözleşme: script'teki LAB KABUK API → "PRO KİT". Önek .lp-*; modül CSS'i renk/genişliği
+           kendi kökünden (.lab-mN .lp-…) ya da --lp-c / --lp-win-r / --lp-bar-h değişkenleriyle ayarlar.
+           Tasarımın panel degradeleri en yakın düz token'a indirildi; metreler ayrık LED segment. */
+        .lab {
+            --lp-mod:#b48cf2;              /* tasarım: mod halkası / LFO moru (token yok, tek seferlik) */
+        }
+
+        /* ── Pencere + başlık çubuğu ─────────────────────────────────── */
+        .lp-win { position:relative; min-width:0; border-radius:var(--lp-win-r, var(--r-14)); background:var(--surface-0); /* tasarım #0e0e11 / #17171c→#0f0f12 */ border:1px solid var(--line-3); box-shadow:var(--shadow-card); }
+        .lp-bar { position:relative; z-index:3; display:flex; align-items:center; gap:12px; min-height:var(--lp-bar-h, 56px); padding:0 14px; background:var(--surface-2); /* tasarım #1b1b21→#141418 */ border-bottom:1px solid var(--line-div); border-top-left-radius:inherit; border-top-right-radius:inherit; }
+        .lp-screw { flex-shrink:0; width:9px; height:9px; border-radius:50%; background:var(--bar-muted); box-shadow:inset 0 0 0 1px var(--bg-ink); }
+        .lp-brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+        .lp-logo { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--r-8); background:var(--bg-ink); border:1px solid var(--accent-line); font-size:12px; font-weight:700; color:var(--accent); }
+        .lp-brand-txt { display:flex; flex-direction:column; gap:2px; line-height:1.15; }
+        .lp-brand-name { font-family:var(--ff-mono); font-size:13px; font-weight:700; letter-spacing:.2em; color:var(--fg); white-space:nowrap; }
+        .lp-brand-dot, .lp-brand-num { color:var(--accent); }
+        .lp-brand-sub { font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; color:var(--fg-3); white-space:nowrap; }
+        .lp-bar-l, .lp-bar-c { display:flex; align-items:center; gap:6px; min-width:0; }
+        .lp-bar-l { margin-left:8px; }
+        .lp-bar-r { margin-left:auto; display:flex; align-items:center; min-width:0; }
+        .lp-bar-l:empty, .lp-bar-c:empty, .lp-bar-r:empty { display:none; }
+        .lp-bar-r:empty + .lp-bar-pw, .lp-bar-c:empty + .lp-bar-r:empty + .lp-bar-pw { margin-left:auto; }
+        .lp-bar-pw { display:flex; align-items:center; padding-left:10px; }
+        .lp-transport { display:flex; align-items:center; flex-wrap:wrap; gap:12px 16px; min-height:62px; padding:9px 16px; background:var(--surface-block); /* tasarım #101014 */ border-bottom:1px solid var(--line-2); }
+        .lp-body { display:flex; flex-direction:column; gap:12px; min-width:0; padding:12px; }
+        .lp-status { display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; padding:9px 16px; border-top:1px solid var(--line-div); background:var(--bg-sunk); border-bottom-left-radius:inherit; border-bottom-right-radius:inherit; font-family:var(--ff-mono); font-size:10px; letter-spacing:.08em; color:var(--fg-3); }
+
+        /* ── Başlık çubuğu düğmeleri / anahtar / güç / LED ──────────────── */
+        .lp-btn { position:relative; display:inline-flex; align-items:center; justify-content:center; gap:6px; flex-shrink:0; height:30px; min-width:30px; padding:0 9px; border-radius:var(--r-6); border:1px solid var(--line-3); background:var(--bg); color:var(--fg-soft); font-family:var(--ff-mono); font-size:11px; letter-spacing:.06em; white-space:nowrap; cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast); }
+        .lp-btn svg { width:14px; height:14px; flex-shrink:0; }
+        .lp-btn--icon { padding:0; }
+        .lp-btn:hover { border-color:var(--accent-line-2); color:var(--fg); }
+        .lp-btn[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent-line-2); color:var(--accent); }
+        .lp-btn[aria-disabled="true"] { opacity:.4; cursor:default; }
+        .lp-btn[aria-disabled="true"]:hover { border-color:var(--line-3); color:var(--fg-soft); }
+        .lp-btn--accent { border-color:var(--accent-line-2); background:transparent; color:var(--accent); letter-spacing:.1em; }
+        .lp-btn--danger { border-color:var(--err-line); background:transparent; color:var(--err); letter-spacing:.1em; }
+        .lp-btn--danger:hover { border-color:var(--err-strong); color:var(--err); }
+        .lp-btn--ghost { background:transparent; }
+        .lp-tgl[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--lp-c, var(--accent-line-2)); color:var(--lp-c, var(--accent)); }
+        .lp-pwr { position:relative; flex-shrink:0; display:flex; align-items:center; justify-content:center; width:32px; height:32px; padding:0; border-radius:50%; border:1px solid var(--line-strong); background:var(--bg); color:var(--fg-3); cursor:pointer; transition:color var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast); }
+        .lp-pwr svg { width:15px; height:15px; }
+        .lp-pwr--sm { width:26px; height:26px; }
+        .lp-pwr--sm svg { width:12px; height:12px; }
+        .lp-pwr[aria-pressed="true"] { color:var(--lp-c, var(--accent)); border-color:var(--lp-c, var(--accent-line-2)); box-shadow:0 0 12px -3px var(--lp-c, var(--accent)); }
+        .lp-led { flex-shrink:0; width:8px; height:8px; border-radius:50%; background:var(--track); }
+        .lp-led.on { background:var(--lp-c, var(--accent)); box-shadow:0 0 8px var(--lp-c, var(--accent)); }
+        .lp-ledb { position:relative; flex-shrink:0; display:flex; align-items:center; justify-content:center; width:22px; height:22px; padding:0; border-radius:var(--r-6); border:1px solid var(--line-ctl); background:var(--bg); cursor:pointer; }
+        .lp-ledb:hover { border-color:var(--accent-line-2); }
+
+        /* ── Segmentli seçici (makeSeg) ─────────────────────────────────── */
+        .lp-seg { display:inline-flex; flex-shrink:0; gap:2px; padding:2px; border-radius:var(--r-8); background:var(--bg); border:1px solid var(--line); }
+        .lp-seg-b { position:relative; height:22px; min-width:22px; padding:0 7px; border:0; border-radius:var(--r-6); background:transparent; color:var(--fg-3); font-family:var(--ff-mono); font-size:10px; letter-spacing:.05em; white-space:nowrap; cursor:pointer; transition:color var(--dur-fast), background var(--dur-fast); }
+        .lp-seg-b:hover { color:var(--fg); }
+        .lp-seg-b[aria-pressed="true"] { background:var(--accent-soft); color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent-line-2); }
+        .lp-seg--md .lp-seg-b { height:26px; min-width:28px; font-size:11px; font-weight:700; }
+
+        /* ── Knob (makeKnob) ────────────────────────────────────────────── */
+        .lp-knob { position:relative; display:flex; flex-direction:column; align-items:center; gap:1px; min-width:44px; border-radius:var(--r-8); cursor:ns-resize; user-select:none; -webkit-user-select:none; touch-action:none; }
+        .lp-knob-svg { display:block; width:var(--lp-ks, 44px); height:var(--lp-ks, 44px); overflow:visible; }
+        .lp-knob-track { fill:none; stroke:var(--track); stroke-width:3.4; stroke-linecap:round; }
+        .lp-knob-arc { fill:none; stroke:var(--lp-c, var(--accent)); stroke-width:3.4; stroke-linecap:round; }
+        .lp-knob-ring { fill:none; stroke:var(--lp-rc, var(--lp-mod)); stroke-width:1.6; stroke-linecap:round; opacity:.85; }
+        .lp-knob-body { fill:var(--surface-4); stroke:var(--track); stroke-width:1; transition:stroke var(--dur-fast); }
+        .lp-knob:hover .lp-knob-body, .lp-knob.is-drag .lp-knob-body { stroke:var(--accent-line-2); }
+        .lp-knob-ptr { stroke:var(--fg); stroke-width:2.2; stroke-linecap:round; }
+        .lp-knob-val { font-family:var(--ff-mono); font-size:10px; color:var(--fg); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .lp-knob-lbl { font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--fg-3); white-space:nowrap; }
+        .lp-knob--above .lp-knob-lbl { letter-spacing:.04em; }
+        .lp-knob--side { flex-direction:row; gap:6px; }
+        .lp-knob-txt { display:flex; flex-direction:column; gap:1px; }
+        .lp-knob.is-disabled { opacity:.4; cursor:default; }
+        .lp-krow { display:grid; grid-template-columns:repeat(var(--cols, 4), minmax(0,1fr)); gap:6px 0; justify-items:center; }
+
+        /* ── Fader (makeFader) ──────────────────────────────────────────── */
+        .lp-fader { position:relative; display:flex; gap:4px; height:var(--lp-fl, 176px); }
+        .lp-fader-scale { position:relative; width:20px; flex-shrink:0; }
+        .lp-fader-scale span { position:absolute; right:0; top:calc((1 - var(--p, 0)) * (100% - 24px) + 12px); transform:translateY(-50%); font-family:var(--ff-mono); font-size:9px; line-height:1; color:var(--fg-3); white-space:nowrap; }
+        .lp-fader-track { position:relative; width:24px; height:100%; border-radius:var(--r-6); cursor:ns-resize; touch-action:none; user-select:none; -webkit-user-select:none; }
+        .lp-fader-track::before { content:''; position:absolute; left:10px; top:12px; bottom:12px; width:4px; border-radius:var(--r-2); background:var(--bg-ink); box-shadow:0 0 0 1px var(--line-2); }
+        .lp-fader-cap { position:absolute; left:0; top:calc((1 - var(--p, 0)) * (100% - 24px)); width:24px; height:24px; border-radius:var(--r-6); background:var(--bar-muted); border:1px solid var(--bg-ink); box-shadow:0 3px 6px var(--bg-ink); pointer-events:none; }
+        .lp-fader-cap::after { content:''; position:absolute; left:3px; right:3px; top:10px; height:2px; background:var(--lp-c, var(--fg)); }
+        .lp-fader.is-drag .lp-fader-cap { border-color:var(--accent-line-2); }
+        .lp-fader--h { height:auto; width:var(--lp-fl, 120px); }
+        .lp-fader--h .lp-fader-track { width:100%; height:20px; cursor:ew-resize; }
+        .lp-fader--h .lp-fader-track::before { left:6px; right:6px; top:8px; bottom:auto; width:auto; height:4px; }
+        .lp-fader--h .lp-fader-cap { top:1px; left:calc(var(--p, 0) * (100% - 12px)); width:12px; height:18px; }
+        .lp-fader--h .lp-fader-cap::after { left:5px; right:auto; top:3px; bottom:3px; width:2px; height:auto; }
+
+        /* ── LED metre (makeMeter) ──────────────────────────────────────── */
+        .lp-mtr { display:flex; gap:2px; flex-shrink:0; }
+        .lp-mtr--h { flex-direction:column; }
+        .lp-mtr-ch { display:flex; gap:1px; }
+        .lp-mtr--v .lp-mtr-ch { flex-direction:column-reverse; width:var(--lp-mt, 6px); height:var(--lp-ml, 180px); }
+        .lp-mtr--h .lp-mtr-ch { flex-direction:row; height:var(--lp-mt, 5px); width:var(--lp-ml, 110px); }
+        .lp-mtr--gr.lp-mtr--v .lp-mtr-ch { flex-direction:column; }
+        .lp-mtr--gr.lp-mtr--h .lp-mtr-ch { flex-direction:row-reverse; }
+        .lp-mtr-s { flex:1 1 0; min-width:0; min-height:0; border-radius:1px; background:var(--track-2); }
+        .lp-z-ok { --z:var(--ok-strong); } .lp-z-warn { --z:var(--accent); } .lp-z-hot { --z:var(--err-strong); } .lp-z-c { --z:var(--lp-c, var(--accent)); }
+        .lp-mtr-s.on, .lp-mtr-s.pk { background:var(--z); }
+
+        /* ── Okumalar (makeReadout) ─────────────────────────────────────── */
+        .lp-ro { display:flex; flex-direction:column; justify-content:center; gap:1px; padding:0 10px; border-left:1px solid var(--line-div); font-family:var(--ff-mono); }
+        .lp-ro .lp-ro-l { font-size:9px; font-weight:400; letter-spacing:.14em; color:var(--fg-3); white-space:nowrap; }
+        .lp-ro .lp-ro-v { font-size:12px; color:var(--lp-c, var(--fg)); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .lp-lcd { display:flex; flex-direction:column; justify-content:center; min-width:82px; height:44px; padding:0 12px; border-radius:var(--r-6); background:var(--bg-ink); border:1px solid var(--line); font-family:var(--ff-mono); }
+        .lp-lcd .lp-ro-l { font-size:9px; font-weight:400; letter-spacing:.14em; color:var(--fg-3); white-space:nowrap; }
+        .lp-lcd .lp-ro-v { font-size:15px; line-height:1.2; color:var(--lp-c, var(--fg)); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .lp-inline { display:inline-flex; gap:6px; font-family:var(--ff-mono); font-size:10px; letter-spacing:.08em; color:var(--fg-3); white-space:nowrap; }
+        .lp-inline .lp-ro-v { color:var(--lp-c, var(--fg)); }
+
+        /* ── Preset tarayıcı (makePresetBrowser) ────────────────────────── */
+        .lp-pb { position:relative; display:flex; align-items:center; min-width:0; }
+        .lp-pb-grp { display:flex; height:32px; min-width:0; border-radius:var(--r-8); border:1px solid var(--line-3); background:var(--bg); }
+        .lp-pb-arrow { position:relative; flex-shrink:0; display:flex; align-items:center; justify-content:center; width:30px; padding:0; border:0; background:transparent; color:var(--fg-muted); cursor:pointer; transition:color var(--dur-fast); }
+        .lp-pb-arrow:first-child { border-radius:var(--r-8) 0 0 var(--r-8); }
+        .lp-pb-arrow:last-child { border-radius:0 var(--r-8) var(--r-8) 0; }
+        .lp-pb-arrow:hover { color:var(--accent); }
+        .lp-pb-arrow svg { width:10px; height:10px; }
+        .lp-pb-name { position:relative; display:flex; align-items:center; gap:8px; width:var(--lp-pbw, 250px); min-width:0; padding:0 10px; border:0; border-inline:1px solid var(--line-div); background:var(--bg-sunk); color:var(--fg); font-family:var(--ff); font-size:13px; font-weight:600; text-align:left; cursor:pointer; }
+        .lp-pb-name:hover, .lp-pb.is-open .lp-pb-name { background:var(--bg-ink); }
+        .lp-pb-cap { font-family:var(--ff-mono); font-size:9px; font-weight:400; letter-spacing:.14em; color:var(--fg-3); }
+        .lp-pb-no { flex-shrink:0; font-family:var(--ff-mono); font-size:10px; font-weight:400; color:var(--fg-3); }
+        .lp-tag { flex-shrink:0; padding:2px 5px; border-radius:var(--r-2); background:var(--accent-soft); font-family:var(--ff-mono); font-size:9px; font-weight:400; letter-spacing:.12em; color:var(--accent); }
+        .lp-pb-t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .lp-pb-mod { color:var(--accent); }
+        .lp-pb-aux { flex-shrink:0; font-family:var(--ff-mono); font-size:10px; font-weight:400; color:var(--accent); }
+        .lp-pb-caret { display:flex; flex-shrink:0; color:var(--fg-3); }
+        .lp-pb-caret svg { width:10px; height:10px; }
+        .lp-pb-pop { position:absolute; top:calc(100% + 6px); left:0; z-index:var(--z-pop); width:min(440px, calc(100vw - 32px)); max-height:min(420px, 70vh); overflow-y:auto; padding:10px; border-radius:var(--r-12); background:var(--surface-1); border:1px solid var(--accent-line); box-shadow:var(--shadow-pop); }
+        .lp-pb-gw + .lp-pb-gw { margin-top:8px; padding-top:8px; border-top:1px solid var(--line-2); }
+        .lp-pb-gh { padding:2px 4px 6px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; color:var(--fg-3); }
+        .lp-pb-list { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:4px; }
+        .lp-pb-opt { display:flex; align-items:center; gap:8px; min-width:0; height:34px; padding:0 10px; border-radius:var(--r-8); border:1px solid transparent; color:var(--fg-soft); font-size:12px; cursor:pointer; outline:none; }
+        .lp-pb-opt:hover { background:var(--surface-3); }
+        .lp-pb-opt:focus-visible { background:var(--surface-3); outline:2px solid var(--accent); outline-offset:-2px; }
+        .lp-pb-opt[aria-selected="true"] { border-color:var(--accent-line-2); color:var(--accent); }
+
+        /* ── Panel / raf modülü / ekran (makePanel, makeDisplay) ────────── */
+        .lp-panel, .lp-rack { position:relative; min-width:0; display:flex; flex-direction:column; gap:10px; border:1px solid var(--line-div); background:var(--surface-hover); /* tasarım #17171c→#121216 */ transition:opacity var(--dur); }
+        .lp-panel { padding:10px 12px 12px; border-radius:var(--r-12); }
+        .lp-rack { padding:10px 12px; border-radius:var(--r-10); border-color:var(--line); }
+        .lp-rack::before, .lp-rack::after { content:''; position:absolute; top:8px; width:5px; height:5px; border-radius:50%; background:var(--track); box-shadow:inset 0 1px 1px var(--bg-ink); }
+        .lp-rack::before { left:8px; } .lp-rack::after { right:8px; }
+        .lp-rack > .lp-ph { justify-content:center; }
+        .lp-panel.is-off, .lp-rack.is-off { opacity:.55; }
+        .lp-ph { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-height:24px; }
+        .lp-pt { margin:0; font-family:var(--ff-mono); font-size:10px; font-weight:700; letter-spacing:.2em; line-height:1.3; color:var(--fg-soft); }
+        .lp-pt--c { color:var(--lp-c, var(--accent)); letter-spacing:.16em; font-size:11px; }
+        .lp-pinfo { font-family:var(--ff-mono); font-size:9px; letter-spacing:.06em; color:var(--fg-3); }
+        .lp-pact { margin-left:auto; display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+        .lp-pact:empty { display:none; }
+        .lp-disp { position:relative; overflow:hidden; border-radius:var(--r-8); background:var(--bg-ink); border:1px solid var(--line-2); }
+        .lp-disp-grid { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+        .lp-disp-grid line { stroke:var(--grid-line); stroke-width:1; vector-effect:non-scaling-stroke; }
+
+        /* ── Çalışma mantığı (howItWorks + flowDiagram) ─────────────────── */
+        .lp-hiw { display:flex; flex-direction:column; gap:18px; min-width:0; padding:24px; border-radius:var(--r-18); background:var(--surface-0); border:1px solid var(--line); }
+        .lp-hiw--bare { padding:0; border:0; border-radius:0; background:none; }
+        .lp-hiw-head { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px 20px; }
+        .lp-hiw-hc { display:flex; flex-direction:column; gap:4px; min-width:0; }
+        .lp-hiw-kick { font-family:var(--ff-mono); font-size:11px; letter-spacing:var(--tr-label-wide); color:var(--accent); }
+        .lp-hiw-h { font-family:var(--ff-disp); font-weight:400; font-size:36px; line-height:1; letter-spacing:-.01em; }
+        .lp-hiw-h em { font-style:italic; }
+        .lp-hiw-aux { font-family:var(--ff-mono); font-size:10px; letter-spacing:.14em; color:var(--fg-3); }
+        .lp-hcap { font-family:var(--ff-mono); font-size:10px; letter-spacing:.2em; color:var(--accent); }
+        .lp-flow { border-radius:var(--r-12); background:var(--bg); border:1px solid var(--line-2); overflow:hidden; }
+        .lp-flow-svg { display:block; width:100%; height:auto; }
+        .lp-fn rect { fill:var(--surface-hi-2); stroke:var(--c, var(--line-hi)); stroke-width:1.2; }
+        .lp-fn--hi rect { fill:var(--surface-3); }
+        .lp-fn--ink rect { fill:var(--bg); }
+        .lp-fn--accent rect { fill:var(--accent-wash); }
+        .lp-fn-t { font-family:var(--ff-mono); font-size:11px; font-weight:700; fill:var(--fg); }
+        .lp-fn-s { font-family:var(--ff-mono); font-size:9px; fill:var(--sc, var(--fg-3)); }
+        .lp-fe { fill:none; stroke:var(--fg-3); stroke-width:1.4; }
+        .lp-fe--dash { stroke-dasharray:4 3; }
+        .lp-fe--dot { stroke-dasharray:1.5 3; }
+        .lp-fm { fill:var(--fg-3); }
+        .lp-fg rect { fill:none; stroke:var(--c, var(--accent-line)); stroke-dasharray:5 5; }
+        .lp-fg text { font-family:var(--ff-mono); font-size:10px; letter-spacing:1.5px; fill:var(--c, var(--accent)); }
+        .lp-fl { font-family:var(--ff-mono); font-size:9px; fill:var(--fg-3); }
+        .lp-fl--s { font-size:10px; letter-spacing:1.5px; fill:var(--accent); }
+        .lp-steps { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(var(--cols, 1), minmax(0,1fr)); gap:10px 22px; }
+        .lp-step { display:flex; gap:10px; min-width:0; font-size:13px; line-height:1.55; color:var(--fg-muted); }
+        .lp-step b { color:var(--fg); font-weight:600; }
+        .lp-step-n { flex-shrink:0; display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:var(--r-6); border:1px solid var(--accent-line); font-family:var(--ff-mono); font-size:10px; color:var(--accent); }
+        .lp-steps--cards .lp-step { padding:12px; border-radius:var(--r-10); background:var(--bg); border:1px solid var(--line-2); font-size:12px; line-height:1.5; }
+        .lp-steps--cards .lp-step-n { border:0; background:var(--lp-c, var(--accent)); color:var(--accent-ink); font-size:11px; font-weight:700; }
+        .lp-tbl { display:flex; flex-direction:column; min-width:0; font-size:12px; }
+        .lp-tr { display:grid; grid-template-columns:var(--tcols, 1.1fr 1.3fr .9fr 1.5fr); gap:10px; padding:6px 8px; border-bottom:1px solid var(--line-faint); color:var(--fg-soft); }
+        .lp-tr > * { min-width:0; overflow-wrap:anywhere; }
+        .lp-td--0 { color:var(--fg); font-weight:600; }
+        .lp-td--1, .lp-td--2, .lp-td--3 { font-family:var(--ff-mono); font-size:10.5px; }
+        .lp-td--2 { color:var(--accent); }
+        .lp-td--3 { color:var(--info); }
+        .lp-tr--h { border-bottom-color:var(--line-ctl); }
+        .lp-tr--h > * { font-family:var(--ff-mono); font-size:9px; font-weight:400; letter-spacing:.14em; color:var(--fg-3); }
+        .lp-hcard { display:flex; flex-direction:column; gap:10px; min-width:0; padding:18px; border-radius:var(--r-14); background:var(--bg); border:1px solid var(--line); }
+        .lp-hiw--bare .lp-hcard { background:var(--surface-0); }
+        .lp-hcard--accent { border-color:var(--accent-line); }
+        .lp-hcard-h { font-size:15px; font-weight:700; line-height:1.3; }
+        .lp-hcard-note { font-size:12px; line-height:1.55; color:var(--fg-3); }
+        .lp-hrow { display:grid; grid-template-columns:var(--cols, repeat(2, minmax(0,1fr))); gap:16px 20px; align-items:start; min-width:0; }
+
+        /* ── Dokunma: görünür kutu aynı, isabet alanı ≥44 px (::after) ──── */
+        @media (max-width:1024px) {
+            .lp-btn::after, .lp-pb-arrow::after, .lp-pb-name::after { content:''; position:absolute; inset:-7px -4px; }
+            .lp-pwr::after { content:''; position:absolute; inset:-6px; }
+            .lp-pwr--sm::after, .lp-ledb::after { content:''; position:absolute; inset:-11px; }
+            .lp-seg-b::after { content:''; position:absolute; inset:-11px -1px; }
+            .lp-seg--md .lp-seg-b::after { inset:-9px -1px; }
+            .lp-fader-track::after { content:''; position:absolute; inset:0 -10px; }
+            .lp-bar { flex-wrap:wrap; row-gap:10px; padding-block:10px; }
+            .lp-bar-l { margin-left:0; flex-wrap:wrap; }
+            .lp-bar-c { flex-wrap:wrap; }
+            .lp-hrow { grid-template-columns:minmax(0,1fr); }
+        }
+        @media (max-width:600px) {
+            .lp-body { padding:8px; gap:8px; }
+            .lp-bar { padding-inline:10px; gap:10px; }
+            .lp-screw { display:none; }
+            .lp-bar-pw { order:1; margin-left:auto; padding-left:0; }
+            .lp-bar-l { order:2; width:100%; }
+            .lp-bar-c { order:3; }
+            .lp-bar-r { order:4; width:100%; margin-left:0; flex-wrap:wrap; row-gap:8px; }
+            .lp-bar-r > :first-child { padding-left:0; border-left:0; }
+            .lp-pb { flex:1 1 100%; }
+            .lp-pb-grp { flex:1; }
+            .lp-pb-name { flex:1; width:auto; }
+            .lp-pb-arrow { width:44px; }
+            .lp-pb-list { grid-template-columns:minmax(0,1fr); }
+            .lp-pb-opt { height:44px; }
+            .lp-seg .lp-seg-b { min-width:44px; }
+            .lp-btn { min-width:44px; }
+            .lp-krow { grid-template-columns:repeat(auto-fill, minmax(64px, 1fr)); gap:10px 0; }
+            .lp-knob { min-width:64px; min-height:64px; }
+            .lp-hiw { padding:16px; gap:14px; border-radius:var(--r-16); }
+            .lp-hiw--bare { padding:0; }
+            .lp-hiw-h { font-size:28px; }
+            .lp-flow { overflow-x:auto; }
+            .lp-flow-svg { min-width:var(--lp-fmin, 640px); }
+            .lp-steps { grid-template-columns:minmax(0,1fr); }
+            .lp-tr--h { display:none; }
+            .lp-tr { grid-template-columns:minmax(0,1fr); gap:3px; padding:10px 4px; }
+            .lp-td[data-th]::before { content:attr(data-th); display:inline-block; min-width:118px; margin-right:8px; font-family:var(--ff-mono); font-size:9px; font-weight:400; letter-spacing:.12em; color:var(--fg-3); }
+        }
+        /* ═══ /LAB PRO KİT ═══ */
 
         /* ═══ LAB M1 · Synthesizer ═══ (Lab_Synth: scope + klavye + 8 parametre kartı, yan panel kabuktan) */
         .lab-m1 {
@@ -2526,16 +2783,16 @@ const LAB_TXT = {
     lab_mt_4_b:         [`ment`, `ment`],
     lab_mt_5_a:         [`Master`, `Master`],
     lab_mt_5_b:         [`ing`, `ing`],
-    lab_mdesc_1:        [`Sıfırdan ses üret: oscillator, ADSR zarfı, filtre, LFO ve efektler. Klavyeden çal, her değişikliği anında duy.`,
-                         `Build sound from scratch: oscillator, ADSR envelope, filter, LFO and effects. Play from the keyboard and hear every change instantly.`],
-    lab_mdesc_2:        [`16 adımlı step sequencer: velocity, swing ve tür şablonları. Kutuya tıkla, tekrar tıklayarak velocity'yi düşür.`,
-                         `A 16-step sequencer with velocity, swing and genre templates. Click a step, then click again to lower its velocity.`],
-    lab_mdesc_3:        [`EQ eğrileri, mixer kanalları, pan ve stereo alan. Her ayar çalarken anında etkili olur — duyarak dengele.`,
-                         `EQ curves, mixer channels, pan and the stereo field. Every setting takes effect while it plays — balance by ear.`],
-    lab_mdesc_4:        [`Loop'u şarkıya çevir. Her bölümde hangi enstrümanın çalacağını seç, enerji eğrisini izle ve tüm aranjmanı baştan sona dinle.`,
-                         `Turn a loop into a song. Choose which instruments play in each section, watch the energy curve and listen to the whole arrangement from start to finish.`],
-    lab_mdesc_5:        [`Mix bittiğinde işin yarısı bitmiştir. Mastering; şarkının her sistemde dengeli, kontrollü ve doğru seviyede çalmasını sağlayan son adımdır. Zinciri kur, hedef platformu seç, LUFS'u izle.`,
-                         `When the mix is done, you're only halfway there. Mastering is the final step that makes a track sound balanced, controlled and at the right level on every system. Build the chain, pick a target platform, watch the LUFS.`],
+    lab_mdesc_1:        [`İki oscillator, sub ve noise'u karıştır; filtre, zarf ve LFO ile şekillendir. Her düğme gerçek ses motorunu sürer — çal, çevir, duy.`,
+                         `Blend two oscillators, a sub and noise; shape them with the filter, envelopes and LFO. Every knob drives the real sound engine — play, turn, listen.`],
+    lab_mdesc_2:        [`5 kanallı, tamamen sentezlenmiş drum sequencer. Hücreye tıkla: velocity 100 → 70 → 40 → kapalı. Knob'ları yukarı/aşağı sürükle (Shift = ince, çift tık = varsayılan, tekerlek = adım adım).`,
+                         `A 5-track, fully synthesised drum sequencer. Click a cell: velocity 100 → 70 → 40 → off. Drag the knobs up and down (Shift = fine, double-click = default, wheel = step by step).`],
+    lab_mdesc_3:        [`6 kanallı bir konsol: her kanalda gain, EQ, kompresör, send, pan ve fader var. Hepsi WebAudio grafiğine bağlı — MIX ÇAL'a bas, çalarken çevir ve farkı duy.`,
+                         `A 6-channel console: every channel has gain, EQ, a compressor, sends, pan and a fader. All of it is wired into the WebAudio graph — press PLAY MIX, turn things while it plays and hear the difference.`],
+    lab_mdesc_4:        [`Loop'u şarkıya çevir: her bölümde hangi kanalın çalacağını seç, master filtreyi otomasyonla aç-kapa, enerji eğrisini izle ve aranjmanı baştan sona dinle.`,
+                         `Turn the loop into a song: choose which tracks play in each section, open and close the master filter with automation, watch the energy curve and listen to the arrangement from start to finish.`],
+    lab_mdesc_5:        [`Tonal denge, dinamik kontrol, doğru loudness. Bu suite gerçek bir WebAudio zinciri: çalan mix'i K-weighting ile ölçer. Modülleri kapatıp farkı duy, REF ile seviye eşli karşılaştır.`,
+                         `Tonal balance, dynamic control, the right loudness. This suite is a real WebAudio chain: it measures the playing mix with K-weighting. Switch modules off to hear the difference and compare level-matched with REF.`],
     lab_mname_1:        [`Synthesizer`, `Synthesizer`],
     lab_mname_2:        [`Beat Maker`, `Beat Maker`],
     lab_mname_3:        [`Mixing`, `Mixing`],
@@ -2593,6 +2850,7 @@ const LAB_TXT = {
     lab_next_aria:      [`Sonraki modül: {mod}`, `Next module: {mod}`],
     lab_prev_aria:      [`Önceki modül: {mod}`, `Previous module: {mod}`],
     lab_menu_upper:     [`LAB MENÜSÜ`, `LAB MENU`],
+    lab_menu_back:      [`LAB MENÜ`, `LAB MENU`],
     lab_brand_lab:      [`BERKAY ER ACADEMY · ABLETON LAB`, `BERKAY ER ACADEMY · ABLETON LAB`],
     lab_brand_ilab:     [`BERKAY ER ACADEMY · İNTERAKTİF LAB`, `BERKAY ER ACADEMY · INTERACTIVE LAB`],
     lab_nav_1:          [`SYNTHESIZER`, `SYNTHESIZER`],
@@ -2746,9 +3004,11 @@ function showModal(title, html, actions) {
 //              (alt şerit, BÜYÜK), name 'lab_mname_N' (kutlama modalı).
 //
 // ── Yerleşim ─────────────────────────────────────────────────────────
-// modLayout(mid) → { root, main, side, head, actions, title }
+// modLayout(mid) → { root, top, main, side, head, actions, title }
 //     root   div.lab-mview.be-wrap[data-mod=mid] (render() bunu #app'e koyar)
 //     head   modHeader(mid).el — root'un ilk çocuğu
+//     top    div.lab-mtop — başlığın altında TAM GENİŞLİK yuva (eklenti penceresi: pluginWindow().root);
+//            boşsa gizli. Altında main + side ızgarası (Çalışma mantığı, görevler, kartlar).
 //     main   div.lab-mmain  — sol içerik sütunu (flex column, gap 16)
 //     side   aside.lab-mside — 340px yan panel (1025–1279: 300px; ≤1024 ana sütunun altına,
 //            601–1024 iki sütun ve .lab-tasks tam genişlik). Boş bırakılırsa gizlenir, ızgara tek sütun.
@@ -2757,6 +3017,8 @@ function showModal(title, html, actions) {
 // modHeader(mid) → { el, actions, title } — modLayout zaten çağırır; tek başına da kullanılabilir.
 //     el = header.lab-mhead > .lab-mhead-copy (p.lab-mhead-kicker "MODÜL 0N · X", h1.lab-mhead-title
 //     "düz<em class=be-ember-text>italik</em>", p.lab-mhead-desc) + .lab-mhead-actions.
+//     LAB_MODS[mid].descSide (2–5; tasarım) → .lab-mhead--side: açıklama copy'nin dışında, sağ sütunda
+//     (actions'tan önce). Synth (1): açıklama h1'in altında, sağ yuva actions (klavye ipucu).
 //     Metinler data-i18n'li iç span'larda → dil değişince yerinde çevrilir.
 //
 // ── Görevler ─────────────────────────────────────────────────────────
@@ -2825,6 +3087,146 @@ function showModal(title, html, actions) {
 // .lab-well (+ --alt zemin --bg / --sm radius 10) — scope/EQ/metre kuyusu
 // .lab-tasks · .lab-task--auto · .lab-where · .lab-saved-card · .lab-outline · .lab-bigplay (+ --ember)
 // .lab-modnav · .lab-compact (Synth kompakt görünüm kökü). Modül rengi --c ile (ör. style --c:var(--lab-kick)).
+//
+// ── PRO KİT (eklenti penceresi bileşenleri — "LAB PRO KİT" JS bölümü + CSS bloğu, önek .lp-*) ──
+// Beş modül (BE·SYNTH 01, BE·RHYTHM 02, BE·CONSOLE 03, BE·ARRANGER 04, BE·MASTER 05) aynı
+// parçalardan kurulur; modüle özgü mantık kitte YOK. Bütün kontroller gerçek <button>/role=slider,
+// klavyeyle kullanılır, :focus-visible halkalıdır, mobilde (≤1024) isabet alanı ≥44 px.
+// Pencere seviyesi dinleyiciler yalnız sürükleme süresince yaşar; teardownView() → lpTeardown()
+// yarım kalan sürüklemeleri ve açık menüleri kapatır. Renkler: `color` seçeneği her CSS rengini alır
+// (token tercih: 'var(--accent)', 'var(--lab-c-osc2)'…) → öğede --lp-c olur.
+//
+// pluginWindow({ code, num, sub?, aria?, logo?:false, screws?:true, power?:{on, onToggle, label?,
+//               color?, pos:'left'|'right'} | false, transport?:false, status?:false, cls? })
+//   → { root, bar, brand, left, center, right, transport, body, status, power }
+//   root section.lp-win[aria-label] (radius --lp-win-r, vars.: --r-14; modül: .lab-m1 .lp-win{--lp-win-r:var(--r-18)})
+//   bar  .lp-bar (min-height --lp-bar-h 56px; Synth 64px) = vida · [⏻ pos:left] · [BE logo] "BE·CODE NUM"
+//        (num altın) + alt satır · left (.lp-bar-l: preset tarayıcı, A|B, A→B, INIT, ↶ ↷, KAYDET) ·
+//        center (.lp-bar-c: REF / BYPASS / çal) · right (.lp-bar-r, sağa yaslı: okumalar, metreler) ·
+//        [⏻ pos:right] · vida. ≤1024 satır sarar. Güç kapalıyken root.is-off (stil modülde).
+//   transport .lp-transport (62 px; çal, LCD'ler, BPM…) · body .lp-body (12 px dolgu, gap 12, flex
+//   sütun — modül kendi ızgarasını koyar) · status .lp-status (mono 10 px durum satırı).
+// makePanel({ title, color?, led?:true, toggle?:{on, onToggle, label}, power?:{on, onToggle, label},
+//             info?, actions?:[öğe|bileşen], rack?:false, titleColor?:false, tag?:'h3', cls? })
+//   → { el, head, body(=el), title, info, actions, led, toggle, power, setOn(b), setInfo(t) }
+//   .lp-panel (radius 12, zemin --surface-hover) · rack:true → .lp-rack (köşe vidalı raf modülü,
+//   başlık ortalı) · toggle = LED'li anahtar (Synth OSC aç/kapa) · power = ⏻ (Mastering modülleri) ·
+//   kapalıyken .is-off (opaklık .55). Başlık .lp-pt mono 10 px; titleColor → --lp-c renginde.
+// makeKnob({ label, min, max, value, def?, step?, unit?, fmt?, color?, ringColor?, size?:44, log?,
+//            bipolar?, center?, ring?:0, disabled?, layout?:'below'|'above'|'side', aria?, tip?,
+//            onChange(v), onStart(v), onRelease(v) })
+//   → { el, get(), set(v, silent?), update(v) (= set sessiz), setRing(-1..1), setDisabled(b),
+//       setColor(c), setLabel(t), refresh() }
+//   SVG 270° iz (−135°…+135°) + değer yayı (bipolar: center'dan, vars. 0) + mor mod halkası (ring) +
+//   gövde + işaretçi; altında mono değer + etiket (layout:'above' etiket üstte, 'side' yanda —
+//   başlık çubuğu MASTER). Davranış (tüm modüllerde TEK): dikey sürükle 160 px = tam aralık,
+//   Shift = ×0.2 ince (800 px; rehberin 150/160 px ve ×0.2/1400 px varyantları bunda birleşti),
+//   çift tık / çift dokunuş = def, tekerlek aralığın %3'ü (Shift %0.5; en az 1 adım), ↑→/↓← ±step
+//   (Shift ×10), PageUp/Down ±%10, Home/End. log:true → frekans/zaman (min > 0). role=slider +
+//   aria-valuenow/min/max/valuetext (fmt). onStart: sürükleme/tekerlek/tuş başında — makeHistory
+//   .push() buraya; onRelease: bırakınca (önizleme notası vb.). set(v) onChange'i çağırır,
+//   set(v, true)/update(v) çağırmaz (preset/undo senkronu). CSS: .lp-knob(-svg/-track/-arc/-ring/
+//   -body/-ptr/-val/-lbl), .is-drag, .is-disabled; boyut --lp-ks.
+// lpKnobRow(knobs, cols) → div.lp-krow (cols sütun; ≤600 64 px hücrelerle sarar).
+// makeFader({ law?:'console'|'linear', min?, max?, value?, def?, step?, wheelStep?, orientation?:'v'|'h',
+//             length?/height?:176, scale?(dB dizisi | false), color?, aria?, label?, fmt?,
+//             onChange(v), onStart(v), onRelease(v) }) → { el, track, get(), set(v, silent?), update(v), toPos(v) }
+//   console (vars.): değer dB (−∞ olabilir), max +6, konum = lin^¼ / maxLin^¼ (konum < 0.03 ya da
+//   dB < min → −∞), ölçek +6 0 −6 −12 −24 −40 −∞, def 0 dB. linear: min..max doğrusal (0..1 seviye;
+//   yatay mini fader orientation:'h'). Sürükleme göreli (kapak zıplamaz), Shift ×0.2, çift tık def,
+//   tekerlek ±wheelStep (1 dB; Shift ×0.1), oklar ±step (Shift ×10), PageUp/Down ±6 dB, Home max,
+//   End −∞/min. role=slider (track öğesi). lpLin(dB) → kazanç (−∞ → 0), lpDb(lin) → dB.
+// makeMeter({ channels?:2, orientation?:'v'|'h', length?/height?, thickness?, segments?, segPx?,
+//             min?:-60, max?:+3, warn?:-18, hot?:-3, peakHold?:1500 | false, release?:40 (dB/sn),
+//             linear?, gr?, thresholds?, color?, aria? }) → { el, update(levels), reset(), levels }
+//   Ayrık LED segmentleri (yeşil --ok-strong → altın → --err-strong; degrade yok). update([L, R])
+//   dB ya da (linear:true) 0..1 genlik alır; anında yükselir, release dB/sn düşer, tepe segmenti
+//   peakHold ms tutulur. Yalnız değişen segmentin sınıfı değişir → her karede çağrılabilir (rAF /
+//   tek zamanlayıcı). gr:true → kazanç azaltma (0..15 dB, ters yön, tek renk --lp-c);
+//   thresholds:[1,3,6,10,15] → açık eşikli LED sütunu (Mixing GR). Başlık çubuğu OUT L/R:
+//   makeMeter({ orientation:'h', length:110, thickness:5 }).
+// makeSeg(options, value, onPick, o?) → { el, set(v), get(), buttons }
+//   options [[value, label], …] ya da [{ value, label, html?, title?, aria? }]; aria-pressed düğmeler,
+//   ←/→ grup içinde odak. o: { size:'sm'(22 px)|'md'(26 px, başlık A|B), label (role=group adı),
+//   repick (aynı değere tık yine onPick) }. ui.css .seg'den ayrı sınıf: .lp-seg / .lp-seg-b.
+// makeLed({ color?, on?:true, label? }) → { el, set(on), setColor(c) } · 8 px nokta, açıkken parlar.
+// makePowerBtn({ on?, onToggle(on), label?, title?, color?, size?:'md'|'sm' }) → { el, set(b), get() } ⏻, aria-pressed.
+// makeToggle({ text, label?, title?, on?, led?, color?, icon?, onToggle(on) }) → { el, set(b), get() }
+//   LED'li metin anahtarı (REF · SEVİYE EŞLİ, SIDECHAIN, SYNC). aria-pressed.
+// lpBtn({ text?, icon?(LP_IC anahtarı: prev next caret undo redo power play pause stop loop copy),
+//         label?(aria), title?, variant?:'accent'|'danger'|'ghost', onClick }) → button.lp-btn (30 px)
+//   INIT (danger), KAYDET (accent), ↶ ↷ (icon), A→B. aria-disabled="true" iken onClick çalışmaz.
+// makeReadout({ label, value?, variant?:'ro'|'lcd'|'inline', color?, live? }) → { el, set(v), setLabel(t), setColor(c) }
+//   ro: başlık çubuğu sütunu (VOICES / DSP ≈); lcd: 44 px ekran (POZİSYON, ZAMAN); inline: durum satırı.
+// makeDisplay({ height?, grid?:[sütun, satır], cls? }) → { el, grid } · .lp-disp koyu kuyu (+ SVG ızgara).
+// makePresetBrowser({ items:[{ id, name, cat?, group?:'factory'|'user'|metin, no?, aux? }], value?,
+//                     modified?, width?:250, label?, capLabel?, onPick(item, i), onPrev?, onNext? })
+//   → { el, trigger, get(), getItem(), set(id), setItems(items, id?), setModified(b), open(), close(), prev(), next() }
+//   ◀ [ "02/11" · CAT · ad (* değiştirildi) · aux ▾ ] ▶ ; liste FABRİKA / KULLANICI gruplu, 2 sütun
+//   (≤600 tek). Listbox: ↑/↓ açar ve gezer, Home/End, Enter/Space seçer, Esc kapatır ve odağı
+//   tetikleyiciye döndürür, Tab/dışarı tık kapatır. Liste görüntü alanına sığdırılır (yatay kayma yok).
+// makeHistory({ get, apply, max?:40, onChange? })
+//   → { push(), undo(), redo(), canUndo(), canRedo(), clear(), onChange(fn),
+//       ab:{ slot, other(), switch('A'|'B'), copy(), reset() }, bind({ undo, redo, ab, copy, keys }) }
+//   Anlık görüntü = JSON derin kopya; push() DEĞİŞİKLİKTEN ÖNCE (knob onStart, tık öncesi), aynı
+//   durum art arda yazılmaz. ab.switch: aktif slotu saklar, hedef slot varsa yükler (undo'ya da
+//   yazar), yoksa şimdiki durumu kopyalar; ab.copy = A→B. bind: undo/redo düğmelerine tık +
+//   aria-disabled, ab = makeSeg([['A','A'],['B','B']], 'A', null, {size:'md'}), copy = lpBtn (etiket
+//   "A→B"/"B→A" döner), keys = öğe (odak içindeyken Ctrl/⌘+Z, Ctrl+Shift+Z / Ctrl+Y). Bellekte kalır.
+// howItWorks({ kicker?, title?:'metin' | [düz, italik], aux?, bare?, id?, cls?, blocks:[…] })
+//   → { el, parts, rebuild(o2) } — eklentinin altındaki "Çalışma mantığı". Başlık vars.
+//   "Çalışma mantığı" (italik ember), kicker vars. "ÇALIŞMA MANTIĞI" (kicker:false gizler).
+//   Bloklar: { flow:{…} } · { cap:'KONTROLLER NE YAPAR?' } · { steps:[{t, d, c?}], cols:1|2, cards? } ·
+//   { table:{ rows:[[param, aralık, varsayılan, webaudio]], head?, cols?, aria? } } (≤600 kartlara
+//   döner) · { card:{ cap?, title?, body?:[öğe], note?, accent? } } · { row:[blok…], cols:'css ızgara' }
+//   (≤1024 alt alta) · { el }. Her blokta ref:'ad' → parts.ad (canlı güncellenecek SVG vb.).
+//   bare:true → kapsız (Beat). Dil değişimi: labOnRefresh(hiw.el, () => hiw.rebuild(opts())).
+// flowDiagram({ w, h, aria?, minWidth?:640, nodes:[{ id, x, y, w, h, t, s?, c?, sc?, fill?:'hi'|'ink'|'accent' }],
+//               edges:[{ from, to, fromSide?, toSide?, d?, c?, dash?:true|'dot', label?, lx?, ly? }],
+//               groups:[{ x, y, w, h, label?, c? }], labels:[{ x, y, t, c?, anchor?, size?, strong? }] })
+//   → div.lp-flow > svg (viewBox; ≤600 kendi kaydırıcısında minWidth). Kenarlar otomatik dik açılı
+//   (ya da d ile özel yol), ok ucu kenar renginde. Renkler CSS rengi/var().
+// markTaskDone(mid, tid) = completeTask(mid, tid) (rehberdeki ad; kalıcı, geri alınmaz).
+// Yardımcılar: lpSvg(tag, attrs, parent?) · lpFmt.{hz, ms, db, pct, pct1, st, ct, pan, sign} ·
+//   lpClamp · lpDb · lpLin · lpDrag(e, move, end) (pencere sürüklemesi, teardown güvenli) ·
+//   lpOnTeardown(fn) (görünüm kapanınca bir kez) · LP_IC (çizgi ikonlar).
+// Temizlik kancaları: _m1StopAudio … _m5StopAudio (NAVIGATION bölümünde bildirilir; modül yalnız
+//   ATAR, yeniden bildirmez). teardownView() açık modülünkini çağırıp null'lar, sonra lpTeardown().
+//   Beat, Genel bakış ↔ Beat arasında çalmaya devam eder (navigate) → _m2StopAudio yalnız arayüz
+//   döngülerini (rAF, dinleyiciler) durdurmalı, stopBeat'i navigate yönetir.
+//
+// Örnek (Synth başlık çubuğu):
+//   const win = pluginWindow({ code:'SYNTH', num:'01', sub:'SUBTRACTIVE · 2 OSC', logo:true,
+//       power:{ on:true, onToggle: b => setPower(b) } });
+//   const hist = makeHistory({ get: () => snapshotPatch(), apply: p => loadPatch(p) });
+//   const pb = makePresetBrowser({ items: SYNTH_PRESETS.map(p => ({ id:p.id, name:p.name, cat:p.cat })),
+//       onPick: it => { hist.push(); applyPreset(it.id); } });
+//   const ab = makeSeg([['A','A'], ['B','B']], 'A', null, { size:'md', label: L('lp_ab_aria') });
+//   const cp = lpBtn({ text:'A→B', title: L('lp_ab_copy') }), un = lpBtn({ icon:'undo', label: L('lp_undo') }),
+//         re = lpBtn({ icon:'redo', label: L('lp_redo') });
+//   hist.bind({ undo: un, redo: re, ab, copy: cp, keys: win.root });
+//   win.left.append(pb.el, ab.el, cp, lpBtn({ text: L('lp_init'), variant:'danger', onClick: initPatch }), un, re);
+//   const out = makeMeter({ orientation:'h', length:92, thickness:5 });
+//   win.right.append(makeReadout({ label:'VOICES', value:'0/16' }).el, out.el);
+//   const flt = makePanel({ title:'FILTER', color:'var(--ember-2)', actions:[makeSeg([['lowpass','LP'],['highpass','HP']], 'lowpass', setType).el] });
+//   const cut = makeKnob({ label:'CUTOFF', min:20, max:20000, log:true, value:8000, def:8000, fmt: lpFmt.hz,
+//       color:'var(--ember-2)', onStart: () => hist.push(), onChange: v => setSynthParam('filter.cutoff', v) });
+//   flt.body.append(lpKnobRow([cut, res, drv, env], 4));  win.body.append(flt.el);
+//   top.append(win.root);   main.append(howItWorks({ blocks:[{ flow:{…} }, { steps, cols:2 }, { table:{ rows } }] }).el);
+//
+// ── CSS kancaları (PRO KİT) ──────────────────────────────────────────
+// .lp-win (.is-off) · .lp-bar / -l / -c / -r / -pw · .lp-screw · .lp-brand / .lp-logo / .lp-brand-name /
+// -num / -sub · .lp-transport · .lp-body · .lp-status · .lp-btn (+ --accent / --danger / --ghost / --icon,
+// [aria-pressed], [aria-disabled]) · .lp-tgl · .lp-pwr (+ --sm) · .lp-led(.on) · .lp-ledb · .lp-seg /
+// .lp-seg-b (+ .lp-seg--md) · .lp-knob … · .lp-krow (--cols) · .lp-fader (+ --h) / -track / -cap / -scale ·
+// .lp-mtr (--v/--h/--gr) / .lp-mtr-ch / .lp-mtr-s (.on .pk, .lp-z-ok|warn|hot|c) · .lp-ro / .lp-lcd /
+// .lp-inline (.lp-ro-l, .lp-ro-v) · .lp-pb / -grp / -arrow / -name / -pop / -opt · .lp-tag ·
+// .lp-panel / .lp-rack (.is-off) / .lp-ph / .lp-pt(--c) / .lp-pinfo / .lp-pact · .lp-disp / -grid ·
+// .lp-hiw (--bare) / -head / -kick / -h / -aux · .lp-hcap · .lp-flow / .lp-fn / .lp-fe / .lp-fg / .lp-fl ·
+// .lp-steps (--cards) / .lp-step / -n · .lp-tbl / .lp-tr (--h) / .lp-td--0..3 (--tcols) · .lp-hcard
+// (--accent) · .lp-hrow (--cols). Değişkenler: --lp-c (renk), --lp-rc (halka), --lp-ks (knob px),
+// --lp-fl (fader boyu), --lp-ml/--lp-mt (metre boy/kalınlık), --lp-pbw (preset adı genişliği),
+// --lp-win-r, --lp-bar-h, --lp-fmin (akış çizimi mobil min genişliği), --lp-mod (mod moru).
 // ═══════════════════════════════════════════════════════════════════
 
 // Her modül ayrı ekran ve kendi adresi var: #synth, #beat, #mixing, #arrangement, #mastering
@@ -2835,7 +3237,9 @@ const LAB_ORDER = [1, 2, 3, 5, 4];
 const LAB_MODS = {};
 [1, 2, 3, 4, 5].forEach(n => {
     LAB_MODS[n] = { route: MODULE_SLUGS[n], tab: 'lab_tab_' + n, kick: 'lab_mk_' + n, a: `lab_mt_${n}_a`, b: `lab_mt_${n}_b`,
-        desc: 'lab_mdesc_' + n, title: 'lab_title_' + n, navName: 'lab_nav_' + n, name: 'lab_mname_' + n };
+        desc: 'lab_mdesc_' + n, title: 'lab_title_' + n, navName: 'lab_nav_' + n, name: 'lab_mname_' + n,
+        // Tasarım (Lab_*.dc.html): Synth'te açıklama başlığın altında, diğerlerinde sağ sütunda
+        descSide: n !== 1 };
 });
 const pad2 = n => String(n).padStart(2, '0');
 let _labSeq = 0;
@@ -2880,9 +3284,10 @@ function modHeader(mid) {
     const tb = mk('em', 'be-ember-text'); tb.setAttribute('data-i18n', m.b); tb.textContent = L(m.b);
     title.append(ta, tb);
     const desc = mk('p', 'lab-mhead-desc be-rv be-d2'); desc.setAttribute('data-i18n', m.desc); desc.textContent = L(m.desc);
-    copy.append(kick, title, desc);
+    copy.append(kick, title);
     const actions = mk('div', 'lab-mhead-actions be-rv be-d3');
-    el.append(copy, actions);
+    if (m.descSide) { el.classList.add('lab-mhead--side'); el.append(copy, desc, actions); }
+    else { copy.append(desc); el.append(copy, actions); }
     return { el, actions, title };
 }
 function modLayout(mid) {
@@ -2894,8 +3299,9 @@ function modLayout(mid) {
     const side = mk('aside', 'lab-mside');
     side.setAttribute('data-i18n-aria', 'lab_side_aria'); side.setAttribute('aria-label', L('lab_side_aria'));
     grid.append(main, side);
-    root.append(h.el, grid);
-    return { root, main, side, head: h.el, actions: h.actions, title: h.title };
+    const top = mk('div', 'lab-mtop');
+    root.append(h.el, top, grid);
+    return { root, top, main, side, head: h.el, actions: h.actions, title: h.title };
 }
 
 // ── Görevler paneli ──────────────────────────────────────────────────
@@ -3157,7 +3563,13 @@ function modNav(mid) {
         a.lastChild.textContent = L('lab_nav_' + prev);
         a.setAttribute('aria-label', Lf('lab_prev_aria', { mod: L('lab_mname_' + prev) }));
         inner.append(a, brand('lab_brand_lab'));
-    } else inner.append(brand('lab_brand_ilab'));
+    } else {
+        // İlk modül (Synth): tasarımdaki gibi solda "← LAB MENÜ"
+        const a = labLinkTo(null, 'lab-modnav-prev', '<span aria-hidden="true">←&nbsp;</span><span class="lab-modnav-t"></span>');
+        a.lastChild.textContent = L('lab_menu_back');
+        a.setAttribute('aria-label', L('lab_tab_menu_aria'));
+        inner.append(a, brand('lab_brand_ilab'));
+    }
     let a;
     if (next != null) {
         a = labLinkTo(next, 'lab-modnav-next', '<span class="lab-modnav-t"></span><span aria-hidden="true">&nbsp;→</span>');
@@ -3186,10 +3598,1061 @@ function labShellLang() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// LAB PRO KİT — eklenti penceresi bileşenleri (sözleşme: LAB KABUK API → "PRO KİT")
+// Modüle özgü mantık YOK; her şey seçeneklerle sürülür. Sınıflar .lp-*, CSS "LAB PRO KİT" bloğunda.
+// ═══════════════════════════════════════════════════════════════════
+Object.assign(LAB_TXT, {
+    lp_power:        [`Güç / bypass`, `Power / bypass`],
+    lp_prev_preset:  [`Önceki preset`, `Previous preset`],
+    lp_next_preset:  [`Sonraki preset`, `Next preset`],
+    lp_browser:      [`Preset tarayıcı`, `Preset browser`],
+    lp_presets:      [`Presetler`, `Presets`],
+    lp_grp_factory:  [`FABRİKA`, `FACTORY`],
+    lp_grp_user:     [`KULLANICI`, `USER`],
+    lp_preset_cap:   [`PRESET`, `PRESET`],
+    lp_modified:     [`değiştirildi`, `modified`],
+    lp_ab_aria:      [`A/B karşılaştırma`, `A/B comparison`],
+    lp_ab_slot:      [`{slot} ayarı`, `Setting {slot}`],
+    lp_ab_copy:      [`Aktif slotu diğerine kopyala`, `Copy the active slot to the other one`],
+    lp_init:         [`INIT`, `INIT`],
+    lp_init_t:       [`Başlangıç ayarına dön`, `Back to the initial setting`],
+    lp_undo:         [`Geri al`, `Undo`],
+    lp_redo:         [`Yinele`, `Redo`],
+    lp_save:         [`KAYDET`, `SAVE`],
+    lp_knob_tip:     [`Sürükle · Shift ince ayar · çift tık varsayılan · tekerlek adım`, `Drag · Shift fine · double-click default · wheel steps`],
+    lp_fader_tip:    [`Sürükle · Shift ince ayar · çift tık varsayılan · tekerlek ±1 dB`, `Drag · Shift fine · double-click default · wheel ±1 dB`],
+    lp_hiw_kicker:   [`ÇALIŞMA MANTIĞI`, `HOW IT WORKS`],
+    lp_hiw_t_a:      [`Çalışma `, `How it `],
+    lp_hiw_t_b:      [`mantığı`, `works`],
+    lp_hiw_ctrl:     [`KONTROLLER NE YAPAR?`, `WHAT DO THE CONTROLS DO?`],
+    lp_hiw_ptable:   [`PARAMETRE TABLOSU`, `PARAMETER TABLE`],
+    lp_hiw_flow:     [`SİNYAL AKIŞI · WEBAUDIO GRAFİĞİ`, `SIGNAL FLOW · WEBAUDIO GRAPH`],
+    lp_th_param:     [`PARAMETRE`, `PARAMETER`],
+    lp_th_range:     [`ARALIK`, `RANGE`],
+    lp_th_def:       [`VARSAYILAN`, `DEFAULT`],
+    lp_th_wa:        [`WEBAUDIO KARŞILIĞI`, `WEBAUDIO EQUIVALENT`],
+    lp_table_aria:   [`Parametre tablosu`, `Parameter table`],
+    lp_flow_aria:    [`Sinyal akış diyagramı`, `Signal flow diagram`],
+});
+
+// ── Küçük yardımcılar ────────────────────────────────────────────────
+const LP_NS = 'http://www.w3.org/2000/svg';
+let _lpSeq = 0;
+const lpId = p => (p || 'lp') + (++_lpSeq);
+const lpClamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// dB ↔ doğrusal kazanç (−∞ / 0 güvenli)
+const lpDb = lin => lin > 0 ? 20 * Math.log10(lin) : -Infinity;
+const lpLin = db => (db === -Infinity || db <= -120) ? 0 : Math.pow(10, db / 20);
+// SVG öğesi: lpSvg('path', { d, class }, parent?)
+function lpSvg(tag, attrs, parent) {
+    const e = document.createElementNS(LP_NS, tag);
+    if (attrs) for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, String(attrs[k]));
+    if (parent) parent.appendChild(e);
+    return e;
+}
+// Ortak biçimleyiciler (değer → görünen metin). Modüller fmt olarak verebilir.
+const lpFmt = {
+    hz:  v => v >= 1000 ? (v / 1000).toFixed(v >= 10000 ? 1 : 2).replace(/\.?0+$/, '') + ' kHz' : Math.round(v) + ' Hz',
+    ms:  v => v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s',
+    db:  v => v === -Infinity ? '−∞' : (v > 0 ? '+' : '') + (Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v)) + ' dB',
+    pct: v => Math.round(v) + '%',
+    pct1:v => Math.round(v * 100) + '%',
+    st:  v => (v > 0 ? '+' : '') + v + ' st',
+    ct:  v => (v > 0 ? '+' : '') + v + ' ct',
+    pan: v => { const r = Math.round(v); return r === 0 ? 'C' : (r < 0 ? 'L' : 'R') + Math.abs(r); },
+    sign:v => (v > 0 ? '+' : '') + v,
+};
+// Çizgi ikonlar (tasarımdaki ◀ ▶ ▾ ↶ ↷ ⏻ glifleri yerine; currentColor)
+const LP_IC = {
+    prev:  '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M7 1.5L2.5 5 7 8.5z" fill="currentColor"/></svg>',
+    next:  '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5L7.5 5 3 8.5z" fill="currentColor"/></svg>',
+    caret: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    undo:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>',
+    redo:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg>',
+    power: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>',
+    play:  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>',
+    stop:  '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>',
+    loop:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>',
+    copy:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>',
+};
+
+// ── Görünüm temizliği: sürüklemeler + açık menüler (teardownView → lpTeardown) ──
+const _lpDrags = new Set();      // aktif sürüklemenin bitirici fonksiyonları
+let _lpCleanups = [];            // görünüm ömürlü temizlikler (lpOnTeardown)
+function lpOnTeardown(fn) { if (typeof fn === 'function') _lpCleanups.push(fn); return fn; }
+function lpTeardown() {
+    Array.from(_lpDrags).forEach(f => { try { f(); } catch (e) { console.warn('[lab] lp drag:', e); } });
+    _lpDrags.clear();
+    const list = _lpCleanups; _lpCleanups = [];
+    list.forEach(f => { try { f(); } catch (e) { console.warn('[lab] lp cleanup:', e); } });
+}
+// Pencere seviyesinde tek sürükleme: pointerup/cancel'da (ya da görünüm kapanınca) dinleyiciler kalkar.
+// move(ev), end(ev|null). Döndürür: iptal fonksiyonu.
+function lpDrag(e, move, end) {
+    const el = e.currentTarget, pid = e.pointerId;
+    try { if (el && el.setPointerCapture) el.setPointerCapture(pid); } catch (_) {}
+    let done = false;
+    const mv = ev => { if (ev.pointerId === pid) move(ev); };
+    const up = ev => { if (ev.pointerId === pid) finish(ev); };
+    function finish(ev) {
+        if (done) return; done = true;
+        window.removeEventListener('pointermove', mv);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
+        try { if (el && el.releasePointerCapture) el.releasePointerCapture(pid); } catch (_) {}
+        _lpDrags.delete(cancel);
+        if (end) end(ev || null);
+    }
+    const cancel = () => finish(null);
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    _lpDrags.add(cancel);
+    return cancel;
+}
+
+// Değer ↔ normalize (0..1) eşlemesi — doğrusal ya da logaritmik, adım yuvarlamalı
+function lpScale(min, max, step, log) {
+    const lg = !!log && min > 0 && max > 0;
+    const dec = step ? Math.min(6, (String(step).split('.')[1] || '').length) : 4;
+    const snap = v => {
+        v = lpClamp(v, min, max);
+        if (step) v = min + Math.round((v - min) / step) * step;
+        return +lpClamp(v, min, max).toFixed(dec + (lg ? 2 : 0));
+    };
+    return {
+        lg, snap,
+        norm: v => lpClamp(lg ? Math.log(v / min) / Math.log(max / min) : (v - min) / (max - min || 1), 0, 1),
+        denorm: n => snap(lg ? min * Math.pow(max / min, lpClamp(n, 0, 1)) : min + lpClamp(n, 0, 1) * (max - min)),
+    };
+}
+
+// ── makeKnob ─────────────────────────────────────────────────────────
+// 270° döner düğme. Tek davranış (bütün modüllerde aynı): dikey sürükleme 160 px = tam aralık,
+// Shift = ×0.2 ince (800 px), çift tık/çift dokunuş = def, tekerlek = aralığın %3'ü (Shift %0.5,
+// en az bir adım), ok tuşları ±step (Shift ×10), PageUp/Down ±%10, Home/End.
+const LP_KNOB_PX = 160, LP_FINE = 0.2;
+function makeKnob(o) {
+    o = o || {};
+    const min = o.min != null ? +o.min : 0, max = o.max != null ? +o.max : 1;
+    const log = !!o.log && min > 0;
+    const step = o.step != null ? +o.step : (log ? 0 : (max - min) / 100);
+    const S = lpScale(min, max, step, log);
+    const def = S.snap(o.def != null ? +o.def : (o.value != null ? +o.value : min));
+    const bip = !!o.bipolar;
+    const center = o.center != null ? +o.center : (min < 0 && max > 0 ? 0 : (min + max) / 2);
+    const unit = o.unit || '';
+    const fmt = typeof o.fmt === 'function' ? o.fmt : (v => {
+        const d = step ? Math.min(3, (String(step).split('.')[1] || '').length) : (Math.abs(v) < 10 ? 2 : Math.abs(v) < 100 ? 1 : 0);
+        return v.toFixed(d) + (unit ? ' ' + unit : '');
+    });
+    let v = S.snap(o.value != null ? +o.value : def), ring = +o.ring || 0, disabled = !!o.disabled;
+
+    const el = mk('div', 'lp-knob' + (o.layout === 'above' ? ' lp-knob--above' : o.layout === 'side' ? ' lp-knob--side' : '') + (o.cls ? ' ' + o.cls : ''));
+    el.tabIndex = 0;
+    el.setAttribute('role', 'slider');
+    el.setAttribute('aria-valuemin', String(min));
+    el.setAttribute('aria-valuemax', String(max));
+    el.setAttribute('aria-label', o.aria || o.label || '');
+    el.title = o.tip ? `${o.tip} — ${L('lp_knob_tip')}` : L('lp_knob_tip');
+    if (o.color) el.style.setProperty('--lp-c', o.color);
+    if (o.ringColor) el.style.setProperty('--lp-rc', o.ringColor);
+    if (o.size) el.style.setProperty('--lp-ks', o.size + 'px');
+    const svg = lpSvg('svg', { viewBox: '0 0 44 44', class: 'lp-knob-svg', 'aria-hidden': 'true', focusable: 'false' }, el);
+    lpSvg('path', { class: 'lp-knob-track', d: 'M9.98 34.02A17 17 0 1 1 34.02 34.02' }, svg);
+    const pRing = lpSvg('path', { class: 'lp-knob-ring', d: '' }, svg);
+    const pArc = lpSvg('path', { class: 'lp-knob-arc', d: '' }, svg);
+    lpSvg('circle', { class: 'lp-knob-body', cx: 22, cy: 22, r: 12.5 }, svg);
+    const ptr = lpSvg('line', { class: 'lp-knob-ptr' }, svg);
+    const txt = o.layout === 'side' ? mk('span', 'lp-knob-txt') : el;
+    const val = mk('span', 'lp-knob-val');
+    const lbl = mk('span', 'lp-knob-lbl'); lbl.textContent = o.label || '';
+    if (o.layout === 'above') el.insertBefore(lbl, svg), el.append(val);
+    else if (o.layout === 'side') { txt.append(lbl, val); el.append(txt); }
+    else el.append(val, lbl);
+    if (!o.label) lbl.hidden = true;
+
+    const P = (a, r) => [22 + r * Math.sin(a * Math.PI / 180), 22 - r * Math.cos(a * Math.PI / 180)];
+    const arc = (a0, a1, r) => {
+        if (Math.abs(a1 - a0) < 0.5) return '';
+        const s = P(a0, r), e = P(a1, r);
+        return `M${s[0].toFixed(2)} ${s[1].toFixed(2)}A${r} ${r} 0 ${Math.abs(a1 - a0) > 180 ? 1 : 0} 1 ${e[0].toFixed(2)} ${e[1].toFixed(2)}`;
+    };
+    function draw() {
+        const a = -135 + 270 * S.norm(v);
+        const z = bip ? -135 + 270 * S.norm(lpClamp(center, min, max)) : -135;
+        pArc.setAttribute('d', arc(Math.min(z, a), Math.max(z, a), 17));
+        const p1 = P(a, 4.5), p2 = P(a, 11.5);
+        ptr.setAttribute('x1', p1[0].toFixed(2)); ptr.setAttribute('y1', p1[1].toFixed(2));
+        ptr.setAttribute('x2', p2[0].toFixed(2)); ptr.setAttribute('y2', p2[1].toFixed(2));
+        const r2 = lpClamp(a + ring * 270, -135, 135);
+        pRing.setAttribute('d', ring ? arc(Math.min(a, r2), Math.max(a, r2), 21) : '');
+        const t = String(fmt(v));
+        val.textContent = t;
+        el.setAttribute('aria-valuenow', String(v));
+        el.setAttribute('aria-valuetext', t);
+    }
+    function commit(nv, silent) {
+        nv = S.snap(nv);
+        if (nv === v) return false;
+        v = nv; draw();
+        if (!silent && o.onChange) o.onChange(v);
+        return true;
+    }
+    const start = () => { if (o.onStart) o.onStart(v); };
+    const release = () => { if (o.onRelease) o.onRelease(v); };
+    // Adım bazlı normalize artış (tekerlek/klavye) — en az bir adım ilerlesin
+    function nudge(dn, minSteps) {
+        const target = S.denorm(S.norm(v) + dn);
+        if (target !== v || !step) return commit(target);
+        return commit(v + Math.sign(dn) * step * (minSteps || 1));
+    }
+
+    let lastDown = 0, lastX = 0, lastY = 0;
+    el.addEventListener('pointerdown', e => {
+        if (disabled || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        e.preventDefault();
+        try { el.focus({ preventScroll: true }); } catch (_) {}
+        const now = performance.now();
+        if (now - lastDown < 320 && Math.abs(e.clientX - lastX) < 8 && Math.abs(e.clientY - lastY) < 8) {
+            lastDown = 0; start(); commit(def); release(); return;          // çift tık / çift dokunuş
+        }
+        lastDown = now; lastX = e.clientX; lastY = e.clientY;
+        start();
+        let y0 = e.clientY, n0 = S.norm(v), fine = e.shiftKey, moved = false;
+        el.classList.add('is-drag');
+        lpDrag(e, ev => {
+            if (Math.abs(ev.clientY - lastY) > 3) moved = true;
+            if (ev.shiftKey !== fine) { fine = ev.shiftKey; y0 = ev.clientY; n0 = S.norm(v); }   // Shift değişince zıplama olmasın
+            commit(S.denorm(n0 + (y0 - ev.clientY) / (LP_KNOB_PX / (fine ? LP_FINE : 1))));
+        }, () => { el.classList.remove('is-drag'); if (moved) lastDown = 0; release(); });   // sürükleme çift tıkın ilk tıkı sayılmaz
+    });
+    let wheelT = 0;
+    el.addEventListener('wheel', e => {
+        if (disabled) return;
+        e.preventDefault();
+        if (!wheelT) start();
+        clearTimeout(wheelT);
+        nudge((e.deltaY > 0 ? -1 : 1) * (e.shiftKey ? 0.005 : 0.03));
+        wheelT = setTimeout(() => { wheelT = 0; release(); }, 300);
+    }, { passive: false });
+    el.addEventListener('keydown', e => {
+        if (disabled) return;
+        const k = e.key, big = e.shiftKey ? 10 : 1;
+        let fn = null;
+        if (k === 'ArrowUp' || k === 'ArrowRight') fn = () => step ? commit(v + step * big) : nudge(0.01 * big);
+        else if (k === 'ArrowDown' || k === 'ArrowLeft') fn = () => step ? commit(v - step * big) : nudge(-0.01 * big);
+        else if (k === 'PageUp') fn = () => nudge(0.1, 1);
+        else if (k === 'PageDown') fn = () => nudge(-0.1, 1);
+        else if (k === 'Home') fn = () => commit(min);
+        else if (k === 'End') fn = () => commit(max);
+        if (!fn) return;
+        e.preventDefault();
+        if (!e.repeat) start();
+        fn();
+    });
+    el.addEventListener('keyup', e => { if (/^(Arrow|Page|Home|End)/.test(e.key)) release(); });
+
+    draw();
+    const api = {
+        el,
+        get: () => v,
+        set(nv, silent) { commit(+nv, silent); },
+        update(nv) { commit(+nv, true); },                     // dıştan senkron (onChange yok)
+        setRing(r) { ring = lpClamp(+r || 0, -1, 1); draw(); },
+        setDisabled(b) { disabled = !!b; el.classList.toggle('is-disabled', disabled); el.setAttribute('aria-disabled', String(disabled)); el.tabIndex = disabled ? -1 : 0; },
+        setColor(c) { if (c) el.style.setProperty('--lp-c', c); else el.style.removeProperty('--lp-c'); },
+        setLabel(t) { lbl.textContent = t; lbl.hidden = !t; if (!o.aria) el.setAttribute('aria-label', t); },
+        refresh() { draw(); },                                    // fmt dile bağlıysa metni yenile
+    };
+    if (disabled) api.setDisabled(true);
+    el._lp = api;
+    return api;
+}
+
+// ── makeFader ────────────────────────────────────────────────────────
+// Dikey (ya da yatay) fader. law 'console' (varsayılan): değer dB, konum = (lin^0.25)/(maxLin^0.25),
+// konum < 0.03 → −∞ (Mixing konsol yasası). law 'linear': min..max doğrusal (ör. 0..1 seviye).
+// Sürükleme göreli (kapak zıplamaz), Shift ×0.2, çift tık def, tekerlek ±wheelStep (Shift ×0.1),
+// oklar ±step (Shift ×10), PageUp/Down ±6 dB (linear: ±%10), Home = max, End = min/−∞.
+function makeFader(o) {
+    o = o || {};
+    const law = o.law === 'linear' ? 'linear' : 'console';
+    const min = o.min != null ? +o.min : (law === 'console' ? -60 : 0);
+    const max = o.max != null ? +o.max : (law === 'console' ? 6 : 1);
+    const def = o.def != null ? +o.def : (law === 'console' ? 0 : max);
+    const step = o.step != null ? +o.step : (law === 'console' ? 0.5 : (max - min) / 100);
+    const wheelStep = o.wheelStep != null ? +o.wheelStep : (law === 'console' ? 1 : (max - min) * 0.03);
+    const horiz = o.orientation === 'h';
+    const len = o.length || o.height || (horiz ? 120 : 176);
+    const fmt = typeof o.fmt === 'function' ? o.fmt : (law === 'console' ? lpFmt.db : (x => x.toFixed(2)));
+    const maxQ = Math.pow(lpLin(max), 0.25);
+    const toPos = x => law === 'linear' ? lpClamp((x - min) / (max - min || 1), 0, 1)
+        : (x === -Infinity ? 0 : lpClamp(Math.pow(lpLin(x), 0.25) / maxQ, 0, 1));
+    const fromPos = p => {
+        p = lpClamp(p, 0, 1);
+        if (law === 'linear') return snap(min + p * (max - min));
+        if (p < 0.03) return -Infinity;
+        const d = 80 * Math.log10(p * maxQ);
+        return d < min ? -Infinity : snap(d);                     // taban (min) altı = −∞
+    };
+    const dec = (String(step).split('.')[1] || '').length;
+    function snap(x) {
+        if (x === -Infinity) return x;
+        x = lpClamp(x, min, max);
+        if (step) x = Math.round(x / step) * step;
+        return +lpClamp(x, min, max).toFixed(dec);
+    }
+    let v = o.value != null ? (o.value === -Infinity ? -Infinity : snap(+o.value)) : def;
+
+    const el = mk('div', 'lp-fader' + (horiz ? ' lp-fader--h' : '') + (o.cls ? ' ' + o.cls : ''));
+    el.style.setProperty('--lp-fl', len + 'px');
+    if (o.color) el.style.setProperty('--lp-c', o.color);
+    const track = mk('div', 'lp-fader-track');
+    track.tabIndex = 0;
+    track.setAttribute('role', 'slider');
+    track.setAttribute('aria-orientation', horiz ? 'horizontal' : 'vertical');
+    track.setAttribute('aria-label', o.aria || o.label || '');
+    track.setAttribute('aria-valuemin', String(law === 'console' ? Math.max(min, -144) : min));
+    track.setAttribute('aria-valuemax', String(max));
+    track.title = law === 'console' ? L('lp_fader_tip') : L('lp_knob_tip');
+    const cap = mk('span', 'lp-fader-cap'); cap.setAttribute('aria-hidden', 'true');
+    track.append(cap);
+    // dB ölçeği (console: +6 0 −6 −12 −24 −40 −∞)
+    const scale = o.scale === false ? null : (o.scale || (law === 'console' ? [6, 0, -6, -12, -24, -40, -Infinity] : null));
+    if (scale && !horiz) {
+        const sc = mk('div', 'lp-fader-scale'); sc.setAttribute('aria-hidden', 'true');
+        scale.forEach(d => {
+            const s = mk('span'); s.textContent = d === -Infinity ? '−∞' : (d > 0 ? '+' : d < 0 ? '−' : '') + Math.abs(d);
+            s.style.setProperty('--p', toPos(d).toFixed(4));
+            sc.append(s);
+        });
+        el.append(sc);
+    }
+    el.append(track);
+    function draw() {
+        cap.style.setProperty('--p', toPos(v).toFixed(4));
+        const t = String(fmt(v));
+        track.setAttribute('aria-valuenow', String(v === -Infinity ? (law === 'console' ? Math.max(min, -144) : min) : v));
+        track.setAttribute('aria-valuetext', t);
+    }
+    function commit(nv, silent) {
+        if (nv !== -Infinity) nv = snap(nv);
+        if (nv === v) return false;
+        v = nv; draw();
+        if (!silent && o.onChange) o.onChange(v);
+        return true;
+    }
+    const start = () => { if (o.onStart) o.onStart(v); };
+    const release = () => { if (o.onRelease) o.onRelease(v); };
+    const bump = d => commit(v === -Infinity ? (d > 0 ? (law === 'console' ? Math.max(min, -60) : min) : v) : v + d);
+    let lastDown = 0;
+    track.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        e.preventDefault();
+        try { track.focus({ preventScroll: true }); } catch (_) {}
+        const now = performance.now();
+        if (now - lastDown < 320) { lastDown = 0; start(); commit(def); release(); return; }
+        lastDown = now;
+        start();
+        const span = (horiz ? track.clientWidth : track.clientHeight) - 24 || len;
+        const cs = horiz ? e.clientX : e.clientY;
+        let c0 = cs, p0 = toPos(v), fine = e.shiftKey, moved = false;
+        el.classList.add('is-drag');
+        lpDrag(e, ev => {
+            const c = horiz ? ev.clientX : ev.clientY;
+            if (Math.abs(c - cs) > 3) moved = true;
+            if (ev.shiftKey !== fine) { fine = ev.shiftKey; c0 = c; p0 = toPos(v); }
+            const d = (horiz ? c - c0 : c0 - c) / span * (fine ? LP_FINE : 1);
+            commit(fromPos(p0 + d));
+        }, () => { el.classList.remove('is-drag'); if (moved) lastDown = 0; release(); });
+    });
+    let wheelT = 0;
+    track.addEventListener('wheel', e => {
+        e.preventDefault();
+        if (!wheelT) start();
+        clearTimeout(wheelT);
+        bump((e.deltaY > 0 ? -1 : 1) * wheelStep * (e.shiftKey ? 0.1 : 1));
+        wheelT = setTimeout(() => { wheelT = 0; release(); }, 300);
+    }, { passive: false });
+    track.addEventListener('keydown', e => {
+        const k = e.key, big = e.shiftKey ? 10 : 1, page = law === 'console' ? 6 : (max - min) * 0.1;
+        let fn = null;
+        if (k === 'ArrowUp' || k === 'ArrowRight') fn = () => bump(step * big);
+        else if (k === 'ArrowDown' || k === 'ArrowLeft') fn = () => bump(-step * big);
+        else if (k === 'PageUp') fn = () => bump(page);
+        else if (k === 'PageDown') fn = () => bump(-page);
+        else if (k === 'Home') fn = () => commit(max);
+        else if (k === 'End') fn = () => commit(law === 'console' ? -Infinity : min);
+        if (!fn) return;
+        e.preventDefault();
+        if (!e.repeat) start();
+        fn();
+    });
+    track.addEventListener('keyup', e => { if (/^(Arrow|Page|Home|End)/.test(e.key)) release(); });
+    draw();
+    const api = { el, track, get: () => v, set(nv, silent) { commit(nv === -Infinity ? nv : +nv, silent); }, update(nv) { commit(nv === -Infinity ? nv : +nv, true); }, toPos };
+    el._lp = api;
+    return api;
+}
+
+// ── makeMeter ────────────────────────────────────────────────────────
+// Ayrık LED segmentli metre (degrade yok). update(levels) her karede çağrılabilir: yalnız
+// değişen segmentlerin sınıfı değişir. levels: dB dizisi (ya da tek sayı); linear:true → 0..1 genlik.
+// Balistik: düşüş release dB/sn, tepe tutma peakHold ms. gr:true → kazanç azaltma (0..max dB, ters yön).
+function makeMeter(o) {
+    o = o || {};
+    const ch = Math.max(1, o.channels || 2);
+    const horiz = o.orientation === 'h';
+    const gr = !!o.gr;
+    const min = o.min != null ? +o.min : (gr ? 0 : -60), max = o.max != null ? +o.max : (gr ? 15 : 3);
+    const len = o.length || o.height || (horiz ? 110 : 180);
+    const segPx = o.segPx || (horiz ? 4 : 5);
+    const th = o.thresholds || null;                                      // açık eşikler (ör. GR 1/3/6/10/15)
+    const n = th ? th.length : (o.segments || Math.max(6, Math.round(len / segPx)));
+    const levels = th || Array.from({ length: n }, (_, i) => min + (max - min) * (i + 1) / n);
+    const warn = o.warn != null ? o.warn : -18, hot = o.hot != null ? o.hot : -3;
+    const zone = db => gr ? 'c' : (db > hot ? 'hot' : db > warn ? 'warn' : 'ok');
+    const hold = o.peakHold === false ? 0 : (o.peakHold || 1500);
+    const rel = o.release != null ? o.release : 40;
+    const el = mk('div', 'lp-mtr ' + (horiz ? 'lp-mtr--h' : 'lp-mtr--v') + (gr ? ' lp-mtr--gr' : '') + (o.cls ? ' ' + o.cls : ''));
+    el.style.setProperty('--lp-ml', len + 'px');
+    if (o.thickness) el.style.setProperty('--lp-mt', o.thickness + 'px');
+    if (o.color) el.style.setProperty('--lp-c', o.color);
+    if (o.aria) { el.setAttribute('role', 'img'); el.setAttribute('aria-label', o.aria); } else el.setAttribute('aria-hidden', 'true');
+    const chans = [];
+    for (let c = 0; c < ch; c++) {
+        const col = mk('div', 'lp-mtr-ch');
+        const segs = levels.map(db => { const s = mk('i', 'lp-mtr-s lp-z-' + zone(db)); col.append(s); return s; });
+        el.append(col);
+        chans.push({ segs, disp: min, lit: 0, peak: min, peakT: 0, pk: -1 });
+    }
+    function litCount(db) { let k = 0; while (k < n && db >= levels[k] - 1e-9) k++; return k; }
+    let lastT = 0;
+    function update(vals) {
+        const now = performance.now(), dt = lastT ? Math.min(0.25, (now - lastT) / 1000) : 0; lastT = now;
+        const arr = Array.isArray(vals) || (vals && vals.length != null) ? vals : [vals];
+        chans.forEach((c, i) => {
+            let x = arr[i] != null ? +arr[i] : +arr[arr.length - 1];
+            if (o.linear) x = lpDb(Math.abs(x));
+            if (!isFinite(x)) x = min - 1;
+            // balistik: anında yüksel, rel dB/sn düş
+            c.disp = x >= c.disp ? x : Math.max(x, c.disp - rel * dt);
+            const k = litCount(c.disp);
+            if (k !== c.lit) {
+                const a = Math.min(k, c.lit), b = Math.max(k, c.lit);
+                for (let j = a; j < b; j++) c.segs[j].classList.toggle('on', j < k);
+                c.lit = k;
+            }
+            if (hold) {
+                if (x >= c.peak || now - c.peakT > hold) { c.peak = x >= c.peak ? x : c.disp; c.peakT = now; }
+                const p = litCount(c.peak) - 1;
+                const pk = p >= k ? p : -1;
+                if (pk !== c.pk) {
+                    if (c.pk >= 0) c.segs[c.pk].classList.remove('pk');
+                    if (pk >= 0) c.segs[pk].classList.add('pk');
+                    c.pk = pk;
+                }
+            }
+        });
+    }
+    function reset() { lastT = 0; chans.forEach(c => { c.disp = min - 1; c.peak = min - 1; c.peakT = 0; }); update(chans.map(() => -Infinity)); }
+    reset();
+    const api = { el, update, reset, levels };
+    el._lp = api;
+    return api;
+}
+
+// ── makeSeg ──────────────────────────────────────────────────────────
+// Segmentli seçici: options [[value, label], …] ya da [{value, label, title, aria}]. aria-pressed düğmeler.
+// o.size 'sm' (22 px, panel başlığı) | 'md' (30 px, başlık çubuğu) · o.label → role=group aria-label.
+function makeSeg(options, value, onPick, o) {
+    o = o || {};
+    const el = mk('div', 'lp-seg' + (o.size === 'md' ? ' lp-seg--md' : '') + (o.cls ? ' ' + o.cls : ''));
+    el.setAttribute('role', 'group');
+    if (o.label) el.setAttribute('aria-label', o.label);
+    let cur = value;
+    const btns = (options || []).map(op => {
+        const it = Array.isArray(op) ? { value: op[0], label: op[1] } : op;
+        const b = mk('button', 'lp-seg-b'); b.type = 'button';
+        if (it.html) b.innerHTML = it.html; else b.textContent = it.label;
+        if (it.title) b.title = it.title;
+        if (it.aria) b.setAttribute('aria-label', it.aria);
+        b.addEventListener('click', () => {
+            if (cur === it.value && !o.repick) return;
+            set(it.value);
+            if (onPick) onPick(it.value);
+        });
+        el.append(b);
+        return { it, b };
+    });
+    function set(v) { cur = v; btns.forEach(x => x.b.setAttribute('aria-pressed', String(x.it.value === v))); }
+    set(cur);
+    el.addEventListener('keydown', e => {                            // ←/→ grup içinde odak
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        const i = btns.findIndex(x => x.b === document.activeElement); if (i < 0) return;
+        const j = (i + (e.key === 'ArrowRight' ? 1 : -1) + btns.length) % btns.length;
+        e.preventDefault(); btns[j].b.focus();
+    });
+    const api = { el, set, get: () => cur, buttons: btns.map(x => x.b) };
+    el._lp = api;
+    return api;
+}
+
+// ── LED, güç, küçük düğme, anahtar, okuma ────────────────────────────
+function makeLed(o) {
+    o = o || {};
+    const el = mk('span', 'lp-led' + (o.cls ? ' ' + o.cls : ''));
+    if (o.label) { el.setAttribute('role', 'img'); el.setAttribute('aria-label', o.label); } else el.setAttribute('aria-hidden', 'true');
+    if (o.color) el.style.setProperty('--lp-c', o.color);
+    const api = {
+        el,
+        set(on) { el.classList.toggle('on', !!on); },
+        setColor(c) { if (c) el.style.setProperty('--lp-c', c); else el.style.removeProperty('--lp-c'); },
+    };
+    api.set(o.on !== false);
+    return api;
+}
+// ⏻ yuvarlak güç düğmesi (aria-pressed). size 'sm' 26 px | 'md' 32 px.
+function makePowerBtn(o) {
+    o = o || {};
+    const el = mk('button', 'lp-pwr' + (o.size === 'sm' ? ' lp-pwr--sm' : '') + (o.cls ? ' ' + o.cls : ''), LP_IC.power);
+    el.type = 'button';
+    el.setAttribute('aria-label', o.label || L('lp_power'));
+    if (o.title) el.title = o.title;
+    if (o.color) el.style.setProperty('--lp-c', o.color);
+    let on = o.on !== false;
+    const set = b => { on = !!b; el.setAttribute('aria-pressed', String(on)); };
+    el.addEventListener('click', () => { set(!on); if (o.onToggle) o.onToggle(on); });
+    set(on);
+    return { el, set, get: () => on };
+}
+// Başlık/taşıma çubuğu düğmesi (30 px). o: { text, icon (LP_IC anahtarı ya da svg), label (aria), title,
+// variant 'danger'|'accent'|'ghost', onClick }. Döndürür: button öğesi.
+function lpBtn(o) {
+    o = o || {};
+    const b = mk('button', 'lp-btn' + (o.variant ? ' lp-btn--' + o.variant : '') + (o.icon && !o.text ? ' lp-btn--icon' : '') + (o.cls ? ' ' + o.cls : ''));
+    b.type = 'button';
+    if (o.icon) b.insertAdjacentHTML('beforeend', LP_IC[o.icon] || o.icon);
+    if (o.text) { const s = mk('span'); s.textContent = o.text; b.append(s); }
+    if (o.label) b.setAttribute('aria-label', o.label);
+    if (o.title) b.title = o.title;
+    if (o.onClick) b.addEventListener('click', e => { if (b.getAttribute('aria-disabled') === 'true') return; o.onClick(e); });
+    return b;
+}
+// Açık/kapalı metin düğmesi (aria-pressed), isteğe bağlı LED: { text, label, title, on, led:true, color, onToggle }
+function makeToggle(o) {
+    o = o || {};
+    const b = lpBtn({ text: o.text, icon: o.icon, label: o.label, title: o.title, variant: o.variant, cls: 'lp-tgl' + (o.cls ? ' ' + o.cls : '') });
+    let led = null;
+    if (o.led) { led = makeLed({ color: o.color, on: false }); b.insertBefore(led.el, b.firstChild); }
+    if (o.color) b.style.setProperty('--lp-c', o.color);
+    let on = !!o.on;
+    const set = x => { on = !!x; b.setAttribute('aria-pressed', String(on)); if (led) led.set(on); };
+    b.addEventListener('click', () => { set(!on); if (o.onToggle) o.onToggle(on); });
+    set(on);
+    return { el: b, set, get: () => on };
+}
+// Etiket + değer okuması. variant 'ro' (başlık çubuğu sütunu, sol çizgili) | 'lcd' (44 px ekran kutusu)
+// | 'inline' ("ETİKET değer", durum çubuğu). Döndürür { el, set(value), setLabel(t), setColor(c) }.
+function makeReadout(o) {
+    o = o || {};
+    const variant = o.variant || 'ro';
+    const el = mk('div', 'lp-' + variant + (o.cls ? ' ' + o.cls : ''));
+    const lb = mk(variant === 'inline' ? 'span' : 'b', 'lp-ro-l'); lb.textContent = o.label || '';
+    const vl = mk('span', 'lp-ro-v'); vl.textContent = o.value != null ? String(o.value) : '';
+    el.append(lb, vl);
+    if (o.color) el.style.setProperty('--lp-c', o.color);
+    if (o.live) vl.setAttribute('aria-live', 'polite');
+    return {
+        el,
+        set(x) { const t = String(x); if (vl.textContent !== t) vl.textContent = t; },
+        setLabel(t) { lb.textContent = t; },
+        setColor(c) { if (c) el.style.setProperty('--lp-c', c); else el.style.removeProperty('--lp-c'); },
+    };
+}
+// Knob satırı: n sütunlu ızgara (≤600 otomatik sarar). knobs: makeKnob sonuçları ya da öğeler.
+function lpKnobRow(knobs, cols) {
+    const r = mk('div', 'lp-krow');
+    r.style.setProperty('--cols', String(cols || knobs.length || 1));
+    knobs.forEach(k => r.append(k && k.el ? k.el : k));
+    return r;
+}
+// Koyu ekran kuyusu (+ isteğe bağlı SVG ızgara çizgileri). grid [sütun, satır]. Döndürür { el, grid }.
+function makeDisplay(o) {
+    o = o || {};
+    const el = mk('div', 'lp-disp' + (o.cls ? ' ' + o.cls : ''));
+    if (o.height) el.style.height = o.height + 'px';
+    let grid = null;
+    if (o.grid) {
+        const [c, r] = o.grid;
+        grid = lpSvg('svg', { class: 'lp-disp-grid', viewBox: '0 0 100 100', preserveAspectRatio: 'none', 'aria-hidden': 'true' }, el);
+        for (let i = 1; i < c; i++) lpSvg('line', { x1: 100 * i / c, x2: 100 * i / c, y1: 0, y2: 100 }, grid);
+        for (let j = 1; j < r; j++) lpSvg('line', { x1: 0, x2: 100, y1: 100 * j / r, y2: 100 * j / r }, grid);
+    }
+    return { el, grid };
+}
+
+// ── makePanel ────────────────────────────────────────────────────────
+// Eklenti içi bölüm: LED (ya da LED-anahtar / ⏻) + mono başlık + bilgi + sağda eylemler.
+// o: { title, color, led:true, toggle:{on, onToggle, label}, power:{on, onToggle, label},
+//      info, actions:[öğe], rack:false (köşe vidalı raf modülü), titleColor:false, tag:'h3', cls }
+// Döndürür { el, head, body(=el), title, info, actions, led, toggle, power, setOn(b), setInfo(t) }.
+function makePanel(o) {
+    o = o || {};
+    const el = mk('section', (o.rack ? 'lp-rack' : 'lp-panel') + (o.cls ? ' ' + o.cls : ''));
+    if (o.color) el.style.setProperty('--lp-c', o.color);
+    const head = mk('div', 'lp-ph');
+    let led = null, toggle = null, power = null;
+    if (o.power) {
+        power = makePowerBtn({ size: 'sm', on: o.power.on !== false, color: o.color, label: o.power.label || o.title, onToggle: b => { api.setOn(b); if (o.power.onToggle) o.power.onToggle(b); } });
+        head.append(power.el);
+    } else if (o.toggle) {
+        const b = mk('button', 'lp-ledb'); b.type = 'button';
+        led = makeLed({ color: o.color, on: o.toggle.on !== false });
+        b.append(led.el);
+        b.setAttribute('aria-label', o.toggle.label || o.title || '');
+        let on = o.toggle.on !== false;
+        toggle = { el: b, set(x) { on = !!x; b.setAttribute('aria-pressed', String(on)); led.set(on); el.classList.toggle('is-off', !on); }, get: () => on };
+        b.addEventListener('click', () => { toggle.set(!on); if (o.toggle.onToggle) o.toggle.onToggle(on); });
+        toggle.set(on);
+        head.append(b);
+    } else if (o.led !== false) {
+        led = makeLed({ color: o.color, on: true });
+        head.append(led.el);
+    }
+    const title = mk(o.tag || 'h3', 'lp-pt' + (o.titleColor ? ' lp-pt--c' : ''));
+    title.textContent = o.title || '';
+    const info = mk('span', 'lp-pinfo'); if (o.info) info.textContent = o.info; else info.hidden = true;
+    const actions = mk('div', 'lp-pact');
+    (o.actions || []).forEach(a => actions.append(a && a.el ? a.el : a));
+    head.append(title, info, actions);
+    el.append(head);
+    const api = {
+        el, head, body: el, title, info, actions, led, toggle, power,
+        setOn(b) { el.classList.toggle('is-off', !b); if (toggle) toggle.set(b); if (power) power.set(b); },
+        setInfo(t) { info.textContent = t || ''; info.hidden = !t; },
+    };
+    if (power && o.power.on === false) el.classList.add('is-off');
+    return api;
+}
+
+// ── makePresetBrowser ────────────────────────────────────────────────
+// ◀ [ 02/11 · CAT · Ad* ▾ ] ▶ + gruplu açılır liste (listbox: ↑↓ Home End, Enter/Space seç,
+// Esc kapat + odak geri, dışarı tık kapatır). items: [{ id, name, cat?, group?('factory'|'user'|metin),
+// no?, aux? }]. onPick(item, index) — ◀ ▶ ve liste seçiminde (onPrev/onNext verilirse ◀ ▶ onları çağırır).
+// Döndürür { el, set(id), get(), setItems(items), setModified(b), open(), close(), prev(), next() }.
+function makePresetBrowser(o) {
+    o = o || {};
+    let items = (o.items || []).slice(), cur = o.value != null ? o.value : (items[0] && items[0].id), modified = !!o.modified;
+    const el = mk('div', 'lp-pb' + (o.cls ? ' ' + o.cls : ''));
+    if (o.width) el.style.setProperty('--lp-pbw', o.width + 'px');
+    const grp = mk('div', 'lp-pb-grp');
+    const bPrev = mk('button', 'lp-pb-arrow', LP_IC.prev); bPrev.type = 'button'; bPrev.setAttribute('aria-label', o.prevLabel || L('lp_prev_preset'));
+    const bNext = mk('button', 'lp-pb-arrow', LP_IC.next); bNext.type = 'button'; bNext.setAttribute('aria-label', o.nextLabel || L('lp_next_preset'));
+    const trig = mk('button', 'lp-pb-name'); trig.type = 'button';
+    const listId = lpId('lpPbList');
+    trig.setAttribute('aria-haspopup', 'listbox'); trig.setAttribute('aria-expanded', 'false'); trig.setAttribute('aria-controls', listId);
+    const tNo = mk('span', 'lp-pb-no'), tCap = mk('span', 'lp-pb-cap'), tCat = mk('span', 'lp-tag'), tName = mk('span', 'lp-pb-t'),
+        tMod = mk('span', 'lp-pb-mod'), tAux = mk('span', 'lp-pb-aux'), tCaret = mk('span', 'lp-pb-caret', LP_IC.caret);
+    tMod.setAttribute('aria-hidden', 'true'); tMod.textContent = '*';
+    if (o.capLabel) tCap.textContent = o.capLabel; else tCap.hidden = true;
+    trig.append(tCap, tNo, tCat, tName, tMod, tAux, tCaret);
+    grp.append(bPrev, trig, bNext);
+    const pop = mk('div', 'lp-pb-pop'); pop.hidden = true;
+    pop.id = listId; pop.setAttribute('role', 'listbox'); pop.setAttribute('aria-label', o.label || L('lp_presets'));
+    el.append(grp, pop);
+    let opts = [];
+    const idx = () => items.findIndex(it => it.id === cur);
+    const groupLabel = g => g === 'user' ? L('lp_grp_user') : g === 'factory' || g == null ? L('lp_grp_factory') : String(g);
+    function paint() {
+        const i = idx(), it = items[i];
+        tNo.textContent = it ? (it.no != null ? it.no : `${pad2(i + 1)}/${pad2(items.length)}`) : '--';
+        tCat.textContent = it && it.cat ? it.cat : ''; tCat.hidden = !(it && it.cat);
+        tName.textContent = it ? it.name : '';
+        tAux.textContent = it && it.aux ? it.aux : ''; tAux.hidden = !(it && it.aux);
+        tMod.hidden = !modified;
+        trig.setAttribute('aria-label', `${o.label || L('lp_browser')}: ${it ? it.name : ''}${modified ? ' (' + L('lp_modified') + ')' : ''}`);
+        opts.forEach(x => x.setAttribute('aria-selected', String(x._id === cur)));
+    }
+    function build() {
+        pop.innerHTML = ''; opts = [];
+        const groups = [];
+        items.forEach(it => { const g = it.group == null ? 'factory' : it.group; let G = groups.find(x => x.g === g); if (!G) groups.push(G = { g, list: [] }); G.list.push(it); });
+        groups.forEach(G => {
+            const gid = lpId('lpPbG');
+            const gw = mk('div', 'lp-pb-gw'); gw.setAttribute('role', 'group'); gw.setAttribute('aria-labelledby', gid);
+            const gh = mk('div', 'lp-pb-gh'); gh.id = gid; gh.setAttribute('role', 'presentation'); gh.textContent = groupLabel(G.g);
+            const gl = mk('div', 'lp-pb-list');
+            G.list.forEach(it => {
+                const op = mk('div', 'lp-pb-opt'); op.setAttribute('role', 'option'); op.tabIndex = -1; op.id = lpId('lpPbO'); op._id = it.id;
+                const n = mk('span', 'lp-pb-no'); n.textContent = it.no != null ? it.no : pad2(items.indexOf(it) + 1);
+                op.append(n);
+                if (it.cat) { const c = mk('span', 'lp-tag'); c.textContent = it.cat; op.append(c); }
+                const t = mk('span', 'lp-pb-t'); t.textContent = it.name; op.append(t);
+                if (it.aux) { const a = mk('span', 'lp-pb-aux'); a.textContent = it.aux; op.append(a); }
+                op.addEventListener('click', () => { pick(it); close(true); });
+                gl.append(op); opts.push(op);
+            });
+            gw.append(gh, gl); pop.append(gw);
+        });
+        paint();
+    }
+    function pick(it) {
+        if (!it) return;
+        cur = it.id; modified = false; paint();
+        if (o.onPick) o.onPick(it, items.indexOf(it));
+    }
+    const step = d => { if (!items.length) return; const i = idx(); pick(items[((i < 0 ? 0 : i) + d + items.length) % items.length]); };
+    const onDoc = e => { if (!el.isConnected) { close(false); return; } if (!el.contains(e.target)) close(false); };
+    let unreg = null;
+    function open() {
+        if (!pop.hidden || !items.length) return;
+        pop.hidden = false; trig.setAttribute('aria-expanded', 'true'); el.classList.add('is-open');
+        // Görüntü alanına sığdır (sayfa yatay kaymasın): hesaplanan kaydırma çalışma anı durumudur
+        pop.style.left = '0px';
+        const r = pop.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+        let dx = 0;
+        if (r.right > vw - 16) dx = (vw - 16) - r.right;
+        if (r.left + dx < 16) dx = 16 - r.left;
+        pop.style.left = dx + 'px';
+        document.addEventListener('pointerdown', onDoc, true);
+        unreg = lpOnTeardown(() => close(false));
+        const sel = opts.find(x => x._id === cur) || opts[0];
+        if (sel) sel.focus();
+    }
+    function close(focusBack) {
+        if (pop.hidden) return;
+        pop.hidden = true; trig.setAttribute('aria-expanded', 'false'); el.classList.remove('is-open');
+        document.removeEventListener('pointerdown', onDoc, true);
+        if (unreg) { _lpCleanups = _lpCleanups.filter(f => f !== unreg); unreg = null; }
+        if (focusBack) try { trig.focus({ preventScroll: true }); } catch (_) {}
+    }
+    trig.addEventListener('click', () => pop.hidden ? open() : close(true));
+    trig.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); }
+    });
+    pop.addEventListener('keydown', e => {
+        const i = opts.indexOf(document.activeElement);
+        let j = -1;
+        if (e.key === 'ArrowDown') j = Math.min(opts.length - 1, i + 1);
+        else if (e.key === 'ArrowUp') j = Math.max(0, i - 1);
+        else if (e.key === 'Home') j = 0;
+        else if (e.key === 'End') j = opts.length - 1;
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (i >= 0) { const it = items.find(x => x.id === opts[i]._id); pick(it); close(true); } return; }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+        else if (e.key === 'Tab') { close(false); return; }
+        if (j >= 0) { e.preventDefault(); opts[j].focus(); }
+    });
+    bPrev.addEventListener('click', () => { if (o.onPrev) o.onPrev(); else step(-1); });
+    bNext.addEventListener('click', () => { if (o.onNext) o.onNext(); else step(1); });
+    build();
+    return {
+        el, trigger: trig,
+        get: () => cur,
+        getItem: () => items[idx()] || null,
+        set(id) { cur = id; paint(); },
+        setItems(list, id) { items = (list || []).slice(); if (id !== undefined) cur = id; build(); },
+        setModified(b) { if (modified !== !!b) { modified = !!b; paint(); } },
+        open, close: () => close(true), prev: () => step(-1), next: () => step(1),
+    };
+}
+
+// ── makeHistory ──────────────────────────────────────────────────────
+// Geri al / yinele (en çok max anlık görüntü, JSON derin kopya) + A/B karşılaştırma.
+// get(): anlık durum (JSON'a çevrilebilir), apply(snap): durumu yükle (sesi + arayüzü günceller).
+// push(): DEĞİŞİKLİKTEN ÖNCE çağır (knob/fader onStart, tık öncesi); aynı durum art arda yazılmaz.
+// bind({ undo, redo, ab, copy, keys }) düğmeleri bağlar: undo/redo tık + aria-disabled, ab = makeSeg
+// ('A'|'B'), copy = "A→B" düğmesi (etiket slotla döner), keys = öğe (Ctrl/⌘+Z, Ctrl+Shift+Z / Ctrl+Y).
+function makeHistory(o) {
+    o = o || {};
+    const max = o.max || 40;
+    let und = [], red = [];
+    const snap = () => JSON.stringify(o.get());
+    const load = s => o.apply(JSON.parse(s));
+    const listeners = [];
+    const notify = () => listeners.forEach(f => { try { f(); } catch (e) { console.warn('[lab] history:', e); } });
+    if (o.onChange) listeners.push(o.onChange);
+    const ab = { slot: 'A', slots: { A: null, B: null } };
+    const api = {
+        push() {
+            const s = snap();
+            if (und.length && und[und.length - 1] === s) return;
+            und.push(s); if (und.length > max) und.shift();
+            red = []; notify();
+        },
+        undo() {
+            const nowS = snap();
+            while (und.length && und[und.length - 1] === nowS) und.pop();
+            if (!und.length) { notify(); return false; }
+            red.push(nowS); load(und.pop()); notify(); return true;
+        },
+        redo() {
+            const nowS = snap();
+            while (red.length && red[red.length - 1] === nowS) red.pop();
+            if (!red.length) { notify(); return false; }
+            und.push(nowS); load(red.pop()); notify(); return true;
+        },
+        canUndo: () => und.length > 0,
+        canRedo: () => red.length > 0,
+        clear() { und = []; red = []; notify(); },
+        ab: {
+            get slot() { return ab.slot; },
+            other: () => ab.slot === 'A' ? 'B' : 'A',
+            switch(slot) {
+                if (slot === ab.slot || (slot !== 'A' && slot !== 'B')) return;
+                const s = snap();
+                ab.slots[ab.slot] = s;
+                ab.slot = slot;
+                if (ab.slots[slot] && ab.slots[slot] !== s) { api.push(); load(ab.slots[slot]); }
+                else ab.slots[slot] = s;
+                notify();
+            },
+            copy() { ab.slots[ab.slot === 'A' ? 'B' : 'A'] = snap(); notify(); },
+            reset() { ab.slot = 'A'; ab.slots = { A: null, B: null }; notify(); },
+        },
+        onChange(fn) { listeners.push(fn); },
+        bind(b) {
+            b = b || {};
+            const dis = (btn, d) => { if (!btn) return; btn.setAttribute('aria-disabled', String(d)); btn.classList.toggle('is-dim', d); };
+            if (b.undo) b.undo.addEventListener('click', () => api.undo());
+            if (b.redo) b.redo.addEventListener('click', () => api.redo());
+            if (b.copy) b.copy.addEventListener('click', () => api.ab.copy());
+            if (b.ab && b.ab.el) {
+                b.ab.el.addEventListener('click', e => {
+                    const t = e.target.closest('.lp-seg-b'); if (!t) return;
+                    const i = b.ab.buttons.indexOf(t); if (i >= 0) api.ab.switch(i === 0 ? 'A' : 'B');
+                });
+            }
+            if (b.keys) b.keys.addEventListener('keydown', e => {
+                if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+                const k = e.key.toLowerCase();
+                if (k === 'z' && !e.shiftKey) { e.preventDefault(); api.undo(); }
+                else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); api.redo(); }
+            });
+            const sync = () => {
+                dis(b.undo, !und.length); dis(b.redo, !red.length);
+                if (b.ab && b.ab.set) b.ab.set(ab.slot);
+                if (b.copy) { const t = `${ab.slot}→${ab.slot === 'A' ? 'B' : 'A'}`; const s = b.copy.querySelector('span'); if (s) s.textContent = t; else b.copy.textContent = t; }
+            };
+            listeners.push(sync); sync();
+            return api;
+        },
+    };
+    return api;
+}
+
+// ── pluginWindow ─────────────────────────────────────────────────────
+// Ortak eklenti penceresi: çerçeve + başlık çubuğu (vida · [⏻] · [BE logo] BE·CODE NUM / alt satır ·
+// sol yuva · orta yuva · sağ yuva · [⏻] · vida) + isteğe bağlı taşıma satırı + gövde + durum satırı.
+// o: { code:'SYNTH', num:'01', sub:'SUBTRACTIVE · 2 OSC', aria, logo:false, screws:true,
+//      power:{ on, onToggle, label, color, pos:'left'|'right' } | false, transport:false, status:false, cls }
+// Döndürür { root, bar, brand, left, center, right, transport, body, status, power }.
+function pluginWindow(o) {
+    o = o || {};
+    const root = mk('section', 'lp-win' + (o.cls ? ' ' + o.cls : ''));
+    root.setAttribute('aria-label', o.aria || `BE·${o.code || ''} ${o.num || ''}`.trim());
+    const bar = mk('div', 'lp-bar');
+    const screw = () => { const s = mk('span', 'lp-screw'); s.setAttribute('aria-hidden', 'true'); return s; };
+    const brand = mk('div', 'lp-brand');
+    if (o.logo) { const lg = mk('span', 'lp-logo', 'BE'); lg.setAttribute('aria-hidden', 'true'); brand.append(lg); }
+    const bt = mk('div', 'lp-brand-txt');
+    const nm = mk('span', 'lp-brand-name');
+    nm.innerHTML = `BE<span class="lp-brand-dot">·</span><span class="lp-brand-code"></span> <span class="lp-brand-num"></span>`;
+    nm.querySelector('.lp-brand-code').textContent = o.code || '';
+    nm.querySelector('.lp-brand-num').textContent = o.num || '';
+    bt.append(nm);
+    if (o.sub) { const sb = mk('span', 'lp-brand-sub'); sb.textContent = o.sub; bt.append(sb); }
+    brand.append(bt);
+    const left = mk('div', 'lp-bar-l'), center = mk('div', 'lp-bar-c'), right = mk('div', 'lp-bar-r');
+    let power = null;
+    if (o.power) {
+        power = makePowerBtn({ on: o.power.on !== false, label: o.power.label, title: o.power.title, color: o.power.color, onToggle: o.power.onToggle });
+        root.classList.toggle('is-off', o.power.on === false);
+        power.el.addEventListener('click', () => root.classList.toggle('is-off', !power.get()));
+    }
+    if (o.screws !== false) bar.append(screw());
+    if (power && o.power.pos === 'left') bar.append(power.el);
+    bar.append(brand, left, center, right);
+    if (power && o.power.pos !== 'left') { const pw = mk('div', 'lp-bar-pw'); pw.append(power.el); bar.append(pw); }
+    if (o.screws !== false) bar.append(screw());
+    root.append(bar);
+    let transport = null, status = null;
+    if (o.transport) { transport = mk('div', 'lp-transport'); root.append(transport); }
+    const body = mk('div', 'lp-body');
+    root.append(body);
+    if (o.status) { status = mk('div', 'lp-status'); root.append(status); }
+    return { root, bar, brand, left, center, right, transport, body, status, power };
+}
+
+// ── flowDiagram ──────────────────────────────────────────────────────
+// Kutu-ok sinyal akış çizimi (SVG, viewBox → duyarlı; ≤600'de kendi kaydırıcısında minWidth).
+// o: { w, h, aria, minWidth,
+//      nodes:[{ id, x, y, w, h, t, s?, c?(kenar rengi, CSS rengi/var()), fill?:'hi'|'ink'|'accent', sc?(alt yazı rengi) }],
+//      edges:[{ from, to, fromSide?'r'|'l'|'t'|'b', toSide?, d?(özel path), c?, dash?:true|'dot', label?, lx?, ly? }],
+//      groups:[{ x, y, w, h, label?, c? }], labels:[{ x, y, t, c?, anchor?, size? }] }
+// Kenarlar: aynı yükseklikte düz, değilse dik açılı (r→l: yatay-dikey-yatay; t/b: dikey-yatay-dikey).
+function flowDiagram(o) {
+    o = o || {};
+    const W = o.w || 900, H = o.h || 300;
+    const wrap = mk('div', 'lp-flow');
+    if (o.minWidth) wrap.style.setProperty('--lp-fmin', o.minWidth + 'px');
+    const svg = lpSvg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'lp-flow-svg', role: 'img', 'aria-label': o.aria || L('lp_flow_aria') }, wrap);
+    const defs = lpSvg('defs', null, svg);
+    const pre = lpId('lpFm');
+    const markers = new Map();
+    const marker = c => {
+        const key = c || '';
+        if (markers.has(key)) return markers.get(key);
+        const id = `${pre}-${markers.size}`;
+        const m = lpSvg('marker', { id, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, defs);
+        const p = lpSvg('path', { d: 'M0 0L10 5L0 10z', class: 'lp-fm' }, m);
+        if (c) p.style.fill = c;
+        markers.set(key, id); return id;
+    };
+    const gG = lpSvg('g', { class: 'lp-fgs' }, svg), gE = lpSvg('g', { class: 'lp-fes' }, svg), gN = lpSvg('g', { class: 'lp-fns' }, svg), gL = lpSvg('g', { class: 'lp-fls' }, svg);
+    (o.groups || []).forEach(g => {
+        const gg = lpSvg('g', { class: 'lp-fg' }, gG);
+        if (g.c) gg.style.setProperty('--c', g.c);
+        lpSvg('rect', { x: g.x, y: g.y, width: g.w, height: g.h, rx: 12 }, gg);
+        if (g.label) { const t = lpSvg('text', { x: g.x + 12, y: g.y + 18 }, gg); t.textContent = g.label; }
+    });
+    const byId = {};
+    (o.nodes || []).forEach(n => {
+        byId[n.id] = n;
+        const g = lpSvg('g', { class: 'lp-fn' + (n.fill ? ' lp-fn--' + n.fill : '') }, gN);
+        if (n.c) g.style.setProperty('--c', n.c);
+        if (n.sc) g.style.setProperty('--sc', n.sc);
+        lpSvg('rect', { x: n.x, y: n.y, width: n.w, height: n.h, rx: n.h >= 44 ? 8 : 6 }, g);
+        const cx = n.x + n.w / 2, cy = n.y + n.h / 2;
+        const t = lpSvg('text', { x: cx, y: n.s ? cy - 3 : cy + 4, class: 'lp-fn-t', 'text-anchor': 'middle' }, g); t.textContent = n.t || '';
+        if (n.s) { const s = lpSvg('text', { x: cx, y: cy + 11, class: 'lp-fn-s', 'text-anchor': 'middle' }, g); s.textContent = n.s; }
+    });
+    const anchor = (n, side) => side === 'l' ? [n.x, n.y + n.h / 2] : side === 't' ? [n.x + n.w / 2, n.y] : side === 'b' ? [n.x + n.w / 2, n.y + n.h] : [n.x + n.w, n.y + n.h / 2];
+    (o.edges || []).forEach(e => {
+        let d = e.d;
+        if (!d) {
+            const A = byId[e.from], B = byId[e.to]; if (!A || !B) return;
+            const fs = e.fromSide || 'r', ts = e.toSide || (fs === 'b' ? 't' : fs === 't' ? 'b' : 'l');
+            let [x1, y1] = anchor(A, fs), [x2, y2] = anchor(B, ts);
+            const gap = 2;
+            if (ts === 'l') x2 -= gap; else if (ts === 'r') x2 += gap; else if (ts === 't') y2 -= gap; else y2 += gap;
+            const hz = s => s === 'l' || s === 'r';
+            if (hz(fs) && hz(ts)) d = Math.abs(y1 - y2) < 0.5 ? `M${x1} ${y1}H${x2}` : `M${x1} ${y1}H${(x1 + x2) / 2}V${y2}H${x2}`;
+            else if (!hz(fs) && !hz(ts)) d = Math.abs(x1 - x2) < 0.5 ? `M${x1} ${y1}V${y2}` : `M${x1} ${y1}V${(y1 + y2) / 2}H${x2}V${y2}`;
+            else if (hz(fs)) d = `M${x1} ${y1}H${x2}V${y2}`;
+            else d = `M${x1} ${y1}V${y2}H${x2}`;
+        }
+        const p = lpSvg('path', { d, class: 'lp-fe' + (e.dash === 'dot' ? ' lp-fe--dot' : e.dash ? ' lp-fe--dash' : ''), 'marker-end': `url(#${marker(e.c)})` }, gE);
+        if (e.c) p.style.stroke = e.c;
+        if (e.label) { const t = lpSvg('text', { x: e.lx, y: e.ly, class: 'lp-fl' }, gL); t.textContent = e.label; if (e.c) t.style.fill = e.c; }
+    });
+    (o.labels || []).forEach(l => {
+        const t = lpSvg('text', { x: l.x, y: l.y, class: 'lp-fl' + (l.strong ? ' lp-fl--s' : ''), 'text-anchor': l.anchor || 'start' }, gL);
+        t.textContent = l.t;
+        if (l.c) t.style.fill = l.c;
+        if (l.size) t.style.fontSize = l.size + 'px';
+    });
+    return wrap;
+}
+
+// ── howItWorks ───────────────────────────────────────────────────────
+// Eklentinin altındaki "Çalışma mantığı" bölümü. o: { kicker?, title?('metin' | [düz, italik]),
+// aux?, bare:false, blocks:[…], id? }. Bloklar (hepsi isteğe bağlı, sırayla):
+//   { flow:{…flowDiagram} }                      sinyal akışı
+//   { cap:'KONTROLLER NE YAPAR?' }               altın mono ara başlık
+//   { steps:[{ t, d, c? }], cols:1|2, cards:false }   numaralı açıklama listesi
+//   { table:{ rows:[[param, aralık, varsayılan, webaudio]], head?, cols? } }  parametre tablosu (≤600 kart)
+//   { card:{ cap?, title?, body?:[öğe], note?, accent? } }  kart (Beat A–D, LUFS kutusu)
+//   { row:[blok…], cols:'minmax(0,1fr) minmax(0,1.25fr)' }  yan yana blok (≤1024 alt alta)
+//   { el: öğe }                                  hazır öğe
+// Her blokta ref:'ad' → dönüşteki parts.ad. Döndürür { el, parts, rebuild(o2) } (dil değişiminde
+// labOnRefresh(hiw.el, () => hiw.rebuild(yeniSeçenekler())) ile yerinde yeniden kurulur).
+function howItWorks(o) {
+    const el = mk('section', 'lp-hiw');
+    const api = { el, parts: {}, rebuild };
+    function block(b) {
+        let n;
+        if (b.flow) n = flowDiagram(b.flow);
+        else if (b.cap != null) { n = mk('p', 'lp-hcap'); n.textContent = b.cap; }
+        else if (b.steps) {
+            n = mk('ol', 'lp-steps' + (b.cards ? ' lp-steps--cards' : ''));
+            n.style.setProperty('--cols', String(b.cols || 1));
+            b.steps.forEach((s, i) => {
+                const li = mk('li', 'lp-step');
+                if (s.c) li.style.setProperty('--lp-c', s.c);
+                const num = mk('span', 'lp-step-n'); num.setAttribute('aria-hidden', 'true'); num.textContent = s.n != null ? s.n : String(i + 1);
+                const tx = mk('span', 'lp-step-x');
+                if (s.t) { const t = mk('b'); t.textContent = s.t; tx.append(t, document.createTextNode(s.d ? ' — ' : '')); }
+                if (s.d) tx.append(document.createTextNode(s.d));
+                li.append(num, tx); n.append(li);
+            });
+        } else if (b.table) {
+            const T = b.table, head = T.head || [L('lp_th_param'), L('lp_th_range'), L('lp_th_def'), L('lp_th_wa')];
+            n = mk('div', 'lp-tbl'); n.setAttribute('role', 'table'); n.setAttribute('aria-label', T.aria || L('lp_table_aria'));
+            if (T.cols) n.style.setProperty('--tcols', T.cols);
+            const hr = mk('div', 'lp-tr lp-tr--h'); hr.setAttribute('role', 'row');
+            head.forEach(h => { const c = mk('span'); c.setAttribute('role', 'columnheader'); c.textContent = h; hr.append(c); });
+            n.append(hr);
+            T.rows.forEach(r => {
+                const row = mk('div', 'lp-tr'); row.setAttribute('role', 'row');
+                r.forEach((x, i) => {
+                    const c = mk('span', 'lp-td lp-td--' + i); c.setAttribute('role', i ? 'cell' : 'rowheader');
+                    if (i) c.dataset.th = head[i] || '';
+                    c.textContent = x; row.append(c);
+                });
+                n.append(row);
+            });
+        } else if (b.card) {
+            const C = b.card;
+            n = mk('div', 'lp-hcard' + (C.accent ? ' lp-hcard--accent' : ''));
+            if (C.cap) { const c = mk('p', 'lp-hcap'); c.textContent = C.cap; n.append(c); }
+            if (C.title) { const h = mk('h3', 'lp-hcard-h'); h.textContent = C.title; n.append(h); }
+            (C.body || []).forEach(x => n.append(x && x.el ? x.el : x));
+            if (C.note) { const p = mk('p', 'lp-hcard-note'); p.textContent = C.note; n.append(p); }
+        } else if (b.row) {
+            n = mk('div', 'lp-hrow');
+            if (b.cols) n.style.setProperty('--cols', b.cols);
+            b.row.forEach(x => n.append(block(x)));
+        } else if (b.el) n = b.el;
+        else n = mk('div');
+        if (b.ref) api.parts[b.ref] = n;
+        return n;
+    }
+    function rebuild(o2) {
+        o = o2 || {};
+        el.className = 'lp-hiw' + (o.bare ? ' lp-hiw--bare' : '') + (o.cls ? ' ' + o.cls : '');
+        el.innerHTML = ''; api.parts = {};
+        const hid = o.id || lpId('lpHiw');
+        el.setAttribute('aria-labelledby', hid);
+        const head = mk('div', 'lp-hiw-head'), hc = mk('div', 'lp-hiw-hc');
+        if (o.kicker !== false && (o.kicker || o.title)) { const k = mk('p', 'lp-hiw-kick'); k.textContent = o.kicker || L('lp_hiw_kicker'); hc.append(k); }
+        const h = mk('h2', 'lp-hiw-h'); h.id = hid;
+        const ttl = o.title || [L('lp_hiw_t_a'), L('lp_hiw_t_b')];
+        if (Array.isArray(ttl)) { h.append(document.createTextNode(ttl[0])); const em = mk('em', 'be-ember-text'); em.textContent = ttl[1]; h.append(em); }
+        else h.textContent = ttl;
+        hc.append(h); head.append(hc);
+        if (o.aux) { const a = mk('span', 'lp-hiw-aux'); a.textContent = o.aux; head.append(a); }
+        el.append(head);
+        (o.blocks || []).forEach(b => el.append(block(b)));
+        return api;
+    }
+    rebuild(o);
+    return api;
+}
+
+// Görev tamamlama — rehberdeki markTaskDone(mid, tid) = completeTask (kalıcı, geri alınmaz)
+function markTaskDone(mid, tid) { return completeTask(mid, tid); }
+
+// ═══════════════════════════════════════════════════════════════════
 // NAVIGATION — hero listesi + modül sekmeleri + görünüm değişimi
 // ═══════════════════════════════════════════════════════════════════
 let _cleanup = null;
 let _m1Update = null;
+// Modül temizlik kancaları (LAB KABUK API): modül ATAR, teardownView çağırıp null'lar
+let _m1StopAudio = null;
+let _m2StopAudio = null;
 let _m3StopAudio = null;
 let _m4StopAudio = null;
 let _m5StopAudio = null;
@@ -3259,9 +4722,14 @@ function teardownView() {
     if (_cleanup) { _cleanup(); _cleanup = null; }
     const m = state.currentModule;
     if (m === 1) stopOsc();
-    if (m === 3 && _m3StopAudio) { _m3StopAudio(); _m3StopAudio = null; }
-    if (m === 4 && _m4StopAudio) { _m4StopAudio(); _m4StopAudio = null; }
-    if (m === 5 && _m5StopAudio) { _m5StopAudio(); _m5StopAudio = null; }
+    const stops = { 1: _m1StopAudio, 2: _m2StopAudio, 3: _m3StopAudio, 4: _m4StopAudio, 5: _m5StopAudio };
+    if (stops[m]) { try { stops[m](); } catch (e) { console.warn('[lab] stop:', e); } }
+    if (m === 1) _m1StopAudio = null;
+    else if (m === 2) _m2StopAudio = null;
+    else if (m === 3) _m3StopAudio = null;
+    else if (m === 4) _m4StopAudio = null;
+    else if (m === 5) _m5StopAudio = null;
+    lpTeardown();                                   // PRO KİT: yarım sürüklemeler + açık menüler
     _viewSliders.forEach(o => _sliders.delete(o));
     _viewSliders = [];
 }
