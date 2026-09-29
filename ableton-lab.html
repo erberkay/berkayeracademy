@@ -753,6 +753,104 @@
             .lp-td[data-th]::before { content:attr(data-th); display:inline-block; min-width:118px; margin-right:8px; font-family:var(--ff-mono); font-size:9px; font-weight:400; letter-spacing:.12em; color:var(--fg-3); }
         }
         /* ═══ /LAB PRO KİT ═══ */
+        /* ═══ LAB PRO KİT · ÖĞRETİCİ + ÖRNEK KÜTÜPHANESİ (labTutorial, makeTutorialButton/Chip,
+           makeSampleBrowser) ═══ Sözleşme: script'teki "LAB PRO KİT · ÖĞRETİCİ" yorum bloğu.
+           Önek .lp-tut-* / .lp-sb-*; PRO KİT'in düğme/etiket/LED parçalarını kullanır. Konum yalnız
+           transform ile (JS), boyut çalışma anı durumu. Karartma halkanın gölgesi: tıklamayı engellemez. */
+
+        /* ── Spot halkası + karartma ────────────────────────────────────── */
+        .lp-tut-ring { position:fixed; top:0; left:0; z-index:var(--z-pop); border-radius:var(--r-10); border:2px solid var(--accent); pointer-events:none; box-shadow:0 0 18px -2px var(--accent-glow); transition:transform var(--dur) var(--ease-out); }
+        .lp-tut-ring.is-dim { box-shadow:0 0 0 200vmax color-mix(in srgb, var(--bg-ink) 58%, transparent), 0 0 18px -2px var(--accent-glow); }
+        .lp-tut-ring::after { content:''; position:absolute; inset:-2px; border-radius:inherit; border:2px solid var(--accent); opacity:0; animation:lpTutPulse 1.8s var(--ease-out) infinite; }
+        @keyframes lpTutPulse { 0% { transform:scale(1); opacity:.7; } 100% { transform:scale(1.08); opacity:0; } }
+        .lp-tut-ring.is-top, .lp-tut-card.is-top { z-index:calc(var(--z-modal) + 10); }
+
+        /* ── Adım kartı (koç işareti) ───────────────────────────────────── */
+        .lp-tut-card { position:fixed; top:0; left:0; z-index:var(--z-pop); display:flex; flex-direction:column; gap:10px; width:min(360px, calc(100vw - 32px)); max-height:calc(100vh - 32px); overflow-y:auto; padding:14px 14px 12px; border-radius:var(--r-14); background:var(--surface-1); border:1px solid var(--accent-line); box-shadow:var(--shadow-pop); color:var(--fg); animation:lpTutIn var(--dur) var(--ease-out); transition:transform var(--dur) var(--ease-out); }
+        @keyframes lpTutIn { from { opacity:0; } to { opacity:1; } }
+        .lp-tut-card:focus { outline:none; }
+        .lp-tut-card:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        .lp-tut-top { display:flex; align-items:center; gap:10px; min-width:0; }
+        .lp-tut-kick { flex-shrink:0; font-family:var(--ff-mono); font-size:10px; font-weight:700; letter-spacing:.16em; color:var(--accent); white-space:nowrap; }
+        .lp-tut-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--ff-mono); font-size:10px; letter-spacing:.08em; color:var(--fg-3); }
+        .lp-tut-x { margin-left:auto; }
+        .lp-tut-prog { display:flex; gap:3px; }
+        .lp-tut-seg { flex:1 1 0; height:3px; border-radius:var(--r-2); background:var(--track); }
+        .lp-tut-seg.on { background:var(--accent); }
+        .lp-tut-seg.cur { background:var(--fg-2); }
+        .lp-tut-seg.on.cur { background:var(--accent-hover); }
+        .lp-tut-h { margin:2px 0 0; font-family:var(--ff); font-size:16px; font-weight:700; line-height:1.3; letter-spacing:0; color:var(--fg); }
+        .lp-tut-body { margin:0; font-size:13px; line-height:1.55; color:var(--fg-muted); }
+        .lp-tut-abl { display:flex; flex-direction:column; gap:3px; margin:0; padding:8px 10px; border-radius:var(--r-8); background:var(--bg); border:1px solid var(--line-2); font-size:12px; line-height:1.5; color:var(--fg-soft); }
+        .lp-tut-abl-l { font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--info); }
+        .lp-tut-hint { margin:0; font-size:12px; line-height:1.5; color:var(--fg-3); }
+        .lp-tut-state { display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; min-height:30px; font-family:var(--ff-mono); font-size:10px; letter-spacing:.06em; color:var(--fg-3); }
+        .lp-tut-state-t { flex:1; min-width:0; }
+        .lp-tut-state.is-ok { color:var(--ok); }
+        .lp-tut-state.is-miss { color:var(--warn); }
+        .lp-tut-state .lp-led.on { animation:lpTutBlink 1.4s ease-in-out infinite; }
+        .lp-tut-state.is-ok .lp-led.on { animation:none; }
+        @keyframes lpTutBlink { 50% { opacity:.35; } }
+        .lp-tut-goto { margin-left:auto; }
+        .lp-tut-foot { display:flex; align-items:center; gap:6px; padding-top:10px; border-top:1px solid var(--line-2); }
+        .lp-tut-sp { flex:1; }
+        .lp-tut-next[aria-disabled="true"] { opacity:.45; }
+        .lp-tut-card.is-end .lp-tut-kick { color:var(--ok); }
+        .lp-tut-card.is-end .lp-tut-prog .lp-tut-seg { background:var(--ok-strong); }
+
+        /* ── Öğretici düğmesi + çipi ────────────────────────────────────── */
+        .lp-tut-btn { letter-spacing:.1em; }
+        .lp-tut-btn-n { display:inline-flex; align-items:center; padding-left:6px; border-left:1px solid var(--line-3); color:var(--accent); font-variant-numeric:tabular-nums; }
+        .lp-tut-btn--c .lp-tut-btn-n { padding-left:4px; border-left:0; }
+        .lp-tut-btn.is-done .lp-tut-btn-n { color:var(--ok); }
+        .lp-tut-btn .lp-tut-btn-n svg { width:12px; height:12px; }
+        .lp-tut-chip { display:inline-flex; align-items:center; gap:8px; height:24px; padding:0 9px; border-radius:var(--r-pill); border:1px solid var(--line-3); background:var(--bg); font-family:var(--ff-mono); font-size:10px; letter-spacing:.1em; color:var(--fg-2); white-space:nowrap; }
+        .lp-tut-chip-ic { display:flex; color:var(--accent); }
+        .lp-tut-chip-ic svg { width:13px; height:13px; }
+        .lp-tut-chip-bar { position:relative; width:40px; height:3px; border-radius:var(--r-2); background:var(--track); overflow:hidden; }
+        .lp-tut-chip-bar > span { position:absolute; inset:0; background:var(--accent); transform:scaleX(var(--p, 0)); transform-origin:left; }
+        .lp-tut-chip.is-done { border-color:var(--ok-line); color:var(--ok); }
+        .lp-tut-chip.is-done .lp-tut-chip-bar > span { background:var(--ok-strong); }
+
+        /* ── Örnek tarayıcı (makeSampleBrowser) ─────────────────────────── */
+        .lp-sb { display:flex; flex-direction:column; min-width:0; border-radius:var(--r-12); background:var(--bg); border:1px solid var(--line-div); }
+        .lp-sb-head { display:flex; align-items:center; gap:8px; min-height:44px; padding:6px 8px 6px 12px; border-bottom:1px solid var(--line-2); }
+        .lp-sb-cap { flex-shrink:0; font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--fg-3); }
+        .lp-sb-cur { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:600; color:var(--fg); }
+        .lp-sb-listen[aria-pressed="true"] { color:var(--ok); border-color:var(--ok-line); background:var(--ok-soft); }
+        .lp-sb-filter { padding:6px 8px; border-bottom:1px solid var(--line-2); overflow-x:auto; }
+        .lp-sb-list { max-height:var(--lp-sbh, 260px); overflow-y:auto; padding:0 6px 6px; overscroll-behavior:contain; }
+        .lp-sb-gh { position:sticky; top:0; z-index:1; padding:8px 6px 5px; background:var(--bg); font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; color:var(--fg-3); }
+        .lp-sb-opt { display:grid; grid-template-columns:26px minmax(0,1fr) auto auto; align-items:center; gap:8px; min-height:34px; padding:3px 10px 3px 4px; border-radius:var(--r-8); border:1px solid transparent; color:var(--fg-soft); font-size:12px; cursor:pointer; outline:none; user-select:none; -webkit-user-select:none; }
+        .lp-sb-opt:hover { background:var(--surface-3); }
+        .lp-sb-opt:focus-visible { background:var(--surface-3); outline:2px solid var(--accent); outline-offset:-2px; }
+        .lp-sb-opt[aria-selected="true"] { border-color:var(--accent-line-2); background:var(--accent-wash); color:var(--accent); }
+        .lp-sb-play { position:relative; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; border:1px solid var(--line-ctl); background:var(--surface-0); color:var(--fg-3); transition:color var(--dur-fast), border-color var(--dur-fast); }
+        .lp-sb-play svg { width:10px; height:10px; }
+        .lp-sb-play:hover { color:var(--accent); border-color:var(--accent-line-2); }
+        .lp-sb-opt.is-playing .lp-sb-play { color:var(--ok); border-color:var(--ok-line); }
+        .lp-sb-opt.is-busy .lp-sb-play { animation:lpTutBlink 1s ease-in-out infinite; }
+        .lp-sb-opt.is-err .lp-sb-play { color:var(--err); border-color:var(--err-line); }
+        .lp-sb-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+        .lp-sb-meta { font-family:var(--ff-mono); font-size:10px; color:var(--fg-3); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .lp-sb-opt[aria-selected="true"] .lp-sb-meta { color:var(--fg-2); }
+
+        @media (max-width:1024px) {
+            .lp-sb-opt { min-height:44px; }
+            .lp-sb-play::after { content:''; position:absolute; inset:-9px; }
+        }
+        @media (max-width:600px) {
+            /* Telefonda kart altta, sekme çubuğunun üstünde (JS transform'u kaldırır) */
+            .lp-tut-card.is-dock { top:auto; left:8px; right:8px; bottom:calc(var(--be-tabbar-space) + 8px); width:auto; max-height:46vh; }
+            .lp-tut-foot .lp-btn { min-height:44px; }
+            .lp-tut-x { min-height:44px; }
+            .lp-sb-opt { grid-template-columns:26px minmax(0,1fr) auto; }
+            .lp-sb-opt .lp-tag { display:none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .lp-tut-ring::after { display:none; }
+        }
+        /* ═══ /LAB PRO KİT · ÖĞRETİCİ + ÖRNEK KÜTÜPHANESİ ═══ */
 
         /* ═══ LAB M1 · Synthesizer ═══ (Lab_Synth: BE·SYNTH 01 eklenti penceresi — PRO KİT parçalarıyla;
            altında Çalışma mantığı, yan panel kabuktan). Panel degradeleri düz token'a indirildi. */
@@ -5335,6 +5433,956 @@ function howItWorks(o) {
 
 // Görev tamamlama — rehberdeki markTaskDone(mid, tid) = completeTask (kalıcı, geri alınmaz)
 function markTaskDone(mid, tid) { return completeTask(mid, tid); }
+
+// ═══════════════════════════════════════════════════════════════════
+// LAB PRO KİT · ÖĞRETİCİ + ÖRNEK KÜTÜPHANESİ (labTutorial, LAB_SAMPLES, makeSampleBrowser)
+// Modülden bağımsız; PRO KİT'in görsel dilini (.lp-*) kullanır. CSS: "LAB PRO KİT · ÖĞRETİCİ +
+// ÖRNEK KÜTÜPHANESİ" bloğu (önek .lp-tut-* / .lp-sb-*). Merkezi LAB KABUK API bloğu değişmedi;
+// sözleşme bu yorumdadır.
+// ═══════════════════════════════════════════════════════════════════
+//
+// ── 1) ÖĞRETİCİ (DAW yardım dersi / koç işaretleri) ───────────────────
+// labTutorial({ mid, id, title, intro?, outro?, steps, onDone?, onStep?, onClose? }) → tut
+//   mid    modül kimliği (1…5) · id  öğreticinin kısa kimliği ([a-z0-9_-]; ör. 'osc')
+//   title / intro / outro / adım metinleri: düz metin, LAB_TXT anahtarı (varsa L() ile çevrilir)
+//          ya da () => metin (dil değişince yeniden okunur).
+//   steps  [{ id, target, title, body?, ableton?, hint?, check?, onEnter?, onLeave?, placement?, dim? }]
+//     id        adım kimliği (öğretici içinde tekil; anlamı değişirse YENİ id — görevlerdeki kural)
+//     target    () => Element | 'css seçici' | Element — her tikte yeniden çözülür (öğe DOM'dan
+//               düşerse, ör. labOnRefresh / modül yeniden kurulumu, yenisi bulunur). Yoksa/gizliyse
+//               kart ortada (telefonda altta) durur, "Kontrol şu an görünmüyor" yazar.
+//     body      açıklama · ableton "Ableton'da:" satırı (Live'daki karşılığı) · hint dipnot
+//     check     () => boolean — true olunca adım KALICI tamamlanır ve ~0.7 sn sonra ilerler
+//               (~250 ms yoklama + tık/girdi/tuş olaylarında hemen). check yoksa adım bilgi adımıdır:
+//               "İleri" tamamlar. Önceden tamamlanmış adıma geri dönülürse check'in yeniden
+//               false→true olması beklenir (Baştan başla'da kendiliğinden geçip gitmesin diye).
+//     onEnter(tut, step) / onLeave(tut, step)  adım açılırken / kapanırken (ör. pencere aç).
+//     placement 'auto' (vars.) | 'bottom' | 'top' | 'right' | 'left' — kartın hedefe göre yeri.
+//     dim       false → bu adımda sayfa karartılmaz (yalnız halka).
+//   onDone(tut)       bütün adımlar ilk kez tamamlandığında (oturumda bir kez).
+//   onStep(i, step)   görünen adım değişince (i: 0…N-1; -1 giriş, N bitiş ekranı).
+//   onClose(tut)      öğretici kapanınca (Kapat, Esc, gezinme).
+//   → { start(from?), stop(), next(), prev(), skip(), goTo(i|id), restart(), progress() → {done,total},
+//       subscribe(fn) → unsub, refresh(), el (kart), mid, id, steps,
+//       current (görünen adım dizini), active (açık mı), done (hepsi tamam mı) }
+//   start(from?)  from = adım dizini ya da id; verilmezse ilk tamamlanmamış adım (hiç ilerleme yok
+//                 ve intro varsa önce giriş kartı; hepsi bittiyse "Tamamlandı" ekranı). Aynı anda tek
+//                 öğretici açık olur (yenisi eskisini kapatır).
+//   restart()     "Baştan başla": 1. adımdan (kayıtlı ilerleme silinmez, yapışkandır).
+//   Davranış: halka (altın çerçeve) hedefi gösterir, sayfanın geri kalanı karartılır ama HİÇBİR
+//   şey engellenmez (pointer-events:none) — öğrenci adımı gerçekten yapar. Hedef görünüme kaydırılır;
+//   kaydırma/yeniden boyut/düzen değişiminde yeniden konumlanır. Kart hedefin yanında (≤600 px altta,
+//   sekme çubuğunun üstünde). Hedef açık bir [aria-modal] pencerenin içindeyse katman modalın üstüne çıkar.
+//   Klavye: kart role=dialog (aria-modal=false: tuzak yok, sayfa kullanılabilir); açılınca odak karta,
+//   kapanınca geri (öğretici düğmesine). Esc (odak kartta ya da hiçbir yerde değilken) kapatır; F6 kart ↔
+//   hedef arasında odak taşır ("Kontrole git" düğmesi de). Adım değişimi / tamamlanma aria-live ile duyurulur.
+//   Temizlik: gezinmede (lpTeardown) kendiliğinden kapanır; zamanlayıcı, dinleyiciler ve rAF bırakılır.
+//   Kalıcılık: tamamlanan adım state.completedTasks[`${mid}-tut-${id}-${adımId}`] = true (yapışkan,
+//   localStorage 'berkay_tasks' + Firestore users/{uid}.progress, ~1 sn toplu). Bu anahtarlar GÖREV
+//   sayaçlarını, genel bakış ilerlemesini ve kutlama modalını ETKİLEMEZ (onlar yalnız TASKS[n]'i sayar;
+//   completeTask burada bilerek çağrılmaz).
+// labTutorialProgress(mid, id) → { done, total }  (total: o öğretici bu oturumda tanımlandıysa adım
+//   sayısı; tanımlanmadıysa 0 ve done = kayıtlı adım anahtarı sayısı).
+// makeTutorialButton(tut, { text?, compact? }) → { el, refresh() }
+//   Başlık çubuğu düğmesi (lp-btn 30 px): kep ikonu + "ÖĞRETİCİ" + x/N (bitince ✓). aria-pressed =
+//   açık mı; tık açar/kapatır. compact:true → yalnız ikon + x/N. Örn. win.center.append(b.el).
+// makeTutorialChip(tut) → { el, refresh() }  küçük ilerleme çipi (çubuk + "x/N" ya da "TAMAM").
+//
+// Örnek:
+//   const tut = labTutorial({ mid: 1, id: 'osc', title: 'lab_s1_tut_t', intro: 'lab_s1_tut_i', steps: [
+//       { id: 'wave', target: () => oscA.el.querySelector('.lp-seg'), title: 'lab_s1_tut_1', body: 'lab_s1_tut_1b',
+//         ableton: 'lab_s1_tut_1a', check: () => state.osc1.wave === 'square' },
+//       { id: 'cut', target: () => cut.el, title: …, check: () => state.filter.cutoff < 2000, placement: 'top' },
+//   ]});
+//   win.center.append(makeTutorialButton(tut).el);   side.append(makeTutorialChip(tut).el);
+//
+// ── 2) ÖRNEK KÜTÜPHANESİ ──────────────────────────────────────────────
+// LAB_SAMPLE_PACKS { classic, mersey, cassianism } → { id, name, vendor }
+// LAB_SAMPLES [{ id, file, name, pack, kind, oneShot, loop, bpm, bars, key, root?, gainDb, peakDb, lufs,
+//               dur, sr, tags }]
+//   kind 'kick'|'snare'|'clap'|'chat'|'ohat'|'ride'|'bass'|'lead'|'pad'|'pluck'. file '/assets/audio/…'.
+//   loop: bpm + bars (Cassianism 126 BPM · 8 ölçü = 672000 örnek; Classic Lead Loop 125 · 16, Pad Loop
+//   125 · 4). key: 'Am', 'C#m' (bilinmiyorsa null — Classic loop'ların tonu belirsiz). root: ton taşıyan
+//   one-shot'ın kök notası (MIDI; bass.wav ≈ C1 = 24).
+//   gainDb: seviye eşleme kırpması — loop'lar ~−14 LUFS entegreye (−12…+4 dB aralığında), one-shot'lar
+//   −1 dBFS tepeye. lufs / peakDb ham ölçümler (ffmpeg ebur128 / volumedetect). +dB alan dosyalar float
+//   grafikte 0 dBFS'i aşabilir: bus'ta headroom bırakın.
+// labSample(id) → kayıt | null · labSamplesByKind(kind | [kind…]) → kayıt[] · labSampleUrl(id)
+// labSampleGain(id) → doğrusal kazanç (gainDb'den)
+// labLoopRate(id, bpm) → playbackRate = bpm / örnek bpm'i (loop değilse / bpm yoksa 1)
+// labLoopDuration(id, bpm?) → sn: ölçü × 4 × 60 / (bpm ?? örnek bpm'i); one-shot'ta dosya süresi.
+// labSampleBuffer(ctx | null, id) → Promise<AudioBuffer | null>
+//   Genel çözülmüş önbellek (AudioBuffer bağlamlar arası kullanılır), aynı anda gelen istekler tek
+//   fetch'e bağlanır. ctx yoksa/kapalıysa paylaşılan OfflineAudioContext çözer (jest gerekmez — ön
+//   yükleme için kullanılabilir). Hata (ağ, HTML yanıtı, çözülemeyen biçim) → null + console.warn('[lab] …');
+//   çağıran sentez yedeğine düşer. Başarısız istek önbelleğe alınmaz (sonraki çağrı yeniden dener).
+// labSampleAudition(id, { ctx?, dest?, bpm?, maxSec?:16, onEnd? }) → Promise<bool>  Tek önizleme yolu
+//   (sayfada aynı anda tek ses): kaynak → kazanç (gainDb − 6 dB) → dest (vars. ctx.destination); bpm (sayı
+//   ya da fonksiyon) verilirse loop tempoya uyar. ctx: AudioContext ya da onu veren fonksiyon (() => getBeatCtx()).
+//   ctx verilmezse ilk çağrıda (kullanıcı jestinde) kendi küçük AudioContext'ini kurar; görünüm
+//   kapanınca durur ve o bağlam kapanır. labSampleAuditionStop() · labSampleAuditionId() → çalan id | null.
+// makeSampleBrowser({ kinds?, value?, onPick(sample), audition?:true, ctx?, bpm?, label?, height?:260,
+//                     filter?, packs?, cls? }) → { el, set(id), get(), stop(), focus() }
+//   ctx / bpm labSampleAudition'a gider (ctx verilmezse önizleme kendi bağlamını ilk ▶ jestinde kurar).
+//   Pro tarayıcı (Ableton Browser gibi): başlıkta seçili örnek + ▶ DİNLE; liste pakete göre gruplu,
+//   satır = ▶ · ad · tür etiketi · BPM · ton · ölçü (one-shot'ta süre). listbox: ↑/↓ Home/End PageUp/Down
+//   gezer, Enter seçer (onPick), Boşluk dinler/durdurur, Esc önizlemeyi durdurur. Tık seçer, ▶ tık dinler.
+//   filter:true (kinds > 1 iken) → üstte TÜMÜ / tür seçici (makeSeg). Seçili satır altın. packs: ['mersey', …] süzgeci.
+//   Modüllere bağlanmadı; modül ajanları kendi paneline koyar.
+// CSS kancaları: .lp-tut-ring (.is-dim, .is-top) · .lp-tut-card (.is-dock, .is-top) / -top / -kick / -name /
+//   -x / -prog (-seg .on .cur) / -h / -body / -abl (-abl-l) / -hint / -state (.is-ok .is-miss) / -foot ·
+//   .lp-tut-btn (-n) · .lp-tut-chip (-bar, --p) · .lp-sb / -head / -cur / -list / -gw / -gh / -opt
+//   (.is-playing .is-busy .is-err) / -play / -name / -meta · --lp-sbh (liste yüksekliği).
+// ═══════════════════════════════════════════════════════════════════
+Object.assign(LAB_TXT, {
+    lp_tut_btn:        [`ÖĞRETİCİ`, `TUTORIAL`],
+    lp_tut_btn_aria:   [`Öğretici`, `Tutorial`],
+    lp_tut_btn_t:      [`Adım adım öğretici — Ableton mantığıyla`, `Step-by-step tutorial — the Ableton way`],
+    lp_tut_kick:       [`ÖĞRETİCİ`, `TUTORIAL`],
+    lp_tut_step:       [`Adım {n}/{N}`, `Step {n}/{N}`],
+    lp_tut_steps:      [`{N} adım`, `{N} steps`],
+    lp_tut_ableton:    [`ABLETON'DA`, `IN ABLETON`],
+    lp_tut_back:       [`Geri`, `Back`],
+    lp_tut_next:       [`İleri`, `Next`],
+    lp_tut_finish:     [`Bitir`, `Finish`],
+    lp_tut_skip:       [`Atla`, `Skip`],
+    lp_tut_close:      [`Öğreticiyi kapat`, `Close tutorial`],
+    lp_tut_close_t:    [`Kapat`, `Close`],
+    lp_tut_start:      [`Başla`, `Start`],
+    lp_tut_resume:     [`Devam et`, `Resume`],
+    lp_tut_restart:    [`Baştan başla`, `Start over`],
+    lp_tut_goto:       [`Kontrole git`, `Go to control`],
+    lp_tut_goto_t:     [`Odağı vurgulanan kontrole taşı (F6 geri döner)`, `Move focus to the highlighted control (F6 returns)`],
+    lp_tut_auto:       [`Adımı yapınca kendiliğinden ilerler`, `Moves on by itself once you do the step`],
+    lp_tut_info:       [`Okuyunca İleri'ye bas`, `Press Next when you have read it`],
+    lp_tut_ok:         [`Tamamlandı`, `Done`],
+    lp_tut_already:    [`Bu adımı daha önce yaptın — İleri ile geç ya da yeniden dene`, `You did this step before — press Next or try it again`],
+    lp_tut_miss:       [`Kontrol şu an görünmüyor — ilgili bölümü aç`, `The control is not visible right now — open its section`],
+    lp_tut_need:       [`Önce adımı yap ya da Atla`, `Do the step first, or Skip`],
+    lp_tut_done_kick:  [`ÖĞRETİCİ · TAMAMLANDI`, `TUTORIAL · COMPLETE`],
+    lp_tut_done_h:     [`Tamamlandı`, `Complete`],
+    lp_tut_done_body:  [`Bütün adımları yaptın. Aynı akışı Ableton Live'da da uygulayabilirsin.`, `You did every step. You can follow the same flow in Ableton Live.`],
+    lp_tut_left:       [`Atlanan adımlar var — kalan ilk adıma dönüldü`, `Some steps were skipped — back to the first open one`],
+    lp_tut_sr_step:    [`Öğretici, adım {n}/{N}: {t}`, `Tutorial, step {n} of {N}: {t}`],
+    lp_tut_sr_ok:      [`Adım tamamlandı: {t}`, `Step complete: {t}`],
+    lp_tut_sr_done:    [`Öğretici tamamlandı: {t}`, `Tutorial complete: {t}`],
+    lp_tut_sr_close:   [`Öğretici kapandı`, `Tutorial closed`],
+    lp_tut_chip_done:  [`TAMAM`, `DONE`],
+    lp_tut_chip_aria:  [`{t}: {d}/{N} adım tamamlandı`, `{t}: {d}/{N} steps complete`],
+    lp_smp_aria:       [`Örnek tarayıcı`, `Sample browser`],
+    lp_smp_cap:        [`SAMPLE`, `SAMPLE`],
+    lp_smp_none:       [`Seçilmedi`, `None selected`],
+    lp_smp_listen:     [`DİNLE`, `LISTEN`],
+    lp_smp_listen_a:   [`Seçili örneği dinle`, `Listen to the selected sample`],
+    lp_smp_keys:       [`Enter seçer · Boşluk dinler · Esc durdurur`, `Enter picks · Space listens · Esc stops`],
+    lp_smp_all:        [`TÜMÜ`, `ALL`],
+    lp_smp_filter:     [`Türe göre süz`, `Filter by type`],
+    lp_smp_err:        [`yüklenemedi`, `could not load`],
+    lp_smp_bars:       [`{n} ÖLÇÜ`, `{n} BARS`],
+    lp_smp_k_kick:     [`KICK`, `KICK`],
+    lp_smp_k_snare:    [`SNARE`, `SNARE`],
+    lp_smp_k_clap:     [`CLAP`, `CLAP`],
+    lp_smp_k_chat:     [`KAPALI HAT`, `CLOSED HAT`],
+    lp_smp_k_ohat:     [`AÇIK HAT`, `OPEN HAT`],
+    lp_smp_k_ride:     [`RIDE`, `RIDE`],
+    lp_smp_k_bass:     [`BAS`, `BASS`],
+    lp_smp_k_lead:     [`LEAD`, `LEAD`],
+    lp_smp_k_pad:      [`PAD`, `PAD`],
+    lp_smp_k_pluck:    [`PLUCK`, `PLUCK`],
+});
+
+// Çizgi ikonlar (bu blok): kep, onay, kapat
+const LP_TUT_IC = {
+    cap:   '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3.2 2.4 8.8 2.4 12 0v-5"/><path d="M22 9v5"/></svg>',
+    check: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    x:     '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+};
+
+// ── Ortak: aria-live duyuru bölgesi (sayfada tek, kalıcı) ─────────────
+let _lpLive = null;
+function lpAnnounce(msg) {
+    if (!_lpLive || !_lpLive.isConnected) {
+        _lpLive = mk('div', 'sr-only'); _lpLive.setAttribute('role', 'status'); _lpLive.setAttribute('aria-live', 'polite');
+        document.body.append(_lpLive);
+    }
+    _lpLive.textContent = '';
+    // Aynı metin art arda da okunsun: boşalt, sonraki karede yaz
+    requestAnimationFrame(() => { if (_lpLive) _lpLive.textContent = String(msg || ''); });
+}
+// lpBtn'in görünür metni (span yoksa ekler)
+function lpBtnText(b, t) { let sp = b.querySelector(':scope > span:not([class])'); if (!sp) { sp = mk('span'); b.append(sp); } sp.textContent = t; }
+// _lpCleanups'tan tek kaydı düşür (makePresetBrowser'daki kalıp)
+function lpOffTeardown(fn) { if (fn) _lpCleanups = _lpCleanups.filter(f => f !== fn); }
+const lpReduced = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const LP_FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [role="slider"]';
+
+// ═══ 1) ÖĞRETİCİ ═══════════════════════════════════════════════════
+const _lpTutDefs = {};       // `${mid}:${id}` → [adım id] (labTutorialProgress)
+let _lpTutActive = null;     // açık öğretici (tek)
+
+// Metin: fonksiyon → çağır; LAB_TXT anahtarı → L(); yoksa düz metin
+function lpTutText(v) {
+    if (typeof v === 'function') { try { v = v(); } catch (e) { console.warn('[lab] tutorial text:', e); v = ''; } }
+    if (v == null) return '';
+    const s = String(v);
+    return LAB_TXT[s] ? L(s) : s;
+}
+const lpTutKey = (mid, tid, sid) => `${mid}-tut-${tid}-${sid}`;
+function labTutorialProgress(mid, tid) {
+    const ids = _lpTutDefs[`${mid}:${tid}`];
+    const ct = state.completedTasks || {};
+    if (!ids) {
+        const pre = lpTutKey(mid, tid, '');
+        return { done: Object.keys(ct).filter(k => ct[k] && k.indexOf(pre) === 0).length, total: 0 };
+    }
+    return { done: ids.filter(s => ct[lpTutKey(mid, tid, s)]).length, total: ids.length };
+}
+
+function labTutorial(o) {
+    o = o || {};
+    const mid = o.mid, tid = String(o.id || 'main');
+    const steps = (o.steps || []).map((s, i) => Object.assign({}, s, { id: String(s.id != null ? s.id : i + 1) }));
+    const N = steps.length;
+    _lpTutDefs[`${mid}:${tid}`] = steps.map(s => s.id);
+    const isDone = s => !!(state.completedTasks || {})[lpTutKey(mid, tid, s.id)];
+    const doneCount = () => steps.filter(isDone).length;
+    const firstOpen = () => steps.findIndex(s => !isDone(s));
+    const subs = new Set();
+    const emit = () => subs.forEach(f => { try { f(); } catch (e) { console.warn('[lab] tutorial sub:', e); } });
+
+    let cur = -1, active = false, built = false;
+    let tgt = null, lastOk = false, enteredDone = false, doneNow = false, advT = null, tick = null, raf = 0, ro = null, unreg = null;
+    let returnFocus = null, allDoneSeen = doneCount() === N && N > 0, checkWarned = false;
+    let card, ring, kick, nameEl, xBtn, prog, hEl, bodyEl, ablEl, ablT, hintEl, stEl, stLed, stTxt, gotoBtn, foot, bBack, bSkip, bNext, bAlt;
+    const mq = window.matchMedia ? window.matchMedia('(max-width:600px)') : null;
+    const docked = () => !!(mq && mq.matches);
+
+    function build() {
+        if (built) return;
+        built = true;
+        const hid = lpId('lpTutH'), bid = lpId('lpTutB');
+        ring = mk('div', 'lp-tut-ring'); ring.setAttribute('aria-hidden', 'true'); ring.hidden = true;
+        card = mk('div', 'lp-tut-card'); card.hidden = true; card.tabIndex = -1;
+        card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'false');
+        card.setAttribute('aria-labelledby', hid); card.setAttribute('aria-describedby', bid);
+        const top = mk('div', 'lp-tut-top');
+        kick = mk('span', 'lp-tut-kick'); nameEl = mk('span', 'lp-tut-name');
+        xBtn = mk('button', 'lp-btn lp-btn--ghost lp-btn--icon lp-tut-x', LP_TUT_IC.x); xBtn.type = 'button';
+        xBtn.addEventListener('click', () => api.stop());
+        top.append(kick, nameEl, xBtn);
+        prog = mk('div', 'lp-tut-prog'); prog.setAttribute('aria-hidden', 'true');
+        hEl = mk('h2', 'lp-tut-h'); hEl.id = hid;
+        bodyEl = mk('p', 'lp-tut-body'); bodyEl.id = bid;
+        ablEl = mk('p', 'lp-tut-abl'); const ablL = mk('span', 'lp-tut-abl-l'); ablT = mk('span');
+        ablEl.append(ablL, ablT); ablEl._l = ablL;
+        hintEl = mk('p', 'lp-tut-hint');
+        stEl = mk('div', 'lp-tut-state');
+        stLed = makeLed({ on: false }); stTxt = mk('span', 'lp-tut-state-t');
+        gotoBtn = lpBtn({ text: '', variant: 'ghost', cls: 'lp-tut-goto', onClick: () => focusTarget() });
+        gotoBtn.setAttribute('aria-keyshortcuts', 'F6');
+        stEl.append(stLed.el, stTxt, gotoBtn);
+        foot = mk('div', 'lp-tut-foot');
+        bBack = lpBtn({ icon: 'prev', text: '', variant: 'ghost', onClick: () => api.prev() });
+        bSkip = lpBtn({ text: '', variant: 'ghost', onClick: () => api.skip() });
+        bAlt = lpBtn({ text: '', variant: 'ghost', onClick: () => onAlt() });
+        bNext = lpBtn({ text: '', variant: 'accent', cls: 'lp-tut-next', onClick: () => onPrimary() });
+        const sp = mk('span', 'lp-tut-sp');
+        foot.append(bBack, bSkip, bAlt, sp, bNext);
+        card.append(top, prog, hEl, bodyEl, ablEl, hintEl, stEl, foot);
+        document.body.append(ring, card);
+        labOnRefresh(card, () => { if (active) paint(); });
+    }
+
+    // ── hedef ─────────────────────────────────────────────────────────
+    function resolve() {
+        const s = steps[cur];
+        if (!s || !s.target) return null;
+        let t = s.target;
+        try { if (typeof t === 'function') t = t(); if (typeof t === 'string') t = document.querySelector(t); }
+        catch (e) { console.warn('[lab] tutorial target:', e); t = null; }
+        return t && t.nodeType === 1 && t.isConnected ? t : null;
+    }
+    const visibleRect = el => {
+        if (!el || !el.isConnected) return null;
+        const r = el.getBoundingClientRect();
+        return (r.width || r.height) ? r : null;
+    };
+    function focusTarget() {
+        const t = tgt && tgt.isConnected ? tgt : resolve();
+        if (!t) return;
+        const f = t.matches(LP_FOCUSABLE) ? t : t.querySelector(LP_FOCUSABLE);
+        if (f) try { f.focus(); } catch (_) {}
+        else { t.scrollIntoView({ block: 'center', behavior: lpReduced() ? 'auto' : 'smooth' }); }
+    }
+    // Görünür bant: üstte yapışkan başlık + sekme çubuğu, altta (telefonda) yerleşik kart
+    function viewBand() {
+        const cs = getComputedStyle(document.documentElement);
+        const nav = document.getElementById('moduleNav');
+        const top = (parseFloat(cs.getPropertyValue('--be-sticky-top')) || 0) + (nav && !nav.hidden ? nav.offsetHeight : 0) + 12;
+        const bottom = docked() && card && !card.hidden ? card.getBoundingClientRect().top - 12 : window.innerHeight - 12;
+        return { top, bottom: Math.max(top + 40, bottom) };
+    }
+    function scrollToTarget() {
+        if (!visibleRect(tgt)) return;
+        const b = viewBand();
+        let r = tgt.getBoundingClientRect();
+        if (r.top >= b.top && r.bottom <= b.bottom) return;
+        // İç kaydırıcılar (ör. yatay kayan ızgara) için önce en yakın konuma, sonra pencereyi banda ortala
+        try { tgt.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' }); } catch (_) {}
+        r = tgt.getBoundingClientRect();
+        const room = b.bottom - b.top;
+        const dy = r.height >= room ? r.top - b.top : r.top - (b.top + (room - r.height) / 2);
+        if (Math.abs(dy) > 1) window.scrollBy(0, dy);
+    }
+
+    // ── konumlandırma (yalnız transform; genişlik/yükseklik çalışma anı durumu) ─────
+    function place() {
+        raf = 0;
+        if (!active || !built) return;
+        const r = cur >= 0 && cur < N ? visibleRect(tgt) : null;
+        const s = steps[cur];
+        const vw = document.documentElement.clientWidth, vh = window.innerHeight, M = 16, G = 12, P = 6;
+        const inModal = !!(tgt && tgt.closest && tgt.closest('[aria-modal="true"], .modal-overlay'));
+        ring.classList.toggle('is-top', inModal); card.classList.toggle('is-top', inModal);
+        if (r) {
+            ring.hidden = false;
+            ring.classList.toggle('is-dim', !(s && s.dim === false));
+            ring.style.width = Math.round(r.width + 2 * P) + 'px';
+            ring.style.height = Math.round(r.height + 2 * P) + 'px';
+            ring.style.transform = `translate(${Math.round(r.left - P)}px, ${Math.round(r.top - P)}px)`;
+        } else ring.hidden = true;
+        const dock = docked();
+        card.classList.toggle('is-dock', dock);
+        if (dock) { card.style.transform = ''; return; }
+        const cw = card.offsetWidth, ch = card.offsetHeight;
+        let x, y;
+        if (!r) { x = (vw - cw) / 2; y = Math.max(M, (vh - ch) / 2); }
+        else {
+            const cx = r.left + r.width / 2 - cw / 2, cy = r.top + r.height / 2 - ch / 2;
+            const cand = {
+                bottom: [cx, r.bottom + P + G, r.bottom + P + G + ch <= vh - M],
+                top:    [cx, r.top - P - G - ch, r.top - P - G - ch >= M],
+                right:  [r.right + P + G, cy, r.right + P + G + cw <= vw - M],
+                left:   [r.left - P - G - cw, cy, r.left - P - G - cw >= M],
+            };
+            const pref = s && s.placement && cand[s.placement] ? [s.placement] : [];
+            const order = pref.concat(['bottom', 'top', 'right', 'left'].filter(k => pref.indexOf(k) < 0));
+            const pick = order.find(k => cand[k][2]);
+            if (pick) { x = cand[pick][0]; y = cand[pick][1]; }
+            else { x = vw - cw - M; y = vh - ch - M; }       // büyük hedef: sağ alt köşe
+        }
+        x = lpClamp(x, M, Math.max(M, vw - cw - M)); y = lpClamp(y, M, Math.max(M, vh - ch - M));
+        card.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+    }
+    const schedule = () => { if (!raf && active) raf = requestAnimationFrame(place); };
+
+    // ── kontrol döngüsü ──────────────────────────────────────────────
+    function evalCheck() {
+        if (!active || advT || cur < 0 || cur >= N) return;
+        const s = steps[cur];
+        if (!s.check) return;
+        let ok = false;
+        try { ok = !!s.check(); } catch (e) { if (!checkWarned) { checkWarned = true; console.warn('[lab] tutorial check:', e); } }
+        const edge = ok && !lastOk;
+        lastOk = ok;
+        if (ok && (!enteredDone || edge)) completeStep(true);
+    }
+    function onTick() {
+        if (!active || document.hidden) return;
+        if (!tgt || !tgt.isConnected) { const t = resolve(); if (t !== tgt) { tgt = t; watch(); paintState(); } }
+        evalCheck();
+        schedule();
+    }
+    let evT = null;
+    const onEvt = () => { if (!evT) evT = setTimeout(() => { evT = null; onTick(); }, 30); };
+    function watch() {
+        if (ro) { ro.disconnect(); }
+        if (tgt && window.ResizeObserver) { if (!ro) ro = new ResizeObserver(schedule); ro.observe(tgt); if (card) ro.observe(card); }
+    }
+    function onKey(e) {
+        if (!active) return;
+        if (e.key === 'Escape' && !e.defaultPrevented) {
+            // Başka bir diyalog / açık liste Esc'i kendisi kullanıyorsa dokunma
+            const a = document.activeElement;
+            const other = a && a.closest && !card.contains(a) && a.closest('[role="dialog"], [role="listbox"], [role="menu"], [aria-expanded="true"]');
+            if (!other) { e.preventDefault(); api.stop(); }
+        } else if (e.key === 'F6') {
+            e.preventDefault();
+            if (card.contains(document.activeElement)) focusTarget();
+            else focusCard();
+        }
+    }
+    // Düğmeyle adım değişince: basılan düğme hâlâ kullanılabiliyorsa odak orada kalır, yoksa karta
+    function keepFocus() {
+        const a = document.activeElement;
+        if (card.contains(a) && a !== card && !a.hidden && a.getAttribute('aria-disabled') !== 'true') return;
+        try { card.focus({ preventScroll: true }); } catch (_) {}
+    }
+    function focusCard() {
+        const b = [bNext, bAlt, bSkip, bBack].find(x => x && !x.hidden && x.getAttribute('aria-disabled') !== 'true');
+        try { (b || card).focus({ preventScroll: true }); } catch (_) {}
+    }
+    function listen(on) {
+        const f = on ? 'addEventListener' : 'removeEventListener';
+        window[f]('scroll', schedule, { capture: true, passive: true });
+        window[f]('resize', schedule, { passive: true });
+        document[f]('keydown', onKey);
+        ['pointerup', 'input', 'change', 'keyup'].forEach(t => document[f](t, onEvt, true));
+        if (mq) { if (mq.addEventListener) mq[on ? 'addEventListener' : 'removeEventListener']('change', schedule); }
+    }
+
+    // ── boyama ───────────────────────────────────────────────────────
+    function paintProg() {
+        if (prog.childElementCount !== N) { prog.innerHTML = ''; steps.forEach(() => prog.append(mk('span', 'lp-tut-seg'))); }
+        Array.from(prog.children).forEach((sg, i) => { sg.classList.toggle('on', isDone(steps[i])); sg.classList.toggle('cur', i === cur); });
+    }
+    function setBtn(b, text, show) { b.hidden = !show; if (show) lpBtnText(b, text); }
+    function paintState() {
+        if (cur < 0 || cur >= N) { stEl.hidden = true; return; }
+        const s = steps[cur], d = isDone(s);
+        stEl.hidden = false;
+        const missing = !!s.target && !visibleRect(tgt);
+        stEl.classList.toggle('is-ok', d); stEl.classList.toggle('is-miss', missing && !d);
+        stLed.set(d || !!s.check);
+        stLed.setColor(d ? 'var(--ok-strong)' : (missing ? 'var(--warn)' : null));
+        stTxt.textContent = missing && !d ? L('lp_tut_miss') : d ? L(doneNow || !s.check ? 'lp_tut_ok' : 'lp_tut_already') : L(s.check ? 'lp_tut_auto' : 'lp_tut_info');
+        gotoBtn.hidden = !tgt || !visibleRect(tgt);
+        const need = !!s.check && !d;
+        bNext.setAttribute('aria-disabled', String(need));
+        bNext.title = need ? L('lp_tut_need') : '';
+        setBtn(bSkip, L('lp_tut_skip'), need);
+    }
+    function paint() {
+        build();
+        const title = lpTutText(o.title);
+        nameEl.textContent = title;
+        xBtn.setAttribute('aria-label', L('lp_tut_close')); xBtn.title = L('lp_tut_close_t');
+        lpBtnText(gotoBtn, L('lp_tut_goto')); gotoBtn.title = L('lp_tut_goto_t');
+        ablEl._l.textContent = L('lp_tut_ableton');
+        paintProg();
+        const step = cur >= 0 && cur < N ? steps[cur] : null;
+        card.classList.toggle('is-end', cur >= N); card.classList.toggle('is-intro', cur < 0);
+        if (cur < 0) {                                   // giriş
+            const p = doneCount();
+            kick.textContent = `${L('lp_tut_kick')} · ${Lf('lp_tut_steps', { N })}`;
+            hEl.textContent = title;
+            bodyEl.textContent = lpTutText(o.intro);
+            ablEl.hidden = true; hintEl.hidden = true;
+            setBtn(bBack, L('lp_tut_back'), false); setBtn(bSkip, '', false);
+            setBtn(bAlt, L('lp_tut_close_t'), true);
+            setBtn(bNext, p ? `${L('lp_tut_resume')} ${p}/${N}` : L('lp_tut_start'), true);
+            bNext.setAttribute('aria-disabled', 'false'); bNext.title = '';
+        } else if (cur >= N) {                           // bitiş
+            kick.textContent = L('lp_tut_done_kick');
+            hEl.textContent = L('lp_tut_done_h');
+            bodyEl.textContent = lpTutText(o.outro) || L('lp_tut_done_body');
+            ablEl.hidden = true; hintEl.hidden = true;
+            setBtn(bBack, '', false); setBtn(bSkip, '', false);
+            setBtn(bAlt, L('lp_tut_restart'), true);
+            setBtn(bNext, L('lp_tut_close_t'), true);
+            bNext.setAttribute('aria-disabled', 'false'); bNext.title = '';
+        } else {
+            kick.textContent = `${L('lp_tut_kick')} · ${pad2(cur + 1)}/${pad2(N)}`;
+            hEl.textContent = lpTutText(step.title);
+            bodyEl.textContent = lpTutText(step.body); bodyEl.hidden = !bodyEl.textContent;
+            const ab = lpTutText(step.ableton); ablT.textContent = ab; ablEl.hidden = !ab;
+            const hi = lpTutText(step.hint); hintEl.textContent = hi; hintEl.hidden = !hi;
+            setBtn(bBack, L('lp_tut_back'), cur > 0);
+            setBtn(bAlt, '', false);
+            setBtn(bNext, cur === N - 1 ? L('lp_tut_finish') : L('lp_tut_next'), true);
+        }
+        if (cur < 0 || cur >= N) bodyEl.hidden = !bodyEl.textContent;
+        paintState();
+        schedule();
+    }
+
+    // ── gezinme ──────────────────────────────────────────────────────
+    function leave() {
+        clearTimeout(advT); advT = null;
+        const s = steps[cur];
+        if (s && s.onLeave) { try { s.onLeave(api, s); } catch (e) { console.warn('[lab] tutorial onLeave:', e); } }
+    }
+    function enter(i, opts) {
+        leave();
+        cur = i;
+        const s = steps[cur];
+        tgt = null; lastOk = false; checkWarned = false; doneNow = false;
+        if (s) {
+            if (s.onEnter) { try { s.onEnter(api, s); } catch (e) { console.warn('[lab] tutorial onEnter:', e); } }
+            enteredDone = isDone(s);
+            tgt = resolve();
+            if (s.check && enteredDone) { try { lastOk = !!s.check(); } catch (_) { lastOk = false; } }
+        }
+        watch();
+        paint();
+        place();                                   // kart önce yerleşsin (telefonda kaplayacağı alan belli olsun)
+        if (s) { scrollToTarget(); place(); }
+        if (s) lpAnnounce(Lf('lp_tut_sr_step', { n: cur + 1, N, t: lpTutText(s.title) }));
+        else if (cur >= N) lpAnnounce(Lf('lp_tut_sr_done', { t: lpTutText(o.title) }));
+        else lpAnnounce(`${lpTutText(o.title)} — ${lpTutText(o.intro)}`);
+        if (o.onStep) { try { o.onStep(cur, s || null); } catch (e) { console.warn('[lab] tutorial onStep:', e); } }
+        // Bu adım zaten şu an sağlanıyorsa (ör. öğrenci önceden yapmış) bekletmeden işle
+        if (s && s.check && !(opts && opts.noCheck)) evalCheck();
+        emit();
+    }
+    function markStep(s) {
+        if (!_labStoreTask(mid, `tut-${tid}-${s.id}`)) return false;   // completeTask DEĞİL: kutlama/sayaç yok
+        labPersistTasks(true);
+        return true;
+    }
+    function checkAllDone() {
+        if (N && doneCount() === N && !allDoneSeen) {
+            allDoneSeen = true;
+            if (o.onDone) { try { o.onDone(api); } catch (e) { console.warn('[lab] tutorial onDone:', e); } }
+        }
+    }
+    function completeStep(auto) {
+        const s = steps[cur];
+        if (!s) return;
+        const fresh = markStep(s);
+        enteredDone = true; lastOk = true; doneNow = true;
+        paintProg(); paintState(); emit();
+        if (fresh || auto) lpAnnounce(Lf('lp_tut_sr_ok', { t: lpTutText(s.title) }));
+        checkAllDone();
+        if (auto) {
+            const at = cur;
+            advT = setTimeout(() => { advT = null; if (active && cur === at) forward(false); }, lpReduced() ? 450 : 700);
+        } else forward(true);
+    }
+    // Sonraki adım; sonda: hepsi bittiyse bitiş ekranı, değilse ilk açık adım
+    function forward(fromBtn) {
+        let i = cur + 1;
+        if (i >= N) {
+            const f = firstOpen();
+            if (f === cur) { lpAnnounce(L('lp_tut_need')); return; }   // tek açık adım bu: yerinde kal
+            if (f >= 0) { i = f; lpAnnounce(L('lp_tut_left')); } else i = N;
+        }
+        enter(i);
+        if (fromBtn) keepFocus();
+    }
+    function onPrimary() {
+        if (cur < 0) { const f = firstOpen(); enter(f >= 0 ? f : 0); keepFocus(); return; }
+        if (cur >= N) { api.stop(); return; }
+        const s = steps[cur];
+        if (s.check && !isDone(s)) { lpAnnounce(L('lp_tut_need')); return; }
+        if (!s.check) completeStep(false); else forward(true);
+    }
+    function onAlt() {
+        if (cur < 0) { api.stop(); return; }
+        if (cur >= N) { api.restart(); }
+    }
+
+    const api = {
+        mid, id: tid, steps,
+        get title() { return lpTutText(o.title); },
+        get el() { build(); return card; },
+        get current() { return cur; },
+        get active() { return active; },
+        get done() { return N > 0 && doneCount() === N; },
+        progress: () => ({ done: doneCount(), total: N }),
+        subscribe(fn) { subs.add(fn); return () => subs.delete(fn); },
+        start(from) {
+            if (_lpTutActive && _lpTutActive !== api) _lpTutActive.stop();
+            build();
+            let i;
+            if (from != null) {
+                i = typeof from === 'number' ? from : steps.findIndex(s => s.id === String(from));
+                if (!(i >= -1 && i <= N)) i = 0;
+            } else {
+                const f = firstOpen();
+                i = f < 0 ? N : (doneCount() === 0 && lpTutText(o.intro) ? -1 : f);
+            }
+            if (!active) {
+                active = true; _lpTutActive = api;
+                const a = document.activeElement;
+                returnFocus = a && a !== document.body && !card.contains(a) ? a : null;
+                if (!card.isConnected) document.body.append(ring, card);
+                labOnRefresh(card);
+                card.hidden = false;
+                listen(true);
+                tick = setInterval(onTick, 250);
+                unreg = lpOnTeardown(() => api.stop());
+            }
+            enter(i);
+            try { card.focus({ preventScroll: true }); } catch (_) {}
+            return api;
+        },
+        stop() {
+            if (!active) return api;
+            leave();
+            active = false; if (_lpTutActive === api) _lpTutActive = null;
+            clearInterval(tick); tick = null; clearTimeout(evT); evT = null;
+            if (raf) cancelAnimationFrame(raf); raf = 0;
+            if (ro) { ro.disconnect(); ro = null; }
+            listen(false);
+            lpOffTeardown(unreg); unreg = null;
+            const back = card.contains(document.activeElement);
+            card.hidden = true; ring.hidden = true;
+            ring.remove(); card.remove();                 // gizli kart gövdede birikmesin
+            tgt = null;
+            lpAnnounce(L('lp_tut_sr_close'));
+            if (back && returnFocus && returnFocus.isConnected) try { returnFocus.focus({ preventScroll: true }); } catch (_) {}
+            returnFocus = null;
+            emit();
+            if (o.onClose) { try { o.onClose(api); } catch (e) { console.warn('[lab] tutorial onClose:', e); } }
+            return api;
+        },
+        next() { if (active) onPrimary(); return api; },
+        prev() { if (active && cur > 0) { enter(cur - 1); keepFocus(); } return api; },
+        skip() { if (active && cur >= 0 && cur < N) forward(true); return api; },
+        goTo(x) { const i = typeof x === 'number' ? x : steps.findIndex(s => s.id === String(x)); if (active && i >= -1 && i <= N) enter(i); return api; },
+        restart() { if (!active) return api.start(0); enter(0); keepFocus(); return api; },
+        refresh() { if (active) { tgt = resolve(); watch(); paint(); } emit(); return api; },
+    };
+    return api;
+}
+
+// Başlık çubuğu "ÖĞRETİCİ x/N" düğmesi
+function makeTutorialButton(tut, o) {
+    o = o || {};
+    const b = lpBtn({ icon: LP_TUT_IC.cap, text: o.compact ? '' : (o.text || L('lp_tut_btn')), cls: 'lp-tut-btn' + (o.compact ? ' lp-tut-btn--c' : '') });
+    const n = mk('span', 'lp-tut-btn-n'); b.append(n);
+    b.addEventListener('click', () => { if (tut.active) tut.stop(); else tut.start(); });
+    function refresh() {
+        const p = tut.progress(), all = p.total > 0 && p.done === p.total;
+        if (!o.compact && !o.text) lpBtnText(b, L('lp_tut_btn'));
+        if (all) n.innerHTML = LP_TUT_IC.check; else n.textContent = `${p.done}/${p.total}`;
+        b.classList.toggle('is-done', all);
+        b.setAttribute('aria-pressed', String(tut.active));
+        b.setAttribute('aria-label', Lf('lp_tut_chip_aria', { t: `${L('lp_tut_btn_aria')}: ${tut.title}`, d: p.done, N: p.total }));
+        b.title = L('lp_tut_btn_t');
+    }
+    tut.subscribe(refresh);
+    labOnRefresh(b, refresh);
+    refresh();
+    return { el: b, refresh };
+}
+// Küçük ilerleme çipi
+function makeTutorialChip(tut) {
+    const el = mk('span', 'lp-tut-chip'); el.setAttribute('role', 'img');
+    const bar = mk('span', 'lp-tut-chip-bar'); const t = mk('span', 'lp-tut-chip-t');
+    bar.append(mk('span')); el.append(mk('span', 'lp-tut-chip-ic', LP_TUT_IC.cap), bar, t);
+    function refresh() {
+        const p = tut.progress(), all = p.total > 0 && p.done === p.total;
+        el.classList.toggle('is-done', all);
+        el.style.setProperty('--p', p.total ? (p.done / p.total).toFixed(4) : '0');
+        t.textContent = all ? L('lp_tut_chip_done') : `${p.done}/${p.total}`;
+        el.setAttribute('aria-label', Lf('lp_tut_chip_aria', { t: tut.title, d: p.done, N: p.total }));
+    }
+    tut.subscribe(refresh);
+    labOnRefresh(el, refresh);
+    refresh();
+    return { el, refresh };
+}
+
+// ═══ 2) ÖRNEK KÜTÜPHANESİ ══════════════════════════════════════════
+// Kaynak: Classic = mevcut assets/audio WAV'ları; Mersey (Sounds Mania, davul one-shot) ve Cassianism
+// (tonal loop) satın alınan paketlerden — sitede yalnız akışla çalınır, indirme düğmesi yok.
+const LAB_SAMPLE_PACKS = {
+    classic:    { id: 'classic',    name: 'Classic',    vendor: 'BE' },
+    mersey:     { id: 'mersey',     name: 'Mersey',     vendor: 'Sounds Mania' },
+    cassianism: { id: 'cassianism', name: 'Cassianism', vendor: 'Sounds Mania' },
+};
+// Ölçümler: ffmpeg ebur128 (lufs, entegre; < 0.4 sn dosyada ölçülemez → null) + volumedetect (peakDb, örnek tepe).
+// gainDb: loop → −14 LUFS'a (−12…+4 dB), one-shot → −1 dBFS tepeye.
+// Tonlar: Cassianism paket etiketi (Am / C#m) kroma analiziyle uyumlu; Classic loop'larda belirsiz → null.
+const _lpS = (id, file, name, pack, kind, x) => Object.assign({
+    id, file, name, pack, kind, oneShot: true, loop: false, bpm: null, bars: null, key: null, gainDb: 0,
+    peakDb: 0, lufs: null, dur: 0, sr: 44100, tags: [],
+}, x);
+const LAB_SAMPLES = [
+    // Classic (assets/audio)
+    _lpS('classic-kick',  '/assets/audio/Kick.wav',          'Kick',       'classic', 'kick',  { gainDb: -1.0, peakDb: 0.0,  dur: 0.360, sr: 48000, tags: ['drum', 'one-shot', 'punch'] }),
+    _lpS('classic-snare', '/assets/audio/Snare.wav',         'Snare',      'classic', 'snare', { gainDb: -1.0, peakDb: 0.0,  lufs: -17.1, dur: 1.329, sr: 48000, tags: ['drum', 'one-shot'] }),
+    _lpS('classic-chat',  '/assets/audio/Close Hat.wav',     'Closed Hat', 'classic', 'chat',  { gainDb: -1.0, peakDb: 0.0,  lufs: -14.0, dur: 0.735, sr: 48000, tags: ['drum', 'one-shot', 'hat'] }),
+    _lpS('classic-ohat',  '/assets/audio/Open Hat (1).wav',  'Open Hat',   'classic', 'ohat',  { gainDb: -0.7, peakDb: -0.3, lufs: -13.9, dur: 1.0, tags: ['drum', 'one-shot', 'hat'] }),
+    _lpS('classic-bass',  '/assets/audio/bass.wav',          'Bass',       'classic', 'bass',  { gainDb: -1.0, peakDb: 0.0,  dur: 0.125, sr: 48000, root: 24, tags: ['bass', 'one-shot', 'sub'] }),
+    _lpS('classic-lead-loop', '/assets/audio/Lead Loop.wav', 'Lead Loop',  'classic', 'lead',  { oneShot: false, loop: true, bpm: 125, bars: 16, gainDb: 2.0, peakDb: 0.0, lufs: -16.0, dur: 30.72, tags: ['loop', 'melodic'] }),
+    _lpS('classic-pad-loop',  '/assets/audio/Pad Loop.wav',  'Pad Loop',   'classic', 'pad',   { oneShot: false, loop: true, bpm: 125, bars: 4,  gainDb: 3.4, peakDb: -2.0, lufs: -17.4, dur: 7.68, tags: ['loop', 'chords'] }),
+    // Mersey · Sounds Mania (davul one-shot)
+    _lpS('mersey-kick-02',       '/assets/audio/lab/mersey-kick-02.flac',       'Kick 02',       'mersey', 'kick',  { gainDb: -0.9, peakDb: -0.1, dur: 0.480, tags: ['drum', 'one-shot', 'house'] }),
+    _lpS('mersey-kick-08',       '/assets/audio/lab/mersey-kick-08.flac',       'Kick 08',       'mersey', 'kick',  { gainDb: -0.9, peakDb: -0.1, dur: 0.480, tags: ['drum', 'one-shot', 'house'] }),
+    _lpS('mersey-clap-11',       '/assets/audio/lab/mersey-clap-11.flac',       'Clap 11',       'mersey', 'clap',  { gainDb: -1.0, peakDb: 0.0,  lufs: -17.4, dur: 0.486, tags: ['drum', 'one-shot'] }),
+    _lpS('mersey-clap-14',       '/assets/audio/lab/mersey-clap-14.flac',       'Clap 14',       'mersey', 'clap',  { gainDb: -0.9, peakDb: -0.1, dur: 0.307, tags: ['drum', 'one-shot', 'short'] }),
+    _lpS('mersey-closed-hat-02', '/assets/audio/lab/mersey-closed-hat-02.flac', 'Closed Hat 02', 'mersey', 'chat',  { gainDb: -0.2, peakDb: -0.8, lufs: -15.8, dur: 0.484, tags: ['drum', 'one-shot', 'hat'] }),
+    _lpS('mersey-closed-hat-04', '/assets/audio/lab/mersey-closed-hat-04.flac', 'Closed Hat 04', 'mersey', 'chat',  { gainDb: 1.0,  peakDb: -2.0, lufs: -14.7, dur: 0.484, tags: ['drum', 'one-shot', 'hat'] }),
+    _lpS('mersey-open-hat-01',   '/assets/audio/lab/mersey-open-hat-01.flac',   'Open Hat 01',   'mersey', 'ohat',  { gainDb: -1.0, peakDb: 0.0,  lufs: -18.0, dur: 1.0,   tags: ['drum', 'one-shot', 'hat', 'long'] }),
+    _lpS('mersey-open-hat-03',   '/assets/audio/lab/mersey-open-hat-03.flac',   'Open Hat 03',   'mersey', 'ohat',  { gainDb: -0.3, peakDb: -0.7, lufs: -17.2, dur: 0.484, tags: ['drum', 'one-shot', 'hat'] }),
+    _lpS('mersey-open-hat-06',   '/assets/audio/lab/mersey-open-hat-06.flac',   'Open Hat 06',   'mersey', 'ohat',  { gainDb: -1.0, peakDb: 0.0,  lufs: -16.0, dur: 0.469, tags: ['drum', 'one-shot', 'hat'] }),
+    _lpS('mersey-ride-01',       '/assets/audio/lab/mersey-ride-01.flac',       'Ride 01',       'mersey', 'ride',  { gainDb: 0.5,  peakDb: -1.5, lufs: -10.3, dur: 0.840, tags: ['drum', 'one-shot', 'cymbal'] }),
+    // Cassianism · Sounds Mania (tonal loop, 126 BPM · 8 ölçü)
+    _lpS('cassianism-lead-02',  '/assets/audio/lab/cassianism-lead-02-126-amin.flac',  'Lead 02',  'cassianism', 'lead',  { oneShot: false, loop: true, bpm: 126, bars: 8, key: 'Am',  gainDb: -1.1, peakDb: 0.0, lufs: -12.9, dur: 15.2381, tags: ['loop', 'melodic'] }),
+    _lpS('cassianism-lead-12',  '/assets/audio/lab/cassianism-lead-12-126-csmin.flac', 'Lead 12',  'cassianism', 'lead',  { oneShot: false, loop: true, bpm: 126, bars: 8, key: 'C#m', gainDb: 2.8,  peakDb: 0.0, lufs: -16.8, dur: 15.2381, tags: ['loop', 'melodic'] }),
+    _lpS('cassianism-pad-02',   '/assets/audio/lab/cassianism-pad-02-126-amin.flac',   'Pad 02',   'cassianism', 'pad',   { oneShot: false, loop: true, bpm: 126, bars: 8, key: 'Am',  gainDb: -1.1, peakDb: 0.0, lufs: -12.9, dur: 15.2381, tags: ['loop', 'chords'] }),
+    _lpS('cassianism-pad-15',   '/assets/audio/lab/cassianism-pad-15-126-csmin.flac',  'Pad 15',   'cassianism', 'pad',   { oneShot: false, loop: true, bpm: 126, bars: 8, key: 'C#m', gainDb: -2.3, peakDb: 0.0, lufs: -11.7, dur: 15.2381, tags: ['loop', 'chords'] }),
+    _lpS('cassianism-pluck-02', '/assets/audio/lab/cassianism-pluck-02-126-amin.flac', 'Pluck 02', 'cassianism', 'pluck', { oneShot: false, loop: true, bpm: 126, bars: 8, key: 'Am',  gainDb: -5.0, peakDb: 0.0, lufs: -9.0,  dur: 15.2381, tags: ['loop', 'melodic', 'pluck'] }),
+];
+const LAB_SAMPLE_KINDS = ['kick', 'snare', 'clap', 'chat', 'ohat', 'ride', 'bass', 'lead', 'pad', 'pluck'];
+const _lpSById = {};
+LAB_SAMPLES.forEach(s => { _lpSById[s.id] = s; });
+
+function labSample(id) { return _lpSById[id] || null; }
+function labSamplesByKind(kind) {
+    const ks = [].concat(kind == null ? LAB_SAMPLE_KINDS : kind);
+    return LAB_SAMPLES.filter(s => ks.indexOf(s.kind) >= 0);
+}
+function labSampleUrl(id) { const s = labSample(id); return s ? s.file.split('/').map(encodeURIComponent).join('/') : null; }
+function labSampleGain(id) { const s = labSample(id); return s ? lpLin(s.gainDb || 0) : 1; }
+function labLoopRate(id, bpm) { const s = labSample(id); return s && s.loop && s.bpm && bpm > 0 ? bpm / s.bpm : 1; }
+function labLoopDuration(id, bpm) {
+    const s = labSample(id);
+    if (!s) return 0;
+    if (!s.loop || !s.bars) return s.dur || 0;
+    return s.bars * 4 * 60 / (bpm > 0 ? bpm : s.bpm);
+}
+
+// ── Yükleyici: genel önbellek + tek uçuşta istek ────────────────────
+const _lpSBuf = new Map();     // id → AudioBuffer
+const _lpSReq = new Map();     // id → Promise<AudioBuffer|null> (uçuşta)
+let _lpSDecoder = null;        // paylaşılan OfflineAudioContext (jest gerektirmez)
+function lpSampleDecoder(ctx) {
+    if (ctx && ctx.state !== 'closed' && typeof ctx.decodeAudioData === 'function') return ctx;
+    if (!_lpSDecoder) {
+        const O = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (O) { try { _lpSDecoder = new O(2, 1, 44100); } catch (e) { console.warn('[lab] sample decoder:', e); } }
+    }
+    return _lpSDecoder;
+}
+function labSampleBuffer(ctx, id) {
+    const s = labSample(id);
+    if (!s) { console.warn('[lab] sample: bilinmeyen id', id); return Promise.resolve(null); }
+    if (_lpSBuf.has(id)) return Promise.resolve(_lpSBuf.get(id));
+    if (_lpSReq.has(id)) return _lpSReq.get(id);
+    const dec = lpSampleDecoder(ctx);
+    const p = fetch(labSampleUrl(id))
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            const ct = (r.headers.get('content-type') || '').toLowerCase();
+            if (ct.indexOf('text/html') >= 0) throw new Error('HTML yanıtı (dosya yok)');
+            return r.arrayBuffer();
+        })
+        .then(ab => {
+            if (!dec) throw new Error('çözücü yok');
+            // decodeAudioData: vaat + eski geri çağırmalı (webkit) biçimi birlikte
+            return new Promise((res, rej) => { const q = dec.decodeAudioData(ab, res, rej); if (q && q.then) q.then(res, rej); });
+        })
+        .then(buf => { _lpSBuf.set(id, buf); _lpSReq.delete(id); return buf; })
+        .catch(e => { _lpSReq.delete(id); console.warn('[lab] sample:', id, e && e.message ? e.message : e); return null; });
+    _lpSReq.set(id, p);
+    return p;
+}
+
+// ── Önizleme yolu (sayfada tek ses) ─────────────────────────────────
+let _lpAudCtx = null;          // kendi önizleme bağlamımız (ctx verilmediyse; ilk jestte kurulur)
+let _lpAud = null;             // { id, src, g, ctx, onEnd, t }
+let _lpAudUnreg = null;
+function labSampleAuditionId() { return _lpAud ? _lpAud.id : null; }
+function labSampleAuditionStop() {
+    const a = _lpAud;
+    if (!a) return;
+    _lpAud = null;
+    clearTimeout(a.t);
+    try {
+        const now = a.ctx.currentTime;
+        a.g.gain.cancelScheduledValues(now);
+        a.g.gain.setTargetAtTime(0, now, 0.015);
+        a.src.stop(now + 0.09);
+    } catch (_) {}
+    setTimeout(() => { try { a.src.disconnect(); a.g.disconnect(); } catch (_) {} }, 150);
+    if (a.onEnd) { try { a.onEnd(); } catch (e) { console.warn('[lab] audition onEnd:', e); } }
+}
+function lpAudTeardown() {
+    labSampleAuditionStop();
+    _lpAudUnreg = null;
+    if (_lpAudCtx) { const c = _lpAudCtx; _lpAudCtx = null; try { c.close(); } catch (_) {} }
+}
+function labSampleAudition(id, o) {
+    o = o || {};
+    labSampleAuditionStop();
+    const s = labSample(id);
+    if (!s) return Promise.resolve(false);
+    let ctx = typeof o.ctx === 'function' ? o.ctx() : o.ctx;   // bağlam ya da onu veren fonksiyon (ör. getBeatCtx)
+    if (!ctx || ctx.state === 'closed') ctx = null;
+    if (!ctx) {
+        if (!_lpAudCtx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return Promise.resolve(false);
+            try { _lpAudCtx = new AC(); } catch (e) { console.warn('[lab] audition ctx:', e); return Promise.resolve(false); }
+        }
+        ctx = _lpAudCtx;
+    }
+    if (!_lpAudUnreg) _lpAudUnreg = lpOnTeardown(lpAudTeardown);
+    if (ctx.state === 'suspended') { const p = ctx.resume(); if (p && p.catch) p.catch(() => {}); }
+    const token = {};
+    _lpAud = { id, token, pending: true, onEnd: o.onEnd, ctx, t: null, src: null, g: null };
+    const pend = _lpAud;
+    return labSampleBuffer(ctx, id).then(buf => {
+        if (_lpAud !== pend) return false;            // bu arada başka önizleme / durdurma
+        if (!buf) { _lpAud = null; if (o.onEnd) o.onEnd(); return false; }
+        const src = ctx.createBufferSource(); src.buffer = buf;
+        const bpm = typeof o.bpm === 'function' ? o.bpm() : o.bpm;
+        if (s.loop && bpm) src.playbackRate.value = labLoopRate(id, bpm);
+        const g = ctx.createGain();
+        const now = ctx.currentTime, lvl = lpLin((s.gainDb || 0) - 6);
+        g.gain.setValueAtTime(0, now);
+        g.gain.setTargetAtTime(lvl, now, 0.004);
+        src.connect(g); g.connect(o.dest || ctx.destination);
+        src.onended = () => { if (_lpAud && _lpAud.src === src) { _lpAud = null; try { src.disconnect(); g.disconnect(); } catch (_) {} if (pend.onEnd) pend.onEnd(); } };
+        src.start(now);
+        pend.src = src; pend.g = g; pend.pending = false;
+        const maxSec = o.maxSec > 0 ? o.maxSec : 16;
+        const len = buf.duration / (src.playbackRate.value || 1);
+        if (len > maxSec) pend.t = setTimeout(() => { if (_lpAud === pend) labSampleAuditionStop(); }, maxSec * 1000);
+        return true;
+    });
+}
+// Bekleyen (henüz tampon gelmemiş) önizleme: durdurulursa src yok → stop güvenli
+// (labSampleAuditionStop try/catch'li; pend.src null iken yalnız onEnd çalışır).
+
+// ── makeSampleBrowser ───────────────────────────────────────────────
+function lpSmpMeta(s) {
+    if (s.loop) return [s.bpm ? s.bpm + ' BPM' : '', s.key || '', s.bars ? Lf('lp_smp_bars', { n: s.bars }) : ''].filter(Boolean).join(' · ');
+    return (s.dur < 1 ? Math.round(s.dur * 1000) + ' ms' : s.dur.toFixed(2) + ' s');
+}
+function makeSampleBrowser(o) {
+    o = o || {};
+    const allKinds = [].concat(o.kinds || LAB_SAMPLE_KINDS);
+    let kindF = null, cur = o.value != null ? o.value : null;
+    const el = mk('section', 'lp-sb' + (o.cls ? ' ' + o.cls : ''));
+    if (o.height) el.style.setProperty('--lp-sbh', o.height + 'px');
+    const lbl = o.label || L('lp_smp_aria');
+    el.setAttribute('aria-label', lbl);
+    const head = mk('div', 'lp-sb-head');
+    const cap = mk('span', 'lp-sb-cap'); cap.textContent = L('lp_smp_cap');
+    const curEl = mk('span', 'lp-sb-cur');
+    const listenB = o.audition !== false ? lpBtn({ icon: 'play', text: L('lp_smp_listen'), cls: 'lp-sb-listen', onClick: () => { const id = activeId() || cur; if (id) toggleAud(id); } }) : null;
+    if (listenB) { listenB.setAttribute('aria-label', L('lp_smp_listen_a')); listenB.setAttribute('aria-pressed', 'false'); }
+    head.append(cap, curEl);
+    if (listenB) head.append(listenB);
+    el.append(head);
+    let seg = null;
+    if (o.filter && allKinds.length > 1) {
+        const kinds = allKinds.filter(k => LAB_SAMPLES.some(s => s.kind === k));
+        seg = makeSeg([['all', L('lp_smp_all')]].concat(kinds.map(k => [k, L('lp_smp_k_' + k)])), 'all', v => { kindF = v === 'all' ? null : v; build(); }, { label: L('lp_smp_filter') });
+        const fr = mk('div', 'lp-sb-filter'); fr.append(seg.el); el.append(fr);
+    }
+    const hintId = lpId('lpSbK');
+    const hint = mk('span', 'sr-only'); hint.id = hintId; hint.textContent = L('lp_smp_keys');
+    const list = mk('div', 'lp-sb-list'); list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', lbl);
+    list.setAttribute('aria-describedby', hintId);
+    el.append(list, hint);
+    let opts = [];
+    const activeId = () => { const a = document.activeElement; return a && a._sid && list.contains(a) ? a._sid : null; };
+    function samples() {
+        const ks = kindF ? [kindF] : allKinds;
+        return LAB_SAMPLES.filter(s => ks.indexOf(s.kind) >= 0 && (!o.packs || o.packs.indexOf(s.pack) >= 0));
+    }
+    function build() {
+        const hadFocus = list.contains(document.activeElement) ? activeId() : null;
+        list.innerHTML = ''; opts = [];
+        const packs = [];
+        samples().forEach(s => { let P = packs.find(x => x.p === s.pack); if (!P) packs.push(P = { p: s.pack, list: [] }); P.list.push(s); });
+        packs.forEach(P => {
+            const gid = lpId('lpSbG'), pk = LAB_SAMPLE_PACKS[P.p] || { name: P.p, vendor: '' };
+            const gw = mk('div', 'lp-sb-gw'); gw.setAttribute('role', 'group'); gw.setAttribute('aria-labelledby', gid);
+            const gh = mk('div', 'lp-sb-gh'); gh.id = gid;
+            gh.textContent = `${pk.name}${pk.vendor ? ' · ' + pk.vendor : ''} · ${P.list.length}`.toLocaleUpperCase('en-US');   // özel ad: Türkçe İ olmasın
+            gw.append(gh);
+            P.list.forEach(s => {
+                const op = mk('div', 'lp-sb-opt'); op.setAttribute('role', 'option'); op.id = lpId('lpSbO'); op._sid = s.id; op.tabIndex = -1;
+                const pl = mk('span', 'lp-sb-play', LP_IC.play); pl.setAttribute('aria-hidden', 'true');
+                if (o.audition === false) pl.hidden = true;
+                const nm = mk('span', 'lp-sb-name'); nm.textContent = s.name;
+                const tg = mk('span', 'lp-tag'); tg.textContent = L('lp_smp_k_' + s.kind);
+                const mt = mk('span', 'lp-sb-meta'); mt.textContent = lpSmpMeta(s);
+                op.append(pl, nm, tg, mt);
+                op.addEventListener('click', e => {
+                    if (e.target.closest('.lp-sb-play')) { op.focus({ preventScroll: true }); toggleAud(s.id); return; }
+                    pick(s.id, true);
+                });
+                gw.append(op); opts.push(op);
+            });
+            list.append(gw);
+        });
+        paint();
+        if (hadFocus) { const f = opts.find(x => x._sid === hadFocus) || opts[0]; if (f) f.focus({ preventScroll: true }); }
+    }
+    function paint() {
+        const s = labSample(cur), playing = labSampleAuditionId();
+        curEl.textContent = s ? `${(LAB_SAMPLE_PACKS[s.pack] || {}).name || s.pack} · ${s.name}` : L('lp_smp_none');
+        let roving = null;
+        opts.forEach(x => {
+            const sel = x._sid === cur;
+            x.setAttribute('aria-selected', String(sel));
+            const on = x._sid === playing;
+            x.classList.toggle('is-playing', on);
+            const pl = x.querySelector('.lp-sb-play'); if (pl && pl._on !== on) { pl._on = on; pl.innerHTML = on ? LP_IC.stop : LP_IC.play; }
+            if (sel) roving = x;
+        });
+        const focusIn = list.contains(document.activeElement);
+        if (!focusIn) { opts.forEach(x => { x.tabIndex = -1; }); (roving || opts[0] || { tabIndex: 0 }).tabIndex = 0; }
+        if (listenB) {
+            const mine = playing && opts.some(x => x._sid === playing);
+            if (listenB.getAttribute('aria-pressed') !== String(!!mine)) {
+                listenB.setAttribute('aria-pressed', String(!!mine));
+                listenB.querySelector('svg').outerHTML = mine ? LP_IC.stop : LP_IC.play;
+            }
+        }
+    }
+    function pick(id, fire) {
+        const s = labSample(id);
+        if (!s) return;
+        cur = id; paint();
+        if (fire && o.onPick) o.onPick(s);
+    }
+    function setBusy(id, on, err) {
+        const op = opts.find(x => x._sid === id); if (!op) return;
+        op.classList.toggle('is-busy', !!on); op.toggleAttribute('aria-busy', !!on);
+        op.classList.toggle('is-err', !!err);
+        if (err) op.title = `${labSample(id).name} — ${L('lp_smp_err')}`;
+    }
+    function toggleAud(id) {
+        if (o.audition === false) return;
+        if (labSampleAuditionId() === id) { labSampleAuditionStop(); paint(); return; }
+        setBusy(id, true);
+        labSampleAudition(id, { ctx: o.ctx, bpm: o.bpm, onEnd: () => paint() }).then(ok => {
+            setBusy(id, false, !ok && !_lpSBuf.has(id) && !_lpSReq.has(id));
+            paint();
+        });
+        paint();
+    }
+    list.addEventListener('keydown', e => {
+        const i = opts.indexOf(document.activeElement);
+        if (i < 0) return;
+        let j = -1;
+        if (e.key === 'ArrowDown') j = Math.min(opts.length - 1, i + 1);
+        else if (e.key === 'ArrowUp') j = Math.max(0, i - 1);
+        else if (e.key === 'Home') j = 0;
+        else if (e.key === 'End') j = opts.length - 1;
+        else if (e.key === 'PageDown') j = Math.min(opts.length - 1, i + 8);
+        else if (e.key === 'PageUp') j = Math.max(0, i - 8);
+        else if (e.key === 'Enter') { e.preventDefault(); pick(opts[i]._sid, true); return; }
+        else if (e.key === ' ') { e.preventDefault(); toggleAud(opts[i]._sid); return; }
+        else if (e.key === 'Escape') { if (labSampleAuditionId()) { e.preventDefault(); e.stopPropagation(); labSampleAuditionStop(); paint(); } return; }
+        if (j >= 0) { e.preventDefault(); opts[i].tabIndex = -1; opts[j].tabIndex = 0; opts[j].focus(); opts[j].scrollIntoView({ block: 'nearest' }); }
+    });
+    list.addEventListener('focusout', () => { requestAnimationFrame(() => { if (!list.contains(document.activeElement)) paint(); }); });
+    // Görünüm kapanınca: önizleme durur (lpAudTeardown kaydı labSampleAudition'da)
+    build();
+    labOnRefresh(el, () => {
+        cap.textContent = L('lp_smp_cap');
+        if (listenB) { lpBtnText(listenB, L('lp_smp_listen')); listenB.setAttribute('aria-label', L('lp_smp_listen_a')); }
+        hint.textContent = L('lp_smp_keys');
+        build();
+    });
+    return {
+        el,
+        get: () => cur,
+        set(id) { cur = id; paint(); },
+        stop() { labSampleAuditionStop(); paint(); },
+        focus() { const f = opts.find(x => x._sid === cur) || opts[0]; if (f) f.focus(); },
+    };
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // NAVIGATION — hero listesi + modül sekmeleri + görünüm değişimi
