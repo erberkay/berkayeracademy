@@ -699,7 +699,162 @@
         /* ═══ /LAB M2 ═══ */
 
         /* ═══ LAB M3 · Mixing ═══ */
+        /* Kök: .lab-mview.lab-m3 (renderModule3). Kanal / bant renkleri --lab-* token'larından (--c). */
+        .lab-m3 { --lab-hr:#66ffcc; /* tasarım: Headroom başlığı + Limiter OUTPUT (token yok, tek seferlik) */ }
+        .lab-m3-c0, .lab-m3-b0 { --c:var(--lab-kick); }
+        .lab-m3-c1, .lab-m3-b1 { --c:var(--lab-snare); }
+        .lab-m3-c2 { --c:var(--lab-chat); }
+        .lab-m3-c3 { --c:var(--lab-ohat); }
+        .lab-m3-c4, .lab-m3-b2 { --c:var(--lab-bass); }
+        .lab-m3-c5 { --c:var(--lab-lead); }
+        .lab-m3-titles { display:flex; flex-direction:column; gap:4px; min-width:0; }
+        /* Başlık çal düğmesi: çalarken yeşil (btnPlay .active → sayfa kuralı kremi ezer) */
+        html .lab .lab-m3-play.active { background:var(--ok-strong); border-color:var(--ok-strong); color:var(--accent-ink); }
+        .lab-m3-play[aria-busy] { cursor:progress; }
 
+        /* ── 3-Band EQ ── */
+        .lab-m3-eqbox { position:relative; height:260px; border-radius:var(--r-14); background:var(--bg-sunk); border:1px solid var(--line-2); overflow:hidden; }
+        .lab-m3-eqbox svg { position:absolute; inset:0; width:100%; height:100%; }
+        .lab-m3-eqgrid line { stroke:var(--line-faint); stroke-width:1; vector-effect:non-scaling-stroke; }
+        .lab-m3-eqgrid .is-zero { stroke:var(--line-strong); }
+        .lab-m3-eqfill { fill:var(--accent-soft); }
+        .lab-m3-eqcurve { fill:none; stroke:var(--accent); stroke-width:3; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+        .lab-m3-eqaxis { position:absolute; left:8px; right:8px; bottom:6px; height:12px; font-family:var(--ff-mono); font-size:var(--fs-micro); line-height:12px; color:var(--fg-faint); pointer-events:none; }
+        .lab-m3-eqaxis span { position:absolute; bottom:0; transform:translateX(-50%); white-space:nowrap; }
+        /* gerçek log konumlar: x = log10(f/20) / 3 */
+        .lab-m3-ax0 { left:0; } .lab-m3-ax1 { left:23.3%; } .lab-m3-ax2 { left:46.6%; } .lab-m3-ax3 { left:56.6%; } .lab-m3-ax4 { left:80%; }
+        .lab-m3-eqaxis .lab-m3-ax0 { transform:none; }
+        .lab-m3-eqaxis .lab-m3-ax5 { left:auto; right:0; transform:none; }
+        .lab-m3-handle { position:absolute; z-index:1; width:28px; height:28px; margin:-14px 0 0 -14px; border-radius:50%; border:2px solid var(--bg); background:var(--c); box-shadow:0 0 0 4px color-mix(in srgb, var(--c) 20%, transparent), 0 0 20px var(--c); touch-action:none; cursor:grab; }
+        .lab-m3-handle::after { content:''; position:absolute; inset:-10px; border-radius:50%; }
+        .lab-m3-handle.is-drag { cursor:grabbing; }
+        .lab .lab-m3-handle:focus-visible { outline:2px solid var(--fg); outline-offset:3px; }
+        .lab-m3-eqread { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; }
+        .lab-m3-eqcell { display:flex; justify-content:space-between; gap:8px; min-width:0; padding:10px 14px; border-radius:var(--r-12); background:var(--bg); border-left:3px solid var(--c); font-family:var(--ff-mono); font-size:12px; white-space:nowrap; }
+        .lab-m3-eqname { color:var(--c); }
+        .lab-m3-gain[data-s="+"] { color:var(--accent); }
+        .lab-m3-gain[data-s="-"] { color:var(--err); }
+        .lab-m3-gain[data-s="0"] { color:var(--fg-muted); }
+
+        /* ── Mixer ── */
+        .lab-m3-mixscroll { overflow-x:auto; scrollbar-width:thin; margin:-4px; padding:4px; }
+        .lab-m3-mixer { display:grid; grid-template-columns:repeat(6, minmax(84px,1fr)) 110px; gap:10px; }
+        .lab-m3-strip { min-width:0; display:flex; flex-direction:column; align-items:center; gap:12px; padding:14px 10px; border-radius:var(--r-16); background:var(--bg); border:1px solid var(--line-2); transition:opacity var(--dur), border-color var(--dur); }
+        .lab-m3-strip.is-muted { opacity:.45; border-color:var(--err-line); }
+        .lab-m3-chname { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; color:var(--c); white-space:nowrap; }
+        .lab-m3-fadrow { display:flex; gap:10px; height:200px; align-items:stretch; }
+        .lab-m3-fadrow .lab-sl.is-v { height:100%; min-height:0; }
+        .lab-m3-meter { position:relative; width:8px; border-radius:var(--r-pill); background:var(--surface-2); overflow:hidden; }
+        .lab-m3-mfill { position:absolute; inset:0; background:linear-gradient(0deg, var(--lab-meter-lo), var(--accent) 70%, var(--ember-rose)); transform:scaleY(0); transform-origin:bottom; }
+        .lab-m3-vol { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--fg); }
+        .lab-m3-pan { width:100%; display:flex; flex-direction:column; gap:4px; }
+        .lab-m3-panrow { display:flex; justify-content:space-between; gap:4px; font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); }
+        .lab-m3-panv { color:var(--fg); }
+        .lab-m3-pan .lab-sl { margin:0; }
+        .lab-m3-mute { position:relative; width:100%; height:34px; border-radius:var(--r-8); border:1px solid var(--line-ctl); background:transparent; color:var(--fg-soft); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:.04em; cursor:pointer; transition:background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast); }
+        .lab-m3-mute::after { content:''; position:absolute; inset:-5px 0; }
+        .lab-m3-mute:hover { border-color:var(--line-hi); color:var(--fg); }
+        .lab-m3-mute[aria-pressed="true"] { background:var(--err-strong); border-color:var(--err-strong); color:var(--bg); }
+        .lab-m3-master { background:var(--surface-hi); border-color:var(--accent-line); }
+        .lab-m3-master .lab-m3-chname { color:var(--accent); }
+        .lab-m3-mmeters { gap:6px; }
+        .lab-m3-mmeters .lab-m3-meter { width:10px; }
+        .lab-m3-mdb { font-family:var(--ff-mono); font-size:var(--fs-label); white-space:nowrap; }
+        .lab-m3-mnote { font-size:var(--fs-micro); line-height:1.4; text-align:center; }
+        .lab-m3-master[data-st="clip"] :is(.lab-m3-mdb, .lab-m3-mnote) { color:var(--err); }
+        .lab-m3-master[data-st="low"] :is(.lab-m3-mdb, .lab-m3-mnote) { color:var(--accent); }
+        .lab-m3-master[data-st="safe"] :is(.lab-m3-mdb, .lab-m3-mnote) { color:var(--ok); }
+        .lab-m3-note { font-size:12px; line-height:1.55; color:var(--fg-faint); }
+        .lab-m3-link { display:inline-block; padding:4px 0; color:var(--accent); font-weight:600; text-decoration:none; transition:color var(--dur-fast); }
+        .lab-m3-link:hover { color:var(--accent-hover); }
+
+        /* ── Mix kavramları ── */
+        .lab-m3 .lab-m3-con { gap:10px; }
+        .lab-m3-c-comp { --c:var(--accent); }
+        .lab-m3-c-sc { --c:var(--lab-bass); }
+        .lab-m3-c-rv { --c:var(--lab-snare); }
+        .lab-m3-c-st { --c:var(--lab-chat); }
+        .lab-m3-c-hr { --c:var(--lab-hr); }
+        .lab-m3-c-lim { --c:var(--err-strong); /* tasarım #b82d45 başlıkta 3.3:1 → kontrast için --err-strong */ }
+        .lab-m3 .lab-m3-con .lab-tcard-head { align-items:center; }
+        .lab-m3-body { line-height:1.55; }
+        .lab-m3-tag { display:inline-flex; align-items:center; gap:4px; font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--fg-muted); white-space:nowrap; }
+        .lab-m3-tag .icon { width:12px; height:12px; }
+        .lab-m3-tag--err, .lab-m3-tag[data-st="clip"] { color:var(--err); }
+        .lab-m3-tag[data-st="low"] { color:var(--accent); }
+        .lab-m3-tag[data-st="safe"] { color:var(--ok); }
+        .lab-m3-viz { position:relative; height:120px; border-radius:var(--r-10); background:var(--bg-sunk); overflow:hidden; }
+        .lab-m3-viz > svg { display:block; width:100%; height:100%; }
+        .lab-m3-sls { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+        .lab-m3-sl { --c:var(--accent); display:flex; flex-direction:column; gap:4px; min-width:0; }
+        .lab-m3-sl .lab-sl { margin:0; }
+        .lab-m3-slrow { display:flex; justify-content:space-between; gap:8px; font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-muted); }
+        .lab-m3-slv { color:var(--fg); white-space:nowrap; }
+        .lab-m3-demos { display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; }
+        .lab-m3-c-hr .lab-m3-demos, .lab-m3-c-lim .lab-m3-demos, .lab-m3-c-comp .lab-m3-demos, .lab-m3-c-sc .lab-m3-demos { padding-top:2px; }
+        /* Compression transfer eğrisi */
+        .lab-m3-diag { fill:none; stroke:var(--line-ctl); stroke-dasharray:4 4; }
+        .lab-m3-ccurve { fill:none; stroke:var(--accent); stroke-width:2.5; stroke-linejoin:round; }
+        .lab-m3-thr { stroke:var(--err-line); stroke-dasharray:3 3; }
+        /* Sidechain: KICK / BASS / GAIN RED. (bir vuruş = .48 s, 125 BPM) */
+        .lab-m3-sc { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; padding:12px 20px; align-items:end; }
+        .lab-m3-sccol { display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; min-width:0; }
+        .lab-m3-sctrack { position:relative; flex:1; width:22px; border-radius:var(--r-6); background:var(--surface-2); overflow:hidden; }
+        .lab-m3-scfill { position:absolute; left:0; right:0; bottom:0; height:100%; transform-origin:bottom; animation-duration:.48s; animation-timing-function:linear; animation-iteration-count:infinite; }
+        .lab-m3-scfill.is-k { background:var(--lab-kick); animation-name:lab-m3-kickp; }
+        .lab-m3-scfill.is-b { background:var(--lab-bass); opacity:var(--sc-op, .72); animation-name:lab-m3-pump; animation-timing-function:var(--sc-ease, linear); }
+        .lab-m3-scfill.is-g { background:var(--err); animation-name:lab-m3-kickp; }
+        .lab-m3-sclbl { font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); white-space:nowrap; }
+        .lab-m3-sc.is-live .lab-m3-scfill { animation:none; }
+        @keyframes lab-m3-kickp { 0% { transform:scaleY(1); } 20% { transform:scaleY(.15); } 100% { transform:scaleY(.1); } }
+        @keyframes lab-m3-pump { 0%, 12% { transform:scaleY(.25); } 100% { transform:scaleY(1); } }
+        /* Reverb halkaları: boyut ROOM SIZE, kenar opaklığı WET */
+        .lab-m3-rv { display:flex; align-items:center; justify-content:center; }
+        .lab-m3-ring { position:absolute; width:var(--room-px, 126px); height:var(--room-px, 126px); border-radius:50%; border:2px solid color-mix(in srgb, var(--c) calc(var(--wet-a, .42) * 100%), transparent); animation:lab-m3-echo 1.6s ease-out infinite; }
+        .lab-m3-ring:nth-child(2) { animation-delay:-.53s; }
+        .lab-m3-ring:nth-child(3) { animation-delay:-1.06s; }
+        .lab-m3-rdot { position:relative; width:14px; height:14px; border-radius:50%; background:var(--c); box-shadow:0 0 16px var(--c); }
+        @keyframes lab-m3-echo { 0% { opacity:1; transform:scale(.4); } 100% { opacity:0; transform:scale(1.6); } }
+        /* Stereo field */
+        .lab-m3-stv { fill:none; stroke:var(--line-strong); }
+        .lab-m3-stc { stroke:color-mix(in srgb, var(--c) 30%, transparent); stroke-dasharray:3 3; }
+        .lab-m3-st text { fill:var(--fg-faint); font-family:var(--ff-mono); font-size:10px; }
+        .lab-m3-dot { fill:var(--c); opacity:.95; transition:opacity var(--dur); }
+        .lab-m3-dot.is-muted { opacity:.2; }
+        /* Headroom çubuğu: 0 dB = %80 */
+        .lab-m3-hrbar { position:relative; height:36px; border-radius:var(--r-8); background:var(--bg-sunk); overflow:hidden; }
+        .lab-m3-hrfill { position:absolute; inset:0; background:linear-gradient(90deg, var(--lab-meter-lo), var(--accent) 75%, var(--ember-rose)); transform:scaleX(var(--p, .6)); transform-origin:left; transition:transform .2s; }
+        .lab-m3-hrmark { position:absolute; top:0; bottom:0; left:80%; width:2px; background:var(--fg); }
+        .lab-m3-hr0 { position:absolute; right:8px; top:50%; transform:translateY(-50%); font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); }
+        .lab-m3-hr0.is-over { color:var(--bg); }
+        /* Limiter */
+        .lab-m3 .lab-toggle.lab-m3-ember { color:var(--fg-muted); font-size:var(--fs-micro); font-weight:400; }
+        .lab-m3 .lab-toggle.lab-m3-ember.on { background:var(--ember-1); border-color:var(--ember-1); color:var(--fg); }
+        .lab-m3-lim { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:10px; }
+        .lab-m3-limcol { display:flex; flex-direction:column; gap:4px; min-width:0; }
+        .lab-m3-limbar { position:relative; height:16px; border-radius:var(--r-6); background:var(--bg-sunk); overflow:hidden; }
+        .lab-m3-limfill { position:absolute; inset:0; transform:scaleX(var(--p, .85)); transform-origin:left; }
+        .lab-m3-limfill.is-in { background:var(--accent); }
+        .lab-m3-limfill.is-out { background:var(--lab-hr); }
+
+        @media (max-width:600px) {
+            .lab-m3 .lab-m3-play { width:100%; }
+            .lab-m3-eqbox { height:200px; }
+            .lab-m3-eqread { grid-template-columns:minmax(0,1fr); gap:8px; }
+            .lab-m3-mixer { grid-template-columns:repeat(3, minmax(0,1fr)); }
+            .lab-m3-fadrow { height:170px; }
+            .lab-m3-master { grid-column:1 / -1; flex-direction:row; flex-wrap:wrap; justify-content:center; gap:12px 16px; }
+            .lab-m3-master .lab-m3-fadrow { height:60px; }
+            .lab-m3-sls { grid-template-columns:minmax(0,1fr); }
+        }
+        /* Azaltılmış hareket: döngüler durur ama seviyeler / boyutlar okunur kalır */
+        @media (prefers-reduced-motion: reduce) {
+            .lab-m3-scfill.is-k, .lab-m3-scfill.is-g { transform:none; }
+            .lab-m3-scfill.is-b { transform:scaleY(var(--sc-duck, .3)); }
+            .lab-m3-ring { transform:scale(.6); }
+            .lab-m3-ring:nth-child(2) { transform:scale(1); opacity:.6; }
+            .lab-m3-ring:nth-child(3) { transform:scale(1.4); opacity:.3; }
+        }
         /* ═══ /LAB M3 ═══ */
 
         /* ═══ LAB M4 · Arrangement ═══ */
@@ -4123,500 +4278,6 @@ function renderModule2() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// INTERACTIVE EQ — Module 3
-// ═══════════════════════════════════════════════════════════════════
-function buildEQSection() {
-    const wrap = mk('div','lab-box');
-    wrap.innerHTML=`<h3 class="lab-box-title">İnteraktif 3-Band EQ</h3>`;
-    const hint=hintBox('<strong>Noktaları sürükle</strong> → Sol/Sağ: frekans değiştir · Yukarı/Aşağı: boost/cut uygula. <span class="lab-legend"><span style="--c:var(--accent)">LOW</span><span style="--c:var(--ember-2)">MID</span><span style="--c:var(--info)">HIGH</span></span>');
-    wrap.append(hint);
-
-    const W=1000, H=240;
-    const canvas=document.createElement('canvas');
-    canvas.width=W; canvas.height=H;
-    canvas.className='lab-eq-cv';
-    canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','3-Band EQ eğrisi — LOW, MID ve HIGH noktalarını sürükle');
-    wrap.append(canvas);
-
-    const ax=mk('div','lab-eq-axis');
-    ['20Hz','50Hz','200Hz','500Hz','2kHz','5kHz','20kHz'].forEach(f=>ax.append(mk('span','',f)));
-    wrap.append(ax);
-
-    const bands=[
-        {type:'lowshelf', freq:100,  gain:0, color:TOK.accent, label:'LOW'},
-        {type:'peaking',  freq:1000, gain:0, color:TOK.ember2, label:'MID'},
-        {type:'highshelf',freq:8000, gain:0, color:TOK.info,   label:'HIGH'},
-    ];
-
-    const c2=canvas.getContext('2d');
-    const fToX=f=>Math.log10(f/20)/Math.log10(1000)*W;
-    const gToY=g=>H/2-(g/18)*(H/2-24);
-    const yToG=y=>Math.max(-18,Math.min(18,(H/2-y)/(H/2-24)*18));
-
-    // Shared EQ audio context
-    let eqACtx=null, eqFilts=[], eqTestSrc=null, eqAnalyser=null, eqFreqData=null;
-    let eqRafId=null, eqRafRunning=false;
-
-    function startEqDraw(){ if(eqRafRunning) return; eqRafRunning=true; (function loop(){ drawEQ(); if(eqRafRunning) eqRafId=requestAnimationFrame(loop); })(); }
-    function stopEqDraw(){ eqRafRunning=false; cancelAnimationFrame(eqRafId); drawEQ(); }
-
-    function initEQAudio() {
-        if(eqACtx) return;
-        eqACtx=new(window.AudioContext||window.webkitAudioContext)();
-        eqFilts=bands.map(b=>{
-            const f=eqACtx.createBiquadFilter();
-            f.type=b.type; f.frequency.value=b.freq;
-            f.gain.value=b.gain; if(b.type==='peaking') f.Q.value=1;
-            return f;
-        });
-        eqFilts.forEach((f,i)=>{ if(i<eqFilts.length-1) f.connect(eqFilts[i+1]); });
-        const outG=eqACtx.createGain(); outG.gain.value=0.28;
-        eqAnalyser=eqACtx.createAnalyser();
-        eqAnalyser.fftSize=4096;
-        eqAnalyser.smoothingTimeConstant=0.82;
-        eqAnalyser.minDecibels=-80;
-        eqAnalyser.maxDecibels=0;
-        eqFreqData=new Uint8Array(eqAnalyser.frequencyBinCount);
-        eqFilts[eqFilts.length-1].connect(outG);
-        outG.connect(eqAnalyser); eqAnalyser.connect(eqACtx.destination);
-    }
-
-    function drawEQ() {
-        c2.clearRect(0,0,W,H);
-
-        // ── Layer 0: Real-time spectrum (dB-aligned) ──────────────────
-        if(eqAnalyser && eqFreqData && eqRafRunning){
-            eqAnalyser.getByteFrequencyData(eqFreqData);
-            const nyq=eqACtx.sampleRate/2, bins=eqFreqData.length;
-            const minDb=eqAnalyser.minDecibels, maxDb=eqAnalyser.maxDecibels;
-            const BAR_PX=4;
-            for(let px=0;px<W;px+=BAR_PX){
-                const freq=20*Math.pow(1000,px/W);
-                const bin=Math.min(bins-1,Math.round(freq/nyq*bins));
-                // average neighbouring bins for stability
-                let sum=0,cnt=0;
-                for(let k=Math.max(0,bin-2);k<=Math.min(bins-1,bin+2);k++){sum+=eqFreqData[k];cnt++;}
-                const byteVal=sum/cnt;
-                if(byteVal<4) continue; // silence floor
-                const db=minDb+(byteVal/255)*(maxDb-minDb); // dBFS
-                // Map dBFS → display dB: 0 dBFS = +12dB display, -60 dBFS = -18dB display
-                const dispDb=((db-minDb)/(maxDb-minDb))*36-18;
-                const y=gToY(Math.max(-18,Math.min(18,dispDb)));
-                const col=freq<300?TOK.accent:freq<3000?TOK.ember2:TOK.info;
-                const grd=c2.createLinearGradient(0,y,0,H);
-                grd.addColorStop(0,col+'cc'); grd.addColorStop(0.5,col+'55'); grd.addColorStop(1,col+'08');
-                c2.fillStyle=grd; c2.fillRect(px,y,BAR_PX-1,H-y);
-                // peak line
-                c2.fillStyle=col+'ee'; c2.fillRect(px,y-1,BAR_PX-1,2);
-            }
-        }
-
-        // ── Layer 1: Grid ─────────────────────────────────────────────
-        [20,50,100,200,500,1000,2000,5000,10000,20000].forEach(f=>{
-            c2.strokeStyle='rgba(255,255,255,.07)'; c2.lineWidth=1;
-            c2.beginPath(); c2.moveTo(fToX(f),0); c2.lineTo(fToX(f),H); c2.stroke();
-        });
-        [-18,-12,-6,0,6,12,18].forEach(g=>{
-            const y=gToY(g);
-            c2.strokeStyle=g===0?'rgba(255,255,255,.25)':'rgba(255,255,255,.07)';
-            c2.lineWidth=g===0?1.5:1;
-            c2.beginPath(); c2.moveTo(0,y); c2.lineTo(W,y); c2.stroke();
-            c2.fillStyle='rgba(255,255,255,.28)'; c2.font='9px monospace';
-            c2.textAlign='left'; c2.textBaseline='bottom';
-            c2.fillText((g>0?'+':'')+g+'dB',4,y-2);
-        });
-
-        // ── Layer 2: EQ curve ─────────────────────────────────────────
-        c2.beginPath(); c2.strokeStyle=TOK.accent; c2.lineWidth=2.5;
-        c2.shadowColor=TOK.accent; c2.shadowBlur=8;
-        for(let px=0;px<W;px++){
-            const freq=20*Math.pow(1000,px/W);
-            let db=0;
-            bands.forEach(b=>{
-                const lr=Math.log2(freq/b.freq);
-                db+=b.gain*Math.exp(-lr*lr*(b.type==='peaking'?2.2:0.9));
-            });
-            const y=gToY(Math.max(-18,Math.min(18,db)));
-            px===0?c2.moveTo(0,y):c2.lineTo(px,y);
-        }
-        c2.stroke(); c2.shadowBlur=0;
-        // Fill under curve
-        c2.lineTo(W,gToY(0)); c2.lineTo(0,gToY(0)); c2.closePath();
-        c2.fillStyle='rgba(232,184,75,.07)'; c2.fill();
-
-        // ── Layer 3: Band nodes ───────────────────────────────────────
-        bands.forEach(b=>{
-            const x=fToX(b.freq), y=gToY(b.gain);
-            c2.beginPath(); c2.arc(x,y,11,0,Math.PI*2);
-            c2.fillStyle=b.color; c2.shadowColor=b.color; c2.shadowBlur=14;
-            c2.fill(); c2.shadowBlur=0;
-            c2.strokeStyle='rgba(255,255,255,.75)'; c2.lineWidth=1.5; c2.stroke();
-            c2.fillStyle=TOK.accentInk; c2.font='bold 8px "Space Mono", monospace';
-            c2.textAlign='center'; c2.textBaseline='middle';
-            c2.fillText(b.label,x,y);
-        });
-    }
-    drawEQ();
-
-    const xToF=x=>Math.max(20,Math.min(20000,20*Math.pow(1000,x/W)));
-    const freqLimits=[{min:20,max:500},{min:200,max:8000},{min:2000,max:20000}];
-
-    // Drag handling — X moves frequency, Y moves gain
-    let eqDrag=null;
-    canvas.addEventListener('pointerdown',e=>{
-        canvas.setPointerCapture(e.pointerId);
-        const r=canvas.getBoundingClientRect();
-        const cx=(e.clientX-r.left)*(W/r.width), cy=(e.clientY-r.top)*(H/r.height);
-        eqDrag=null;
-        bands.forEach((b,i)=>{ if(Math.hypot(cx-fToX(b.freq),cy-gToY(b.gain))<26){ eqDrag=i; initEQAudio(); } });
-        canvas.style.cursor=eqDrag!==null?'grabbing':'grab';
-    });
-    canvas.addEventListener('pointermove',e=>{
-        if(eqDrag===null) return;
-        const r=canvas.getBoundingClientRect();
-        const cx=(e.clientX-r.left)*(W/r.width);
-        const cy=(e.clientY-r.top)*(H/r.height);
-        const lim=freqLimits[eqDrag];
-        bands[eqDrag].freq=Math.round(Math.max(lim.min,Math.min(lim.max,xToF(cx))));
-        bands[eqDrag].gain=Math.max(-18,Math.min(18,Math.round(yToG(cy))));
-        if(eqFilts[eqDrag]){ eqFilts[eqDrag].frequency.value=bands[eqDrag].freq; eqFilts[eqDrag].gain.value=bands[eqDrag].gain; }
-        drawEQ(); updateEQLabels();
-    });
-    canvas.addEventListener('pointerup',()=>{ eqDrag=null; canvas.style.cursor='grab'; });
-
-    // Band gain pills
-    const gainRow=mk('div','lab-eq-pills');
-    bands.forEach((b,i)=>{
-        const pill=mk('div','lab-eq-pill');
-        pill.style.setProperty('--c', b.color);
-        pill.innerHTML=`<span class="eq-freq-${i}">${b.label} · ${b.freq>=1000?b.freq/1000+'kHz':b.freq+'Hz'}</span><span class="eq-db-${i}">0 dB</span>`;
-        gainRow.append(pill);
-    });
-    wrap.append(gainRow);
-    function updateEQLabels(){
-        bands.forEach((b,i)=>{
-            const dbEl=wrap.querySelector(`.eq-db-${i}`);
-            if(dbEl) dbEl.textContent=(b.gain>0?'+':'')+b.gain+' dB';
-            const fEl=wrap.querySelector(`.eq-freq-${i}`);
-            if(fEl) fEl.textContent=`${b.label} · ${b.freq>=1000?(b.freq/1000).toFixed(1)+'kHz':b.freq+'Hz'}`;
-        });
-    }
-
-    // Test tone: Lead 1.wav through EQ filters
-    let eqLeadBuf=null;
-    const EQ_LBL='Lead 1 çal — EQ uygula';
-    const playBtn=mk('button','btn btn-primary'); playBtn.type='button'; btnPlay(playBtn,'play',EQ_LBL);
-    playBtn.onclick=async()=>{
-        if(eqTestSrc){
-            eqTestSrc.stop(); eqTestSrc=null;
-            stopEqDraw();
-            btnPlay(playBtn,'play',EQ_LBL); return;
-        }
-        initEQAudio();
-        if(eqACtx.state==='suspended') eqACtx.resume();
-        bands.forEach((b,i)=>{ if(eqFilts[i]) eqFilts[i].gain.value=b.gain; });
-        btnPlay(playBtn,'load','Yükleniyor'); playBtn.disabled=true;
-        try {
-            if(!eqLeadBuf){
-                const r=await fetch('assets/audio/Lead 1.wav');
-                eqLeadBuf=await eqACtx.decodeAudioData(await r.arrayBuffer());
-            }
-            playBtn.disabled=false;
-            eqTestSrc=eqACtx.createBufferSource();
-            eqTestSrc.buffer=eqLeadBuf; eqTestSrc.loop=true;
-            eqTestSrc.connect(eqFilts[0]); eqTestSrc.start();
-            eqTestSrc.onended=()=>{ eqTestSrc=null; stopEqDraw(); btnPlay(playBtn,'play',EQ_LBL); };
-            btnPlay(playBtn,'stop','Durdur');
-            startEqDraw();
-        } catch(_){ playBtn.disabled=false; btnPlay(playBtn,'play',EQ_LBL); }
-    };
-    // Register EQ audio cleanup
-    const _prevM3 = _m3StopAudio;
-    _m3StopAudio = () => {
-        if (_prevM3) _prevM3();
-        stopEqDraw();
-        if (eqTestSrc) { try { eqTestSrc.stop(); } catch(_) {} eqTestSrc = null; }
-        if (eqACtx) { try { eqACtx.suspend(); } catch(_) {} }
-    };
-
-    wrap.append(playBtn);
-    return wrap;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// INTERACTIVE MIXER — Module 3
-// ═══════════════════════════════════════════════════════════════════
-function buildMixerSection() {
-    const wrap=mk('div','lab-box');
-    wrap.innerHTML=`<h3 class="lab-box-title">İnteraktif Mixer — 6 Kanal</h3>`;
-    const hint=hintBox(`
-        <strong>6 Kanal:</strong> KICK &nbsp;·&nbsp; SNARE &nbsp;·&nbsp; CL.HAT &nbsp;·&nbsp; OP.HAT &nbsp;·&nbsp; BASS &nbsp;·&nbsp; LEAD LOOP<br>
-        <strong>VOL</strong> = ses seviyesi &nbsp;|&nbsp;
-        <strong>PAN</strong> = stereo konum (L ← C → R) &nbsp;|&nbsp;
-        <strong>MUTE</strong> = kanalı sustur<br>
-        <strong>Mix çal</strong>'a basınca Beat Maker'daki pattern + Lead Loop birlikte çalar.
-        Slider ve mute değişiklikleri <em>anında</em> etkili olur — duyarak dengele.
-    `);
-    const goBtn=mk('button','btn btn-subtle btn-sm','Önce Beat Maker\'da Pattern Kur →'); goBtn.type='button';
-    const goRow=mk('div','btn-row lab-mt lab-mb'); goRow.append(goBtn);
-    goBtn.onclick=()=>showModal(
-        'Mixer\'ı Nasıl Kullanırsın?',
-        `<p>Mixer en iyi <strong>Modül 2 — Beat Maker</strong> ile birlikte çalışır.</p>
-        <ul>
-            <li><strong>Beat Maker'a git</strong> — aşağıdaki butonla veya ana menüden Modül 2'yi seç</li>
-            <li>Step sequencer'da adımları tıkla — KICK, SNARE, HI-HAT satırlarını istediğin gibi doldur</li>
-            <li>BPM'i ayarla (öneri: 125)</li>
-            <li>Geri gel, bu sayfada <strong>Mix çal</strong>'a bas</li>
-            <li>Her kanalın <strong>VOL</strong> slider'ını çekerek seviyeleri dengele</li>
-            <li><strong>PAN</strong> ile SNARE'i biraz sola, LEAD'i biraz sağa al — stereo genişliği hisset</li>
-            <li><strong>MUTE</strong> ile tek tek kanalları sustur — ne kadar etki ettiğini duyumsa</li>
-        </ul>`,
-        [{label:'Beat Maker\'a Git', fn:()=>navigate(2)}]
-    );
-    wrap.append(hint, goRow);
-
-    // beatIdx: state.beatVolumes dizisindeki index (-1 = Lead Loop dosyası)
-    const channels=[
-        {name:'KICK',      color:_btc(BEAT_TRACKS[0]), beatIdx:0},
-        {name:'SNARE',     color:_btc(BEAT_TRACKS[1]), beatIdx:1},
-        {name:'CL.HAT',    color:_btc(BEAT_TRACKS[2]), beatIdx:2},
-        {name:'OP.HAT',    color:_btc(BEAT_TRACKS[3]), beatIdx:3},
-        {name:'BASS',      color:_btc(BEAT_TRACKS[4]), beatIdx:4},
-        {name:'LEAD LOOP', color:TOK.lead,             beatIdx:-1},
-    ];
-    const chState=channels.map((ch)=>({
-        vol: ch.beatIdx>=0 ? state.beatVolumes[ch.beatIdx]/100 : state.leadLoopVol,
-        pan:0, muted:false
-    }));
-    const eqCanvases=[];
-    // live audio refs for Lead Loop (assigned after play starts)
-    let leadGain=null, leadPan=null, leadSrc=null;
-    let _analyser=null, _freqData=null, _eqRaf=null;
-
-    // frequency Hz ranges per channel (will be mapped to fft bins dynamically)
-    const CH_HZ=[
-        [20,  200],   // KICK: sub-bass
-        [150, 900],   // SNARE: low-mid
-        [800, 6000],  // CL.HAT: mid
-        [2000,14000], // OP.HAT: upper-mid / air
-        [30,  400],   // BASS: bass
-        [80,  12000], // LEAD LOOP: full spectrum
-    ];
-
-    const grid=mk('div','lab-mixer');
-    channels.forEach((ch,i)=>{
-        const strip=mk('div','lab-strip');
-        strip.style.setProperty('--c', ch.color);
-        const nameEl=mk('span','lab-tag',ch.name);
-        const cv=document.createElement('canvas'); cv.className='lab-mini-spec';
-        cv.width=120; cv.height=54; cv.setAttribute('aria-hidden','true');
-        eqCanvases.push({cv, ch, idx:i});
-
-        // VOL — dikey fader (tasarım)
-        const volW=mk('div','lab-strip-fad lab-strip-fad--mod');
-        const volVal=mk('span','lab-strip-val',Math.round(chState[i].vol*100)+'%');
-        volW.append(makeSlider({min:0,max:1,step:.01,value:chState[i].vol,vertical:true,label:`${ch.name} VOL`,onChange:v=>{
-            chState[i].vol=v; volVal.textContent=Math.round(v*100)+'%';
-            if(ch.beatIdx>=0) state.beatVolumes[ch.beatIdx]=Math.round(v*100);
-            else state.leadLoopVol=v;
-            if(ch.beatIdx===-1 && leadGain) leadGain.gain.value=v*0.45;
-        }}));
-
-        // PAN
-        const panW=mk('div','lab-pan');
-        const panLbl=mk('div','lab-sl-label');
-        const panVal=mk('span','lab-val','C');
-        panLbl.append(mk('span','','PAN'),panVal); panW.append(panLbl);
-        panW.append(makeSlider({min:-1,max:1,step:.05,value:0,label:`${ch.name} PAN`,onChange:v=>{
-            chState[i].pan=v;
-            panVal.textContent=Math.abs(v)<.05?'C':v<0?'L'+Math.round(-v*50):'R'+Math.round(v*50);
-            if(ch.beatIdx===-1 && leadPan) leadPan.pan.value=v;
-        }}));
-
-        // MUTE
-        const muteBtn=mk('button','lab-opt lab-opt--sm','MUTE'); muteBtn.type='button';
-        muteBtn.setAttribute('aria-pressed','false'); muteBtn.setAttribute('aria-label',`${ch.name} MUTE`);
-        muteBtn.onclick=()=>{
-            chState[i].muted=!chState[i].muted;
-            muteBtn.classList.toggle('active',chState[i].muted);
-            muteBtn.setAttribute('aria-pressed',String(chState[i].muted));
-            muteBtn.textContent=chState[i].muted?'MUTED':'MUTE';
-            strip.classList.toggle('is-muted',chState[i].muted);
-            if(ch.beatIdx>=0){
-                state.beatVolumes[ch.beatIdx]=chState[i].muted?0:Math.round(chState[i].vol*100);
-            } else if(leadGain){
-                leadGain.gain.value=chState[i].muted?0:chState[i].vol*0.45;
-            }
-        };
-
-        strip.append(cv,volW,volVal,panW,muteBtn,nameEl);
-        grid.append(strip);
-    });
-    wrap.append(grid);
-
-    let mixPlaying=false, mixRaf=null, _prevBpm=null;
-
-    function startEqLoop(){
-        getBeatCtx(); // ensure context + beatMasterGain exist
-        if(!_analyser && beatMasterGain){
-            _analyser=beatMasterGain.context.createAnalyser();
-            _analyser.fftSize=4096;
-            _analyser.minDecibels=-80;
-            _analyser.maxDecibels=0;
-            _analyser.smoothingTimeConstant=0.82;
-            _freqData=new Uint8Array(_analyser.frequencyBinCount);
-            beatMasterGain.connect(_analyser);
-        }
-        const _minDb=-80, _maxDb=0;
-        function drawEq(){
-            if(!mixPlaying){ eqCanvases.forEach(({cv})=>{ const c=cv.getContext('2d'); c.clearRect(0,0,cv.width,cv.height); }); return; }
-            if(!_analyser){ _eqRaf=requestAnimationFrame(drawEq); return; }
-            _analyser.getByteFrequencyData(_freqData);
-            const nyq=beatMasterGain.context.sampleRate/2, bins=_freqData.length;
-            eqCanvases.forEach(({cv,ch,idx})=>{
-                const c=cv.getContext('2d');
-                const w=cv.clientWidth||cv.offsetWidth||120, h=cv.clientHeight||cv.offsetHeight||54;
-                if(cv.width!==w){cv.width=w; cv.height=h;}
-                c.clearRect(0,0,w,h);
-                const vol=chState[idx].muted?0:chState[idx].vol;
-                const [hzLo,hzHi]=CH_HZ[idx];
-                const logLo=Math.log10(hzLo), logHi=Math.log10(hzHi);
-                const BAR_W=Math.max(2,Math.floor(w/60));
-                const NUM=Math.floor(w/BAR_W);
-                // dB grid lines: -48, -24, -12, -6 dBFS
-                [-48,-24,-12,-6].forEach(dbMark=>{
-                    const yg=h-((dbMark-_minDb)/(_maxDb-_minDb))*h;
-                    c.strokeStyle='rgba(255,255,255,0.08)'; c.lineWidth=1;
-                    c.beginPath(); c.moveTo(0,yg); c.lineTo(w,yg); c.stroke();
-                });
-                for(let i=0;i<NUM;i++){
-                    const freq=Math.pow(10, logLo+(i/NUM)*(logHi-logLo));
-                    const bin=Math.min(bins-1, Math.round(freq/nyq*bins));
-                    let sum=0,cnt=0;
-                    for(let k=Math.max(0,bin-1);k<=Math.min(bins-1,bin+1);k++){sum+=_freqData[k];cnt++;}
-                    const byteVal=sum/cnt;
-                    const db=_minDb+(byteVal/255)*(_maxDb-_minDb); // dBFS from analyser
-                    if(db<-65) continue; // silence threshold
-                    // apply channel volume as dB offset
-                    const volDb=vol>0?20*Math.log10(vol):_minDb;
-                    const dbScaled=Math.min(_maxDb, db+volDb);
-                    if(dbScaled<-65) continue;
-                    const pct=Math.max(0,(dbScaled-_minDb)/(_maxDb-_minDb));
-                    const bh=Math.pow(pct,0.7)*h;
-                    const grd=c.createLinearGradient(0,h-bh,0,h);
-                    grd.addColorStop(0,ch.color+'ee'); grd.addColorStop(0.55,ch.color+'88'); grd.addColorStop(1,ch.color+'11');
-                    c.fillStyle=grd; c.fillRect(i*BAR_W,h-bh,BAR_W-1,bh);
-                    // peak dot
-                    c.fillStyle=ch.color+'dd'; c.fillRect(i*BAR_W,h-bh-2,BAR_W-1,2);
-                }
-            });
-            _eqRaf=requestAnimationFrame(drawEq);
-        }
-        drawEq();
-    }
-
-    function stopMix(){
-        mixPlaying=false; cancelAnimationFrame(_eqRaf);
-        if(beatPlaying) stopBeat();
-        if(leadSrc){ try{leadSrc.stop();}catch{} leadSrc=null; }
-        leadGain=null; leadPan=null;
-        if(_prevBpm!==null){ state.bpm=_prevBpm; _prevBpm=null;
-            const bi=document.querySelector('#beat-bpm-input'); if(bi) bi.value=state.bpm;
-            const bs=document.querySelector('#beat-bpm-span'); if(bs) bs.textContent=state.bpm;
-            refreshDelayTime();
-        }
-        eqCanvases.forEach(({cv})=>{ const c=cv.getContext('2d'); if(c) c.clearRect(0,0,cv.width,cv.height); });
-        btnPlay(playBtn,'play','Mix çal');
-    }
-
-    // Register Mixer audio cleanup (chain with EQ cleanup already set)
-    const _prevM3mix = _m3StopAudio;
-    _m3StopAudio = () => {
-        if (_prevM3mix) _prevM3mix();
-        if (mixPlaying) stopMix();
-    };
-
-    // Live pattern status banner
-    const patBanner=mk('div','lab-banner lab-mt');
-    patBanner.setAttribute('role','status');
-    let _patHas=null;
-    function updatePatBanner(){
-        const has=state.beatPatterns.some(r=>r.some(v=>v>0));
-        if(has===_patHas) return; _patHas=has;
-        patBanner.classList.toggle('is-ok',has); patBanner.classList.toggle('is-wait',!has);
-        if(has){
-            patBanner.innerHTML=`<span>${ic('check')} Beat Maker'da pattern mevcut — Mix çal'a basabilirsin</span>`;
-        } else {
-            const txt=mk('span','','Henüz Beat Maker\'da pattern yok — önce bir ritim kur');
-            const goBtnSmall=mk('button','btn btn-subtle btn-sm','Kur →'); goBtnSmall.type='button';
-            goBtnSmall.onclick=()=>navigate(2);
-            patBanner.innerHTML=''; patBanner.append(txt, goBtnSmall);
-        }
-    }
-    updatePatBanner();
-    // refresh banner every time module 3 is visible
-    const _bannerInterval=setInterval(updatePatBanner,1500);
-    if(!_cleanup) _cleanup=()=>clearInterval(_bannerInterval);
-    else { const prev=_cleanup; _cleanup=()=>{prev();clearInterval(_bannerInterval);}; }
-
-    const playBtn=mk('button','btn btn-primary'); playBtn.type='button'; btnPlay(playBtn,'play','Mix çal');
-    const playRow=mk('div','btn-row lab-mt'); playRow.append(playBtn);
-    playBtn.onclick=()=>{
-        if(mixPlaying){ stopMix(); return; }
-
-        // Pattern kontrolü — en az 1 aktif adım olmalı
-        const hasPattern=state.beatPatterns.some(row=>row.some(v=>v>0));
-        if(!hasPattern){
-            showModal(
-                'Beat Maker\'da Pattern Yok',
-                `<p><strong>Mix çal çalışmıyor çünkü henüz bir ritim pattern\'i yok.</strong></p>
-                <ul>
-                    <li><strong>Modül 2 — Beat Maker\'a git</strong></li>
-                    <li>KICK, SNARE veya HI-HAT satırındaki kutulara tıkla (aktif = renkli)</li>
-                    <li>Buraya geri dön → <strong>Mix çal</strong> artık çalışır</li>
-                </ul>
-                <p class="lab-note">Not: LEAD LOOP her zaman çalar. Sadece ritim için Beat Maker gerekli.</p>`,
-                [{label:'Beat Maker\'a Git', fn:()=>navigate(2)}]
-            );
-            return;
-        }
-
-        // BPM'i 125'e kilitle (Lead Loop 125 BPM'de kaydedildi)
-        _prevBpm=state.bpm; state.bpm=125;
-        const bi=document.querySelector('#beat-bpm-input'); if(bi) bi.value=125;
-        const bs=document.querySelector('#beat-bpm-span'); if(bs) bs.textContent=125;
-        refreshDelayTime();
-
-        // Drum kanalları: beat engine başlat (mevcut pattern + gerçek wav dosyaları)
-        if(!beatPlaying) startBeat();
-
-        // Lead Loop: beatCtx üzerinden yükle ve çal
-        const bc=getBeatCtx();
-        fetch('assets/audio/Lead Loop.wav')
-            .then(r=>r.arrayBuffer())
-            .then(ab=>bc.decodeAudioData(ab))
-            .then(buf=>{
-                if(!mixPlaying) return;
-                leadGain=bc.createGain();
-                leadGain.gain.value=chState[5].muted?0:chState[5].vol*0.45;
-                leadPan=bc.createStereoPanner?bc.createStereoPanner():null;
-                leadSrc=bc.createBufferSource();
-                leadSrc.buffer=buf; leadSrc.loop=true;
-                leadSrc.connect(leadGain);
-                if(leadPan){ leadPan.pan.value=chState[5].pan; leadGain.connect(leadPan); leadPan.connect(bc.destination); }
-                else { leadGain.connect(bc.destination); }
-                if(!chState[5].muted) leadSrc.start();
-            })
-            .catch(()=>{});
-
-        mixPlaying=true; btnPlay(playBtn,'stop','Durdur');
-        startEqLoop();
-    };
-    wrap.append(patBanner, playRow);
-    return wrap;
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // ARRANGEMENT BUILDER — Module 4
 // ═══════════════════════════════════════════════════════════════════
 // Aranjman verisi — builder (Modül 4) ve Genel bakış önizlemesi ortak kullanır.
@@ -4821,193 +4482,679 @@ function buildArrangementBuilder() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MODULE 3 — MIXING
 // ═══════════════════════════════════════════════════════════════════
-// INTERACTIVE CONCEPT CARDS — Module 3
-// ═══════════════════════════════════════════════════════════════════
-function buildInteractiveConcepts() {
-    const wrap=mk('div','lab-box');
-    wrap.innerHTML=`<h3 class="lab-box-title">Mixing Kavramları — Dene</h3>`;
-    // Demo düğmesi: çal / durdur / yükleniyor durumları btnPlay ile
-    const demoBtn=(label, block=true)=>{ const b=mk('button','btn btn-subtle btn-sm'+(block?' btn-block':'')); b.type='button'; btnPlay(b,'play',label); return b; };
+// Modül 3 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
+// Görevler otomatik: EQ / mixer durumu koşulu sağlayınca kalıcı tamamlanır (makeTaskPanel opts.auto).
+// Kimlikler 1–5 aynı görevler (yalnız ifade tasarıma göre sadeleşti) → eski ilerleme korunur.
+TASKS[3] = [1, 2, 3, 4, 5].map(id => ({ id, get text() { return L('lab_m3_t' + id); } }));
+Object.assign(LAB_TXT, {
+    // Modül 3 · Mixing metinleri: anahtar: [`TR`, `EN`],
+    lab_m3_t1:          [`EQ: LOW bandını +8 dB’e sürükle, test sesini çal — sesin nasıl baslaştığını duy`, `EQ: drag the LOW band to +8 dB, play the test sound — hear how it gets bassier`],
+    lab_m3_t2:          [`EQ: MID’i −6 dB, HIGH’ı +6 dB yap — frekans dengesini karşılaştır`, `EQ: set MID to −6 dB and HIGH to +6 dB — compare the frequency balance`],
+    lab_m3_t3:          [`Mixer: BASS kanalını MUTE et — sesin ne kadar değiştiğini fark et`, `Mixer: MUTE the BASS channel — notice how much the sound changes`],
+    lab_m3_t4:          [`Mixer: LEAD pan’ını R40, SNARE pan’ını L30 yap — stereo genişliği hisset`, `Mixer: pan LEAD to R40 and SNARE to L30 — feel the stereo width`],
+    lab_m3_t5:          [`Tüm kanalları açık tut, VOL’leri dengele — net ve temiz mix`, `Keep every channel on and balance the VOLs — a clear, clean mix`],
+    lab_m3_tasks_note:  [`Görevler, EQ ve mixer'da yaptıkların kontrol edilerek otomatik tamamlanır.`, `Tasks complete automatically as the EQ and mixer check what you've done.`],
+    lab_m3_stop:        [`DURDUR`, `STOP`],
+    lab_m3_loading:     [`Yükleniyor`, `Loading`],
+    // 3-Band EQ
+    lab_m3_eq_h:        [`3-Band EQ`, `3-Band EQ`],
+    lab_m3_eq_sub:      [`Noktaları sürükle → sol/sağ: frekans · yukarı/aşağı: boost/cut.`, `Drag the points → left/right: frequency · up/down: boost/cut.`],
+    lab_m3_eq_play:     [`LEAD ÇAL — EQ UYGULA`, `PLAY LEAD — APPLY EQ`],
+    lab_m3_eq_band:     [`{band} bandı — sürükle`, `{band} band — drag`],
+    lab_m3_eq_keys:     [`↑/↓ kazanç, ←/→ frekans, Home sıfırla`, `↑/↓ gain, ←/→ frequency, Home resets`],
+    // Mixer
+    lab_m3_mix_h:       [`Mixer — 6 kanal`, `Mixer — 6 channels`],
+    lab_m3_mix_sub:     [`VOL ile dengele, PAN ile stereo konumla, MUTE ile kanalı sustur.`, `Balance with VOL, place in stereo with PAN, silence a channel with MUTE.`],
+    lab_m3_mix_play:    [`MIX ÇAL`, `PLAY MIX`],
+    lab_m3_ch_group:    [`{name} kanalı`, `{name} channel`],
+    lab_m3_mute:        [`MUTE`, `MUTE`],
+    lab_m3_muted:       [`MUTED`, `MUTED`],
+    lab_m3_m_clip:      [`Clip! Kanalları kıs`, `Clipping! Turn channels down`],
+    lab_m3_m_low:       [`Headroom az`, `Low headroom`],
+    lab_m3_m_safe:      [`Güvenli`, `Safe`],
+    lab_m3_link_p:      [`Mixer en iyi Modül 2 — Beat Maker ile birlikte çalışır; burada örnek bir house pattern + lead loop çalar.`, `The mixer works best together with Module 2 — Beat Maker; here it plays an example house pattern + lead loop.`],
+    lab_m3_link_p_user: [`Mixer en iyi Modül 2 — Beat Maker ile birlikte çalışır; burada Beat Maker'da kurduğun pattern + lead loop çalar.`, `The mixer works best together with Module 2 — Beat Maker; here it plays the pattern you built in Beat Maker + the lead loop.`],
+    lab_m3_link:        [`Beat Maker'a git`, `Go to Beat Maker`],
+    // Mix kavramları
+    lab_m3_con_h:       [`Mix kavramları — dene`, `Mix concepts — try them`],
+    lab_m3_comp_h:      [`Compression`, `Compression`],
+    lab_m3_comp_p:      [`Dinamik aralığı sıkıştırır. Attack geçici sesi korur, release pump efektini belirler.`, `Squeezes the dynamic range. Attack preserves the transient, release shapes the pumping effect.`],
+    lab_m3_comp_demo:   [`Kick.wav — Compressor Hisset`, `Kick.wav — Hear the compressor`],
+    lab_m3_sc_h:        [`Sidechain compression`, `Sidechain compression`],
+    lab_m3_sc_p:        [`Kick her vurduğunda bass geri çekilir — dance müziğinin "pompa" hissi.`, `Every time the kick hits, the bass ducks — the "pumping" feel of dance music.`],
+    lab_m3_sc_demo:     [`Kick + Bass — Sidechain Pump`, `Kick + Bass — Sidechain pump`],
+    lab_m3_rv_h:        [`Reverb / Delay`, `Reverb / Delay`],
+    lab_m3_rv_p:        [`Uzamsal efektler. Send/Return kanalından uygula — tüm track'ler aynı reverb'ü paylaşır.`, `Spatial effects. Apply them on a Send/Return channel — every track shares the same reverb.`],
+    lab_m3_rv_demo:     [`Lead Loop + Reverb`, `Lead Loop + Reverb`],
+    lab_m3_dl_demo:     [`Lead Loop + Delay`, `Lead Loop + Delay`],
+    lab_m3_st_h:        [`Stereo field`, `Stereo field`],
+    lab_m3_st_tag:      [`MİXER PAN'LARINDAN`, `FROM MIXER PANS`],
+    lab_m3_st_p:        [`Kick ve bass ortada (mono merkez), lead biraz sağ/sol, hat karşı tarafa — genişlik hissi.`, `Kick and bass in the middle (mono centre), lead slightly right/left, hat on the opposite side — a sense of width.`],
+    lab_m3_st_aria:     [`Stereo alan: {list}`, `Stereo field: {list}`],
+    lab_m3_st_muted:    [`(sessiz)`, `(muted)`],
+    lab_m3_hr_h:        [`Headroom`, `Headroom`],
+    lab_m3_hr_p:        [`Master kanal −6 dB civarında kalmalı — mastering'de limiter için alan bırak.`, `The master channel should sit around −6 dB — leave room for the limiter in mastering.`],
+    lab_m3_hr_clip:     [`CLIP — DISTORTION!`, `CLIP — DISTORTION!`],
+    lab_m3_hr_low:      [`AZ HEADROOM`, `LOW HEADROOM`],
+    lab_m3_hr_safe:     [`GÜVENLİ HEADROOM`, `SAFE HEADROOM`],
+    lab_m3_hr_demo:     [`Beat Loop'u Çal + Limiter`, `Play beat loop + limiter`],
+    lab_m3_lim_h:       [`Limiter`, `Limiter`],
+    lab_m3_lim_on:      [`LIMITER: AÇIK`, `LIMITER: ON`],
+    lab_m3_lim_off:     [`LIMITER: KAPALI`, `LIMITER: OFF`],
+    lab_m3_lim_p:       [`Sinyalin belirli seviyeyi aşmasını önler. Ratio ∞:1, knee 0, attack < 1 ms.`, `Stops the signal from exceeding a set level. Ratio ∞:1, knee 0, attack < 1 ms.`],
+    lab_m3_lim_demo:    [`Lead Loop`, `Lead Loop`],
+});
 
-    let demoCtx=null;
-    function getDCtx(){ if(!demoCtx) demoCtx=new(window.AudioContext||window.webkitAudioContext)(); if(demoCtx.state==='suspended') demoCtx.resume(); return demoCtx; }
+// ── Sabitler ─────────────────────────────────────────────────────────
+const M3_BPM = 125;                                   // Lead Loop.wav bu tempoda kaydedildi
+const M3_LEAD1 = 'assets/audio/Lead 1.wav';
+const M3_LOOP = 'assets/audio/Lead Loop.wav';
+// ti: BEAT_TRACKS / state.beatVolumes sırası (-1 = Lead Loop, seviyesi state.leadLoopVol)
+const M3_CH = [
+    { name: 'KICK', ti: 0 }, { name: 'SNARE', ti: 1 }, { name: 'CL.HAT', ti: 2 },
+    { name: 'OP.HAT', ti: 3 }, { name: 'BASS', ti: 4 }, { name: 'LEAD LOOP', ti: -1 },
+];
+const M3_BANDS = [
+    { name: 'LOW', type: 'lowshelf', min: 30, max: 400 },
+    { name: 'MID', type: 'peaking', min: 200, max: 5000 },
+    { name: 'HIGH', type: 'highshelf', min: 2000, max: 16000 },
+];
+// Beat Maker boşsa MIX ÇAL bu örnek house pattern'i çalar (state.beatPatterns'a YAZILMAZ)
+const M3_HOUSE = [[0, 4, 8, 12], [4, 12], [2, 6, 10, 14], [15], [0, 3, 6, 10]]
+    .map(hits => Array.from({ length: 16 }, (_, s) => hits.includes(s) ? 100 : 0));
 
-    const conceptCleanups=[];
+// Oturum boyu durum (render'lar arasında korunur; kalıcı depoya yazılmaz)
+const m3State = {
+    eq: [{ f: 100, g: 0 }, { f: 1000, g: 0 }, { f: 8000, g: 0 }],
+    pan: [0, -0.2, 0.5, -0.5, 0, 0.3],               // tasarım: C, L20, R50, L50, C, R30
+    muted: [false, false, false, false, false, false],
+    comp: { thr: -18, ratio: 4 },
+    sc: { depth: 70, rel: 180 },
+    rv: { wet: 30, room: 60 },
+    hr: -6,
+    lim: { on: true, t: -3 },
+};
 
-    const concepts=[
-        // ── 1. Volume / Gain ────────────────────────────────────────
-        { title:'Volume / Gain', color:'var(--accent)',
-          body:'Her kanalın ses seviyesi. Kural: kick en yüksek, hat en düşük. Master kanal -6dB boşluk bırak (headroom).',
-          demo(card){
-            let gv=0.75;
-            const bar=mk('div','lab-meter');
-            const fill=mk('div','lab-meter-fill lab-meter-fill--grad'); fill.style.width='75%';
-            bar.append(fill);
-            const lbl=mk('div','lab-sl-label'); const val=mk('span','lab-val','75%');
-            lbl.append(mk('span','','Gain'),val);
-            const sl=makeSlider({min:0,max:1,step:.01,value:.75,onChange:v=>{gv=v;val.textContent=Math.round(v*100)+'%';fill.style.width=(v*100)+'%';}});
-            const btn=demoBtn('Dene');
-            btn.onclick=()=>{ const c=getDCtx(); const o=c.createOscillator(); o.type='sawtooth'; o.frequency.value=220; const g=c.createGain(); g.gain.setValueAtTime(gv*.25,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.7); o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime+.75); };
-            card.append(lbl,sl,bar,btn);
-          }
-        },
-        // ── 2. Panning ───────────────────────────────────────────────
-        { title:'Panning', color:'var(--accent)',
-          body:'Sesi sol/sağ kanallar arasında konumlandır. Kick ve bass ortada, lead biraz sağ/sol, hat karşı tarafa.',
-          demo(card){
-            let pv=0;
-            // Stereo field bar
-            const field=mk('div','lab-field');
-            const dot=mk('div','lab-field-dot');
-            const lTag=mk('span','','L'); const rTag=mk('span','','R');
-            field.setAttribute('aria-hidden','true');
-            field.append(lTag,dot,rTag);
-            const lbl=mk('div','lab-sl-label'); const val=mk('span','lab-val','C');
-            lbl.append(mk('span','','Pan L → R'),val);
-            const sl=makeSlider({min:-1,max:1,step:.05,value:0,onChange:v=>{
-                pv=v; val.textContent=Math.abs(v)<.05?'C':v<0?'L'+Math.round(-v*100):'R'+Math.round(v*100);
-                dot.style.left=((v+1)/2*100)+'%';
-            }});
-            const btn=demoBtn('Dene');
-            btn.onclick=()=>{ const c=getDCtx(); const o=c.createOscillator(); o.type='triangle'; o.frequency.value=440; const g=c.createGain(); g.gain.setValueAtTime(.3,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.8); o.connect(g); const p=c.createStereoPanner?c.createStereoPanner():null; if(p){p.pan.value=pv;g.connect(p);p.connect(c.destination);}else{g.connect(c.destination);} o.start();o.stop(c.currentTime+.85); };
-            card.append(lbl,sl,field,btn);
-          }
-        },
-        // ── 3. EQ ────────────────────────────────────────────────────
-        { title:'EQ — Equalizer', color:'var(--warn)',
-          body:'Frekans dengesi. Low = bas (60-200Hz), Mid = orta (500-2kHz), High = tiz (8-16kHz). Frekans maskelenmesini önle.',
-          demo(card){
-            const box=mk('div','lab-inline-box');
-            box.innerHTML='↑ Bu sayfanın başındaki <strong>3-Band EQ</strong> bölümünü kullan — LOW / MID / HIGH noktalarını sürükle ve test sesini çal.';
-            card.append(box);
-          }
-        },
-        // ── 4. Compression ───────────────────────────────────────────
-        { title:'Compression', color:'var(--warn)',
-          body:'Dinamik aralığı sıkıştırır. Kick ve snare standart hedef. Attack = geçici sesi koru, Release = pump efekti.',
-          demo(card){
-            let thr=-12, rat=4;
-            const thLbl=mk('div','lab-sl-label'); const thVal=mk('span','lab-val',thr+' dB');
-            thLbl.append(mk('span','','Threshold'),thVal);
-            const thSl=makeSlider({min:-40,max:0,step:1,value:thr,onChange:v=>{thr=v;thVal.textContent=v+' dB';updateGR();}});
-            const rLbl=mk('div','lab-sl-label'); rLbl.classList.add('lab-mt-s'); const rVal=mk('span','lab-val',rat+':1');
-            rLbl.append(mk('span','','Ratio'),rVal);
-            const rSl=makeSlider({min:1,max:20,step:1,value:rat,onChange:v=>{rat=v;rVal.textContent=v+':1';updateGR();}});
-            // GR meter
-            const grRow=mk('div','lab-gr');
-            const grBar=mk('div','lab-meter');
-            const grFill=mk('div','lab-meter-fill lab-meter-fill--grad');
-            grBar.append(grFill);
-            const grLbl=mk('span','','GR: 0dB');
-            grRow.append(mk('span','','GR:'),grBar,grLbl);
-            function updateGR(){
-                const gr=Math.max(0,-thr*(1-1/rat));
-                grFill.style.width=Math.min(100,(gr/20)*100)+'%';
-                grLbl.textContent='GR: -'+gr.toFixed(1)+'dB';
-            }
-            updateGR();
-            const btn=demoBtn('Kick.wav — Compressor Hisset');
-            btn.onclick=()=>{
-                const c=getBeatCtx();
-                const comp=c.createDynamicsCompressor(); comp.threshold.value=thr; comp.ratio.value=rat; comp.attack.value=.003; comp.release.value=.1; comp.connect(c.destination);
-                const kickBuf=beatBuffers[BEAT_TRACKS[0].file];
-                if(kickBuf){
-                    const src=c.createBufferSource(); src.buffer=kickBuf;
-                    const g=c.createGain(); g.gain.value=.9;
-                    src.connect(g); g.connect(comp); src.start();
-                } else {
-                    const o=c.createOscillator(); o.type='sine';
-                    o.frequency.setValueAtTime(100,c.currentTime); o.frequency.exponentialRampToValueAtTime(.001,c.currentTime+.4);
-                    const g=c.createGain(); g.gain.setValueAtTime(.5,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.4);
-                    o.connect(g); g.connect(comp); o.start(); o.stop(c.currentTime+.45);
-                }
-                let f=0; function anim(){ if(f>32) return; f++; const p=Math.max(0,(1-f/15)); grFill.style.width=(p*80)+'%'; grLbl.textContent='GR: -'+(p*(-thr*(1-1/rat))).toFixed(1)+'dB'; requestAnimationFrame(anim); } anim();
-            };
-            card.append(thLbl,thSl,rLbl,rSl,grRow,btn);
-          }
-        },
-        // ── 5. Reverb / Delay ────────────────────────────────────────
-        { title:'Reverb / Delay', color:'var(--err-strong)',
-          body:"Uzamsal efektler. Send/Return kanalından uygula — tüm trackler aynı reverb'ü paylaşır, daha doğal mix.",
-          demo(card){
-            let wet=.4, room=.6;
-            const wLbl=mk('div','lab-sl-label'); const wVal=mk('span','lab-val',Math.round(wet*100)+'%');
-            wLbl.append(mk('span','','Dry/Wet'),wVal);
-            const wSl=makeSlider({min:0,max:1,step:.01,value:wet,onChange:v=>{wet=v;wVal.textContent=Math.round(v*100)+'%';}});
-            const rLbl=mk('div','lab-sl-label'); rLbl.classList.add('lab-mt-s'); const rVal=mk('span','lab-val',Math.round(room*100)+'%');
-            rLbl.append(mk('span','','Room Size'),rVal);
-            const rSl=makeSlider({min:.1,max:1,step:.01,value:room,onChange:v=>{room=v;rVal.textContent=Math.round(v*100)+'%';}});
-            let leadLoopBuf=null;
-            const btn=demoBtn('Lead Loop + Reverb');
-            btn.onclick=async()=>{
-                const c=getDCtx(); const sr=c.sampleRate;
-                const dryG=c.createGain(); dryG.gain.value=(1-wet)*.65; dryG.connect(c.destination);
-                const wetG=c.createGain(); wetG.gain.value=wet*.65;
-                const irLen=Math.floor(sr*(0.4+room*2.5));
-                const ir=c.createBuffer(2,irLen,sr);
-                for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<irLen;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/irLen,2+room*3);}
-                const conv=c.createConvolver(); conv.buffer=ir; wetG.connect(conv); conv.connect(c.destination);
-                if(!leadLoopBuf){ try{ const r=await fetch('assets/audio/Lead Loop.wav'); leadLoopBuf=await c.decodeAudioData(await r.arrayBuffer()); }catch(_){} }
-                if(leadLoopBuf){
-                    const src=c.createBufferSource(); src.buffer=leadLoopBuf;
-                    const g=c.createGain(); g.gain.setValueAtTime(.55,c.currentTime); g.gain.setValueAtTime(.55,c.currentTime+2.5); g.gain.linearRampToValueAtTime(0,c.currentTime+3.2);
-                    src.connect(g); g.connect(dryG); g.connect(wetG); src.start(); src.stop(c.currentTime+3.5);
-                } else {
-                    const o=c.createOscillator(); o.type='triangle'; o.frequency.value=330;
-                    const g=c.createGain(); g.gain.setValueAtTime(.7,c.currentTime); g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.35);
-                    o.connect(g); g.connect(dryG); g.connect(wetG); o.start(); o.stop(c.currentTime+.4);
-                }
-            };
-            card.append(wLbl,wSl,rLbl,rSl,btn);
-          }
-        },
-        // ── 6. Sidechain ─────────────────────────────────────────────
-        { title:'Sidechain Compression', color:'var(--err-strong)',
-          body:"Bass'i kick'e sidechain'le — kick vurduğunda bass kısılır. Dance müziğinin temel pump efekti. AudioWorklet ile sample-accurate gain reduction.",
-          demo(card){
-            const viz=mk('div','lab-meters lab-meters--3');
-            function meterCol(label,color){
-                const col=mk('div'); col.style.setProperty('--c',color);
-                col.innerHTML=`<div class="lab-meter-lbl">${label}</div>`;
-                const wrap=mk('div','lab-meter');
-                const bar=mk('div','lab-meter-fill');
-                wrap.append(bar); col.append(wrap); return {col,bar};
-            }
-            const kickM=meterCol('KICK',_btc(BEAT_TRACKS[0]));
-            const bassM=meterCol('BASS',_btc(BEAT_TRACKS[4]));
-            const grM=meterCol('GAIN RED.',TOK.err);
-            viz.append(kickM.col,bassM.col,grM.col);
+// ── Biçim yardımcıları ───────────────────────────────────────────────
+const M3_MINUS = '−';
+function m3Num(v, d) { const s = Math.abs(v).toFixed(d); return (v < 0 && +s !== 0 ? M3_MINUS : v > 0 && +s !== 0 ? '+' : '') + s; }
+function m3Db(v, d) { return m3Num(v, d == null ? 1 : d) + ' dB'; }
+function m3Hz(f) { return f >= 1000 ? (f / 1000).toFixed(1) + ' kHz' : Math.round(f) + ' Hz'; }
+function m3PanLbl(v) { return Math.abs(v) < 0.025 ? 'C' : (v < 0 ? 'L' : 'R') + Math.round(Math.abs(v) * 100); }
+function m3Round(v, step) { const d = (String(step).split('.')[1] || '').length; return +(Math.round(v / step) * step).toFixed(d); }
+function m3Vol(i) { const t = M3_CH[i].ti; return t >= 0 ? state.beatVolumes[t] : Math.round(state.leadLoopVol * 100); }
+function m3SetVol(i, v) { const t = M3_CH[i].ti; if (t >= 0) state.beatVolumes[t] = v; else state.leadLoopVol = v / 100; }
+function m3RM() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+// MASTER tahmini (öğretici yaklaşım): açık kanalların VOL toplamı, 330 ≈ 0 dB
+function m3Master() {
+    const sum = M3_CH.reduce((a, c, i) => a + (m3State.muted[i] ? 0 : m3Vol(i)), 0);
+    const db = Math.round(20 * Math.log10(Math.max(1, sum) / 330) * 10) / 10;
+    return { db, st: db > 0 ? 'clip' : db > -3 ? 'low' : 'safe', h: Math.min(100, Math.max(5, (db + 24) / 30 * 100)) };
+}
+function m3HasUserPattern() { return state.beatPatterns.some(r => r.some(v => v > 0)); }
 
-            const depthLbl=mk('div','lab-sl-label'); const depthVal=mk('span','lab-val','88%');
-            depthLbl.append(mk('span','','Depth'),depthVal);
-            let _scWorklet=null;
-            const depthSl=makeSlider({min:0,max:1,step:.01,value:.88,onChange:v=>{
-                depthVal.textContent=Math.round(v*100)+'%';
-                if(_scWorklet) _scWorklet.parameters.get('depth').value=v;
-            }});
-            const relLbl=mk('div','lab-sl-label'); const relVal=mk('span','lab-val','180ms');
-            relLbl.append(mk('span','','Release'),relVal);
-            const relSl=makeSlider({min:0.04,max:0.5,step:.01,value:.18,onChange:v=>{
-                relVal.textContent=Math.round(v*1000)+'ms';
-                if(_scWorklet) _scWorklet.parameters.get('release').value=v;
-            }});
+// makeSlider + aria-valuetext + değer yuvarlama; teardown'da _sliders kümesinden çıkarılır
+let m3Sliders = [];
+function m3Slider(o) {
+    const el = makeSlider({ min: o.min, max: o.max, step: o.step, value: o.value, vertical: o.vertical, label: o.label,
+        onChange: raw => { const v = m3Round(raw, o.step); el.setAttribute('aria-valuetext', o.fmt(v)); o.onChange(v); } });
+    el.setAttribute('aria-valuetext', o.fmt(o.value));
+    m3Sliders.push(el);
+    return el;
+}
+// Parametre satırı: "THRESHOLD ······ −18 dB" + kaydırıcı
+function m3SlRow(name, o) {
+    const w = mk('div', 'lab-m3-sl');
+    const row = mk('div', 'lab-m3-slrow');
+    const n = mk('span'); n.lang = 'en'; n.textContent = name;
+    const v = mk('span', 'lab-m3-slv'); v.textContent = o.fmt(o.value);
+    row.append(n, v);
+    const onChange = o.onChange;
+    const sl = m3Slider(Object.assign({}, o, { label: name, onChange: x => { v.textContent = o.fmt(x); onChange(x); } }));
+    w.append(row, sl);
+    return w;
+}
 
-            let running=false, meterRaf=null, stopTimer=null;
-            let scKickNodes=[], scBassNodes=[], scKickHub=null, scKickAna=null, scBassAna=null;
-            let _lastGR=0;
+// ── Ses: tek bağlam (beatCtx), kalıcı düğümler ─────────────────────
+// Modül 3'ün tüm sesi getBeatCtx() üzerinde: ziyaret başına yeni AudioContext açılmaz,
+// beatMasterGain'e birikmeli analyser eklenmez. beatCtx sıfırlanırsa (stopBeat(true)) düğümler yeniden kurulur.
+let m3A = null;
+function m3Audio() {
+    const ctx = getBeatCtx();
+    if (m3A && m3A.ctx === ctx) return m3A;
+    const A = { ctx };
+    A.eq = M3_BANDS.map((b, i) => {
+        const f = ctx.createBiquadFilter(); f.type = b.type; if (b.type === 'peaking') f.Q.value = 1;
+        f.frequency.value = m3State.eq[i].f; f.gain.value = m3State.eq[i].g; return f;
+    });
+    A.eq[0].connect(A.eq[1]); A.eq[1].connect(A.eq[2]);
+    A.eqOut = ctx.createGain(); A.eqOut.gain.value = 0.28;
+    A.eq[2].connect(A.eqOut); A.eqOut.connect(ctx.destination);
+    // Mix bus: kanal (gain → pan) → bus → beatMasterGain; kanal başına + master L/R metre
+    A.bus = ctx.createGain(); A.bus.connect(beatMasterGain || ctx.destination);
+    const split = ctx.createChannelSplitter(2); A.bus.connect(split);
+    const ana = () => { const a = ctx.createAnalyser(); a.fftSize = 512; a.smoothingTimeConstant = 0.3; return a; };
+    A.mL = ana(); A.mR = ana(); split.connect(A.mL, 0); split.connect(A.mR, 1);
+    A.ch = M3_CH.map((c, i) => {
+        const g = ctx.createGain(); g.gain.value = 0;
+        const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+        const a = ana();
+        g.connect(a);
+        if (p) { p.pan.value = m3State.pan[i]; g.connect(p); p.connect(A.bus); } else g.connect(A.bus);
+        return { g, p, a };
+    });
+    m3A = A;
+    return A;
+}
+// Çözülmüş örnek önbelleği (AudioBuffer bağlamdan bağımsız)
+const m3Bufs = {};
+function m3Buf(file) {
+    if (!m3Bufs[file]) {
+        m3Bufs[file] = fetch(file).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+            .then(ab => getBeatCtx().decodeAudioData(ab))
+            .catch(e => { delete m3Bufs[file]; throw e; });
+    }
+    return m3Bufs[file];
+}
+function m3Drum(ctx, file, v, when, dest) {
+    const buf = beatBuffers[file];
+    if (buf) {
+        const src = ctx.createBufferSource(); src.buffer = buf;
+        const g = ctx.createGain(); g.gain.value = v;
+        src.connect(g); g.connect(dest); src.start(when);
+    } else synthDrum(ctx, file, v, when, dest);
+}
+// Modül içi lookahead sıralayıcı (Beat Maker motoruna ve state.beatPatterns'a dokunmaz)
+function m3Seq(pat, swing, destFn, gainFn) {
+    const ctx = getBeatCtx(), spb = 60 / M3_BPM / 4;
+    const s = { alive: true, step: 0, t0: ctx.currentTime + 0.08, timer: null };
+    s.next = s.t0;
+    (function loop() {
+        if (!s.alive) return;
+        while (s.next < ctx.currentTime + 0.12) {
+            const sw = s.step % 2 === 1 ? (swing / 100) * spb * 0.66 : 0;
+            BEAT_TRACKS.forEach((tr, ti) => {
+                const vel = (pat[ti] || [])[s.step];
+                if (vel > 0) m3Drum(ctx, tr.file, (vel / 100) * gainFn(ti), s.next + sw, destFn(ti));
+            });
+            s.next += spb; s.step = (s.step + 1) % 16;
+        }
+        s.timer = setTimeout(loop, 25);
+    })();
+    s.stop = () => { s.alive = false; clearTimeout(s.timer); };
+    return s;
+}
+// Karşılıklı dışlama: bir Modül 3 kaynağı başlarken çalan diğeri durur
+let m3Active = null;
+function m3Claim(stop) { if (m3Active && m3Active !== stop) { const s = m3Active; m3Active = null; try { s(); } catch (e) { console.warn('[lab] m3 stop:', e); } } m3Active = stop; }
+function m3Release(stop) { if (m3Active === stop) m3Active = null; }
+function m3Fade(node, ms) { try { node.gain.setTargetAtTime(0, node.context.currentTime, 0.015); } catch (_) {} setTimeout(() => { try { node.disconnect(); } catch (_) {} }, ms || 250); }
 
-            // AudioWorklet processor — sample-accurate sidechain via envelope follower on kick input
-            const WORKLET_SRC=`class SidechainProcessor extends AudioWorkletProcessor{
+// Açık görünümün parçaları (render başına sıfırlanır)
+let m3Ui = { syncs: [], stops: [] };
+let m3TaskRaf = 0;
+function m3TaskPing() {
+    if (m3TaskRaf) return;
+    m3TaskRaf = requestAnimationFrame(() => { m3TaskRaf = 0; const p = m3Ui.tasks; if (p && p.isConnected) p.refresh(); });
+}
+function m3PlayBtn(btn, mode, key) {
+    btnPlay(btn, mode, L(mode === 'stop' ? 'lab_m3_stop' : mode === 'load' ? 'lab_m3_loading' : key));
+    btn.setAttribute('aria-pressed', String(mode === 'stop'));
+    btn.disabled = mode === 'load';
+    btn.toggleAttribute('aria-busy', mode === 'load');
+}
+
+// ── 3-Band EQ ────────────────────────────────────────────────────────
+const m3X = f => Math.log10(f / 20) / 3 * 1000;        // 20 Hz … 20 kHz → 0 … 1000
+const m3Y = g => 130 - g * 7.5;                          // ±15 dB → ±112.5 (viewBox 260)
+const M3_FREQS = Float32Array.from({ length: 126 }, (_, i) => 20 * Math.pow(10, 3 * i / 125));
+let m3CurveCtx;   // eğri: gerçek filtrelerin yanıtı (OfflineAudioContext — jest/izin gerekmez)
+function m3Response() {
+    const sum = new Float32Array(M3_FREQS.length);
+    try {
+        if (m3CurveCtx === undefined) {
+            const O = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+            m3CurveCtx = O ? new O(1, 128, 44100) : null;
+            if (m3CurveCtx) m3CurveCtx._f = M3_BANDS.map(b => { const f = m3CurveCtx.createBiquadFilter(); f.type = b.type; if (b.type === 'peaking') f.Q.value = 1; return f; });
+        }
+        if (m3CurveCtx) {
+            const mag = new Float32Array(M3_FREQS.length), ph = new Float32Array(M3_FREQS.length);
+            m3CurveCtx._f.forEach((f, i) => {
+                f.frequency.value = m3State.eq[i].f; f.gain.value = m3State.eq[i].g;
+                f.getFrequencyResponse(M3_FREQS, mag, ph);
+                for (let k = 0; k < sum.length; k++) sum[k] += 20 * Math.log10(Math.max(1e-6, mag[k]));
+            });
+            return sum;
+        }
+    } catch (e) { console.warn('[lab] m3 eq curve:', e); m3CurveCtx = null; }
+    // Yedek: tasarımdaki raf/tepe yaklaşımı
+    const [lo, mid, hi] = m3State.eq;
+    M3_FREQS.forEach((f, k) => {
+        sum[k] = lo.g / (1 + Math.pow(f / lo.f, 2)) + mid.g * Math.exp(-Math.pow(Math.log2(f / mid.f) * 1.4, 2)) + hi.g / (1 + Math.pow(hi.f / f, 2));
+    });
+    return sum;
+}
+const m3Eq = { src: null, loading: false, token: 0 };
+function m3EqApply(i) {
+    if (!m3A) return;
+    const f = m3A.eq[i], t = m3A.ctx.currentTime;
+    f.frequency.setTargetAtTime(m3State.eq[i].f, t, 0.01);
+    f.gain.setTargetAtTime(m3State.eq[i].g, t, 0.01);
+}
+function m3EqSync() { const b = m3Ui.eqBtn; if (b) m3PlayBtn(b, m3Eq.loading ? 'load' : m3Eq.src ? 'stop' : 'play', 'lab_m3_eq_play'); }
+function m3EqStop() {
+    m3Eq.token++; m3Eq.loading = false;
+    if (m3Eq.src) { try { m3Eq.src.onended = null; m3Eq.src.stop(); } catch (_) {} try { m3Eq.src.disconnect(); } catch (_) {} m3Eq.src = null; }
+    m3Release(m3EqStop); m3EqSync(); m3TaskPing();
+}
+async function m3EqToggle() {
+    if (m3Eq.src || m3Eq.loading) { m3EqStop(); return; }
+    m3Claim(m3EqStop);
+    const A = m3Audio();
+    A.eq.forEach((f, i) => { f.frequency.value = m3State.eq[i].f; f.gain.value = m3State.eq[i].g; });
+    const my = ++m3Eq.token;
+    m3Eq.loading = true; m3EqSync();
+    let buf;
+    try { buf = await m3Buf(M3_LEAD1); }
+    catch (e) { console.warn('[lab] Lead 1.wav:', e); if (my === m3Eq.token) { m3Eq.loading = false; m3Release(m3EqStop); m3EqSync(); } return; }
+    if (my !== m3Eq.token) return;
+    m3Eq.loading = false;
+    const src = A.ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    src.connect(A.eq[0]); src.start();
+    src.onended = () => { if (m3Eq.src === src) { m3Eq.src = null; m3Release(m3EqStop); m3EqSync(); } };
+    m3Eq.src = src;
+    m3EqSync(); m3TaskPing();
+}
+
+function m3BuildEQ() {
+    const sec = mk('section', 'lab-panel lab-panel--hover lab-m3-eq');
+    const hid = 'labM3Eq'; sec.setAttribute('aria-labelledby', hid);
+    const head = mk('div', 'lab-panel-head');
+    const tl = mk('div', 'lab-m3-titles');
+    const h = mk('h2', 'lab-panel-h'); h.id = hid; h.setAttribute('data-i18n', 'lab_m3_eq_h'); h.textContent = L('lab_m3_eq_h');
+    const sub = mk('p', 'lab-panel-sub'); sub.setAttribute('data-i18n', 'lab_m3_eq_sub'); sub.textContent = L('lab_m3_eq_sub');
+    tl.append(h, sub);
+    const btn = mk('button', 'btn btn-primary lab-m3-play'); btn.type = 'button';
+    btn.addEventListener('click', m3EqToggle);
+    m3Ui.eqBtn = btn; m3EqSync();
+    head.append(tl, btn);
+
+    const box = mk('div', 'lab-m3-eqbox');
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 1000 260'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('aria-hidden', 'true');
+    // Izgara: 0 dB, ±8.7 dB, 40 Hz / 200 Hz / 1 kHz / 4 kHz
+    svg.innerHTML = '<g class="lab-m3-eqgrid"><line x1="0" y1="65" x2="1000" y2="65"/><line x1="0" y1="195" x2="1000" y2="195"/>'
+        + '<line x1="100" y1="0" x2="100" y2="260"/><line x1="333" y1="0" x2="333" y2="260"/><line x1="567" y1="0" x2="567" y2="260"/><line x1="767" y1="0" x2="767" y2="260"/>'
+        + '<line class="is-zero" x1="0" y1="130" x2="1000" y2="130"/></g><path class="lab-m3-eqfill"/><path class="lab-m3-eqcurve"/>';
+    const fillP = svg.querySelector('.lab-m3-eqfill'), curveP = svg.querySelector('.lab-m3-eqcurve');
+    const axis = mk('div', 'lab-m3-eqaxis'); axis.setAttribute('aria-hidden', 'true');
+    ['20', '100', '500', '1k', '5k', '20k Hz'].forEach((t, i) => { const s = mk('span', 'lab-m3-ax' + i); s.textContent = t; axis.append(s); });
+    const keys = mk('span', 'sr-only'); keys.id = 'labM3EqKeys'; keys.setAttribute('data-i18n', 'lab_m3_eq_keys'); keys.textContent = L('lab_m3_eq_keys');
+    box.append(svg, axis, keys);
+
+    const read = mk('div', 'lab-m3-eqread');
+    const cells = [];
+    const handles = M3_BANDS.map((b, i) => {
+        const hd = mk('div', 'lab-m3-handle lab-m3-b' + i);
+        hd.tabIndex = 0;
+        hd.setAttribute('role', 'slider'); hd.setAttribute('aria-orientation', 'vertical');
+        hd.setAttribute('aria-valuemin', '-15'); hd.setAttribute('aria-valuemax', '15');
+        hd.setAttribute('aria-describedby', keys.id);
+        box.append(hd);
+        const cell = mk('div', 'lab-m3-eqcell lab-m3-b' + i);
+        const n = mk('span', 'lab-m3-eqname'); n.textContent = b.name;
+        const fq = mk('span'); const gn = mk('span', 'lab-m3-gain');
+        cell.append(n, fq, gn); read.append(cell);
+        cells.push({ fq, gn });
+        return hd;
+    });
+
+    function draw() {
+        const r = m3Response();
+        let d = '';
+        for (let k = 0; k < r.length; k++) d += (k ? 'L' : 'M') + (k * 8) + ' ' + Math.max(1, Math.min(259, m3Y(r[k]))).toFixed(1) + ' ';
+        curveP.setAttribute('d', d);
+        fillP.setAttribute('d', d + 'L1000 130 L0 130 Z');
+        m3State.eq.forEach((s, i) => {
+            const hd = handles[i], gl = m3Db(s.g);
+            hd.style.left = (m3X(s.f) / 10).toFixed(2) + '%';
+            hd.style.top = (m3Y(s.g) / 260 * 100).toFixed(2) + '%';
+            hd.setAttribute('aria-valuenow', String(s.g));
+            hd.setAttribute('aria-valuetext', `${M3_BANDS[i].name} ${m3Hz(s.f)}, ${gl}`);
+            hd.setAttribute('aria-label', Lf('lab_m3_eq_band', { band: M3_BANDS[i].name }));
+            cells[i].fq.textContent = m3Hz(s.f);
+            cells[i].gn.textContent = gl;
+            cells[i].gn.dataset.s = s.g > 0 ? '+' : s.g < 0 ? '-' : '0';
+        });
+    }
+    function set(i, f, g) {
+        const b = M3_BANDS[i], s = m3State.eq[i];
+        s.f = Math.round(Math.max(b.min, Math.min(b.max, f)));
+        s.g = Math.max(-15, Math.min(15, Math.round(g * 2) / 2));
+        m3EqApply(i); draw(); m3TaskPing();
+    }
+    handles.forEach((hd, i) => {
+        let drag = false;
+        const move = e => {
+            const r = box.getBoundingClientRect();
+            const fx = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+            const fy = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+            set(i, 20 * Math.pow(10, fx * 3), (130 - fy * 260) / 7.5);
+        };
+        hd.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            try { hd.setPointerCapture(e.pointerId); } catch (_) {}
+            drag = true; hd.classList.add('is-drag'); hd.focus({ preventScroll: true });
+            move(e);
+        });
+        hd.addEventListener('pointermove', e => { if (drag) move(e); });
+        const end = () => { if (!drag) return; drag = false; hd.classList.remove('is-drag'); };
+        hd.addEventListener('pointerup', end); hd.addEventListener('pointercancel', end); hd.addEventListener('lostpointercapture', end);
+        hd.addEventListener('keydown', e => {
+            const s = m3State.eq[i], big = e.shiftKey ? 4 : 1;
+            let f = s.f, g = s.g;
+            if (e.key === 'ArrowUp') g += 0.5 * big;
+            else if (e.key === 'ArrowDown') g -= 0.5 * big;
+            else if (e.key === 'PageUp') g += 2;
+            else if (e.key === 'PageDown') g -= 2;
+            else if (e.key === 'ArrowRight') f *= Math.pow(2, big / 12);
+            else if (e.key === 'ArrowLeft') f /= Math.pow(2, big / 12);
+            else if (e.key === 'Home') g = 0;
+            else return;
+            e.preventDefault();
+            // 1/12 oktav adımı yuvarlamada kaybolmasın: en az 1 Hz ilerle
+            if (f !== s.f && Math.round(f) === s.f) f = s.f + (f > s.f ? 1 : -1);
+            set(i, f, g);
+        });
+    });
+    draw();
+    m3Ui.syncs.push(draw, m3EqSync);
+    sec.append(head, box, read);
+    return sec;
+}
+
+// ── Mixer ────────────────────────────────────────────────────────────
+const m3Mix = { playing: false, seq: null, lead: null, raf: 0, gen: 0 };
+function m3MixApply() {
+    if (!m3A) return;
+    const t = m3A.ctx.currentTime;
+    m3A.ch.forEach((c, i) => {
+        const on = m3Mix.playing && !m3State.muted[i];
+        const lvl = !on ? 0 : M3_CH[i].ti >= 0 ? m3Vol(i) / 100 : state.leadLoopVol * 0.45;
+        c.g.gain.setTargetAtTime(lvl, t, 0.015);
+        if (c.p) c.p.pan.setTargetAtTime(m3State.pan[i], t, 0.015);
+    });
+}
+function m3MixSync() {
+    const u = m3Ui.mix;
+    if (!u) return;
+    m3PlayBtn(u.btn, m3Mix.playing ? 'stop' : 'play', 'lab_m3_mix_play');
+    const user = m3HasUserPattern(), k = user ? 'lab_m3_link_p_user' : 'lab_m3_link_p';
+    u.linkTxt.setAttribute('data-i18n', k); u.linkTxt.textContent = L(k);
+}
+// Metreler: çalarken gerçek analyser seviyesi, dururken tasarımın donmuş karesi (VOL × .3)
+function m3MeterIdle() {
+    const u = m3Ui.mix;
+    if (!u) return;
+    const still = m3Mix.playing && m3RM();   // azaltılmış harekette çalarken sabit seviye
+    u.fills.forEach((f, i) => { f.style.transform = `scaleY(${m3State.muted[i] ? 0 : (m3Vol(i) / 100 * (still ? 1 : 0.3)).toFixed(3)})`; });
+    const mh = m3Master().h / 100 * (still ? 1 : 0.3);
+    u.mfills.forEach(f => { f.style.transform = `scaleY(${mh.toFixed(3)})`; });
+}
+function m3MeterLoop() {
+    cancelAnimationFrame(m3Mix.raf);
+    if (!m3Mix.playing || m3RM()) { m3MeterIdle(); return; }
+    const buf = new Float32Array(512), hold = new Array(8).fill(0);
+    const lvl = a => { a.getFloatTimeDomainData(buf); let s = 0; for (let k = 0; k < buf.length; k++) s += buf[k] * buf[k]; const rms = Math.sqrt(s / buf.length); return rms < 1e-5 ? 0 : Math.max(0, Math.min(1, (20 * Math.log10(rms) + 48) / 48)); };
+    (function tick() {
+        const u = m3Ui.mix;
+        if (!m3Mix.playing || !u || !u.el.isConnected || !m3A) return;
+        const set = (el, k, v) => { hold[k] = Math.max(v, hold[k] * 0.9); el.style.transform = `scaleY(${hold[k].toFixed(3)})`; };
+        m3A.ch.forEach((c, i) => set(u.fills[i], i, lvl(c.a)));
+        set(u.mfills[0], 6, lvl(m3A.mL)); set(u.mfills[1], 7, lvl(m3A.mR));
+        m3Mix.raf = requestAnimationFrame(tick);
+    })();
+}
+function m3MixStop() {
+    if (!m3Mix.playing) return;
+    m3Mix.playing = false; m3Mix.gen++;
+    if (m3Mix.seq) { m3Mix.seq.stop(); m3Mix.seq = null; }
+    if (m3Mix.lead) { try { m3Mix.lead.stop(); } catch (_) {} try { m3Mix.lead.disconnect(); } catch (_) {} m3Mix.lead = null; }
+    cancelAnimationFrame(m3Mix.raf);
+    m3MixApply();                     // kanal kazançları 0 — önceden sıralanmış vuruşlar da susar
+    m3Release(m3MixStop);
+    m3MixSync(); m3MeterIdle(); m3TaskPing();
+}
+function m3MixStart() {
+    m3Claim(m3MixStop);
+    const A = m3Audio(), ctx = A.ctx, gen = ++m3Mix.gen;
+    const user = m3HasUserPattern();
+    m3Mix.playing = true;
+    m3MixApply();
+    m3Mix.seq = m3Seq(user ? state.beatPatterns : M3_HOUSE, user ? (state.swing || 0) : 0, ti => A.ch[ti].g, () => 1);
+    const t0 = m3Mix.seq.t0, bar = 60 / M3_BPM * 4;
+    // Lead Loop her zaman başlar (MUTE = kanal kazancı 0); ızgaraya oturması için bir ölçü başında
+    m3Buf(M3_LOOP).then(buf => {
+        if (!m3Mix.playing || gen !== m3Mix.gen) return;
+        const now = ctx.currentTime + 0.05;
+        const when = t0 + Math.max(0, Math.ceil((now - t0) / bar)) * bar;
+        const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+        src.connect(A.ch[5].g); src.start(when);
+        m3Mix.lead = src;
+    }).catch(e => console.warn('[lab] Lead Loop.wav:', e));
+    m3MixSync(); m3MeterLoop(); m3TaskPing();
+}
+function m3MixToggle() { if (m3Mix.playing) m3MixStop(); else m3MixStart(); }
+
+function m3MasterSync() {
+    const u = m3Ui.mix;
+    if (!u) return;
+    const m = m3Master();
+    u.mdb.textContent = m3Db(m.db);
+    u.master.dataset.st = m.st;
+    const note = L('lab_m3_m_' + m.st);
+    if (u.mnote.textContent !== note) u.mnote.textContent = note;   // aria-live: yalnız durum değişince
+}
+
+function m3BuildMixer() {
+    const sec = mk('section', 'lab-panel lab-panel--hover lab-m3-mix');
+    const hid = 'labM3Mix'; sec.setAttribute('aria-labelledby', hid);
+    const head = mk('div', 'lab-panel-head');
+    const tl = mk('div', 'lab-m3-titles');
+    const h = mk('h2', 'lab-panel-h'); h.id = hid; h.setAttribute('data-i18n', 'lab_m3_mix_h'); h.textContent = L('lab_m3_mix_h');
+    const sub = mk('p', 'lab-panel-sub'); sub.setAttribute('data-i18n', 'lab_m3_mix_sub'); sub.textContent = L('lab_m3_mix_sub');
+    tl.append(h, sub);
+    const btn = mk('button', 'btn btn-primary lab-m3-play'); btn.type = 'button';
+    btn.addEventListener('click', m3MixToggle);
+    head.append(tl, btn);
+
+    const scroll = mk('div', 'lab-m3-mixscroll');
+    const grid = mk('div', 'lab-m3-mixer');
+    const u = { el: sec, btn, fills: [], mfills: [], strips: [], mutes: [] };
+    M3_CH.forEach((c, i) => {
+        const strip = mk('div', 'lab-m3-strip lab-m3-c' + i);
+        strip.setAttribute('role', 'group');
+        const name = mk('span', 'lab-m3-chname'); name.lang = 'en'; name.textContent = c.name;
+        const row = mk('div', 'lab-m3-fadrow');
+        const meter = mk('div', 'lab-m3-meter'); meter.setAttribute('aria-hidden', 'true');
+        const fill = mk('i', 'lab-m3-mfill'); meter.append(fill);
+        const val = mk('span', 'lab-m3-vol'); val.textContent = String(m3Vol(i));
+        row.append(meter, m3Slider({ min: 0, max: 100, step: 1, value: m3Vol(i), vertical: true, label: `${c.name} VOL`, fmt: v => String(v),
+            onChange: v => { m3SetVol(i, v); val.textContent = String(v); m3MixApply(); m3MasterSync(); if (!m3Mix.playing) m3MeterIdle(); m3TaskPing(); } }));
+        const pan = mk('div', 'lab-m3-pan');
+        const pr = mk('div', 'lab-m3-panrow');
+        const pn = mk('span'); pn.lang = 'en'; pn.textContent = 'PAN';
+        const pv = mk('span', 'lab-m3-panv'); pv.textContent = m3PanLbl(m3State.pan[i]);
+        pr.append(pn, pv);
+        pan.append(pr, m3Slider({ min: -1, max: 1, step: 0.05, value: m3State.pan[i], label: `${c.name} PAN`, fmt: m3PanLbl,
+            onChange: v => { m3State.pan[i] = v; pv.textContent = m3PanLbl(v); m3MixApply(); m3StereoSync(); m3TaskPing(); } }));
+        const mute = mk('button', 'lab-m3-mute'); mute.type = 'button'; mute.lang = 'en';
+        mute.addEventListener('click', () => {
+            m3State.muted[i] = !m3State.muted[i];
+            paintMute(i); m3MixApply(); m3MasterSync(); if (!m3Mix.playing) m3MeterIdle(); m3StereoSync(); m3TaskPing();
+        });
+        strip.append(name, row, val, pan, mute);
+        grid.append(strip);
+        u.fills.push(fill); u.strips.push(strip); u.mutes.push(mute);
+    });
+    function paintMute(i) {
+        const on = m3State.muted[i];
+        u.strips[i].classList.toggle('is-muted', on);
+        u.mutes[i].setAttribute('aria-pressed', String(on));
+        u.mutes[i].textContent = L(on ? 'lab_m3_muted' : 'lab_m3_mute');
+        u.mutes[i].setAttribute('aria-label', `${M3_CH[i].name} MUTE`);
+    }
+    // MASTER: tahmini dB + durum notu, iki (L/R) metre
+    const master = mk('div', 'lab-m3-strip lab-m3-master');
+    const mn = mk('span', 'lab-m3-chname'); mn.lang = 'en'; mn.textContent = 'MASTER';
+    const mrow = mk('div', 'lab-m3-fadrow lab-m3-mmeters'); mrow.setAttribute('aria-hidden', 'true');
+    [0, 1].forEach(() => { const m = mk('div', 'lab-m3-meter'); const f = mk('i', 'lab-m3-mfill'); m.append(f); mrow.append(m); u.mfills.push(f); });
+    const mdb = mk('span', 'lab-m3-mdb');
+    const mnote = mk('span', 'lab-m3-mnote'); mnote.setAttribute('aria-live', 'polite');
+    master.append(mn, mrow, mdb, mnote);
+    grid.append(master);
+    scroll.append(grid);
+    Object.assign(u, { master, mdb, mnote });
+
+    const note = mk('p', 'lab-m3-note');
+    const linkTxt = mk('span');
+    const link = labLinkTo(2, 'lab-m3-link', '<span></span> <span aria-hidden="true">→</span>');
+    link.firstChild.setAttribute('data-i18n', 'lab_m3_link'); link.firstChild.textContent = L('lab_m3_link');
+    note.append(linkTxt, document.createTextNode(' '), link);
+    u.linkTxt = linkTxt;
+
+    m3Ui.mix = u;
+    function relabel() {
+        M3_CH.forEach((c, i) => { u.strips[i].setAttribute('aria-label', Lf('lab_m3_ch_group', { name: c.name })); paintMute(i); });
+        m3MasterSync(); m3MixSync();
+    }
+    relabel(); m3MeterIdle();
+    m3Ui.syncs.push(relabel);
+    sec.append(head, scroll, note);
+    return sec;
+}
+
+// ── Stereo field (mixer pan / mute'lerinden canlı) ───────────────────
+let m3StAria = 0;
+function m3StereoSync() {
+    const st = m3Ui.stereo;
+    if (!st) return;
+    const items = M3_CH.map((c, i) => {
+        const t = `${c.name} ${m3PanLbl(m3State.pan[i])}` + (m3State.muted[i] ? ' ' + L('lab_m3_st_muted') : '');
+        const d = st.dots[i];
+        d.setAttribute('cx', (150 + m3State.pan[i] * 120).toFixed(1));
+        d.classList.toggle('is-muted', m3State.muted[i]);
+        d.firstChild.textContent = t;
+        return t;
+    });
+    clearTimeout(m3StAria);
+    m3StAria = setTimeout(() => { if (st.svg.isConnected) st.svg.setAttribute('aria-label', Lf('lab_m3_st_aria', { list: items.join(', ') })); }, 250);
+}
+
+// ── Mix kavramları ───────────────────────────────────────────────────
+function m3Card(cls, titleKey, tagEl, bodyKey) {
+    const card = mk('article', 'lab-tcard lab-tcard--p18 lab-tcard--hover lab-m3-con ' + cls);
+    const hid = 'labM3' + (++_labSeq);
+    card.setAttribute('aria-labelledby', hid);
+    const head = mk('div', 'lab-tcard-head');
+    const h = mk('h3', 'lab-tcard-h'); h.id = hid; h.setAttribute('data-i18n', titleKey); h.textContent = L(titleKey);
+    head.append(h, tagEl);
+    const p = mk('p', 'lab-tcard-sub lab-m3-body'); p.setAttribute('data-i18n', bodyKey); p.textContent = L(bodyKey);
+    card.append(head, p);
+    return card;
+}
+function m3Tag(key) { const t = mk('span', 'lab-m3-tag'); if (key) { t.setAttribute('data-i18n', key); t.textContent = L(key); } return t; }
+function m3Demo(key, onClick) {
+    const b = mk('button', 'btn btn-subtle btn-sm lab-m3-demo'); b.type = 'button';
+    b.addEventListener('click', onClick);
+    const sync = mode => m3PlayBtn(b, mode, key);
+    sync('play');
+    return { b, sync };
+}
+function m3Svg(vb, cls) {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('viewBox', vb); s.setAttribute('class', cls);
+    return s;
+}
+
+function m3BuildConcepts() {
+    const sec = mk('section', 'lab-panel lab-panel--bare lab-m3-concepts');
+    sec.setAttribute('aria-labelledby', 'labM3Con');
+    const h = mk('h2', 'lab-panel-h'); h.id = 'labM3Con'; h.setAttribute('data-i18n', 'lab_m3_con_h'); h.textContent = L('lab_m3_con_h');
+    const grid = mk('div', 'lab-mcols lab-mcols--tight');
+    grid.append(m3CardComp(), m3CardSidechain(), m3CardReverb(), m3CardStereo(), m3CardHeadroom(), m3CardLimiter());
+    sec.append(h, grid);
+    return sec;
+}
+
+// 1 · Compression — transfer eğrisi + GR; demo: Kick.wav 8 vuruş, gerçek compressor
+function m3CardComp() {
+    const S = m3State.comp;
+    const tag = m3Tag(); tag.classList.add('lab-m3-tag--err'); tag.lang = 'en';
+    const card = m3Card('lab-m3-c-comp', 'lab_m3_comp_h', tag, 'lab_m3_comp_p');
+    const viz = mk('div', 'lab-m3-viz');
+    const svg = m3Svg('0 0 200 120', 'lab-m3-comp'); svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<path class="lab-m3-diag" d="M0 120 L200 0"/><path class="lab-m3-ccurve"/><line class="lab-m3-thr" y1="0" y2="120"/>';
+    viz.append(svg);
+    const curve = svg.querySelector('.lab-m3-ccurve'), thr = svg.querySelector('.lab-m3-thr');
+    let live = null;
+    const grDb = () => -(0 - S.thr) * (1 - 1 / S.ratio);
+    function draw() {
+        const x = (S.thr + 40) / 40 * 200, y = 120 - (S.thr + 40) / 40 * 120;
+        curve.setAttribute('d', `M0 120 L${x.toFixed(1)} ${y.toFixed(1)} L200 ${Math.max(0, y - y / S.ratio).toFixed(1)}`);
+        thr.setAttribute('x1', x.toFixed(1)); thr.setAttribute('x2', x.toFixed(1));
+        if (!live) tag.textContent = 'GR ' + m3Db(grDb());
+    }
+    const sls = mk('div', 'lab-m3-sls');
+    sls.append(
+        m3SlRow('THRESHOLD', { min: -40, max: 0, step: 1, value: S.thr, fmt: v => m3Db(v, 0), onChange: v => { S.thr = v; if (live) live.comp.threshold.setTargetAtTime(v, live.c.currentTime, 0.01); draw(); } }),
+        m3SlRow('RATIO', { min: 1, max: 20, step: 1, value: S.ratio, fmt: v => v + ':1', onChange: v => { S.ratio = v; if (live) live.comp.ratio.setTargetAtTime(v, live.c.currentTime, 0.01); draw(); } }),
+    );
+    function stop() {
+        if (!live) return;
+        const l = live; live = null;
+        clearTimeout(l.timer); cancelAnimationFrame(l.raf);
+        l.srcs.forEach(s => { try { s.stop(); } catch (_) {} });
+        m3Fade(l.out, 200);
+        m3Release(stop); demo.sync('play'); draw();
+    }
+    const demo = m3Demo('lab_m3_comp_demo', () => {
+        if (live) { stop(); return; }
+        m3Claim(stop);
+        const c = getBeatCtx(), spb = 60 / M3_BPM;
+        const comp = c.createDynamicsCompressor();
+        comp.threshold.value = S.thr; comp.ratio.value = S.ratio; comp.attack.value = 0.003; comp.release.value = 0.1;
+        const out = c.createGain(); out.gain.value = 1;
+        comp.connect(out); out.connect(c.destination);
+        const t0 = c.currentTime + 0.05, srcs = [], kick = beatBuffers[BEAT_TRACKS[0].file];
+        for (let k = 0; k < 8; k++) {
+            if (kick) { const s = c.createBufferSource(); s.buffer = kick; const g = c.createGain(); g.gain.value = 0.9; s.connect(g); g.connect(comp); s.start(t0 + k * spb); srcs.push(s); }
+            else synthDrum(c, BEAT_TRACKS[0].file, 0.9, t0 + k * spb, comp);
+        }
+        live = { c, comp, out, srcs, raf: 0, timer: setTimeout(stop, (8 * spb + 0.4) * 1000) };
+        (function tick() { if (!live) return; const r = typeof comp.reduction === 'number' ? comp.reduction : (comp.reduction && comp.reduction.value) || 0; tag.textContent = 'GR ' + m3Db(Math.min(0, r)); live.raf = requestAnimationFrame(tick); })();
+        demo.sync('stop');
+    });
+    m3Ui.stops.push(stop); m3Ui.syncs.push(() => demo.sync(live ? 'stop' : 'play'));
+    draw();
+    card.append(viz, sls, mk('div', 'lab-m3-demos')); card.lastChild.append(demo.b);
+    return card;
+}
+
+// 2 · Sidechain — KICK / BASS / GAIN RED. çubukları; demo: AudioWorklet zarf izleyici (yedek: kazanç rampası)
+const M3_SC_WORKLET = `class SidechainProcessor extends AudioWorkletProcessor{
   constructor(){super();this._env=0;}
   static get parameterDescriptors(){return[
-    {name:'depth',defaultValue:.88,minValue:0,maxValue:1,automationRate:'k-rate'},
+    {name:'depth',defaultValue:.7,minValue:0,maxValue:1,automationRate:'k-rate'},
     {name:'attack',defaultValue:.003,minValue:.001,maxValue:.05,automationRate:'k-rate'},
     {name:'release',defaultValue:.18,minValue:.02,maxValue:.6,automationRate:'k-rate'}
   ];}
   process(inputs,outputs,params){
-    const bL=inputs[0]?.[0],bR=inputs[0]?.[1],kL=inputs[1]?.[0];
-    const oL=outputs[0]?.[0],oR=outputs[0]?.[1];
+    const bL=inputs[0]&&inputs[0][0],bR=inputs[0]&&inputs[0][1],kL=inputs[1]&&inputs[1][0];
+    const oL=outputs[0]&&outputs[0][0],oR=outputs[0]&&outputs[0][1];
     if(!oL)return true;
     const depth=params.depth[0];
     const atk=Math.exp(-1/(params.attack[0]*sampleRate));
@@ -5018,7 +5165,7 @@ function buildInteractiveConcepts() {
       this._env=k>this._env?atk*this._env+(1-atk)*k:rel*this._env;
       const g=1-depth*Math.min(1,this._env*4);
       oL[i]=(bL?bL[i]:0)*g;
-      if(oR)oR[i]=(bR?bR[i]:0)*g;
+      if(oR)oR[i]=(bR?bR[i]:(bL?bL[i]:0))*g;
       sumGR+=(1-g);
     }
     this.port.postMessage(sumGR/oL.length);
@@ -5026,482 +5173,400 @@ function buildInteractiveConcepts() {
   }
 }
 registerProcessor('sidechain-processor',SidechainProcessor);`;
-
-            function stopSidechain(){
-                running=false;
-                if(meterRaf){cancelAnimationFrame(meterRaf);meterRaf=null;}
-                if(stopTimer){clearTimeout(stopTimer);stopTimer=null;}
-                scKickNodes.forEach(n=>{try{n.stop();}catch{}});scKickNodes=[];
-                scBassNodes.forEach(n=>{try{n.stop();}catch{}});scBassNodes=[];
-                if(_scWorklet){try{_scWorklet.disconnect();}catch{};_scWorklet=null;}
-                if(scKickHub){try{scKickHub.disconnect();}catch{};scKickHub=null;}
-                if(scBassAna){try{scBassAna.disconnect();}catch{};scBassAna=null;}
-                if(scKickAna){try{scKickAna.disconnect();}catch{};scKickAna=null;}
-                _lastGR=0;
-                kickM.bar.style.width='0%'; bassM.bar.style.width='0%'; grM.bar.style.width='0%';
-                btnPlay(btn,'play','Kick + Bass — Sidechain Pump');
-            }
-
-            const btn=demoBtn('Kick + Bass — Sidechain Pump');
-            btn.onclick=async()=>{
-                if(running){stopSidechain();return;}
-                running=true; btnPlay(btn,'stop','Durdur');
-                const c=getBeatCtx();
-
-                // Try loading AudioWorklet once per AudioContext
-                let useWorklet=false;
-                try{
-                    if(!c._scWorkletReady){
-                        const blob=new Blob([WORKLET_SRC],{type:'application/javascript'});
-                        const url=URL.createObjectURL(blob);
-                        await c.audioWorklet.addModule(url);
-                        URL.revokeObjectURL(url);
-                        c._scWorkletReady=true;
-                    }
-                    useWorklet=true;
-                }catch(e){useWorklet=false;}
-                if(!running)return;
-
-                const BPM=128, spb=60/BPM, BEATS=16;
-                const depth=parseFloat(depthSl.value)||.88, rel=parseFloat(relSl.value)||.18;
-
-                if(useWorklet){
-                    _scWorklet=new AudioWorkletNode(c,'sidechain-processor',{numberOfInputs:2,numberOfOutputs:1,outputChannelCount:[2]});
-                    _scWorklet.parameters.get('depth').value=depth;
-                    _scWorklet.parameters.get('release').value=rel;
-                    _scWorklet.port.onmessage=e=>{_lastGR=e.data;};
-
-                    scBassAna=c.createAnalyser(); scBassAna.fftSize=256; scBassAna.smoothingTimeConstant=0.5;
-                    scKickAna=c.createAnalyser(); scKickAna.fftSize=256; scKickAna.smoothingTimeConstant=0.3;
-                    _scWorklet.connect(scBassAna); scBassAna.connect(c.destination);
-
-                    // Shared gain for bass → worklet input 0
-                    const bg=c.createGain(); bg.gain.value=0.95;
-                    bg.connect(_scWorklet,0,0);
-
-                    // Kick hub → analyser + worklet input 1 (sidechain trigger)
-                    scKickHub=c.createGain(); scKickHub.gain.value=1;
-                    scKickHub.connect(scKickAna); scKickAna.connect(c.destination);
-                    scKickHub.connect(_scWorklet,0,1);
-
-                    // Calculate t0 AFTER graph setup so lookahead is accurate
-                    const t0=c.currentTime+0.12;
-                    const bassBuf=beatBuffers[BEAT_TRACKS[4].file];
-                    const kickBuf=beatBuffers[BEAT_TRACKS[0].file];
-
-                    // Schedule kick + bass per beat — perfectly aligned
-                    for(let i=0;i<BEATS;i++){
-                        const when=t0+i*spb;
-                        // Kick
-                        if(kickBuf){
-                            const src=c.createBufferSource(); src.buffer=kickBuf;
-                            src.connect(scKickHub); src.start(when); scKickNodes.push(src);
-                        } else {
-                            const o=c.createOscillator(); o.type='sine';
-                            o.frequency.setValueAtTime(90,when); o.frequency.exponentialRampToValueAtTime(0.001,when+.28);
-                            const og=c.createGain(); og.gain.setValueAtTime(.7,when); og.gain.exponentialRampToValueAtTime(.001,when+.28);
-                            o.connect(og); og.connect(scKickHub); o.start(when); o.stop(when+.32); scKickNodes.push(o);
-                        }
-                        // Bass — one note per beat, same when → always in sync with kick
-                        if(bassBuf){
-                            const src=c.createBufferSource(); src.buffer=bassBuf;
-                            src.connect(bg); src.start(when); scBassNodes.push(src);
-                        } else {
-                            const ob=c.createOscillator(); ob.type='sawtooth'; ob.frequency.value=55;
-                            const flt=c.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=200;
-                            const gb=c.createGain(); gb.gain.value=0.7;
-                            ob.connect(flt); flt.connect(gb); gb.connect(bg);
-                            ob.start(when); ob.stop(when+spb*0.9); scBassNodes.push(ob);
-                        }
-                    }
-                    // Meter loop
-                    const fbuf=new Float32Array(128);
-                    function meterLoop(){
-                        if(!running)return;
-                        scKickAna.getFloatTimeDomainData(fbuf);
-                        const rmsK=Math.sqrt(fbuf.reduce((s,v)=>s+v*v,0)/fbuf.length);
-                        kickM.bar.style.width=Math.min(100,rmsK*380)+'%';
-                        scBassAna.getFloatTimeDomainData(fbuf);
-                        const rmsB=Math.sqrt(fbuf.reduce((s,v)=>s+v*v,0)/fbuf.length);
-                        bassM.bar.style.width=Math.min(100,rmsB*220)+'%';
-                        grM.bar.style.width=Math.min(100,_lastGR*100)+'%';
-                        meterRaf=requestAnimationFrame(meterLoop);
-                    }
-                    meterLoop();
-                } else {
-                    // Fallback: simulated pump via scheduled gain ramps
-                    const t0=c.currentTime+0.12;
-                    const kb=beatBuffers[BEAT_TRACKS[0].file];
-                    const bb=beatBuffers[BEAT_TRACKS[4].file];
-                    for(let i=0;i<BEATS;i++){
-                        const when=t0+i*spb;
-                        // Kick
-                        if(kb){const src=c.createBufferSource();src.buffer=kb;const g=c.createGain();g.gain.value=.85;src.connect(g);g.connect(c.destination);src.start(when);scKickNodes.push(src);}
-                        else{const o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(90,when);o.frequency.exponentialRampToValueAtTime(.001,when+.28);const og=c.createGain();og.gain.setValueAtTime(.7,when);og.gain.exponentialRampToValueAtTime(.001,when+.28);o.connect(og);og.connect(c.destination);o.start(when);o.stop(when+.32);scKickNodes.push(o);}
-                        // Bass — same when as kick, gain ramp simulates duck+recover
-                        if(bb){const src=c.createBufferSource();src.buffer=bb;const g=c.createGain();g.gain.setValueAtTime(1-depth,when);g.gain.linearRampToValueAtTime(.9,when+rel);src.connect(g);g.connect(c.destination);src.start(when);scBassNodes.push(src);}
-                        // visual pulse
-                        const delay=i*spb*1000;
-                        setTimeout(()=>{if(!running)return;kickM.bar.style.width='100%';bassM.bar.style.width=Math.round((1-depth)*100)+'%';grM.bar.style.width=Math.round(depth*100)+'%';},delay);
-                        setTimeout(()=>{if(!running)return;kickM.bar.style.width='10%';bassM.bar.style.width='80%';grM.bar.style.width='5%';},delay+rel*1000);
-                    }
-                }
-                stopTimer=setTimeout(()=>{if(running)stopSidechain();},(BEATS*spb+0.6)*1000);
-            };
-            conceptCleanups.push(stopSidechain);
-            card.append(viz,depthLbl,depthSl,relLbl,relSl,btn);
-          }
-        },
-        // ── 7. Stereo Field ──────────────────────────────────────────
-        { title:'Stereo Field', color:'var(--info)',
-          body:'Mono: kick, bass, snare (alt frekanslar mono olmalı). Stereo: pad, lead, efektler. Mono uyumluluğunu kontrol et.',
-          demo(card){
-            const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-            svg.setAttribute('viewBox','-65 -30 130 60');
-            svg.setAttribute('class','lab-stereo');
-            svg.setAttribute('role','img'); svg.setAttribute('aria-label','Stereo yerleşim: kick ve bass merkezde, snare hafif sol, hat ve lead geniş, pad tam stereo');
-            const _svgDim = 'rgba(255,255,255,.35)';
-            const _svgDimC = 'rgba(255,255,255,.2)';
-            const _svgLine = 'rgba(255,255,255,.12)';
-            const _k=_btc(BEAT_TRACKS[0]), _b=_btc(BEAT_TRACKS[4]), _sn=_btc(BEAT_TRACKS[1]), _h=_btc(BEAT_TRACKS[2]), _ld=TOK.lead, _pd=TOK.err, _ink=TOK.accentInk;
-            svg.innerHTML=`
-              <line x1="-60" y1="18" x2="60" y2="18" stroke="${_svgLine}" stroke-width="1"/>
-              <text x="-60" y="26" fill="${_svgDim}" font-size="7" font-family="monospace">L</text>
-              <text x="56" y="26" fill="${_svgDim}" font-size="7" font-family="monospace">R</text>
-              <text x="-4" y="26" fill="${_svgDimC}" font-size="6" font-family="monospace">C</text>
-              <circle cx="0"  cy="14" r="6" fill="${_k}" opacity=".9"/><text x="-4" y="17" fill="${_ink}" font-size="5.5" font-family="monospace" font-weight="bold">K</text>
-              <circle cx="3"  cy="14" r="5" fill="${_b}" opacity=".85"/><text x="-1" y="17" fill="${_ink}" font-size="5.5" font-family="monospace" font-weight="bold">B</text>
-              <circle cx="-6" cy="8"  r="5" fill="${_sn}" opacity=".9"/><text x="-10" y="11" fill="${_ink}" font-size="5.5" font-family="monospace">Sn</text>
-              <circle cx="-42" cy="2" r="5" fill="${_h}" opacity=".9"/><text x="-47" y="5" fill="${_ink}" font-size="5.5" font-family="monospace">Hat</text>
-              <circle cx="38" cy="-2" r="5" fill="${_ld}" opacity=".9"/><text x="35" y="1" fill="${_ink}" font-size="5.5" font-family="monospace">Ld</text>
-              <circle cx="-52" cy="-14" r="7" fill="${_pd}" opacity=".65"/>
-              <circle cx="52"  cy="-14" r="7" fill="${_pd}" opacity=".65"/>
-              <text x="-4" y="-11" fill="${_pd}" font-size="5.5" font-family="monospace">Pad</text>
-              <line x1="-52" y1="-14" x2="52" y2="-14" stroke="${_pd}" stroke-opacity=".35" stroke-width="1" stroke-dasharray="3,3"/>`;
-            const note=mk('div','lab-note');
-            note.innerHTML='<span class="lab-c-kick">K</span>+<span class="lab-c-bass">B</span> = mono merkez &nbsp;·&nbsp; <span class="lab-c-chat">Hat</span>+<span class="lab-c-lead">Ld</span> = geniş &nbsp;·&nbsp; <span class="lab-c-pad">Pad</span> = full stereo';
-            card.append(svg,note);
-          }
-        },
-        // ── 8. Headroom ──────────────────────────────────────────────
-        { title:'Headroom', color:'var(--info)',
-          body:'Master kanal -6dB civarında kalmalı. Mastering aşamasında limiter için alan bırak. Beat Loop\'u çal ve seviyeyi sürükle.',
-          demo(card){
-            const lbl=mk('div','lab-sl-label'); const val=mk('span','lab-val','-4.4 dB');
-            lbl.append(mk('span','','Master Level'),val);
-            const meter=mk('div','lab-meter lab-meter--lg');
-            const fill=mk('div','lab-meter-fill lab-meter-fill--grad'); fill.style.width='60%';
-            meter.append(fill);
-            ['73%','87%'].forEach(x=>{ const t=mk('div','lab-meter-tick'); t.style.left=x; meter.append(t); });
-            const status=mk('div','lab-status'); status.setAttribute('aria-live','polite');
-            status.textContent='✓ Güvenli (-6dB headroom var)';
-            let masterVol=.6, masterGainNode=null;
-            const sl=makeSlider({min:0,max:1.3,step:.01,value:.6,onChange:v=>{
-                masterVol=v;
-                const db=v<.001?-Infinity:20*Math.log10(v);
-                val.textContent=(db>0?'+':'')+db.toFixed(1)+' dB';
-                fill.style.width=Math.min(100,v/1.3*100)+'%';
-                if(masterGainNode) masterGainNode.gain.value=v;
-                if(v>1.05){ status.className='lab-status is-err'; status.textContent='CLİP — distortion!'; }
-                else if(v>.88){ status.className='lab-status is-warn'; status.textContent='Az headroom'; }
-                else { status.className='lab-status'; status.textContent='✓ Güvenli headroom'; }
-            }});
-            // Beat loop + limiter button
-            let hrPlaying=false, hrIv=null, hrStep=0, hrNext=0;
-            const beatBtn=demoBtn("Beat Loop'u Çal + Limiter");
-            beatBtn.onclick=()=>{
-                if(hrPlaying){ hrPlaying=false; clearInterval(hrIv); btnPlay(beatBtn,'play',"Beat Loop'u Çal + Limiter"); return; }
-                const c=getBeatCtx();
-                if(!masterGainNode){
-                    masterGainNode=c.createGain(); masterGainNode.gain.value=masterVol;
-                    const lim=c.createDynamicsCompressor();
-                    lim.threshold.value=-.5; lim.knee.value=0; lim.ratio.value=20; lim.attack.value=.001; lim.release.value=.05;
-                    masterGainNode.connect(lim); lim.connect(c.destination);
-                }
-                // Use default kick pattern if Beat Maker is empty
-                const hasAny=state.beatPatterns.some(r=>r.some(v=>v>0));
-                if(!hasAny){
-                    state.beatPatterns[0][0]=state.beatPatterns[0][4]=state.beatPatterns[0][8]=state.beatPatterns[0][12]=100;
-                    state.beatPatterns[1][4]=state.beatPatterns[1][12]=80;
-                    state.beatPatterns[2][2]=state.beatPatterns[2][6]=state.beatPatterns[2][10]=state.beatPatterns[2][14]=60;
-                }
-                hrPlaying=true; hrStep=0; hrNext=c.currentTime+.05;
-                btnPlay(beatBtn,'stop','Durdur');
-                const spb=60/state.bpm/4;
-                hrIv=setInterval(()=>{
-                    if(!hrPlaying){ clearInterval(hrIv); return; }
-                    while(hrNext<c.currentTime+0.12){
-                        const sw=hrStep%2===1?(state.swing/100)*(60/state.bpm/4)*.66:0;
-                        const t=hrNext+sw;
-                        BEAT_TRACKS.forEach((track,ti)=>{
-                            const vel=state.beatPatterns[ti]?.[hrStep]; if(!vel||vel<=0) return;
-                            const v=vel/100;
-                            const buf=beatBuffers[track.file];
-                            if(buf){ const src=c.createBufferSource(); src.buffer=buf; const g=c.createGain(); g.gain.value=v; src.connect(g); g.connect(masterGainNode); src.start(t); }
-                            else synthDrum(c,track.file,v,t,masterGainNode);
-                        });
-                        hrNext+=spb; hrStep=(hrStep+1)%16;
-                    }
-                },20);
-            };
-            conceptCleanups.push(()=>{ if(hrPlaying){ hrPlaying=false; clearInterval(hrIv); } });
-            card.append(lbl,sl,meter,status,beatBtn);
-          }
-        },
-        // ── 9. Delay ─────────────────────────────────────────────────
-        { title:'Delay', color:'var(--info)',
-          body:'Sesin gecikmeli kopyaları. Feedback döngüsünde HPF+LPF ile her echo\'da tiz kaybolur — doğal oda aksi. BPM-sync (1/4, 1/8) ile ritim uyumu.',
-          demo(card){
-            let delayMs=250, feedback=0.45, wet=0.5, toneHz=4500;
-            let dlySrc=null, dlyCtx=null, dlyNode=null, dlyFbGain=null, dlyWetGain=null, dlyDryGain=null, dlyHpf=null, dlyLpf=null;
-            let dlyLeadBuf=null, dlyRaf=null;
-
-            // sliders
-            function slRow(label,color,min,max,step,val,fmt,cb){
-                const w=mk('div');
-                const lb=mk('div','lab-sl-label'); const v=mk('span','lab-val',fmt(val));
-                lb.append(mk('span','',label),v); w.append(lb);
-                w.append(makeSlider({min,max,step,value:val,label,onChange:x=>{v.textContent=fmt(x);cb(x);}}));
-                return w;
-            }
-            card.append(slRow('Delay Time','var(--info)',20,600,1,delayMs,v=>Math.round(v)+'ms',v=>{delayMs=v;if(dlyNode)dlyNode.delayTime.setTargetAtTime(v/1000,dlyCtx.currentTime,.01);}));
-            card.append(slRow('Feedback','var(--info)',0,.92,.01,feedback,v=>Math.round(v*100)+'%',v=>{feedback=v;if(dlyFbGain)dlyFbGain.gain.setTargetAtTime(v,dlyCtx.currentTime,.01);}));
-            card.append(slRow('Wet','var(--info)',0,1,.01,wet,v=>Math.round(v*100)+'%',v=>{wet=v;if(dlyWetGain){dlyWetGain.gain.setTargetAtTime(v*.7,dlyCtx.currentTime,.01);dlyDryGain.gain.setTargetAtTime((1-v)*.7,dlyCtx.currentTime,.01);}}));
-            card.append(slRow('Tone (feedback LPF)','var(--info)',500,18000,100,toneHz,v=>v>=1000?(Math.round(v/100)/10)+'kHz':Math.round(v)+'Hz',v=>{toneHz=v;if(dlyLpf)dlyLpf.frequency.setTargetAtTime(v,dlyCtx.currentTime,.02);}));
-
-            // echo visualiser canvas
-            const ecCv=document.createElement('canvas'); ecCv.height=36;
-            ecCv.className='lab-echo'; ecCv.setAttribute('aria-hidden','true');
-            card.append(ecCv);
-            function drawEchoes(){
-                const cw=ecCv.clientWidth||200; if(ecCv.width!==cw) ecCv.width=cw;
-                const cx=ecCv.getContext('2d'); cx.clearRect(0,0,cw,36);
-                const taps=7; const maxX=cw-8;
-                for(let i=0;i<taps;i++){
-                    const amp=Math.pow(feedback,i)*(dlySrc?1:0.25);
-                    const x=8+i*(maxX/(taps-1));
-                    const h=Math.max(2,amp*28);
-                    const alpha=Math.max(.08,amp*.9);
-                    cx.fillStyle=`rgba(159,198,240,${alpha})`;   /* --info */
-                    cx.fillRect(x-3,18-h/2,6,h);
-                }
-            }
-            drawEchoes();
-
-            const btn=demoBtn('Lead Loop + Delay');
-            btn.onclick=async()=>{
-                if(dlySrc){
-                    try{dlySrc.stop();}catch{}
-                    dlySrc=null; cancelAnimationFrame(dlyRaf);
-                    drawEchoes();
-                    btnPlay(btn,'play','Lead Loop + Delay'); return;
-                }
-                if(!dlyCtx) dlyCtx=new(window.AudioContext||window.webkitAudioContext)();
-                if(dlyCtx.state==='suspended') dlyCtx.resume();
-                btnPlay(btn,'load','Yükleniyor'); btn.disabled=true;
-                try{
-                    if(!dlyLeadBuf){
-                        const r=await fetch('assets/audio/Lead Loop.wav');
-                        dlyLeadBuf=await dlyCtx.decodeAudioData(await r.arrayBuffer());
-                    }
-                    // Build delay chain
-                    dlyDryGain=dlyCtx.createGain(); dlyDryGain.gain.value=(1-wet)*.7;
-                    dlyWetGain=dlyCtx.createGain(); dlyWetGain.gain.value=wet*.7;
-                    dlyNode=dlyCtx.createDelay(2); dlyNode.delayTime.value=delayMs/1000;
-                    dlyFbGain=dlyCtx.createGain(); dlyFbGain.gain.value=feedback;
-                    // HPF+LPF in feedback: each echo gets darker (high freqs bleed, low freqs cut)
-                    dlyHpf=dlyCtx.createBiquadFilter(); dlyHpf.type='highpass'; dlyHpf.frequency.value=100; dlyHpf.Q.value=0.5;
-                    dlyLpf=dlyCtx.createBiquadFilter(); dlyLpf.type='lowpass'; dlyLpf.frequency.value=toneHz; dlyLpf.Q.value=0.5;
-                    // Signal path: src → dryGain → out
-                    //                   → dlyNode → fbGain → hpf → lpf → dlyNode (loop)
-                    //                   dlyNode → wetGain → out
-                    dlyNode.connect(dlyFbGain); dlyFbGain.connect(dlyHpf); dlyHpf.connect(dlyLpf); dlyLpf.connect(dlyNode);
-                    dlyNode.connect(dlyWetGain);
-                    dlyDryGain.connect(dlyCtx.destination); dlyWetGain.connect(dlyCtx.destination);
-                    dlySrc=dlyCtx.createBufferSource(); dlySrc.buffer=dlyLeadBuf; dlySrc.loop=true;
-                    dlySrc.connect(dlyDryGain); dlySrc.connect(dlyNode); dlySrc.start();
-                    btn.disabled=false; btnPlay(btn,'stop','Durdur');
-                    // animate echoes
-                    (function anim(){ if(!dlySrc) return; drawEchoes(); dlyRaf=requestAnimationFrame(anim); })();
-                }catch(e){ btn.disabled=false; btnPlay(btn,'play','Lead Loop + Delay'); }
-            };
-            card.append(btn);
-            conceptCleanups.push(()=>{ if(dlySrc){try{dlySrc.stop();}catch{} dlySrc=null;} cancelAnimationFrame(dlyRaf); dlyHpf=null; dlyLpf=null; if(dlyCtx){try{dlyCtx.suspend();}catch{}} });
-          }
-        },
-        // ── 10. Limiter ───────────────────────────────────────────────
-        { title:'Limiter', color:'var(--err-strong)',
-          body:'Sinyalin bir dB seviyesini aşmasını önler. Mastering zincirinin son halkası. Ratio=∞:1, knee=0, attack<1ms.',
-          demo(card){
-            let limThresh=-3, limOn=true;
-            let limSrc=null, limCtx=null, limComp=null, limBypass=null, limInGain=null, limRaf=null;
-            let limLeadBuf=null;
-            let inPeak=0, outPeak=0;
-
-            // IN/OUT meters
-            const mRow=mk('div','lab-meters lab-meters--2');
-            function makeMeter(label,color){
-                const col=mk('div'); col.style.setProperty('--c',color);
-                col.innerHTML=`<div class="lab-meter-lbl">${label}</div>`;
-                const track=mk('div','lab-meter');
-                const bar=mk('div','lab-meter-fill');
-                track.append(bar); col.append(track);
-                const dbLbl=mk('div','lab-meter-db');
-                dbLbl.textContent='—'; col.append(dbLbl);
-                return {col,bar,dbLbl};
-            }
-            const inM=makeMeter('INPUT',TOK.accent), outM=makeMeter('OUTPUT',TOK.info);
-            mRow.append(inM.col, outM.col);
-
-            // Reduction meter
-            const grTrack=mk('div','lab-meter');
-            const grBar=mk('div','lab-meter-fill lab-meter-fill--grad');
-            grTrack.append(grBar);
-            const grLbl=mk('div','lab-gr-lbl');
-            grLbl.textContent='Gain Reduction: 0 dB';
-
-            // Threshold slider
-            const thrRow=mk('div');
-            const thrLbl=mk('div','lab-sl-label'); const thrVal=mk('span','lab-val',limThresh+' dBFS');
-            thrLbl.append(mk('span','','Threshold'),thrVal); thrRow.append(thrLbl);
-            thrRow.append(makeSlider({min:-24,max:0,step:1,value:limThresh,onChange:v=>{limThresh=v;thrVal.textContent=v+' dBFS';if(limComp)limComp.threshold.setTargetAtTime(v,limCtx.currentTime,.01);}}));
-
-            // Limiter toggle
-            const togRow=mk('div','lab-togrow');
-            const togBtn=mk('button','lab-opt lab-opt--row','Limiter: AÇIK'); togBtn.type='button';
-            togBtn.classList.add('active'); togBtn.setAttribute('aria-pressed','true');
-            togBtn.onclick=()=>{
-                limOn=!limOn;
-                togBtn.textContent='Limiter: '+(limOn?'AÇIK':'KAPALI');
-                togBtn.classList.toggle('active',limOn); togBtn.setAttribute('aria-pressed',String(limOn));
-                if(limCtx && limInGain && limComp && limBypass){
-                    if(limOn){
-                        // reconnect through limiter
-                        try{limInGain.disconnect(limCtx.destination);}catch{}
-                        limInGain.connect(limComp);
-                    } else {
-                        // bypass: direct to destination
-                        try{limInGain.disconnect(limComp);}catch{}
-                        limInGain.connect(limCtx.destination);
-                    }
-                }
-            };
-            togRow.append(togBtn);
-
-            // play button
-            const btn=demoBtn('Lead Loop');
-            btn.onclick=async()=>{
-                if(limSrc){
-                    try{limSrc.stop();}catch{} limSrc=null;
-                    cancelAnimationFrame(limRaf);
-                    btnPlay(btn,'play','Lead Loop');
-                    inM.bar.style.width='0%'; outM.bar.style.width='0%';
-                    inM.dbLbl.textContent='—'; outM.dbLbl.textContent='—';
-                    grBar.style.width='0%'; grLbl.textContent='Gain Reduction: 0 dB';
-                    return;
-                }
-                if(!limCtx) limCtx=new(window.AudioContext||window.webkitAudioContext)();
-                if(limCtx.state==='suspended') limCtx.resume();
-                btnPlay(btn,'load','Yükleniyor'); btn.disabled=true;
-                try{
-                    if(!limLeadBuf){
-                        const r=await fetch('assets/audio/Lead Loop.wav');
-                        limLeadBuf=await limCtx.decodeAudioData(await r.arrayBuffer());
-                    }
-                    // signal chain: src → inGain(boost) → analyserIn → limComp → analyserOut → destination
-                    limInGain=limCtx.createGain(); limInGain.gain.value=1.8; // push into limiter
-                    limComp=limCtx.createDynamicsCompressor();
-                    limComp.threshold.value=limThresh; limComp.knee.value=0;
-                    limComp.ratio.value=20; limComp.attack.value=0.001; limComp.release.value=0.06;
-                    const aIn=limCtx.createAnalyser(); aIn.fftSize=512; aIn.smoothingTimeConstant=0.6;
-                    const aOut=limCtx.createAnalyser(); aOut.fftSize=512; aOut.smoothingTimeConstant=0.6;
-                    const fdIn=new Float32Array(aIn.fftSize); const fdOut=new Float32Array(aOut.fftSize);
-                    limInGain.connect(aIn); aIn.connect(limOn?limComp:limCtx.destination);
-                    limComp.connect(aOut); aOut.connect(limCtx.destination);
-                    limSrc=limCtx.createBufferSource(); limSrc.buffer=limLeadBuf; limSrc.loop=true;
-                    limSrc.connect(limInGain); limSrc.start();
-                    btn.disabled=false; btnPlay(btn,'stop','Durdur');
-                    // meter animation
-                    (function animLim(){
-                        if(!limSrc) return;
-                        aIn.getFloatTimeDomainData(fdIn); aOut.getFloatTimeDomainData(fdOut);
-                        let rmsIn=0,rmsOut=0;
-                        for(let i=0;i<fdIn.length;i++){rmsIn+=fdIn[i]*fdIn[i];rmsOut+=fdOut[i]*fdOut[i];}
-                        rmsIn=Math.sqrt(rmsIn/fdIn.length); rmsOut=Math.sqrt(rmsOut/fdOut.length);
-                        const dbIn=rmsIn<1e-6?-80:20*Math.log10(rmsIn);
-                        const dbOut=rmsOut<1e-6?-80:20*Math.log10(rmsOut);
-                        const pctIn=Math.max(0,Math.min(100,(dbIn+60)/60*100));
-                        const pctOut=Math.max(0,Math.min(100,(dbOut+60)/60*100));
-                        inM.bar.style.width=pctIn+'%'; outM.bar.style.width=pctOut+'%';
-                        inM.dbLbl.textContent=dbIn>-79?dbIn.toFixed(1)+' dB':'—';
-                        outM.dbLbl.textContent=dbOut>-79?dbOut.toFixed(1)+' dB':'—';
-                        const gr=limOn?Math.max(0,dbIn-dbOut):0;
-                        grBar.style.width=Math.min(100,gr/18*100)+'%';
-                        grLbl.textContent='Gain Reduction: -'+gr.toFixed(1)+' dB';
-                        limRaf=requestAnimationFrame(animLim);
-                    })();
-                }catch(e){ btn.disabled=false; btnPlay(btn,'play','Lead Loop'); }
-            };
-            togRow.append(btn);
-            card.append(mRow, grTrack, grLbl, thrRow, togRow);
-            conceptCleanups.push(()=>{ if(limSrc){try{limSrc.stop();}catch{} limSrc=null;} cancelAnimationFrame(limRaf); if(limCtx){try{limCtx.suspend();}catch{}} });
-          }
-        },
-    ];
-
-    const grid=mk('div','lab-concepts');
-    concepts.forEach(c=>{
-        const card=mk('div','lab-concept');
-        card.style.setProperty('--c', c.color);
-        card.innerHTML=`<h4 class="lab-concept-title">${c.title}</h4><p class="lab-concept-body">${c.body}</p>`;
-        c.demo(card);
-        grid.append(card);
-    });
-    wrap.append(grid);
-
-    // Chain cleanup into _m3StopAudio so audio stops when navigating away
-    const _prevM3conc = _m3StopAudio;
-    _m3StopAudio = () => {
-        if(_prevM3conc) _prevM3conc();
-        conceptCleanups.forEach(fn => fn());
-        if(demoCtx){ try{ demoCtx.suspend(); }catch(_){} }
+function m3CardSidechain() {
+    const S = m3State.sc;
+    const tag = m3Tag(); tag.lang = 'en'; tag.textContent = 'KICK → BASS';
+    const card = m3Card('lab-m3-c-sc', 'lab_m3_sc_h', tag, 'lab_m3_sc_p');
+    const viz = mk('div', 'lab-m3-viz lab-m3-sc'); viz.setAttribute('aria-hidden', 'true'); viz.setAttribute('data-lab-anim', '');
+    const col = (cls, lbl) => {
+        const c = mk('div', 'lab-m3-sccol');
+        const tr = mk('div', 'lab-m3-sctrack'); const f = mk('i', 'lab-m3-scfill ' + cls); tr.append(f);
+        const l = mk('span', 'lab-m3-sclbl'); l.lang = 'en'; l.textContent = lbl;
+        c.append(tr, l); viz.append(c); return f;
     };
-
-    return wrap;
+    const fk = col('is-k', 'KICK'), fb = col('is-b', 'BASS'), fg = col('is-g', 'GAIN RED.');
+    function paint() {
+        const d = S.depth / 100, r = Math.max(0.1, Math.min(1, S.rel / 480)), a = 1 - r;
+        viz.style.setProperty('--sc-op', (1 - S.depth / 250).toFixed(3));
+        viz.style.setProperty('--sc-duck', (1 - d).toFixed(3));
+        // RELEASE: pompanın geri dönüş eğrisi (kısa release → hızlı toparlanma)
+        viz.style.setProperty('--sc-ease', `cubic-bezier(${(a ? (1 - a) / 3 : 1 / 3).toFixed(3)}, ${(1 / 3 + 2 / 3 * a).toFixed(3)}, ${(2 / 3 * (1 - a)).toFixed(3)}, ${(2 / 3 + a / 3).toFixed(3)})`);
+        fg.style.height = S.depth + '%';
+    }
+    let run = null, wk = null;
+    const sls = mk('div', 'lab-m3-sls');
+    sls.append(
+        m3SlRow('DEPTH', { min: 0, max: 100, step: 1, value: S.depth, fmt: v => v + '%', onChange: v => { S.depth = v; paint(); if (wk) wk.parameters.get('depth').setTargetAtTime(v / 100, wk.context.currentTime, 0.01); } }),
+        m3SlRow('RELEASE', { min: 50, max: 480, step: 10, value: S.rel, fmt: v => v + ' ms', onChange: v => { S.rel = v; paint(); if (wk) wk.parameters.get('release').setTargetAtTime(v / 1000, wk.context.currentTime, 0.01); } }),
+    );
+    function stop() {
+        if (!run) return;
+        const r = run; run = null; wk = null;
+        clearTimeout(r.timer); cancelAnimationFrame(r.raf);
+        r.srcs.forEach(n => { try { n.stop(); } catch (_) {} });
+        r.nodes.forEach(n => { try { n.disconnect(); } catch (_) {} });
+        viz.classList.remove('is-live'); [fk, fb, fg].forEach(f => { f.style.transform = ''; });
+        m3Release(stop); demo.sync('play');
+    }
+    const demo = m3Demo('lab_m3_sc_demo', async () => {
+        if (run) { stop(); return; }
+        m3Claim(stop);
+        const my = run = { srcs: [], nodes: [], raf: 0, timer: 0, gr: 0 };
+        demo.sync('stop');
+        const c = getBeatCtx();
+        let useWorklet = false;
+        try {
+            if (!c._scWorkletReady) {
+                const url = URL.createObjectURL(new Blob([M3_SC_WORKLET], { type: 'application/javascript' }));
+                try { await c.audioWorklet.addModule(url); } finally { URL.revokeObjectURL(url); }
+                c._scWorkletReady = true;
+            }
+            useWorklet = true;
+        } catch (e) { useWorklet = false; }
+        if (run !== my) return;
+        const spb = 60 / M3_BPM, BEATS = 16, depth = S.depth / 100, rel = S.rel / 1000;   // başlangıçta GÜNCEL kaydırıcı değerleri
+        const kick = beatBuffers[BEAT_TRACKS[0].file], bass = beatBuffers[BEAT_TRACKS[4].file];
+        const t0 = c.currentTime + 0.12;
+        const kAna = c.createAnalyser(); kAna.fftSize = 256; kAna.smoothingTimeConstant = 0.3;
+        const bAna = c.createAnalyser(); bAna.fftSize = 256; bAna.smoothingTimeConstant = 0.5;
+        const kHub = c.createGain(); kHub.connect(kAna); kAna.connect(c.destination);
+        my.nodes.push(kHub, kAna, bAna);
+        const playKick = (when, dest) => {
+            if (kick) { const s = c.createBufferSource(); s.buffer = kick; s.connect(dest); s.start(when); my.srcs.push(s); }
+            else synthDrum(c, BEAT_TRACKS[0].file, 0.7, when, dest);
+        };
+        if (useWorklet) {
+            wk = new AudioWorkletNode(c, 'sidechain-processor', { numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2] });
+            wk.parameters.get('depth').value = depth; wk.parameters.get('release').value = rel;
+            wk.port.onmessage = e => { my.gr = e.data; };
+            const bIn = c.createGain(); bIn.gain.value = 0.95; bIn.connect(wk, 0, 0);
+            kHub.connect(wk, 0, 1);
+            wk.connect(bAna); bAna.connect(c.destination);
+            my.nodes.push(wk, bIn);
+            for (let i = 0; i < BEATS; i++) {
+                const when = t0 + i * spb;
+                playKick(when, kHub);
+                if (bass) { const s = c.createBufferSource(); s.buffer = bass; s.connect(bIn); s.start(when); my.srcs.push(s); }
+                else synthDrum(c, BEAT_TRACKS[4].file, 0.8, when, bIn);
+            }
+        } else {
+            // Yedek: vuruş başına kazanç rampası (DEPTH / RELEASE başlangıç değerleriyle)
+            bAna.connect(c.destination);
+            for (let i = 0; i < BEATS; i++) {
+                const when = t0 + i * spb;
+                playKick(when, kHub);
+                const g = c.createGain(); g.gain.setValueAtTime(1 - depth, when); g.gain.linearRampToValueAtTime(0.9, when + rel);
+                g.connect(bAna); my.nodes.push(g);
+                if (bass) { const s = c.createBufferSource(); s.buffer = bass; s.connect(g); s.start(when); my.srcs.push(s); }
+                else synthDrum(c, BEAT_TRACKS[4].file, 0.8, when, g);
+            }
+        }
+        // Çalarken çubuklar gerçek seviyeyi gösterir (azaltılmış harekette sabit kalır)
+        if (!m3RM()) {
+            viz.classList.add('is-live');
+            const buf = new Float32Array(256);
+            const rms = a => { a.getFloatTimeDomainData(buf); let s = 0; for (let k = 0; k < buf.length; k++) s += buf[k] * buf[k]; return Math.sqrt(s / buf.length); };
+            (function tick() {
+                if (run !== my) return;
+                const d = Math.max(0.01, S.depth / 100);
+                fk.style.transform = `scaleY(${Math.min(1, rms(kAna) * 4).toFixed(3)})`;
+                fb.style.transform = `scaleY(${Math.min(1, rms(bAna) * 3).toFixed(3)})`;
+                const gr = useWorklet ? my.gr / d : Math.max(0, 1 - (c.currentTime - t0) % spb / Math.max(0.05, S.rel / 1000));
+                fg.style.transform = `scaleY(${Math.max(0, Math.min(1, gr)).toFixed(3)})`;
+                my.raf = requestAnimationFrame(tick);
+            })();
+        }
+        my.timer = setTimeout(stop, (BEATS * spb + 0.6) * 1000);
+    });
+    m3Ui.stops.push(stop); m3Ui.syncs.push(() => demo.sync(run ? 'stop' : 'play'));
+    paint();
+    card.append(viz, sls, mk('div', 'lab-m3-demos')); card.lastChild.append(demo.b);
+    return card;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// MODULE 3 — MIXING TEORİSİ
-// ═══════════════════════════════════════════════════════════════════
-// Modül 3 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
-TASKS[3] = [
-        {id:1, text:"EQ: LOW bandını +8dB'e sürükle, test sesini çal — sesin nasıl baslaştığını duyumsa"},
-        {id:2, text:"EQ: MID bandını -6dB'e çek, HIGH'ı +6dB'e getir — frekans dengesini karşılaştır"},
-        {id:3, text:"Mixer: BASS kanalını MUTE et, test sesini çal — sesin ne kadar değiştiğini fark et"},
-        {id:4, text:"Mixer: LEAD pan'ını R40'a, SNARE pan'ını L30'a getir — stereo genişliği hisset"},
-        {id:5, text:"Mix: Tüm kanalları açık tut, her kanalın VOL'ünü dengele — net ve temiz mix elde et"},
-];
-Object.assign(LAB_TXT, {
-    // Modül 3 · Mixing metinleri: anahtar: [`TR`, `EN`],
-});
+// 3 · Reverb / Delay — WET / ROOM halkaları; demolar: Lead Loop + convolver reverb / geri beslemeli delay
+function m3Ir(c, room) {
+    const sr = c.sampleRate, len = Math.floor(sr * (0.4 + room * 2.5)), ir = c.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2 + room * 3); }
+    return ir;
+}
+function m3CardReverb() {
+    const S = m3State.rv;
+    const tag = m3Tag(); tag.lang = 'en'; tag.textContent = 'SEND / RETURN';
+    const card = m3Card('lab-m3-c-rv', 'lab_m3_rv_h', tag, 'lab_m3_rv_p');
+    const viz = mk('div', 'lab-m3-viz lab-m3-rv'); viz.setAttribute('aria-hidden', 'true'); viz.setAttribute('data-lab-anim', '');
+    viz.append(mk('i', 'lab-m3-ring'), mk('i', 'lab-m3-ring'), mk('i', 'lab-m3-ring'), mk('i', 'lab-m3-rdot'));
+    function paint() {
+        viz.style.setProperty('--room-px', Math.round(30 + S.room * 1.6) + 'px');
+        viz.style.setProperty('--wet-a', Math.min(1, 0.15 + S.wet / 110).toFixed(3));
+    }
+    let run = null, roomT = 0;
+    const setWet = () => {
+        if (!run) return;
+        const t = run.c.currentTime, w = S.wet / 100, k = run.kind === 'rev' ? 0.65 : 0.7;
+        run.dry.gain.setTargetAtTime((1 - w) * k, t, 0.02); run.wet.gain.setTargetAtTime(w * k, t, 0.02);
+    };
+    const setRoom = () => {
+        if (!run || run.kind !== 'rev') return;
+        clearTimeout(roomT);
+        roomT = setTimeout(() => {
+            if (!run || run.kind !== 'rev') return;
+            const conv = run.c.createConvolver(); conv.buffer = m3Ir(run.c, S.room / 100); conv.connect(run.out);
+            run.wet.connect(conv);
+            const old = run.conv; run.conv = conv; run.nodes.push(conv);
+            try { run.wet.disconnect(old); } catch (_) {}
+        }, 150);
+    };
+    const sls = mk('div', 'lab-m3-sls');
+    sls.append(
+        m3SlRow('WET', { min: 0, max: 100, step: 1, value: S.wet, fmt: v => v + '%', onChange: v => { S.wet = v; paint(); setWet(); } }),
+        m3SlRow('ROOM SIZE', { min: 0, max: 100, step: 1, value: S.room, fmt: v => v + '%', onChange: v => { S.room = v; paint(); setRoom(); } }),
+    );
+    const demos = {};
+    function stop() {
+        if (!run) return;
+        const r = run; run = null; clearTimeout(roomT);
+        if (r.src) { try { r.src.stop(); } catch (_) {} }
+        m3Fade(r.out, 300);
+        setTimeout(() => r.nodes.forEach(n => { try { n.disconnect(); } catch (_) {} }), 320);
+        m3Release(stop); sync();
+    }
+    function sync() { ['rev', 'dly'].forEach(k => demos[k].sync(run && run.kind === k ? (run.src ? 'stop' : 'load') : 'play')); }
+    async function start(kind) {
+        const was = run && run.kind;
+        if (run) stop();
+        if (was === kind) return;
+        m3Claim(stop);
+        const c = getBeatCtx(), w = S.wet / 100;
+        const my = run = { kind, c, nodes: [], src: null };
+        const out = c.createGain(); out.connect(c.destination); my.out = out;
+        const dry = c.createGain(), wet = c.createGain(); dry.connect(out); my.dry = dry; my.wet = wet;
+        const k = kind === 'rev' ? 0.65 : 0.7;
+        dry.gain.value = (1 - w) * k; wet.gain.value = w * k;
+        const inp = c.createGain(); inp.gain.value = 0.55; inp.connect(dry);
+        my.nodes.push(dry, wet, inp);
+        if (kind === 'rev') {
+            const conv = c.createConvolver(); conv.buffer = m3Ir(c, S.room / 100);
+            inp.connect(wet); wet.connect(conv); conv.connect(out); my.conv = conv; my.nodes.push(conv);
+        } else {
+            // 3/16 nota (125 BPM) — geri besleme döngüsünde HPF + LPF: her yankı biraz daha koyu
+            const dl = c.createDelay(2); dl.delayTime.value = 60 / M3_BPM * 0.75;
+            const fb = c.createGain(); fb.gain.value = 0.45;
+            const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 100; hp.Q.value = 0.5;
+            const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4500; lp.Q.value = 0.5;
+            inp.connect(dl); dl.connect(fb); fb.connect(hp); hp.connect(lp); lp.connect(dl);
+            dl.connect(wet); wet.connect(out); my.nodes.push(dl, fb, hp, lp);
+        }
+        sync();
+        let buf;
+        try { buf = await m3Buf(M3_LOOP); } catch (e) { console.warn('[lab] Lead Loop.wav:', e); if (run === my) stop(); return; }
+        if (run !== my) return;
+        const src = c.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(inp); src.start();
+        my.src = src; sync();
+    }
+    demos.rev = m3Demo('lab_m3_rv_demo', () => start('rev'));
+    demos.dly = m3Demo('lab_m3_dl_demo', () => start('dly'));
+    m3Ui.stops.push(stop); m3Ui.syncs.push(sync);
+    paint();
+    const row = mk('div', 'lab-m3-demos'); row.append(demos.rev.b, demos.dly.b);
+    card.append(viz, sls, row);
+    return card;
+}
+
+// 4 · Stereo field — mixer'ın pan / mute durumundan canlı (ses yok)
+function m3CardStereo() {
+    const tag = m3Tag('lab_m3_st_tag');
+    const card = m3Card('lab-m3-c-st', 'lab_m3_st_h', tag, 'lab_m3_st_p');
+    const viz = mk('div', 'lab-m3-viz');
+    const svg = m3Svg('0 0 300 120', 'lab-m3-st'); svg.setAttribute('role', 'img');
+    svg.innerHTML = '<path class="lab-m3-stv" d="M150 112 L20 20 M150 112 L280 20"/><line class="lab-m3-stc" x1="150" y1="112" x2="150" y2="14"/>'
+        + '<text x="16" y="14" aria-hidden="true">L</text><text x="278" y="14" aria-hidden="true">R</text>';
+    const dots = M3_CH.map((c, i) => {
+        const d = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        d.setAttribute('class', 'lab-m3-dot lab-m3-c' + i);
+        d.setAttribute('cy', String(100 - i * 14)); d.setAttribute('r', '7');
+        d.append(document.createElementNS('http://www.w3.org/2000/svg', 'title'));
+        svg.append(d); return d;
+    });
+    svg.setAttribute('aria-label', L('lab_m3_st_h'));
+    viz.append(svg);
+    m3Ui.stereo = { svg, dots };
+    m3StereoSync();
+    m3Ui.syncs.push(m3StereoSync);
+    card.append(viz);
+    return card;
+}
+
+// 5 · Headroom — MASTER LEVEL (dB) + üç durumlu etiket; demo: beat loop → master kazancı → limiter
+function m3CardHeadroom() {
+    const tag = m3Tag(); tag.setAttribute('aria-live', 'polite');
+    const card = m3Card('lab-m3-c-hr', 'lab_m3_hr_h', tag, 'lab_m3_hr_p');
+    const bar = mk('div', 'lab-m3-hrbar'); bar.setAttribute('aria-hidden', 'true');
+    const fill = mk('i', 'lab-m3-hrfill'), mark = mk('i', 'lab-m3-hrmark'), zero = mk('span', 'lab-m3-hr0');
+    zero.textContent = '0 dB';
+    bar.append(fill, mark, zero);
+    let st = '', run = null;
+    function paint(force) {
+        const v = m3State.hr, p = (v + 24) / 30;
+        fill.style.setProperty('--p', p.toFixed(4));
+        zero.classList.toggle('is-over', p >= 0.9);
+        const s = v > 0 ? 'clip' : v > -3 ? 'low' : 'safe';
+        if (s !== st || force) {
+            st = s; tag.dataset.st = s;
+            tag.innerHTML = s === 'safe' ? ic('check') : '';
+            tag.append(document.createTextNode(L('lab_m3_hr_' + s)));
+        }
+    }
+    const sl = m3SlRow('MASTER LEVEL', { min: -24, max: 6, step: 0.5, value: m3State.hr, fmt: v => m3Db(v, v % 1 ? 1 : 0),
+        onChange: v => { m3State.hr = v; paint(); if (run) run.g.gain.setTargetAtTime(Math.pow(10, v / 20), run.c.currentTime, 0.02); } });
+    function stop() {
+        if (!run) return;
+        const r = run; run = null;
+        r.seq.stop(); m3Fade(r.g, 300); setTimeout(() => { try { r.lim.disconnect(); } catch (_) {} }, 320);
+        m3Release(stop); demo.sync('play');
+    }
+    const demo = m3Demo('lab_m3_hr_demo', () => {
+        if (run) { stop(); return; }
+        m3Claim(stop);
+        const c = getBeatCtx();
+        const g = c.createGain(); g.gain.value = Math.pow(10, m3State.hr / 20);
+        const lim = c.createDynamicsCompressor();
+        lim.threshold.value = -0.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.05;
+        g.connect(lim); lim.connect(c.destination);
+        const user = m3HasUserPattern();
+        // Beat Maker'daki pattern (boşsa örnek house pattern) — kanal VOL'leri uygulanır, pattern'e yazılmaz
+        const seq = m3Seq(user ? state.beatPatterns : M3_HOUSE, user ? (state.swing || 0) : 0, () => g, ti => state.beatVolumes[ti] / 100);
+        run = { c, g, lim, seq };
+        demo.sync('stop');
+    });
+    m3Ui.stops.push(stop); m3Ui.syncs.push(() => { paint(true); demo.sync(run ? 'stop' : 'play'); });
+    paint(true);
+    card.append(bar, sl, mk('div', 'lab-m3-demos')); card.lastChild.append(demo.b);
+    return card;
+}
+
+// 6 · Limiter — AÇIK/KAPALI (gerçek bypass), INPUT / OUTPUT; demo: Lead Loop +5 dB → limiter
+function m3CardLimiter() {
+    const S = m3State.lim;
+    const tog = mk('button', 'lab-toggle lab-m3-ember'); tog.type = 'button';
+    const card = m3Card('lab-m3-c-lim', 'lab_m3_lim_h', tog, 'lab_m3_lim_p');
+    const bars = mk('div', 'lab-m3-lim'); bars.setAttribute('aria-hidden', 'true');
+    const bcol = (lbl, cls) => {
+        const c = mk('div', 'lab-m3-limcol');
+        const l = mk('span', 'lab-m3-sclbl'); l.lang = 'en'; l.textContent = lbl;
+        const tr = mk('div', 'lab-m3-limbar'); const f = mk('i', 'lab-m3-limfill ' + cls); tr.append(f);
+        c.append(l, tr); bars.append(c); return f;
+    };
+    const fIn = bcol('INPUT', 'is-in'), fOut = bcol('OUTPUT', 'is-out');
+    let run = null, valEl = null;
+    const fmt = (t, gr) => `${m3Num(t, t % 1 ? 1 : 0)} dBFS · GR ${M3_MINUS}${Math.abs(gr).toFixed(1)} dB`;
+    function paintStatic() {
+        if (run) return;
+        const out = S.on ? Math.round((S.t + 18) / 18 * 85) : 85;
+        fIn.style.setProperty('--p', '0.85'); fOut.style.setProperty('--p', (out / 100).toFixed(3));
+        if (valEl) valEl.textContent = fmt(S.t, S.on ? S.t : 0);
+    }
+    function paintTog() {
+        tog.classList.toggle('on', S.on);
+        tog.setAttribute('aria-pressed', String(S.on));
+        tog.textContent = L(S.on ? 'lab_m3_lim_on' : 'lab_m3_lim_off');
+    }
+    function wire() {
+        if (!run) return;
+        try { run.aIn.disconnect(); } catch (_) {}
+        run.aIn.connect(S.on ? run.comp : run.sum);   // gerçek bypass: tek yol, OUTPUT her zaman duyulanı ölçer
+    }
+    tog.addEventListener('click', () => { S.on = !S.on; paintTog(); wire(); paintStatic(); });
+    const sl = m3SlRow('THRESHOLD', { min: -18, max: 0, step: 0.5, value: S.t, fmt: v => fmt(v, S.on ? v : 0),
+        onChange: v => { S.t = v; if (run) run.comp.threshold.setTargetAtTime(v, run.c.currentTime, 0.01); paintStatic(); } });
+    valEl = sl.querySelector('.lab-m3-slv');
+    function stop() {
+        if (!run) return;
+        const r = run; run = null;
+        cancelAnimationFrame(r.raf);
+        if (r.src) { try { r.src.stop(); } catch (_) {} }
+        m3Fade(r.out, 200);
+        setTimeout(() => r.nodes.forEach(n => { try { n.disconnect(); } catch (_) {} }), 220);
+        m3Release(stop); demo.sync('play'); paintStatic();
+    }
+    const demo = m3Demo('lab_m3_lim_demo', async () => {
+        if (run) { stop(); return; }
+        m3Claim(stop);
+        const c = getBeatCtx();
+        const my = run = { c, nodes: [], raf: 0, src: null };
+        demo.sync('load');
+        let buf;
+        try { buf = await m3Buf(M3_LOOP); } catch (e) { console.warn('[lab] Lead Loop.wav:', e); if (run === my) stop(); return; }
+        if (run !== my) return;
+        const inG = c.createGain(); inG.gain.value = 1.8;
+        const aIn = c.createAnalyser(); aIn.fftSize = 512; aIn.smoothingTimeConstant = 0.6;
+        const comp = c.createDynamicsCompressor();
+        comp.threshold.value = S.t; comp.knee.value = 0; comp.ratio.value = 20; comp.attack.value = 0.001; comp.release.value = 0.06;
+        const sum = c.createGain(), aOut = c.createAnalyser(); aOut.fftSize = 512; aOut.smoothingTimeConstant = 0.6;
+        const out = c.createGain();
+        inG.connect(aIn); comp.connect(sum); sum.connect(aOut); aOut.connect(out); out.connect(c.destination);
+        Object.assign(my, { aIn, comp, sum, out }); my.nodes.push(inG, aIn, comp, sum, aOut);
+        wire();
+        const src = c.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(inG); src.start();
+        my.src = src;
+        demo.sync('stop');
+        const a = new Float32Array(512), b = new Float32Array(512);
+        const db = (an, arr) => { an.getFloatTimeDomainData(arr); let s = 0; for (let k = 0; k < arr.length; k++) s += arr[k] * arr[k]; const r = Math.sqrt(s / arr.length); return r < 1e-6 ? -80 : 20 * Math.log10(r); };
+        (function tick() {
+            if (run !== my) return;
+            const di = db(aIn, a), dO = db(aOut, b);
+            fIn.style.setProperty('--p', Math.max(0, Math.min(1, (di + 60) / 60)).toFixed(3));
+            fOut.style.setProperty('--p', Math.max(0, Math.min(1, (dO + 60) / 60)).toFixed(3));
+            if (valEl) valEl.textContent = fmt(S.t, S.on ? Math.max(0, di - dO) : 0);
+            my.raf = requestAnimationFrame(tick);
+        })();
+    });
+    m3Ui.stops.push(stop); m3Ui.syncs.push(() => { paintTog(); demo.sync(run ? (run.src ? 'stop' : 'load') : 'play'); });
+    paintTog(); paintStatic();
+    card.append(bars, sl, mk('div', 'lab-m3-demos')); card.lastChild.append(demo.b);
+    return card;
+}
+
+// ── Görevler: canlı koşullar (makeTaskPanel opts.auto) ───────────────
+function m3TaskLive() {
+    const e = m3State.eq, mu = m3State.muted, pan = m3State.pan;
+    return [
+        !!m3Eq.src && e[0].g >= 8,
+        e[1].g <= -6 && e[2].g >= 6,
+        m3Mix.playing && mu[4],
+        Math.abs(pan[5] - 0.4) < 0.026 && Math.abs(pan[1] + 0.3) < 0.026,
+        m3Mix.playing && !mu.some(Boolean) && M3_CH.every((c, i) => m3Vol(i) >= 10) && m3Master().st === 'safe',
+    ];
+}
+
+// Modül 3'ün bütün sesi, zamanlayıcıları ve kaydırıcıları (teardownView → _m3StopAudio)
+function m3StopAll() {
+    m3EqStop(); m3MixStop();
+    (m3Ui.stops || []).forEach(f => { try { f(); } catch (e) { console.warn('[lab] m3 stop:', e); } });
+    m3Active = null;
+    cancelAnimationFrame(m3TaskRaf); m3TaskRaf = 0;
+    clearTimeout(m3StAria);
+    m3Sliders.forEach(el => { if (el._sliderObj) _sliders.delete(el._sliderObj); });
+    m3Sliders = [];
+    m3Ui = { syncs: [], stops: [] };
+}
+
 function renderModule3() {
-    const root=mk('div','lab-view be-wrap');
-    const shell=mk('section','lab-mod'); shell.setAttribute('aria-label','Mixing & Efektler');
-    shell.append(modHead(3, 'Mixing & efektler', 'Mixing & Efektler', modSub(3)).head);
-
-    // ── İnteraktif önce ──
-    shell.append(buildEQSection());
-    shell.append(buildMixerSection());
-    shell.append(buildInteractiveConcepts());
-
-    // ── Ableton referansı sonra ──
-    shell.append(theoryCard(
-        "Mixer — Ableton'da Nerede?",
-        "Her track'in sağında mixer bölümü vardır. <strong>Volume fader</strong> genel seviye, <strong>Pan</strong> stereo konum, <strong>EQ Eight</strong> frekans düzenlemesi, <strong>Compressor</strong> dinamik kontrolü sağlar. Send/Return tracklerine reverb/delay yüklenir.",
-        "Track → Mixer Section | Effects → EQ Eight / Compressor / Reverb"
-    ));
-
-    root.append(shell); root.append(makeTaskPanel(3));
+    const { root, main, side } = modLayout(3);
+    root.classList.add('lab-m3');
+    m3Ui = { syncs: [], stops: [] };
+    m3Sliders = [];
+    main.append(m3BuildEQ(), m3BuildMixer(), m3BuildConcepts());
+    const tasks = makeTaskPanel(3, { auto: m3TaskLive, note: 'lab_m3_tasks_note' });
+    m3Ui.tasks = tasks;
+    side.append(tasks, whereCard({ mid: 3, items: ['lab_where_3_li1', 'lab_where_3_li2', 'lab_where_3_li3', 'lab_where_3_li4'], pathKeys: ['lab_where_3_path1', 'lab_where_3_path2'] }));
+    // Dil değişince (labShellLang → refresher) dinamik etiketler yerinde çevrilir — yeniden kurulum yok, ses sürer
+    root.refresh = () => {
+        m3Ui.syncs.forEach(f => { try { f(); } catch (e) { console.warn('[lab] m3 relabel:', e); } });
+        tasks.querySelectorAll('.lab-task-text').forEach((el, i) => { if (TASKS[3][i]) el.textContent = TASKS[3][i].text; });
+    };
+    _labRefreshers.push(root);
+    _m3StopAudio = m3StopAll;
     return root;
 }
 
