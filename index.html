@@ -244,6 +244,7 @@
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="/assets/img/DSC00141.jpg" as="image" fetchpriority="high">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="/assets/css/ui.css?v=202609290330">
@@ -279,7 +280,6 @@
 .idx-hero-media { position:relative; flex:0 0 auto; align-self:flex-start; width:clamp(420px, 41.667vw, 600px); aspect-ratio:600 / 700; }
 .idx-vinyl { width:90%; aspect-ratio:1; right:-20%; top:8.57%; }
 .idx-hero-photo { position:absolute; left:3.33%; top:2.86%; width:73.33%; height:82.86%; margin:0; box-shadow:var(--shadow-lift); }
-.idx-hero-photo img { object-position:44% center; }
 .idx-hero-cap { position:absolute; left:24px; right:24px; bottom:24px; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
 .idx-hero-cap-text { display:flex; flex-direction:column; gap:6px; min-width:0; }
 .idx-hero-tag { font-size:11px; letter-spacing:var(--tr-label-wide); }
@@ -292,6 +292,19 @@
 .idx-float-val { font-family:var(--ff-disp); font-size:30px; line-height:1.15; color:var(--fg); white-space:nowrap; }
 .idx-float--gb .idx-float-val { color:var(--accent); }
 .idx-float-txt { font-size:var(--fs-small); line-height:1.3; color:var(--fg-2); }
+
+/* ---------- Döngü videoları (hero + eğitmen karosu) ----------
+   Oynatmayı sayfa sonundaki betik başlatır (autoplay özniteliği yok): görünürken oynar,
+   hareket azaltma / Save-Data / 2g'de poster kalır. border-radius:inherit → Safari'de
+   oynayan video, dönüştürülmüş (.be-rv) atada yuvarlak köşenin dışına taşmasın. */
+.idx-video { width:100%; height:100%; object-fit:cover; object-position:center 40%; display:block; border-radius:inherit; background:var(--surface); }
+.idx-video::-webkit-media-controls-start-playback-button { display:none; -webkit-appearance:none; }
+/* duraklat/oynat (WCAG 2.2.2) — egitmen #liveVideo düğmesinin görünümü; sol üstte, alt yazıdan uzak */
+.idx-video-toggle { position:absolute; top:20px; left:20px; z-index:1; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--glass-card); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid var(--line-3); color:var(--fg); cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
+.idx-video-toggle:hover { border-color:var(--accent-line-2); color:var(--accent); }
+.idx-video-toggle svg { width:16px; height:16px; }
+.idx-video-toggle .is-play, .idx-video-toggle[data-state="paused"] .is-pause { display:none; }
+.idx-video-toggle[data-state="paused"] .is-play { display:block; }
 
 /* ---------- Bilgi şeridi ---------- */
 .idx-facts-wrap { position:relative; z-index:2; margin-top:-60px; }
@@ -359,7 +372,7 @@ html.be-js .idx-edu:not(.in-view) .idx-bar { animation-play-state:paused; }
 /* ---------- Eğitmen ---------- */
 .idx-inst { display:grid; grid-template-columns:560px minmax(0,1fr); gap:80px; align-items:center; }
 .idx-inst-photo { height:560px; border:0; border-radius:var(--r-28); }
-.idx-inst-photo img { object-position:46% center; filter:saturate(1.05); }
+.idx-inst-photo .idx-video { filter:saturate(1.05); }
 .idx-inst-shade { position:absolute; inset:0; background:linear-gradient(90deg, transparent 60%, rgba(11,11,14,.6)); pointer-events:none; }
 .idx-inst-text { display:flex; flex-direction:column; align-items:flex-start; gap:28px; min-width:0; }
 .idx-inst-name em { font-style:italic; }
@@ -459,6 +472,7 @@ html.be-js .idx-edu:not(.in-view) .idx-bar { animation-play-state:paused; }
   .idx-hero-photo { left:0; top:0; width:81%; height:95%; border-radius:var(--r-20); box-shadow:none; }
   .idx-vinyl { width:84%; right:-31%; top:10%; box-shadow:none; }
   .idx-float { display:none; }
+  .idx-video-toggle { top:16px; left:16px; }
   .idx-hero-cap { left:16px; right:16px; bottom:16px; }
   .idx-hero-tag { font-size:9px; letter-spacing:var(--tr-label); }
   .idx-hero-name { font-size:26px; }
@@ -574,12 +588,13 @@ html.be-js .idx-edu:not(.in-view) .idx-bar { animation-play-state:paused; }
       <div class="idx-hero-media be-rv be-d3">
         <div class="be-vinyl be-spin idx-vinyl" aria-hidden="true"><span class="be-vinyl-label"></span></div>
         <figure class="be-photo idx-hero-photo">
-          <img src="/assets/img/berkay-live.jpg" width="1200" height="800" fetchpriority="high" decoding="async" alt="Berkay Er, Pioneer DJ ekipmanı başında canlı performans" data-idx-alt="idx2_hero_photo_alt">
+          <video class="idx-video" id="idxHeroVideo" data-idx-video muted loop playsinline webkit-playsinline disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" preload="none" poster="/assets/img/DSC00141.jpg" aria-label="Berkay Er, Pioneer DJ ekipmanı başında canlı performans (video)" data-idx-aria="idx2_hero_video_aria"><source src="/assets/video/live.mp4" type="video/mp4"></video>
           <span class="be-photo-shade" aria-hidden="true"></span>
           <figcaption class="idx-hero-cap">
             <span class="idx-hero-cap-text"><span class="be-label idx-hero-tag" data-i18n="idx2_hero_tag">LIVE SET · MELODIC TECHNO</span><span class="idx-hero-name">Berkay Er</span></span>
             <span class="be-eq idx-hero-eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
           </figcaption>
+          <button type="button" class="idx-video-toggle" aria-controls="idxHeroVideo" data-state="paused" hidden><svg class="is-pause" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><rect x="3.5" y="2.5" width="3" height="11" rx="1"/><rect x="9.5" y="2.5" width="3" height="11" rx="1"/></svg><svg class="is-play" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.3-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7z"/></svg><span class="sr-only is-pause" data-i18n="idx2_video_pause">Videoyu duraklat</span><span class="sr-only is-play" data-i18n="idx2_video_play">Videoyu oynat</span></button>
         </figure>
         <p class="be-float be-bob idx-float idx-float--gb"><span class="idx-float-val">500 GB</span><span class="idx-float-txt" data-i18n="idx2_float_gb">preset paketi hediye</span></p>
         <p class="be-float be-bob idx-float idx-float--stu"><span class="idx-float-val">100+</span><span class="idx-float-txt" data-i18n-html="idx2_float_students">öğrenci<br>2019'dan beri</span></p>
@@ -671,8 +686,9 @@ html.be-js .idx-edu:not(.in-view) .idx-bar { animation-play-state:paused; }
   <!-- EĞİTMEN -->
   <section class="idx-in idx-sec idx-inst" aria-labelledby="idxInstT">
     <div class="be-photo idx-inst-photo">
-      <img src="/assets/img/berkay-live.jpg" width="1200" height="800" loading="lazy" decoding="async" alt="Berkay Er stüdyoda" data-idx-alt="idx2_inst_photo_alt">
+      <video class="idx-video" id="idxInstVideo" data-idx-video muted loop playsinline webkit-playsinline disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" preload="none" poster="/assets/img/DSC00141.jpg" aria-label="Berkay Er stüdyoda (video)" data-idx-aria="idx2_inst_video_aria"><source src="/assets/video/live.mp4" type="video/mp4"></video>
       <span class="idx-inst-shade" aria-hidden="true"></span>
+      <button type="button" class="idx-video-toggle" aria-controls="idxInstVideo" data-state="paused" hidden><svg class="is-pause" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><rect x="3.5" y="2.5" width="3" height="11" rx="1"/><rect x="9.5" y="2.5" width="3" height="11" rx="1"/></svg><svg class="is-play" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.3-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7z"/></svg><span class="sr-only is-pause" data-i18n="idx2_video_pause">Videoyu duraklat</span><span class="sr-only is-play" data-i18n="idx2_video_play">Videoyu oynat</span></button>
     </div>
     <div class="idx-inst-text">
       <span class="be-label idx-label-wide" data-i18n="idx2_inst_label">EĞİTMEN · PRODUCER · MIX MASTERING</span>
@@ -763,8 +779,10 @@ html.be-js .idx-edu:not(.in-view) .idx-bar { animation-play-state:paused; }
     idx2_back_top:         [`Yukarı çık`, `Back to top`],
     idx2_genres_aria:      [`Türler`, `Genres`],
     idx2_curr_aria:        [`8 modüllük müfredat`, `8-module curriculum`],
-    idx2_hero_photo_alt:   [`Berkay Er, Pioneer DJ ekipmanı başında canlı performans`, `Berkay Er performing live on Pioneer DJ gear`],
-    idx2_inst_photo_alt:   [`Berkay Er stüdyoda`, `Berkay Er in the studio`],
+    idx2_hero_video_aria:  [`Berkay Er, Pioneer DJ ekipmanı başında canlı performans (video)`, `Berkay Er performing live on Pioneer DJ gear (video)`],
+    idx2_inst_video_aria:  [`Berkay Er stüdyoda (video)`, `Berkay Er in the studio (video)`],
+    idx2_video_pause:      [`Videoyu duraklat`, `Pause video`],
+    idx2_video_play:       [`Videoyu oynat`, `Play video`],
     idx2_comment_sending:  [`Gönderiliyor…`, `Sending…`],
     idx2_comment_ok:       [`Yorumun eklendi, teşekkürler.`, `Your review was added — thank you.`],
     idx2_forum_error_pre:  [`Soruları görmek için`, `To see the questions,`],
@@ -1179,6 +1197,116 @@ _auth.onAuthStateChanged(user => {
     });
 
   } catch(e) { console.warn('Firebase init:', e.message); renderForumPreviewError(); }
+</script>
+
+<script>
+// ── Döngü videoları: sessiz, satır içi; yalnız görünürken (%20) ve sekme açıkken oynar.
+//    Hareket azaltma, Save-Data ya da 2g bağlantıda poster kalır, düğme "Videoyu oynat" der
+//    (düğmeye basmak o videoda bu kısıtı kaldırır). Otomatik oynatma engellenirse (iOS düşük
+//    güç modu) sayfadaki ilk dokunuş/tıklama yeniden dener. Kaynak yüklenemezse poster kalır,
+//    düğme kaldırılır. autoplay özniteliği yok: JS yoksa yalnız poster görünür.
+(function () {
+  var SEL = 'video[data-idx-video]';
+  var list = [].slice.call(document.querySelectorAll(SEL));
+  if (!list.length) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+  var hasIO = 'IntersectionObserver' in window;
+  var retryArmed = false;
+  // VARSAYIM: Save-Data ve 2g/slow-2g bağlantıda video kendiliğinden inmesin
+  function lowData() { return !!(conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))); }
+  function reduced() { return !!(mq && mq.matches); }
+  function allowed(it) { return !it.failed && it.inView && !it.userPaused && !it.sysPaused && !document.hidden; }
+  function sync(it) { if (it.btn) it.btn.setAttribute('data-state', it.v.paused ? 'paused' : 'playing'); }
+
+  function fail(it) {
+    if (it.failed) return;
+    it.failed = true;
+    try { it.v.pause(); } catch (e) {}
+    if (it.btn) { it.btn.remove(); it.btn = null; }   // poster kalır, yerleşim kaymaz
+  }
+  function pause(it) { if (!it.v.paused) it.v.pause(); }
+  function play(it) {
+    if (it.failed) return;
+    var v = it.v, p;
+    if (v.preload === 'none') v.preload = 'auto';
+    try { p = v.play(); } catch (e) { p = null; }
+    if (p && p.catch) p.catch(function (err) {
+      var n = err && err.name;
+      if (v.error || n === 'NotSupportedError') { fail(it); return; }   // kaynak yok / HTML döndü
+      sync(it);
+      if (n === 'NotAllowedError') armRetry();   // otomatik oynatma engellendi; AbortError = pause() araya girdi
+    });
+  }
+  function resumeAll() { list.forEach(function (it) { if (allowed(it) && it.v.paused) play(it); }); }
+
+  // VARSAYIM: WebKit medya izni touchend/click ile verir (touchstart değil)
+  function armRetry() {
+    if (retryArmed) return;
+    retryArmed = true;
+    function go(e) {
+      document.removeEventListener('touchend', go, true);
+      document.removeEventListener('click', go, true);
+      retryArmed = false;
+      list.forEach(function (it) {
+        if (it.btn && e && e.target && it.btn.contains(e.target)) return;   // o düğmenin kendi işi
+        if (allowed(it) && it.v.paused) play(it);
+      });
+    }
+    document.addEventListener('touchend', go, { capture: true, passive: true });
+    document.addEventListener('click', go, true);
+  }
+
+  list = list.map(function (v) {
+    var fig = v.parentElement;
+    var btn = fig ? fig.querySelector('[aria-controls="' + v.id + '"]') : null;
+    var it = { v: v, btn: btn, inView: !hasIO, userPaused: false, sysPaused: reduced() || lowData(), failed: false };
+    v.muted = true; v.defaultMuted = true; v.playsInline = true;
+    v.addEventListener('error', function () { fail(it); }, true);   // <source> hatası da yakalanır
+    v.addEventListener('play', function () { sync(it); });
+    v.addEventListener('pause', function () { sync(it); });
+    if (btn) {
+      btn.hidden = false;
+      btn.addEventListener('click', function () {
+        if (v.paused) { it.userPaused = false; it.sysPaused = false; it.inView = true; play(it); }
+        else { it.userPaused = true; pause(it); }
+      });
+    }
+    sync(it);   // preload="none": oynatılana kadar ağ isteği yok, erken hata da olmaz
+    return it;
+  });
+
+  if (hasIO) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        list.forEach(function (it) {
+          if (it.v !== en.target) return;
+          it.inView = en.isIntersecting;
+          if (allowed(it)) { if (it.v.paused) play(it); } else if (!it.inView) pause(it);
+        });
+      });
+    }, { threshold: 0.2 });
+    list.forEach(function (it) { io.observe(it.v); });
+  } else {
+    resumeAll();
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) list.forEach(pause); else resumeAll();
+  });
+  function onMotion() {
+    var r = reduced();
+    list.forEach(function (it) {
+      if (r) { it.sysPaused = true; pause(it); }
+      else it.sysPaused = lowData();
+    });
+    if (!r) resumeAll();
+  }
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener('change', onMotion);
+    else if (mq.addListener) mq.addListener(onMotion);
+  }
+})();
 </script>
 
 <!-- applyIndex hook: i18n'in kapsamadığı aria-label/alt metinleri + dil değişince forum önizlemesi -->

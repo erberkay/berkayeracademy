@@ -73,7 +73,7 @@
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" href="/assets/img/DSC00141.jpg" as="image" imagesrcset="/assets/img/DSC00141-sm.jpg 400w, /assets/img/DSC00141.jpg 1200w" imagesizes="(max-width:1024px) 720px, 1040px" fetchpriority="high">
+<link rel="preload" href="/assets/img/DSC00141.jpg" as="image" fetchpriority="high">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="/assets/css/ui.css?v=202609290330">
@@ -118,7 +118,10 @@
   .eg-hero-live--m { display:none; }
   .eg-hero-media { position:relative; }
   .eg-hero-photo { position:relative; aspect-ratio:620 / 680; border-radius:var(--r-28); overflow:hidden; border:1px solid var(--line-3); background:var(--surface); }
-  .eg-hero-photo img { width:100%; height:100%; object-fit:cover; object-position:44% center; }
+  /* döngü videosu: oynatmayı sayfa sonundaki betik başlatır (autoplay yok); hareket azaltma /
+     Save-Data / 2g'de poster kalır. border-radius:inherit → Safari'de oynayan video köşeden taşmasın */
+  .eg-hero-video { width:100%; height:100%; object-fit:cover; object-position:center 40%; display:block; border-radius:inherit; background:var(--surface); }
+  .eg-hero-video::-webkit-media-controls-start-playback-button { display:none; -webkit-appearance:none; }
   /* tek seferlik degrade durakları (tasarım): --bg %85 */
   .eg-hero-shade { position:absolute; inset:0; background:linear-gradient(200deg, transparent 40%, rgba(11,11,14,.85)); pointer-events:none; }
   .eg-hero-media > figcaption { position:absolute; left:28px; bottom:28px; z-index:1; }
@@ -207,11 +210,15 @@
   .eg-live-frame { position:relative; aspect-ratio:9 / 16; border-radius:var(--r-20); overflow:hidden; border:1px solid var(--line-3); background:var(--bg-ink); }
   .eg-live-frame video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
   .eg-live-shade { position:absolute; inset:0; background:linear-gradient(180deg, transparent 65%, rgba(11,11,14,.6)); pointer-events:none; }
-  .eg-live-toggle { position:absolute; right:16px; bottom:16px; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--glass-card); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid var(--line-3); color:var(--fg); transition:border-color var(--dur-fast), color var(--dur-fast); }
-  .eg-live-toggle:hover { border-color:var(--accent-line-2); color:var(--accent); }
-  .eg-live-toggle svg { width:16px; height:16px; }
-  .eg-live-toggle .is-play, .eg-live-toggle[data-state="paused"] .is-pause { display:none; }
-  .eg-live-toggle[data-state="paused"] .is-play { display:block; }
+  /* duraklat/oynat düğmesi — canlı set videosu (sağ alt) ve hero videosu (sol üst, alt yazı + plaktan uzak) */
+  .eg-live-toggle, .eg-hero-toggle { position:absolute; width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--glass-card); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); border:1px solid var(--line-3); color:var(--fg); cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast); }
+  .eg-live-toggle { right:16px; bottom:16px; }
+  .eg-hero-toggle { top:20px; left:20px; z-index:1; }
+  .eg-live-toggle:hover, .eg-hero-toggle:hover { border-color:var(--accent-line-2); color:var(--accent); }
+  .eg-live-toggle svg, .eg-hero-toggle svg { width:16px; height:16px; }
+  .eg-live-toggle .is-play, .eg-live-toggle[data-state="paused"] .is-pause,
+  .eg-hero-toggle .is-play, .eg-hero-toggle[data-state="paused"] .is-pause { display:none; }
+  .eg-live-toggle[data-state="paused"] .is-play, .eg-hero-toggle[data-state="paused"] .is-play { display:block; }
 
   /* ---------- Son çağrı ---------- */
   .eg-cta { position:relative; overflow:hidden; display:flex; justify-content:space-between; align-items:center; gap:40px; padding:72px; border-radius:var(--r-28); background:var(--surface); border:1px solid var(--accent-line); }
@@ -245,6 +252,7 @@
     .eg .eg-hero-name { font-size:clamp(72px, 26.6vw, 180px); }
     .eg .eg-hero-name br { display:none; }
     .eg-vinyl { width:92px; left:auto; right:14px; top:16px; }
+    .eg-hero-toggle { top:16px; left:16px; }
     .eg-vinyl-disc { fill:var(--glass-header); stroke:var(--accent-line-2); }
     .eg-vinyl text { font-size:15px; }
     .eg-social { grid-area:social; gap:8px; padding:12px var(--page-x) 0; overflow-x:auto; scrollbar-width:none; }
@@ -362,8 +370,9 @@
       </div>
       <figure class="eg-hero-media">
         <div class="eg-hero-photo">
-          <img class="be-rv be-d2" src="/assets/img/DSC00141.jpg" srcset="/assets/img/DSC00141-sm.jpg 400w, /assets/img/DSC00141.jpg 1200w" sizes="(max-width:1024px) 720px, 1040px" width="1200" height="800" alt="Berkay Er, canlı sette Pioneer DJ ekipmanı başında" fetchpriority="high">
+          <video class="eg-hero-video be-rv be-d2" id="egHeroVideo" data-eg-video muted loop playsinline webkit-playsinline disablepictureinpicture disableremoteplayback x-webkit-airplay="deny" preload="none" poster="/assets/img/DSC00141.jpg" aria-label="Berkay Er canlı performans sırasında (video)" data-be-aria="eg_hero_video_aria"><source src="/assets/video/live.mp4" type="video/mp4"></video>
           <div class="eg-hero-shade"></div>
+          <button type="button" class="eg-hero-toggle be-rv be-d2" aria-controls="egHeroVideo" data-state="paused" hidden><svg class="is-pause" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><rect x="3.5" y="2.5" width="3" height="11" rx="1"/><rect x="9.5" y="2.5" width="3" height="11" rx="1"/></svg><svg class="is-play" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.3-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7z"/></svg><span class="sr-only is-pause" data-i18n="eg_video_pause">Videoyu duraklat</span><span class="sr-only is-play" data-i18n="eg_video_play">Videoyu oynat</span></button>
         </div>
         <div class="eg-vinyl be-spin" aria-hidden="true">
           <svg viewBox="0 0 200 200" focusable="false"><defs><path id="egVinylPath" d="M100,100 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/></defs><circle class="eg-vinyl-disc" cx="100" cy="100" r="96"/><text><textPath href="#egVinylPath" data-i18n="eg_vinyl">PRODUCER · MIX MASTERING · EĞİTMEN · </textPath></text><circle class="eg-vinyl-hub" cx="100" cy="100" r="8"/></svg>
@@ -651,6 +660,116 @@
     tryPlay();
   }
   sync();
+})();
+</script>
+
+<script>
+// ── Döngü videoları: sessiz, satır içi; yalnız görünürken (%20) ve sekme açıkken oynar.
+//    Hareket azaltma, Save-Data ya da 2g bağlantıda poster kalır, düğme "Videoyu oynat" der
+//    (düğmeye basmak o videoda bu kısıtı kaldırır). Otomatik oynatma engellenirse (iOS düşük
+//    güç modu) sayfadaki ilk dokunuş/tıklama yeniden dener. Kaynak yüklenemezse poster kalır,
+//    düğme kaldırılır. autoplay özniteliği yok: JS yoksa yalnız poster görünür.
+(function () {
+  var SEL = 'video[data-eg-video]';
+  var list = [].slice.call(document.querySelectorAll(SEL));
+  if (!list.length) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+  var hasIO = 'IntersectionObserver' in window;
+  var retryArmed = false;
+  // VARSAYIM: Save-Data ve 2g/slow-2g bağlantıda video kendiliğinden inmesin
+  function lowData() { return !!(conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))); }
+  function reduced() { return !!(mq && mq.matches); }
+  function allowed(it) { return !it.failed && it.inView && !it.userPaused && !it.sysPaused && !document.hidden; }
+  function sync(it) { if (it.btn) it.btn.setAttribute('data-state', it.v.paused ? 'paused' : 'playing'); }
+
+  function fail(it) {
+    if (it.failed) return;
+    it.failed = true;
+    try { it.v.pause(); } catch (e) {}
+    if (it.btn) { it.btn.remove(); it.btn = null; }   // poster kalır, yerleşim kaymaz
+  }
+  function pause(it) { if (!it.v.paused) it.v.pause(); }
+  function play(it) {
+    if (it.failed) return;
+    var v = it.v, p;
+    if (v.preload === 'none') v.preload = 'auto';
+    try { p = v.play(); } catch (e) { p = null; }
+    if (p && p.catch) p.catch(function (err) {
+      var n = err && err.name;
+      if (v.error || n === 'NotSupportedError') { fail(it); return; }   // kaynak yok / HTML döndü
+      sync(it);
+      if (n === 'NotAllowedError') armRetry();   // otomatik oynatma engellendi; AbortError = pause() araya girdi
+    });
+  }
+  function resumeAll() { list.forEach(function (it) { if (allowed(it) && it.v.paused) play(it); }); }
+
+  // VARSAYIM: WebKit medya izni touchend/click ile verir (touchstart değil)
+  function armRetry() {
+    if (retryArmed) return;
+    retryArmed = true;
+    function go(e) {
+      document.removeEventListener('touchend', go, true);
+      document.removeEventListener('click', go, true);
+      retryArmed = false;
+      list.forEach(function (it) {
+        if (it.btn && e && e.target && it.btn.contains(e.target)) return;   // o düğmenin kendi işi
+        if (allowed(it) && it.v.paused) play(it);
+      });
+    }
+    document.addEventListener('touchend', go, { capture: true, passive: true });
+    document.addEventListener('click', go, true);
+  }
+
+  list = list.map(function (v) {
+    var fig = v.parentElement;
+    var btn = fig ? fig.querySelector('[aria-controls="' + v.id + '"]') : null;
+    var it = { v: v, btn: btn, inView: !hasIO, userPaused: false, sysPaused: reduced() || lowData(), failed: false };
+    v.muted = true; v.defaultMuted = true; v.playsInline = true;
+    v.addEventListener('error', function () { fail(it); }, true);   // <source> hatası da yakalanır
+    v.addEventListener('play', function () { sync(it); });
+    v.addEventListener('pause', function () { sync(it); });
+    if (btn) {
+      btn.hidden = false;
+      btn.addEventListener('click', function () {
+        if (v.paused) { it.userPaused = false; it.sysPaused = false; it.inView = true; play(it); }
+        else { it.userPaused = true; pause(it); }
+      });
+    }
+    sync(it);   // preload="none": oynatılana kadar ağ isteği yok, erken hata da olmaz
+    return it;
+  });
+
+  if (hasIO) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        list.forEach(function (it) {
+          if (it.v !== en.target) return;
+          it.inView = en.isIntersecting;
+          if (allowed(it)) { if (it.v.paused) play(it); } else if (!it.inView) pause(it);
+        });
+      });
+    }, { threshold: 0.2 });
+    list.forEach(function (it) { io.observe(it.v); });
+  } else {
+    resumeAll();
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) list.forEach(pause); else resumeAll();
+  });
+  function onMotion() {
+    var r = reduced();
+    list.forEach(function (it) {
+      if (r) { it.sysPaused = true; pause(it); }
+      else it.sysPaused = lowData();
+    });
+    if (!r) resumeAll();
+  }
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener('change', onMotion);
+    else if (mq.addListener) mq.addListener(onMotion);
+  }
 })();
 </script>
 
