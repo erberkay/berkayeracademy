@@ -1271,7 +1271,11 @@ function signInWithGoogle() {
     if (!_fbReady) return;
     window.bkAuth.openLogin();
 }
-function signOut() { _auth?.signOut(); }
+// Çıkıştan önce bekleyen ~1 sn'lik toplu kaydı gönder (onAuthStateChanged çıkışta yerel ilerlemeyi siler)
+async function signOut() {
+    if (_labSaveTimer) { clearTimeout(_labSaveTimer); _labSaveTimer = null; await saveProgress(); }
+    _auth?.signOut();
+}
 
 // ── Firestore helpers ───────────────────────────────────────────────
 function userDoc() { return _db.collection('users').doc(currentUser.uid); }
@@ -1287,6 +1291,10 @@ async function loadUserData(uid) {
             if (local !== state.completedTasks) {
                 state.completedTasks = {};
                 try { localStorage.setItem('berkay_tasks', '{}'); localStorage.setItem('berkay_tasks_owner', uid); } catch {}
+            } else if (Object.keys(local).some(k => local[k])) {
+                // Kullanıcı dokümanı yok (ör. Lab'dan ilk Google girişi): girişten önceki ilerleme bu hesaba
+                // hemen yazılır — yoksa sahibi '' kalır ve çıkışta silinirdi.
+                labPersistTasks(false);
             }
             return;
         }
