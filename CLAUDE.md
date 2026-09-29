@@ -176,9 +176,9 @@ Design column = screen in the Claude Design canvas (desktop 1440 / mobile `M_*` 
 
 | File | Route | Design | Shell | Notes |
 |---|---|---|---|---|
-| index.html | / | Main / Mobil | `index` · footer full | Landing + community comments |
+| index.html | / | Main / Mobil | `index` · footer full | Landing + community comments; hero + eğitmen karosu döngü videosu (`[data-idx-video]`) |
 | egitim.html | /egitim | Egitim | `egitim` · compact | Course info, SEO-loaded with genre keywords; member gate (Lab + Dergi cards) |
-| egitmen.html | /egitmen | Egitmen | `egitmen` · compact | Instructor bio, timeline, live video |
+| egitmen.html | /egitmen | Egitmen | `egitmen` · compact | Instructor bio, timeline, hero döngü videosu (`#egHeroVideo`) + live video (`#liveVideo`) |
 | sss.html | /sss | SSS | `sss` · compact | FAQ accordion (`sss_qN` / `sss_aN_html`) |
 | forum.html | /forum | Forum | `forum` · compact | |
 | post.html | /post?id= | KonuDetay | `post`, back → /forum, no tabs · — | |
@@ -191,6 +191,8 @@ Design column = screen in the Claude Design canvas (desktop 1440 / mobile `M_*` 
 | booking.html | /booking | DersPaneli (student) · AdminPaneli (admin) | `booking` · compact (admin hides the shell) | Student lesson panel + admin panel + WhatsApp chat |
 | app-bridge.html | /app-bridge | — | none (tokens only) | UUID-keyed cross-app data bridge UI |
 | migration.html | /migration | — | none (tokens only) | Admin one-off tool (fix old messages); not linked |
+
+**Döngü videoları (index, egitmen):** tasarımdaki fotoğraflar `assets/video/live.mp4` (poster `DSC00141.jpg`, `object-position: 50% 40%`) sessiz döngü videosu. `autoplay` özniteliği yok — oynatmayı sayfa içi denetleyici başlatır: görünürken oynar, ekran dışı / sekme gizliyken durur; `prefers-reduced-motion`, Save-Data ve 2g'de poster kalır, hiç video baytı inmez. Her videoda WCAG 2.2.2 duraklat/oynat düğmesi zorunlu (`.idx-video-toggle`, `.eg-live-toggle`). Yerelde `firebase serve` Range isteğine 206 vermez; eğitmen hero'su `#liveVideo` ile aynı dosyayı paylaştığı için localhost'ta yüklenmeyebilir — üretimde sorun yok.
 
 Legacy: `site_1.html` (3300+ lines) is orphan content; `/site_1` and `/site_1.html` both 301-redirect to `/ableton-lab`. Do not link to it.
 
