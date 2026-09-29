@@ -56,6 +56,7 @@ Env vars in use: `GMAIL_PASS`, `Z_ACCOUNT_ID` / `Z_CLIENT_ID` / `Z_CLIENT_SECRET
 - `createZoomMeeting` — admin only, writes `settings/global.zoom_link`
 - `sendWhatsAppMessage`, `sendWhatsAppAdmin` — WhatsApp send (template or freeform)
 - `markWhatsAppConvoRead` — clears unread count on admin panel
+- `studentSelfReschedule` — öğrencinin ders saatini onaysız değiştirmesi (kurallar aşağıda "Reservation update rules"); Admin SDK ile transaction içinde yazar, sonra admine WhatsApp + e-posta atar
 
 **HTTP:**
 - `twilioWhatsAppWebhook` — Twilio inbound webhook (URL set in Twilio console). Signature validation logs mismatches but does not reject (Cloud Functions v2 URL reconstruction can mismatch).
@@ -137,6 +138,8 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 - `rules_accepted_at` (write-once: must not already exist)
 
 Lesson rows themselves are **always admin-only**. If the client tries to modify any other field, the rule will reject the write.
+
+**Kendin değiştir (onaysız saat değişikliği):** "Saati değiştir" butonu `studentSelfReschedule` callable'ını çağırır; kurallar sunucuda uygulanır, `bkSelfReschedControl()` / `openSelfReschedule()` aynılarını gösterir: dersine en az 5 saat olmalı ve yeni saat de en az 5 saat sonra; yeni saat dersin olduğu hafta (Pzt–Paz) içinde; her ders bir kez (`lessons[i].self_changed`, eski saat `self_changed_from`); erteleme hakkı düşmez; ödemesi onaylanmamış planda kapalı (deneme dersi hariç); kapalı gün/saat ve dolu saatler seçilemez (60 dk ders + 30 dk ara, `booked_slots`). Dersin durumu `scheduled`/`rescheduled` kalır; eski `booked_slots` silinip yenisi yazılır. Bekleyen erteleme talebi olan derste kapalı. Saatler İstanbul saati (UTC+3) ile hesaplanır.
 
 Because of this, the student "↺ Ertele" button does **not** write lessons directly — it creates a `lesson_requests` doc with `type: 'reschedule_request'` (fields: `lesson_date`, `lesson_time`, `new_date`, `from_*`). Admin approves it in "Gelen Talepler", which runs `adminRescheduleLesson` (cascade + credit consumption) and sets the request `accepted` — the existing `notifyStudentOnRequestStatus` trigger then WhatsApps the student.
 

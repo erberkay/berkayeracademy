@@ -15,11 +15,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202609282330">
-  <script src="assets/js/theme-init.js?v=202609282330"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202609282330">
-  <script src="assets/js/auth-ui.js?v=202609282330"></script>
-  <script src="assets/js/placement-quiz.js?v=202609282330"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202609290330">
+  <script src="assets/js/theme-init.js?v=202609290330"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202609290330">
+  <script src="assets/js/auth-ui.js?v=202609290330"></script>
+  <script src="assets/js/placement-quiz.js?v=202609290330"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -242,6 +242,7 @@
     .av-cell.selected { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:700; font-size:13px; }
     .av-cell.busy { background:var(--busy-bg); border-color:transparent; color:#c98791; cursor:not-allowed; }
     .av-cell.closed { background:var(--closed-bg); border-color:transparent; cursor:not-allowed; }
+    .av-cell.is-current { background:var(--ok-soft); border-color:var(--ok-line); color:var(--ok); cursor:default; }
     .av-cell:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
     @media (hover:hover) {
       .av-cell.free:hover { transform:translateY(-2px); background:var(--accent-wash); border-color:var(--accent-line-2); }
@@ -378,6 +379,24 @@
     .bk-l-time { margin-top:2px; font-family:var(--ff-mono); font-size:12px; color:var(--fg-3); }
     .bk-l-status { grid-area:status; justify-self:end; }
     .bk-l-act { grid-area:act; justify-self:end; }
+    .bk-l-acts { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+    /* Ders saatini kendin değiştir (seçici modal) */
+    .bk-sc-lead { margin:0 0 14px; font-size:var(--fs-ui); line-height:1.55; color:var(--fg-muted); }
+    .bk-sc-legend { display:flex; gap:8px 16px; flex-wrap:wrap; margin-bottom:10px; font-size:12px; color:var(--fg-muted); }
+    .bk-sc-legend > span { display:inline-flex; align-items:center; gap:6px; }
+    .bk-sc-sw { display:inline-block; width:12px; height:12px; border-radius:var(--r-6); }
+    .bk-sc-sw.is-free { border:1px solid var(--accent-line); }
+    .bk-sc-sw.is-current { background:var(--ok-soft); border:1px solid var(--ok-line); }
+    .bk-sc-sw.is-soon { background:var(--closed-bg); }
+    .bk-sc-sw.is-busy { background:var(--busy-bg); }
+    .bk-sc .bk-gscroll { height:320px; }
+    .bk-sc-sum { display:flex; align-items:center; gap:12px 16px; flex-wrap:wrap; margin-top:14px; padding:12px 16px; border-radius:var(--r-12); background:var(--surface-2); }
+    .bk-sc-sumrow { display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .bk-sc-k { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.12em; text-transform:uppercase; color:var(--fg-muted); }
+    .bk-sc-arrow { color:var(--accent); font-size:18px; }
+    .bk-sc-checks { list-style:none; margin:12px 0 0; padding:0; display:flex; flex-direction:column; gap:6px; font-size:var(--fs-small); color:var(--fg-muted); }
+    .bk-sc-checks li.is-ok { color:var(--ok); }
+    .bk-sc-foot { margin:12px 0 0; font-size:12px; line-height:1.5; color:var(--fg-muted); }
     .bk-lesson .lesson-zoom-area, .bk-lesson .lesson-frozen-note { grid-area:zoom; margin-top:8px; }
     .bk-lesson .lesson-zoom-area:empty { display:none; }
     .lesson-frozen-note { padding:8px 12px; border-radius:var(--r-10); background:var(--info-soft); color:var(--info); font-family:var(--ff-mono); font-size:var(--fs-label); line-height:1.5; }
@@ -696,6 +715,9 @@
       .bk-lesson { grid-template-columns:44px minmax(0,1fr) auto; grid-template-areas:"date info status" "date act act" "date zoom zoom"; gap:6px 12px; padding:14px 14px; }
       .bk-lesson .lesson-zoom-area, .bk-lesson .lesson-frozen-note { margin-top:2px; }
       .bk-l-act { justify-self:start; }
+      .bk-l-acts { justify-content:flex-start; }
+      .bk-sc-sum { flex-direction:column; align-items:flex-start; gap:6px; }
+      .bk-sc-arrow { transform:rotate(90deg); }
       /* Ders satırı "Derse Katıl" çipi: tam genişlik, iki satırlı küçük kart (etiket / tarih) — gün adı uzunluğundan bağımsız */
       .bk-student .bk-lesson .zoom-chip { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:2px; width:100%; padding:8px 14px; border-radius:var(--r-12); }
       .bk-student .bk-lesson .zoom-chip-sub { max-width:100%; }
@@ -1395,8 +1417,8 @@
       .adm-month { width:100%; justify-content:space-between; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202609282330"></script>
-<script src="assets/js/trial-nav.js?v=202609282330"></script>
+<script src="assets/js/i18n.js?v=202609290330"></script>
+<script src="assets/js/trial-nav.js?v=202609290330"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="booking"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -2695,6 +2717,262 @@ function toggleSlot(key, cell) {
   bkMarkSelDays();
   updateSlotSummary();
   document.getElementById('submitRequestBtn').disabled = _selectedSlots.size === 0;
+}
+
+// ─── Ders saatini kendin değiştir (onaysız) ───────────────
+// Dersine 5 saatten fazla varsa öğrenci saati kendisi değiştirir: aynı hafta
+// (Pzt–Paz) içinde, en az 5 saat sonraki boş bir saate, her ders için bir kez.
+// Erteleme hakkı düşmez. Öğrenci ders satırlarına yazamadığı için doğrulama ve
+// yazma sunucuda (studentSelfReschedule); buradaki kontroller aynı kuralları
+// gösterir. Saatler İstanbul saati (UTC+3) — yurt dışındaki öğrenci için de doğru.
+var SELF_RESCHED_MIN_MS = 5 * 60 * 60 * 1000;
+var SELF_RESCHED_OCCUPYING = ['scheduled', 'rescheduled', 'frozen', 'cancel_requested'];
+
+function bkTrStart(dateStr, timeStr) { return new Date(`${dateStr}T${timeStr}:00+03:00`); }
+function bkWeekDates(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => { const x = new Date(d); x.setUTCDate(d.getUTCDate() + i); return x.toISOString().slice(0, 10); });
+}
+function bkMinutes(t) { const [h, m] = String(t).split(':').map(Number); return h * 60 + (m || 0); }
+// Sunucudaki kuralın aynısı: üst üste binmez, bir dersten sonra 30 dk ara kalır
+function bkSlotsClash(t, b) { return t - b > -60 && t - b <= 60; }
+function bkDur(ms) {
+  const en = window._i18n?.getLang() === 'en';
+  const mins = Math.max(0, Math.round(ms / 60000));
+  const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
+  if (d > 0) return en ? `${d}d ${h}h` : `${d} gün ${h} sa`;
+  if (h > 0) return en ? `${h}h ${m}m` : `${h} sa ${m} dk`;
+  return en ? `${m}m` : `${m} dk`;
+}
+function bkSlotLabel(dateStr, timeStr) {
+  return `${getDays()[dateStrToObj(dateStr).getDay()]} ${formatDateStr(dateStr)} · ${timeStr}`;
+}
+
+// Ders satırındaki kontrol: buton, kilitli buton ya da "değiştirildi" rozeti
+function bkSelfReschedControl(l, res, { isPaid, isTrial, pendingResch }) {
+  if (l.self_changed) {
+    const b = document.createElement('span');
+    b.className = 'badge ok';
+    b.textContent = bkT('bk_sc_done_badge', 'Saat değiştirildi ✓');
+    const from = l.self_changed_from;
+    if (from && from.date) b.title = `${bkT('bk_sc_old', 'Eski')}: ${bkSlotLabel(from.date, from.time)}`;
+    return b;
+  }
+  if (pendingResch) return null; // bekleyen erteleme talebi varken iki akış çakışmasın
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-sm btn-subtle bk-selfresch';
+  const left = bkTrStart(l.date, l.time).getTime() - Date.now();
+  if (left < SELF_RESCHED_MIN_MS) {
+    btn.disabled = true;
+    btn.textContent = bkT('bk_sc_locked', 'Kilitli · 5 saatten az');
+    return btn;
+  }
+  btn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-clock"/></svg>${bkT('bk_sc_btn', 'Saati değiştir')}`;
+  if (!isPaid && !isTrial) {
+    btn.disabled = true;
+    btn.title = bkT('bk_sc_pay', 'Ödeme onaylanmadan ders saati değiştirilemez.');
+    return btn;
+  }
+  btn.onclick = () => openSelfReschedule(l, res);
+  return btn;
+}
+
+async function openSelfReschedule(lesson, res) {
+  const weekDates = bkWeekDates(lesson.date);
+  const lessonStart = bkTrStart(lesson.date, lesson.time).getTime();
+  let picked = null; // { date, time }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal modal-lg bk-sc">
+      <div class="modal-title">${bkT('bk_sc_title', 'Ders saatini değiştir')}</div>
+      <p class="bk-sc-lead">${bkT('bk_sc_lead', 'Onay beklemeden, anında. Dersine en az 5 saat olmalı, yeni saat de en az 5 saat sonra; aynı hafta içinde ve her ders için bir kez. Erteleme hakkın yanmaz.')}</p>
+      <div class="bk-sc-legend" aria-hidden="true">
+        <span><i class="bk-sc-sw is-free"></i>${bkT('bk_avail_free', 'Müsait')}</span>
+        <span><i class="bk-sc-sw is-current"></i>${bkT('bk_sc_current', 'Şu anki dersin')}</span>
+        <span><i class="bk-sc-sw is-soon"></i>${bkT('bk_sc_soon', '5 saatten yakın')}</span>
+        <span><i class="bk-sc-sw is-busy"></i>${bkT('bk_sc_busy', 'Dolu / kapalı')}</span>
+      </div>
+      <div class="bk-gbox">
+        <div class="bk-gload" id="scLoading">${bkT('bk_avail_loading', 'Müsaitlik yükleniyor…')}</div>
+        <div class="bk-gscroll" id="scScroll"><table class="bk-grid" id="scGrid" style="display:none;"></table></div>
+      </div>
+      <div class="bk-sc-sum" aria-live="polite">
+        <div class="bk-sc-sumrow"><span class="bk-sc-k">${bkT('bk_sc_old', 'Eski')}</span><strong>${bkSlotLabel(lesson.date, lesson.time)}</strong></div>
+        <span class="bk-sc-arrow" aria-hidden="true">→</span>
+        <div class="bk-sc-sumrow"><span class="bk-sc-k">${bkT('bk_sc_new', 'Yeni')}</span><strong id="scNew">—</strong></div>
+      </div>
+      <ul class="bk-sc-checks" id="scChecks"></ul>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="scCancel">${bkT('bk_sc_cancel', 'Vazgeç')}</button>
+        <button type="button" class="btn btn-primary" id="scConfirm" disabled>${bkT('bk_sc_confirm', 'Değişikliği onayla — anında uygulanır')}</button>
+      </div>
+      <p class="bk-sc-foot">${bkT('bk_sc_foot', `Berkay Er'e otomatik WhatsApp + e-posta bildirimi gider; onay gerekmez. Dersine 5 saatten az kaldıysa değişiklik kilitlenir — o durumda erteleme kuralları geçerlidir.`)}</p>
+    </div>`;
+  document.body.append(overlay);
+  const box = overlay.querySelector('.modal');
+  const close = bkDialog(overlay, box, { title: '.modal-title', focus: '#scCancel' });
+  overlay.querySelector('#scCancel').onclick = close;
+  const grid = overlay.querySelector('#scGrid');
+  const confirmBtn = overlay.querySelector('#scConfirm');
+
+  const renderChecks = () => {
+    const now = Date.now();
+    const lessonLeft = lessonStart - now;
+    const pickLeft = picked ? bkTrStart(picked.date, picked.time).getTime() - now : 0;
+    const items = [
+      [lessonLeft >= SELF_RESCHED_MIN_MS, bkT('bk_sc_chk_lesson', 'Dersine {d} var (en az 5 saat)').replace('{d}', bkDur(lessonLeft))],
+      [!!picked && pickLeft >= SELF_RESCHED_MIN_MS, picked
+        ? bkT('bk_sc_chk_new', 'Yeni saat {d} sonra (en az 5 saat)').replace('{d}', bkDur(pickLeft))
+        : bkT('bk_sc_chk_new_empty', 'Yeni saat en az 5 saat sonra olmalı')],
+      [!!picked, bkT('bk_sc_chk_free', 'Seçilen saat müsait')],
+      [true, bkT('bk_sc_chk_week', 'Aynı hafta içinde · bu dersin tek değişikliği')],
+    ];
+    overlay.querySelector('#scChecks').innerHTML = items.map(([ok, txt]) =>
+      `<li class="${ok ? 'is-ok' : ''}"><span aria-hidden="true">${ok ? '✓' : '○'}</span> ${txt}</li>`).join('');
+    overlay.querySelector('#scNew').textContent = picked ? bkSlotLabel(picked.date, picked.time) : '—';
+    confirmBtn.disabled = !(picked && pickLeft >= SELF_RESCHED_MIN_MS && lessonLeft >= SELF_RESCHED_MIN_MS);
+  };
+
+  // Müsaitlik: admin'in kapalı gün/saatleri + haftanın dolu saatleri + öğrencinin kendi diğer dersleri
+  let availDays = null, blockedHours = {};
+  const starts = {}; // date -> [dakika]
+  const addStart = (date, time) => { (starts[date] = starts[date] || []).push(bkMinutes(time)); };
+  try {
+    const [settingsSnap, slotsSnap] = await Promise.all([
+      db.collection('settings').doc('global').get().catch(() => null),
+      db.collection('booked_slots').where('date', '>=', weekDates[0]).where('date', '<=', weekDates[6]).get(),
+    ]);
+    if (settingsSnap && settingsSnap.exists) {
+      const sd = settingsSnap.data();
+      if (Array.isArray(sd.available_days)) availDays = sd.available_days;
+      if (sd.blocked_hours && typeof sd.blocked_hours === 'object') blockedHours = sd.blocked_hours;
+    }
+    slotsSnap.forEach(doc => {
+      if (doc.id === `${lesson.date}_${lesson.time}`) return; // taşınan dersin kendi yeri
+      const d = doc.data(); if (d && d.date && d.time) addStart(d.date, d.time);
+    });
+  } catch (e) {
+    const c = errId(); toast(`${bkT('bk_avail_load_err', 'Müsaitlik yüklenemedi')} (${c}): ` + (e.message || e.code), true);
+    close(); return;
+  }
+  (res.lessons || []).forEach(x => {
+    if (!x || (x.date === lesson.date && x.time === lesson.time)) return;
+    if (SELF_RESCHED_OCCUPYING.includes(x.status) && weekDates.includes(x.date)) addStart(x.date, x.time);
+  });
+
+  const cellState = (date, time) => {
+    if (date === lesson.date && time === lesson.time) return 'current';
+    if (bkTrStart(date, time).getTime() - Date.now() < SELF_RESCHED_MIN_MS) return 'soon';
+    const dow = dateStrToObj(date).getDay();
+    if (availDays !== null && !availDays.includes(dow)) return 'busy';
+    if (Array.isArray(blockedHours[dow]) && blockedHours[dow].includes(time)) return 'busy';
+    const t = bkMinutes(time);
+    if ((starts[date] || []).some(b => bkSlotsClash(t, b))) return 'busy';
+    return 'free';
+  };
+
+  // Izgara: satır = saat, sütun = haftanın günü (talep formundaki ızgarayla aynı görünüm)
+  const busyTxt = bkT('bk_avail_busy', 'Dolu');
+  const hr = grid.createTHead().insertRow();
+  const corner = document.createElement('td'); corner.className = 'bk-g-corner'; hr.append(corner);
+  weekDates.forEach(date => {
+    const th = document.createElement('th'); th.scope = 'col';
+    const d = dateStrToObj(date);
+    th.textContent = `${getDaysShort()[d.getDay()]} ${d.getDate()}`;
+    if (date === lesson.date) th.classList.add('has-sel');
+    hr.append(th);
+  });
+  const tbody = grid.createTBody();
+  const cells = [];
+  AVAILABLE_TIMES.forEach(time => {
+    const tr = tbody.insertRow();
+    const rh = document.createElement('th'); rh.scope = 'row';
+    if (parseInt(time, 10) % 6 === 0) rh.className = 'is-q';
+    rh.innerHTML = `<span class="bk-desk">${time}</span><span class="bk-mob">${time.slice(0, 2)}</span>`;
+    tr.append(rh);
+    weekDates.forEach(date => {
+      const td = document.createElement('td');
+      const cell = document.createElement('div');
+      const st = cellState(date, time);
+      cell.className = 'av-cell ' + ({ current: 'is-current', soon: 'closed', busy: 'busy', free: 'free' }[st]);
+      cell.innerHTML = st === 'busy' ? `<span class="av-t">${busyTxt}</span>` : st === 'current' ? '<span aria-hidden="true">●</span>' : '';
+      cell.dataset.date = date; cell.dataset.time = time;
+      cell.setAttribute('role', 'radio');
+      cell.setAttribute('aria-checked', 'false');
+      const extra = { current: bkT('bk_sc_current', 'Şu anki dersin'), soon: bkT('bk_sc_soon', '5 saatten yakın'), busy: busyTxt, free: '' }[st];
+      cell.setAttribute('aria-label', `${bkSlotLabel(date, time)}${extra ? ' — ' + extra : ''}`);
+      cell.tabIndex = -1;
+      if (st === 'free') cell.onclick = () => pick(cell);
+      else cell.setAttribute('aria-disabled', 'true');
+      td.append(cell); tr.append(td);
+      cells.push(cell);
+    });
+  });
+  grid.setAttribute('role', 'radiogroup');
+  grid.setAttribute('aria-label', bkT('bk_sc_title', 'Ders saatini değiştir'));
+
+  function pick(cell) {
+    cells.forEach(c => { if (c.classList.contains('selected')) { c.className = 'av-cell free'; c.innerHTML = ''; c.setAttribute('aria-checked', 'false'); } });
+    cell.className = 'av-cell selected';
+    cell.innerHTML = '<span aria-hidden="true">✓</span>';
+    cell.setAttribute('aria-checked', 'true');
+    focusCell(cell, true);
+    picked = { date: cell.dataset.date, time: cell.dataset.time };
+    renderChecks();
+  }
+  function focusCell(cell, focus) {
+    cells.forEach(c => { if (c !== cell) c.tabIndex = -1; });
+    cell.tabIndex = 0;
+    if (focus) cell.focus();
+  }
+  // Oklar hücreler arasında gezer, Enter/Space müsait hücreyi seçer
+  grid.onkeydown = e => {
+    const cell = e.target.closest && e.target.closest('.av-cell');
+    if (!cell) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (cell.getAttribute('aria-disabled') !== 'true') pick(cell);
+      return;
+    }
+    const mv = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: 7, ArrowUp: -7 }[e.key];
+    if (!mv) return;
+    e.preventDefault();
+    const i = cells.indexOf(cell) + mv;
+    if (i >= 0 && i < cells.length) { focusCell(cells[i], true); cells[i].scrollIntoView({ block: 'nearest' }); }
+  };
+
+  overlay.querySelector('#scLoading').style.display = 'none';
+  grid.style.display = '';
+  const first = cells.find(c => c.classList.contains('is-current')) || cells.find(c => c.classList.contains('free')) || cells[0];
+  if (first) focusCell(first, false);
+  // Dersin saatine kaydır (ızgara kendi kutusunda kayar, sayfa kaymaz)
+  const sc = overlay.querySelector('#scScroll');
+  const row = tbody.rows[Math.max(0, parseInt(lesson.time, 10) - 2)];
+  if (sc && row) sc.scrollTop = row.offsetTop - (grid.tHead ? grid.tHead.offsetHeight : 0);
+  renderChecks();
+
+  confirmBtn.onclick = async () => {
+    if (!picked) return;
+    confirmBtn.disabled = true;
+    const label = confirmBtn.textContent;
+    confirmBtn.textContent = bkT('bk_sc_saving', 'Kaydediliyor…');
+    try {
+      const fn = firebase.app().functions('europe-west1').httpsCallable('studentSelfReschedule');
+      await fn({ lessonDate: lesson.date, lessonTime: lesson.time, newDate: picked.date, newTime: picked.time });
+      close();
+      toast('✓ ' + bkT('bk_sc_done', `Dersin taşındı: {to}. Berkay Er'e bildirim gitti.`).replace('{to}', bkSlotLabel(picked.date, picked.time)));
+      renderDashboard();
+    } catch (e) {
+      const c = errId();
+      toast(`${bkT('bk_sc_err', 'Saat değiştirilemedi')} (${c}): ` + (e.message || e.code), true);
+      confirmBtn.textContent = label;
+      renderChecks();
+    }
+  };
 }
 
 // ─── Reschedule Lesson ────────────────────────────────────
@@ -4577,21 +4855,29 @@ async function renderDashboard() {
           <div class="bk-l-time">${l.time} – ${getEndTime(l.time)}</div>
         </div>
         <span class="badge ${sc} bk-l-status">${statusLabel}</span>`;
+      const acts = document.createElement('div');
+      acts.className = 'bk-l-act bk-l-acts';
+      const pendingResch = _pendingResched.has(l.date + '_' + l.time);
+      if (!isPast && (l.status === 'scheduled' || l.status === 'rescheduled')) {
+        const sc = bkSelfReschedControl(l, res, { isPaid, isTrial, pendingResch });
+        if (sc) acts.append(sc);
+      }
       if (!isPast && l.status === 'scheduled') {
-        if (_pendingResched.has(l.date + '_' + l.time)) {
+        if (pendingResch) {
           const pend = document.createElement('span');
-          pend.className = 'badge warn bk-l-act';
+          pend.className = 'badge warn';
           pend.textContent = (window._i18n?.t('bk_resched_pending')||'Erteleme onayı bekliyor');
-          item.append(pend);
+          acts.append(pend);
         } else {
           const rBtn = document.createElement('button');
-          rBtn.className = 'btn btn-sm btn-subtle bk-resched bk-l-act';
+          rBtn.className = 'btn btn-sm btn-subtle bk-resched';
           rBtn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg>${(window._i18n?.t('bk_reschedule')||'↺ Ertele').replace(/^↺\s*/, '')}`;
           if (!isPaid) { rBtn.disabled = true; rBtn.title = window._i18n?.t('bk_reschedule_disabled')||'Ödeme yapılmadan ders ertelenemez.'; rBtn.setAttribute('aria-describedby', 'bkReschHint'); }
           else rBtn.onclick = () => rescheduleLesson(l, idx, lessons, res);
-          item.append(rBtn);
+          acts.append(rBtn);
         }
       }
+      if (acts.childElementCount) item.append(acts);
       if (!isPast && l.status === 'frozen') {
         const frozenNote = document.createElement('div');
         frozenNote.className = 'lesson-frozen-note';

@@ -1098,3 +1098,161 @@ exports.sendWhatsAppMessage = onCall(
       return {ok: true, sid: result.sid, status: result.status};
     },
 );
+
+// ─── Öğrencinin ders saatini kendisinin değiştirmesi ────────────────
+// Firestore kuralları ders satırlarını yalnızca admine açar; bu yüzden
+// "onaysız, anında" saat değişikliği sunucuda doğrulanıp Admin SDK ile
+// yazılır. Kurallar (booking.html'deki seçici de aynılarını gösterir):
+//   - dersin başlamasına en az 5 saat olmalı, yeni saat de en az 5 saat sonra
+//   - yeni saat dersin olduğu haftada (Pazartesi–Pazar) olmalı
+//   - her ders yalnızca bir kez bu yolla değiştirilebilir (self_changed)
+//   - erteleme hakkı düşmez; ödemesi onaylanmamış planda (deneme hariç) kapalı
+//   - kapalı gün/saatler ve dolu saatler (60 dk ders + 30 dk ara) seçilemez
+// Saatler İstanbul saatidir (UTC+3, yaz saati uygulaması yok).
+const SELF_RESCHED_MIN_MS = 5 * 60 * 60 * 1000;
+const SELF_RESCHED_STATUSES = ["scheduled", "rescheduled"];
+const OCCUPYING_STATUSES = ["scheduled", "rescheduled", "frozen", "cancel_requested"];
+
+function trStart(dateStr, timeStr) {
+  return new Date(`${dateStr}T${timeStr}:00+03:00`);
+}
+function weekStartOf(dateStr) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+function minutesOf(timeStr) {
+  const p = String(timeStr).split(":").map(Number);
+  return p[0] * 60 + (p[1] || 0);
+}
+// Başka bir ders b'de başlıyorsa yeni başlangıç t ile çakışır mı: dersler
+// üst üste binmez ve bir dersten sonra 30 dk ara kalır (ızgaradaki kural).
+function slotsClash(t, b) {
+  return t - b > -60 && t - b <= 60;
+}
+function trLabel(dateStr, timeStr) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+  const months = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${days[d.getUTCDay()]} ${timeStr}`;
+}
+
+exports.studentSelfReschedule = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Giriş yapmalısın.");
+      const uid = request.auth.uid;
+      const data = request.data || {};
+      const lessonDate = String(data.lessonDate || "");
+      const lessonTime = String(data.lessonTime || "");
+      const newDate = String(data.newDate || "");
+      const newTime = String(data.newTime || "");
+      const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRe.test(lessonDate) || !dateRe.test(newDate) ||
+          !/^\d{2}:\d{2}$/.test(lessonTime) || !/^([01]\d|2[0-3]):00$/.test(newTime)) {
+        throw new HttpsError("invalid-argument", "Geçersiz tarih veya saat.");
+      }
+      if (lessonDate === newDate && lessonTime === newTime) {
+        throw new HttpsError("invalid-argument", "Yeni saat mevcut saatle aynı.");
+      }
+      if (weekStartOf(lessonDate) !== weekStartOf(newDate)) {
+        throw new HttpsError("failed-precondition", "Yeni saat, dersin olduğu hafta içinde olmalı.");
+      }
+      const now = Date.now();
+      if (trStart(lessonDate, lessonTime).getTime() - now < SELF_RESCHED_MIN_MS) {
+        throw new HttpsError("failed-precondition", "Dersine 5 saatten az kaldı; saat artık değiştirilemez.");
+      }
+      if (trStart(newDate, newTime).getTime() - now < SELF_RESCHED_MIN_MS) {
+        throw new HttpsError("failed-precondition", "Yeni saat en az 5 saat sonra olmalı.");
+      }
+
+      const db = getFirestore();
+      const resRef = db.collection("reservations").doc(uid);
+      const oldSlotRef = db.collection("booked_slots").doc(`${lessonDate}_${lessonTime}`);
+      const newSlotRef = db.collection("booked_slots").doc(`${newDate}_${newTime}`);
+
+      // Bu ders için bekleyen bir erteleme talebi varsa iki akış çakışmasın
+      const pendingResched = await db.collection("lesson_requests")
+          .where("from_uid", "==", uid)
+          .where("type", "==", "reschedule_request")
+          .where("status", "==", "pending")
+          .get();
+      if (pendingResched.docs.some((d) => d.data().lesson_date === lessonDate && d.data().lesson_time === lessonTime)) {
+        throw new HttpsError("failed-precondition", "Bu ders için bekleyen bir erteleme talebin var.");
+      }
+
+      let studentName = "";
+      await db.runTransaction(async (tx) => {
+        const resSnap = await tx.get(resRef);
+        if (!resSnap.exists) throw new HttpsError("not-found", "Rezervasyon bulunamadı.");
+        const res = resSnap.data();
+        studentName = res.student_name || res.student_email || "";
+        if (res.lesson_type !== "trial" && !res.payment_confirmed) {
+          throw new HttpsError("failed-precondition", "Ödeme onaylanmadan ders saati değiştirilemez.");
+        }
+        const lessons = Array.isArray(res.lessons) ? res.lessons.slice() : [];
+        const idx = lessons.findIndex((l) => l && l.date === lessonDate && l.time === lessonTime &&
+            SELF_RESCHED_STATUSES.includes(l.status));
+        if (idx < 0) throw new HttpsError("not-found", "Ders bulunamadı (taşınmış veya iptal edilmiş olabilir).");
+        if (lessons[idx].self_changed) {
+          throw new HttpsError("failed-precondition", "Bu dersin saatini daha önce değiştirdin; her ders bir kez değiştirilebilir.");
+        }
+
+        // Kapalı gün / saat (admin müsaitliği)
+        const settingsSnap = await tx.get(db.collection("settings").doc("global"));
+        const settings = settingsSnap.exists ? settingsSnap.data() : {};
+        const dow = new Date(`${newDate}T12:00:00Z`).getUTCDay();
+        if (Array.isArray(settings.available_days) && !settings.available_days.includes(dow)) {
+          throw new HttpsError("failed-precondition", "Seçilen saat dolu.");
+        }
+        const blocked = settings.blocked_hours && settings.blocked_hours[dow];
+        if (Array.isArray(blocked) && blocked.includes(newTime)) {
+          throw new HttpsError("failed-precondition", "Seçilen saat dolu.");
+        }
+
+        // Dolu saatler: o günün tüm kayıtları + öğrencinin kendi diğer dersleri
+        const t = minutesOf(newTime);
+        const daySlots = await tx.get(db.collection("booked_slots").where("date", "==", newDate));
+        const clash = daySlots.docs.some((d) => d.id !== oldSlotRef.id && slotsClash(t, minutesOf(d.data().time))) ||
+            lessons.some((l, i) => i !== idx && l && l.date === newDate &&
+                OCCUPYING_STATUSES.includes(l.status) && slotsClash(t, minutesOf(l.time)));
+        if (clash) throw new HttpsError("failed-precondition", "Seçilen saat dolu. Başka bir saat seç.");
+
+        const oldSlotSnap = await tx.get(oldSlotRef);
+        lessons[idx] = Object.assign({}, lessons[idx], {
+          date: newDate,
+          time: newTime,
+          self_changed: true,
+          self_changed_at: new Date(now).toISOString(),
+          self_changed_from: {date: lessonDate, time: lessonTime},
+        });
+        tx.update(resRef, {lessons: lessons, last_self_change_at: FieldValue.serverTimestamp()});
+        if (oldSlotSnap.exists && oldSlotSnap.data().student_uid === uid) tx.delete(oldSlotRef);
+        tx.set(newSlotRef, {date: newDate, time: newTime, student_uid: uid});
+      });
+
+      // Değişiklik kaydedildi; bildirim hatası öğrencinin işlemini bozmasın.
+      const from = trLabel(lessonDate, lessonTime);
+      const to = trLabel(newDate, newTime);
+      const who = studentName || request.auth.token.email || "Öğrenci";
+      try {
+        const adminNum = process.env.WA_ADMIN_NUMBER || "905523070067";
+        const wa = await sendWhatsApp(adminNum,
+            `⇄ Saat değişikliği — ${who}\n${from} → ${to}\nÖğrenci kendisi değiştirdi (onaysız, erteleme hakkı düşmedi).\nberkayeracademy.com/booking`);
+        if (!wa.ok) console.error("self-reschedule admin WhatsApp failed", wa.error);
+      } catch (e) {
+        console.error("self-reschedule admin WhatsApp error", e);
+      }
+      try {
+        await transporter.sendMail({
+          from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
+          to: "berkayer032@gmail.com",
+          subject: `Ders saati değişti — ${who}`,
+          text: `${who} dersinin saatini kendisi değiştirdi.\n\nEski: ${from}\nYeni: ${to}\n\nOnay gerekmez; erteleme hakkı düşmedi. Takvim güncellendi.\nhttps://berkayeracademy.com/booking`,
+        });
+      } catch (e) {
+        console.error("self-reschedule admin email error", e);
+      }
+      return {ok: true, date: newDate, time: newTime};
+    },
+);
