@@ -690,7 +690,123 @@
 
         /* ═══ /LAB KABUK ═══ */
 
-        /* ═══ LAB M1 · Synthesizer ═══ */
+        /* ═══ LAB M1 · Synthesizer ═══ (Lab_Synth: scope + klavye + 8 parametre kartı, yan panel kabuktan) */
+        .lab-m1 {
+            /* Tasarımdaki kart renkleri — token'ı olmayanlar tek seferlik */
+            --lab-c-osc2:#8fc8e8;          /* tasarım: OSC2 başlığı + spektrumda cutoff üstü bantlar */
+            --lab-c-sub:#a855f7;           /* tasarım: Sub & Noise */
+            --lab-c-filter:var(--ember-2);
+            --lab-c-lfo:#00aaff;           /* tasarım: LFO */
+            --lab-c-mod:#66ffcc;           /* tasarım: Mod envelope */
+            --lab-c-fx:var(--err-strong);  /* tasarım #b82d45 (3.2:1) → AA için */
+            --lab-key-w:#ece6da;           /* tasarım: beyaz tuş yüzü */
+            --lab-key-shade:rgba(0,0,0,.12); /* tasarım: beyaz tuş alt gölgesi */
+            --lab-key-drop:rgba(0,0,0,.5);   /* tasarım: siyah tuş gölgesi */
+        }
+        .lab-m1-body { display:flex; flex-direction:column; gap:16px; min-width:0; }
+        .lab-m1-view.seg { background:var(--surface-0); border-color:var(--line-ctl); }
+        .lab-m1-box { position:relative; min-width:0; display:flex; flex-direction:column; gap:14px; padding:20px; border-radius:var(--r-22); background:var(--surface-0); border:1px solid var(--line); }
+        .lab-m1-box:hover, .lab-m1-card:hover { border-color:var(--line-strong); /* tasarım .16 → en yakın token */ }
+
+        /* Scope kartı */
+        .lab-m1-scope-head { display:flex; justify-content:space-between; align-items:center; gap:12px; min-width:0; }
+        .lab-m1-tabs { display:flex; gap:4px; flex-shrink:0; }
+        .lab-m1-tab { position:relative; height:32px; padding:0 12px; border-radius:var(--r-8); border:1px solid var(--line-3); background:transparent; color:var(--fg-3); font-family:var(--ff-mono); font-size:var(--fs-label); letter-spacing:var(--tr-mono); cursor:pointer; }
+        .lab-m1-tab:hover { border-color:var(--accent-line-2); }
+        .lab-m1-tab[aria-selected="true"] { background:var(--surface-4); border-color:var(--accent-line); color:var(--accent); }
+        .lab-m1-scopeinfo { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--fg-3); }
+        .lab-m1-well { height:180px; background-image:linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); background-size:48px 30px; }
+        .lab-m1-well canvas { display:block; width:100%; height:100%; }
+        .lab-m1-presetrow { gap:8px; }
+        .lab-m1-presetrow > .lab-label { margin-right:4px; }
+        .lab-m1 .lab-m1-chip { min-height:34px; padding:0 12px; border-color:var(--line-strong); background:transparent; font-size:12px; }
+        .lab-m1 .lab-m1-chip:hover { border-color:var(--accent); color:var(--fg-soft); }
+        .lab-m1 .lab-m1-chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+
+        /* Klavye kartı */
+        .lab-m1-kb { gap:12px; padding:18px 20px 20px; }
+        .lab-m1-kb-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+        .lab-m1-kb-t { font-weight:400; }
+        .lab-m1 .lab-m1-oct { gap:6px; padding:0; border:0; }
+        .lab-m1 .lab-m1-oct .be-step-btn { background:transparent; border:1px solid var(--line-ctl); }
+        .lab-m1 .lab-m1-oct .be-step-btn:not(:disabled):hover { background:var(--surface-2); }
+        .lab-m1 .lab-m1-oct .be-step-val { min-width:56px; font-size:12px; }
+        .lab-m1-oct .icon { width:14px; height:14px; }
+        .lab-m1-keys { position:relative; display:grid; grid-template-columns:repeat(var(--n, 14), minmax(0,1fr)); gap:3px; height:150px; touch-action:none; -webkit-user-select:none; user-select:none; }
+        .lab-m1-key { position:relative; padding:0; border:0; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .08s; }
+        .lab-m1-key:active { transform:translateY(2px); }
+        .lab-m1-wkey { grid-row:1; display:flex; align-items:flex-end; justify-content:center; padding-bottom:10px; border-radius:0 0 var(--r-8) var(--r-8); background:var(--lab-key-w); box-shadow:inset 0 -6px 0 var(--lab-key-shade); }
+        .lab-m1-bkey { position:absolute; top:0; z-index:2; width:calc(61.6% / var(--n, 14)); height:61%; margin-left:calc(-30.8% / var(--n, 14)); border-radius:0 0 var(--r-6) var(--r-6); background:var(--surface-hover); box-shadow:0 4px 8px var(--lab-key-drop); }
+        .lab-m1-key.is-on { background:var(--accent); }
+        .lab-m1-wkey.is-on { box-shadow:0 0 18px var(--accent); }
+        .lab-m1-bkey.is-on { box-shadow:0 0 16px var(--accent); }
+        .lab-m1-klbl { font-family:var(--ff-mono); font-size:10px; color:var(--fg-off); /* ≈8:1 tuş yüzünde (tasarım #6f6a62 4.4:1) */ pointer-events:none; }
+        .lab-m1-perf { display:flex; flex-wrap:wrap; align-items:center; gap:12px 24px; padding-top:12px; border-top:1px solid var(--line-faint); }
+        .lab-m1-perf-item { display:flex; align-items:center; gap:10px; }
+        .lab-m1-perf-lbl { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; color:var(--fg-muted); }
+        .lab-m1 .lab-m1-glide { flex:1 1 200px; max-width:320px; }
+        .lab-m1-sus { margin-left:auto; padding:6px 12px; border-radius:var(--r-pill); border:1px solid var(--line-strong); font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; color:var(--fg-3); white-space:nowrap; }
+        .lab-m1-sus.on { background:var(--accent-soft); border-color:var(--accent-line-2); color:var(--accent); }
+
+        /* Parametre kartları */
+        .lab-m1-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; }
+        .lab-m1-card { --c:var(--accent); position:relative; min-width:0; display:flex; flex-direction:column; gap:14px; padding:20px; border-radius:var(--r-20); background:var(--surface-0); border:1px solid var(--line); container-type:inline-size; }
+        .lab-m1-card.is-span { grid-column:1 / -1; }
+        .lab-m1-card[data-k="osc2"] { --c:var(--lab-c-osc2); }
+        .lab-m1-card[data-k="sn"] { --c:var(--lab-c-sub); }
+        .lab-m1-card[data-k="flt"] { --c:var(--lab-c-filter); }
+        .lab-m1-card[data-k="lfo"] { --c:var(--lab-c-lfo); }
+        .lab-m1-card[data-k="mod"] { --c:var(--lab-c-mod); }
+        .lab-m1-card[data-k="fx"] { --c:var(--lab-c-fx); }
+        .lab-m1-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:10px 12px; }
+        .lab-m1-hcopy { flex:1 1 180px; display:flex; flex-direction:column; gap:4px; min-width:0; }
+        .lab-m1-title { font-size:15px; font-weight:700; line-height:1.3; letter-spacing:.02em; color:var(--c); }
+        .lab-m1-sub { font-size:12px; line-height:1.5; color:var(--fg-3); }
+        .lab-m1-opts { display:flex; gap:4px; flex-shrink:0; }
+        .lab-m1-opt { position:relative; height:30px; padding:0 9px; border-radius:var(--r-8); border:1px solid var(--line-strong); background:transparent; color:var(--fg-soft); font-family:var(--ff-mono); font-size:var(--fs-micro); white-space:nowrap; cursor:pointer; }
+        .lab-m1-opt:hover { border-color:var(--accent); }
+        .lab-m1-opt[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+        .lab-m1-viz { display:block; width:100%; height:110px; border-radius:var(--r-10); background:var(--bg-sunk); }
+        .lab-m1-vstop { stop-color:var(--c); }
+        .lab-m1-vline { fill:none; stroke:var(--c); stroke-width:2.5; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+        .lab-m1-sliders { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px 18px; }
+        .lab-m1-sliders--3 { grid-template-columns:repeat(3, minmax(0,1fr)); }
+        .lab-m1-sliders--4 { grid-template-columns:repeat(4, minmax(0,1fr)); }
+        .lab-m1-sl { display:flex; flex-direction:column; gap:6px; min-width:0; }
+        .lab-m1-sl-row { display:flex; justify-content:space-between; gap:8px; font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; color:var(--fg-muted); }
+        .lab-m1-sl-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .lab-m1-sl-val { color:var(--fg); white-space:nowrap; }
+        .lab-m1 .lab-m1-sl .lab-sl { height:20px; margin:0; }
+        .lab-m1-sl .lab-sl-fill, .lab-m1-sl .lab-sl-thumb { background:var(--accent); }
+        .lab-m1-sl .lab-sl-thumb { box-shadow:0 0 0 3px var(--surface-0); }
+        .lab-m1-sl .lab-sl:focus-visible .lab-sl-thumb { box-shadow:0 0 0 3px var(--surface-0), 0 0 0 5px var(--accent); }
+        .lab-m1-note { padding-top:8px; border-top:1px solid var(--line-faint); font-size:12px; line-height:1.55; color:var(--fg-faint); }
+        @container (max-width:479px) { .lab-m1-sliders--3, .lab-m1-sliders--4 { grid-template-columns:repeat(2, minmax(0,1fr)); } }
+        @container (max-width:229px) { .lab-m1-sliders, .lab-m1-sliders--3, .lab-m1-sliders--4 { grid-template-columns:minmax(0,1fr); } }
+
+        /* Kompakt: açıklamalar, notlar, klavye ipucu ve "Ableton'da nerede?" gizli (kabuk .lab-where'i gizler).
+           Presetlerim iki görünümde de açık (kaydet/yükle kaybolmasın). */
+        .lab-m1.lab-compact .lab-m1-sub, .lab-m1.lab-compact .lab-m1-note, .lab-m1.lab-compact .lab-m1-kbhint { display:none; }
+
+        @media (max-width:1024px) {
+            .lab-m1-tab::after { content:''; position:absolute; inset:-6px 0; }
+            .lab-m1 .lab-m1-chip::after { inset:-5px 0; }
+            .lab-m1-opt::after { content:''; position:absolute; inset:-7px -2px; }
+            .lab-m1 .lab-m1-sl .lab-sl { height:32px; }
+            /* Yan panel ana sütunun altında: Görevler → Presetlerim → Ableton'da nerede? */
+            .lab-m1 .lab-mside > .lab-saved-card { order:1; }
+            .lab-m1 .lab-mside > .lab-where { order:2; }
+            .lab-m1.lab-compact .lab-mside > .lab-saved-card { grid-column:1 / -1; }
+        }
+        @media (max-width:600px) {
+            .lab-m1-body, .lab-m1-grid { gap:12px; }
+            .lab-m1-box, .lab-m1-kb, .lab-m1-card { padding:16px; border-radius:var(--r-16); }
+            .lab-m1-grid { grid-template-columns:minmax(0,1fr); }
+            .lab-m1-well { height:130px; }
+            .lab-m1-keys { height:120px; }
+            .lab-m1-perf { gap:12px 16px; }
+            .lab-m1 .lab-m1-glide { flex-basis:100%; max-width:none; order:3; }
+        }
 
         /* ═══ /LAB M1 ═══ */
 
@@ -937,7 +1053,8 @@ const state = {
     filter: { cutoff:8000, resonance:1, type:'lowpass', slope:12, drive:0 },
     // ── Synth (extended engine) ──
     osc1: { wave:'sine',     octave:0, detune:0,  mix:1.0, unison:3, uniDetune:8, uniWidth:0.5 },
-    osc2: { enabled:false, wave:'sawtooth', octave:0, detune:7,  mix:0.5, unison:3, uniDetune:8, uniWidth:0.5 },
+    // OSC2 unison yalnız presetten gelir (Supersaw/Strings); Modül 1 arayüzünde unison kontrolü yok → varsayılan 1
+    osc2: { enabled:false, wave:'sawtooth', octave:0, detune:7,  mix:0.5, unison:1, uniDetune:8, uniWidth:0.5 },
     sub:  { enabled:false, level:0.4 },
     noise:{ enabled:false, level:0.2 },
     filterEnv: { amount:0 },               // 0..100, Mod Env-driven cutoff sweep
@@ -949,7 +1066,7 @@ const state = {
     fx:   { delayTime:0.25, delaySync:'1/8', delayFeedback:0.3, delayWet:0, reverbWet:0 },
     glide:0,
     poly: 'poly',                            // 'mono' | 'poly'
-    keyboardOctave:4,                        // C4 baseline → -2..+2
+    keyboardOctave:4,                        // Modül 1 klavyesinin başlangıç oktavı (1…6)
     pitchBend:0, modWheel:0,
     activePreset: null,
     beatPatterns: Array.from({length:5}, () => new Array(16).fill(0)),
@@ -971,8 +1088,8 @@ setOsc1Wave(state.osc1.wave);
 // AUDIO — SYNTH  (persistent filter + analyser)
 // ═══════════════════════════════════════════════════════════════════
 let synthCtx = null, filterNode = null, analyserNode = null, noiseBuffer = null;
-// Filter stage 2 (24dB cascade) + drive shaper + voice giriş noktası
-let filterNode2 = null, driveShaper = null, synthInput = null;
+// Filter kademeleri 2–4 (12/24/36/48 dB cascade) + drive shaper + voice giriş noktası
+let filterNode2 = null, filterNode3 = null, filterNode4 = null, driveShaper = null, synthInput = null;
 // Master + FX
 let masterAmp = null, delayNode = null, delayFb = null, delayWetG = null,
     convolverNode = null, reverbWetG = null, masterBus = null, softClipNode = null;
@@ -980,7 +1097,7 @@ let masterAmp = null, delayNode = null, delayFb = null, delayWetG = null,
 let lfoOsc = null, lfoCutG = null, lfoVolG = null, lfoPitchG = null;
 // Glide — mono modda son çalınan notanın frekansı
 let _lastGlideFreq = null;
-// XY pad sürüklenirken cutoff'u geçici olarak bu değer yönetir (state'e yazılmaz).
+// Geçici cutoff geçersiz kılma (eski XY pad'den; artık hep null — playNote okur).
 let _padCutoff = null;
 
 // Procedural white-noise buffer reused by every note that has noise enabled.
@@ -1052,31 +1169,29 @@ function makeSoftClipCurve() {
     return curve;
 }
 
-// ── Filter cascade (12/24 dB) ───────────────────────────────────────
-// Her iki biquad'ı state.filter ile eşitler. 2. kademe rezonansı sabit tutar
-// (LP/HP'de 0 dB, BP/Notch'ta hafif) — tek rezonans tepesiyle 24dB eğim.
+// ── Filter cascade (12/24/36/48 dB) ─────────────────────────────────
+// Her kademe 12 dB/okt'luk bir biquad. Kademeler state.filter ile eşitlenir; 2.–4. kademe
+// rezonansı sabit tutar (LP/HP'de 0 dB, BP/Notch'ta hafif) — tek rezonans tepesi.
+// Kayıtlı/preset eğimleri 12 ve 24 önceki gibi 1 ve 2 kademeye denk gelir.
+function filterStages() { return [filterNode, filterNode2, filterNode3, filterNode4].filter(Boolean); }
+function filterStageCount() { return Math.max(1, Math.min(4, Math.round((state.filter.slope || 12) / 12))); }
+function filterStageQ(i, t) { return i ? ((t === 'bandpass' || t === 'notch') ? 1 : 0) : state.filter.resonance; }
 function syncFilterNodes() {
     if (!filterNode) return;
     const t = state.filter.type || 'lowpass';
-    filterNode.type = t;
-    filterNode.frequency.value = state.filter.cutoff;
-    filterNode.Q.value         = state.filter.resonance;
-    if (filterNode2) {
-        filterNode2.type = t;
-        filterNode2.frequency.value = state.filter.cutoff;
-        filterNode2.Q.value = (t === 'bandpass' || t === 'notch') ? 1 : 0;
-    }
+    filterStages().forEach((fn, i) => {
+        fn.type = t;
+        fn.frequency.value = state.filter.cutoff;
+        fn.Q.value = filterStageQ(i, t);
+    });
 }
 function applyFilterSlope() {
     if (!filterNode || !analyserNode) return;
-    try { filterNode.disconnect(); } catch {}
-    if (filterNode2) { try { filterNode2.disconnect(); } catch {} }
-    if ((state.filter.slope || 12) >= 24 && filterNode2) {
-        filterNode.connect(filterNode2);
-        filterNode2.connect(analyserNode);
-    } else {
-        filterNode.connect(analyserNode);
-    }
+    const st = filterStages();
+    st.forEach(fn => { try { fn.disconnect(); } catch {} });
+    const n = Math.min(st.length, filterStageCount());
+    for (let i = 0; i < n - 1; i++) st[i].connect(st[i + 1]);
+    st[n - 1].connect(analyserNode);
 }
 
 // LFO amount'larını hedef gain'lerine uygular. Üç hedef aynı anda aktif
@@ -1104,11 +1219,13 @@ function getSynthCtx() {
 
         filterNode   = synthCtx.createBiquadFilter();
         filterNode2  = synthCtx.createBiquadFilter();
+        filterNode3  = synthCtx.createBiquadFilter();
+        filterNode4  = synthCtx.createBiquadFilter();
         analyserNode = synthCtx.createAnalyser();
         analyserNode.fftSize = 4096;
         driveShaper.connect(filterNode);
         syncFilterNodes();
-        applyFilterSlope(); // filterNode → (filterNode2) → analyserNode
+        applyFilterSlope(); // filterNode → (filterNode2 → 3 → 4) → analyserNode
 
         masterAmp = synthCtx.createGain();
         masterAmp.gain.value = 1.0;
@@ -1156,8 +1273,7 @@ function getSynthCtx() {
         lfoPitchG = synthCtx.createGain();
         lfoCutG.gain.value = 0; lfoVolG.gain.value = 0; lfoPitchG.gain.value = 0;
         lfoOsc.connect(lfoCutG); lfoOsc.connect(lfoVolG); lfoOsc.connect(lfoPitchG);
-        lfoCutG.connect(filterNode.frequency);
-        lfoCutG.connect(filterNode2.frequency);
+        filterStages().forEach(fn => lfoCutG.connect(fn.frequency));
         lfoVolG.connect(masterAmp.gain);
         // lfoPitchG çıkışı her voice spawn'ında osc.detune'a bağlanır.
         lfoOsc.start();
@@ -1226,8 +1342,7 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
         const amt     = state.filterEnv.amount / 100;        // 0..1
         const peakCut = Math.min(18000, baseCut + amt * (18000 - baseCut));
         const mS      = Math.max(mE.sustain ?? 0.3, 0.0001);
-        [filterNode, filterNode2].forEach(fn => {
-            if (!fn) return;
+        filterStages().forEach(fn => {
             const fp = fn.frequency;
             fp.cancelScheduledValues(now);
             fp.setValueAtTime(baseCut, now);
@@ -1314,9 +1429,9 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
         spawnUnison(state.osc2, freq);
     }
 
-    // Sub-oscillator — square one octave below for low-end weight.
+    // Sub-oscillator — sine one octave below for low-end weight (tasarım: "Sub bir oktav aşağıda sine").
     if (state.sub && state.sub.enabled) {
-        spawnOsc('square', freq, 0, -1, state.sub.level);
+        spawnOsc('sine', freq, 0, -1, state.sub.level);
     }
 
     // Noise — colored white noise, looped buffer source.
@@ -1503,70 +1618,155 @@ function setPlayBtn(btn, playing) {
 // OSCILLOSCOPE
 // ═══════════════════════════════════════════════════════════════════
 let oscRafId = null;
+// Ekran dışı (IntersectionObserver) → döngü durur; görünür olunca kaldığı yerden sürer
+let _oscPaused = false, _oscLoop = null;
+function stopOsc() { if (oscRafId) { cancelAnimationFrame(oscRafId); oscRafId = null; } _oscLoop = null; }
+function oscSetPaused(p) {
+    _oscPaused = !!p;
+    if (!_oscPaused && _oscLoop && !oscRafId) oscRafId = requestAnimationFrame(_oscLoop);
+}
 
-function stopOsc() { if (oscRafId) { cancelAnimationFrame(oscRafId); oscRafId = null; } }
-
-// Mode: 'wave' = oscilloscope (default), 'spectrum' = FFT bars
+// Mode: 'wave' = oscilloscope (default), 'spectrum' = 48 bantlı spektrum
 let oscMode = 'wave';
 function setOscMode(m) { oscMode = m; }
 
+// Scope (Modül 1): ses varken canlı analyser (filtre sonrası), sessizken tasarımın hesaplanan önizlemesi —
+// dalga: OSC1/OSC2 karışımı, cutoff düştükçe sinüse yaklaşır, VOLUME ile genlik; spektrum: 48 log bant.
+// prefers-reduced-motion: önizleme kaymaz, çubuklar nabız atmaz.
+const SCOPE_BANDS = 48;
+const scopeBandHz = i => 40 * Math.pow(2, i / 5);
+function scopeShape(w, ph) {
+    return w === 'sine' ? Math.sin(ph * Math.PI * 2) : w === 'square' ? (ph < 0.5 ? 1 : -1)
+        : w === 'sawtooth' ? 1 - 2 * ph : (ph < 0.5 ? 4 * ph - 1 : 3 - 4 * ph);
+}
+function scopeHarm(w, n) {
+    return w === 'sine' ? (n === 1 ? 1 : 0.02) : w === 'square' ? (n % 2 ? 1 / n : 0.02)
+        : w === 'sawtooth' ? 1 / n : (n % 2 ? 1 / (n * n) : 0.02);
+}
 function startOsc(canvas) {
     stopOsc();
     const c = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    const oscData = new Uint8Array(2048);
-    const freqData = new Uint8Array(2048);
-    function drawSpectrum() {
-        c.clearRect(0, 0, W, H);   // zemin + ızgara CSS'ten (.lab-scope)
-        if (!analyserNode) return;
-        analyserNode.getByteFrequencyData(freqData);
-        // Logarithmic frequency scale: map bin index to log-scaled x
-        const nyq = (synthCtx && synthCtx.sampleRate ? synthCtx.sampleRate : 44100) / 2;
-        const fMin = 30, fMax = nyq;
-        const logMin = Math.log(fMin), logMax = Math.log(fMax);
-        const binHz = nyq / freqData.length;
-        c.fillStyle = TOK.accent; c.shadowColor = TOK.accent; c.shadowBlur = 4;
-        // Draw bars by sampling x → freq → bin index
-        const barW = 2;
-        for (let x = 0; x < W; x += barW) {
-            const f  = Math.exp(logMin + (x / W) * (logMax - logMin));
-            const bi = Math.min(freqData.length - 1, Math.max(0, Math.floor(f / binHz)));
-            const mag = freqData[bi] / 255;       // 0..1
-            const bh  = Math.max(1, mag * (H - 4));
-            c.fillRect(x, H - bh, barW - 1, bh);
-        }
-        c.shadowBlur = 0;
-    }
-    function draw() {
-        oscRafId = requestAnimationFrame(draw);
-        if (oscMode === 'spectrum') { drawSpectrum(); return; }
-        c.clearRect(0, 0, W, H);   // zemin + ızgara CSS'ten (.lab-scope)
-        if (!analyserNode) {
-            c.strokeStyle = 'rgba(232,184,75,.35)'; c.lineWidth = 1.5;
-            c.beginPath(); c.moveTo(0, H/2); c.lineTo(W, H/2); c.stroke();
-            return;
-        }
-        analyserNode.getByteTimeDomainData(oscData);
-        // Find stable trigger: first rising zero-crossing in first half
+    const cs = getComputedStyle(canvas);
+    const ACC = TOK.accent, BLUE = cs.getPropertyValue('--lab-c-osc2').trim() || TOK.info;
+    const rm = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+    const td = new Uint8Array(2048), fd = new Uint8Array(2048);
+    const t0 = performance.now();
+    const o2Mix = () => (state.osc2.enabled && state.osc2.mix > 0) ? Math.round(state.osc2.mix * 100) : 0;
+    const bright = () => Math.min(1, state.filter.cutoff / 5000);
+    const sm = (w, p, b) => { const raw = scopeShape(w, p); return w === 'sine' ? raw : raw * (0.55 + 0.45 * b) + Math.sin(p * Math.PI * 2) * (0.45 - 0.45 * b); };
+
+    function waveLive(W, H) {
+        analyserNode.getByteTimeDomainData(td);
         let trigger = 0;
-        const searchEnd = Math.floor(oscData.length * 0.45);
-        for (let i = 1; i < searchEnd; i++) {
-            if (oscData[i-1] < 128 && oscData[i] >= 128) { trigger = i; break; }
-        }
-        // Draw only enough samples to fill canvas (half the buffer)
-        const drawLen = Math.min(oscData.length - trigger, Math.floor(oscData.length / 2));
+        const searchEnd = Math.floor(td.length * 0.45);
+        for (let i = 1; i < searchEnd; i++) if (td[i - 1] < 128 && td[i] >= 128) { trigger = i; break; }
+        const drawLen = Math.min(td.length - trigger, Math.floor(td.length / 2));
         const sw = W / drawLen;
-        c.strokeStyle = TOK.accent; c.lineWidth = 2.5;
-        c.shadowColor = TOK.accent; c.shadowBlur = 8;
+        c.strokeStyle = ACC; c.lineWidth = 2.5; c.lineJoin = 'round';
+        c.shadowColor = ACC; c.shadowBlur = 6;
         c.beginPath();
         for (let i = 0; i < drawLen; i++) {
-            const x = i * sw;
-            const y = H / 2 - (oscData[trigger + i] - 128) / 128 * (H / 2 * 0.88);
-            i === 0 ? c.moveTo(x, y) : c.lineTo(x, y);
+            const y = H / 2 - (td[trigger + i] - 128) / 128 * (H / 2 * 0.88);
+            i ? c.lineTo(i * sw, y) : c.moveTo(0, y);
         }
         c.stroke(); c.shadowBlur = 0;
     }
-    draw();
+    function waveIdle(W, H, t, moving) {
+        const s = state, oct1 = s.osc1.octave || 0, m = o2Mix(), b = bright();
+        const per = 200 / Math.pow(2, oct1);
+        const amp = (60 * (s.volume ?? 0.3) + 10) * H / 180, mid = H / 2;
+        const k2 = Math.pow(2, (s.osc2.octave || 0) - oct1) * (1 + (s.osc2.detune || 0) / 1200);
+        // Tasarım: 1600px iz 2.4 s / 2^oct'ta yarısı kadar (800px) sola kayar
+        const off = moving ? ((t / (2.4 / Math.pow(2, oct1))) * 800) % (per * 1e4) : 0;
+        const ph1 = x => (((x + off) % per) + per) % per / per;
+        const ph2 = x => ((((x + off) * k2) % per) + per) % per / per;
+        if (m > 0) {
+            c.strokeStyle = BLUE; c.globalAlpha = 0.45; c.lineWidth = 1.5;
+            c.beginPath();
+            for (let x = 0; x <= W; x += 2) { const y = mid - sm(s.osc2.wave, ph2(x), b) * amp * 0.5; x ? c.lineTo(x, y) : c.moveTo(0, y); }
+            c.stroke(); c.globalAlpha = 1;
+        }
+        c.strokeStyle = ACC; c.lineWidth = 2.5; c.lineJoin = 'round';
+        c.shadowColor = ACC; c.shadowBlur = 6;
+        c.beginPath();
+        for (let x = 0; x <= W; x += 2) {
+            const y = mid - (sm(s.osc1.wave, ph1(x), b) * (1 - m / 200) + sm(s.osc2.wave, ph2(x), b) * (m / 200)) * amp;
+            x ? c.lineTo(x, y) : c.moveTo(0, y);
+        }
+        c.stroke(); c.shadowBlur = 0;
+    }
+    function spectrum(W, H, t, live, moving) {
+        const s = state, inset = 16, gap = 3;
+        const aw = W - inset * 2, ah = H - inset * 2;
+        const bw = (aw - gap * (SCOPE_BANDS - 1)) / SCOPE_BANDS;
+        const cut = s.filter.cutoff, type = s.filter.type || 'lowpass', slope = (s.filter.slope || 12) / 6;
+        const m = o2Mix(), res = +s.filter.resonance || 0;
+        let binHz = 0, nyq = 22050;
+        if (live) {
+            analyserNode.getByteFrequencyData(fd);
+            nyq = (synthCtx ? synthCtx.sampleRate : 44100) / 2;
+            binHz = nyq / analyserNode.frequencyBinCount;
+        }
+        for (let i = 0; i < SCOPE_BANDS; i++) {
+            const f = scopeBandHz(i);
+            let h;
+            if (live) {
+                // Bandın kutularının ortalaması; Nyquist üstü bantlar tabanda
+                const lo = f * Math.pow(2, -0.1), hi = f * Math.pow(2, 0.1);
+                if (lo >= nyq) h = 0.04;
+                else {
+                    const a = Math.max(0, Math.floor(lo / binHz)), z = Math.min(fd.length - 1, Math.max(a, Math.ceil(hi / binHz)));
+                    let sum = 0; for (let k = a; k <= z; k++) sum += fd[k];
+                    h = Math.max(0.04, sum / (z - a + 1) / 255);
+                }
+            } else {
+                // Tasarımın teorik modeli (110 Hz temel): harmonik ağırlık × filtre + rezonans tümseği
+                const n = Math.max(1, Math.round(f / 110));
+                const a = scopeHarm(s.osc1.wave, n) * (1 - m / 200) + scopeHarm(s.osc2.wave, n) * m / 200;
+                const lg = Math.log2(f / cut);
+                const q = type === 'lowpass' ? (f < cut ? 1 : Math.pow(cut / f, slope))
+                    : type === 'highpass' ? (f > cut ? 1 : Math.pow(f / cut, slope))
+                    : type === 'bandpass' ? Math.exp(-lg * lg) : (Math.abs(lg) < 0.3 ? 0.1 : 1);
+                const bump = Math.exp(-Math.pow(lg * 3, 2)) * res / 10;
+                h = Math.min(1, (a * q + bump * 0.6) + 0.04);
+                if (moving) h *= 0.925 - 0.075 * Math.cos(2 * Math.PI * (t + (i % 7) * 0.12) / 0.9);
+            }
+            const bh = Math.max(1, ah * h), x = inset + i * (bw + gap), y = inset + ah - bh;
+            c.fillStyle = f < cut ? ACC : BLUE;
+            c.beginPath();
+            if (c.roundRect) c.roundRect(x, y, bw, bh, [2, 2, 0, 0]); else c.rect(x, y, bw, bh);
+            c.fill();
+        }
+        // Cutoff işareti: çubuk alanı içinde log konumda (bant merkezleriyle hizalı)
+        const span = Math.log2(scopeBandHz(SCOPE_BANDS - 1) / 40);
+        const cx = inset + bw / 2 + Math.max(0, Math.min(1, Math.log2(cut / 40) / span)) * (aw - bw);
+        c.fillStyle = ACC; c.globalAlpha = 0.6;
+        c.fillRect(Math.round(cx), 12, 1, H - 24);
+        c.globalAlpha = 1;
+    }
+    function draw(now) {
+        const dpr = canvas._dpr || 1, W = canvas.width / dpr, H = canvas.height / dpr;
+        c.setTransform(dpr, 0, 0, dpr, 0, 0);
+        c.clearRect(0, 0, W, H);   // zemin + ızgara CSS'ten (.lab-m1-well)
+        let live = false;
+        if (analyserNode) {
+            analyserNode.getByteTimeDomainData(td);
+            for (let i = 0; i < td.length; i += 4) if (td[i] > 129 || td[i] < 127) { live = true; break; }
+        }
+        const moving = !(rm && rm.matches);
+        const t = (now - t0) / 1000;
+        if (oscMode === 'spectrum') spectrum(W, H, t, live, moving);
+        else if (live) waveLive(W, H);
+        else waveIdle(W, H, t, moving);
+    }
+    function loop(now) {
+        oscRafId = null;
+        if (_oscPaused || _oscLoop !== loop) return;
+        oscRafId = requestAnimationFrame(loop);
+        draw(now);
+    }
+    _oscLoop = loop;
+    if (!_oscPaused) oscRafId = requestAnimationFrame(loop);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1580,7 +1780,8 @@ window.addEventListener('pointermove', e => {
 window.addEventListener('pointerup',     e => { _sliders.forEach(s => s._up(e)); });
 window.addEventListener('pointercancel', e => { _sliders.forEach(s => s._up(e)); });
 
-function makeSlider({min, max, step, value, onChange, label, vertical}) {
+// fmt (isteğe bağlı): v → aria-valuetext ("10 ms", "4.2 kHz"). Klavye adımları da adıma oturur (0.30000000000000004 olmaz).
+function makeSlider({min, max, step, value, onChange, label, vertical, fmt}) {
     const wrap  = document.createElement('div'); wrap.className = 'lab-sl' + (vertical ? ' is-v' : '');
     wrap.setAttribute('role','slider');
     wrap.setAttribute('aria-valuemin', String(min));
@@ -1595,7 +1796,8 @@ function makeSlider({min, max, step, value, onChange, label, vertical}) {
 
     let dragging = false;
     const clamp = v => Math.max(min, Math.min(max, v));
-    const snap  = v => Math.round(v / step) * step;
+    const dec   = (String(step).split('.')[1] || '').length;
+    const snap  = v => +(Math.round(v / step) * step).toFixed(dec);
     const pctOf = v => (v - min) / (max - min);
 
     function render(v) {
@@ -1603,6 +1805,7 @@ function makeSlider({min, max, step, value, onChange, label, vertical}) {
         if (vertical) { fill.style.height = pct + '%'; thumb.style.top = (100 - pct) + '%'; }
         else          { fill.style.width  = pct + '%'; thumb.style.left = pct + '%'; }
         wrap.setAttribute('aria-valuenow', String(v));
+        if (fmt) wrap.setAttribute('aria-valuetext', String(fmt(v)));
     }
     render(value);
 
@@ -1616,7 +1819,7 @@ function makeSlider({min, max, step, value, onChange, label, vertical}) {
         if (!delta) return;
         e.preventDefault();
         if (e.shiftKey) delta *= 10;
-        const next = clamp(parseFloat(wrap.getAttribute('aria-valuenow')) + delta);
+        const next = clamp(snap(parseFloat(wrap.getAttribute('aria-valuenow')) + delta));
         render(next); onChange(next);
     });
 
@@ -1708,7 +1911,7 @@ function applyPreset(p) {
     if (p.filter && p.filter.slope == null) state.filter.slope = 12;
     if (p.filter && p.filter.drive == null) state.filter.drive = 0;
     state.osc1 = { wave:w, octave:0, detune:0, mix:1.0, unison:3, uniDetune:8, uniWidth:0.5, ...(p.osc1 || {}) };
-    state.osc2 = { enabled:false, wave:'sawtooth', octave:0, detune:7, mix:0.5, unison:3, uniDetune:8, uniWidth:0.5, ...(p.osc2 || {}) };
+    state.osc2 = { enabled:false, wave:'sawtooth', octave:0, detune:7, mix:0.5, unison:1, uniDetune:8, uniWidth:0.5, ...(p.osc2 || {}) };
     state.sub  = { enabled:false, level:0.4, ...(p.sub  || {}) };
     state.noise= { enabled:false, level:0.2, ...(p.noise|| {}) };
     state.filterEnv = { amount:0, ...(p.filterEnv || {}) };
@@ -2756,1093 +2959,582 @@ function scrollToApp() {
 // MODULE 1 — SYNTHESIZER
 // ═══════════════════════════════════════════════════════════════════
 // Modül 1 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
-TASKS[1] = [
-        {id:1, text:"4 waveform'u sırayla dene: Sine → Square → Sawtooth → Triangle, her birini klavyeden çal"},
-        {id:2, text:"Attack'ı sürükleyerek sıfıra çek, sonra 1.5s'ye getir — başlangıç farkını duyumsa"},
-        {id:3, text:"Sustain'i %0'a indir, Decay'i 0.3s'ye ayarla — nota tutunca sesin nasıl kesildiğini dinle"},
-        {id:4, text:"Release'i 2s'nin üzerine çıkar, bir nota bas ve bırak — sesin yavaşça söndüğünü duymalısın"},
-        {id:5, text:"Bass preset'ini yükle, Cutoff'u 200Hz'e düşür — sesin nasıl karardığını duyumsa"},
-        // Extended-engine tasks
-        {id:6, text:"OSC2'yi aç, farklı bir dalga seç ve detune'u ±7 cent yap — 'fat' hissi duy"},
-        {id:7, text:"Filter tipini Lowpass'tan Highpass'a değiştir, cutoff'u sweep et — sesin nasıl açıldığını dinle"},
-        {id:8, text:"LFO'nun → Cutoff amount'unu %70 yap → wobble bass (Square dalga + sub osc önerilir)"},
-        {id:9, text:"Env → Cutoff amount'ı %80'e çıkar, Decay 0.4s — klassik acid sweep'i dinle"},
-        {id:10, text:"Pad preset'inde Reverb wet'i %60'a çıkar — ses derinleşsin, ambient hisset"},
-];
+// Kimlikler 1–10 aynı (kayıtlı ilerleme korunur); metin getter'la L()'den → EN'de İngilizce.
+TASKS[1] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(id => ({ id, get text() { return L('lab_t1_' + id); } }));
 Object.assign(LAB_TXT, {
     // Modül 1 · Synthesizer metinleri: anahtar: [`TR`, `EN`],
+    lab_s1_region:       [`Synthesizer`, `Synthesizer`],
+    lab_s1_view_aria:    [`Görünüm`, `View`],
+    lab_s1_view_detail:  [`Detaylı görünüm`, `Detailed view`],
+    lab_s1_view_compact: [`Kompakt`, `Compact`],
+    lab_s1_view_detail_t:  [`Açıklamaları ve teori kartlarını göster`, `Show explanations and theory cards`],
+    lab_s1_view_compact_t: [`Tek ekran görünümü`, `Single-screen view`],
+    lab_s1_tab_wave:     [`OSCILLOSCOPE`, `OSCILLOSCOPE`],
+    lab_s1_tab_spec:     [`SPECTRUM`, `SPECTRUM`],
+    lab_s1_viz_aria:     [`Görselleştirme`, `Visualization`],
+    lab_s1_scope_aria:   [`Synthesizer dalga formu / spektrum görselleştirmesi`, `Synthesizer waveform / spectrum visualization`],
+    lab_s1_kb:           [`KLAVYE · TIKLA VEYA DOKUN`, `KEYBOARD · CLICK OR TAP`],
+    lab_s1_kb_aria:      [`Synthesizer klavyesi`, `Synthesizer keyboard`],
+    lab_s1_oct_dn:       [`Oktav aşağı`, `Octave down`],
+    lab_s1_oct_up:       [`Oktav yukarı`, `Octave up`],
+    lab_s1_oct:          [`OKT {n}`, `OCT {n}`],
+    lab_s1_kb_hint:      [`Bilgisayar klavyesi: A W S E D F T G Y H U J K = notalar · Shift = yumuşak · Space basılı = sustain`,
+                          `Computer keyboard: A W S E D F T G Y H U J K = notes · Shift = soft · hold Space = sustain`],
+    lab_s1_mode:         [`MOD`, `MODE`],
+    lab_s1_glide_tip:    [`Glide sadece MONO modda çalışır — notalar arası perde kayması`, `Glide only works in MONO mode — pitch slides between notes`],
+    lab_s1_sus:          [`SUSTAIN · Space`, `SUSTAIN · Space`],
+    lab_s1_sus_on:       [`Sustain açık`, `Sustain on`],
+    lab_s1_sus_off:      [`Sustain kapalı`, `Sustain off`],
+    lab_s1_c_osc1:       [`OSC1 — Birinci oscillator`, `OSC1 — First oscillator`],
+    lab_s1_c_osc1_sub:   [`Birincil dalga tipi. Sine saf, sawtooth zengin harmoniklidir.`, `Primary waveform. Sine is pure, sawtooth is rich in harmonics.`],
+    lab_s1_c_osc2:       [`OSC2 — İkinci oscillator`, `OSC2 — Second oscillator`],
+    lab_s1_c_osc2_sub:   [`Detune ile kalınlık, oktav farkıyla bas / parlaklık ekle.`, `Add thickness with detune, and bass / brightness with an octave offset.`],
+    lab_s1_c_sn:         [`Sub & Noise — Ek katmanlar`, `Sub & Noise — Extra layers`],
+    lab_s1_c_sn_sub:     [`Sub bir oktav aşağıda sine; noise hi-hat ve nefes dokusu.`, `Sub is a sine one octave below; noise adds hi-hat and breath texture.`],
+    lab_s1_c_amp:        [`Amplitude envelope · ADSR`, `Amplitude envelope · ADSR`],
+    lab_s1_c_amp_sub:    [`Ses nasıl başlar, tutunur ve söner.`, `How the sound starts, sustains and fades.`],
+    lab_s1_c_flt:        [`Filter — Frekans filtresi`, `Filter — Frequency filter`],
+    lab_s1_c_flt_note:   [`Notch o frekansı oyar. Env → Cutoff, mod envelope’un şeklini kullanır — acid sweep için Decay’i 0.4 s’ye getir.`,
+                          `Notch carves out that frequency. Env → Cutoff follows the mod envelope’s shape — for an acid sweep, set Decay to 0.4 s.`],
+    lab_s1_c_lfo:        [`LFO — Low frequency oscillator`, `LFO — Low frequency oscillator`],
+    lab_s1_c_lfo_sub:    [`Üç hedefi aynı anda modüle eder: Cutoff → wobble/sweep, Volume → tremolo, Pitch → vibrato.`,
+                          `Modulates three targets at once: Cutoff → wobble/sweep, Volume → tremolo, Pitch → vibrato.`],
+    lab_s1_c_mod:        [`Mod envelope — Modülasyon zarfı`, `Mod envelope — Modulation envelope`],
+    lab_s1_c_mod_sub:    [`Amp ADSR’den bağımsız ikinci zarf; nota başına perde zarfı (pluck/drop).`, `A second envelope, independent of the amp ADSR; a per-note pitch envelope (pluck/drop).`],
+    lab_s1_c_fx:         [`FX — Delay & Reverb`, `FX — Delay & Reverb`],
+    lab_s1_c_fx_sub:     [`Delay zamanı tempoya kilitli nota değerleri; reverb 2 s exponential IR.`, `Delay time uses tempo-synced note values; reverb is a 2 s exponential IR.`],
+    lab_s1_c_fx_note:    [`Daha uzun ambient için reverb wet’i %50–70 dene.`, `For a longer ambient tail, try reverb wet at 50–70%.`],
+    lab_s1_voices:       [`{n} ses`, `{n} voices`],
+    lab_s1_off:          [`OFF`, `OFF`],
+    lab_s1_dboct:        [`{n} dB/okt`, `{n} dB/oct`],
+    lab_s1_lfo_pitch_vt: [`{p}% · ±{c} cent`, `{p}% · ±{c} cents`],
+    lab_s1_o_sine:       [`SIN — Sine`, `SIN — Sine`],
+    lab_s1_o_square:     [`SQR — Square`, `SQR — Square`],
+    lab_s1_o_sawtooth:   [`SAW — Sawtooth`, `SAW — Sawtooth`],
+    lab_s1_o_triangle:   [`TRI — Triangle`, `TRI — Triangle`],
+    lab_s1_o_lowpass:    [`LP — Lowpass`, `LP — Lowpass`],
+    lab_s1_o_bandpass:   [`BP — Bandpass`, `BP — Bandpass`],
+    lab_s1_o_notch:      [`NOTCH — Notch`, `NOTCH — Notch`],
+    lab_s1_o_highpass:   [`HP — Highpass`, `HP — Highpass`],
+    lab_s1_o_dot8:       [`1/8· — noktalı 1/8`, `1/8· — dotted 1/8`],
+    lab_s1_g_wave:       [`{card} dalga biçimi`, `{card} waveform`],
+    lab_s1_g_ftype:      [`Filtre tipi`, `Filter type`],
+    lab_s1_g_delay:      [`Delay nota değeri`, `Delay note value`],
+    // Görevler (tasarım metni; kimlikler 1–10)
+    lab_t1_1:  [`4 waveform’u sırayla dene: Sine → Square → Sawtooth → Triangle, her birini klavyeden çal`,
+                `Try the 4 waveforms in order: Sine → Square → Sawtooth → Triangle, and play each one on the keyboard`],
+    lab_t1_2:  [`Attack’ı sıfıra çek, sonra 1.5 s’ye getir — başlangıç farkını duy`,
+                `Pull Attack down to zero, then bring it up to 1.5 s — hear the difference in the start`],
+    lab_t1_3:  [`Sustain’i %0’a indir, Decay’i 0.3 s yap — nota tutunca sesin kesildiğini dinle`,
+                `Lower Sustain to 0% and set Decay to 0.3 s — listen to the sound cut off while you hold the note`],
+    lab_t1_4:  [`Release’i 2 s’nin üzerine çıkar, bir nota bas ve bırak`, `Raise Release above 2 s, then press a note and let go`],
+    lab_t1_5:  [`Bass preset’ini yükle, Cutoff’u 200 Hz’e düşür`, `Load the Bass preset and lower Cutoff to 200 Hz`],
+    lab_t1_6:  [`OSC2’yi aç, farklı dalga seç ve detune’u ±7 cent yap — "fat" hissi`,
+                `Turn on OSC2, pick a different waveform and set detune to ±7 cents — the "fat" feel`],
+    lab_t1_7:  [`Filter tipini LP’den HP’ye değiştir, cutoff’u sweep et`, `Switch the filter type from LP to HP and sweep the cutoff`],
+    lab_t1_8:  [`LFO → Cutoff %70 → wobble bass (Square + sub önerilir)`, `LFO → Cutoff 70% → wobble bass (Square + sub recommended)`],
+    lab_t1_9:  [`Env → Cutoff %80, Decay 0.4 s — klasik acid sweep`, `Env → Cutoff 80%, Decay 0.4 s — the classic acid sweep`],
+    lab_t1_10: [`Pad preset’inde Reverb wet’i %60 yap — ambient hisset`, `On the Pad preset, set Reverb wet to 60% — feel the ambience`],
 });
-// White-key frequencies at C4 reference. Octave shifts these via state.keyboardOctave.
-const _WHITE_KEYS_C4 = [
-    {ratio:1.0,    label:'C', key:'A'}, {ratio:1.122, label:'D', key:'S'},
-    {ratio:1.260,  label:'E', key:'D'}, {ratio:1.335, label:'F', key:'F'},
-    {ratio:1.498,  label:'G', key:'G'}, {ratio:1.682, label:'A', key:'H'},
-    {ratio:1.888,  label:'B', key:'J'}, {ratio:2.0,   label:'C', key:'K'},
-];
+// Genel bakış synth kartı da kullanır (dalga düğmeleri C4 çalar) — silme.
 const _C4_HZ = 261.63;
-
-function getCurrentNotes() {
-    const oct  = state.keyboardOctave ?? 4;
-    const mult = Math.pow(2, oct - 4);
-    return _WHITE_KEYS_C4.map((k, i) => ({
-        freq: _C4_HZ * mult * k.ratio,
-        label: k.label + (i === _WHITE_KEYS_C4.length - 1 ? (oct + 1) : oct), // last key is next-octave C
-        key:  k.key,
-    }));
-}
 
 // Held-key voice registry — used by mono mode + sustain pedal.
 const _activeVoices = []; // {oscs:[], envGain, releaseAt}
 let _sustainPedal = false;
 
+// ── Modül 1 yardımcıları ─────────────────────────────────────────────
+const M1_NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const M1_WHITE = [0, 2, 4, 5, 7, 9, 11];
+// Bilgisayar klavyesi — fiziksel tuş (e.code), Türkçe Q/F düzeninde de aynı yer. Kromatik C…C (+ üst C♯ D D♯).
+const M1_KEYMAP = { KeyA: 0, KeyW: 1, KeyS: 2, KeyE: 3, KeyD: 4, KeyF: 5, KeyT: 6, KeyG: 7, KeyY: 8, KeyH: 9, KeyU: 10, KeyJ: 11, KeyK: 12, KeyO: 13, KeyL: 14, KeyP: 15 };
+const M1_OCT_MIN = 1, M1_OCT_MAX = 6;
+const m1MidiHz = midi => 440 * Math.pow(2, (midi - 69) / 12);
+// oct oktavından başlayan `octaves` oktavlık kromatik tuş listesi. Beyaz: col (1…N ızgara sütunu);
+// siyah: pos (solundaki beyaz tuş sayısı → iki beyaz tuşun sınırı).
+function m1Notes(oct, octaves) {
+    const out = [], base = 12 * (oct + 1);
+    let wi = 0;
+    for (let s = 0; s < octaves * 12; s++) {
+        const pc = s % 12, black = !M1_WHITE.includes(pc);
+        out.push({ midi: base + s, pc, black, octave: oct + Math.floor(s / 12), name: M1_NOTE_NAMES[pc],
+            freq: m1MidiHz(base + s), pos: black ? wi : null, col: black ? null : ++wi });
+    }
+    return out;
+}
+const m1Hz = v => v >= 1000 ? (v / 1000).toFixed(1) + ' kHz' : Math.round(v) + ' Hz';
+const m1Sec = v => v < 1 ? Math.round(v * 1000) + ' ms' : v.toFixed(2) + ' s';
+const m1Pct = v => Math.round(v) + '%';
+const m1Sign = v => { const r = Math.round(v); return (r > 0 ? '+' : '') + r; };
+// Filtre yanıtı (görsel): motorla aynı kademe ayarlarıyla tek bir OfflineAudioContext'teki biquad'lar.
+// AudioContext açılmadan da çalışır; canlı düğümlerin LFO/zarf otomasyonundan etkilenmez.
+let _m1OffFilt = null;
+function m1FilterMag(freqs) {
+    const N = freqs.length, mag = new Float32Array(N).fill(1);
+    try {
+        if (!_m1OffFilt) {
+            const oc = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 128, 44100);
+            _m1OffFilt = [0, 1, 2, 3].map(() => oc.createBiquadFilter());
+        }
+        const t = state.filter.type || 'lowpass', m = new Float32Array(N), ph = new Float32Array(N);
+        const n = filterStageCount();
+        for (let i = 0; i < n; i++) {
+            const f = _m1OffFilt[i];
+            f.type = t; f.frequency.value = state.filter.cutoff; f.Q.value = filterStageQ(i, t);
+            f.getFrequencyResponse(freqs, m, ph);
+            for (let k = 0; k < N; k++) mag[k] *= m[k];
+        }
+    } catch (e) { console.warn('[lab] m1 filter viz:', e); }
+    return mag;
+}
+
 function renderModule1() {
-    const root = mk('div','lab-view be-wrap');
-    const shell = mk('section','lab-mod');
-    const { head: hdr, actions: hdrAct } = modHead(1, 'Synthesizer', 'Synthesizer', modSub(1));
-    shell.setAttribute('aria-label','Synthesizer');
-    // Görünüm anahtarı — Kompakt (Learning Synths tarzı tek ekran) / Detaylı (ders açıklamaları)
-    const viewSeg = mk('div','seg seg--sm'); viewSeg.setAttribute('role','group'); viewSeg.setAttribute('aria-label','Görünüm');
-    const vCompact = mk('button','seg-btn','Kompakt'); vCompact.type = 'button'; vCompact.title = 'Learning Synths tarzı tek ekran görünümü';
-    const vDetail  = mk('button','seg-btn','Detaylı'); vDetail.type = 'button';  vDetail.title  = 'Açıklamaları ve teori kartlarını göster';
-    viewSeg.append(vCompact, vDetail);
+    const { root, main, side, actions } = modLayout(1);
+    root.classList.add('lab-m1');
+    // Durum → arayüz tazeleyicileri (preset, düzenleme, dil). _m1Update hepsini yerinde çalıştırır.
+    const m1Refresh = [];
+    const timers = new Set();
+    const later = (fn, ms) => { const id = setTimeout(() => { timers.delete(id); fn(); }, ms); timers.add(id); return id; };
+    const i18n = (el, key) => { el.setAttribute('data-i18n', key); el.textContent = L(key); return el; };
+    const ariaKey = (el, key) => { el.setAttribute('data-i18n-aria', key); el.setAttribute('aria-label', L(key)); return el; };
+
+    // ── Görünüm: Detaylı görünüm (varsayılan) / Kompakt ─────────────
+    const viewSeg = mk('div', 'seg lab-m1-view'); viewSeg.setAttribute('role', 'group');
+    ariaKey(viewSeg, 'lab_s1_view_aria');
+    const vDetail = i18n(mk('button', 'seg-btn'), 'lab_s1_view_detail'); vDetail.type = 'button';
+    const vCompact = i18n(mk('button', 'seg-btn'), 'lab_s1_view_compact'); vCompact.type = 'button';
+    viewSeg.append(vDetail, vCompact);
     const _viewGet = () => { try { return localStorage.getItem('berkay_synth_view'); } catch { return null; } };
     const _viewSet = v => { try { localStorage.setItem('berkay_synth_view', v); } catch {} };
+    let viewMode = _viewGet() === 'compact' ? 'compact' : 'detail';
     const applyViewMode = () => {
-        const compact = _viewGet() !== 'detail';
-        shell.classList.toggle('lab-compact', compact);
-        vCompact.setAttribute('aria-pressed', String(compact));
+        const compact = viewMode === 'compact';
+        root.classList.toggle('lab-compact', compact);
         vDetail.setAttribute('aria-pressed', String(!compact));
+        vCompact.setAttribute('aria-pressed', String(compact));
     };
-    vCompact.onclick = () => { _viewSet('compact'); applyViewMode(); };
-    vDetail.onclick  = () => { _viewSet('detail');  applyViewMode(); };
-    hdrAct.append(viewSeg);
+    vDetail.onclick = () => { viewMode = 'detail'; _viewSet('detail'); applyViewMode(); };
+    vCompact.onclick = () => { viewMode = 'compact'; _viewSet('compact'); applyViewMode(); };
+    m1Refresh.push(() => { vDetail.title = L('lab_s1_view_detail_t'); vCompact.title = L('lab_s1_view_compact_t'); });
     applyViewMode();
-    shell.append(hdr);
-    // Refresh closures pushed by each section render; called by _m1Update to
-    // sync UI to state in place (no DOM rebuild, no scroll jump).
-    const m1Refresh = [];
+    actions.append(viewSeg);
 
-    // Oscilloscope / Spectrum
-    const oscWrap = mk('div','lab-scope');
-    const oscLabel = mk('span','lab-scope-label lab-label', oscMode === 'spectrum' ? 'SPECTRUM' : 'OSCILLOSCOPE');
-    oscWrap.append(oscLabel);
-    // Görselleştirme seçimi: dalga (osiloskop) / spektrum
-    const oscTabs = mk('div','seg seg--sm'); oscTabs.setAttribute('role','group'); oscTabs.setAttribute('aria-label','Görselleştirme');
-    const tabWave = mk('button','seg-btn','Dalga');    tabWave.type = 'button'; tabWave.title = 'Waveform';
-    const tabSpec = mk('button','seg-btn','Spektrum'); tabSpec.type = 'button'; tabSpec.title = 'Spectrum';
-    const syncOscTabs = () => {
-        tabWave.setAttribute('aria-pressed', String(oscMode !== 'spectrum'));
-        tabSpec.setAttribute('aria-pressed', String(oscMode === 'spectrum'));
-    };
-    syncOscTabs();
-    tabWave.onclick = () => { setOscMode('wave');     oscLabel.textContent = 'OSCILLOSCOPE'; syncOscTabs(); };
-    tabSpec.onclick = () => { setOscMode('spectrum'); oscLabel.textContent = 'SPECTRUM';     syncOscTabs(); };
-    oscTabs.append(tabWave, tabSpec);
-    oscWrap.append(oscTabs);
-    const cv = document.createElement('canvas');
-    cv.width=1200; cv.height=180;
-    cv.setAttribute('role','img');
-    cv.setAttribute('aria-label','Synthesizer waveform/spectrum visualization');
-    oscWrap.append(cv); shell.append(oscWrap);
-    requestAnimationFrame(() => {
-        // Tuvali görünen boyuta eşitle (çizgi kalınlığı bozulmasın)
-        const rc = cv.getBoundingClientRect();
-        if (rc.width > 10 && rc.height > 10) { cv.width = Math.round(rc.width); cv.height = Math.round(rc.height); }
-        startOsc(cv);
+    const body = mk('div', 'lab-m1-body');
+    body.setAttribute('role', 'region'); ariaKey(body, 'lab_s1_region');
+
+    // ── Hızlı preset seçimi (her düzenleme seçimi temizler) ──────────
+    const preRow = mk('div', 'lab-chips lab-m1-presetrow');
+    const syncChips = () => preRow.querySelectorAll('[data-p]').forEach(b => {
+        const on = b.dataset.p === state.activePreset;
+        b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on));
     });
+    const touched = () => { state.activePreset = null; syncChips(); };
 
-    // Presets
-    const preS = mk('div','lab-presets');
-    preS.append(mk('h3','lab-label','HIZLI PRESET'));
-    const preRow = mk('div','lab-chips');
+    // ── Scope kartı: OSCILLOSCOPE / SPECTRUM + bilgi satırı + kuyu + presetler ──
+    const scope = mk('section', 'lab-m1-box lab-m1-scope');
+    const sHead = mk('div', 'lab-m1-scope-head');
+    const tabs = mk('div', 'lab-m1-tabs'); tabs.setAttribute('role', 'tablist');
+    ariaKey(tabs, 'lab_s1_viz_aria');
+    const well = mk('div', 'lab-well lab-m1-well'); well.id = 'labM1Well'; well.setAttribute('role', 'tabpanel');
+    const mkTab = (mode, key) => {
+        const b = i18n(mk('button', 'lab-m1-tab'), key); b.type = 'button'; b.lang = 'en';
+        b.setAttribute('role', 'tab'); b.id = 'labM1Tab_' + mode; b.dataset.mode = mode;
+        b.setAttribute('aria-controls', well.id);
+        b.onclick = () => pickScope(mode);
+        return b;
+    };
+    const tabW = mkTab('wave', 'lab_s1_tab_wave'), tabS = mkTab('spectrum', 'lab_s1_tab_spec');
+    const tabList = [tabW, tabS];
+    function pickScope(mode) {
+        setOscMode(mode);
+        tabList.forEach(t => { const on = t.dataset.mode === mode; t.setAttribute('aria-selected', String(on)); t.tabIndex = on ? 0 : -1; });
+        well.setAttribute('aria-labelledby', (mode === 'spectrum' ? tabS : tabW).id);
+    }
+    tabs.addEventListener('keydown', e => {
+        const i = tabList.indexOf(document.activeElement);
+        if (i < 0) return;
+        let j = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') j = (i + 1) % tabList.length;
+        else if (e.key === 'Home') j = 0;
+        else if (e.key === 'End') j = tabList.length - 1;
+        if (j == null) return;
+        e.preventDefault();
+        pickScope(tabList[j].dataset.mode); tabList[j].focus();
+    });
+    tabs.append(tabW, tabS);
+    pickScope(oscMode === 'spectrum' ? 'spectrum' : 'wave');
+    // Bilgi satırı: birimlerin harf durumu korunur (4.2 kHz) → .lab-label (büyük harf) değil
+    const info = mk('span', 'lab-m1-scopeinfo'); info.lang = 'en';
+    function refreshScopeInfo() {
+        const o2 = state.osc2.enabled && state.osc2.mix > 0;
+        info.textContent = String(state.osc1.wave).toUpperCase()
+            + (o2 ? ` + ${String(state.osc2.wave).toUpperCase()} ${Math.round(state.osc2.mix * 100)}%` : '')
+            + ` · ${m1Hz(state.filter.cutoff)} ${String(state.filter.type || 'lowpass').toUpperCase()}`;
+    }
+    sHead.append(tabs, info);
+    const cv = document.createElement('canvas');
+    cv.setAttribute('role', 'img'); ariaKey(cv, 'lab_s1_scope_aria');
+    well.append(cv);
+    // Tuvali kuyunun boyuna (× cihaz piksel oranı) eşitle; kırılma noktalarında yeniden boyutlanır
+    const fitCanvas = () => {
+        const w = well.clientWidth, h = well.clientHeight;
+        if (w < 10 || h < 10) return;
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const W = Math.round(w * dpr), H = Math.round(h * dpr);
+        if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+        cv._dpr = dpr;
+    };
+    const ro = 'ResizeObserver' in window ? new ResizeObserver(fitCanvas) : null;
+    if (ro) ro.observe(well);
+    // Ekran dışındayken çizim döngüsü durur
+    _oscPaused = false;
+    const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(en => oscSetPaused(!en.isIntersecting)), { rootMargin: '40px' }) : null;
+    if (io) io.observe(well);
+    requestAnimationFrame(() => { if (!root.isConnected) return; fitCanvas(); startOsc(cv); });
+
+    const preLbl = i18n(mk('span', 'lab-label'), 'lab_quick_preset');
+    preRow.append(preLbl);
     SYNTH_PRESETS.forEach(p => {
-        const btn = mk('button', `lab-chipbtn${state.activePreset===p.id?' active':''}`, p.name);
-        btn.onclick = () => {
+        const b = mk('button', 'lab-chipbtn lab-m1-chip'); b.type = 'button';
+        b.textContent = p.name; b.dataset.p = p.id;
+        b.onclick = () => {
             applyPreset(p);
             playNote(440, 0.8);
-            // Sync UI in place — scroll position preserved, no flash.
-            _m1Update && _m1Update();
+            _m1Update && _m1Update();   // yerinde: kaydırma ve scope sürer
         };
-        preRow.append(btn);
+        preRow.append(b);
     });
-    preS.append(preRow);
+    scope.append(sHead, well, preRow);
 
-    // Cloud preset save/load row
-    const presetCloudRow = mk('div','lab-cloud');
-    function refreshPresetCloud() {
-        presetCloudRow.innerHTML='';
-        if (!currentUser) {
-            const h=mk('span','lab-cloud-hint','Preset kaydetmek için sağ üstten giriş yap');
-            presetCloudRow.append(h); return;
-        }
-        const saveBtn = mk('button','btn btn-subtle btn-sm','Preset Kaydet');
-        saveBtn.onclick = async () => {
-            const name = prompt('Preset adı:'); if(!name?.trim()) return;
-            saveBtn.disabled=true; btnPlay(saveBtn,'load','Kaydediliyor');
-            try {
-                await saveUserPreset(name.trim());
-                saveBtn.innerHTML = ic('check') + '<span>Kaydedildi</span>';
-            } catch (e) { console.warn('saveUserPreset:', e); saveBtn.textContent = 'Kaydedilemedi'; }
-            setTimeout(()=>{ saveBtn.textContent='Preset Kaydet'; saveBtn.disabled=false; refreshPresetCloud(); },1400);
-        };
-        const loadBtn = mk('button','btn btn-subtle btn-sm','Presetlerim');
-        let pList=null;
-        loadBtn.onclick = async () => {
-            if(pList){ pList.remove(); pList=null; return; }
-            loadBtn.disabled=true; btnPlay(loadBtn,'load','Presetlerim');
-            let presets = [];
-            try { presets = await loadUserPresets(); } catch (e) { console.warn('loadUserPresets:', e); }
-            loadBtn.textContent='Presetlerim'; loadBtn.disabled=false;
-            if(!presets.length){ showModal('Kayıtlı Preset Yok','<p>Henüz kayıtlı preset oluşturmadın. Synthesizer ayarlarını düzenleyip <strong>Preset Kaydet</strong> butonuna bas.</p>'); return; }
-            pList=mk('div','lab-saved');
-            presets.forEach(p=>{
-                const wrap=mk('div','lab-saved-item');
-                const b=mk('button','lab-chipbtn',p.name);
-                b.onclick=()=>{
-                    applyPreset(p); state.activePreset = null;
-                    playNote(440,0.8);
-                    pList.remove(); pList=null;
-                    _m1Update && _m1Update();
-                };
-                const del=mk('button','lab-saved-del',ic('x')); del.type='button';
-                del.setAttribute('aria-label', `${p.name} presetini sil`);
-                del.onclick=async()=>{ try { await deleteUserPreset(p.id); wrap.remove(); } catch (e) { console.warn('deleteUserPreset:', e); } };
-                wrap.append(b,del); pList.append(wrap);
-            });
-            presetCloudRow.append(pList);
-        };
-        presetCloudRow.append(saveBtn,loadBtn);
+    // ── Klavye kartı ─────────────────────────────────────────────────
+    const kb = mk('section', 'lab-m1-box lab-m1-kb');
+    const kbHead = mk('div', 'lab-m1-kb-head');
+    const kbLbl = i18n(mk('h3', 'lab-label lab-m1-kb-t'), 'lab_s1_kb');
+    const octBox = mk('div', 'be-stepper lab-m1-oct');
+    const octDn = ariaKey(mk('button', 'be-step-btn', ic('minus')), 'lab_s1_oct_dn'); octDn.type = 'button';
+    const octVal = mk('span', 'be-step-val'); octVal.setAttribute('aria-live', 'polite');
+    const octUp = ariaKey(mk('button', 'be-step-btn', ic('plus')), 'lab_s1_oct_up'); octUp.type = 'button';
+    octBox.append(octDn, octVal, octUp);
+    kbHead.append(kbLbl, octBox);
+    const keys = mk('div', 'lab-m1-keys'); keys.setAttribute('role', 'group');
+    ariaKey(keys, 'lab_s1_kb_aria');
+    const keyEls = new Map();         // midi → tuş düğmesi (yalnız çizilenler)
+    const keyTimers = new Map();      // midi → vurgu zamanlayıcısı
+    function flashKey(midi) {
+        const el = keyEls.get(midi);
+        if (!el) return;
+        if (keyTimers.has(midi)) { clearTimeout(keyTimers.get(midi)); timers.delete(keyTimers.get(midi)); }
+        el.classList.add('is-on');
+        keyTimers.set(midi, later(() => { el.classList.remove('is-on'); keyTimers.delete(midi); }, 240));
     }
-    refreshPresetCloud();
-    preS.append(presetCloudRow); shell.append(preS);
-
-    // ADSR Explanation + SVG (gold accent — matches OSC1)
-    const adsrExp = mk('div','lab-box lab-adsr-card');
-    adsrExp.innerHTML=`<div class="lab-sec-title">ADSR Zarfı — Ses Nasıl Şekillenir?</div>
-    <div class="lab-sec-sub"><strong>ADSR</strong> — sesin doğuşunu, yükselişini, tutunma seviyesini ve sönüşünü belirleyen zarf sistemi. Sliderları sürükle, eğriyi izle.</div>`;
-    const svgWrap = mk('div','lab-adsr'); adsrExp.append(svgWrap); shell.append(adsrExp);
-
-    function adsrSvg() {
-        const W=400, H=100, P=10;
-        // Bottom legend row: fixed positions — each label always sits in its
-        // own quadrant under the curve, so values can grow/shrink in place
-        // without jumping around horizontally.
-        const LBL_Y  = H + 22;
-        const SVG_H  = H + 32;
-        const {attack:A, decay:D, sustain:S, release:R} = state.adsr;
-        const visHold = Math.max(0.5, 0.5 + Math.max(0, 0.3 - (A + D)));
-        const total = A + D + visHold + R;
-        const tx = t => P+(t/total)*(W-P*2);
-        const ty = l => H-P-l*(H-P*2);
-        const pts = [[tx(0),ty(0)],[tx(A),ty(1)],[tx(A+D),ty(S)],[tx(A+D+visHold),ty(S)],[tx(total),ty(0)]];
-        const ln  = pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-        const ap=(A/total*100).toFixed(0)+'%', dp=((A+D)/total*100).toFixed(0)+'%', rp=((A+D+visHold)/total*100).toFixed(0)+'%';
-        // Color palette matched to each parameter
-        const C_A = TOK.accent; // altın
-        const C_D = TOK.ember2; // turuncu
-        const C_S = TOK.info;   // buz mavisi
-        const C_R = TOK.err;    // gül
-        // Fixed legend x positions (quarter centers)
-        const X_A = W * 0.125;
-        const X_D = W * 0.375;
-        const X_S = W * 0.625;
-        const X_R = W * 0.875;
-        svgWrap.innerHTML=`<svg viewBox="0 0 ${W} ${SVG_H}" preserveAspectRatio="xMidYMid meet">
-        <defs><linearGradient id="ag" x1="0" x2="1"><stop offset="0%" stop-color="${C_R}"/>
-        <stop offset="${ap}" stop-color="${C_A}"/><stop offset="${dp}" stop-color="${C_D}"/>
-        <stop offset="${rp}" stop-color="${C_S}"/><stop offset="100%" stop-color="${C_R}"/></linearGradient></defs>
-        ${[.25,.5,.75].map(l=>`<line x1="${P}" y1="${ty(l).toFixed(1)}" x2="${W-P}" y2="${ty(l).toFixed(1)}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>`).join('')}
-        <path d="${ln} L${pts[4][0].toFixed(1)} ${H} L${pts[0][0].toFixed(1)} ${H} Z" fill="rgba(232,184,75,.07)"/>
-        <path d="${ln}" fill="none" stroke="url(#ag)" stroke-width="2" stroke-linejoin="round"/>
-        ${pts.slice(1,-1).map(([cx,cy])=>`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.5" fill="${C_A}" opacity=".85"/>`).join('')}
-        <text x="${X_A}" y="${LBL_Y}" fill="${C_A}" font-size="12" font-weight="bold" text-anchor="middle" font-family="Space Mono, monospace">A · ${A.toFixed(2)}s</text>
-        <text x="${X_D}" y="${LBL_Y}" fill="${C_D}" font-size="12" font-weight="bold" text-anchor="middle" font-family="Space Mono, monospace">D · ${D.toFixed(2)}s</text>
-        <text x="${X_S}" y="${LBL_Y}" fill="${C_S}" font-size="12" font-weight="bold" text-anchor="middle" font-family="Space Mono, monospace">S · ${(S*100).toFixed(0)}%</text>
-        <text x="${X_R}" y="${LBL_Y}" fill="${C_R}" font-size="12" font-weight="bold" text-anchor="middle" font-family="Space Mono, monospace">R · ${R.toFixed(2)}s</text>
-        </svg>`;
-    }
-    adsrSvg();
-
-    // Controls grid
-    const grid = mk('div','lab-grid');
-
-    // OSC1 — primary oscillator (gold accent)
-    const wfGrp = mk('div','lab-box');
-    wfGrp.style.setProperty('--c', 'var(--accent)');
-    wfGrp.innerHTML=`<div class="lab-sec-title">OSC1 — Birinci Oscillator</div><div class="lab-sec-sub">Birincil dalga tipi. Sine saf, Sawtooth zengin harmoniklidir.</div>`;
-    const wfSel = mk('div','lab-opts');
-    [{w:'sine',icon:'〜',desc:'Saf, yuvarlak'},{w:'square',icon:'⊓',desc:'Keskin, elektro'},
-     {w:'sawtooth',icon:'⟋',desc:'Zengin, parlak'},{w:'triangle',icon:'△',desc:'Yumuşak, hollow'}]
-    .forEach(({w,icon,desc}) => {
-        const b = mk('button',`lab-opt${state.osc1.wave===w?' active':''}`,
-            `${WAVE_SVG[w]}<span>${w}</span><small>${desc}</small>`);
-        b.onclick = () => {
-            setOsc1Wave(w); state.activePreset=null;
-            wfSel.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-        };
-        wfSel.append(b);
-    });
-    wfGrp.append(wfSel);
-    // OSC1 detune + octave (compact row)
-    const o1Row = mk('div','lab-g2 lab-mt');
-    const o1DetVal = mk('span','lab-val', (state.osc1.detune||0)+' ct');
-    const o1DetLbl = mk('div','lab-sl-label'); o1DetLbl.append(mk('span','','Detune'), o1DetVal);
-    const o1DetSl = makeSlider({min:-50, max:50, step:1, value:state.osc1.detune||0, label:'OSC1 detune in cents',
-        onChange: v => { state.osc1.detune=v; o1DetVal.textContent=v+' ct'; state.activePreset=null; }});
-    const o1DetWrap = mk('div'); o1DetWrap.append(o1DetLbl, o1DetSl);
-    const o1OctRow = mk('div');
-    o1OctRow.innerHTML = `<div class="lab-sl-label"><span>Octave</span><span id="o1OctVal" class="lab-val">${state.osc1.octave>=0?'+':''}${state.osc1.octave}</span></div>`;
-    const o1OctBtns = mk('div','lab-opts lab-opts--5');
-    [-2,-1,0,1,2].forEach(oct => {
-        const b = mk('button',`lab-opt${state.osc1.octave===oct?' active':''}`, oct>=0?'+'+oct:String(oct));
-        b.classList.add('lab-opt--sm');
-        b.onclick = () => {
-            state.osc1.octave = oct; state.activePreset=null;
-            o1OctBtns.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-            const valEl = o1OctRow.querySelector('#o1OctVal'); if (valEl) valEl.textContent = oct>=0?'+'+oct:String(oct);
-        };
-        o1OctBtns.append(b);
-    });
-    o1OctRow.append(o1OctBtns);
-    o1Row.append(o1DetWrap, o1OctRow);
-    wfGrp.append(o1Row);
-    // ── OSC1 Unison (Serum tarzı: voices / detune yelpazesi / stereo width) ──
-    const u1Row = mk('div','lab-g3 lab-divide');
-    const u1VoxDiv = mk('div');
-    u1VoxDiv.innerHTML = `<div class="lab-sl-label"><span>Unison</span><span id="u1VoxVal" class="lab-val">${state.osc1.unison||1}x</span></div>`;
-    const u1VoxBtns = mk('div','lab-opts lab-opts--5');
-    [1,2,3,5,7].forEach(n => {
-        const b = mk('button',`lab-opt${(state.osc1.unison||1)===n?' active':''}`, String(n));
-        b.classList.add('lab-opt--sm');
-        b.onclick = () => {
-            state.osc1.unison = n; state.activePreset=null;
-            u1VoxBtns.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-            const v = u1VoxDiv.querySelector('#u1VoxVal'); if (v) v.textContent = n+'x';
-        };
-        u1VoxBtns.append(b);
-    });
-    u1VoxDiv.append(u1VoxBtns);
-    const u1DetVal = mk('span','lab-val', (state.osc1.uniDetune||0)+' ct');
-    const u1DetLbl = mk('div','lab-sl-label'); u1DetLbl.append(mk('span','','Uni Detune'), u1DetVal);
-    const u1DetSl = makeSlider({min:0, max:50, step:1, value:state.osc1.uniDetune||0, label:'OSC1 unison detune spread in cents',
-        onChange:v=>{state.osc1.uniDetune=v; u1DetVal.textContent=v+' ct'; state.activePreset=null;}});
-    const u1DetDiv = mk('div'); u1DetDiv.append(u1DetLbl, u1DetSl);
-    const u1WidVal = mk('span','lab-val', Math.round((state.osc1.uniWidth||0)*100)+'%');
-    const u1WidLbl = mk('div','lab-sl-label'); u1WidLbl.append(mk('span','','Width'), u1WidVal);
-    const u1WidSl = makeSlider({min:0, max:1, step:.01, value:state.osc1.uniWidth||0, label:'OSC1 unison stereo width',
-        onChange:v=>{state.osc1.uniWidth=v; u1WidVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    const u1WidDiv = mk('div'); u1WidDiv.append(u1WidLbl, u1WidSl);
-    u1Row.append(u1VoxDiv, u1DetDiv, u1WidDiv);
-    wfGrp.append(u1Row);
-    m1Refresh.push(() => {
-        if (o1DetSl._sliderObj) o1DetSl._sliderObj.update(state.osc1.detune || 0);
-        o1DetVal.textContent = (state.osc1.detune || 0) + ' ct';
-        const _o1Octs = [-2,-1,0,1,2];
-        o1OctBtns.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _o1Octs[i] === state.osc1.octave));
-        const _o1OctValEl = o1OctRow.querySelector('#o1OctVal');
-        if (_o1OctValEl) _o1OctValEl.textContent = (state.osc1.octave>=0?'+':'') + state.osc1.octave;
-        const _u1Vox = [1,2,3,5,7];
-        u1VoxBtns.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _u1Vox[i] === (state.osc1.unison||1)));
-        const _u1VoxValEl = u1VoxDiv.querySelector('#u1VoxVal');
-        if (_u1VoxValEl) _u1VoxValEl.textContent = (state.osc1.unison||1)+'x';
-        if (u1DetSl._sliderObj) u1DetSl._sliderObj.update(state.osc1.uniDetune || 0);
-        u1DetVal.textContent = (state.osc1.uniDetune || 0) + ' ct';
-        if (u1WidSl._sliderObj) u1WidSl._sliderObj.update(state.osc1.uniWidth || 0);
-        u1WidVal.textContent = Math.round((state.osc1.uniWidth || 0) * 100) + '%';
-    });
-    grid.append(wfGrp);
-
-    // OSC2 — secondary oscillator (toggleable, amber accent)
-    const o2Grp = mk('div','lab-box');
-    o2Grp.style.setProperty('--c', 'var(--warn)');
-    const o2Title = mk('div','lab-sec-title');
-    o2Title.innerHTML = `OSC2 — İkinci Oscillator`;
-    const o2Toggle = mk('button', `lab-toggle${state.osc2.enabled?' on':''}`, state.osc2.enabled?'ON':'OFF');
-    o2Toggle.setAttribute('aria-pressed', String(!!state.osc2.enabled));
-    o2Toggle.type = 'button';
-    o2Toggle.onclick = () => {
-        state.osc2.enabled = !state.osc2.enabled;
-        o2Toggle.textContent = state.osc2.enabled ? 'ON' : 'OFF';
-        o2Toggle.classList.toggle('on', state.osc2.enabled);
-        o2Toggle.setAttribute('aria-pressed', String(state.osc2.enabled));
-        state.activePreset=null;
-    };
-    o2Title.append(o2Toggle);
-    const o2Sub = mk('div','lab-sec-sub','Detune ile fattness, oktav farkıyla bass / brightness ekle.');
-    o2Grp.append(o2Title, o2Sub);
-    const o2WfSel = mk('div','lab-opts');
-    [{w:'sine'},{w:'square'},{w:'sawtooth'},{w:'triangle'}]
-    .forEach(({w}) => {
-        const b = mk('button',`lab-opt${state.osc2.wave===w?' active':''}`, `${WAVE_SVG[w]}<span>${w}</span>`);
-        b.onclick = () => {
-            state.osc2.wave=w; state.activePreset=null;
-            o2WfSel.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-        };
-        o2WfSel.append(b);
-    });
-    o2Grp.append(o2WfSel);
-    const o2Row = mk('div','lab-g3 lab-mt');
-    // Mix
-    const o2MixVal = mk('span','lab-val', Math.round((state.osc2.mix||0.5)*100)+'%');
-    const o2MixLbl = mk('div','lab-sl-label'); o2MixLbl.append(mk('span','','Mix'), o2MixVal);
-    const o2MixSl = makeSlider({min:0, max:1, step:.01, value:state.osc2.mix||0.5, label:'OSC2 mix level',
-        onChange:v=>{state.osc2.mix=v; o2MixVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    const o2MixDiv = mk('div'); o2MixDiv.append(o2MixLbl, o2MixSl);
-    // Detune
-    const o2DetVal = mk('span','lab-val', (state.osc2.detune||0)+' ct');
-    const o2DetLbl = mk('div','lab-sl-label'); o2DetLbl.append(mk('span','','Detune'), o2DetVal);
-    const o2DetSl = makeSlider({min:-50, max:50, step:1, value:state.osc2.detune||0, label:'OSC2 detune in cents',
-        onChange:v=>{state.osc2.detune=v; o2DetVal.textContent=v+' ct'; state.activePreset=null;}});
-    const o2DetDiv = mk('div'); o2DetDiv.append(o2DetLbl, o2DetSl);
-    // Octave (compact)
-    const o2OctDiv = mk('div');
-    o2OctDiv.innerHTML=`<div class="lab-sl-label"><span>Oct</span><span id="o2OctVal" class="lab-val">${state.osc2.octave>=0?'+':''}${state.osc2.octave}</span></div>`;
-    const o2OctBtns = mk('div','lab-opts lab-opts--5');
-    [-2,-1,0,1,2].forEach(oct => {
-        const b = mk('button',`lab-opt${state.osc2.octave===oct?' active':''}`, oct>=0?'+'+oct:String(oct));
-        b.classList.add('lab-opt--sm');
-        b.onclick = () => {
-            state.osc2.octave = oct; state.activePreset=null;
-            o2OctBtns.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-            const valEl = o2OctDiv.querySelector('#o2OctVal'); if (valEl) valEl.textContent = oct>=0?'+'+oct:String(oct);
-        };
-        o2OctBtns.append(b);
-    });
-    o2OctDiv.append(o2OctBtns);
-    o2Row.append(o2MixDiv, o2DetDiv, o2OctDiv);
-    o2Grp.append(o2Row);
-    // ── OSC2 Unison ──
-    const u2Row = mk('div','lab-g3 lab-divide');
-    const u2VoxDiv = mk('div');
-    u2VoxDiv.innerHTML = `<div class="lab-sl-label"><span>Unison</span><span id="u2VoxVal" class="lab-val">${state.osc2.unison||1}x</span></div>`;
-    const u2VoxBtns = mk('div','lab-opts lab-opts--5');
-    [1,2,3,5,7].forEach(n => {
-        const b = mk('button',`lab-opt${(state.osc2.unison||1)===n?' active':''}`, String(n));
-        b.classList.add('lab-opt--sm');
-        b.onclick = () => {
-            state.osc2.unison = n; state.activePreset=null;
-            u2VoxBtns.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-            const v = u2VoxDiv.querySelector('#u2VoxVal'); if (v) v.textContent = n+'x';
-        };
-        u2VoxBtns.append(b);
-    });
-    u2VoxDiv.append(u2VoxBtns);
-    const u2DetVal = mk('span','lab-val', (state.osc2.uniDetune||0)+' ct');
-    const u2DetLbl = mk('div','lab-sl-label'); u2DetLbl.append(mk('span','','Uni Det'), u2DetVal);
-    const u2DetSl = makeSlider({min:0, max:50, step:1, value:state.osc2.uniDetune||0, label:'OSC2 unison detune spread in cents',
-        onChange:v=>{state.osc2.uniDetune=v; u2DetVal.textContent=v+' ct'; state.activePreset=null;}});
-    const u2DetDiv = mk('div'); u2DetDiv.append(u2DetLbl, u2DetSl);
-    const u2WidVal = mk('span','lab-val', Math.round((state.osc2.uniWidth||0)*100)+'%');
-    const u2WidLbl = mk('div','lab-sl-label'); u2WidLbl.append(mk('span','','Width'), u2WidVal);
-    const u2WidSl = makeSlider({min:0, max:1, step:.01, value:state.osc2.uniWidth||0, label:'OSC2 unison stereo width',
-        onChange:v=>{state.osc2.uniWidth=v; u2WidVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    const u2WidDiv = mk('div'); u2WidDiv.append(u2WidLbl, u2WidSl);
-    u2Row.append(u2VoxDiv, u2DetDiv, u2WidDiv);
-    o2Grp.append(u2Row);
-    grid.append(o2Grp);
-    m1Refresh.push(() => {
-        o2Toggle.classList.toggle('on', state.osc2.enabled);
-        o2Toggle.textContent = state.osc2.enabled ? 'ON' : 'OFF';
-        o2Toggle.setAttribute('aria-pressed', String(!!state.osc2.enabled));
-        const _waves = ['sine','square','sawtooth','triangle'];
-        o2WfSel.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _waves[i] === state.osc2.wave));
-        if (o2MixSl._sliderObj) o2MixSl._sliderObj.update(state.osc2.mix ?? 0.5);
-        o2MixVal.textContent = Math.round((state.osc2.mix ?? 0.5) * 100) + '%';
-        if (o2DetSl._sliderObj) o2DetSl._sliderObj.update(state.osc2.detune || 0);
-        o2DetVal.textContent = (state.osc2.detune || 0) + ' ct';
-        const _o2Octs = [-2,-1,0,1,2];
-        o2OctBtns.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _o2Octs[i] === state.osc2.octave));
-        const _o2OctValEl = o2OctDiv.querySelector('#o2OctVal');
-        if (_o2OctValEl) _o2OctValEl.textContent = (state.osc2.octave>=0?'+':'') + state.osc2.octave;
-        const _u2Vox = [1,2,3,5,7];
-        u2VoxBtns.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _u2Vox[i] === (state.osc2.unison||1)));
-        const _u2VoxValEl = u2VoxDiv.querySelector('#u2VoxVal');
-        if (_u2VoxValEl) _u2VoxValEl.textContent = (state.osc2.unison||1)+'x';
-        if (u2DetSl._sliderObj) u2DetSl._sliderObj.update(state.osc2.uniDetune || 0);
-        u2DetVal.textContent = (state.osc2.uniDetune || 0) + ' ct';
-        if (u2WidSl._sliderObj) u2WidSl._sliderObj.update(state.osc2.uniWidth || 0);
-        u2WidVal.textContent = Math.round((state.osc2.uniWidth || 0) * 100) + '%';
-    });
-
-    // Sub + Noise (ice accent)
-    const exGrp = mk('div','lab-box');
-    exGrp.style.setProperty('--c', 'var(--info)');
-    exGrp.innerHTML=`<div class="lab-sec-title">Sub & Noise — Ek Katmanlar</div><div class="lab-sec-sub">Sub-oscillator bas hissi ekler (-1 oktav square). Noise vurmalı/atak hissini zenginleştirir.</div>`;
-    const exRow = mk('div','lab-g2');
-    // Sub
-    const subBox = mk('div');
-    const subHead = mk('div','lab-sub-head'); subHead.style.setProperty('--c','var(--info)');
-    subHead.innerHTML = `<strong>SUB</strong>`;
-    const subToggle = mk('button',`lab-toggle${state.sub.enabled?' on':''}`, state.sub.enabled?'ON':'OFF');
-    subToggle.setAttribute('aria-pressed', String(!!state.sub.enabled));
-    subToggle.type = 'button'; subToggle.setAttribute('aria-label','Sub oscillator');
-    subToggle.onclick = () => {
-        state.sub.enabled = !state.sub.enabled;
-        subToggle.textContent = state.sub.enabled ? 'ON' : 'OFF';
-        subToggle.classList.toggle('on', state.sub.enabled);
-        subToggle.setAttribute('aria-pressed', String(state.sub.enabled));
-        state.activePreset=null;
-    };
-    subHead.append(subToggle);
-    const subVal = mk('span','lab-val', Math.round((state.sub.level||0.4)*100)+'%');
-    const subLbl = mk('div','lab-sl-label'); subLbl.append(mk('span','','Level'), subVal);
-    const subSl = makeSlider({min:0,max:1,step:.01,value:state.sub.level||0.4,label:'Sub oscillator level',
-        onChange:v=>{state.sub.level=v; subVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    subBox.append(subHead, subLbl, subSl);
-    // Noise
-    const nBox = mk('div');
-    const nHead = mk('div','lab-sub-head'); nHead.style.setProperty('--c','var(--err-strong)');
-    nHead.innerHTML = `<strong>NOISE</strong>`;
-    const nToggle = mk('button',`lab-toggle${state.noise.enabled?' on':''}`, state.noise.enabled?'ON':'OFF');
-    nToggle.setAttribute('aria-pressed', String(!!state.noise.enabled));
-    nToggle.type = 'button'; nToggle.setAttribute('aria-label','Noise');
-    nToggle.onclick = () => {
-        state.noise.enabled = !state.noise.enabled;
-        nToggle.textContent = state.noise.enabled ? 'ON' : 'OFF';
-        nToggle.classList.toggle('on', state.noise.enabled);
-        nToggle.setAttribute('aria-pressed', String(state.noise.enabled));
-        state.activePreset=null;
-    };
-    nHead.append(nToggle);
-    const nVal = mk('span','lab-val', Math.round((state.noise.level||0.2)*100)+'%');
-    const nLbl = mk('div','lab-sl-label'); nLbl.append(mk('span','','Level'), nVal);
-    const nSl = makeSlider({min:0,max:1,step:.01,value:state.noise.level||0.2,label:'Noise level',
-        onChange:v=>{state.noise.level=v; nVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    nBox.append(nHead, nLbl, nSl);
-    exRow.append(subBox, nBox);
-    exGrp.append(exRow);
-    grid.append(exGrp);
-    m1Refresh.push(() => {
-        subToggle.classList.toggle('on', state.sub.enabled);
-        subToggle.textContent = state.sub.enabled ? 'ON' : 'OFF';
-        subToggle.setAttribute('aria-pressed', String(!!state.sub.enabled));
-        if (subSl._sliderObj) subSl._sliderObj.update(state.sub.level || 0.4);
-        subVal.textContent = Math.round((state.sub.level || 0.4) * 100) + '%';
-        nToggle.classList.toggle('on', state.noise.enabled);
-        nToggle.textContent = state.noise.enabled ? 'ON' : 'OFF';
-        nToggle.setAttribute('aria-pressed', String(!!state.noise.enabled));
-        if (nSl._sliderObj) nSl._sliderObj.update(state.noise.level || 0.2);
-        nVal.textContent = Math.round((state.noise.level || 0.2) * 100) + '%';
-    });
-
-    // Amplitude Envelope — Learning Synths tarzı tek panel: A/D/S/R üst üste
-    // kompakt satırlar + Volume. (Detaylı anlatım üstteki ADSR kartında.)
-    const adsrValMap={}, adsrFmtMap={}, adsrSlMap={};
-    const ampGrp = mk('div','lab-box');
-    ampGrp.style.setProperty('--c', 'var(--accent)');
-    ampGrp.innerHTML=`<div class="lab-sec-title">Amplitude Envelope</div>
-    <div class="lab-sec-sub"><strong>A</strong>: yükseliş, <strong>D</strong>: düşüş, <strong>S</strong>: tutunma seviyesi, <strong>R</strong>: bırakınca sönüş. Eğriyi üstteki ADSR kartında izleyebilirsin.</div>`;
-    [
-        {key:'attack',  label:'Attack',  min:.01, max:2, step:.01, fmt:v=>v.toFixed(2)+'s'},
-        {key:'decay',   label:'Decay',   min:.01, max:2, step:.01, fmt:v=>v.toFixed(2)+'s'},
-        {key:'sustain', label:'Sustain', min:0,   max:1, step:.01, fmt:v=>(v*100).toFixed(0)+'%'},
-        {key:'release', label:'Release', min:.01, max:3, step:.01, fmt:v=>v.toFixed(2)+'s'},
-    ].forEach(p => {
-        const val = mk('span','lab-val',p.fmt(state.adsr[p.key]));
-        adsrValMap[p.key]=val; adsrFmtMap[p.key]=p.fmt;
-        const lbl = mk('div','lab-sl-label'); lbl.append(mk('span','',p.label), val);
-        const slEl = makeSlider({min:p.min, max:p.max, step:p.step, value:state.adsr[p.key], label:`ADSR ${p.key}`,
-            onChange: v => { state.adsr[p.key]=v; state.activePreset=null; val.textContent=p.fmt(v); adsrSvg(); }});
-        adsrSlMap[p.key]=slEl;
-        const row = mk('div'); row.append(lbl, slEl);
-        ampGrp.append(row);
-    });
-    // Volume — playground'daki Amplitude paneli gibi zarfın altında
-    const volVal = mk('span','lab-val', (state.volume*100).toFixed(0)+'%');
-    const volLbl = mk('div','lab-sl-label'); volLbl.append(mk('span','','Volume'), volVal);
-    const volRow = mk('div','lab-divide');
-    volRow.append(volLbl, makeSlider({min:0, max:1, step:.01, value:state.volume, label:'Synth volume',
-        onChange: v => { state.volume=v; volVal.textContent=(v*100).toFixed(0)+'%'; }}));
-    ampGrp.append(volRow);
-    grid.append(ampGrp);
-
-    // Filter — type selector + response curve + cutoff + resonance + mod env amount (crimson accent)
-    const filtGrp = mk('div','lab-box lab-box--filter');
-    filtGrp.style.setProperty('--c', 'var(--err-strong)');
-    filtGrp.innerHTML=`<div class="lab-sec-title">Filter — Frekans Filtresi</div>
-    <div class="lab-sec-sub">
-    <strong>Tip</strong>: Lowpass koyu, Highpass ince, Bandpass dar bant, Notch o frekansı oyar.<br>
-    <strong>Slope</strong>: 12 dB yumuşak, 24 dB dik kesim — Serum/analog synth karakteri.<br>
-    <strong>Cutoff</strong>: Kesme frekansı — düşük = koyu ses, yüksek = parlak ses.<br>
-    <strong>Resonance</strong>: Cutoff frekansını vurgular — yüksek = "wah" efekti.<br>
-    <strong>Drive</strong>: Filtre öncesi saturasyon — sıcaklık ve agresiflik katar.<br>
-    <strong>Env Amount</strong>: ADSR envelope'u cutoff'a uygular — sweep efektleri için.</div>`;
-    // Response curve
-    const respCv = document.createElement('canvas');
-    respCv.width = 600; respCv.height = 80;
-    respCv.className = 'lab-filter-cv';
-    respCv.setAttribute('role','img');
-    respCv.setAttribute('aria-label','Filter response curve');
-    filtGrp.append(respCv);
-    function _redrawFilter() {
-        const c = respCv.getContext('2d');
-        const W = respCv.width, H = respCv.height;
-        c.clearRect(0, 0, W, H);
-        c.strokeStyle = 'rgba(255,255,255,.06)'; c.lineWidth = 1;
-        [0.33, 0.66].forEach(f => { c.beginPath(); c.moveTo(0, H*f); c.lineTo(W, H*f); c.stroke(); });
-        const N = 128, fMin = 30, fMax = 18000;
-        const logMin = Math.log(fMin), logMax = Math.log(fMax);
-        const freqs = new Float32Array(N);
-        for (let i = 0; i < N; i++) freqs[i] = Math.exp(logMin + (i/(N-1))*(logMax-logMin));
-        const mag = new Float32Array(N), phase = new Float32Array(N);
-        const is24 = (state.filter.slope || 12) >= 24;
-        if (filterNode && filterNode.getFrequencyResponse) {
-            filterNode.getFrequencyResponse(freqs, mag, phase);
-            // 24dB: ikinci kademenin yanıtını çarp — gerçek cascade eğimi.
-            if (is24 && filterNode2) {
-                const mag2 = new Float32Array(N);
-                filterNode2.getFrequencyResponse(freqs, mag2, phase);
-                for (let i = 0; i < N; i++) mag[i] *= mag2[i];
-            }
-        } else {
-            // Without a live filterNode (audio context not yet started), draw an
-            // approximate curve using a temporary offline filter so the user
-            // sees the type/cutoff/resonance result before the first note.
-            try {
-                const tmpCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 64, 44100);
-                const t = state.filter.type || 'lowpass';
-                const tmp = tmpCtx.createBiquadFilter();
-                tmp.type = t;
-                tmp.frequency.value = state.filter.cutoff;
-                tmp.Q.value = state.filter.resonance;
-                tmp.getFrequencyResponse(freqs, mag, phase);
-                if (is24) {
-                    const tmp2 = tmpCtx.createBiquadFilter();
-                    tmp2.type = t;
-                    tmp2.frequency.value = state.filter.cutoff;
-                    tmp2.Q.value = (t === 'bandpass' || t === 'notch') ? 1 : 0;
-                    const mag2 = new Float32Array(N);
-                    tmp2.getFrequencyResponse(freqs, mag2, phase);
-                    for (let i = 0; i < N; i++) mag[i] *= mag2[i];
-                }
-            } catch { for (let i = 0; i < N; i++) mag[i] = 1; }
-        }
-        c.strokeStyle = TOK.accent; c.lineWidth = 2;
-        c.shadowColor = TOK.accent; c.shadowBlur = 6;
-        c.beginPath();
-        for (let i = 0; i < N; i++) {
-            const db = 20 * Math.log10(Math.max(1e-4, mag[i]));
-            const y = H - ((db + 36) / 48) * H;
-            const x = (i / (N-1)) * W;
-            if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
-        }
-        c.stroke(); c.shadowBlur = 0;
-        const cutX = ((Math.log(state.filter.cutoff) - logMin) / (logMax - logMin)) * W;
-        c.strokeStyle = TOK.err; c.setLineDash([3, 3]); c.lineWidth = 1;
-        c.beginPath(); c.moveTo(cutX, 0); c.lineTo(cutX, H); c.stroke();
-        c.setLineDash([]);
-    }
-    _redrawFilter();
-    // Type selector
-    const typeRow = mk('div','lab-opts');
-    [{t:'lowpass',label:'LP',hint:'Yüksek frekansları keser'},
-     {t:'highpass',label:'HP',hint:'Düşük frekansları keser'},
-     {t:'bandpass',label:'BP',hint:'Sadece dar bandı geçirir'},
-     {t:'notch',label:'NOTCH',hint:'O frekansı oyar'}].forEach(({t,label,hint}) => {
-        const b = mk('button',`lab-opt${(state.filter.type||'lowpass')===t?' active':''}`,
-            `<span>${label}</span><small>${hint}</small>`);
-        b.onclick = () => {
-            state.filter.type = t; state.activePreset=null;
-            syncFilterNodes();
-            typeRow.querySelectorAll('.lab-opt').forEach(x => x.classList.remove('active'));
-            b.classList.add('active');
-            _redrawFilter();
-        };
-        typeRow.append(b);
-    });
-    filtGrp.append(typeRow);
-    // Slope selector — 12 dB (tek biquad) / 24 dB (cascade)
-    const slopeRow = mk('div','lab-optline lab-mt'); slopeRow.setAttribute('data-lab-press', '');
-    const slopeTag = mk('span','lab-label','SLOPE:');
-    slopeRow.append(slopeTag);
-    [12, 24].forEach(s => {
-        const b = mk('button',`lab-opt${(state.filter.slope||12)===s?' active':''}`, s+' dB');
-        b.classList.add('lab-opt--row');
-        b.onclick = () => {
-            state.filter.slope = s; state.activePreset=null;
-            syncFilterNodes(); applyFilterSlope();
-            slopeRow.querySelectorAll('.lab-opt').forEach(x => x.classList.remove('active'));
-            b.classList.add('active');
-            _redrawFilter();
-        };
-        slopeRow.append(b);
-    });
-    filtGrp.append(slopeRow);
-    const filtGrid = mk('div','lab-g2');
-    const cutVal = mk('span','', state.filter.cutoff>=1000?(state.filter.cutoff/1000).toFixed(1)+'kHz':state.filter.cutoff+'Hz');
-    cutVal.className='lab-val';
-    const resVal = mk('span','lab-val', state.filter.resonance.toFixed(1)+' Q');
-    const cutDiv=mk('div'); const cutLbl=mk('div','lab-sl-label'); cutLbl.append(mk('span','','Cutoff'), cutVal);
-    const cutSlEl=makeSlider({min:80, max:18000, step:10, value:state.filter.cutoff, label:'Filter cutoff frequency in Hertz',
-        onChange:v=>{ state.filter.cutoff=v; state.activePreset=null;
-            syncFilterNodes();
-            cutVal.textContent=v>=1000?(v/1000).toFixed(1)+'kHz':v+'Hz';
-            _redrawFilter(); }});
-    cutDiv.append(cutLbl, cutSlEl);
-    const resDiv=mk('div'); const resLbl=mk('div','lab-sl-label'); resLbl.append(mk('span','','Resonance'), resVal);
-    const resSlEl=makeSlider({min:.1, max:20, step:.1, value:state.filter.resonance, label:'Filter resonance Q',
-        onChange:v=>{ state.filter.resonance=v; state.activePreset=null;
-            syncFilterNodes();
-            resVal.textContent=v.toFixed(1)+' Q';
-            _redrawFilter(); }});
-    resDiv.append(resLbl, resSlEl);
-    // Drive — filtre öncesi tanh saturasyonu
-    const drvDiv = mk('div');
-    const drvVal = mk('span','lab-val', Math.round((state.filter.drive||0)*100)+'%');
-    const drvLbl = mk('div','lab-sl-label'); drvLbl.append(mk('span','','Drive'), drvVal);
-    const drvSl = makeSlider({min:0, max:1, step:.01, value:state.filter.drive||0, label:'Filter drive saturation',
-        onChange:v=>{ state.filter.drive=v; applyDrive(); drvVal.textContent=Math.round(v*100)+'%'; state.activePreset=null; }});
-    drvDiv.append(drvLbl, drvSl);
-    // Filter envelope amount
-    const envDiv = mk('div');
-    const envVal = mk('span','lab-val', (state.filterEnv.amount||0)+'%');
-    const envLbl = mk('div','lab-sl-label'); envLbl.append(mk('span','','Env → Cutoff'), envVal);
-    const envSl = makeSlider({min:0, max:100, step:1, value:state.filterEnv.amount||0, label:'Filter envelope amount',
-        onChange:v=>{ state.filterEnv.amount=v; envVal.textContent=v+'%'; state.activePreset=null; }});
-    envDiv.append(envLbl, envSl);
-    filtGrid.append(cutDiv, resDiv);
-    filtGrid.classList.add('lab-mt');
-    filtGrp.append(filtGrid);
-    // Drive + Mod env row below
-    const envRow = mk('div','lab-g2 lab-mt');
-    envRow.append(drvDiv, envDiv);
-    filtGrp.append(envRow);
-    grid.append(filtGrp);
-    m1Refresh.push(() => {
-        const _types = ['lowpass','highpass','bandpass','notch'];
-        typeRow.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _types[i] === (state.filter.type || 'lowpass')));
-        const _slopes = [12, 24];
-        slopeRow.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _slopes[i] === (state.filter.slope || 12)));
-        syncFilterNodes(); applyFilterSlope(); applyDrive();
-        if (cutSlEl._sliderObj) cutSlEl._sliderObj.update(state.filter.cutoff);
-        cutVal.textContent = state.filter.cutoff>=1000?(state.filter.cutoff/1000).toFixed(1)+'kHz':state.filter.cutoff+'Hz';
-        if (resSlEl._sliderObj) resSlEl._sliderObj.update(state.filter.resonance);
-        resVal.textContent = state.filter.resonance.toFixed(1)+' Q';
-        if (drvSl._sliderObj) drvSl._sliderObj.update(state.filter.drive || 0);
-        drvVal.textContent = Math.round((state.filter.drive || 0) * 100) + '%';
-        if (envSl._sliderObj) envSl._sliderObj.update(state.filterEnv.amount || 0);
-        envVal.textContent = (state.filterEnv.amount || 0) + '%';
-        _redrawFilter();
-    });
-
-    // ── LFO (purple accent) — Learning Synths yapısı: her hedefe ayrı amount ──
-    const lfoGrp = mk('div','lab-box');
-    lfoGrp.style.setProperty('--c', 'var(--violet)');
-    lfoGrp.innerHTML=`<div class="lab-sec-title">LFO — Low Frequency Oscillator</div>
-    <div class="lab-sec-sub">Üç hedefi aynı anda modüle edebilir (Learning Synths yapısı): <strong>Cutoff</strong> → wobble/sweep, <strong>Volume</strong> → tremolo, <strong>Pitch</strong> → vibrato. Rate Hz cinsinden.</div>`;
-    const lfoWaveSel = mk('div','lab-opts');
-    [{w:'sine'},{w:'triangle'},{w:'square'},{w:'sawtooth'}]
-    .forEach(({w}) => {
-        const b = mk('button',`lab-opt${(state.lfo.wave||'sine')===w?' active':''}`, `${WAVE_SVG[w]}<span>${w}</span>`);
-        b.onclick = () => {
-            state.lfo.wave=w; if (lfoOsc) lfoOsc.type = w;
-            lfoWaveSel.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-            state.activePreset=null;
-        };
-        lfoWaveSel.append(b);
-    });
-    lfoGrp.append(lfoWaveSel);
-    // Rate
-    const lfoRateVal = mk('span','lab-val', (state.lfo.rate||5).toFixed(1)+' Hz');
-    const lfoRateLbl = mk('div','lab-sl-label'); lfoRateLbl.append(mk('span','','Rate'), lfoRateVal);
-    const lfoRateSl = makeSlider({min:0.1, max:20, step:0.1, value:state.lfo.rate||5, label:'LFO rate in Hertz',
-        onChange:v=>{state.lfo.rate=v; if (lfoOsc) lfoOsc.frequency.value=v; lfoRateVal.textContent=v.toFixed(1)+' Hz'; state.activePreset=null;}});
-    const lfoRateDiv = mk('div','lab-mt'); lfoRateDiv.append(lfoRateLbl, lfoRateSl);
-    lfoGrp.append(lfoRateDiv);
-    // Per-target amounts — Cutoff / Volume / Pitch
-    const lfoAmtRow = mk('div','lab-g3 lab-mt');
-    const _lfoAmtCtrls = {};
-    [
-        {key:'cutoffAmt', label:'→ Cutoff', fmt:v=>Math.round(v*100)+'%'},
-        {key:'volumeAmt', label:'→ Volume', fmt:v=>Math.round(v*100)+'%'},
-        {key:'pitchAmt',  label:'→ Pitch',  fmt:v=>Math.round(v*100)+' ct'},
-    ].forEach(({key,label,fmt}) => {
-        const val = mk('span','lab-val', fmt(state.lfo[key]||0));
-        const lbl = mk('div','lab-sl-label'); lbl.append(mk('span','',label), val);
-        const sl = makeSlider({min:0, max:1, step:0.01, value:state.lfo[key]||0, label:'LFO amount '+label,
-            onChange:v=>{state.lfo[key]=v; applyLfoAmounts(); val.textContent=fmt(v); state.activePreset=null;}});
-        const div = mk('div'); div.append(lbl, sl);
-        lfoAmtRow.append(div);
-        _lfoAmtCtrls[key] = {sl, val, fmt};
-    });
-    lfoGrp.append(lfoAmtRow);
-    grid.append(lfoGrp);
-    m1Refresh.push(() => {
-        const _lWaves = ['sine','triangle','square','sawtooth'];
-        lfoWaveSel.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', _lWaves[i] === (state.lfo.wave || 'sine')));
-        if (lfoOsc) lfoOsc.type = (state.lfo.wave === 'sample-hold') ? 'sine' : (state.lfo.wave || 'sine');
-        if (lfoRateSl._sliderObj) lfoRateSl._sliderObj.update(state.lfo.rate || 5);
-        lfoRateVal.textContent = (state.lfo.rate || 5).toFixed(1) + ' Hz';
-        if (lfoOsc) lfoOsc.frequency.value = state.lfo.rate || 5;
-        Object.entries(_lfoAmtCtrls).forEach(([key, c]) => {
-            if (c.sl._sliderObj) c.sl._sliderObj.update(state.lfo[key] || 0);
-            c.val.textContent = c.fmt(state.lfo[key] || 0);
-        });
-        try { applyLfoAmounts(); } catch {}
-    });
-
-    // ── Mod Envelope (amber accent) — Learning Synths'teki 2. envelope ──
-    const meGrp = mk('div','lab-box');
-    meGrp.style.setProperty('--c', 'var(--warn)');
-    meGrp.innerHTML=`<div class="lab-sec-title">Mod Envelope — Modülasyon Zarfı</div>
-    <div class="lab-sec-sub">Amp ADSR'den bağımsız ikinci zarf. <strong>Env → Cutoff</strong> (Filter bölümünde) bu zarfın şeklini kullanır; <strong>→ Pitch</strong> nota başına perde zarfı ekler (pluck/drop efektleri).</div>`;
-    const meRow = mk('div','lab-g2');
-    const _meCtrls = {};
-    [
-        {key:'attack',  label:'Attack',  min:.005, max:2, step:.005, fmt:v=>v.toFixed(2)+'s'},
-        {key:'decay',   label:'Decay',   min:.01,  max:2, step:.01,  fmt:v=>v.toFixed(2)+'s'},
-        {key:'sustain', label:'Sustain', min:0,    max:1, step:.01,  fmt:v=>(v*100).toFixed(0)+'%'},
-        {key:'release', label:'Release', min:.01,  max:3, step:.01,  fmt:v=>v.toFixed(2)+'s'},
-    ].forEach(({key,label,min,max,step,fmt}) => {
-        const val = mk('span','lab-val', fmt(state.modEnv[key]));
-        const lbl = mk('div','lab-sl-label'); lbl.append(mk('span','',label), val);
-        const sl = makeSlider({min, max, step, value:state.modEnv[key], label:'Mod envelope '+key,
-            onChange:v=>{state.modEnv[key]=v; val.textContent=fmt(v); state.activePreset=null;}});
-        const div = mk('div'); div.append(lbl, sl);
-        meRow.append(div);
-        _meCtrls[key] = {sl, val, fmt};
-    });
-    meGrp.append(meRow);
-    // Env → Pitch amount (yarım ton)
-    const mePitchVal = mk('span','lab-val', (state.modEnv.pitchAmount||0)+' st');
-    const mePitchLbl = mk('div','lab-sl-label'); mePitchLbl.append(mk('span','','Env → Pitch'), mePitchVal);
-    const mePitchSl = makeSlider({min:-12, max:12, step:1, value:state.modEnv.pitchAmount||0, label:'Mod envelope to pitch amount in semitones',
-        onChange:v=>{state.modEnv.pitchAmount=v; mePitchVal.textContent=v+' st'; state.activePreset=null;}});
-    const mePitchDiv = mk('div','lab-mt');
-    mePitchDiv.append(mePitchLbl, mePitchSl);
-    meGrp.append(mePitchDiv);
-    grid.append(meGrp);
-    m1Refresh.push(() => {
-        Object.entries(_meCtrls).forEach(([key, c]) => {
-            if (c.sl._sliderObj) c.sl._sliderObj.update(state.modEnv[key]);
-            c.val.textContent = c.fmt(state.modEnv[key]);
-        });
-        if (mePitchSl._sliderObj) mePitchSl._sliderObj.update(state.modEnv.pitchAmount || 0);
-        mePitchVal.textContent = (state.modEnv.pitchAmount || 0) + ' st';
-    });
-
-    // ── FX (Delay + Reverb) — green accent ─────────────────
-    const fxGrp = mk('div','lab-box');
-    fxGrp.style.setProperty('--c', 'var(--ok-strong)');
-    fxGrp.innerHTML=`<div class="lab-sec-title">FX — Delay & Reverb</div>
-    <div class="lab-sec-sub"><strong>Delay</strong>: yankı, dub — Time BPM'e kilitli nota değerleriyle seçilir (Ableton'daki Sync modu). <strong>Reverb</strong>: oda hissi, ambient. Wet 0 ise ses kuru gider.</div>`;
-    const fxRow = mk('div','lab-g2');
-    // Delay column
-    const dCol = mk('div');
-    const dHead = mk('div','lab-sub-head',`<strong>DELAY</strong>`); dHead.style.setProperty('--c','var(--accent)');
-    dCol.append(dHead);
-    // Time — BPM-synced nota değerleri ("." = noktalı ×1.5, "T" = triplet ×⅔)
-    const dSyncReadout = mk('span','lab-val'); dSyncReadout.id='delay-sync-readout';
-    const dTimeLbl = mk('div','lab-sl-label'); dTimeLbl.append(mk('span','','Time'), dSyncReadout);
-    dCol.append(dTimeLbl);
-    const dSyncRow = mk('div','lab-opts lab-opts--4 lab-mb');
-    const DELAY_SYNC_OPTS = ['1/2','1/4','1/4.','1/8','1/8.','1/8T','1/16','1/32'];
-    DELAY_SYNC_OPTS.forEach(div => {
-        const b = mk('button',`lab-opt${state.fx.delaySync===div?' active':''}`, div);
-        b.classList.add('lab-opt--sm');
-        b.onclick = () => {
-            state.fx.delaySync = div; state.activePreset=null;
-            refreshDelayTime();
-            dSyncRow.querySelectorAll('.lab-opt').forEach(x=>x.classList.remove('active'));
-            b.classList.add('active');
-        };
-        dSyncRow.append(b);
-    });
-    dCol.append(dSyncRow);
-    const dFbVal = mk('span','lab-val', Math.round((state.fx.delayFeedback||0.3)*100)+'%');
-    const dFbLbl = mk('div','lab-sl-label'); dFbLbl.append(mk('span','','Feedback'), dFbVal);
-    const dFbSl = makeSlider({min:0, max:0.9, step:0.01, value:state.fx.delayFeedback||0.3, label:'Delay feedback',
-        onChange:v=>{state.fx.delayFeedback=v; if (delayFb) delayFb.gain.value=v; dFbVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    dCol.append(dFbLbl, dFbSl);
-    const dWetVal = mk('span','lab-val', Math.round((state.fx.delayWet||0)*100)+'%');
-    const dWetLbl = mk('div','lab-sl-label'); dWetLbl.append(mk('span','','Wet'), dWetVal);
-    const dWetSl = makeSlider({min:0, max:1, step:0.01, value:state.fx.delayWet||0, label:'Delay wet level',
-        onChange:v=>{state.fx.delayWet=v; if (delayWetG) delayWetG.gain.value=v; dWetVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    dCol.append(dWetLbl, dWetSl);
-    // Reverb column
-    const rCol = mk('div');
-    const rHead = mk('div','lab-sub-head',`<strong>REVERB</strong>`); rHead.style.setProperty('--c','var(--info)');
-    rCol.append(rHead);
-    const rWetVal = mk('span','lab-val', Math.round((state.fx.reverbWet||0)*100)+'%');
-    const rWetLbl = mk('div','lab-sl-label'); rWetLbl.append(mk('span','','Wet'), rWetVal);
-    const rWetSl = makeSlider({min:0, max:1, step:0.01, value:state.fx.reverbWet||0, label:'Reverb wet level',
-        onChange:v=>{state.fx.reverbWet=v; if (reverbWetG) reverbWetG.gain.value=v; rWetVal.textContent=Math.round(v*100)+'%'; state.activePreset=null;}});
-    rCol.append(rWetLbl, rWetSl);
-    const reverbHint = mk('p','lab-fx-hint',`Reverb tek IR (2s exponential) kullanır — basit ama efektli. Daha uzun ambient için Wet'i %50-70 dene.`);
-    rCol.append(reverbHint);
-    fxRow.append(dCol, rCol);
-    fxGrp.append(fxRow);
-    grid.append(fxGrp);
-    dSyncReadout.textContent = (state.fx.delaySync || 'serbest') + ' = ' + currentDelaySeconds().toFixed(2) + 's @ ' + (state.bpm || 125) + ' BPM';
-    m1Refresh.push(() => {
-        dSyncRow.querySelectorAll('.lab-opt').forEach((b, i) => b.classList.toggle('active', DELAY_SYNC_OPTS[i] === state.fx.delaySync));
-        refreshDelayTime();
-        dSyncReadout.textContent = (state.fx.delaySync || 'serbest') + ' = ' + currentDelaySeconds().toFixed(2) + 's @ ' + (state.bpm || 125) + ' BPM';
-        if (dFbSl._sliderObj) dFbSl._sliderObj.update(state.fx.delayFeedback || 0.3);
-        dFbVal.textContent = Math.round((state.fx.delayFeedback || 0.3) * 100) + '%';
-        if (delayFb) delayFb.gain.value = state.fx.delayFeedback || 0.3;
-        if (dWetSl._sliderObj) dWetSl._sliderObj.update(state.fx.delayWet || 0);
-        dWetVal.textContent = Math.round((state.fx.delayWet || 0) * 100) + '%';
-        if (delayWetG) delayWetG.gain.value = state.fx.delayWet || 0;
-        if (rWetSl._sliderObj) rWetSl._sliderObj.update(state.fx.reverbWet || 0);
-        rWetVal.textContent = Math.round((state.fx.reverbWet || 0) * 100) + '%';
-        if (reverbWetG) reverbWetG.gain.value = state.fx.reverbWet || 0;
-    });
-
-    shell.append(grid);
-
-    shell.append(theoryCard(
-        "Synthesizer — Ableton'da Nerede?",
-        `Ableton'da her MIDI track'e bir <strong>instrument</strong> (Analog, Operator, Wavetable) yüklenir.
-        Bu instrumentlerin hepsinde ADSR zarfı ve filter bulunur. <strong>Analog</strong> bu subtractive synthesizer'ın
-        birebir karşılığıdır. Buradaki <strong>OSC1 + OSC2</strong> Ableton Analog'daki Osc1/Osc2 kontrolüne, <strong>Sub</strong>
-        ise Operator'ün düşük partial katmanına eşdeğer.
-        <br><br>
-        <strong>Filter tipleri</strong> (LP/HP/BP/Notch) Ableton'da her EQ ve Auto Filter device'ında aynı isimle bulunur.
-        <strong>LFO</strong> Ableton'da iki yere yerleşir: instrument içindeki LFO (Operator/Analog) ve global LFO MIDI Effect.
-        Burada Cutoff veya Volume hedeflerine yönlendirebileceğin LFO, Ableton'da bir Auto Filter device'ı + LFO MIDI Effect
-        kombinasyonunun yaptığını yapıyor.
-        <br><br>
-        <strong>Env → Cutoff</strong> (Filter Envelope Amount) sayesinde ADSR envelope'u doğrudan filter cutoff'a uygulayabilirsin —
-        Ableton Analog'da bu, F1/F2 envelope routing'inin karşılığı; klassik analog acid lead'ler ve filter sweep'lerin temeli.
-        <br><br>
-        <strong>Delay ve Reverb</strong> burada master FX bus'tan geçer (her ikisi de Send/Wet mantığında). Ableton'da bunlar
-        Return tracklerine kurulur ve trackten Send knob'ları ile beslenir — burada bir track olduğu için doğrudan master'da gösteriyoruz.`,
-        "Instruments → Analog / Operator / Wavetable + Audio Effects → Auto Filter, Simple/Ping Delay, Reverb"
-    ));
-
-    // ── Playability control row: octave, mono/poly, sustain ──
-    const playRow = mk('div','lab-perf');
-    // Octave shifter
-    const octCluster = mk('div','lab-cluster');
-    octCluster.append(mk('span','lab-label',`OCT:`));
-    const octDn = mk('button','lab-opt lab-opt--sm','−'); octDn.type='button'; octDn.setAttribute('aria-label','Oktav aşağı');
-    const octVal = mk('strong','lab-oct-val', `C${state.keyboardOctave||4}`); octVal.setAttribute('aria-live','polite');
-    const octUp = mk('button','lab-opt lab-opt--sm','+'); octUp.type='button'; octUp.setAttribute('aria-label','Oktav yukarı');
-    octCluster.append(octDn, octVal, octUp);
-    playRow.append(octCluster);
-    // Mono/Poly
-    const polyCluster = mk('div','lab-cluster');
-    polyCluster.append(mk('span','lab-label','MODE:'));
-    const polyBtn = mk('button',`lab-opt${state.poly==='poly'?' active':''}`,'POLY');
-    polyBtn.classList.add('lab-opt--sm'); polyBtn.type='button';
-    const monoBtn = mk('button',`lab-opt${state.poly==='mono'?' active':''}`,'MONO');
-    monoBtn.classList.add('lab-opt--sm'); monoBtn.type='button';
-    polyCluster.append(polyBtn, monoBtn);
-    playRow.append(polyCluster);
-    // Glide (portamento) — mono modda notalar arası kayma süresi
-    const glideCluster = mk('div','lab-cluster');
-    glideCluster.title = 'Glide sadece MONO modda çalışır — notalar arası pitch kayması';
-    glideCluster.append(mk('label','lab-label','GLIDE:'));
-    glideCluster.firstChild.htmlFor = 'glide-input';
-    const glideInput = document.createElement('input');
-    glideInput.type='range'; glideInput.min=0; glideInput.max=500; glideInput.step=5;
-    glideInput.value = Math.round((state.glide||0)*1000);
-    glideInput.id = 'glide-input';
-
-    const glideVal = mk('span','', Math.round((state.glide||0)*1000)+'ms');
-    glideVal.id = 'glide-val';
-    glideVal.className = 'lab-val';
-    glideInput.oninput = () => { state.glide = (+glideInput.value)/1000; glideVal.textContent = glideInput.value+'ms'; state.activePreset=null; };
-    glideCluster.append(glideInput, glideVal);
-    playRow.append(glideCluster);
-    m1Refresh.push(() => {
-        glideInput.value = Math.round((state.glide||0)*1000);
-        glideVal.textContent = Math.round((state.glide||0)*1000)+'ms';
-    });
-    // Sustain indicator
-    const susBadge = mk('span','lab-sustain','SUSTAIN — Space');
-    playRow.append(susBadge);
-    // Çalım kontrolleri grid'de kendi paneline — 2. satırın son hücresini doldurur.
-    const perfGrp = mk('div','lab-box');
-    perfGrp.style.setProperty('--c', 'var(--info)');
-    perfGrp.innerHTML = `<div class="lab-sec-title">Performans — Çalım</div>
-    <div class="lab-sec-sub">Oktav, mono/poly mod, glide (portamento) ve sustain durumu.</div>`;
-    perfGrp.append(playRow);
-    grid.append(perfGrp);
-
-    // ── XY Perform Pad — Learning Synths'teki Perform alanı ──
-    // X = nota (C majör pentatonik, 2 oktav), Y = parlaklık (filter cutoff).
-    const padWrap = mk('div','lab-box');
-    padWrap.style.setProperty('--c', 'var(--ok-strong)');
-    padWrap.innerHTML = `<div class="lab-sec-title">Perform — XY Pad</div>
-    <div class="lab-sec-sub">Sürükle: <strong>X</strong> = nota (pentatonik skala — hangi notaya basarsan bas uyumlu), <strong>Y</strong> = parlaklık (cutoff). MONO + Glide ile Learning Synths hissi.</div>`;
-    const pad = mk('div','lab-xy');
-    pad.setAttribute('role','application');
-    pad.setAttribute('aria-label','XY performance pad: X selects note, Y controls filter brightness');
-    // Skala çizgileri (nota bölgeleri)
-    const PAD_SCALE = [0,2,4,7,9,12,14,16,19,21,24]; // C maj pentatonik, 2 oktav
-    const PAD_NAMES = ['C','D','E','G','A','C','D','E','G','A','C'];
-    for (let i = 1; i < PAD_SCALE.length; i++) {
-        const ln = mk('div','lab-xy-line');
-        ln.style.left = (i/(PAD_SCALE.length-1)*100).toFixed(2) + '%';
-        pad.append(ln);
-    }
-    const padDot = mk('div','lab-xy-dot'); padDot.hidden = true;
-    const padLabel = mk('div','lab-xy-lbl'); padLabel.setAttribute('aria-live','polite');
-    pad.append(padDot, padLabel);
-    let _padLastIdx = -1, _padActive = false;
-    function padNoteAt(xRel) {
-        const base = 12 * ((state.keyboardOctave || 4) + 1); // C4 → MIDI 60
-        const idx  = Math.max(0, Math.min(PAD_SCALE.length - 1, Math.round(xRel * (PAD_SCALE.length - 1))));
-        const midi = base + PAD_SCALE[idx];
-        return { idx, midi, freq: 440 * Math.pow(2, (midi - 69) / 12), name: PAD_NAMES[idx] };
-    }
-    function padHandle(e, isDown) {
-        const r = pad.getBoundingClientRect();
-        const xRel = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-        const yRel = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
-        // Y → cutoff: üst = parlak (log eşleme 150 Hz – 14 kHz)
-        const cut = Math.round(Math.exp(Math.log(150) + (1 - yRel) * (Math.log(14000) - Math.log(150))));
-        _padCutoff = cut;
-        if (filterNode && !(state.filterEnv && state.filterEnv.amount > 0)) {
-            filterNode.frequency.value = cut;
-            if (filterNode2) filterNode2.frequency.value = cut;
-        }
-        padDot.style.left = (xRel * 100) + '%';
-        padDot.style.top  = (yRel * 100) + '%';
-        padDot.hidden = false;
-        const n = padNoteAt(xRel);
-        padLabel.textContent = n.name + ' · ' + (cut >= 1000 ? (cut/1000).toFixed(1) + 'kHz' : cut + 'Hz');
-        if (isDown || n.idx !== _padLastIdx) {
-            _padLastIdx = n.idx;
-            playNote(n.freq, .5, .85);
-        }
-    }
-    pad.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        pad.setPointerCapture(e.pointerId);
-        _padActive = true;
-        padHandle(e, true);
-    });
-    pad.addEventListener('pointermove', e => { if (_padActive) padHandle(e, false); });
-    const padEnd = () => {
-        _padActive = false; _padLastIdx = -1; _padCutoff = null;
-        padDot.hidden = true; padLabel.textContent = '';
-        syncFilterNodes(); // cutoff'u slider değerine geri al
-    };
-    pad.addEventListener('pointerup', padEnd);
-    pad.addEventListener('pointercancel', padEnd);
-    padWrap.append(pad);
-    // FX panelinin yanına, controls grid'in son hücresine yerleşir.
-    grid.append(padWrap);
-
-    shell.append(hintBox('<strong>Klavye:</strong> A S D F G H J K = beyaz tuşlar · Shift+tuş = soft (düşük velocity) · Space basılı tut = sustain'));
-
-    const kb = mk('div','lab-keys');
-    let currentNotes = getCurrentNotes();
-    function rebuildKeyboard() {
-        kb.innerHTML = '';
-        currentNotes = getCurrentNotes();
-        currentNotes.forEach((note,i) => {
-            const k = mk('div','lab-key',`<div class="lab-key-label">${note.label}<br><small>${note.key}</small></div>`);
-            k.setAttribute('aria-hidden','true');
-            k.onpointerdown = e => {
+    function playKey(n, v) { playNote(n.freq, 0.8, v); flashKey(n.midi); }
+    const mqPhone = window.matchMedia ? window.matchMedia('(max-width:600px)') : null;
+    function buildKeys() {
+        const oct = Math.max(M1_OCT_MIN, Math.min(M1_OCT_MAX, state.keyboardOctave || 4));
+        state.keyboardOctave = oct;
+        // Telefon: tek oktav (7 beyaz tuş ≈ 44px); geniş ekran: tasarımdaki 2 oktav (14 + 10)
+        const notes = m1Notes(oct, mqPhone && mqPhone.matches ? 1 : 2);
+        const whites = notes.filter(n => !n.black).length;
+        keys.innerHTML = ''; keyEls.clear();
+        keyTimers.forEach(id => { clearTimeout(id); timers.delete(id); }); keyTimers.clear();
+        keys.style.setProperty('--n', String(whites));
+        notes.forEach(n => {
+            const b = mk('button', 'lab-m1-key ' + (n.black ? 'lab-m1-bkey' : 'lab-m1-wkey'));
+            b.type = 'button';
+            b.setAttribute('aria-label', n.name + n.octave);
+            if (n.black) b.style.left = (n.pos / whites * 100).toFixed(3) + '%';
+            else b.style.gridColumn = String(n.col);
+            if (n.pc === 0) { const s = mk('span', 'lab-m1-klbl'); s.setAttribute('aria-hidden', 'true'); s.textContent = 'C' + n.octave; b.append(s); }
+            b.addEventListener('pointerdown', e => {
                 e.preventDefault();
-                // Velocity from vertical touch position: top of key = soft (0.4), bottom = hard (1.0).
-                const r = k.getBoundingClientRect();
-                const yRel = Math.max(0, Math.min(1, (e.clientY - r.top) / r.height));
-                const v = 0.4 + yRel * 0.6;
-                playNote(note.freq, .8, v);
-                k.classList.add('playing');
-                setTimeout(()=>k.classList.remove('playing'), 800);
-            };
-            kb.append(k);
+                // Dikey dokunuş konumu → velocity: üst 0.4, alt 1.0
+                const r = b.getBoundingClientRect();
+                playKey(n, 0.4 + Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) * 0.6);
+            });
+            // Klavyeyle (Enter) etkinleştirme; işaretçi tıklaması (detail ≥ 1) zaten pointerdown'da çaldı
+            b.addEventListener('click', e => { if (e.detail === 0) playKey(n, 0.75); });
+            keyEls.set(n.midi, b);
+            keys.append(b);
         });
-        octVal.textContent = `C${state.keyboardOctave||4}`;
+        octVal.textContent = Lf('lab_s1_oct', { n: oct });
+        octDn.disabled = oct <= M1_OCT_MIN; octUp.disabled = oct >= M1_OCT_MAX;
     }
-    rebuildKeyboard();
-    octDn.onclick = () => {
-        state.keyboardOctave = Math.max(2, (state.keyboardOctave||4) - 1);
-        rebuildKeyboard();
-    };
-    octUp.onclick = () => {
-        state.keyboardOctave = Math.min(6, (state.keyboardOctave||4) + 1);
-        rebuildKeyboard();
-    };
-    polyBtn.onclick = () => {
-        state.poly = 'poly';
-        polyBtn.classList.add('active'); monoBtn.classList.remove('active');
-    };
-    monoBtn.onclick = () => {
-        state.poly = 'mono';
-        monoBtn.classList.add('active'); polyBtn.classList.remove('active');
-    };
-    shell.append(kb); root.append(shell);
-    root.append(makeTaskPanel(1));
+    octDn.onclick = () => { state.keyboardOctave = Math.max(M1_OCT_MIN, state.keyboardOctave - 1); buildKeys(); };
+    octUp.onclick = () => { state.keyboardOctave = Math.min(M1_OCT_MAX, state.keyboardOctave + 1); buildKeys(); };
+    const onPhone = () => buildKeys();
+    if (mqPhone) { if (mqPhone.addEventListener) mqPhone.addEventListener('change', onPhone); else mqPhone.addListener(onPhone); }
+    buildKeys();
+    m1Refresh.push(() => { octVal.textContent = Lf('lab_s1_oct', { n: state.keyboardOctave }); });
 
-    const setSustainVisual = (on) => { susBadge.classList.toggle('on', !!on); };
+    // Çalım satırı: MOD (POLY/MONO) · GLIDE · SUSTAIN göstergesi (tasarımda yok; Acid Lead glide'ı için korunur)
+    const perf = mk('div', 'lab-m1-perf');
+    const modeItem = mk('div', 'lab-m1-perf-item');
+    const modeLbl = i18n(mk('span', 'lab-m1-perf-lbl'), 'lab_s1_mode'); modeLbl.setAttribute('aria-hidden', 'true');
+    const modeSeg = mk('div', 'seg seg--sm'); modeSeg.setAttribute('role', 'group'); ariaKey(modeSeg, 'lab_s1_mode');
+    const mkMode = m => { const b = mk('button', 'seg-btn'); b.type = 'button'; b.lang = 'en'; b.textContent = m.toUpperCase(); b.dataset.m = m;
+        b.onclick = () => { state.poly = m; syncMode(); }; return b; };
+    const polyBtn = mkMode('poly'), monoBtn = mkMode('mono');
+    const syncMode = () => [polyBtn, monoBtn].forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === (state.poly === 'mono' ? 'mono' : 'poly'))));
+    modeSeg.append(polyBtn, monoBtn);
+    modeItem.append(modeLbl, modeSeg);
+    m1Refresh.push(syncMode);
+    const glide = m1Slider({ name: 'GLIDE', aria: 'Glide', min: 0, max: 500, step: 5, keep: true,
+        get: () => Math.round((state.glide || 0) * 1000), set: v => { state.glide = v / 1000; }, fmt: v => Math.round(v) + ' ms' });
+    glide.classList.add('lab-m1-glide');
+    m1Refresh.push(() => { glide.title = L('lab_s1_glide_tip'); });
+    const sus = mk('span', 'lab-m1-sus'); sus.setAttribute('aria-hidden', 'true'); sus.lang = 'en';
+    const susSr = mk('span', 'sr-only'); susSr.setAttribute('aria-live', 'polite');
+    const setSustain = on => {
+        on = !!on;
+        if (_sustainPedal === on && sus.classList.contains('on') === on) return;
+        _sustainPedal = on; sus.classList.toggle('on', on);
+        susSr.textContent = L(on ? 'lab_s1_sus_on' : 'lab_s1_sus_off');
+    };
+    m1Refresh.push(() => { sus.textContent = L('lab_s1_sus'); });
+    perf.append(modeItem, glide, sus, susSr);
+    const kbHint = i18n(mk('p', 'lab-fnote lab-m1-kbhint'), 'lab_s1_kb_hint');
+    kb.append(kbHead, keys, perf, kbHint);
 
+    // ── Parametre kartları ───────────────────────────────────────────
+    // Kaydırıcı: mono ad/değer satırı + makeSlider (klavye, sürükleme, aria-valuetext)
+    function m1Slider(s) {
+        const wrap = mk('div', 'lab-m1-sl');
+        const row = mk('div', 'lab-m1-sl-row'); row.setAttribute('aria-hidden', 'true');
+        const nm = mk('span', 'lab-m1-sl-name'); nm.lang = 'en'; nm.textContent = s.name;
+        const val = mk('span', 'lab-m1-sl-val');
+        row.append(nm, val);
+        const sl = makeSlider({ min: s.min, max: s.max, step: s.step, value: s.get(), label: s.aria,
+            fmt: v => (s.vt || s.fmt)(v),
+            onChange: v => { s.set(v); val.textContent = s.fmt(v); if (!s.keep) touched(); if (s.after) s.after(v); } });
+        wrap.append(row, sl);
+        m1Refresh.push(() => { const v = s.get(); sl._sliderObj.update(v); val.textContent = s.fmt(v); });
+        return wrap;
+    }
+    // Kart: renkli başlık, alt başlık (detaylı), seçenek düğmeleri, isteğe bağlı SVG, kaydırıcılar, not (detaylı)
+    function m1Card(o) {
+        const card = mk('article', 'lab-m1-card' + (o.span ? ' is-span' : ''));
+        card.dataset.k = o.key;
+        const hid = 'labM1C_' + o.key;
+        card.setAttribute('aria-labelledby', hid);
+        const head = mk('div', 'lab-m1-head');
+        const copy = mk('div', 'lab-m1-hcopy');
+        const h = i18n(mk('h3', 'lab-m1-title'), o.title); h.id = hid;
+        copy.append(h);
+        if (o.sub) copy.append(i18n(mk('p', 'lab-m1-sub'), o.sub));
+        head.append(copy);
+        card.append(head);
+        if (o.opts) {
+            const grp = mk('div', 'lab-m1-opts'); grp.setAttribute('role', 'group');
+            const btns = o.opts.items.map(([v, label, key]) => {
+                const b = mk('button', 'lab-m1-opt'); b.type = 'button'; b.lang = 'en'; b.textContent = label;
+                b.onclick = () => { o.opts.set(v); touched(); syncOpts(); if (o.opts.after) o.opts.after(v); };
+                grp.append(b);
+                return { b, v, key };
+            });
+            const syncOpts = () => {
+                const cur = o.opts.get();
+                btns.forEach(x => {
+                    x.b.setAttribute('aria-pressed', String(x.v === cur));
+                    // Kısaltmalı düğmenin erişilebilir adı görünen metni içerir: "SQR — Square"
+                    if (x.key) x.b.setAttribute('aria-label', L(x.key));
+                });
+                grp.setAttribute('aria-label', o.opts.aria());
+            };
+            m1Refresh.push(syncOpts);
+            head.append(grp);
+        }
+        let viz = null;
+        if (o.viz) {
+            const gid = 'labM1Vg_' + o.key;
+            card.insertAdjacentHTML('beforeend', `<svg class="lab-m1-viz" viewBox="0 0 400 110" preserveAspectRatio="none" aria-hidden="true" focusable="false"><defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" class="lab-m1-vstop" stop-opacity=".35"/><stop offset="1" class="lab-m1-vstop" stop-opacity="0"/></linearGradient></defs><path class="lab-m1-vfill" fill="url(#${gid})" d=""/><path class="lab-m1-vline" d=""/></svg>`);
+            const svg = card.lastElementChild;
+            viz = d => { svg.querySelector('.lab-m1-vline').setAttribute('d', d); svg.querySelector('.lab-m1-vfill').setAttribute('d', d + ' L400 110 L0 110 Z'); };
+        }
+        const grid = mk('div', 'lab-m1-sliders lab-m1-sliders--' + (o.cols || 2));
+        o.sliders.forEach(s => grid.append(m1Slider(s)));
+        card.append(grid);
+        if (o.note) card.append(i18n(mk('p', 'lab-m1-note'), o.note));
+        return { card, viz };
+    }
+    const WAVES = [['sine', 'SIN', 'lab_s1_o_sine'], ['square', 'SQR', 'lab_s1_o_square'], ['sawtooth', 'SAW', 'lab_s1_o_sawtooth'], ['triangle', 'TRI', 'lab_s1_o_triangle']];
+    const ct = v => m1Sign(v) + ' ct';
+
+    const osc1 = m1Card({ key: 'osc1', title: 'lab_s1_c_osc1', sub: 'lab_s1_c_osc1_sub', cols: 2,
+        opts: { items: WAVES, get: () => state.osc1.wave, set: w => setOsc1Wave(w), after: refreshScopeInfo, aria: () => Lf('lab_s1_g_wave', { card: 'OSC1' }) },
+        sliders: [
+            { name: 'DETUNE', aria: 'OSC1 Detune', min: -50, max: 50, step: 1, get: () => state.osc1.detune || 0, set: v => { state.osc1.detune = v; }, fmt: ct },
+            { name: 'OCTAVE', aria: 'OSC1 Octave', min: -2, max: 2, step: 1, get: () => state.osc1.octave || 0, set: v => { state.osc1.octave = v; }, fmt: m1Sign },
+            { name: 'UNISON', aria: 'OSC1 Unison', min: 1, max: 7, step: 1, get: () => Math.max(1, Math.min(7, state.osc1.unison || 1)), set: v => { state.osc1.unison = v; },
+                fmt: v => v <= 1 ? L('lab_s1_off') : Lf('lab_s1_voices', { n: v }) },
+            { name: 'UNI DETUNE', aria: 'OSC1 Uni Detune', min: 0, max: 50, step: 1, get: () => state.osc1.uniDetune || 0, set: v => { state.osc1.uniDetune = v; }, fmt: v => Math.round(v) + ' ct' },
+        ] });
+    // OSC2 / Sub / Noise: aç-kapa yok — seviye > 0 ise çalar (kayıtlı presetlerin enabled alanı sürer)
+    const osc2 = m1Card({ key: 'osc2', title: 'lab_s1_c_osc2', sub: 'lab_s1_c_osc2_sub', cols: 2,
+        opts: { items: WAVES, get: () => state.osc2.wave, set: w => { state.osc2.wave = w; }, after: refreshScopeInfo, aria: () => Lf('lab_s1_g_wave', { card: 'OSC2' }) },
+        sliders: [
+            { name: 'MIX', aria: 'OSC2 Mix', min: 0, max: 100, step: 1, get: () => state.osc2.enabled ? Math.round((state.osc2.mix ?? 0.5) * 100) : 0,
+                set: v => { state.osc2.mix = v / 100; state.osc2.enabled = v > 0; }, fmt: m1Pct, after: refreshScopeInfo },
+            { name: 'DETUNE', aria: 'OSC2 Detune', min: -50, max: 50, step: 1, get: () => state.osc2.detune || 0, set: v => { state.osc2.detune = v; }, fmt: ct },
+            { name: 'OCT', aria: 'OSC2 Oct', min: -2, max: 2, step: 1, get: () => state.osc2.octave || 0, set: v => { state.osc2.octave = v; }, fmt: m1Sign },
+        ] });
+    const sn = m1Card({ key: 'sn', title: 'lab_s1_c_sn', sub: 'lab_s1_c_sn_sub', cols: 2,
+        sliders: [
+            { name: 'SUB LEVEL', aria: 'Sub Level', min: 0, max: 100, step: 1, get: () => state.sub.enabled ? Math.round((state.sub.level ?? 0.4) * 100) : 0,
+                set: v => { state.sub.level = v / 100; state.sub.enabled = v > 0; }, fmt: m1Pct },
+            { name: 'NOISE LEVEL', aria: 'Noise Level', min: 0, max: 100, step: 1, get: () => state.noise.enabled ? Math.round((state.noise.level ?? 0.2) * 100) : 0,
+                set: v => { state.noise.level = v / 100; state.noise.enabled = v > 0; }, fmt: m1Pct },
+        ] });
+    const amp = m1Card({ key: 'amp', title: 'lab_s1_c_amp', sub: 'lab_s1_c_amp_sub', cols: 4, viz: true,
+        sliders: [
+            { name: 'ATTACK', aria: 'Amp Attack', min: 0.001, max: 2, step: 0.001, get: () => state.adsr.attack, set: v => { state.adsr.attack = v; }, fmt: m1Sec, after: () => drawAdsr() },
+            { name: 'DECAY', aria: 'Amp Decay', min: 0.01, max: 2, step: 0.01, get: () => state.adsr.decay, set: v => { state.adsr.decay = v; }, fmt: m1Sec, after: () => drawAdsr() },
+            { name: 'SUSTAIN', aria: 'Amp Sustain', min: 0, max: 1, step: 0.01, get: () => state.adsr.sustain, set: v => { state.adsr.sustain = v; }, fmt: v => m1Pct(v * 100), after: () => drawAdsr() },
+            { name: 'RELEASE', aria: 'Amp Release', min: 0.01, max: 4, step: 0.01, get: () => state.adsr.release, set: v => { state.adsr.release = v; }, fmt: m1Sec, after: () => drawAdsr() },
+        ] });
+    // CUTOFF log eşlemeli (genel bakış kartıyla aynı 80 Hz–18 kHz, konum 0–100): 200 Hz'e parmakla da inilir
+    const cutFmt = p => m1Hz(cutToPos(state.filter.cutoff) === p ? state.filter.cutoff : posToCut(p));
+    const afterFilter = () => { drawFilter(); refreshScopeInfo(); };
+    const flt = m1Card({ key: 'flt', title: 'lab_s1_c_flt', cols: 3, span: true, viz: true, note: 'lab_s1_c_flt_note',
+        opts: { items: [['lowpass', 'LP', 'lab_s1_o_lowpass'], ['bandpass', 'BP', 'lab_s1_o_bandpass'], ['notch', 'NOTCH', 'lab_s1_o_notch'], ['highpass', 'HP', 'lab_s1_o_highpass']],
+            get: () => state.filter.type || 'lowpass', set: t => { state.filter.type = t; syncFilterNodes(); }, after: afterFilter, aria: () => L('lab_s1_g_ftype') },
+        sliders: [
+            { name: 'CUTOFF', aria: 'Filter Cutoff', min: 0, max: 100, step: 1, get: () => cutToPos(state.filter.cutoff),
+                set: p => { state.filter.cutoff = posToCut(p); syncFilterNodes(); }, fmt: cutFmt, after: afterFilter },
+            { name: 'RESONANCE', aria: 'Filter Resonance', min: 0.1, max: 20, step: 0.1, get: () => +state.filter.resonance || 0.1,
+                set: v => { state.filter.resonance = v; syncFilterNodes(); }, fmt: v => (+v).toFixed(1), after: afterFilter },
+            { name: 'SLOPE', aria: 'Filter Slope', min: 12, max: 48, step: 12, get: () => Math.max(1, Math.min(4, Math.round((state.filter.slope || 12) / 12))) * 12,
+                set: v => { state.filter.slope = v; syncFilterNodes(); applyFilterSlope(); }, fmt: v => Lf('lab_s1_dboct', { n: Math.round(v) }), after: afterFilter },
+            { name: 'DRIVE', aria: 'Filter Drive', min: 0, max: 100, step: 1, get: () => Math.round((state.filter.drive || 0) * 100),
+                set: v => { state.filter.drive = v / 100; applyDrive(); }, fmt: m1Pct },
+            { name: 'ENV → CUTOFF', aria: 'Env → Cutoff', min: 0, max: 100, step: 1, get: () => Math.round(state.filterEnv.amount || 0),
+                set: v => { state.filterEnv.amount = v; }, fmt: m1Pct },
+            { name: 'VOLUME', aria: 'Volume', min: 0, max: 100, step: 1, keep: true, get: () => Math.round((state.volume ?? 0.3) * 100),
+                set: v => { state.volume = v / 100; }, fmt: m1Pct },
+        ] });
+    const lfo = m1Card({ key: 'lfo', title: 'lab_s1_c_lfo', sub: 'lab_s1_c_lfo_sub', cols: 2,
+        sliders: [
+            { name: 'RATE', aria: 'LFO Rate', min: 0.1, max: 20, step: 0.1, get: () => state.lfo.rate || 5,
+                set: v => { state.lfo.rate = v; if (lfoOsc) lfoOsc.frequency.value = v; }, fmt: v => (+v).toFixed(1) + ' Hz' },
+            { name: '→ CUTOFF', aria: 'LFO → Cutoff', min: 0, max: 100, step: 1, get: () => Math.round((state.lfo.cutoffAmt || 0) * 100),
+                set: v => { state.lfo.cutoffAmt = v / 100; applyLfoAmounts(); }, fmt: m1Pct },
+            { name: '→ VOLUME', aria: 'LFO → Volume', min: 0, max: 100, step: 1, get: () => Math.round((state.lfo.volumeAmt || 0) * 100),
+                set: v => { state.lfo.volumeAmt = v / 100; applyLfoAmounts(); }, fmt: m1Pct },
+            // Motor: %100 = ±100 cent vibrato → sesli okumada cent de söylenir
+            { name: '→ PITCH', aria: 'LFO → Pitch', min: 0, max: 100, step: 1, get: () => Math.round((state.lfo.pitchAmt || 0) * 100),
+                set: v => { state.lfo.pitchAmt = v / 100; applyLfoAmounts(); }, fmt: m1Pct, vt: v => Lf('lab_s1_lfo_pitch_vt', { p: Math.round(v), c: Math.round(v) }) },
+        ] });
+    const mod = m1Card({ key: 'mod', title: 'lab_s1_c_mod', sub: 'lab_s1_c_mod_sub', cols: 2,
+        sliders: [
+            { name: 'ATTACK', aria: 'Mod Env Attack', min: 0.001, max: 2, step: 0.001, get: () => state.modEnv.attack ?? 0.01, set: v => { state.modEnv.attack = v; }, fmt: m1Sec },
+            { name: 'DECAY', aria: 'Mod Env Decay', min: 0.01, max: 2, step: 0.01, get: () => state.modEnv.decay ?? 0.25, set: v => { state.modEnv.decay = v; }, fmt: m1Sec },
+            { name: 'SUSTAIN', aria: 'Mod Env Sustain', min: 0, max: 1, step: 0.01, get: () => state.modEnv.sustain ?? 0.3, set: v => { state.modEnv.sustain = v; }, fmt: v => m1Pct(v * 100) },
+            { name: 'ENV → PITCH', aria: 'Mod Env → Pitch', min: -24, max: 24, step: 1, get: () => state.modEnv.pitchAmount || 0, set: v => { state.modEnv.pitchAmount = v; }, fmt: v => m1Sign(v) + ' st' },
+        ] });
+    const fx = m1Card({ key: 'fx', title: 'lab_s1_c_fx', sub: 'lab_s1_c_fx_sub', cols: 3, span: true, note: 'lab_s1_c_fx_note',
+        // Görünen 4 değer; preset/kayıtlı başka değer ('1/4.', serbest…) seçiliyse hiçbiri basılı görünmez
+        opts: { items: [['1/16', '1/16'], ['1/8', '1/8'], ['1/8.', '1/8·', 'lab_s1_o_dot8'], ['1/4', '1/4']],
+            get: () => state.fx.delaySync, set: d => { state.fx.delaySync = d; refreshDelayTime(); }, aria: () => L('lab_s1_g_delay') },
+        sliders: [
+            { name: 'FEEDBACK', aria: 'Delay Feedback', min: 0, max: 90, step: 1, get: () => Math.round((state.fx.delayFeedback ?? 0.3) * 100),
+                set: v => { state.fx.delayFeedback = v / 100; if (delayFb) delayFb.gain.value = v / 100; }, fmt: m1Pct },
+            { name: 'DELAY WET', aria: 'Delay Wet', min: 0, max: 100, step: 1, get: () => Math.round((state.fx.delayWet || 0) * 100),
+                set: v => { state.fx.delayWet = v / 100; if (delayWetG) delayWetG.gain.value = v / 100; }, fmt: m1Pct },
+            { name: 'REVERB WET', aria: 'Reverb Wet', min: 0, max: 100, step: 1, get: () => Math.round((state.fx.reverbWet || 0) * 100),
+                set: v => { state.fx.reverbWet = v / 100; if (reverbWetG) reverbWetG.gain.value = v / 100; }, fmt: m1Pct },
+        ] });
+
+    // ADSR eğrisi (tasarım formülü): tutma bölümü sabit 0.6 s
+    function drawAdsr() {
+        const { attack: a, decay: d, sustain: s, release: r } = state.adsr;
+        const tot = a + d + 0.6 + r;
+        const X = v => (v / tot * 380 + 10).toFixed(1), Y = v => (100 - v * 86).toFixed(1);
+        amp.viz(`M10 100 L${X(a)} ${Y(1)} L${X(a + d)} ${Y(s)} L${X(a + d + 0.6)} ${Y(s)} L${X(tot)} 100`);
+    }
+    // Filtre yanıtı: 20 Hz–20 kHz log eksen, doğrusal genlik, 1.4'te kırpılır (tasarım)
+    const _fq = new Float32Array(81);
+    for (let i = 0; i <= 80; i++) _fq[i] = 20 * Math.pow(1000, i * 5 / 400);
+    function drawFilter() {
+        const mag = m1FilterMag(_fq);
+        let d = '';
+        for (let i = 0; i <= 80; i++) d += (i ? ' L' : 'M') + (i * 5) + ' ' + (100 - Math.min(1.4, mag[i] || 0) * 62).toFixed(1);
+        flt.viz(d);
+    }
+
+    // Canlı motor düğümleri (preset yüklemesi applyPreset'te yapmadıklarını da eşitler; 0 değerleri korunur)
+    m1Refresh.push(() => {
+        syncFilterNodes(); applyFilterSlope(); applyDrive(); refreshDelayTime();
+        if (delayFb) delayFb.gain.value = state.fx.delayFeedback ?? 0.3;
+        if (delayWetG) delayWetG.gain.value = state.fx.delayWet || 0;
+        if (reverbWetG) reverbWetG.gain.value = state.fx.reverbWet || 0;
+        if (lfoOsc) {
+            lfoOsc.type = state.lfo.wave === 'sample-hold' ? 'sine' : (state.lfo.wave || 'sine');
+            lfoOsc.frequency.value = state.lfo.rate || 5;
+        }
+        applyLfoAmounts();
+    });
+
+    const grid = mk('div', 'lab-m1-grid');
+    [osc1, osc2, sn, amp, flt, lfo, mod, fx].forEach(c => grid.append(c.card));
+    body.append(scope, kb, grid);
+    main.append(body);
+
+    // ── Yan panel: Görevler · Ableton'da nerede? · Presetlerim ─────────
+    const tasks = makeTaskPanel(1);
+    const where = whereCard({ mid: 1, bodyKey: 'lab_where_1_p', pathKey: 'lab_where_1_path' });
+    const saved = savedCard({ kind: 'preset', titleKey: 'lab_saved_presets', saveKey: 'lab_saved_preset_save',
+        emptyKey: 'lab_saved_preset_empty', signinKey: 'lab_saved_signin',
+        load: () => loadUserPresets(), save: name => saveUserPreset(name), del: p => deleteUserPreset(p.id),
+        apply: p => { applyPreset(p); state.activePreset = null; playNote(440, 0.8); _m1Update && _m1Update(); } });
+    side.append(tasks, where, saved);
+    // Dil değişince görev metinleri (getter) yerinde
+    const langTasks = () => tasks.querySelectorAll('.lab-task-text').forEach((el, i) => { if (TASKS[1][i]) el.textContent = TASKS[1][i].text; });
+
+    // ── Bilgisayar klavyesi + sustain pedalı ─────────────────────────
     const onKey = e => {
-        // Sustain pedal — Space
-        if (e.code === 'Space' && !e.repeat) {
+        const t = e.target;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.code === 'Space') {
+            // Odak bir düğme/bağlantı/seçimdeyse Space onu etkinleştirsin (piyano tuşları hariç)
+            if (t && t.closest && t.closest('button, a[href], [role="button"], [role="checkbox"], [role="tab"], [role="switch"]') && !t.closest('.lab-m1-key')) return;
             e.preventDefault();
-            _sustainPedal = true;
-            setSustainVisual(true);
+            if (!e.repeat) setSustain(true);
             return;
         }
         if (e.repeat) return;
-        const n = currentNotes.find(x => x.key === e.key.toUpperCase());
-        if (!n) return;
+        const off = M1_KEYMAP[e.code];
+        if (off == null) return;
+        const midi = 12 * (state.keyboardOctave + 1) + off;
         const velocity = e.shiftKey ? 0.45 : (e.getModifierState && e.getModifierState('CapsLock') ? 1.0 : 0.75);
-        playNote(n.freq, .8, velocity);
-        kb.querySelectorAll('.lab-key').forEach((k,i)=>{
-            if (currentNotes[i].key === e.key.toUpperCase()) {
-                k.classList.add('playing');
-                setTimeout(()=>k.classList.remove('playing'),800);
-            }
-        });
+        playNote(m1MidiHz(midi), 0.8, velocity);
+        flashKey(midi);
     };
     const onKeyUp = e => {
-        if (e.code === 'Space') {
-            _sustainPedal = false;
-            setSustainVisual(false);
-        }
+        if (e.code !== 'Space' || !_sustainPedal) return;
+        e.preventDefault();
+        setSustain(false);
     };
     window.addEventListener('keydown', onKey);
-    window.addEventListener('keyup',   onKeyUp);
+    window.addEventListener('keyup', onKeyUp);
 
-    // In-place UI updater — called on preset change to avoid full re-render
+    // In-place UI updater — preset, kayıtlı preset, dil: tam render yok (kaydırma + ses sürer)
     _m1Update = () => {
-        preRow.querySelectorAll('.lab-chipbtn').forEach((b,i) => b.classList.toggle('active', SYNTH_PRESETS[i]?.id===state.activePreset));
-        let wi=0; const waves=['sine','square','sawtooth','triangle'];
-        wfSel.querySelectorAll('.lab-opt').forEach(b => b.classList.toggle('active', waves[wi++]===state.osc1.wave));
-        ['attack','decay','sustain','release'].forEach(key => {
-            if(adsrSlMap[key]?._sliderObj) adsrSlMap[key]._sliderObj.update(state.adsr[key]);
-            if(adsrValMap[key]) adsrValMap[key].textContent=adsrFmtMap[key](state.adsr[key]);
-        });
-        if(cutSlEl._sliderObj) cutSlEl._sliderObj.update(state.filter.cutoff);
-        if(resSlEl._sliderObj) resSlEl._sliderObj.update(state.filter.resonance);
-        cutVal.textContent=state.filter.cutoff>=1000?(state.filter.cutoff/1000).toFixed(1)+'kHz':state.filter.cutoff+'Hz';
-        resVal.textContent=state.filter.resonance.toFixed(1)+' Q';
-        adsrSvg();
-        // Refresh every extended-section UI in place (OSC1 extras / OSC2 / Sub
-        // / Noise / Filter type+env / LFO / FX). Each closure is wrapped in
-        // try/catch so one bad section can't take the rest down.
-        m1Refresh.forEach(fn => { try { fn(); } catch (e) { console.error('m1Refresh err', e); } });
+        syncChips();
+        m1Refresh.forEach(fn => { try { fn(); } catch (e) { console.warn('[lab] m1 refresh:', e); } });
+        refreshScopeInfo(); drawAdsr(); drawFilter();
     };
-
-    // Seçim grupları (dalga, oktav, unison, filtre tipi/eğim, LFO, delay sync, POLY/MONO):
-    // görsel .active durumu aria-pressed olarak da bildirilir (tıklama + preset yüklemesi).
-    polyCluster.setAttribute('data-lab-press', '');
-    const PRESS_SEL = '.lab-opts > .lab-opt, [data-lab-press] > .lab-opt';
-    const syncPress = b => { const v = String(b.classList.contains('active')); if (b.getAttribute('aria-pressed') !== v) b.setAttribute('aria-pressed', v); };
-    shell.querySelectorAll(PRESS_SEL).forEach(syncPress);
-    if ('MutationObserver' in window) {
-        new MutationObserver(ms => ms.forEach(m => { if (m.target.matches && m.target.matches(PRESS_SEL)) syncPress(m.target); }))
-            .observe(shell, { subtree: true, attributes: true, attributeFilter: ['class'] });
-    }
+    _m1Update();
+    // Kabuk dil değişiminde/girişte _labRefreshers'ı .refresh() ile çağırır
+    root.refresh = () => { if (_m1Update) _m1Update(); langTasks(); };
+    _labRefreshers.push(root);
 
     _cleanup = () => {
         window.removeEventListener('keydown', onKey);
-        window.removeEventListener('keyup',   onKeyUp);
+        window.removeEventListener('keyup', onKeyUp);
+        if (mqPhone) { if (mqPhone.removeEventListener) mqPhone.removeEventListener('change', onPhone); else mqPhone.removeListener(onPhone); }
+        if (ro) ro.disconnect();
+        if (io) io.disconnect();
+        timers.forEach(id => clearTimeout(id)); timers.clear(); keyTimers.clear();
         _sustainPedal = false;
         stopOsc();
         _m1Update = null;
