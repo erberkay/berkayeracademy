@@ -403,7 +403,7 @@
         .lab-side-h { font-size:15px; font-weight:700; line-height:1.35; color:var(--fg); }
         .lab-mlabel { font-family:var(--ff-mono); font-size:var(--fs-label); font-weight:400; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-3); }
         .lab-fnote { font-size:12px; line-height:1.55; color:var(--fg-faint); }
-        .lab-mside .lab-fnote { font-size:11px; line-height:1.5; }
+        .lab-mside .lab-fnote { font-size:11px; line-height:1.5; color:var(--fg-3); /* --surface üstünde --fg-faint 4.5:1 altı */ }
         .lab-well { position:relative; overflow:hidden; border-radius:var(--r-14); background:var(--bg-sunk); border:1px solid var(--line-2); }
         .lab-well--alt { background:var(--bg); }
         .lab-well--sm { border-radius:var(--r-10); }
@@ -664,7 +664,7 @@
         .lab-m2 .lab-seq--m2:has(.lab-step.is-now[data-step="15"]) .lab-seq-nums [data-hstep="15"] { color:var(--accent); }
         .lab-m2-tv { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:var(--tr-mono); text-align:center; color:var(--fg-faint); }
         .lab-m2 .lab-seq--m2 .lab-seq-lbl { width:100%; min-height:56px; padding:0 12px; gap:10px; border-radius:var(--r-12); border:1px solid var(--line); background:var(--bg); font-weight:600; transition:border-color var(--dur-fast), color var(--dur-fast); }
-        .lab-m2 .lab-seq--m2 .lab-seq-lbl::before { width:12px; height:12px; border-radius:3px; box-shadow:0 0 10px var(--c); }
+        .lab-m2 .lab-seq--m2 .lab-seq-lbl::before { width:12px; height:12px; border-radius:3px; /* tasarım: tek seferlik */ box-shadow:0 0 10px var(--c); }
         .lab-m2 .lab-seq--m2 .lab-seq-lbl:hover { border-color:var(--line-strong); color:var(--fg); }
         .lab-m2-pv { flex-shrink:0; width:9px; height:9px; margin-left:auto; fill:currentColor; color:var(--fg-faint); }
         .lab-m2 .lab-seq--m2 .lab-seq-steps { gap:4px; }
@@ -694,19 +694,24 @@
         @media (max-width:1279px) {
             .lab-m2 .lab-mgrid { grid-template-columns:minmax(0,1fr); }
             .lab-m2 .lab-mside { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); align-items:start; }
+            .lab-m2 .lab-mside > .lab-tasks { grid-column:auto; }
         }
         @media (max-width:1024px) {
             .lab-m2-ctl { grid-template-columns:200px minmax(0,1fr); gap:20px 24px; }
             .lab-m2-tpl { grid-column:1 / -1; }
+            /* Tablet: TRACK VOLUME sütunu panel kenarında kesilmesin; dar kalırsa şerit kenarın altından kayar */
+            .lab-m2 .lab-seq--m2 { grid-template-columns:120px minmax(0,1fr) 96px; min-width:640px; }
+            .lab-m2 .lab-seq-scroll { margin:0 -20px; padding:0 20px; }
         }
         @media (max-width:600px) {
             .lab-m2-ctl { grid-template-columns:minmax(0,1fr); gap:18px; }
             .lab-m2 .lab-mside { grid-template-columns:minmax(0,1fr); }
             .lab-m2-bpm-btn::after { content:''; position:absolute; inset:-2px; }
             .lab-m2 .lab-seq-scroll { margin:0 -16px; padding:0 16px; }
-            .lab-m2 .lab-seq--m2 { grid-template-columns:76px minmax(0,1fr) 84px; column-gap:8px; min-width:620px; }
+            /* adım hücresi ≥44px: 76 + 84 + 2×8 sütun aralığı + 16×44 + 15×3 adım aralığı */
+            .lab-m2 .lab-seq--m2 { grid-template-columns:76px minmax(0,1fr) 84px; column-gap:8px; min-width:calc(76px + 84px + 2 * 8px + 16 * 44px + 15 * 3px); }
             .lab-m2 .lab-seq--m2 .lab-seq-lbl { min-height:44px; padding:0 8px; gap:6px; font-size:12px; }
-            .lab-m2 .lab-seq--m2 .lab-seq-lbl::before { width:8px; height:8px; border-radius:2px; }
+            .lab-m2 .lab-seq--m2 .lab-seq-lbl::before { width:8px; height:8px; border-radius:var(--r-2); }
             .lab-m2 .lab-seq--m2 .lab-seq-steps { gap:3px; }
             .lab-m2 .lab-step { height:44px; border-radius:var(--r-6); }
             .lab-m2-pv { display:none; }
@@ -757,7 +762,10 @@
         .lab-m3-mixscroll { overflow-x:auto; scrollbar-width:thin; margin:-4px; padding:4px; }
         .lab-m3-mixer { display:grid; grid-template-columns:repeat(6, minmax(84px,1fr)) 110px; gap:10px; }
         .lab-m3-strip { min-width:0; display:flex; flex-direction:column; align-items:center; gap:12px; padding:14px 10px; border-radius:var(--r-16); background:var(--bg); border:1px solid var(--line-2); transition:opacity var(--dur), border-color var(--dur); }
-        .lab-m3-strip.is-muted { opacity:.45; border-color:var(--err-line); }
+        .lab-m3-strip.is-muted { border-color:var(--err-line); }
+        /* Sessiz kanal: yalnız metre soluklaşır; MUTE düğmesi ve etiketler 4.5:1 üstünde kalır */
+        .lab-m3-strip.is-muted .lab-m3-meter { opacity:.45; }
+        .lab-m3-strip.is-muted .lab-m3-chname { color:var(--fg-3); }
         .lab-m3-chname { font-family:var(--ff-mono); font-size:var(--fs-micro); letter-spacing:.08em; color:var(--c); white-space:nowrap; }
         .lab-m3-fadrow { display:flex; gap:10px; height:200px; align-items:stretch; }
         .lab-m3-fadrow .lab-sl.is-v { height:100%; min-height:0; }
@@ -1106,7 +1114,11 @@
         .lab-m5-flow-short { display:none; }
         .lab-m5-stages { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; }
         .lab-m5-stage { display:flex; flex-direction:column; gap:12px; min-width:0; padding:16px; border-radius:var(--r-18); background:var(--surface-1); border:1px solid color-mix(in srgb, var(--c) 40%, transparent); cursor:pointer; transition:opacity var(--dur), border-color var(--dur), background var(--dur); }
-        .lab-m5-stage.is-bypassed { background:var(--bg); border-color:var(--line); opacity:.45; }
+        .lab-m5-stage.is-bypassed { background:var(--bg); border-color:var(--line); }
+        /* Bypass: görsel soluklaşır, metin solmaz — okunur renge geçer (--bg üstünde ≥4.5:1) */
+        .lab-m5-stage.is-bypassed .lab-m5-viz { opacity:.45; }
+        .lab-m5-stage.is-bypassed :is(.lab-m5-stage-lbl, .lab-m5-params li, .lab-m5-tip) { color:var(--fg-faint); }
+        .lab-m5-stage.is-bypassed :is(.lab-m5-stage-name, .lab-m5-params li span:last-child) { color:var(--fg-3); }
         .lab-m5-stage-top { display:flex; justify-content:space-between; align-items:center; gap:8px; }
         .lab-m5-stage-lbl { font-family:var(--ff-mono); font-size:10px; letter-spacing:.12em; color:var(--c-text, var(--c)); }
         .lab-m5-stage .be-switch[aria-checked="true"] { background:var(--c); }
@@ -1116,8 +1128,10 @@
         .lab-m5-viz-line { fill:none; stroke:var(--c); stroke-width:2; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
         .lab-m5-viz-fill { fill:color-mix(in srgb, var(--c) 20%, transparent); }
         .lab-m5-params { list-style:none; display:flex; flex-direction:column; gap:5px; }
-        .lab-m5-params li { display:flex; justify-content:space-between; gap:8px; font-family:var(--ff-mono); font-size:10px; line-height:1.4; color:var(--fg-3); }
-        .lab-m5-params li span:last-child { color:var(--fg); text-align:right; }
+        .lab-m5-params li { display:flex; flex-wrap:wrap; justify-content:space-between; column-gap:8px; row-gap:2px; font-family:var(--ff-mono); font-size:10px; line-height:1.4; color:var(--fg-3); }
+        /* Satır sığmazsa değer bütün hâlde sağa hizalı alt satıra iner (ortadan bölünmez) */
+        .lab-m5-params li span { white-space:nowrap; }
+        .lab-m5-params li span:last-child { margin-left:auto; color:var(--fg); text-align:right; }
         .lab-m5-tip { font-size:12px; line-height:1.5; color:var(--fg-muted); }
 
         /* Araçlar (tek açık akordeon) + sık yapılan hatalar */
@@ -1150,9 +1164,12 @@
         .lab-m5-ref li:nth-child(3)::before { content:"\2462" / ""; }
         .lab-m5-ref li:nth-child(4)::before { content:"\2463" / ""; }
 
+        /* Zincir 4 sütuna yalnız ≥1440'ta sığar (kart ~185px); daha darda 2 sütun */
+        @media (max-width:1439px) {
+            .lab-m5-stages { grid-template-columns:repeat(2, minmax(0,1fr)); }
+        }
         @media (max-width:1279px) {
             html .lab-m5-loud { grid-template-columns:minmax(0,1fr) 220px; gap:20px; }
-            .lab-m5-stages { grid-template-columns:repeat(2, minmax(0,1fr)); }
             .lab-m5-row { grid-template-columns:minmax(0,1fr); }
         }
         @media (max-width:1024px) {
@@ -1262,18 +1279,27 @@ function userDoc() { return _db.collection('users').doc(currentUser.uid); }
 async function loadUserData(uid) {
     try {
         const snap = await _db.collection('users').doc(uid).get();
-        if (!snap.exists) return;
+        // Yerel ilerleme başka bir hesaba aitse (ortak bilgisayar) bu hesaba taşınmaz
+        let owner = '';
+        try { owner = localStorage.getItem('berkay_tasks_owner') || ''; } catch {}
+        const local = (owner === '' || owner === uid) ? (state.completedTasks || {}) : {};
+        if (!snap.exists) {
+            if (local !== state.completedTasks) {
+                state.completedTasks = {};
+                try { localStorage.setItem('berkay_tasks', '{}'); localStorage.setItem('berkay_tasks_owner', uid); } catch {}
+            }
+            return;
+        }
         // Görevler yapışkan: yerel (localStorage) ∪ bulut, 'mid-id' anahtarı bazında (modül modül).
         // Buluttakini ezmek girişten önce yapılan yerel ilerlemeyi siliyordu.
         const cloud = snap.data().progress || {};
-        const local = state.completedTasks || {};
         const merged = Object.assign({}, cloud);
         let cloudLacks = false;
         Object.keys(local).forEach(k => { if (local[k] && !cloud[k]) { merged[k] = true; cloudLacks = true; } });
         state.completedTasks = merged;
         // Bulutta eksik görev varsa bir kez geri yaz (localStorage + ~1 sn toplu Firestore); yoksa yalnız yerel kopya
         if (cloudLacks) labPersistTasks(true);
-        else { try { localStorage.setItem('berkay_tasks', JSON.stringify(merged)); } catch {} }
+        else { try { localStorage.setItem('berkay_tasks', JSON.stringify(merged)); localStorage.setItem('berkay_tasks_owner', uid); } catch {} }
         // Açık modül yeniden kurulmaz (çalan ses durur): çağıran (onAuthStateChanged) labRefreshProgress() ile
         // paneller/sayaçlar yerinde tazelenir.
     } catch(e) { console.warn('loadUserData:', e); }
@@ -1385,7 +1411,14 @@ function updateAuthBar() {
 if (_fbReady) {
     window.bkAuth.handleRedirectResult();
 _auth.onAuthStateChanged(async user => {
+        const prevUser = currentUser;
         currentUser = user;
+        // Çıkış: hesabın ilerlemesi bu tarayıcıda kalmaz (sonraki hesaba karışmasın)
+        if (!user && prevUser) {
+            clearTimeout(_labSaveTimer); _labSaveTimer = null;
+            state.completedTasks = {};
+            try { localStorage.removeItem('berkay_tasks'); localStorage.removeItem('berkay_tasks_owner'); } catch {}
+        }
         updateAuthBar();
         if (user) await loadUserData(user.uid);
         // Açık modül yeniden kurulmaz (ses durmasın): kayıt kartları + görev panelleri yerinde tazelenir.
@@ -2129,6 +2162,8 @@ function startOsc(canvas) {
 // ═══════════════════════════════════════════════════════════════════
 // Shared window handlers — attached once
 const _sliders = new Set();
+// Açık görünümün kaydırıcıları: teardownView() hepsini _sliders'tan çıkarır (ayrılmış DOM tutulmaz)
+let _viewSliders = [];
 window.addEventListener('pointermove', e => {
     _sliders.forEach(s => s._move(e));
 }, {passive:true});
@@ -2198,6 +2233,7 @@ function makeSlider({min, max, step, value, onChange, label, vertical, fmt}) {
         el: wrap,
     };
     _sliders.add(obj);
+    _viewSliders.push(obj);
     wrap._sliderObj = obj;
     return wrap;
 }
@@ -2360,7 +2396,10 @@ function getDoneCount(mid) {
 // (otomatik görevler kaydırıcı sürüklenirken art arda tamamlanabilir).
 let _labSaveTimer = null;
 function labPersistTasks(debounced) {
-    try { localStorage.setItem('berkay_tasks', JSON.stringify(state.completedTasks)); } catch {}
+    try {
+        localStorage.setItem('berkay_tasks', JSON.stringify(state.completedTasks));
+        localStorage.setItem('berkay_tasks_owner', currentUser ? currentUser.uid : '');
+    } catch {}
     clearTimeout(_labSaveTimer); _labSaveTimer = null;
     if (debounced) _labSaveTimer = setTimeout(() => { _labSaveTimer = null; saveProgress(); }, 1000);
     else saveProgress(); // sync to cloud if logged in
@@ -3215,6 +3254,8 @@ function teardownView() {
     if (m === 3 && _m3StopAudio) { _m3StopAudio(); _m3StopAudio = null; }
     if (m === 4 && _m4StopAudio) { _m4StopAudio(); _m4StopAudio = null; }
     if (m === 5 && _m5StopAudio) { _m5StopAudio(); _m5StopAudio = null; }
+    _viewSliders.forEach(o => _sliders.delete(o));
+    _viewSliders = [];
 }
 
 // Adresin hash'i: '' → genel bakış, bilinen slug → modül, başka (ör. #labMain atla bağlantısı) → bilinmiyor
@@ -3929,7 +3970,7 @@ function buildBeatGrid(opts = {}) {
     function renderGrid() {
         wrap.innerHTML = '';
         const g = mk('div', 'lab-seq');
-        g.setAttribute('role', 'group'); g.setAttribute('aria-label', 'Step sequencer');
+        g.setAttribute('role', 'group'); g.setAttribute('aria-label', L('lab_m2_seq_aria'));
         g.append(mk('div'));
         const nums = mk('div', 'lab-seq-nums'); nums.setAttribute('aria-hidden', 'true');
         for (let i = 0; i < 16; i++) nums.append(mk('span', '', i % 4 === 0 ? String(i / 4 + 1) : ''));
@@ -3937,8 +3978,8 @@ function buildBeatGrid(opts = {}) {
         BEAT_TRACKS.forEach((track, ti) => {
             const tc = _btc(track);
             const lbl = mk('button', 'lab-seq-lbl', `<span class="lab-long">${track.name}</span><span class="lab-short">${track.short}</span>`);
-            lbl.type = 'button'; lbl.title = 'Önizle';
-            lbl.setAttribute('aria-label', `${track.name} — önizle`);
+            lbl.type = 'button'; lbl.title = L('lab_m2_preview');
+            lbl.setAttribute('aria-label', Lf('lab_m2_preview_aria', { name: track.name }));
             lbl.style.setProperty('--c', tc);
             lbl.onclick = () => { const ctx = getBeatCtx(); synthDrum(ctx, track.file, .7, ctx.currentTime); };
             g.append(lbl);
@@ -5081,8 +5122,9 @@ function m3Audio() {
     A.eq[0].connect(A.eq[1]); A.eq[1].connect(A.eq[2]);
     A.eqOut = ctx.createGain(); A.eqOut.gain.value = 0.28;
     A.eq[2].connect(A.eqOut); A.eqOut.connect(ctx.destination);
-    // Mix bus: kanal (gain → pan) → bus → beatMasterGain; kanal başına + master L/R metre
-    A.bus = ctx.createGain(); A.bus.connect(beatMasterGain || ctx.destination);
+    // Mix bus: kanal (gain → pan) → bus → destination; kanal başına + master L/R metre.
+    // beatMasterGain'e bağlanmaz: beatRestartRun() onu değiştirip eskisini ayırır, önbellekli bus sessiz kalırdı.
+    A.bus = ctx.createGain(); A.bus.connect(ctx.destination);
     const split = ctx.createChannelSplitter(2); A.bus.connect(split);
     const ana = () => { const a = ctx.createAnalyser(); a.fftSize = 512; a.smoothingTimeConstant = 0.3; return a; };
     A.mL = ana(); A.mR = ana(); split.connect(A.mL, 0); split.connect(A.mR, 1);
@@ -5595,7 +5637,8 @@ function m3CardComp() {
 
 // 2 · Sidechain — KICK / BASS / GAIN RED. çubukları; demo: AudioWorklet zarf izleyici (yedek: kazanç rampası)
 const M3_SC_WORKLET = `class SidechainProcessor extends AudioWorkletProcessor{
-  constructor(){super();this._env=0;}
+  constructor(){super();this._env=0;this._alive=true;this._lastGR=-1;
+    this.port.onmessage=e=>{if(e.data==='stop')this._alive=false;};}
   static get parameterDescriptors(){return[
     {name:'depth',defaultValue:.7,minValue:0,maxValue:1,automationRate:'k-rate'},
     {name:'attack',defaultValue:.003,minValue:.001,maxValue:.05,automationRate:'k-rate'},
@@ -5604,6 +5647,7 @@ const M3_SC_WORKLET = `class SidechainProcessor extends AudioWorkletProcessor{
   process(inputs,outputs,params){
     const bL=inputs[0]&&inputs[0][0],bR=inputs[0]&&inputs[0][1],kL=inputs[1]&&inputs[1][0];
     const oL=outputs[0]&&outputs[0][0],oR=outputs[0]&&outputs[0][1];
+    if(!this._alive)return false;
     if(!oL)return true;
     const depth=params.depth[0];
     const atk=Math.exp(-1/(params.attack[0]*sampleRate));
@@ -5617,7 +5661,8 @@ const M3_SC_WORKLET = `class SidechainProcessor extends AudioWorkletProcessor{
       if(oR)oR[i]=(bR?bR[i]:(bL?bL[i]:0))*g;
       sumGR+=(1-g);
     }
-    this.port.postMessage(sumGR/oL.length);
+    const gr=sumGR/oL.length;
+    if(gr!==this._lastGR){this._lastGR=gr;this.port.postMessage(gr);}
     return true;
   }
 }
@@ -5651,6 +5696,8 @@ function m3CardSidechain() {
     function stop() {
         if (!run) return;
         const r = run; run = null; wk = null;
+        // İşlemci durdurulur (process() false döner), yoksa düğüm oturum boyunca çalışmaya devam eder
+        if (r.wk) { try { r.wk.port.postMessage('stop'); r.wk.port.onmessage = null; } catch (_) {} }
         clearTimeout(r.timer); cancelAnimationFrame(r.raf);
         r.srcs.forEach(n => { try { n.stop(); } catch (_) {} });
         r.nodes.forEach(n => { try { n.disconnect(); } catch (_) {} });
@@ -5687,7 +5734,7 @@ function m3CardSidechain() {
         if (useWorklet) {
             wk = new AudioWorkletNode(c, 'sidechain-processor', { numberOfInputs: 2, numberOfOutputs: 1, outputChannelCount: [2] });
             wk.parameters.get('depth').value = depth; wk.parameters.get('release').value = rel;
-            wk.port.onmessage = e => { my.gr = e.data; };
+            wk.port.onmessage = e => { my.gr = e.data; }; my.wk = wk;
             const bIn = c.createGain(); bIn.gain.value = 0.95; bIn.connect(wk, 0, 0);
             kHub.connect(wk, 0, 1);
             wk.connect(bAna); bAna.connect(c.destination);

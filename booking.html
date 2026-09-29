@@ -468,7 +468,7 @@
     .bk-wk-oldnew { display:flex; align-items:center; gap:12px; }
     .bk-wk-slot { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; padding:12px; border-radius:var(--r-12); background:var(--surface-hi); transition:background var(--dur); }
     .bk-wk-slot-k { font-family:var(--ff-mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--fg-3); }
-    .bk-wk-slot-v { font-size:16px; font-weight:700; line-height:1.3; text-transform:uppercase; color:var(--fg-faint); }
+    .bk-wk-slot-v { font-size:16px; font-weight:700; line-height:1.3; text-transform:uppercase; color:var(--fg-3); }
     .bk-wk-slot-v s { color:var(--fg-muted); }
     .bk-wk-slot--new.is-picked { background:var(--accent-soft); }
     .bk-wk-slot--new.is-picked .bk-wk-slot-k, .bk-wk-slot--new.is-picked .bk-wk-slot-v { color:var(--accent); }
@@ -483,7 +483,7 @@
     html .bk-wk-confirm:hover:not(:disabled) { color:var(--accent-ink); box-shadow:var(--shadow-glow); }
     html .bk-wk-confirm:disabled { opacity:1; background:var(--track-2); color:var(--fg-faint); }
     html .bk-wk-cancel { color:var(--fg-muted); }
-    .bk-wk-foot { margin:0; font-size:12px; line-height:1.55; color:var(--fg-faint); }
+    .bk-wk-foot { margin:0; font-size:12px; line-height:1.55; color:var(--fg-3); }
     /* Alt sayfa (≤1024): tek sarmalayıcı (bkDialog kapanınca örtü de gider) */
     html.bk-sheet-open { overflow:hidden; }
     .bk-sheet-wrap { position:fixed; inset:0; z-index:var(--z-modal); }
@@ -2950,7 +2950,7 @@ function bkSelfReschedControl(l, res, { isPaid, isTrial, pendingResch }) {
   const left = bkTrStart(l.date, l.time).getTime() - Date.now();
   if (left < SELF_RESCHED_MIN_MS) {
     btn.disabled = true;
-    btn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-lock"/></svg>${bkT('bk_sc_locked', 'Kilitli · 5 saatten az')}`;
+    btn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-lock"/></svg>${bkT('bk_sc_locked', `Kilitli · 5 saatten az`)}`;
     return btn;
   }
   btn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-clock"/></svg>${bkT('bk_sc_btn', 'Saati değiştir')}`;
@@ -2966,9 +2966,9 @@ function bkSelfReschedControl(l, res, { isPaid, isTrial, pendingResch }) {
 function bkSelfMovedBadge(l) {
   const b = document.createElement('span');
   b.className = 'badge ok';
-  b.innerHTML = `${bkT('bk_wk_badge_moved', 'Taşındı')} <span aria-hidden="true">✓</span>`;
+  b.innerHTML = `${bkT('bk_wk_badge_moved', `Taşındı`)} <span aria-hidden="true">✓</span>`;
   const from = l.self_changed_from;
-  if (from && from.date) b.title = `${bkT('bk_sc_old', 'Eski')}: ${bkSlotLabel(from.date, from.time)}`;
+  if (from && from.date) b.title = `${bkT('bk_sc_old', `Eski`)}: ${bkSlotLabel(from.date, from.time)}`;
   return b;
 }
 
@@ -3061,7 +3061,7 @@ function bkWkNowLabel(compact) {
 }
 // Tasarımdaki dur(): 1 saatin altında M:SS, üstünde "2 g 3 sa 3 dk" (kompakt "2g 3sa 3dk")
 function bkDurLive(ms, compact) {
-  if (ms <= 0) return bkT('bk_wk_zero', '0 dk');
+  if (ms <= 0) return bkT('bk_wk_zero', `0 dk`);
   const sec = Math.floor(ms / 1000);
   if (sec < 3600) return `${Math.floor(sec / 60)}:${bkPad2(sec % 60)}`;
   const mins = Math.floor(sec / 60);
@@ -3106,16 +3106,16 @@ function bkWkState(l, now, ctx) {
   return s;
 }
 function bkWkLabels(s, compact) {
-  const leftTxt = ms => bkT('bk_wk_left', '{d} kaldı').replace('{d}', bkDurLive(ms, compact));
+  const leftTxt = ms => bkT('bk_wk_left', `{d} kaldı`).replace('{d}', bkDurLive(ms, compact));
   let left, lock;
   if (s.kind === 'done' || s.kind === 'past') {
-    left = s.left > 0 ? leftTxt(s.left) : bkT('bk_wk_past', 'Ders zamanı geçti');
-    lock = '—';
+    left = s.left > 0 ? leftTxt(s.left) : bkT('bk_wk_past', `Ders zamanı geçti`);
+    lock = `—`;
   } else {
     left = leftTxt(s.left);
-    lock = s.kind === 'locked' ? bkT('bk_wk_badge_locked', 'Kilitli').toLocaleUpperCase(bkIsEn() ? 'en' : 'tr')
-      : (s.kind === 'frozen' || s.kind === 'cancelreq') ? '—'
-      : bkT('bk_wk_lock_in', 'kilide {d}').replace('{d}', bkDurLive(s.toLock, compact));
+    lock = s.kind === 'locked' ? bkT('bk_wk_badge_locked', `Kilitli`).toLocaleUpperCase(bkIsEn() ? 'en' : 'tr')
+      : (s.kind === 'frozen' || s.kind === 'cancelreq') ? `—`
+      : bkT('bk_wk_lock_in', `kilide {d}`).replace('{d}', bkDurLive(s.toLock, compact));
   }
   const p = (s.kind === 'locked' || s.kind === 'done' || s.kind === 'past') ? 1 : Math.max(.04, Math.min(1, s.toLock / (48 * 3600e3)));
   return { left, lock, p };
@@ -3129,19 +3129,19 @@ function bkWkBtnSpec(l, s, open, compact) {
   switch (s.kind) {
     case 'ok': case 'soon':
       return open && !compact
-        ? { cls: 'btn-primary', dis: false, html: `${bkT('bk_wk_btn_open', 'Seçim açık')} <span aria-hidden="true">↓</span>` }
-        : { cls: 'btn-light', dis: false, html: bkT('bk_sc_btn', 'Saati değiştir') };
+        ? { cls: 'btn-primary', dis: false, html: `${bkT('bk_wk_btn_open', `Seçim açık`)} <span aria-hidden="true">↓</span>` }
+        : { cls: 'btn-light', dis: false, html: bkT('bk_sc_btn', `Saati değiştir`) };
     case 'locked':
-      return { cls: 'btn-subtle', dis: true, html: `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-lock"/></svg>${bkT('bk_sc_locked', 'Kilitli · 5 saatten az')}` };
+      return { cls: 'btn-subtle', dis: true, html: `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-lock"/></svg>${bkT('bk_sc_locked', `Kilitli · 5 saatten az`)}` };
     case 'moved': {
       const f = l.self_changed_from;
-      const old = f && f.date ? `${bkT('bk_sc_old', 'Eski')}: ${bkSlotLabel(f.date, f.time)}` : '';
-      return { cls: 'btn-subtle', dis: true, title: old, html: `${bkT('bk_wk_btn_moved', 'Bir kez taşındı')}${old ? `<span class="sr-only"> · ${escHtml(old)}</span>` : ''}` };
+      const old = f && f.date ? `${bkT('bk_sc_old', `Eski`)}: ${bkSlotLabel(f.date, f.time)}` : '';
+      return { cls: 'btn-subtle', dis: true, title: old, html: `${bkT('bk_wk_btn_moved', `Bir kez taşındı`)}${old ? `<span class="sr-only"> · ${escHtml(old)}</span>` : ''}` };
     }
     case 'resched': case 'unpaid':
-      return { cls: 'btn-subtle', dis: true, html: bkT('bk_sc_btn', 'Saati değiştir'), reason: s.kind === 'unpaid' };
+      return { cls: 'btn-subtle', dis: true, html: bkT('bk_sc_btn', `Saati değiştir`), reason: s.kind === 'unpaid' };
     case 'done':
-      return { cls: 'btn-subtle', dis: true, html: bkT('bk_wk_badge_done', 'Tamamlandı') };
+      return { cls: 'btn-subtle', dis: true, html: bkT('bk_wk_badge_done', `Tamamlandı`) };
     default: return null;
   }
 }
@@ -3153,7 +3153,7 @@ function bkWkCardEl(l) {
   li.dataset.key = bkWkKey(l);
   li.innerHTML = `
     <div class="bk-wk-top"><span class="bk-wk-day" tabindex="-1"></span><span class="bk-wk-badge"></span></div>
-    <div class="bk-wk-timerow"><span class="bk-wk-time">${escHtml(l.time)}</span><span class="bk-wk-dur">${bkT('bk_wk_dur_online', '60 dk · Online')}</span></div>
+    <div class="bk-wk-timerow"><span class="bk-wk-time">${escHtml(l.time)}</span><span class="bk-wk-dur">${bkT('bk_wk_dur_online', `60 dk · Online`)}</span></div>
     <div class="bk-wk-metawrap">
       <div class="bk-wk-meta"><span class="bk-wk-left"></span><span class="bk-wk-lock"></span></div>
       <div class="bk-wk-bar" aria-hidden="true"><i></i></div>
@@ -3236,9 +3236,9 @@ function bkWkRender(res, ctx) {
   const tz = bkTzDiffers();
   document.querySelectorAll('.bk-tz-note').forEach(el => { el.hidden = !tz; });
   const grid = document.getElementById('bkWkGrid');
-  grid.setAttribute('aria-label', bkT('bk_wk_list_aria', 'Bu haftaki derslerin'));
+  grid.setAttribute('aria-label', bkT('bk_wk_list_aria', `Bu haftaki derslerin`));
   document.getElementById('bkWkEmpty').hidden = lessons.length > 0;
-  sec.querySelector('.bk-wk-now')?.setAttribute('title', bkT('bk_wk_tz', 'İstanbul saati'));
+  sec.querySelector('.bk-wk-now')?.setAttribute('title', bkT('bk_wk_tz', `İstanbul saati`));
   grid.hidden = lessons.length === 0;
   const side = document.getElementById('bkWkSide');
   if (side) side.hidden = lessons.length === 0;
@@ -3318,7 +3318,7 @@ function bkWkTick() {
   Object.values(_bkWkCards).forEach(c => { if (bkWkPaintCard(c, now, compact) === 'unpaid') unpaid = true; });
   Object.values(_bkWkSide).forEach(r => bkWkPaintSide(r, now));
   const reason = document.getElementById('bkWkReason');
-  if (reason) { reason.hidden = !unpaid; bkSetText(reason, bkT('bk_sc_pay', 'Ödeme onaylanmadan ders saati değiştirilemez.')); }
+  if (reason) { reason.hidden = !unpaid; bkSetText(reason, bkT('bk_sc_pay', `Ödeme onaylanmadan ders saati değiştirilemez.`)); }
   if (_bkWkUI) {
     // kilitte açık kalır (1. kontrol düşer); ders başladıysa seçici kapanır
     const ol = bkWkFindLesson(_bkWkOpenKey), os = ol && bkWkState(ol, now, _bkWkCtx);
@@ -3350,19 +3350,19 @@ function bkWkData(key) { return _bkWkWeekData && _bkWkWeekData.key === key ? _bk
 function bkWkBuildPicker(lesson, compact) {
   const root = document.createElement('div');
   root.className = 'bk-wk-picker' + (compact ? ' is-compact' : '');
-  const tzS = bkTzDiffers() ? ` · ${bkT('bk_wk_tz_short', 'TSİ')}` : '';
+  const tzS = bkTzDiffers() ? ` · ${bkT('bk_wk_tz_short', `TSİ`)}` : '';
   const legend = `<div class="bk-sc-legend" aria-hidden="true">
-      <span><i class="bk-sc-sw is-free"></i>${bkT('bk_avail_free', 'Müsait')}</span>
-      <span><i class="bk-sc-sw is-current"></i>${bkT('bk_sc_current', 'Şu anki dersin')}</span>
-      <span><i class="bk-sc-sw is-soon"></i>${bkT('bk_sc_soon', '5 saatten yakın')}</span>
-      <span><i class="bk-sc-sw is-busy"></i>${bkT('bk_sc_busy', 'Dolu / kapalı')}</span>
+      <span><i class="bk-sc-sw is-free"></i>${bkT('bk_avail_free', `Müsait`)}</span>
+      <span><i class="bk-sc-sw is-current"></i>${bkT('bk_sc_current', `Şu anki dersin`)}</span>
+      <span><i class="bk-sc-sw is-soon"></i>${bkT('bk_sc_soon', `5 saatten yakın`)}</span>
+      <span><i class="bk-sc-sw is-busy"></i>${bkT('bk_sc_busy', `Dolu / kapalı`)}</span>
     </div>`;
   const gbox = `<div class="bk-gbox bk-wk-gbox">
-      <div class="bk-gload">${bkT('bk_avail_loading', 'Müsaitlik yükleniyor…')}</div>
+      <div class="bk-gload">${bkT('bk_avail_loading', `Müsaitlik yükleniyor…`)}</div>
       <div class="bk-gscroll"><table class="bk-grid" hidden></table></div>
       <div class="bk-gfade" aria-hidden="true"></div>
     </div>`;
-  const oldLbl = bkT('bk_sc_old', 'Eski'), newLbl = bkT('bk_sc_new', 'Yeni');
+  const oldLbl = bkT('bk_sc_old', `Eski`), newLbl = bkT('bk_sc_new', `Yeni`);
   const oldnew = `<div class="bk-wk-oldnew">
       <div class="bk-wk-slot"><span class="bk-wk-slot-k" aria-hidden="true">${oldLbl}</span><span class="bk-wk-slot-v"><span class="sr-only">${oldLbl}: </span><s>${bkSlotShort(lesson.date, lesson.time, compact)}</s></span></div>
       <span class="bk-wk-arrow" aria-hidden="true">→</span>
@@ -3380,17 +3380,17 @@ function bkWkBuildPicker(lesson, compact) {
     root.tabIndex = -1;
     root.innerHTML = `
       <div class="bk-wk-pcol">
-        <div class="bk-wk-phead"><span class="bk-wk-plabel" id="bkWkPickLbl">${bkT('bk_wk_pick_label', 'Yeni saat seç · 7 gün × 24 saat')}${tzS}</span>${legend}</div>
+        <div class="bk-wk-phead"><span class="bk-wk-plabel" id="bkWkPickLbl">${bkT('bk_wk_pick_label', `Yeni saat seç · 7 gün × 24 saat`)}${tzS}</span>${legend}</div>
         ${gbox}
       </div>
       <div class="bk-wk-scol">
         <div class="bk-wk-sum">
-          <span class="bk-wk-sum-k">${bkT('bk_wk_sum_label', 'Değişiklik özeti')}</span>
+          <span class="bk-wk-sum-k">${bkT('bk_wk_sum_label', `Değişiklik özeti`)}</span>
           ${oldnew}
           <ul class="bk-wk-checks"></ul>
         </div>
         ${confirm}
-        <button type="button" class="btn btn-subtle btn-sm btn-block bk-wk-cancel">${bkT('bk_sc_cancel', 'Vazgeç')}</button>
+        <button type="button" class="btn btn-subtle btn-sm btn-block bk-wk-cancel">${bkT('bk_sc_cancel', `Vazgeç`)}</button>
         <p class="bk-wk-foot">${bkT('bk_sc_foot', `Berkay Er'e otomatik WhatsApp + e-posta bildirimi gider; onay gerekmez. Dersine 5 saatten az kaldıysa değişiklik kilitlenir — o durumda erteleme kuralları geçerlidir.`)}</p>
         ${status}
       </div>`;
@@ -3440,7 +3440,7 @@ function bkWkBuildGrid(ui, initialScroll) {
     });
   });
   table.setAttribute('role', 'radiogroup');
-  table.setAttribute('aria-label', bkT('bk_sc_title', 'Ders saatini değiştir'));
+  table.setAttribute('aria-label', bkT('bk_sc_title', `Ders saatini değiştir`));
   table.onclick = e => {
     const cell = e.target.closest && e.target.closest('.av-cell');
     if (cell && cell.getAttribute('aria-disabled') !== 'true') bkWkPickCell(ui, cell);
@@ -3484,8 +3484,8 @@ function bkWkPaintCells(ui, now) {
   if (!data) return;
   const pk = _bkWkPick ? bkWkKey(_bkWkPick) : null;
   const T = {
-    current: bkT('bk_sc_current', 'Şu anki dersin'), soon: bkT('bk_wk_cell_soon', '5 saatten yakın veya geçmiş'),
-    busy: bkT('bk_avail_busy', 'Dolu'), free: bkT('bk_avail_free', 'Müsait'), selected: bkT('bk_avail_sel', 'Seçili'),
+    current: bkT('bk_sc_current', `Şu anki dersin`), soon: bkT('bk_wk_cell_soon', `5 saatten yakın veya geçmiş`),
+    busy: bkT('bk_avail_busy', `Dolu`), free: bkT('bk_avail_free', `Müsait`), selected: bkT('bk_avail_sel', `Seçili`),
   };
   ui.cells.forEach(cell => {
     const date = cell.dataset.date, time = cell.dataset.time;
@@ -3498,8 +3498,8 @@ function bkWkPaintCells(ui, now) {
     cell._bkMark = mark;
     cell.dataset.st = vis;
     cell.className = 'av-cell ' + { current: 'is-current', soon: 'is-soon', busy: 'busy', free: 'free', selected: 'selected' }[vis];
-    cell.innerHTML = vis === 'current' ? `<span aria-hidden="true">${ui.compact ? '●' : bkT('bk_wk_cell_now', 'Şu an')}</span>`
-      : vis === 'soon' ? '<span aria-hidden="true">—</span>' : vis === 'selected' ? '<span aria-hidden="true">✓</span>' : '';
+    cell.innerHTML = vis === 'current' ? `<span aria-hidden="true">${ui.compact ? '●' : bkT('bk_wk_cell_now', `Şu an`)}</span>`
+      : vis === 'soon' ? `<span aria-hidden="true">—</span>` : vis === 'selected' ? '<span aria-hidden="true">✓</span>' : '';
     cell.title = T[vis];
     cell.setAttribute('aria-label', `${bkSlotLabel(date, time)} · ${T[vis]}`);
     cell.setAttribute('aria-checked', sel ? 'true' : 'false');
@@ -3527,24 +3527,24 @@ function bkWkPaintPicker(now) {
   bkWkPaintCells(ui, now);
   const k = bkWkChecks(ui, now);
   const items = [
-    [k.c1, (compact ? bkT('bk_wk_chk_lesson_m', 'Dersine {d} var (min. 5 sa)') : bkT('bk_sc_chk_lesson', 'Dersine {d} var (en az 5 saat)')).replace('{d}', bkDurLive(Math.max(0, k.lessonLeft), compact))],
+    [k.c1, (compact ? bkT('bk_wk_chk_lesson_m', `Dersine {d} var (min. 5 sa)`) : bkT('bk_sc_chk_lesson', `Dersine {d} var (en az 5 saat)`)).replace('{d}', bkDurLive(Math.max(0, k.lessonLeft), compact))],
     [k.c2, pk
-      ? (compact ? bkT('bk_wk_chk_new_m', 'Yeni saat {d} sonra (min. 5 sa)') : bkT('bk_sc_chk_new', 'Yeni saat {d} sonra (en az 5 saat)')).replace('{d}', bkDurLive(Math.max(0, k.pickLeft), compact))
-      : (compact ? bkT('bk_wk_chk_new_empty_m', 'Yeni saat en az 5 saat sonra') : bkT('bk_sc_chk_new_empty', 'Yeni saat en az 5 saat sonra olmalı'))],
-    [k.c3, bkT('bk_sc_chk_free', 'Seçilen saat müsait')],
-    [true, compact ? bkT('bk_wk_chk_week_m', 'Aynı hafta · bu dersin tek değişikliği') : bkT('bk_sc_chk_week', 'Aynı hafta içinde · bu dersin tek değişikliği')],
+      ? (compact ? bkT('bk_wk_chk_new_m', `Yeni saat {d} sonra (min. 5 sa)`) : bkT('bk_sc_chk_new', `Yeni saat {d} sonra (en az 5 saat)`)).replace('{d}', bkDurLive(Math.max(0, k.pickLeft), compact))
+      : (compact ? bkT('bk_wk_chk_new_empty_m', `Yeni saat en az 5 saat sonra`) : bkT('bk_sc_chk_new_empty', `Yeni saat en az 5 saat sonra olmalı`))],
+    [k.c3, bkT('bk_sc_chk_free', `Seçilen saat müsait`)],
+    [true, compact ? bkT('bk_wk_chk_week_m', `Aynı hafta · bu dersin tek değişikliği`) : bkT('bk_sc_chk_week', `Aynı hafta içinde · bu dersin tek değişikliği`)],
   ];
-  const okT = bkT('bk_wk_chk_ok', 'tamam'), noT = bkT('bk_wk_chk_no', 'eksik');
+  const okT = bkT('bk_wk_chk_ok', `tamam`), noT = bkT('bk_wk_chk_no', `eksik`);
   bkSetHtml(ui.checks, items.map(([ok, txt]) =>
     `<li class="${ok ? 'is-ok' : ''}"><span class="bk-wk-dot" aria-hidden="true">${ok ? '✓' : '•'}</span><span>${escHtml(txt)}<span class="sr-only"> (${ok ? okT : noT})</span></span></li>`).join(''));
-  bkSetText(ui.newV, pk ? bkSlotShort(pk.date, pk.time, compact) : (compact ? bkT('bk_wk_new_ph_m', 'Seç') : bkT('bk_wk_new_ph', 'Takvimden seç')));
+  bkSetText(ui.newV, pk ? bkSlotShort(pk.date, pk.time, compact) : (compact ? bkT('bk_wk_new_ph_m', `Seç`) : bkT('bk_wk_new_ph', `Takvimden seç`)));
   ui.newBox.classList.toggle('is-picked', !!pk);
   ui.confirm.disabled = ui.busy || !k.can;
-  bkSetText(ui.confirm, ui.busy ? bkT('bk_sc_saving', 'Kaydediliyor…') : compact ? bkT('bk_wk_confirm_m', 'Onayla — anında uygulanır') : bkT('bk_sc_confirm', 'Değişikliği onayla — anında uygulanır'));
+  bkSetText(ui.confirm, ui.busy ? bkT('bk_sc_saving', `Kaydediliyor…`) : compact ? bkT('bk_wk_confirm_m', `Onayla — anında uygulanır`) : bkT('bk_sc_confirm', `Değişikliği onayla — anında uygulanır`));
   // Tek canlı bölge: onaylanabilirlik ya da ders kilidi değişince bir kez duyurulur
   const locked = !k.c1;
-  if (ui.lockPrev === false && locked) bkSetText(ui.pstatus, bkT('bk_sc_locked', 'Kilitli · 5 saatten az'));
-  else if (ui.canPrev === false && k.can) bkSetText(ui.pstatus, bkT('bk_wk_ready', 'Değişiklik onaylanabilir.'));
+  if (ui.lockPrev === false && locked) bkSetText(ui.pstatus, bkT('bk_sc_locked', `Kilitli · 5 saatten az`));
+  else if (ui.canPrev === false && k.can) bkSetText(ui.pstatus, bkT('bk_wk_ready', `Değişiklik onaylanabilir.`));
   ui.lockPrev = locked; ui.canPrev = k.can;
 }
 function bkWkMountInline(ui, animate) {
@@ -3561,8 +3561,8 @@ function bkWkMountSheet(ui) {
     <div class="bk-sheet"><div class="bk-sheet-in">
       <span class="bk-sheet-grab" aria-hidden="true"></span>
       <div class="bk-sheet-head">
-        <h2 class="bk-sheet-h" id="bkSheetH">${bkT('bk_wk_sheet_title', 'Yeni saat seç')}</h2>
-        <button type="button" class="btn btn-icon btn-subtle bk-sheet-close" aria-label="${escHtml(bkT('bk_pt_close', 'Kapat'))}"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-x"/></svg></button>
+        <h2 class="bk-sheet-h" id="bkSheetH">${bkT('bk_wk_sheet_title', `Yeni saat seç`)}</h2>
+        <button type="button" class="btn btn-icon btn-subtle bk-sheet-close" aria-label="${escHtml(bkT('bk_pt_close', `Kapat`))}"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-x"/></svg></button>
       </div>
     </div></div>`;
   wrap.querySelector('.bk-sheet-in').append(ui.root);
@@ -3609,7 +3609,7 @@ async function bkWkLoad(ui, initialScroll) {
   } catch (e) {
     if (seq !== _bkWkLoadSeq || _bkWkUI !== ui) return;
     const c = errId();
-    toast(`${bkT('bk_avail_load_err', 'Müsaitlik yüklenemedi').replace(/:\s*$/, '')} (${c}): ${e.message || e.code}`, true);
+    toast(`${bkT('bk_avail_load_err', `Müsaitlik yüklenemedi`).replace(/:\s*$/, '')} (${c}): ${e.message || e.code}`, true);
     bkWkClose();
   }
 }
@@ -3647,8 +3647,8 @@ function bkWkRemount() {
     // alt sayfa açık kalır, yalnız içerik yenilenir
     old.root.replaceWith(ui.root);
     ui.wrap = old.wrap; ui.dlgClose = old.dlgClose;
-    bkSetText(old.wrap.querySelector('#bkSheetH'), bkT('bk_wk_sheet_title', 'Yeni saat seç'));
-    old.wrap.querySelector('.bk-sheet-close')?.setAttribute('aria-label', bkT('bk_pt_close', 'Kapat'));
+    bkSetText(old.wrap.querySelector('#bkSheetH'), bkT('bk_wk_sheet_title', `Yeni saat seç`));
+    old.wrap.querySelector('.bk-sheet-close')?.setAttribute('aria-label', bkT('bk_pt_close', `Kapat`));
   } else {
     if (old.compact) { if (old.dlgClose) old.dlgClose(); document.documentElement.classList.remove('bk-sheet-open'); }
     else old.root.remove();
@@ -3684,7 +3684,7 @@ async function bkWkConfirm() {
   } catch (e) {
     const c = errId();
     const msg = e.message || e.code || '';
-    toast(`${bkT('bk_sc_err', 'Saat değiştirilemedi')} (${c}): ${msg}`, true);
+    toast(`${bkT('bk_sc_err', `Saat değiştirilemedi`)} (${c}): ${msg}`, true);
     if (_bkWkUI !== ui) return;
     ui.busy = false;
     if (/dolu|taken/i.test(msg)) {
@@ -3709,7 +3709,7 @@ function bkWkRenderDone(announce) {
   slot.innerHTML = `<div class="be-callout be-callout--ok bk-wk-ok${announce ? ' be-pop-in' : ''}">
       <span class="bk-wk-ok-ic" aria-hidden="true"><svg class="icon"><use href="/assets/img/icons.svg#i-check"/></svg></span>
       <p class="bk-wk-ok-t"><span class="bk-wk-d">${escHtml(full)}</span><span class="bk-wk-m">${escHtml(txt('bk_wk_done_m', `Dersin {from} → {to} taşındı. Berkay Er'e bildirim gitti — onay gerekmez.`, true))}</span></p>
-      <button type="button" class="btn btn-icon btn-sm bk-wk-ok-x" aria-label="${escHtml(bkT('bk_pt_close', 'Kapat'))}"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-x"/></svg></button>
+      <button type="button" class="btn btn-icon btn-sm bk-wk-ok-x" aria-label="${escHtml(bkT('bk_pt_close', `Kapat`))}"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-x"/></svg></button>
     </div>`;
   slot.querySelector('.bk-wk-ok-x').onclick = () => {
     _bkWkDone = null; slot.innerHTML = '';
@@ -5626,7 +5626,7 @@ async function renderDashboard() {
             go.type = 'button';
             go.className = 'btn-link bk-wk-rowlink';
             go.dataset.wkRow = l.date + '_' + l.time;
-            go.innerHTML = `${bkT('bk_wk_link', 'Saat değiştir')} <span aria-hidden="true">↑</span>`;
+            go.innerHTML = `${bkT('bk_wk_link', `Saat değiştir`)} <span aria-hidden="true">↑</span>`;
             go.onclick = () => bkWkGoTo(l.date + '_' + l.time);
             acts.append(go);
           }
