@@ -970,10 +970,12 @@
         .m2-cell.on::after { display:none; }
         .m2-cell.on { border-color:color-mix(in srgb, var(--c) 40%, transparent); }
         .m2-cell-f { position:absolute; left:3px; right:3px; bottom:3px; height:calc((100% - 6px) * var(--vel, 0) / 100); border-radius:var(--r-2); background:var(--c); opacity:calc(.35 + var(--vel, 0) / 160); pointer-events:none; }
-        .m2-cell-n { position:absolute; top:3px; left:0; right:0; font-family:var(--ff-mono); font-size:8px; line-height:1.2; text-align:center; color:var(--fg-muted); pointer-events:none; }
+        .m2-cell-n { position:absolute; top:3px; left:0; right:0; font-family:var(--ff-mono); font-size:8px; line-height:1.2; width:max-content; margin:0 auto; padding:0 2px; border-radius:var(--r-2); text-align:center; color:var(--fg-muted); background:var(--bg); pointer-events:none; }
         .m2-cell.is-now { border-color:var(--m2-now-line); background:var(--track); }
         .m2-cell.is-now.on { background:var(--c); box-shadow:0 0 16px var(--c); }
-        .m2-cell.hi .m2-cell-n, .m2-cell.is-now.on .m2-cell-n { color:var(--bg); }
+        /* Rakam kendi koyu zemininde (dolgu üst kenarı rakamın ortasından geçse de okunur, ≥4.5:1);
+           dolgu rakamı tamamen örttüğünde (vel ≥ 98, .hi) ya da çalan sütunda zeminsiz koyu rakam */
+        .m2-cell.hi .m2-cell-n, .m2-cell.is-now.on .m2-cell-n { color:var(--bg); background:none; }
 
         /* Sound editor: sekmeler + kaynak + zincir · zarf ekranı · parametreler */
         .m2-ed { display:grid; grid-template-columns:250px 560px minmax(0,1fr); gap:16px; padding:16px; background:var(--surface-1); border-top:1px solid var(--line-div); }
@@ -1051,7 +1053,7 @@
             .m2-row { display:flex; align-items:center; gap:4px; }
             .m2-strip { display:contents; }
             .m2-pad, .m2-cap--ch { order:0; position:sticky; left:0; z-index:2; flex-shrink:0; width:96px; }
-            .m2-cap--ch { align-self:stretch; display:block; padding-top:10px; overflow:hidden; text-overflow:ellipsis; background:var(--surface-0); }
+            .m2-cap--ch { align-self:stretch; display:block; padding-top:4px; white-space:normal; line-height:1.4; background:var(--surface-0); }
             .lab-m2 .m2-m, .lab-m2 .m2-s, .m2-cap--ms { order:1; flex-shrink:0; width:44px; }
             .lab-m2 .m2-m, .lab-m2 .m2-s { height:44px; }
             .m2-cells { order:3; grid-template-columns:repeat(16, 44px); margin:0 8px; }
@@ -1071,6 +1073,8 @@
             .m2-bar-r { flex-wrap:wrap; gap:8px 12px; }
             .m2-tlwrap { overflow-x:auto; }
             .m2-tl { min-width:560px; }
+            .lab-m2 .m2-disp { overflow-x:auto; }
+            .m2-dsvg { min-width:480px; }
             .m2-cards { grid-template-columns:minmax(0,1fr); }
         }
         /* ═══ /LAB M2 ═══ */
@@ -2232,7 +2236,7 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
 // state.beatVolumes (VOL 0–100), state.bpm, state.swing, synthDrum(ctx, fileOrIndex, v 0..1, when, dest?),
 // beatRouteTo(node) / beatRouteDefault() (yalnız beatOut yeniden bağlanır; metreler çalışmaya devam eder).
 // Kalıcı graf (getBeatCtx içinde bir kez):
-//   trackGain[i] (VOL · mute/solo) → StereoPanner[i] (PAN) → beatMasterGain (MASTER · güç) → beatOut (1) → destination
+//   trackGain[i] (VOL/100 × 0.7 pay · mute/solo) → StereoPanner[i] (PAN) → beatMasterGain (MASTER · güç) → beatOut (1) → destination
 //   beatMasterGain → ChannelSplitter(2) → analyserL / analyserR (metreler, fftSize 512)
 // Vuruş başına (stop() sonrası çöp toplanır): kaynak (osc / 1 sn gürültü / sample) → [filtre] → zarf → trackGain[i].
 // beatMasterGain bağlam yaşadıkça DEĞİŞTİRİLMEZ (eski beatRestartRun ana kazanç değiş-tokuşu kaldırıldı).
@@ -2275,10 +2279,13 @@ function beatAdopt() { const B = state.beat; if (Array.isArray(state.beatPattern
 function beatSetPreset(name) { state.beat.preset = name || null; state.beatStyle = name || null; }
 
 function beatMasterLevel() { const B = state.beat; return B.power ? Math.max(0, Math.min(100, +B.master || 0)) / 100 : 0; }
-// Kanal kazancı: mute ya da (bir solo varken solo değilse) → 0, yoksa VOL/100
+// Kanal kazancı: mute ya da (bir solo varken solo değilse) → 0, yoksa VOL/100 × BEAT_HEADROOM.
+// Sabit −3 dB pay: 5 iz aynı anda vurunca (varsayılan House, MASTER 80) toplam 0 dBFS'i aşıp kırpmasın;
+// metreler beatMasterGain'den okuduğu için payı da gösterir.
+const BEAT_HEADROOM = 0.7;
 function beatTrackGain(i) {
     const T = state.beat.tracks, t = T[i], solo = T.some(x => x.solo);
-    return t.mute || (solo && !t.solo) ? 0 : Math.max(0, Math.min(100, +state.beatVolumes[i] || 0)) / 100;
+    return t.mute || (solo && !t.solo) ? 0 : Math.max(0, Math.min(100, +state.beatVolumes[i] || 0)) / 100 * BEAT_HEADROOM;
 }
 // Kalıcı düğümleri state'e eşitle — yalnız değişen parametre, setTargetAtTime ile (tıkırtısız).
 // Zamanlayıcı her turda da çağırır: Genel bakış / Mixing state.beatVolumes'u doğrudan yazar.
@@ -2575,7 +2582,8 @@ function beatUiLoop() {
     if (st != null && beatPlaying) highlightStep(st);
     if (beatUiHook && beatUiHook.frame) { try { beatUiHook.frame(pn); } catch (e) { console.warn('[lab] beat ui:', e); } }
     if (beatPlaying || beatVoices > 0) beatUiUntil = pn + 2200;
-    if (pn < beatUiUntil) beatUiRaf = requestAnimationFrame(beatUiLoop);
+    // Durmuşken açık Beat görünümü yoksa metre kuyruğunu bekleme (görünümden çıkınca döngü hemen biter)
+    if (pn < beatUiUntil && (beatPlaying || beatUiHook)) beatUiRaf = requestAnimationFrame(beatUiLoop);
 }
 
 // Çalan adımı işaretle: Genel bakış ızgarası (16 hücre, 32'de adım % 16) + playhead, kanal metreleri,
@@ -5732,6 +5740,10 @@ const M2_TASK_IDS = [1, 2, 3, 6, 5];
 TASKS[2] = M2_TASK_IDS.map(id => ({ id, get text() { return L('lab_m2_task_' + id); } }));
 Object.assign(LAB_TXT, {
     // Modül 2 · Beat Maker metinleri: anahtar: [`TR`, `EN`],
+    // Başlık açıklaması (kabuktaki lab_mdesc_2'yi bu blok geçersiz kılar): tasarımın cümle yapısı, ama kaynak
+    // varsayılanı SAMPLE olduğu için "tamamen sentezlenmiş" yerine SAMPLE | SYNTH
+    lab_mdesc_2:        [`5 kanallı drum sequencer — her kanal wav sample ya da tamamen sentezlenmiş ses çalar (SAMPLE | SYNTH). Hücreye tıkla: velocity 100 → 70 → 40 → kapalı. Knob'ları yukarı/aşağı sürükle (Shift = ince, çift tık = varsayılan, tekerlek = adım adım).`,
+                         `A 5-track drum sequencer — every track plays a wav sample or a fully synthesised sound (SAMPLE | SYNTH). Click a cell: velocity 100 → 70 → 40 → off. Drag the knobs up and down (Shift = fine, double-click = default, wheel = step by step).`],
     lab_m2_task_1:      [`4/4 kick paterni: Kick satırında 1., 5., 9. ve 13. kutulara tıkla`, `4/4 kick pattern: click boxes 1, 5, 9 and 13 in the Kick row`],
     lab_m2_task_2:      [`Backbeat snare: Snare satırında yalnızca 5. ve 13. kutulara bas`, `Backbeat snare: hit only boxes 5 and 13 in the Snare row`],
     lab_m2_task_3:      [`Close Hat’e 16 kutunun tamamını doldur`, `Fill all 16 boxes of the Close Hat row`],
@@ -5941,9 +5953,11 @@ function buildBeatGrid(opts = {}) {
     return { el: wrap, render: renderGrid, destroy() { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); } };
 }
 
+let _m2Edited = false;   // öğrenci aktif pattern'de bir hücreyi kendisi değiştirdi mi (bkz. m2CheckTasks)
 // Tarz şablonu → aktif slot (pattern'ler GENRE_TEMPLATES'ten birebir; 32 adımda ikiye katlanır) + BPM.
 // Swing değişmez. Çalarken yeniden başlatma yok: zamanlayıcı sonraki adımı yeni pattern'den okur.
 function loadGenreTemplate(g) {
+    _m2Edited = false;                            // hazır pattern: ızgara görevleri öğrenci düzenleyene dek bekler
     const len = state.beat.len;
     state.beat.slots[state.beat.slot] = g.patterns.map(r => len === 32 ? r.concat(r) : r.slice());
     beatBindActive();
@@ -5993,6 +6007,7 @@ function m2Snap() {
 }
 function m2Restore(o) {
     if (!o || !Array.isArray(o.slots)) return;
+    _m2Edited = false;
     const B = state.beat;
     B.len = o.len === 32 ? 32 : 16;
     B.slots = [0, 1, 2, 3].map(k => o.slots[k] ? beatPatternsFrom(o.slots[k], B.len) : beatEmpty(B.len));
@@ -6035,10 +6050,19 @@ function m2TaskState() {
         state.swing >= 30 && state.beat.preset === 'Boom Bap',
     ];
 }
-function m2CheckTasks() { m2TaskState().forEach((ok, i) => { if (ok) completeTask(2, M2_TASK_IDS[i]); }); }
+// Izgara görevleri (TASKS[2] 0–3) yalnız öğrenci bir hücreyi kendisi değiştirdikten sonra değerlendirilir
+// (tasarım: s.edited && auto[i]) — hazır House / şablon / geri alma / kayıt yükleme tamamlamaz.
+// _m2Edited: setCell · sürükleme sonu · ↑/↓ (edited()) açar; şablon, INIT, m2Restore ve kayıt yükleme kapatır.
+// Görev 5 (swing ≥30 + Boom Bap) ızgaraya bakmaz, her yoldan değerlendirilir. Tamamlanan görev yapışkandır.
+function m2CheckTasks(grid) {
+    m2TaskState().forEach((ok, i) => { if (ok && (i === 4 || (grid && _m2Edited))) completeTask(2, M2_TASK_IDS[i]); });
+}
 // Hücre tık döngüsü 0 → 100 → 70 → 40 → 0. Şablon / sürükleme değerleri (90, 65, 55…) bir alt basamağa iner.
 function m2NextVel(v) { return !(v > 0) ? 100 : v > 70 ? 70 : v > 40 ? 40 : 0; }
 
+// Tablo yüzdeleri dile göre: TR "%0–60" · EN "0–60%" (yalnız Aralık / Varsayılan sütunları; kod sütunu olduğu gibi)
+function m2Pct(t) { return labLang() === 'en' ? String(t).replace(/%(\d+(?:[–-]\d+)?)/g, '$1%') : t; }
+function m2PctRows(rows) { return rows.map(r => r.map((c, k) => k === 1 || k === 2 ? m2Pct(c) : c)); }
 // howItWorks kartının gövdesi yalnız öğe alır → kitin steps/table bloğunu tek başına üretip karta taşı
 function m2KitBlock(block) { return howItWorks({ bare: true, kicker: false, title: ' ', blocks: [Object.assign({ ref: 'x' }, block)] }).parts.x; }
 
@@ -6093,7 +6117,7 @@ function renderModule2() {
     const bInit = lpBtn({ text: L('lp_init'), variant: 'danger', title: L('lab_m2_init_t'), onClick: () => {
         push();
         B.slots[B.slot] = beatEmpty(B.len); beatBindActive();
-        beatSetPreset(null); _m2UserName = null;
+        beatSetPreset(null); _m2UserName = null; _m2Edited = false;
         paintPreset(); paintGrid(); paintSlots();
     } });
     const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: L('lp_ab_aria') });
@@ -6453,13 +6477,13 @@ function renderModule2() {
         });
         const steps = m2KitBlock({ steps: [1, 2, 3, 4, 5, 6, 7, 8].map(n => ({ t: L(`lab_m2_x${n}_t`), d: L(`lab_m2_x${n}_d`) })), cols: 1 });
         const onoff = L('lab_m2_t_onoff');
-        const table = m2KitBlock({ table: { rows: [
+        const table = m2KitBlock({ table: { rows: m2PctRows([
             ['BPM', '60–200', '125', 'spb = 60 / bpm / 4'],
             ['Swing', '%0–60', '%0', 'when += swing·spb·0.66'],
             ['Velocity', '0·40·70·100', '100', 'env.gain → vel/100'],
             ['TUNE', '−12…+12 st', '0', 'frequency × 2^(st/12)'],
             ['DECAY', '%25–250', '%100', 'env.gain.exponentialRampToValueAtTime(1e-4, t+D)'],
-            ['VOL', '0–100', '90·80·60·55·75', 'trackGain.gain.setTargetAtTime(v/100)'],
+            ['VOL', '0–100', '90·80·60·55·75', 'trackGain.gain.setTargetAtTime(v/100 × 0.7)'],
             ['PAN', 'L100–R100', 'C·C·L15·R20·C', 'StereoPannerNode.pan'],
             ['Mute / Solo', onoff, L('lab_m2_t_off'), 'trackGain.gain → 0'],
             ['Kick START·END·SWEEP', '80–300·30–90 Hz·20–300 ms', '150·45·150', 'osc.frequency.exponentialRampToValueAtTime'],
@@ -6468,7 +6492,7 @@ function renderModule2() {
             ['Bass LP·RES·ENV', '100–2k Hz·0.5–15·%0–100', '400·5·40', 'lowpass.frequency ramp / .Q'],
             ['Choke', onoff, L('lab_m2_t_on'), 'ohEnv.gain.cancelAndHoldAtTime + setTargetAtTime(0)'],
             ['MASTER', '0–100', '80', 'masterGain.gain'],
-        ], cols: '130px 128px 96px minmax(0,1fr)' } });
+        ]), cols: '130px 128px 96px minmax(0,1fr)' } });
         return {
             bare: true, cls: 'm2-hiw', title: L('lab_m2_hiw_t'),
             blocks: [
@@ -6513,8 +6537,9 @@ function renderModule2() {
     // ═══ Boyama (yalnız sınıf / metin / öznitelik — DOM yeniden kurulmaz) ═══
     let shownSlot = -1, shownPage = -1, playShown = null, schedShown = null;
     function edited() {
+        _m2Edited = true;                         // öğrenci bir hücreyi kendisi değiştirdi
         beatSetPreset(null);
-        paintPreset(); paintSlots(); m2CheckTasks();
+        paintPreset(); paintSlots(); m2CheckTasks(true);
     }
     function loadTpl(g) {
         push();
@@ -6601,7 +6626,7 @@ function renderModule2() {
         C.vel = vel; C.lang = lg;
         const on = vel > 0;
         C.el.classList.toggle('on', on);
-        C.el.classList.toggle('hi', vel >= 80);
+        C.el.classList.toggle('hi', vel >= 98);        // dolgu rakamı tamamen örtüyor → koyu rakam
         C.el.style.setProperty('--vel', String(vel));
         C.n.textContent = on ? vel : '';
         C.el.setAttribute('aria-pressed', String(on));
