@@ -139,7 +139,7 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 
 Lesson rows themselves are **always admin-only**. If the client tries to modify any other field, the rule will reject the write.
 
-**Kendin değiştir (onaysız saat değişikliği):** "Saati değiştir" butonu `studentSelfReschedule` callable'ını çağırır; kurallar sunucuda uygulanır, `bkSelfReschedControl()` / `openSelfReschedule()` aynılarını gösterir: dersine en az 5 saat olmalı ve yeni saat de en az 5 saat sonra; yeni saat dersin olduğu hafta (Pzt–Paz) içinde; her ders bir kez (`lessons[i].self_changed`, eski saat `self_changed_from`); erteleme hakkı düşmez; ödemesi onaylanmamış planda kapalı (deneme dersi hariç); kapalı gün/saat ve dolu saatler seçilemez (60 dk ders + 30 dk ara, `booked_slots`). Dersin durumu `scheduled`/`rescheduled` kalır; eski `booked_slots` silinip yenisi yazılır. Bekleyen erteleme talebi olan derste kapalı. Saatler İstanbul saati (UTC+3) ile hesaplanır.
+**Kendin değiştir (onaysız saat değişikliği):** panelin üstündeki **"Derslerim · Bu hafta"** bloğu (`section#derslerim`, DersPaneli tasarımı; `bkWkRender()` kartlar + geri sayım, `bkWkBuildPicker()` 7×24 seçici — masaüstünde satır içi, ≤1024'te alt sayfa, `bkScCellState()` hücre durumu, `bkWkOpenFor()`/`bkWkGoTo()` ana listeden açar; ana listede bu haftanın satırları "Saat değiştir ↑", sonraki haftalar "Saati değiştir" ile aynı seçiciyi açar; `/booking#derslerim` bloğa kaydırır) `studentSelfReschedule` callable'ını çağırır; kurallar sunucuda uygulanır, `bkSelfReschedControl()` ile blok aynılarını gösterir (sunucuyu değiştirirsen ikisini de güncelle): dersine en az 5 saat olmalı ve yeni saat de en az 5 saat sonra; yeni saat dersin olduğu hafta (Pzt–Paz) içinde; her ders bir kez (`lessons[i].self_changed`, eski saat `self_changed_from`); erteleme hakkı düşmez; ödemesi onaylanmamış planda kapalı (deneme dersi hariç); kapalı gün/saat ve dolu saatler seçilemez (60 dk ders + 30 dk ara, `booked_slots`). Dersin durumu `scheduled`/`rescheduled` kalır; eski `booked_slots` silinip yenisi yazılır. Bekleyen erteleme talebi olan derste kapalı. Saatler İstanbul saati (UTC+3) ile hesaplanır.
 
 Because of this, the student "↺ Ertele" button does **not** write lessons directly — it creates a `lesson_requests` doc with `type: 'reschedule_request'` (fields: `lesson_date`, `lesson_time`, `new_date`, `from_*`). Admin approves it in "Gelen Talepler", which runs `adminRescheduleLesson` (cascade + credit consumption) and sets the request `accepted` — the existing `notifyStudentOnRequestStatus` trigger then WhatsApps the student.
 
@@ -185,7 +185,7 @@ Design column = screen in the Claude Design canvas (desktop 1440 / mobile `M_*` 
 | new-post.html | /new-post | YeniKonu | `new-post`, back → /forum, no tabs · — | |
 | members.html | /members | Uyeler | `members`, back → /forum · compact | |
 | profile.html | /profile?uid= | Profil | `profile` · — | Profile + chat drawer (DMs, collab requests) |
-| ableton-lab.html | /ableton-lab | Lab | `ableton-lab` · compact | Interactive lab — multiple Web Audio modules |
+| ableton-lab.html | /ableton-lab | Lab · Lab_Synth · Lab_Beat · Lab_Mixing · Lab_Arrangement · Lab_Mastering | `ableton-lab` · compact | Interactive lab — genel bakış + 5 Web Audio modülü, adresler `#synth #beat #mixing #arrangement #mastering` |
 | ders-ableton.html | /ders-ableton | DersAbleton | `ders-ableton`, back → /egitim, no tabs · compact | Lesson content (Drive video facade) |
 | ders-push3.html | /ders-push3 | Push3 | `ders-push3`, back → /egitim, no tabs · — | Push 3 Laboratuvarı — öğretici, Seviye 1/2 ve tarayıcıda çalan Push 3 emülatörü (Wavetable synth); kod assets/js/push3/, sözleşme docs/push3/README.md. Linked from egitim.html curriculum grid |
 | booking.html | /booking | DersPaneli (student) · AdminPaneli (admin) | `booking` · compact (admin hides the shell) | Student lesson panel + admin panel + WhatsApp chat |
@@ -196,16 +196,19 @@ Design column = screen in the Claude Design canvas (desktop 1440 / mobile `M_*` 
 
 Legacy: `site_1.html` (3300+ lines) is orphan content; `/site_1` and `/site_1.html` both 301-redirect to `/ableton-lab`. Do not link to it.
 
-## Ableton Lab synth pattern (`ableton-lab.html`, ~5400 lines)
+## Ableton Lab (`ableton-lab.html`, ~7400 lines)
 
-`renderModule1()` is the Synthesizer module. State lives in a single module-scope `state` object (`state.osc1`, `state.osc2`, `state.sub`, `state.noise`, `state.adsr`, `state.filter`, `state.filterEnv`, `state.lfo`, `state.fx`, `state.activePreset`).
+Tek sayfa, ana script `type="module"` (bu sayfada sorun değil — başka blok değişken paylaşmıyor). **Sözleşme: script'teki "LAB KABUK API" yorum bloğu** — modül gövdeleri yalnız onu kullanır.
 
-Preset application must **not** trigger a full re-render. Pattern:
-- Each section pushes a refresh closure into `m1Refresh = []` during render.
-- `_m1Update()` runs all closures (wrapped in `try/catch`) plus the existing ADSR + filter cutoff/Q sync.
-- Preset clicks call `_m1Update()` instead of `navigate(1)` so scroll, oscilloscope continuity, and any open sub-panel state are preserved.
+- **Adresler:** `MODULE_SLUGS`/`LAB_ROUTES` `{1:'synth',2:'beat',3:'mixing',4:'arrangement',5:'mastering'}`; genel bakış = hash yok. `navigate(mod)` `history.pushState` yapar, `popstate`/`hashchange` dinlenir; `<head>`'deki `data-lab-route` derin bağlantıda hero'nun yanıp sönmesini önler. Diğer modüle link: `labHref`/`labGo`/`labLinkTo` (`navigate` global değil).
+- **Sıra:** `LAB_ORDER = [1,2,3,5,4]` — sekme ve alt ileri/geri şeridi tasarımdaki gibi Synth, Beat, Mixing, Mastering, Arrangement; künyeler MODÜL 04 = Arrangement, 05 = Mastering (numara modül kimliği, sıra değil). Genel bakış 01–05.
+- **Kabuk:** `render()` sekme çubuğu (`#moduleNav.lab-modtabs`, "GÖREV x / N" sayacı), `modNav` alt şerit, `document.title`, h1 odağı ve kaydırmayı yönetir. Gövde `renderModuleN()` sadece `modLayout(N)` kökünü döndürür; kartlar `whereCard`, `savedCard` (preset/beat kayıt listesi), büyük oynat düğmesi `bigPlayBtn`/`setBigPlay`.
+- **Görevler:** `TASKS[n]` + `makeTaskPanel(n, {auto, note})`. Otomatik görevler kalıcıdır (`completeTask`, geri alınmaz); anlamı değişen görev **yeni id** alır (Arrangement 6–10, Mastering 1–5). İlerleme `localStorage['berkay_tasks']` + sahibi `['berkay_tasks_owner']`; girişte bulutla birleşim (union), farklı hesabın yerel ilerlemesi alınmaz, çıkışta sıfırlanır. Giriş/dil değişimi modülü yeniden kurmaz: `labRefreshProgress()` / `labOnRefresh(el, fn)` yerinde tazeler (ses sürer).
+- **Metinler:** modül metinleri `LAB_TXT` içinde (`Object.assign(LAB_TXT, {…})`, her modülün `MODULE N` başlığının altında), `L(key)` önce i18n.js'e bakar. i18n.js'te aynı anahtar varsa o kazanır.
+- **Bölgeler:** her modülün JS'i `// MODULE N — …` başlığının altında, CSS'i sayfa `<style>` sonundaki `/* ═══ LAB MN · … ═══ */` bloğunda, kökü `.lab-mN` kapsamlı. Kabuk CSS'i `LAB KABUK` bloğunda. Mixing kendi neon kanal paletini `.lab-m3` içinde tanımlar; Beat sıcak paleti `:root --lab-*` token'larından.
+- **Ses:** iki bağlam — Synth `synthCtx`, diğer modüller ortak `beatCtx` (`getBeatCtx()`); her modül `_mNStopAudio`'yu atar, `teardownView()` gezinmede çağırır (zamanlayıcı/rAF/düğümler dahil). `beatRestartRun()` şablon değişiminde `beatMasterGain`'i **yenisiyle değiştirir** — ona uzun ömürlü referans tutma (Mixing bus'ı bu yüzden doğrudan `destination`'a bağlı). Arrangement 125 BPM sabit, bölüm başına 2 ölçü, tek geçiş. Headless Chrome'da ses duyulmaz; düğüm grafiği `--eval` ile incelenir.
 
-`state.waveform` is kept as a legacy alias for `state.osc1.wave`. Older presets that only set `wave` still load via `applyPreset()` which fills new fields with neutral defaults.
+**Synth (`renderModule1`):** durum tek `state` nesnesinde (`state.osc1`, `osc2`, `sub`, `noise`, `adsr`, `filter`, `filterEnv`, `lfo`, `fx`, `activePreset`). Preset uygulamak tam render yapmaz: bölümler `m1Refresh` dizisine tazeleme kapanışı koyar, `_m1Update()` hepsini çalıştırır (scroll ve osiloskop korunur). `state.waveform`, `state.osc1.wave`'in eski takma adı; yalnız `wave` içeren eski presetler `applyPreset()` ile yüklenir.
 
 ## Push 3 Lab (`ders-push3.html`)
 
