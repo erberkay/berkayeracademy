@@ -1356,6 +1356,38 @@
         .m2-dwave--cut { opacity:.14; }
         .m2-dinfo { margin:6px 2px 0; font-family:var(--ff-mono); font-size:10px; line-height:1.5; color:var(--fg-3); overflow-wrap:anywhere; }
 
+        /* BASS SYNTH (Bass SYNTH iken): cihaz paneli (sağ sütun) · klip şeridi + TON (orta) · ızgarada nota adı / aksan / slide */
+        .m2-edk[hidden], .m2-sbbox[hidden], .lab-m2 .m2-bdev[hidden], .m2-blane[hidden] { display:none; }
+        .lab-m2 .m2-bdev { display:flex; flex-direction:column; gap:12px; padding:12px; }
+        .lab-m2 .m2-bdev .lp-pact { margin-left:auto; }
+        .m2-bwave { display:flex; align-items:center; gap:10px; }
+        .m2-bk { display:grid; grid-template-columns:repeat(auto-fill, minmax(64px, 1fr)); gap:12px 8px; }
+        .lab-m2 .m2-bk .lp-knob { width:64px; justify-self:center; }
+        .m2-blane { display:flex; flex-direction:column; gap:8px; min-width:0; }
+        .m2-blhead { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        .m2-bl { position:relative; display:block; width:100%; min-height:64px; padding:0; border-radius:var(--r-8); border:1px solid var(--line-2); background:var(--bg); box-shadow:inset 0 1px 3px var(--bg-ink); cursor:pointer; }
+        .m2-bl:hover { border-color:var(--line-strong); }
+        .m2-blsvg { display:block; width:100%; height:auto; }
+        .m2-blg { stroke:var(--line-2); }
+        .m2-blg--bar { stroke:var(--line-strong); }
+        .m2-bln { fill:var(--lab-bass); }
+        .m2-bln.is-acc { fill:var(--accent); }
+        .m2-blsl { stroke:var(--ember-2); stroke-width:2; }
+        .m2-blph { fill:var(--accent); opacity:0; }
+        .m2-blph.on { opacity:1; }
+        .m2-blempty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:0 8px; font-family:var(--ff-mono); font-size:10px; color:var(--fg-3); text-align:center; pointer-events:none; }
+        .m2-blempty:empty { display:none; }
+        .m2-bkey { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .m2-bsel { min-width:0; }
+        .m2-dpitch--acc { stroke-dasharray:4 3; }
+        .m2-cell.is-acc { border-color:var(--ember-2); box-shadow:inset 0 0 0 1px var(--ember-2); }
+        .m2-cell.on.is-sl::after { display:block; left:auto; right:0; top:auto; bottom:6px; width:7px; height:3px; margin:0; border-radius:0; background:var(--ember-2); }
+        /* Bas piyano rulosunun alt şeridi (pencere body'de → önek .m2-rs, .lab-m2 dışında) */
+        .m2-rs { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; padding:8px 14px; border-top:1px solid var(--line-2); background:var(--surface-1); }
+        .m2-rs-info { font-family:var(--ff-mono); font-size:10px; letter-spacing:.06em; color:var(--fg-muted); }
+        .m2-rs.is-rec .m2-rs-info { color:var(--err); }
+        .m2-rs .m2-rs-rec[aria-pressed="true"] { background:var(--err-soft); border-color:var(--err-line); color:var(--err); }
+
         /* Durum satırı */
         .m2-sched { display:inline-flex; align-items:center; gap:6px; }
         .m2-sv { color:var(--fg-muted); }
@@ -2647,7 +2679,8 @@ async function saveBeat(name) {           // → true yalnız Firestore'a yazıl
         bpm: state.bpm,
         swing: state.swing,
         patterns,
-        data: JSON.stringify({ len: B.len, slots: B.slots, volumes: state.beatVolumes, tracks: B.tracks, synth: B.synth, master: B.master, choke: B.choke }),
+        data: JSON.stringify({ len: B.len, slots: B.slots, volumes: state.beatVolumes, tracks: B.tracks, synth: B.synth, master: B.master, choke: B.choke,
+                               bass: B.bass }),   // BASS SYNTH: slot klipleri + ton + cihaz (iç içe dizi yalnız JSON içinde)
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
     return true;
@@ -2817,6 +2850,9 @@ const state = {
             { cut:400, res:5, env:40 },          // Bass (LP Hz, Q, %)
         ],
         choke: true, master: 80, power: true, sel: 0,
+        // Bass SYNTH (BASS SYNTH cihazı): { clips:[A..D nota listesi], key:{root,type}, dev:{…}, preset, last } —
+        // motor bloğunda beatBassDefault() ile kurulur (BASS_PRESETS orada tanımlı)
+        bass: null,
     },
     leadLoopVol: 0.75,                       // Mixer LEAD LOOP kanalı (Modül 3)
     arrCells: Array.from({length:5}, () => new Array(8).fill(true)), // Arrangement builder hücreleri
@@ -3511,6 +3547,8 @@ function synthDrum(ctx, fileOrIndex, v, when, dest = null) {
 // Beat Maker sesi: SAMPLE seçiliyse ve örnek (ya da Classic yedeği) yüklendiyse sample, yoksa sentez → iz bus'ı
 function triggerDrum(i, v, when) {
     const ctx = getBeatCtx();
+    // Bass SYNTH: tek vuruş önizlemesi BASS SYNTH sesiyle, son kullanılan perdede (bir 16'lık + biraz)
+    if (i === 4 && beatBassSyn()) { bassPlay(state.beat.bass.last, Math.round(Math.max(0, Math.min(1, v)) * 100), 60 / state.bpm / 4 * 1.5, when); return; }
     const smp = state.beat.tracks[i].src === 'sample' ? beatTrackSmp(i) : null;
     beatVoice(ctx, i, v, when, beatBus[i].g, smp);
 }
@@ -3523,13 +3561,289 @@ function beatPreview(i, vel) {
     beatUiKick();
 }
 
+// ── BASS SYNTH — Bass izi SYNTH modunda mono bas synth (TB-303 / Operator bas mantığı) ──────────────
+// Veri state.beat.bass = { clips:[A,B,C,D] (slot başına nota listesi {p midi, s adım, l adım, v 1–127}),
+//   key:{ root 0..11, type LAB_SCALES }, dev:{ wave saw|square, sub %, oct −2..+1, det cent, cut Hz, res %,
+//   env %, dec ms, acc %, glide ms, drive % }, preset (BASS_PRESETS id | null), last (son perde) }.
+// Izgara ↔ klip: Bass satırı (pattern[4]) kapı + velocity'dir (Genel bakış, Mixing, Mastering onu okur); klip
+//   perde / uzunluk / aksanı taşır. beatBassClip(k) okurken uzlaştırır: satırda kapalı adımın notaları düşer,
+//   açık adımda nota yoksa son perdeyle (klip hiç boşsa tondaki otomatik bas çizgisiyle) eklenir, velocity
+//   satırla eşitlenir (satır = min(100, v)). Piyano rulosu düzenlemesi beatBassToRow(k) ile satıra yansır.
+// Ses (bağlam başına mono; beatCtx'te iz bus'ına): OSC ×2 (WAVE, DETUNE) → LP ×2 (24 dB; RESO ilkinde) →
+//   DRIVE (tanh waveshaper, seviye dengeli) → AMP → trackGain[4]; SUB sinüs (−1 oktav) filtresiz AMP'ye.
+//   Perde = ConstantSource (cent) → osc.detune (glide tek parametrede), filtre zarfı = ConstantSource (cent)
+//   → iki filtrenin detune'u (CUTOFF canlı değişir, zarfla çakışmaz). OCT osc.frequency'de.
+// Aksan: v ≥ 110 → tepe × (1 + 0.7·ACC), zarf +ACC·2 oktav, decay × (1 − 0.55·ACC) (303 gibi).
+// Slide: nota bir sonraki notanın başlangıcına taşarsa (üst üste binerse) sonraki nota kaydırılır — zarflar
+//   yeniden tetiklenmez, perde GLIDE süresinde süzülür. Değen (üst üste binmeyen) notalar yeniden tetiklenir.
+// Mono öncelik: aynı anda başlayan notalardan en pes olanı (Moog gibi alçak nota önceliği).
+const BASS_EPS = 1e-3;
+const BASS_DEV_KEYS = ['sub', 'oct', 'det', 'cut', 'res', 'env', 'dec', 'acc', 'glide', 'drive'];
+const BASS_PRESETS = [
+    { id: 'roll',  name: 'Rolling Techno', dev: { wave: 'saw',    sub: 35, oct: 0, det: 0,  cut: 420, res: 35, env: 45, dec: 170, acc: 50, glide: 50,  drive: 25 } },
+    { id: 'acid',  name: 'Acid 303',       dev: { wave: 'saw',    sub: 0,  oct: 0, det: 0,  cut: 240, res: 82, env: 72, dec: 300, acc: 85, glide: 60,  drive: 45 } },
+    { id: 'sub',   name: 'Deep Sub',       dev: { wave: 'square', sub: 85, oct: 0, det: 0,  cut: 150, res: 8,  env: 12, dec: 520, acc: 25, glide: 90,  drive: 5  } },
+    { id: 'reese', name: 'Reese-ish',      dev: { wave: 'saw',    sub: 40, oct: 0, det: 22, cut: 700, res: 18, env: 18, dec: 650, acc: 30, glide: 120, drive: 35 } },
+    { id: 'init',  name: 'Init',           dev: { wave: 'saw',    sub: 0,  oct: 0, det: 0,  cut: 800, res: 20, env: 30, dec: 250, acc: 50, glide: 70,  drive: 0  } },
+];
+function beatBassDefault() {   // üst düzeyde çağrılır: LAB_SCALES vb. henüz tanımlı değil — düz nesne
+    return { clips: [[], [], [], []], key: { root: 9, type: 'minor' }, dev: Object.assign({}, BASS_PRESETS[0].dev), preset: 'roll', last: 33 };
+}
+state.beat.bass = beatBassDefault();               // slot başına MIDI klibi + proje tonu + cihaz (state.beat.bass)
+function beatBassSyn() { const t = state.beat.tracks[4]; return !!t && t.src === 'synth'; }
+// Notaları doğrula (kayıt / piyano rulosu / anlık görüntü): perde 0..127, 0 ≤ s < len, 0.05 ≤ l ≤ len, v 1..127
+function beatBassNotes(list, len) {
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach(n => {
+        if (!n || out.length >= 256) return;
+        const p = Math.round(+n.p), s = Math.round(+n.s * 10000) / 10000, l = +n.l, v = Math.round(+n.v);
+        if (!(p >= 0 && p <= 127) || !(s >= 0 && s < len - BASS_EPS) || !(l > 0)) return;
+        out.push({ p, s, l: Math.round(Math.max(0.05, Math.min(len, l)) * 10000) / 10000, v: isFinite(v) ? Math.max(1, Math.min(127, v)) : 100 });
+    });
+    return out.sort((a, b) => a.s - b.s || a.p - b.p);
+}
+// Tondaki otomatik bas çizgisi (şablon, eski kayıt, boş klip): satırın açık adımlarına perde verir.
+// Akor kökü: 0–11 i, 12–15 VII (32 adımda 2. ölçü: 16–27 VI, 28–31 VII) — kökten aşağı. Vuruşta kök,
+// 8'lik arada oktav, tek 16'lıkta gam içi beşli. style: şablon adı (uzunluk / 808 glide karakteri).
+function beatBassAuto(row, key, style) {
+    const root = labPc(key && key.root != null ? key.root : 9), type = key && LAB_SCALES[key.type] ? key.type : 'minor';
+    const len = row.length;
+    let base = 24 + root; if (base < 28) base += 12;               // A → A0 (55 Hz), C → C1 (65 Hz)
+    const deg = j => { const b = j % 32; return b < 12 ? 0 : b < 16 ? -1 : b < 28 ? -2 : -1; };
+    const on = []; for (let j = 0; j < len; j++) if (row[j] > 0) on.push(j);
+    return on.map((j, i) => {
+        const r = transposeInScale(base, deg(j), root, type);
+        const p = j % 4 === 0 ? r : j % 2 === 0 ? r + 12 : transposeInScale(r, 4, root, type);
+        const nx = on[(i + 1) % on.length] + (i + 1 >= on.length ? len : 0), gap = nx - j;
+        let l = 1;
+        if (style === 'Trap') l = gap <= 4 && on.length > 1 ? gap + 0.5 : Math.min(gap, 8) - 0.25;   // 808: yakın notaya kayar
+        else if (style === 'Boom Bap') l = Math.min(gap, 4) - 0.5;
+        else if (style === 'Rock') l = Math.min(gap, 2) - 0.25;
+        else l = Math.min(1, gap);
+        return { p, s: j, l: Math.max(0.25, Math.min(len - j, l)), v: Math.max(1, Math.min(127, row[j])) };
+    });
+}
+// Slot k'nin klibi, ızgara satırıyla uzlaştırılmış (yerinde). Yoksa [].
+function beatBassClip(k) {
+    const B = state.beat, bs = B.bass, pat = B.slots && B.slots[k];
+    if (!bs || !pat || !pat[4]) return [];
+    const row = pat[4], len = row.length;
+    let c = bs.clips[k];
+    if (!Array.isArray(c)) c = bs.clips[k] = [];
+    for (let i = c.length - 1; i >= 0; i--) {
+        const j = Math.floor(c[i].s + BASS_EPS);
+        if (!(c[i].s >= 0) || j >= len || !(row[j] > 0)) c.splice(i, 1);
+    }
+    if (!c.length) {
+        if (row.some(x => x > 0)) { c = bs.clips[k] = beatBassAuto(row, bs.key, null); }
+        return c;
+    }
+    let add = false;
+    for (let j = 0; j < len; j++) {
+        const rv = row[j]; if (!(rv > 0)) continue;
+        let top = 0, has = false;
+        for (let i = 0; i < c.length; i++) if (Math.floor(c[i].s + BASS_EPS) === j) { has = true; top = Math.max(top, c[i].v); }
+        if (!has) { c.push({ p: bs.last, s: j, l: 1, v: rv }); add = true; }
+        else if (Math.min(100, top) !== rv) c.forEach(n => { if (Math.floor(n.s + BASS_EPS) === j) n.v = rv; });
+    }
+    if (add) c.sort((a, b) => a.s - b.s || a.p - b.p);
+    return c;
+}
+// Klip → ızgara satırı (piyano rulosu / MIDI kaydı sonrası): adımda başlayan en yüksek velocity (≤100)
+function beatBassToRow(k) {
+    const B = state.beat, pat = B.slots[k];
+    if (!pat || !pat[4]) return;
+    const row = pat[4], len = row.length, c = B.bass.clips[k] = beatBassNotes(B.bass.clips[k], len);
+    for (let j = 0; j < len; j++) row[j] = 0;
+    c.forEach(n => { const j = Math.floor(n.s + BASS_EPS); if (j < len) row[j] = Math.max(row[j], Math.min(100, n.v)); });
+}
+// Mono olaylar: başlangıç başına bir nota (en pes), zamana göre sıralı
+function beatBassEvents(clip) {
+    const ev = [];
+    clip.slice().sort((a, b) => a.s - b.s || a.p - b.p).forEach(n => {
+        const last = ev[ev.length - 1];
+        if (!last || Math.abs(last.s - n.s) >= BASS_EPS) ev.push(n);
+    });
+    return ev;
+}
+// Olay i bir sonrakine (döngüde) kayıyor mu? → { slide, next, nS (döngü ofsetli başlangıç) }
+function beatBassNext(ev, i, len) {
+    const wrap = i + 1 >= ev.length, nx = ev[(i + 1) % ev.length], nS = nx.s + (wrap ? len : 0);
+    return { slide: ev[i].s + ev[i].l > nS + 0.01, next: nx, nS };
+}
+// ── Ses ──
+const bassLive = new Set();                       // çalan sesler (knob'lar setTargetAtTime ile canlı günceller)
+const _bassMono = new WeakMap();                  // ctx → { v: sequencer sesi, pv: önizleme, lv: MIDI canlı, held: [] }
+function bassMono(ctx) { let m = _bassMono.get(ctx); if (!m) { m = { v: null, pv: null, lv: null, held: [] }; _bassMono.set(ctx, m); } return m; }
+let _bassCurve = null, bassAbs = 0;               // tanh eğrisi (tek) · planlanan adım sayacı (legato beklentisi)
+function bassCurve() {
+    if (!_bassCurve) {
+        const n = 2048, K = 3, D = Math.tanh(K);
+        _bassCurve = new Float32Array(n);
+        for (let i = 0; i < n; i++) _bassCurve[i] = Math.tanh(K * (i / (n - 1) * 2 - 1)) / D;
+    }
+    return _bassCurve;
+}
+const bassQ = r => 0.7 + Math.pow(Math.max(0, Math.min(100, +r || 0)) / 100, 1.6) * 19;   // RESO % → Q
+const bassPre = d => 0.12 + Math.pow(Math.max(0, Math.min(100, +d || 0)) / 100, 1.3) * 1.6;
+const bassPost = d => (1 + Math.max(0, Math.min(100, +d || 0)) / 100 * 1.5) / (3 * bassPre(d));   // seviye dengesi
+const bassWave = w => w === 'square' ? 'square' : 'sawtooth';
+const bassAcc = n => n.v >= 110;
+function bassCents(p) { return (p + (+state.beat.tracks[4].tune || 0) - 69) * 100; }
+function bassPeak(n) { const A = state.beat.bass.dev.acc / 100; return 0.34 * (0.35 + 0.65 * Math.min(127, n.v) / 127) * (bassAcc(n) ? 1 + 0.7 * A : 1); }
+function bassDecay(n) {
+    const d = state.beat.bass.dev, A = d.acc / 100;
+    return Math.max(0.03, d.dec / 1000 * (+state.beat.tracks[4].decay || 100) / 100 * (bassAcc(n) ? 1 - 0.55 * A : 1));
+}
+function bassEnvCents(n) { const d = state.beat.bass.dev; return d.env / 100 * 4800 + (bassAcc(n) ? d.acc / 100 * 2400 : 0); }
+function bassVoiceNew(ctx, dest, when) {
+    const d = state.beat.bass.dev, own = ctx === beatCtx, ok = Math.pow(2, d.oct || 0);
+    const G = x => { const g = ctx.createGain(); g.gain.value = x; return g; };
+    const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), sub = ctx.createOscillator();
+    const pitch = ctx.createConstantSource(), envC = ctx.createConstantSource();
+    o1.type = o2.type = bassWave(d.wave); sub.type = 'sine';
+    o1.frequency.value = o2.frequency.value = 440 * ok; sub.frequency.value = 220 * ok;
+    o2.detune.value = d.det; pitch.offset.value = 0; envC.offset.value = 0;
+    pitch.connect(o1.detune); pitch.connect(o2.detune); pitch.connect(sub.detune);
+    const g1 = G(d.det > 0 ? 0.36 : 0.5), g2 = G(d.det > 0 ? 0.36 : 0), gs = G(d.sub / 100 * 0.8);
+    const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter();
+    f1.type = f2.type = 'lowpass';
+    f1.frequency.value = f2.frequency.value = d.cut; f1.Q.value = bassQ(d.res); f2.Q.value = 0.5;
+    envC.connect(f1.detune); envC.connect(f2.detune);
+    const pre = G(bassPre(d.drive)), sh = ctx.createWaveShaper(), post = G(bassPost(d.drive)), amp = G(0);
+    sh.curve = bassCurve(); sh.oversample = '2x';
+    o1.connect(g1); o2.connect(g2); g1.connect(f1); g2.connect(f1); f1.connect(f2); f2.connect(pre);
+    pre.connect(sh); sh.connect(post); post.connect(amp); sub.connect(gs); gs.connect(amp); amp.connect(dest);
+    const srcs = [o1, o2, sub, pitch, envC];
+    const v = { ctx, o1, o2, sub, g1, g2, gs, f1, f2, pre, post, amp, pitch, envC, srcs, t0: when, relT: null, open: false, expS: 0, expAbs: -1, n: null };
+    srcs.forEach(s => { s.start(when); s.stop(when + 30); });       // güvenlik: kapanmayan legato 30 sn'de biter (glide uzatır)
+    if (own) { beatVoices++; beatPending.push({ t: when, srcs }); }
+    bassLive.add(v);
+    o1.onended = () => {
+        bassLive.delete(v);
+        if (own) beatVoices = Math.max(0, beatVoices - 1);
+        [o1, o2, sub, pitch, envC, g1, g2, gs, f1, f2, pre, sh, post, amp].forEach(x => { try { x.disconnect(); } catch (_) {} });
+    };
+    return v;
+}
+function bassNoteStart(v, n, when) {
+    const pk = bassPeak(n), dec = bassDecay(n), e = v.envC.offset, g = v.amp.gain;
+    v.pitch.offset.setValueAtTime(bassCents(n.p), when);
+    e.setValueAtTime(0, when); e.linearRampToValueAtTime(bassEnvCents(n), when + 0.004); e.setTargetAtTime(0, when + 0.004, dec / 3);
+    g.setValueAtTime(0, when); g.linearRampToValueAtTime(pk, when + 0.003); g.setTargetAtTime(pk * 0.7, when + 0.003, Math.max(0.05, dec * 1.5));
+    v.n = n;
+}
+// Slide / legato: zarflar yeniden tetiklenmez; perde GLIDE'da süzülür, seviye yeni velocity'ye yumuşak geçer
+function bassNoteGlide(v, n, when) {
+    const d = state.beat.bass.dev;
+    v.pitch.offset.setTargetAtTime(bassCents(n.p), when, Math.max(0.004, d.glide / 1000 / 3));
+    v.amp.gain.setTargetAtTime(bassPeak(n) * 0.75, when, 0.02);
+    if (bassAcc(n)) { const e = v.envC.offset; e.setTargetAtTime(d.acc / 100 * 1800, when, 0.006); e.setTargetAtTime(0, when + 0.02, bassDecay(n) / 3); }
+    v.n = n;
+    v.srcs.forEach(s => { try { s.stop(when + 30); } catch (_) {} });
+}
+function bassRelease(v, t) {
+    if (!v || (v.relT != null && v.relT <= t + 1e-4)) return;
+    t = Math.max(t, v.ctx.currentTime);
+    const g = v.amp.gain;
+    try {
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(t); else g.cancelScheduledValues(t);
+        g.setTargetAtTime(0, t, 0.012);
+    } catch (e) { console.warn('[lab] bass release:', e); }
+    v.relT = t; v.open = false;
+    v.srcs.forEach(s => { try { s.stop(t + 0.12); } catch (_) {} });
+}
+// Knob'lar: çalan seslere setTargetAtTime (ENV MOD / DECAY / ACCENT / GLIDE sonraki notada)
+function bassApplyLive() {
+    const d = state.beat.bass.dev, ok = Math.pow(2, d.oct || 0), w = bassWave(d.wave);
+    bassLive.forEach(v => {
+        const now = v.ctx.currentTime;
+        if (v.relT != null && v.relT < now) return;
+        const T = (p, x) => { try { p.setTargetAtTime(x, now, 0.02); } catch (_) {} };
+        T(v.f1.frequency, d.cut); T(v.f2.frequency, d.cut); T(v.f1.Q, bassQ(d.res));
+        T(v.gs.gain, d.sub / 100 * 0.8); T(v.g1.gain, d.det > 0 ? 0.36 : 0.5); T(v.g2.gain, d.det > 0 ? 0.36 : 0); T(v.o2.detune, d.det);
+        T(v.pre.gain, bassPre(d.drive)); T(v.post.gain, bassPost(d.drive));
+        T(v.o1.frequency, 440 * ok); T(v.o2.frequency, 440 * ok); T(v.sub.frequency, 220 * ok);
+        if (v.o1.type !== w) { v.o1.type = w; v.o2.type = w; }
+    });
+}
+// Sequencer: scheduleStep'ten adım başına. → bu adımda nota başladı mı (pad parlaması)
+function bassSeqStep(step, when, spb, pat, sw, abs) {
+    const ctx = beatCtx, B = state.beat, m = bassMono(ctx), dest = beatBus[4] && beatBus[4].g;
+    if (m.v && m.v.open && m.v.expAbs < abs) bassRelease(m.v, when);          // beklenen legato notası gelmedi
+    const k = B.slots.indexOf(pat);
+    if (!dest || k < 0 || beatTrackGain(4) <= 0) { if (m.v && m.v.open) bassRelease(m.v, when); return false; }
+    const len = pat[4].length, ev = beatBassEvents(beatBassClip(k));
+    let hit = false;
+    ev.forEach((e, i) => {
+        if (Math.floor(e.s + BASS_EPS) !== step) return;
+        const fr = e.s - step, t = when + fr * spb + (fr < BASS_EPS && step % 2 === 1 ? sw : 0);
+        const cur = m.v, cont = !!cur && cur.open && cur.expAbs === abs && Math.abs(cur.expS - e.s) < BASS_EPS;
+        let v = cur;
+        if (cont) bassNoteGlide(v, e, t);
+        else { if (cur) bassRelease(cur, t); v = m.v = bassVoiceNew(ctx, dest, t); bassNoteStart(v, e, t); }
+        const nx = beatBassNext(ev, i, len);
+        if (nx.slide) { v.open = true; v.expS = nx.next.s; v.expAbs = abs + Math.floor(nx.nS + BASS_EPS) - step; }
+        else { v.open = false; bassRelease(v, t + Math.max(0.03, e.l * spb - 0.004)); }
+        hit = true;
+    });
+    if (m.v && m.v.open && m.v.expAbs <= abs) bassRelease(m.v, when + Math.max(0, m.v.expS - step) * spb);
+    return hit;
+}
+function bassSeqOff(ctx, t) {
+    const m = ctx && _bassMono.get(ctx);
+    if (m && m.v) { bassRelease(m.v, t); m.v = null; }
+}
+// Önizleme (pad, hücre, knob bırakma, piyano rulosu tuşu): anında, sequencer sesinden ayrı mono yuva
+function bassPlay(p, vel, dur, when) {
+    const ctx = getBeatCtx(), m = bassMono(ctx);
+    const t = when != null ? Math.max(when, ctx.currentTime) : ctx.currentTime + 0.005;
+    if (!beatBus[4]) return null;
+    if (m.pv) bassRelease(m.pv, t);
+    const n = { p: Math.round(p), v: Math.max(1, Math.min(127, Math.round(vel) || 100)) };
+    const v = m.pv = bassVoiceNew(ctx, beatBus[4].g, t);
+    bassNoteStart(v, n, t); bassRelease(v, t + Math.max(0.05, +dur || 0.2));
+    beatHitT[4] = performance.now(); beatUiKick();
+    return v;
+}
+// MIDI klavye canlı çalım: mono legato (tuş basılıyken yeni tuş → glide), son basılan öncelikli
+function bassLiveOn(p, vel) {
+    const ctx = getBeatCtx(), m = bassMono(ctx);
+    if (!beatBus[4]) return;
+    syncBeatBus();
+    const t = ctx.currentTime + 0.005, n = { p: Math.round(p), v: Math.max(1, Math.min(127, Math.round(vel) || 100)) };
+    m.held = m.held.filter(x => x.p !== n.p); m.held.push(n);
+    if (m.lv && m.lv.relT == null) bassNoteGlide(m.lv, n, t);
+    else { m.lv = bassVoiceNew(ctx, beatBus[4].g, t); bassNoteStart(m.lv, n, t); }
+    beatHitT[4] = performance.now(); beatUiKick();
+}
+function bassLiveOff(p) {
+    const ctx = beatCtx; if (!ctx) return;
+    const m = bassMono(ctx);
+    m.held = m.held.filter(x => x.p !== Math.round(p));
+    if (!m.lv) return;
+    if (m.held.length) bassNoteGlide(m.lv, m.held[m.held.length - 1], ctx.currentTime);
+    else { bassRelease(m.lv, ctx.currentTime); m.lv = null; }
+}
+function bassLiveAll() {
+    const ctx = beatCtx, m = ctx && _bassMono.get(ctx);
+    if (!m) return;
+    const t = ctx.currentTime;
+    if (m.lv) bassRelease(m.lv, t); if (m.pv) bassRelease(m.pv, t);
+    m.lv = m.pv = null; m.held = [];
+}
+
 function scheduleStep(step, when) {
-    const spb = 60 / state.bpm / 4;
-    const t = when + (step % 2 === 1 ? (state.swing / 100) * spb * 0.66 : 0);   // swing: yalnız tek 16'lıklar
-    const pat = state.beatPatterns, hits = [];
+    const spb = 60 / state.bpm / 4, sw = (state.swing / 100) * spb * 0.66;
+    const t = when + (step % 2 === 1 ? sw : 0);   // swing: yalnız tek 16'lıklar
+    const pat = state.beatPatterns, hits = [], abs = bassAbs++;
     beatStepLog.push({ step, t: when, pat, spb });
     if (beatStepLog.length > 64) beatStepLog.shift();
     BEAT_TRACKS.forEach((track, ti) => {
+        if (ti === 4) {                                                          // Bass: SYNTH → BASS SYNTH (klip notaları)
+            if (beatBassSyn()) { if (bassSeqStep(step, when, spb, pat, sw, abs)) hits.push(4); return; }
+            bassSeqOff(beatCtx, when);                                           // SAMPLE'a geçildi: açık legato kapanır
+        }
         const vel = (pat[ti] || [])[step];
         if (beatRecSkip.size) {                                                  // canlı kayıtta zaten çalındı
             const k = ti + ':' + step;
@@ -3578,6 +3892,7 @@ function startBeat() {
     beatQueue    = [];
     beatStepLog  = []; beatRecSkip.clear();
     beatGeneration++;
+    bassSeqOff(ctx, ctx.currentTime); bassAbs = 0;       // BASS SYNTH: yeni çalma, eski legato beklentisi yok
     syncBeatBus();
     beatNextTime = ctx.currentTime + 0.06;
     beatSchedulerLoop(beatGeneration);
@@ -3594,10 +3909,13 @@ function stopBeat(resetCtx = false) {
     if (beatCtx) {                                      // lookahead'de planlanmış ama başlamamış vuruşlar susar
         const now = beatCtx.currentTime;
         beatPending.forEach(p => { if (p.t > now + 0.003) p.srcs.forEach(s => { try { s.stop(now); } catch (_) {} }); });
+        bassSeqOff(beatCtx, now);                        // BASS SYNTH: tutulan (slide) nota susar
     }
     beatPending = [];
     if (resetCtx && beatCtx) {
         // Bağlamı kapat: planlanmış tüm ses hemen kesilir; sonraki getBeatCtx() grafiği yeniden kurar
+        const dead = beatCtx;
+        bassLive.forEach(v => { if (v.ctx === dead) bassLive.delete(v); });
         beatCtx.close().catch(() => {});
         beatCtx = null; beatBuffers = {}; beatMasterGain = null; beatOut = null;
         beatBus = []; beatBusMemo = []; beatNoiseBuf = null; beatAnL = null; beatAnR = null; beatVoices = 0;
@@ -10488,7 +10806,8 @@ Object.assign(LAB_TXT, {
     lab_m2_hint_1:      [`Kısa bir ton (gövde) + highpass'lı noise (tel). NOISE oranı ikisini karıştırır.`, `A short tone (body) + high-passed noise (wires). NOISE mixes the two.`],
     lab_m2_hint_2:      [`Highpass'lı beyaz gürültü. Kısa decay = kapalı hat.`, `High-passed white noise. Short decay = closed hat.`],
     lab_m2_hint_3:      [`Aynı kaynak, uzun decay. Close Hat çalınca susturulur (choke).`, `Same source, long decay. Muted when the Close Hat plays (choke).`],
-    lab_m2_hint_4:      [`Sawtooth → rezonanslı lowpass. ENV AMT filtreyi her vuruşta açıp kapatır ("pluck").`, `Sawtooth → resonant lowpass. ENV AMT opens and closes the filter on every hit ("pluck").`],
+    lab_m2_hint_4:      [`BASS SYNTH (mono; TB-303 / Operator bas mantığı): her adımın kendi notası var. NOTALAR piyano rulosunu açar (Bass satırına çift tık da). Izgarada boş Bass hücresine tık son perdeyi ekler; tık döngüsü 100 → AKSAN → 70 → 40 → kapalı; Shift+tık slide (nota bir sonrakinin üstüne taşar → zarf yeniden vurmaz, perde GLIDE süresinde süzülür). CUTOFF · RESO · SUB · DRIVE · DETUNE · OCT çalarken anında; ENV MOD · DECAY · ACCENT · GLIDE sonraki notada duyulur.`,
+                         `BASS SYNTH (mono; TB-303 / Operator bass logic): every step has its own note. EDIT NOTES opens the piano roll (so does a double-click on the Bass row). In the grid, clicking an empty Bass cell adds the last pitch; the click cycle is 100 → ACCENT → 70 → 40 → off; Shift+click makes a slide (the note overlaps the next one → the envelope does not retrigger, the pitch glides over the GLIDE time). CUTOFF · RESO · SUB · DRIVE · DETUNE · OCT change instantly while playing; ENV MOD · DECAY · ACCENT · GLIDE are heard on the next note.`],
     lab_m2_hint_sample: [`SAMPLE: seçili örneği çalar (seviye gainDb ile eşlenir). TUNE = playbackRate 2^(st/12), DECAY sample'ın sonunu kısaltır (%100 = doğal uzunluk). Ekranın altındaki SAMPLE listesinden başka örnek yükle; sentez knob'ları için SYNTH'e geç.`, `SAMPLE: plays the selected sample (level matched by gainDb). TUNE = playbackRate 2^(st/12), DECAY shortens the end of the sample (100% = natural length). Load another sample from the SAMPLE list under the display; switch to SYNTH for the synthesis knobs.`],
     lab_m2_disp_choke:  [`Close Hat bu sesi keser (choke)`, `Close Hat cuts this sound (choke)`],
     lab_m2_disp_smp:    [`SYNTH'e geçince sentez eğrileri`, `synthesis curves in SYNTH mode`],
@@ -10533,7 +10852,7 @@ Object.assign(LAB_TXT, {
     lab_m2_x6_t: [`Kick / Snare`, `Kick / Snare`],
     lab_m2_x6_d: [`Kick: sinüs START→END exponential düşer. Snare: triangle ton + highpass noise, NOISE = oran.`, `Kick: a sine falls exponentially START→END. Snare: triangle tone + high-passed noise, NOISE = the mix.`],
     lab_m2_x7_t: [`Hat / Choke / Bass`, `Hat / Choke / Bass`],
-    lab_m2_x7_d: [`Hat: noise → highpass. Close Hat, Open Hat zarfını keser. Bass: saw → lowpass, ENV AMT filtreyi açar.`, `Hat: noise → highpass. The Close Hat cuts the Open Hat's envelope. Bass: saw → lowpass, ENV AMT opens the filter.`],
+    lab_m2_x7_d: [`Hat: noise → highpass. Close Hat, Open Hat zarfını keser. Bass SYNTH: adım başına nota (MIDI klip) → mono osc + sub → 24 dB lowpass (zarf = filtre detune'u) → tanh drive; aksan seviye + zarf, slide perde glide'ı.`, `Hat: noise → highpass. The Close Hat cuts the Open Hat's envelope. Bass SYNTH: a note per step (MIDI clip) → mono osc + sub → 24 dB lowpass (envelope = filter detune) → tanh drive; accent = level + envelope, slide = pitch glide.`],
     lab_m2_x8_t: [`VOL / PAN / M·S / MASTER`, `VOL / PAN / M·S / MASTER`],
     lab_m2_x8_d: [`Kalıcı node'lar, setTargetAtTime ile tıkırtısız anında değişir; metre = Splitter + 2 Analyser.`, `Persistent nodes change instantly without clicks via setTargetAtTime; meter = Splitter + 2 Analysers.`],
     lab_m2_t_onoff:     [`aç/kapa`, `on/off`],
@@ -10609,6 +10928,45 @@ Object.assign(LAB_TXT, {
     lab_m2_tut_10_b:    [`KAYDET beat'i (4 slot, BPM, swing, kit ve kanal ayarları) hesabına yazar; preset tarayıcının KULLANICI grubundan geri yüklersin. Adım, beat gerçekten kaydedilince tamamlanır.`, `SAVE writes the beat (4 slots, BPM, swing, kit and channel settings) to your account; load it back from the USER group of the preset browser. The step completes once the beat is actually saved.`],
     lab_m2_tut_10_h:    [`Giriş yapmadın: önce sağ üstten giriş yap → sonra KAYDET.`, `You are not signed in: sign in at the top right first → then SAVE.`],
     lab_m2_tut_10_a:    [`Drum Rack başlığındaki disket → User Library'ye preset; set'i Ctrl/⌘+S ile kaydet.`, `The disk icon in the Drum Rack title → preset to the User Library; save the set with Ctrl/⌘+S.`],
+    // BASS SYNTH (Bass izi SYNTH modu: mono bas synth + MIDI klip)
+    lab_m2_bass_notes:  [`NOTALAR`, `EDIT NOTES`],
+    lab_m2_bass_notes_t:[`Bas klibini piyano rulosunda aç — Bass satırına çift tık da açar`, `Open the bass clip in the piano roll — a double-click on the Bass row opens it too`],
+    lab_m2_bass_pb:     [`Bas preset'i`, `Bass preset`],
+    lab_m2_bass_wave:   [`Dalga formu`, `Waveform`],
+    lab_m2_bass_key:    [`TON`, `KEY`],
+    lab_m2_bass_key_t:  [`Proje tonu (kök + gam). Değişince bas çizgisi yeni tona taşınır; piyano rulosunun GAM'ı da budur.`, `Project key (root + scale). Changing it moves the bassline into the new key; it is also the piano roll's SCALE.`],
+    lab_m2_bass_root:   [`Ton: kök nota`, `Key: root note`],
+    lab_m2_bass_type:   [`Ton: gam türü`, `Key: scale type`],
+    lab_m2_bass_cap:    [`KLİP · PATTERN {id} · {n} NOTA`, `CLIP · PATTERN {id} · {n} NOTES`],
+    lab_m2_bass_lane:   [`Bas klibi, pattern {id}: {n} nota, {a} aksan, {s} slide. Piyano rulosunda düzenlemek için aç.`, `Bass clip, pattern {id}: {n} notes, {a} accents, {s} slides. Open it in the piano roll to edit.`],
+    lab_m2_bass_empty:  [`Klip boş — NOTALAR'ı aç ya da Bass satırına tıkla`, `Empty clip — open EDIT NOTES or click the Bass row`],
+    lab_m2_bass_roll_t: [`Bas · Pattern {id}`, `Bass · Pattern {id}`],
+    lab_m2_bass_rs_aria:[`Bas klibi kaydı`, `Bass clip recording`],
+    lab_m2_bass_rec_t:  [`REC: durukken MIDI notası imlece yazılır (adım kaydı), çalarken ızgaraya kuantize edilerek kaydedilir`, `REC: when stopped a MIDI note is written at the cursor (step input); while playing it is recorded quantized to the grid`],
+    lab_m2_bass_rs_off: [`REC kapalı — MIDI klavyen bası canlı çalar`, `REC off — your MIDI keyboard plays the bass live`],
+    lab_m2_bass_rs_step:[`ADIM KAYDI · {pos} · ızgara {g}`, `STEP INPUT · {pos} · grid {g}`],
+    lab_m2_bass_rs_live:[`CANLI KAYIT · kuantize {g}`, `LIVE RECORDING · quantize {g}`],
+    lab_m2_bass_disp:   [`Bas zarf ekranı: genlik (dolgu) ve filtre frekansı; kesikli çizgiler aksanlı nota`, `Bass envelope display: amplitude (fill) and filter frequency; dashed lines are an accented note`],
+    lab_m2_cell_bass:   [`{name} adım {n}, {note}, velocity {v}{x}`, `{name} step {n}, {note}, velocity {v}{x}`],
+    lab_m2_cell_acc:    [`, aksan`, `, accent`],
+    lab_m2_cell_sl:     [`, slide`, `, slide`],
+    lab_m2_toast_bpre:  [`Bas preset'i: {name}`, `Bass preset: {name}`],
+    lab_m2_toast_key:   [`Ton {key} — bas çizgisi yeni tona taşındı`, `Key {key} — the bassline moved into the new key`],
+    lab_m2_bass_midi:   [`klavye → bas`, `keyboard → bass`],
+    lab_m2_toast_sl1:   [`Slide için klipte en az iki nota gerekir`, `A slide needs at least two notes in the clip`],
+    lab_m2_where_li7:   [`<strong>BASS SYNTH</strong> → MIDI izine Operator / Analog (Mono + Glide) ve bir MIDI clip; NOTALAR = Note Editor, TON = Scale Mode, üst üste binen nota = legato glide.`, `<strong>BASS SYNTH</strong> → Operator / Analog on a MIDI track (Mono + Glide) and a MIDI clip; EDIT NOTES = Note Editor, KEY = Scale Mode, overlapping notes = legato glide.`],
+    lab_m2_x11_t: [`Bass SYNTH`, `Bass SYNTH`],
+    lab_m2_x11_d: [`CUTOFF / RESO / DRIVE / SUB / OCT kalıcı parametrelere setTargetAtTime ile (çalarken); ENV MOD, DECAY, ACCENT ve GLIDE her notanın zarfını kurar. MIDI: Bass SYNTH seçiliyken klavye bası çalar, NOTALAR + REC kaydeder.`, `CUTOFF / RESO / DRIVE / SUB / OCT go to the live parameters with setTargetAtTime (while playing); ENV MOD, DECAY, ACCENT and GLIDE shape each note's envelope. MIDI: with Bass SYNTH selected the keyboard plays the bass, EDIT NOTES + REC records.`],
+    // Öğretici · bas (yeni adım kimlikleri: bsyn · bnotes · bslide)
+    lab_m2_tut_11_t:    [`Bass'ı SYNTH'e al`, `Switch the Bass to SYNTH`],
+    lab_m2_tut_11_b:    [`Sound editor'de Bass sekmesi seçili: SAMPLE | SYNTH'ten SYNTH'e geç. Bass artık tek perdeli bir vuruş değil, MIDI izindeki mono bir synth — her adımın kendi notası var ve ekranda BASS SYNTH cihazı açılır.`, `The Bass tab is selected in the sound editor: switch SAMPLE | SYNTH to SYNTH. The Bass is no longer a one-pitch hit but a mono synth on a MIDI track — every step has its own note and the BASS SYNTH device opens.`],
+    lab_m2_tut_11_a:    [`MIDI izine Browser → Instruments → Operator ya da Analog sürükle (Voices: Mono, Glide açık).`, `Drag Browser → Instruments → Operator or Analog onto a MIDI track (Voices: Mono, Glide on).`],
+    lab_m2_tut_12_t:    [`NOTALAR: tonda bir bas çizgisi yaz`, `EDIT NOTES: write a bassline in key`],
+    lab_m2_tut_12_b:    [`NOTALAR'a bas (ya da Bass satırına çift tıkla). GAM açık: parlak satırlar tondaki notalar, altın satır kök. En az 3 nota ekle, en az iki farklı perde kullan ve gam dışına çıkma; ÇAL (Boşluk) ile davullarla birlikte dinle.`, `Press EDIT NOTES (or double-click the Bass row). SCALE is on: bright rows are the notes of the key, the gold row is the root. Add at least 3 notes, use at least two different pitches and stay in the scale; PLAY (Space) to hear it with the drums.`],
+    lab_m2_tut_12_a:    [`MIDI clip'e çift tık → Note Editor; Scale Mode açıkken tondaki satırlar vurgulanır (Live 12).`, `Double-click a MIDI clip → Note Editor; with Scale Mode on the rows of the key are highlighted (Live 12).`],
+    lab_m2_tut_13_t:    [`Aksan + slide: 303 hareketi`, `Accent + slide: the 303 move`],
+    lab_m2_tut_13_b:    [`Önce aksan: bir Bass hücresine yeniden tıkla (100 → AKSAN) ya da ACCENT knob'unu çevir. Sonra slide: Shift+tık ya da rulodaki notayı bir sonrakinin üstüne uzat, veya GLIDE'ı çevir. Kayan notada zarf yeniden vurmaz, perde süzülür — acid'in sesi budur.`, `Accent first: click a Bass cell again (100 → ACCENT) or turn the ACCENT knob. Then a slide: Shift+click, or stretch a note in the roll over the next one, or turn GLIDE. On a sliding note the envelope does not retrigger and the pitch glides — that is the sound of acid.`],
+    lab_m2_tut_13_a:    [`Live'da: notaları üst üste bindir + Operator'da Glide (Legato); aksan = Velocity → Filter Envelope / Volume.`, `In Live: overlap the notes + Glide (Legato) in Operator; accent = Velocity → Filter Envelope / Volume.`],
 });
 // ─── Kitler (Drum Rack preset'i: beş pad'in örnekleri) ───
 // Mersey: Kick 08 (Kick 02 yerine) — ölçüm: iki kick de ~46 Hz gövdeli, ama 08'in kuyruğu −40 dB'e 221 ms'de
@@ -10646,7 +11004,7 @@ function m2TrackForNote(n) {
     return a != null ? a : -1;
 }
 // Öğretici / oturum sayaçları (sayfa ömürlü): örnek seçimi, kit, kayıt, canlı kayıt vuruşu
-const m2Stats = { picks: 0, kits: 0, saves: 0, recs: 0 };
+const m2Stats = { picks: 0, kits: 0, saves: 0, recs: 0, bsw: 0, badds: 0, bopens: 0 };   // b*: BASS SYNTH (SYNTH'e geçiş, rulo notası, rulo açılışı)
 let _m2Rec = false;                                       // REC (canlı kayıt) kurulu mu — görünüm değişse de kalır
 let _m2UserBeats = { uid: '', list: null };               // Beatlerim listesi (preset tarayıcı KULLANICI grubu)
 
@@ -10750,6 +11108,9 @@ function loadGenreTemplate(g) {
     _m2Edited = false;                            // hazır pattern: ızgara görevleri öğrenci düzenleyene dek bekler
     const len = state.beat.len;
     state.beat.slots[state.beat.slot] = g.patterns.map(r => len === 32 ? r.concat(r) : r.slice());
+    // BASS SYNTH: şablonun Bass satırından tonda bas çizgisi (kök / oktav / beşli; şablona göre uzunluk, Trap'te 808 glide)
+    const bs = state.beat.bass;
+    if (bs) bs.clips[state.beat.slot] = beatBassAuto(state.beat.slots[state.beat.slot][4], bs.key, g.name);
     beatBindActive();
     state.bpm = g.bpm;
     beatSetPreset(g.name);
@@ -10763,7 +11124,7 @@ function toggleBeat() {
 // ─── BE·RHYTHM 02 sabitleri ───
 const M2_BPM_MIN = 60, M2_BPM_MAX = 200;
 const M2_COL = ['var(--lab-kick)', 'var(--lab-snare)', 'var(--lab-chat)', 'var(--lab-ohat)', 'var(--lab-bass)'];
-const M2_SUB = ['SINE · PITCH ENV', 'TRI + NOISE', 'NOISE · HP', 'NOISE · HP', 'SAW · LP ENV'];
+const M2_SUB = ['SINE · PITCH ENV', 'TRI + NOISE', 'NOISE · HP', 'NOISE · HP', 'BASS SYNTH · MONO'];
 // Pad aria-label: kanal + yüklü ses ("Close Hat · Mersey · Closed Hat 02 — önizle ve düzenle")
 function m2PadAria(i) {
     const t = (state.beat.tracks || [])[i] || {}, name = BEAT_TRACKS[i].name;
@@ -10798,8 +11159,45 @@ function m2Synth(list) {
 // Geçmiş / A-B anlık görüntüsü (JSON'a çevrilir): pattern'ler + tempo + bütün kanal/sentez ayarları
 function m2Snap() {
     const B = state.beat;
+    B.slots.forEach((_, k) => beatBassClip(k));    // klipler ızgarayla uzlaşık yazılsın
     return { slots: B.slots, len: B.len, preset: B.preset, bpm: state.bpm, swing: state.swing, vols: state.beatVolumes,
-             tracks: B.tracks, synth: B.synth, master: B.master, choke: B.choke };
+             tracks: B.tracks, synth: B.synth, master: B.master, choke: B.choke, bass: B.bass };
+}
+// ─── BASS SYNTH cihaz knob'ları (tasarım aralıkları; Hz / ms knob'ları logaritmik) ───
+const m2Ms = v => v >= 1000 ? (v / 1000).toFixed(2) + 's' : Math.round(v) + 'ms';
+const M2_BASS_KN = [
+    { k:'sub',   l:'SUB',     min:0,   max:100,  st:1, f:v => Math.round(v) + '%', c:'var(--lab-bass)' },
+    { k:'oct',   l:'OCT',     min:-2,  max:1,    st:1, f:v => (v > 0 ? '+' : '') + Math.round(v), bip:true, c:'var(--lab-bass)' },
+    { k:'det',   l:'DETUNE',  min:0,   max:50,   st:1, f:v => Math.round(v) + 'ct', c:'var(--lab-bass)' },
+    { k:'cut',   l:'CUTOFF',  min:40,  max:4000, st:1, log:true, f:v => m2Hz(v) + 'Hz', c:'var(--ember-2)' },
+    { k:'res',   l:'RESO',    min:0,   max:100,  st:1, f:v => Math.round(v) + '%', c:'var(--ember-2)' },
+    { k:'env',   l:'ENV MOD', min:0,   max:100,  st:1, f:v => Math.round(v) + '%', c:'var(--ember-2)' },
+    { k:'dec',   l:'DECAY',   min:30,  max:2000, st:1, log:true, f:m2Ms, c:'var(--ember-2)' },
+    { k:'acc',   l:'ACCENT',  min:0,   max:100,  st:1, f:v => Math.round(v) + '%', c:'var(--accent)' },
+    { k:'glide', l:'GLIDE',   min:10,  max:500,  st:1, log:true, f:m2Ms, c:'var(--accent)' },
+    { k:'drive', l:'DRIVE',   min:0,   max:100,  st:1, f:v => Math.round(v) + '%', c:'var(--accent)' },
+];
+// Dış veri (kayıt / anlık görüntü) → doğrulanmış bas verisi. Klibi olmayan (eski) kayıtta klipler boş kalır →
+// beatBassClip ilk okumada Bass satırından tonda otomatik bas çizgisi kurar.
+function m2BassFrom(o, len) {
+    const d = beatBassDefault(), x = o && typeof o === 'object' ? o : {}, k = x.key || {}, dv = x.dev;
+    d.key = { root: Number.isFinite(+k.root) && k.root !== null ? labPc(+k.root) : 9, type: LAB_SCALES[k.type] ? k.type : 'minor' };
+    if (dv && typeof dv === 'object') {
+        d.dev.wave = dv.wave === 'square' ? 'square' : 'saw';
+        M2_BASS_KN.forEach(p => { const v = m2Clamp(dv[p.k], p.min, p.max, d.dev[p.k]); d.dev[p.k] = p.k === 'oct' ? Math.round(v) : v; });
+        d.preset = BASS_PRESETS.some(p => p.id === x.preset) ? x.preset : null;
+    }
+    d.last = Math.round(m2Clamp(x.last, 0, 127, d.last));
+    d.clips = [0, 1, 2, 3].map(i => beatBassNotes(Array.isArray(x.clips) ? x.clips[i] : null, len));
+    return d;
+}
+// Ton değişimi: aynı uzunlukta gamda derece korunur (A minör → C majör: A→C, C→E), değilse yeni köke
+// taşınıp gama oturtulur. Kök farkı −6..+5 yarım ses (en yakın yön).
+function m2MapKey(p, K0, root, type) {
+    const iv0 = labScaleIv(K0.type), iv1 = labScaleIv(type), dR = ((root - K0.root) % 12 + 18) % 12 - 6;
+    const rel = p - K0.root, i = iv0.indexOf(labPc(rel));
+    const q = i >= 0 && iv0.length === iv1.length ? K0.root + Math.floor(rel / 12) * 12 + dR + iv1[i] : snapToScale(p + dR, root, type, 0);
+    return Math.max(0, Math.min(127, q));
 }
 function m2Restore(o) {
     if (!o || !Array.isArray(o.slots)) return;
@@ -10816,6 +11214,7 @@ function m2Restore(o) {
     if (Array.isArray(o.vols)) for (let i = 0; i < 5; i++) state.beatVolumes[i] = Math.round(m2Clamp(o.vols[i], 0, 100, M2_VOL_DEF[i]));
     B.tracks = m2Tracks(o.tracks);
     B.synth = m2Synth(o.synth);
+    B.bass = m2BassFrom(o.bass, B.len);            // BASS SYNTH (klipsiz eski kayıt → Bass satırından otomatik bas çizgisi)
     B.master = m2Clamp(o.master, 0, 100, 80);
     B.choke = o.choke == null ? true : !!o.choke;
     beatStep %= B.len;
@@ -10834,7 +11233,7 @@ function m2FromSaved(it) {
         ? d.slots.map(s => beatPatternsFrom(s, n)) : [act, beatEmpty(n), beatEmpty(n), beatEmpty(n)];
     return { slots, slot: 0, len: n, preset: null, bpm: it && it.bpm, swing: it && it.swing,
              vols: d && Array.isArray(d.volumes) ? d.volumes : M2_VOL_DEF, tracks: d && d.tracks, synth: d && d.synth,
-             master: d && d.master, choke: d && d.choke };
+             master: d && d.master, choke: d && d.choke, bass: d && d.bass };
 }
 // Görev koşulları (aktif slotun ilk 16 adımı; TASKS[2] sırası). Yalnız tamamlar, geri almaz.
 function m2TaskState() {
@@ -10923,9 +11322,9 @@ function renderModule2() {
     });
     const bInit = lpBtn({ text: () => L('lp_init'), variant: 'danger', title: () => L('lab_m2_init_t'), onClick: () => {
         push();
-        B.slots[B.slot] = beatEmpty(B.len); beatBindActive();
+        B.slots[B.slot] = beatEmpty(B.len); B.bass.clips[B.slot] = []; beatBindActive();
         beatSetPreset(null); _m2UserName = _m2UserId = null; _m2Edited = false;
-        paintPreset(); paintGrid(); paintSlots();
+        paintPreset(); paintGrid(); paintSlots(); paintBassLane(); rollSync();
     } });
     const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: () => L('lp_ab_aria') });
     ab.buttons.forEach(b => { lpTr(b, 'title', () => L('lp_ab_aria')); });
@@ -11123,11 +11522,12 @@ function renderModule2() {
     let dragEndT = 0;
     const viewPage = () => B.len === 32 ? (beatPlaying && curStep >= 0 ? Math.floor(curStep / 16) : _m2Page) : 0;
     const cellAt = el => { const c = el && el.closest ? el.closest('.m2-cell') : null; return c && seq.contains(c) ? c : null; };
-    const setCell = (r, ci, v) => { state.beatPatterns[r][ci] = v; edited(); paintCell(r, ci % 16); };
+    const setCell = (r, ci, v) => { state.beatPatterns[r][ci] = v; edited(); if (r === 4) { bassCells = null; paintBassLane(); } paintCell(r, ci % 16); };
     seq.addEventListener('click', e => {
         const c = cellAt(e.target); if (!c) return;
         if (performance.now() - dragEndT < 350) return;
         const r = +c.dataset.r, ci = viewPage() * 16 + +c.dataset.j;
+        if (r === 4 && beatBassSyn()) { bassCellClick(ci, e.shiftKey); return; }   // BASS SYNTH: nota döngüsü / slide
         const nv = m2NextVel(state.beatPatterns[r][ci]);
         push(); setCell(r, ci, nv);
         if (nv > 0 && !beatPlaying) beatPreview(r, nv);
@@ -11172,7 +11572,9 @@ function renderModule2() {
         { label: () => L('lab_m2_ed_tabs'), cls: 'm2-tabs' });
     segTab.buttons.forEach((b, i) => b.style.setProperty('--c', M2_COL[i]));
     const segSrc = makeSeg([['sample', 'SAMPLE'], ['synth', 'SYNTH']], B.tracks[B.sel].src, v => {
-        push(); B.tracks[B.sel].src = v; paintEditor(); paintRows(); if (!beatPlaying) beatPreview(B.sel, 100);
+        push(); B.tracks[B.sel].src = v;
+        if (B.sel === 4) { if (v === 'synth') m2Stats.bsw++; else bassLiveAll(); }
+        paintEditor(); paintRows(); paintGrid(); if (!beatPlaying) beatPreview(B.sel, 100);
     }, { label: () => L('lab_m2_src_aria'), cls: 'm2-src' });
     const well = mk('div', 'm2-well');
     const edName = mk('span', 'm2-edname'), edChain = mk('span', 'm2-edchain');
@@ -11247,6 +11649,7 @@ function renderModule2() {
     const pAmp2 = lpSvg('path', { class: 'm2-damp2' }, dsv);
     const pAmp = lpSvg('path', { class: 'm2-damp' }, dsv);
     const pPitch = lpSvg('path', { class: 'm2-dpitch' }, dsv);
+    const pPitch2 = lpSvg('path', { class: 'm2-dpitch m2-dpitch--acc' }, dsv);   // BASS SYNTH: aksanlı notanın filtre eğrisi
     const tl1 = lpSvg('text', { x: 536, y: 18, class: 'm2-dl m2-dl--1', 'text-anchor': 'end' }, dsv);
     const tl2 = lpSvg('text', { x: 536, y: 31, class: 'm2-dl m2-dl--2', 'text-anchor': 'end' }, dsv);
     const tl3 = lpSvg('text', { x: 536, y: 44, class: 'm2-dl m2-dl--3', 'text-anchor': 'end' }, dsv);
@@ -11259,6 +11662,380 @@ function renderModule2() {
     // Orta sütun = Simpler: dalga formu + zarf ekranı, altında örnek tarayıcı (hot-swap)
     const edM = mk('div', 'm2-edm'); edM.append(disp.el, sbBox);
     ed.append(edL, edM, edR);
+
+    // ── BASS SYNTH cihazı (Bass SYNTH iken örnek tarayıcı / sentez knob'larının yerine) ──
+    // Sağ: preset + WAVE + 10 knob (PRO KİT) · orta: zarf ekranı + klip şeridi (mini nota şeridi, NOTALAR, TON)
+    const bdev = () => B.bass.dev;
+    const bassPresetOf = id => BASS_PRESETS.find(x => x.id === id) || null;
+    const bassPb = makePresetBrowser({
+        items: BASS_PRESETS.map(x => ({ id: x.id, name: x.name, no: '' })), value: B.bass.preset || BASS_PRESETS[0].id,
+        width: 176, label: () => L('lab_m2_bass_pb'), capLabel: () => L('lp_preset_cap'),
+        onPick: it => applyBassPreset(it.id),
+        onPrev: () => bassPresetStep(-1), onNext: () => bassPresetStep(1),
+    });
+    const bassPanel = makePanel({ title: 'BASS SYNTH', color: 'var(--lab-bass)', cls: 'm2-bdev', actions: [bassPb] });
+    const bassAud = () => { if (!beatPlaying) bassPlay(B.bass.last, 100, 60 / state.bpm / 4 * 2); };
+    const bWaveBox = mk('div', 'm2-bwave');
+    const bWaveCap = mk('span', 'm2-cap', 'WAVE'); bWaveCap.setAttribute('aria-hidden', 'true');
+    const segWave = makeSeg([['saw', 'SAW'], ['square', 'SQR']], bdev().wave, v => {
+        if (bdev().wave === v) return;
+        push(); bdev().wave = v; bassChanged(); bassAud();
+    }, { label: () => L('lab_m2_bass_wave'), cls: 'm2-bwseg' });
+    bWaveBox.append(bWaveCap, segWave.el);
+    const bassK = {};
+    const bKnobs = mk('div', 'm2-bk');
+    M2_BASS_KN.forEach(pk => {
+        bassK[pk.k] = makeKnob({ label: pk.l, min: pk.min, max: pk.max, value: bdev()[pk.k], def: BASS_PRESETS[0].dev[pk.k], step: pk.st,
+            log: !!pk.log, bipolar: !!pk.bip, size: 48, color: pk.c, aria: `BASS SYNTH ${pk.l}`, fmt: pk.f,
+            onStart: push, onRelease: bassAud,
+            onChange: v => { bdev()[pk.k] = pk.k === 'oct' ? Math.round(v) : v; bassChanged(); } });
+        bKnobs.append(bassK[pk.k].el);
+    });
+    bassPanel.el.append(bWaveBox, bKnobs);
+    bassPanel.el.setAttribute('aria-label', 'BASS SYNTH');
+    edR.insertBefore(bassPanel.el, edHint);
+    // Klip şeridi: başlık + NOTALAR · mini nota şeridi (tık = piyano rulosu) · TON (kök + gam)
+    const bLane = mk('div', 'm2-blane');
+    const bLaneHead = mk('div', 'm2-blhead');
+    const bLaneCap = mk('span', 'm2-cap');
+    const bNotes = lpBtn({ text: () => L('lab_m2_bass_notes'), variant: 'accent', title: () => L('lab_m2_bass_notes_t'), cls: 'm2-bnotes', onClick: () => openRoll(bNotes) });
+    bNotes.setAttribute('aria-haspopup', 'dialog');
+    bLaneHead.append(bLaneCap, bNotes);
+    const bLaneBtn = mk('button', 'm2-bl'); bLaneBtn.type = 'button'; bLaneBtn.setAttribute('aria-haspopup', 'dialog');
+    bLaneBtn.addEventListener('click', () => openRoll(bLaneBtn));
+    const blSvg = lpSvg('svg', { viewBox: '0 0 540 72', class: 'm2-blsvg', 'aria-hidden': 'true', focusable: 'false' }, bLaneBtn);
+    const blBg = lpSvg('g', null, blSvg), blNotes = lpSvg('g', null, blSvg);
+    const blPh = lpSvg('rect', { x: 0, y: 2, width: 2, height: 68, class: 'm2-blph' }, blSvg);
+    const blEmpty = mk('span', 'm2-blempty'); bLaneBtn.append(blEmpty);
+    const bKey = mk('div', 'm2-bkey');
+    const bKeyCap = i18n('span', 'm2-cap', 'lab_m2_bass_key');
+    const bSel = (key, opts, val, pick) => {
+        const el = mk('select', 'lpr-sel m2-bsel');
+        lpTr(el, 'aria-label', () => L(key)); lpTr(el, 'title', () => L('lab_m2_bass_key_t'));
+        const fill = () => { const v = el.value; el.replaceChildren(...opts().map(([ov, t]) => { const op = mk('option'); op.value = String(ov); op.textContent = t; return op; })); el.value = v || String(val); };
+        fill(); el.value = String(val);
+        el.addEventListener('change', () => pick(el.value));
+        return { el, fill };
+    };
+    const bRoot = bSel('lab_m2_bass_root', () => LAB_NOTE_NAMES.map((n, i) => [i, n]), B.bass.key.root, v => setBassKey(+v, B.bass.key.type));
+    const bType = bSel('lab_m2_bass_type', () => LAB_SCALE_ORDER.map(t => [t, scaleName(t)]), B.bass.key.type, v => setBassKey(B.bass.key.root, v));
+    bKey.append(bKeyCap, bRoot.el, bType.el);
+    bLane.append(bLaneHead, bLaneBtn, bKey);
+    edM.append(bLane);
+    // Satırda çift tık (pad ya da hücre) = NOTALAR. Hücrede çift tıkı oluşturan iki tık geri alınır (ilk tıktan önceki hâl).
+    let bassClk = null;
+    rows[4].row.addEventListener('dblclick', e => {
+        if (!beatBassSyn() || e.target.closest('.lp-knob, .lp-tgl')) return;
+        const c = cellAt(e.target);
+        if (c && bassClk && bassClk.ci === viewPage() * 16 + +c.dataset.j && performance.now() - bassClk.t < 700) {
+            try { m2Restore(JSON.parse(bassClk.snap)); } catch (err) { console.warn('[lab] bass dblclick:', err); }
+            paintAll();
+        }
+        bassClk = null;
+        openRoll(c || rows[4].pad);
+    });
+    // Bass hücresi (SYNTH): boş → son perdede nota · 100 → AKSAN (127) → 70 → 40 → kapalı · Shift = slide aç/kapa
+    function bassCellClick(ci, shift) {
+        const k = B.slot, len = B.len, now = performance.now();
+        if (!(bassClk && bassClk.ci === ci && now - bassClk.t < 700)) bassClk = { ci, t: now, snap: JSON.stringify(m2Snap()) };
+        const c = beatBassClip(k), here = c.filter(n => Math.floor(n.s + BASS_EPS) === ci);
+        if (shift) {
+            const ev = beatBassEvents(c), i = ev.findIndex(n => Math.floor(n.s + BASS_EPS) === ci);
+            if (i < 0) return;
+            if (ev.length < 2) { toast(L('lab_m2_toast_sl1')); return; }
+            push();
+            const e = ev[i], nx = beatBassNext(ev, i, len);
+            e.l = nx.slide ? Math.max(0.25, Math.min(1, nx.nS - e.s)) : Math.min(len, nx.nS - e.s + 0.25);
+        } else {
+            push();
+            if (!here.length) c.push({ p: B.bass.last, s: ci, l: 1, v: 100 });
+            else {
+                const top = Math.max.apply(null, here.map(n => n.v));
+                const nv = top >= 110 ? 70 : top > 70 ? 127 : top > 40 ? 40 : 0;
+                if (!nv) B.bass.clips[k] = c.filter(n => here.indexOf(n) < 0);
+                else here.forEach(n => { n.v = nv; });
+            }
+        }
+        beatBassToRow(k);
+        edited(); bassCells = null; paintCell(4, ci % 16); paintBassLane(); rollSync();
+        const ev2 = beatBassEvents(beatBassClip(k)).find(n => Math.floor(n.s + BASS_EPS) === ci);
+        if (ev2 && !beatPlaying) bassPlay(ev2.p, ev2.v, 60 / state.bpm / 4 * Math.min(2, ev2.l));
+    }
+    function bassChanged() {
+        const P = bassPresetOf(B.bass.preset), d = bdev();
+        if (P && (P.dev.wave !== d.wave || BASS_DEV_KEYS.some(k2 => Math.abs(P.dev[k2] - d[k2]) > 1e-6))) B.bass.preset = null;
+        if (_m2UserName) _m2UserDirty = true;
+        bassApplyLive(); paintBassDev(); paintEditor();
+    }
+    function applyBassPreset(id) {
+        const P = bassPresetOf(id); if (!P) return;
+        push();
+        B.bass.dev = Object.assign({}, P.dev); B.bass.preset = P.id;
+        if (_m2UserName) _m2UserDirty = true;
+        bassApplyLive(); paintBassDev(); paintEditor(); bassAud();
+        toast(Lf('lab_m2_toast_bpre', { name: P.name }));
+    }
+    function bassPresetStep(d) {
+        const i = BASS_PRESETS.findIndex(x => x.id === B.bass.preset);
+        const j = i < 0 ? (d > 0 ? 0 : BASS_PRESETS.length - 1) : (i + d + BASS_PRESETS.length) % BASS_PRESETS.length;
+        applyBassPreset(BASS_PRESETS[j].id);
+    }
+    // Proje tonu: bütün slotların klipleri yeni tona taşınır (m2MapKey); piyano rulosunun GAM'ı aynı değer
+    function setBassKey(root, type) {
+        const K0 = B.bass.key;
+        root = labPc(root); type = LAB_SCALES[type] ? type : 'minor';
+        if (root === K0.root && type === K0.type) return;
+        push();
+        B.slots.forEach((_, k) => { beatBassClip(k).forEach(n => { n.p = m2MapKey(n.p, K0, root, type); }); });
+        B.bass.last = m2MapKey(B.bass.last, K0, root, type);
+        B.bass.key = { root, type };
+        if (_m2UserName) _m2UserDirty = true;
+        bassCells = null;
+        paintBassDev(); paintBassLane(); paintGrid(); paintEditor(); rollSync();
+        toast(Lf('lab_m2_toast_key', { key: `${noteName(root)} ${scaleName(type)}` }));
+    }
+    function paintBassDev() {
+        const d = bdev();
+        segWave.set(d.wave);
+        M2_BASS_KN.forEach(pk => bassK[pk.k].update(d[pk.k]));
+        const id = B.bass.preset || '';
+        if (bassPb.get() !== id && id) bassPb.set(id);
+        bassPb.setModified(!B.bass.preset);
+        bRoot.el.value = String(B.bass.key.root); bType.el.value = B.bass.key.type;
+    }
+    // Mini nota şeridi: aktif slotun klibi (x = adım, y = perde), aksan altın, slide bağı ember
+    function bassLaneStats(k) {
+        const ev = beatBassEvents(beatBassClip(k)), len = B.len;
+        let acc = 0, sl = 0;
+        ev.forEach((e, i) => { if (bassAcc(e)) acc++; if (ev.length > 1 && beatBassNext(ev, i, len).slide) sl++; });
+        return { ev, acc, sl };
+    }
+    function paintBassLane() {
+        if (!beatBassSyn() || B.sel !== 4) return;
+        const k = B.slot, len = B.len, c = beatBassClip(k), st = bassLaneStats(k), id = 'ABCD'[k];
+        const X = s => 6 + s / len * 528;
+        let lo = 127, hi = 0;
+        c.forEach(n => { lo = Math.min(lo, n.p); hi = Math.max(hi, n.p); });
+        if (lo > hi) { lo = 33; hi = 45; }
+        lo -= 2; hi += 2;
+        const Y = p => 6 + (1 - (p - lo) / Math.max(1, hi - lo)) * 56;
+        blBg.replaceChildren();
+        for (let b = 0; b <= len; b += 4) lpSvg('line', { x1: X(b), y1: 2, x2: X(b), y2: 70, class: 'm2-blg' + (b % 16 === 0 ? ' m2-blg--bar' : '') }, blBg);
+        blNotes.replaceChildren();
+        st.ev.forEach((e, i) => {
+            const nx = st.ev.length > 1 ? beatBassNext(st.ev, i, len) : null;
+            if (nx && nx.slide && nx.nS <= len) lpSvg('line', { x1: X(nx.nS), y1: Y(e.p) + 3, x2: X(nx.nS), y2: Y(nx.next.p) + 3, class: 'm2-blsl' }, blNotes);
+        });
+        c.forEach(n => {
+            lpSvg('rect', { x: X(n.s).toFixed(1), y: Y(n.p).toFixed(1), width: Math.max(3, n.l / len * 528 - 1).toFixed(1), height: 6, rx: 1,
+                class: 'm2-bln' + (bassAcc(n) ? ' is-acc' : '') }, blNotes);
+        });
+        blEmpty.textContent = c.length ? '' : L('lab_m2_bass_empty');
+        bLaneCap.textContent = Lf('lab_m2_bass_cap', { id, n: c.length });
+        bLaneBtn.setAttribute('aria-label', Lf('lab_m2_bass_lane', { id, n: c.length, a: st.acc, s: st.sl }));
+        lpTr(bLaneBtn, 'title', () => L('lab_m2_bass_notes_t'));
+        paintBassPh(curStep);
+    }
+    function paintBassPh(s) {
+        const on = beatPlaying && s >= 0 && beatBassSyn();
+        blPh.classList.toggle('on', on);
+        if (on) blPh.setAttribute('x', (6 + (s % B.len) / B.len * 528).toFixed(1));
+    }
+
+    // ── Piyano rulosu (makePianoRoll — kitin BE·CLIP penceresi; tek pencere, aktif slotu izler) ──
+    // Klip uzunluğu = pattern uzunluğu (DÖNGÜ 1 | 2 ölçü ↔ UZUNLUK 16 | 32), GAM = proje tonu, ÇAL = Beat taşıması.
+    // Alt şerit: REC (Beat'in REC'iyle aynı) · MIDI · kayıt durumu. Kit dil değişiminde pencereyi yeniden kurar
+    // (replaceChildren) → MutationObserver şeridi geri takar.
+    let roll = null, rollK = -1, rollRs = null;
+    const bassRec = { cur: 0, down: 0, held: new Map(), grid: 1, gl: '1/16' };
+    const rollOpen = () => !!roll && roll.isOpen();
+    function bassRoll() {
+        if (roll) return roll;
+        const r = makePianoRoll({
+            title: '', notes: [], length: B.len, maxLength: 32, range: [24, 48],
+            scale: { root: B.bass.key.root, type: B.bass.key.type, on: true, fold: false },
+            colors: { note: 'var(--violet)' }, cls: 'm2-roll',
+            onChange: (notes, m) => rollChange(notes, m),
+            onAction: (reason, m) => rollAction(reason, m),
+            onAudition: (p, v, d) => bassPlay(p, v, d),
+            onPlayToggle: on => { if (on !== beatPlaying) togglePlay(); },
+            getPlayhead: () => rollPh(),
+            onClose: () => rollClosed(),
+        });
+        roll = r;
+        rollRs = rollStrip();
+        const mo = new MutationObserver(() => { if (roll === r && rollRs && !r.el.contains(rollRs.el)) rollMount(); });
+        mo.observe(r.el, { childList: true });
+        lpOnTeardown(() => { mo.disconnect(); try { r.destroy(); } catch (_) {} if (roll === r) { roll = null; rollRs = null; rollK = -1; } });
+        rollMount();
+        return r;
+    }
+    function rollMount() {
+        const st2 = roll.el.querySelector(':scope > .lp-status');
+        roll.el.insertBefore(rollRs.el, st2 || null);
+        paintRollStrip();
+    }
+    function rollStrip() {
+        const el = mk('div', 'm2-rs'); el.setAttribute('role', 'group');
+        const rec = makeToggle({ text: 'REC', led: true, color: 'var(--err-strong)', on: _m2Rec, cls: 'm2-rs-rec',
+            label: () => L('lab_m2_bass_rec_t'), title: () => L('lab_m2_bass_rec_t'),
+            onToggle: on => { _m2Rec = on; bassRec.down = 0; bassRec.held.clear(); recTake = false; paintRec(); paintRollStrip(); } });
+        const midi = makeMidiButton({ color: 'var(--ok)', cls: 'm2-rs-midi' });
+        const info = mk('span', 'm2-rs-info'); info.setAttribute('aria-live', 'polite');
+        el.append(rec.el, midi.el, info);
+        // Şerit tuşları kitin pencere kısayollarına (Delete, B, +/−) gitmesin; Tab tuzağı ve Esc pencereye kalsın
+        el.addEventListener('keydown', e => { if (e.key !== 'Tab' && e.key !== 'Escape') e.stopPropagation(); });
+        return { el, rec, midi, info };
+    }
+    const bassRecPos = () => { const s = bassRec.cur; return `${Math.floor(s / 16) + 1}.${Math.floor((s % 16) / 4) + 1}.${Math.round((s % 4 + 1) * 100) / 100}`; };
+    function paintRollStrip() {
+        if (!rollRs) return;
+        rollRs.el.setAttribute('aria-label', L('lab_m2_bass_rs_aria'));
+        rollRs.rec.set(_m2Rec);
+        rollRs.el.classList.toggle('is-rec', _m2Rec);
+        const t = !_m2Rec ? L('lab_m2_bass_rs_off') : beatPlaying ? Lf('lab_m2_bass_rs_live', { g: bassRec.gl }) : Lf('lab_m2_bass_rs_step', { pos: bassRecPos(), g: bassRec.gl });
+        if (rollRs.info.textContent !== t) rollRs.info.textContent = t;
+    }
+    function openRoll(opener) {
+        if (!beatBassSyn()) return;
+        const r = bassRoll();
+        rollLoad(B.slot);
+        if (!r.isOpen()) { r.open(opener || document.activeElement); m2Stats.bopens++; }
+        r.setPlaying(beatPlaying);
+        if (_m2Rec && !beatPlaying) r.setPlayhead(bassRec.cur);
+        paintRollStrip();
+    }
+    function rollLoad(k) {
+        if (!roll) return;
+        rollK = k; bassRec.cur = 0; bassRec.down = 0; bassRec.held.clear();
+        roll.setTitle(Lf('lab_m2_bass_roll_t', { id: 'ABCD'[k] }));
+        roll.setScale({ root: B.bass.key.root, type: B.bass.key.type, on: true });
+        roll.setLength(B.len);
+        roll.setNotes(beatBassClip(k));
+        roll.clearHistory();
+        paintRollStrip();
+    }
+    // Dış değişiklik (hücre, geri al, A/B, kayıt, ton, uzunluk) → açık ruloya (setNotes geri alınabilir, onChange yok)
+    function rollSync() {
+        if (!rollOpen() || rollK < 0) return;
+        roll.setScale({ root: B.bass.key.root, type: B.bass.key.type, on: true });
+        roll.setLength(B.len);
+        roll.setNotes(beatBassClip(rollK));
+    }
+    function rollChange(notes, m) {
+        if (rollK < 0) return;
+        const k = rollK, before = beatBassClip(k).map(n => n.p + ':' + n.s);
+        push();
+        B.bass.clips[k] = beatBassNotes(notes, B.len);
+        if (m && m.reason === 'add') {
+            const added = B.bass.clips[k].filter(n => before.indexOf(n.p + ':' + n.s) < 0);
+            if (added.length) { B.bass.last = added[added.length - 1].p; m2Stats.badds += added.length; }
+        }
+        beatBassToRow(k);
+        edited(); bassCells = null;
+        if (m && m.reason === 'length' && (m.length > 16 ? 32 : 16) !== B.len) {
+            // DÖNGÜ = pattern UZUNLUĞU (kopyalama setLen'de: 16 → 32 ilk ölçü ikinciye kopyalanır)
+            setLen(m.length > 16 ? 32 : 16);
+            return;
+        }
+        if (k === B.slot) paintGrid();
+        paintBassLane();
+    }
+    function rollAction(reason, m) {
+        if (reason === 'grid' || reason === 'open') {
+            const g = { '1/4': 4, '1/8': 2, '1/16': 1, '1/32': 0.5 }[m.grid] || 1;
+            bassRec.grid = g * (m.triplet ? 2 / 3 : 1); bassRec.gl = m.grid + (m.triplet ? 'T' : '');
+            paintRollStrip();
+        }
+        if (reason === 'scale' && roll) {
+            const sc = roll.getScale();
+            if (sc.root !== B.bass.key.root || sc.type !== B.bass.key.type) setBassKey(sc.root, sc.type);
+        }
+    }
+    // Rulonun çalma çizgisi: duyulan zamanda çalan adım (kesirli) — yalnız rulonun slotu çalıyorsa
+    function bassPosAt(k, perfMs) {
+        if (!beatPlaying || !beatCtx || k < 0) return null;
+        const now = beatCtxTimeAt(perfMs);
+        let e = null;
+        for (let i = beatStepLog.length - 1; i >= 0; i--) if (beatStepLog[i].t <= now) { e = beatStepLog[i]; break; }
+        if (!e || e.pat !== B.slots[k]) return null;
+        return Math.min(B.len - 1e-3, e.step + Math.max(0, Math.min(1, (now - e.t) / e.spb)));
+    }
+    function rollPh() { return bassPosAt(rollK, performance.now()); }
+    function rollClosed() {
+        rollK = -1; bassRec.down = 0; bassRec.held.clear();
+        paintBassLane();
+    }
+
+    // ── MIDI → BASS SYNTH: Bass SYNTH seçiliyken (ya da rulo açıkken) klavye bası çalar (mono legato);
+    // REC açıkken rulo açıksa kaydeder (durukken adım kaydı imlece, çalarken ızgaraya kuantize), rulo kapalı +
+    // çalıyorsa aktif slota canlı kayıt. Diğer durumlarda GM davul notaları pad'leri çalar (eskisi gibi).
+    const bassMidiKeys = new Map();
+    const bassMidiMode = () => beatBassSyn() && (B.sel === 4 || rollOpen());
+    function bassRecTarget() {
+        if (!_m2Rec) return -1;
+        if (rollOpen() && rollK >= 0) return rollK;
+        return beatPlaying && B.sel === 4 ? B.slot : -1;
+    }
+    function bassMidiOn(e) {
+        const key = e.input + ':' + e.ch + ':' + e.note, v = Math.max(1, Math.min(127, Math.round(+e.raw || e.vel * 127)));
+        bassMidiKeys.set(key, e.note);
+        bassLiveOn(e.note, v);
+        B.bass.last = e.note;
+        const k = bassRecTarget();
+        if (k < 0) return;
+        if (!beatPlaying) {                           // adım kaydı (yalnız rulo açıkken)
+            if (!rollOpen()) return;
+            const len = B.len, g = bassRec.grid, s = Math.max(0, Math.min(len - g, bassRec.cur));
+            if (!bassRec.down) push();
+            const c = beatBassClip(k).filter(n => !(n.p === e.note && Math.abs(n.s - s) < BASS_EPS));
+            c.push({ p: e.note, s: Math.round(s * 1000) / 1000, l: Math.min(g, len - s), v });
+            B.bass.clips[k] = c; bassRec.down++; m2Stats.badds++;
+            bassRecCommit(k);
+            return;
+        }
+        const s = bassPosAt(k, e.t);
+        if (s != null) bassRec.held.set(key, { s, t: beatCtx.currentTime, v, p: e.note, k });
+    }
+    function bassMidiOff(e) {
+        const key = e.input + ':' + e.ch + ':' + e.note;
+        if (!bassMidiKeys.has(key)) return;
+        bassMidiKeys.delete(key);
+        bassLiveOff(e.note);
+        if (!beatPlaying) {
+            if (bassRec.down) {
+                bassRec.down--;
+                if (!bassRec.down) {
+                    bassRec.cur = bassRec.cur + bassRec.grid >= B.len - 1e-6 ? 0 : Math.round((bassRec.cur + bassRec.grid) * 1000) / 1000;
+                    if (rollOpen()) roll.setPlayhead(bassRec.cur);
+                    paintRollStrip();
+                }
+            }
+            return;
+        }
+        const h = bassRec.held.get(key);
+        if (!h) return;
+        bassRec.held.delete(key);
+        const len = B.len, g = bassRec.grid;
+        let s = Math.round(h.s / g) * g; if (s >= len - 1e-6) s = 0;
+        const l = Math.max(g, Math.round(((beatCtx.currentTime - h.t) / (60 / state.bpm / 4)) / g) * g);
+        push();
+        const c = beatBassClip(h.k).filter(n => Math.abs(n.s - s) >= BASS_EPS);   // mono: aynı başlangıçtaki nota yenisiyle değişir
+        c.push({ p: h.p, s: Math.round(s * 1000) / 1000, l: Math.min(l, len - s), v: h.v });
+        B.bass.clips[h.k] = c; m2Stats.badds++;
+        bassRecCommit(h.k);
+    }
+    function bassRecCommit(k) {
+        B.bass.clips[k] = beatBassNotes(B.bass.clips[k], B.len);
+        beatBassToRow(k);
+        m2Stats.recs++;
+        _m2Edited = true; if (_m2UserName) _m2UserDirty = true;
+        beatSetPreset(null);
+        if (rollOpen() && rollK === k) roll.setNotes(B.bass.clips[k]);
+        bassCells = null;
+        if (k === B.slot) paintGrid();
+        paintBassLane(); paintPreset(); paintSlots();
+    }
     let edK = {}, edBuilt = -1;
     function buildEdKnobs() {
         const si = B.sel, t = BEAT_TRACKS[si];
@@ -11356,7 +12133,7 @@ function renderModule2() {
             ],
             labels: [{ x: 360, y: 118, t: L('lab_m2_b_vel') }, { x: 160, y: 118, t: L('lab_m2_b_kick') }],
         });
-        const steps = m2KitBlock({ steps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ t: L(`lab_m2_x${n}_t`), d: L(`lab_m2_x${n}_d`) })), cols: 1 });
+        const steps = m2KitBlock({ steps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(n => ({ t: L(`lab_m2_x${n}_t`), d: L(`lab_m2_x${n}_d`) })), cols: 1 });
         const onoff = L('lab_m2_t_onoff');
         const table = m2KitBlock({ table: { rows: m2PctRows([
             ['BPM', '60–200', '125', 'spb = 60 / bpm / 4'],
@@ -11370,7 +12147,8 @@ function renderModule2() {
             ['Kick START·END·SWEEP', '80–300·30–90 Hz·20–300 ms', '150·45·150', 'osc.frequency.exponentialRampToValueAtTime'],
             ['Snare TONE·NOISE·SNAP', '120–400 Hz·%0–100·0.5–5k', '190·60·1200', 'osc.frequency · noiseEnv · HP.frequency'],
             ['Hat HP·RES', '3–14 kHz · 0.5–10', '8k/6.5k · 1', 'BiquadFilter(highpass).frequency / .Q'],
-            ['Bass LP·RES·ENV', '100–2k Hz·0.5–15·%0–100', '400·5·40', 'lowpass.frequency ramp / .Q'],
+            ['Bass SYNTH CUTOFF·RESO·ENV', '40–4k Hz·%0–100·%0–100', '420·35·45', '2×lowpass.frequency / .Q · env → .detune (cent)'],
+            ['Bass SYNTH ACCENT·GLIDE', '%0–100 · 10–500 ms', '50 · 50 ms', 'v ≥ 110 → peak·env·decay · pitch.offset.setTargetAtTime'],
             ['Choke', onoff, L('lab_m2_t_on'), 'ohEnv.gain.cancelAndHoldAtTime + setTargetAtTime(0)'],
             ['MASTER', '0–100', '80', 'masterGain.gain'],
             ['KIT / SAMPLE', 'Classic · Mersey', 'Classic', 'BufferSource → env × 10^(gainDb/20)'],
@@ -11396,7 +12174,7 @@ function renderModule2() {
     // ── Görevler · "Ableton'da nerede?" · Beatlerim ──
     const tasks = makeTaskPanel(2);
     tasks.querySelectorAll('.lab-task-text').forEach((s, i) => { const t = TASKS[2][i]; if (t) s.setAttribute('data-i18n', 'lab_m2_task_' + t.id); });
-    const where = whereCard({ mid: 2, items: ['lab_m2_where_li1', 'lab_m2_where_li2', 'lab_m2_where_li3', 'lab_m2_where_li4', 'lab_m2_where_li5', 'lab_m2_where_li6'], pathKey: 'lab_m2_where_path' });
+    const where = whereCard({ mid: 2, items: ['lab_m2_where_li1', 'lab_m2_where_li2', 'lab_m2_where_li3', 'lab_m2_where_li4', 'lab_m2_where_li5', 'lab_m2_where_li6', 'lab_m2_where_li7'], pathKey: 'lab_m2_where_path' });
     // Beatlerim: liste preset tarayıcının KULLANICI grubuna da gider (aynı dizi — silme kartta yapılır)
     const saved = savedCard({
         kind: 'beat', titleKey: 'lab_saved_beats', saveKey: 'lab_saved_beat_save',
@@ -11485,6 +12263,7 @@ function renderModule2() {
     function paintRec() {
         tRec.set(_m2Rec);
         tRec.el.classList.toggle('is-live', _m2Rec && beatPlaying);
+        if (rollRs) paintRollStrip();
     }
     function paintMidi() {
         const si = B.sel, n = _m2Midi[si], nm = `${midiName(n)} · ${n}`;
@@ -11504,10 +12283,16 @@ function renderModule2() {
     function setLen(n) {
         if (n === B.len) return;
         push();
+        // BASS SYNTH klipleri ızgarayla birlikte: 32'de notalar ikinci ölçüye kopyalanır, 16'da ikinci ölçü düşer
+        B.bass.clips = B.slots.map((_, k) => {
+            const c = beatBassClip(k);
+            return n === 32 ? c.concat(c.map(x => Object.assign({}, x, { s: x.s + 16 }))) : c.filter(x => x.s < 16 - BASS_EPS);
+        });
         B.slots = B.slots.map(g => g.map(r => n === 32 ? r.concat(r) : r.slice(0, 16)));
         B.len = n; beatStep %= n; _m2Page = 0;
+        B.bass.clips = B.bass.clips.map(c => beatBassNotes(c, n));
         beatBindActive();
-        paintTransport(); paintGrid();
+        paintTransport(); paintGrid(); paintBassLane(); rollSync();
     }
     function pickSlot(k) {
         if (beatPlaying) {
@@ -11515,7 +12300,8 @@ function renderModule2() {
             if (B.pendingSlot != null) toast(Lf('lab_m2_toast_slot', { id: 'ABCD'[k] }));
         } else {
             B.slot = k; B.pendingSlot = null; beatBindActive(); beatSetPreset(null); _m2UserName = _m2UserId = null; _m2Page = 0;
-            paintGrid(); paintPreset();
+            paintGrid(); paintPreset(); paintBassLane();
+            if (rollOpen() && rollK !== k) rollLoad(k);
         }
         paintSlots();
     }
@@ -11559,6 +12345,8 @@ function renderModule2() {
         play.setAttribute('aria-pressed', String(beatPlaying));
         play.classList.toggle('is-on', beatPlaying);
         if (!beatPlaying) recTake = false;
+        if (rollOpen()) { roll.setPlaying(beatPlaying); if (!beatPlaying && _m2Rec) roll.setPlayhead(bassRec.cur); }
+        if (!beatPlaying) { bassRec.held.clear(); paintBassPh(-1); }
         paintRec();
     }
     function paintRows() {
@@ -11586,22 +12374,40 @@ function renderModule2() {
         });
     }
     // Tek hücre: dolgu yüksekliği = velocity, sayı, çalan sütun, aria
+    // Bass SYNTH: hücre notanın adını (A1), aksan / slide işaretini taşır — adım → { p, acc, sl } (aktif slot)
+    let bassCells = null, gridPass = false;
+    function bassCellMap() {
+        if (bassCells) return bassCells;
+        bassCells = {};
+        if (!beatBassSyn()) return bassCells;
+        const ev = beatBassEvents(beatBassClip(B.slot)), len = B.len;
+        ev.forEach((e, i) => { const j = Math.floor(e.s + BASS_EPS); if (!bassCells[j]) bassCells[j] = { p: e.p, acc: bassAcc(e), sl: ev.length > 1 && beatBassNext(ev, i, len).slide }; });
+        return bassCells;
+    }
     function paintCell(r, j) {
-        const C = rows[r].cells[j], ci = viewPage() * 16 + j, vel = state.beatPatterns[r][ci] || 0, lg = labLang() + ci;
+        const C = rows[r].cells[j], ci = viewPage() * 16 + j, vel = state.beatPatterns[r][ci] || 0;
+        if (r === 4 && !gridPass) bassCells = null;     // tek hücre boyaması (sürükleme, ↑↓, REC): notalar değişmiş olabilir
+        const bi = r === 4 && vel > 0 ? bassCellMap()[ci] : null, nt = bi ? midiName(bi.p) : '';
+        const lg = labLang() + ci + (bi ? nt + (bi.acc ? 'a' : '') + (bi.sl ? 's' : '') : '');
         if (C.vel === vel && C.lang === lg) return;
         C.vel = vel; C.lang = lg;
         const on = vel > 0;
         C.el.classList.toggle('on', on);
         C.el.classList.toggle('hi', vel >= 98);        // dolgu rakamı tamamen örtüyor → koyu rakam
+        C.el.classList.toggle('is-note', !!bi);
+        C.el.classList.toggle('is-acc', !!(bi && bi.acc));
+        C.el.classList.toggle('is-sl', !!(bi && bi.sl));
         C.el.style.setProperty('--vel', String(vel));
-        C.n.textContent = on ? vel : '';
+        C.n.textContent = on ? (nt || vel) : '';
         C.el.setAttribute('aria-pressed', String(on));
-        C.el.setAttribute('aria-label', Lf(on ? 'lab_m2_cell_on' : 'lab_m2_cell_off', { name: BEAT_TRACKS[r].name, n: ci + 1, v: vel }));
+        C.el.setAttribute('aria-label', bi
+            ? Lf('lab_m2_cell_bass', { name: BEAT_TRACKS[r].name, n: ci + 1, note: nt, v: vel, x: (bi.acc ? L('lab_m2_cell_acc') : '') + (bi.sl ? L('lab_m2_cell_sl') : '') })
+            : Lf(on ? 'lab_m2_cell_on' : 'lab_m2_cell_off', { name: BEAT_TRACKS[r].name, n: ci + 1, v: vel }));
     }
     function paintGrid() {
         const pg = viewPage();
-        shownPage = pg;
-        rows.forEach((R, r) => { for (let j = 0; j < 16; j++) paintCell(r, j); });
+        shownPage = pg; bassCells = null; gridPass = true;
+        try { rows.forEach((R, r) => { for (let j = 0; j < 16; j++) paintCell(r, j); }); } finally { gridPass = false; }
         leds.forEach((l, j) => { l.n.textContent = String(pg * 16 + j + 1); });
         segPage.set(pg);
         paintNow();
@@ -11619,8 +12425,12 @@ function renderModule2() {
     const decayMs = si => m2DecayMs(si);
     function paintEditor(rebuild) {
         const si = B.sel, t = B.tracks[si], e = B.synth[si], trk = BEAT_TRACKS[si];
+        const bsyn = si === 4 && t.src === 'synth';      // BASS SYNTH cihazı: sentez knob'ları + örnek tarayıcı yerine
         if (rebuild || edBuilt !== si) buildEdKnobs();
         if (sbFor !== si) buildBrowser(); else if (sb.get() !== t.smp) sb.set(t.smp);
+        kRow.hidden = bsyn; sbBox.hidden = bsyn; bassPanel.el.hidden = !bsyn; bLane.hidden = !bsyn;
+        if (bsyn) { paintBassDev(); paintBassLane(); }
+        dsv.setAttribute('aria-label', L(bsyn ? 'lab_m2_bass_disp' : 'lab_m2_disp_aria'));
         paintMidi();
         ed.style.setProperty('--c', M2_COL[si]);
         segTab.set(si);
@@ -11635,6 +12445,8 @@ function renderModule2() {
             `NOISE → HP ${Math.round(e.cut * k)} Hz Q${(+e.q || 1).toFixed(1)} → ENV ${Math.round(Dms)} ms → VOL → PAN`,
             `OSC saw ${(55 * k).toFixed(0)} Hz → LP ${Math.round(e.cut)} (env) → ENV → VOL → PAN`,
         ];
+        const bd = B.bass.dev;
+        if (bsyn) chains[4] = `OSC ${bd.wave.toUpperCase()}${bd.det > 0 ? ' ×2 ±' + Math.round(bd.det) + 'ct' : ''} + SUB ${Math.round(bd.sub)}% → LP 24dB ${m2Hz(bd.cut)} Hz · Q ${bassQ(bd.res).toFixed(1)} (ENV ${Math.round(bd.env)}%) → DRIVE ${Math.round(bd.drive)}% → AMP → VOL → PAN`;
         const smpE = labSample(t.smp), S = beatTrackSmp(si), gDb = smpE ? +smpE.gainDb || 0 : 0;
         edChain.textContent = t.src === 'sample'
             ? `SAMPLE ${m2SmpLabel(t.smp)} · rate ×${k.toFixed(2)} · ${gDb > 0 ? '+' : ''}${gDb.toFixed(1)} dB → ENV ${Math.round(Dms)} ms → VOL → PAN`
@@ -11647,7 +12459,11 @@ function renderModule2() {
         Object.keys(edK).forEach(key => { if (key !== 'tune' && key !== 'decay') edK[key].setDisabled(t.src === 'sample'); });
         if (edK.decay) edK.decay.refresh();
         // Zarf ekranı
-        const tmax = Math.max(80, Math.ceil(Dms * 1.15 / 40) * 40);
+        // BASS SYNTH ekranı: 2 adımlık kapı (gate) + filtre zarfı; kesikli = aksanlı nota (tepe, zarf, kısa decay)
+        const bsN = { v: 100 }, bsA = { v: 127 }, bsSpb = 60000 / state.bpm / 4, bsGate = bsSpb * 2 - 4;
+        const bsDecN = bassDecay(bsN) * 1000, bsDecA = bassDecay(bsA) * 1000;
+        const tmax = bsyn ? Math.max(120, Math.ceil(Math.max(bsGate + 60, bsDecN * 1.2) / 40) * 40) : Math.max(80, Math.ceil(Dms * 1.15 / 40) * 40);
+        let fillEnd = Dms;
         const X = tt => (X0 + tt / tmax * W).toFixed(1), Y = a => (Y0 - a * H).toFixed(1);
         const curve = (fn, dur) => { let d = ''; for (let q = 0; q <= 60; q++) { const tt = dur * q / 60; d += (q ? 'L' : 'M') + X(tt) + ' ' + Y(Math.max(0, Math.min(1, fn(tt)))); } return d; };
         const ampF = dur => tt => tt < 2 ? tt / 2 : Math.pow(0.0001, (tt - 2) / Math.max(1, dur - 2));
@@ -11692,13 +12508,32 @@ function renderModule2() {
             amp = curve(ampF(Dms), Dms);
             l1 = `AMP exp → ${Math.round(Dms)} ms`; l2 = `HP ${(Math.min(18000, e.cut * k) / 1000).toFixed(1)} kHz · Q ${(+e.q).toFixed(1)}`;
             l3 = si === 3 && B.choke ? L('lab_m2_disp_choke') : '';
+        } else if (bsyn) {
+            const pkN = bassPeak(bsN), pkA = bassPeak(bsA), top = pkA * 1.05, end = Math.min(tmax, bsGate + 80);
+            const ampB = (pk, dec) => tt => {
+                if (tt < 3) return pk * tt / 3 / top;
+                const tau = Math.max(50, dec * 1.5), a = x => pk * (0.7 + 0.3 * Math.exp(-(x - 3) / tau));
+                return (tt < bsGate ? a(tt) : a(bsGate) * Math.exp(-(tt - bsGate) / 12)) / top;
+            };
+            const fEnv = (n, dec) => tt => {
+                const x = tt < 4 ? tt / 4 : Math.exp(-(tt - 4) / Math.max(1, dec / 3));
+                return logY(Math.min(20000, bd.cut * Math.pow(2, bassEnvCents(n) / 1200 * x)), 30, 16000);
+            };
+            amp = curve(ampB(pkN, bsDecN), end); amp2 = curve(ampB(pkA, bsDecA), end); fillEnd = end;
+            pitch = curve(fEnv(bsN, bsDecN), tmax);
+            pPitch2.setAttribute('d', curve(fEnv(bsA, bsDecA), tmax));
+            const fTop = n => Math.min(20000, bd.cut * Math.pow(2, bassEnvCents(n) / 1200));
+            l1 = `AMP gate ${Math.round(bsGate)} ms · ACC +${(20 * Math.log10(pkA / pkN)).toFixed(1)} dB`;
+            l2 = `LP ${m2Hz(bd.cut)} → ${m2Hz(fTop(bsN))} Hz · Q ${bassQ(bd.res).toFixed(1)} · ${Math.round(bsDecN)} ms`;
+            l3 = `- - ACC ${m2Hz(fTop(bsA))} Hz · ${Math.round(bsDecA)} ms`;
         } else {
             const topF = Math.min(16000, e.cut * (1 + e.env / 100 * 4)), fd = Math.max(30, Dms * 0.6);
             amp = curve(ampF(Dms), Dms);
             pitch = curve(tt => logY(tt < fd ? topF * Math.pow(e.cut / topF, tt / fd) : e.cut, 50, 16000), Math.min(tmax, Dms * 1.1));
             l1 = `AMP exp → ${Math.round(Dms)} ms`; l2 = `LP ${Math.round(topF)} → ${Math.round(e.cut)} Hz · Q ${(+e.res).toFixed(1)}`; l3 = `SAW ${(55 * k).toFixed(1)} Hz`;
         }
-        pFill.setAttribute('d', amp && t.src !== 'sample' ? amp + 'L' + X(Dms) + ' ' + Y0 + 'L' + X0 + ' ' + Y0 + 'Z' : '');
+        if (!bsyn) pPitch2.setAttribute('d', '');
+        pFill.setAttribute('d', amp && t.src !== 'sample' ? amp + 'L' + X(fillEnd) + ' ' + Y0 + 'L' + X0 + ' ' + Y0 + 'Z' : '');
         pWave.setAttribute('d', wave); pWaveCut.setAttribute('d', waveCut);
         // Örnek künyesi: paket · ad · süre · örnekleme hızı · seviye eşleme · MIDI notası
         const note = _m2Midi[si];
@@ -11706,6 +12541,7 @@ function renderModule2() {
             ? [m2SmpLabel(t.smp), smpE ? (smpE.dur < 1 ? Math.round(smpE.dur * 1000) + ' ms' : smpE.dur.toFixed(2) + ' s') : '',
                S && S.buf ? (S.buf.sampleRate / 1000).toFixed(1) + ' kHz' : '', `GAIN ${gDb > 0 ? '+' : ''}${gDb.toFixed(1)} dB`,
                `MIDI ${midiName(note)}`].filter(Boolean).join(' · ')
+            : bsyn ? `BASS SYNTH · ${(bassPresetOf(B.bass.preset) || { name: '—' }).name}${B.bass.preset ? '' : ' *'} · ${noteName(B.bass.key.root)} ${scaleName(B.bass.key.type)} · MIDI ${L('lab_m2_bass_midi')}`
             : `SYNTH · ${M2_SUB[si]} · MIDI ${midiName(note)}`;
         pAmp.setAttribute('d', amp); pAmp2.setAttribute('d', amp2); pPitch.setAttribute('d', pitch);
         tl1.textContent = l1; tl2.textContent = l2; tl3.textContent = l3;
@@ -11736,6 +12572,7 @@ function renderModule2() {
     }
     function paintAll() {
         paintPreset(); paintTransport(); paintRows(); paintGrid(); paintEditor(true); paintStatus(); paintTimeline(); paintPlay(); paintKit(); paintRec();
+        rollSync(); paintRollStrip();
     }
 
     // ═══ Canlı döngü kancası (motorun tek rAF'ı çağırır) ═══
@@ -11744,9 +12581,12 @@ function renderModule2() {
         step(s) {
             curStep = s;
             if (s < 0) { paintNow(); paintPos(); paintPlay(); paintStatus(); return; }
-            if (B.slot !== shownSlot) { paintSlots(); paintPreset(); shownPage = -1; }
+            if (B.slot !== shownSlot) {
+                paintSlots(); paintPreset(); shownPage = -1; paintBassLane();
+                if (rollOpen() && rollK !== B.slot) rollLoad(B.slot);                 // rulo çalan slotu izler
+            }
             if (viewPage() !== shownPage) paintGrid(); else paintNow();
-            paintPos();
+            paintPos(); paintBassPh(s);
             if (B.pendingSlot == null && segSlot.buttons.some(b => b.classList.contains('is-pend'))) paintSlots();
         },
         frame(pn) {
@@ -11787,11 +12627,16 @@ function renderModule2() {
 
     // ═══ Web MIDI: GM davul notaları → pad (velocity), REC'te adıma yazar. Abonelik görünüm ömürlü (labMidi.on).
     labMidi.on('noteon', e => {
+        if (bassMidiMode()) { bassMidiOn(e); return; }                          // Bass SYNTH seçili: klavye = bas enstrümanı
         const ti = m2TrackForNote(e.note);
         if (ti < 0) return;
         m2Hit(ti, Math.max(1, Math.round((+e.raw || e.vel * 127) / 127 * 100)), e.t);
     });
-    labMidi.on('cc', e => { if (e.cc === 123 && beatPlaying) togglePlay(); });   // All Notes Off → dur
+    labMidi.on('noteoff', e => bassMidiOff(e));
+    labMidi.on('cc', e => {
+        if (e.cc === 123 || e.cc === 120) { bassLiveAll(); bassMidiKeys.clear(); bassRec.held.clear(); bassRec.down = 0; }
+        if (e.cc === 123 && beatPlaying) togglePlay();                          // All Notes Off → dur
+    });
 
     // Örnek tamponu gelince (kit / tarayıcı / ilk açılış) editör ekranı ve künye yenilenir
     const onSmp = () => { paintEditor(); };
@@ -11823,6 +12668,24 @@ function renderModule2() {
               // (kart labOnRefresh ile boyanır → oturum açılınca ipucu kendiliğinden kalkar)
               hint: () => currentUser ? '' : 'lab_m2_tut_10_h',
               onEnter: () => { tsnap.saves = m2Stats.saves; }, check: () => m2Stats.saves > (tsnap.saves || 0) },
+            // BASS SYNTH (yeni kimlikler): SYNTH'e geç → NOTALAR'da tonda bas çizgisi → aksan + slide
+            { id: 'bsyn', target: () => segSrc.el, placement: 'right',
+              onEnter: () => { if (B.sel !== 4) { B.sel = 4; paintEditor(true); paintRows(); } tsnap.bsw = m2Stats.bsw; tsnap.syn = beatBassSyn(); },
+              check: () => beatBassSyn() && (m2Stats.bsw > (tsnap.bsw || 0) || !!tsnap.syn) },
+            { id: 'bnotes', target: () => (rollOpen() ? roll.el.querySelector('.lpr-gw') || roll.el : bNotes), placement: 'auto', dim: false,
+              onEnter: () => { if (B.sel !== 4) { B.sel = 4; paintEditor(true); paintRows(); } tsnap.badds = m2Stats.badds; tsnap.bopens = m2Stats.bopens; },
+              check: () => {
+                  if (!beatBassSyn() || !(rollOpen() || m2Stats.bopens > (tsnap.bopens || 0)) || m2Stats.badds - (tsnap.badds || 0) < 3) return false;
+                  const c = beatBassClip(B.slot), K = B.bass.key;
+                  return c.length >= 3 && new Set(c.map(n => n.p)).size >= 2 && c.every(n => inScale(n.p, K.root, K.type));
+              } },
+            { id: 'bslide', target: () => (bassPanel.el.hidden ? rows[4].cellsEl : bassK.acc.el), placement: 'left',
+              onEnter: () => { const q = bassLaneStats(B.slot); tsnap.bacc = q.acc; tsnap.bsl = q.sl; tsnap.kacc = B.bass.dev.acc; tsnap.kgl = B.bass.dev.glide; },
+              check: () => {
+                  if (!beatBassSyn()) return false;
+                  const q = bassLaneStats(B.slot);
+                  return (q.acc > (tsnap.bacc || 0) || B.bass.dev.acc !== tsnap.kacc) && (q.sl > (tsnap.bsl || 0) || B.bass.dev.glide !== tsnap.kgl);
+              } },
         ].map((st2, i) => Object.assign(st2, { title: `lab_m2_tut_${i + 1}_t`, body: `lab_m2_tut_${i + 1}_b`, ableton: `lab_m2_tut_${i + 1}_a` })),
     });
     const tutB = makeTutorialButton(tut);
@@ -11840,6 +12703,8 @@ function renderModule2() {
             const ls = sb.el.querySelector('.lp-sb-list'); if (ls) ls.setAttribute('aria-label', lb);
         }
         paintPreset(); paintSlots(); paintRows(); paintGrid(); paintEditor(); paintStatus(); paintTimeline(); paintKit(); paintMidi();
+        bType.fill(); bType.el.value = B.bass.key.type; paintBassLane(); paintRollStrip();
+        if (rollK >= 0 && roll) roll.setTitle(Lf('lab_m2_bass_roll_t', { id: 'ABCD'[rollK] }));
     });
 
     // Temizlik (teardownView): Beat Genel bakış ↔ Beat arasında çalmaya devam eder → yalnız arayüz
@@ -11848,6 +12713,7 @@ function renderModule2() {
         beatUiHook = null;
         clearTimeout(toastT); clearTimeout(wheelT); wheelT = 0; tapT = [];
         stopLearn(); recTake = false;              // MIDI öğren iptal; labMidi.on / learn / tarayıcı aboneliği lpTeardown'da düşer
+        bassLiveAll(); bassMidiKeys.clear(); bassRec.held.clear();   // MIDI ile tutulan bas notası susar (rulo lpTeardown'da kapanır)
         if (sb) { sb.destroy(); sb = null; }
         // Güç/bypass ve sıradaki slot yalnız bu görünümde: Genel bakış kartı ve Mastering kaynağı sessiz
         // kalmasın; Genel bakış ızgarası görünmeyen slota geçip ses/ekran ters düşmesin
@@ -11858,7 +12724,10 @@ function renderModule2() {
     // Tanılama (yalnız ?m2debug=1): headless doğrulama için motor + durum
     if (/[?&]m2debug=1\b/.test(location.search)) window.__m2 = { state, B, hist: () => hist, tut, m2Stats, kits: M2_KITS, midi: () => _m2Midi,
         applyKit, pickSample, m2Hit, togglePlay, beatRecordHit, beatTrackSmp, beatSmpBufs, ctx: () => beatCtx, bus: () => beatBus,
-        log: () => beatStepLog, smpSubs: () => beatSmpSubs.size, m2Snap, m2Restore, m2FromSaved, m2KitOf, sb: () => sb, triggerDrum, beatVoice, getBeatCtx };
+        log: () => beatStepLog, smpSubs: () => beatSmpSubs.size, m2Snap, m2Restore, m2FromSaved, m2KitOf, sb: () => sb, triggerDrum, beatVoice, getBeatCtx,
+        bass: { clip: beatBassClip, events: beatBassEvents, live: bassLive, mono: bassMono, play: bassPlay, liveOn: bassLiveOn, liveOff: bassLiveOff,
+                openRoll: () => openRoll(bNotes), roll: () => roll, cell: bassCellClick, preset: applyBassPreset, key: setBassKey, knobs: bassK,
+                midiOn: bassMidiOn, midiOff: bassMidiOff, saveBeat } };
     return root;
 }
 // Dalga formu tepeleri (0..1, kanal başına mutlak tepe, en yüksek tepeye normalize) — tampon başına bir kez
