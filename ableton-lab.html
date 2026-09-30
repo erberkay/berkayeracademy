@@ -1036,6 +1036,14 @@
         }
         /* ═══ /LAB PRO KİT · MIDI ═══ */
 
+        /* ═══ LAB PRO KİT · LOOP WARP (makeWarpSeg — WARP | RE-PITCH seçici) ═══
+           Sözleşme: script'teki "LAB PRO KİT · LOOP WARP" yorum bloğu. Seçici .lp-seg (--md); gizleme [hidden]. */
+        .lp-warp[hidden] { display:none; }
+        .lp-warp.is-busy .lp-seg-b[aria-pressed="true"] { animation:lp-warp-busy 1s steps(2) infinite; }
+        @keyframes lp-warp-busy { 50% { color:var(--fg-3); } }
+        @media (prefers-reduced-motion: reduce) { .lp-warp.is-busy .lp-seg-b[aria-pressed="true"] { animation:none; } }
+        /* ═══ /LAB PRO KİT · LOOP WARP ═══ */
+
         /* ═══ LAB M1 · Synthesizer ═══ (Lab_Synth: BE·SYNTH 01 eklenti penceresi — PRO KİT parçalarıyla;
            altında Çalışma mantığı, yan panel kabuktan). Panel degradeleri düz token'a indirildi. */
         .lab-m1 {
@@ -6171,24 +6179,26 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   grafikte 0 dBFS'i aşabilir: bus'ta headroom bırakın.
 // labSample(id) → kayıt | null · labSamplesByKind(kind | [kind…]) → kayıt[] · labSampleUrl(id)
 // labSampleGain(id) → doğrusal kazanç (gainDb'den)
-// labLoopRate(id, bpm) → playbackRate = bpm / örnek bpm'i (loop değilse / bpm yoksa 1)
+// labLoopRate(id, bpm) → playbackRate = bpm / örnek bpm'i (loop değilse / bpm yoksa 1) — RE-PITCH: perde de kayar;
+//   perdesi sabit tempo eşleme için LOOP WARP bloğu (labLoopBuffer / labLoopRateFor).
 // labLoopDuration(id, bpm?) → sn: ölçü × 4 × 60 / (bpm ?? örnek bpm'i); one-shot'ta dosya süresi.
 // labSampleBuffer(ctx | null, id) → Promise<AudioBuffer | null>
 //   Genel çözülmüş önbellek (AudioBuffer bağlamlar arası kullanılır), aynı anda gelen istekler tek
 //   fetch'e bağlanır. ctx yoksa/kapalıysa paylaşılan OfflineAudioContext çözer (jest gerekmez — ön
 //   yükleme için kullanılabilir). Hata (ağ, HTML yanıtı, çözülemeyen biçim) → null + console.warn('[lab] …');
 //   çağıran sentez yedeğine düşer. Başarısız istek önbelleğe alınmaz (sonraki çağrı yeniden dener).
-// labSampleAudition(id, { ctx?, dest?, bpm?, maxSec?:16, onEnd? }) → Promise<bool>  Tek önizleme yolu
+// labSampleAudition(id, { ctx?, dest?, bpm?, warp?:true, maxSec?:16, onEnd? }) → Promise<bool>  Tek önizleme yolu
 //   (sayfada aynı anda tek ses): kaynak → kazanç (gainDb − 6 dB) → dest (AudioNode ya da onu veren
 //   fonksiyon, aynı ctx'ten; vars. / uyumsuzsa ctx.destination); bpm (sayı
-//   ya da fonksiyon) verilirse loop tempoya uyar. ctx: AudioContext ya da onu veren fonksiyon (() => getBeatCtx()).
+//   ya da fonksiyon) verilirse loop tempoya uyar — warp (bool ya da fonksiyon, vars. true) açıkken perdesi sabit
+//   (labLoopBuffer, LOOP WARP), false → Re-Pitch (labLoopRate). ctx: AudioContext ya da onu veren fonksiyon (() => getBeatCtx()).
 //   ctx verilmezse ilk çağrıda (kullanıcı jestinde) kendi küçük AudioContext'ini kurar; görünüm
 //   kapanınca durur ve o bağlam kapanır. labSampleAuditionStop() · labSampleAuditionId() → çalan id | null
 //   (tampon beklenirken de id döner). labSampleAuditionSubscribe(fn(id|null)) → unsub: her başlama / bitme /
 //   durdurma / hatada çağrılır (çağıran lpOnTeardown ile bırakır).
-// makeSampleBrowser({ kinds?, value?, onPick(sample), audition?:true, ctx?, dest?, bpm?, label?, height?:260,
+// makeSampleBrowser({ kinds?, value?, onPick(sample), audition?:true, ctx?, dest?, bpm?, warp?, label?, height?:260,
 //                     filter?, packs?, cls? }) → { el, set(id), get(), stop(), focus(), destroy() }
-//   ctx / dest / bpm labSampleAudition'a gider (ctx verilmezse önizleme kendi bağlamını ilk ▶ jestinde kurar;
+//   ctx / dest / bpm / warp labSampleAudition'a gider (ctx verilmezse önizleme kendi bağlamını ilk ▶ jestinde kurar;
 //   dest: modülün önizleme bus'ı → ölçer/master'dan geçer). Önizleme durumu geneldir: aynı örneği listeleyen
 //   bütün tarayıcılar ▶/■ ve DİNLE'yi birlikte günceller (abonelik görünüm kapanınca / destroy() ile biter).
 //   Pro tarayıcı (Ableton Browser gibi): başlıkta seçili örnek + ▶ DİNLE; liste pakete göre gruplu,
@@ -6946,12 +6956,13 @@ function labSampleAudition(id, o) {
     _lpAud = { id, token, pending: true, onEnd: o.onEnd, ctx, t: null, src: null, g: null };
     const pend = _lpAud;
     lpAudNotify();                                    // bekleyen önizleme de "çalıyor" sayılır (■ ile durdurulabilir)
-    return labSampleBuffer(ctx, id).then(buf => {
+    // LOOP WARP kancası: loop + bpm → labLoopBuffer (warp açıkken perde sabit gerilmiş tampon, hız 1)
+    const bpm0 = typeof o.bpm === 'function' ? o.bpm() : o.bpm, warp0 = (typeof o.warp === 'function' ? o.warp() : o.warp) !== false;
+    return (s.loop && bpm0 ? labLoopBuffer(ctx, id, bpm0, { warp: warp0 }) : labSampleBuffer(ctx, id)).then(buf => {
         if (_lpAud !== pend) return false;            // bu arada başka önizleme / durdurma
         if (!buf) { _lpAud = null; if (o.onEnd) o.onEnd(); lpAudNotify(); return false; }
         const src = ctx.createBufferSource(); src.buffer = buf;
-        const bpm = typeof o.bpm === 'function' ? o.bpm() : o.bpm;
-        if (s.loop && bpm) src.playbackRate.value = labLoopRate(id, bpm);
+        if (s.loop && bpm0) src.playbackRate.value = labLoopRateFor(id, bpm0, warp0);
         const g = ctx.createGain();
         const now = ctx.currentTime, lvl = lpLin((s.gainDb || 0) - 6);
         g.gain.setValueAtTime(0, now);
@@ -7080,7 +7091,7 @@ function makeSampleBrowser(o) {
         if (o.audition === false) return;
         if (labSampleAuditionId() === id) { labSampleAuditionStop(); paint(); return; }
         setBusy(id, true);
-        labSampleAudition(id, { ctx: o.ctx, dest: o.dest, bpm: o.bpm }).then(ok => {
+        labSampleAudition(id, { ctx: o.ctx, dest: o.dest, bpm: o.bpm, warp: o.warp }).then(ok => {
             setBusy(id, false, !ok && !_lpSBuf.has(id) && !_lpSReq.has(id));
             paint();
         });
@@ -9006,6 +9017,336 @@ function makeMidiButton(o) {
     return { el, button: b, refresh, open, close: () => close(true), destroy: sub.off };
 }
 if (/[?&]mididebug=1\b/.test(location.search)) window.__lpMidi = { labMidi, makeMidiButton };
+
+// ═══════════════════════════════════════════════════════════════════
+// LAB PRO KİT · LOOP WARP — tempo değişince perde sabit (Ableton'da clip Warp açık)
+// ═══════════════════════════════════════════════════════════════════
+// Sorun: loop'u tempoya uydurmak için playbackRate = bpm / örnek bpm'i perdeyi de kaydırır (RE-PITCH — plak /
+// teyp; Ableton'daki Re-Pitch warp modu). WARP (Ableton'da Tones / Complex gibi): zaman germe — WSOLA (SoundTouch tipi): giriş dizileri (sequence) çıkışa
+// kopyalanır, her dizinin başı önceki dizinin doğal devamına en çok benzeyen konumda (normalize çapraz ilişki,
+// önce 4× seyreltilmiş kaba arama, sonra ±4 örnek ince) aranır ve yükselen kosinüsle örtüştürülür. Dalga biçimi
+// yerel olarak korunduğundan perde değişmez; süre müzikal uzunluğa örnek-tam eşittir.
+//
+// labStretch(buffer, ratio, { mode?, length?, loop?:false, start?:0, end? }) → Promise<AudioBuffer | null>
+//   ratio = çıkış süresi / giriş süresi (> 1 yavaşlar). length (örnek) verilirse çıkış tam o uzunluktadır (ratio
+//   yok sayılır). start / end: giriş bölgesi (örnek; vars. tamamı). mode 'tones' (vars.: 60 ms dizi, 12 ms örtüşme,
+//   ±16 ms arama — melodik / pad / akor) | 'beats' (30 ms dizi, 6 ms örtüşme, ±6 ms arama + transient kilidi:
+//   algılanan vuruşun dizisi aramasız, vuruş tam müzikal konumuna gelecek ofsetle kopyalanır — davul loop'u).
+//   loop:true → giriş dairesel okunur, son dizi hem öncekine hem çıkışın başına hizalanır ve kuyruk başa örtüşür
+//   (döngü dikişi tıksız). Bütün kanallar AYNI ofsetlerle işlenir (hizalama L+R toplamından → stereo görüntü korunur).
+//   İş parçacığı: Blob URL'den tek Web Worker (sırayla; en yeni iş önce; bekleyen en çok 4 — taşan en eski null
+//   döner; 30 sn boşta kalınca kapanır). Worker kurulamaz / hata verirse ana iş parçacığında ≤ 8 ms'lik
+//   setTimeout dilimleriyle (uzun görev yok). Hata → null + console.warn('[lab] warp: …').
+// labStretchStats() → { ms, where: 'worker'|'main', inLen, outLen, sr, mode } | null  son germenin ölçümü.
+// labLoopNeedsWarp(id, bpm) → bool  loop + bpm'i var + |bpm − örnek bpm'i| ≥ 0.005.
+// labLoopRateFor(id, bpm, warp) → warp !== false → 1 (gerilmiş tampon kendi temposunda) · false → labLoopRate (Re-Pitch).
+// labLoopBuffer(ctx | null, id, bpm, { warp?:true, mode?, buffer? }) → Promise<AudioBuffer | null>
+//   Germe gerekmezse (warp:false, aynı tempo, one-shot) özgün tampon (buffer ya da labSampleBuffer(ctx, id)).
+//   Gerekirse: ölçü × 4 × 60 / bpm uzunluğunda (örnek-tam) gerilmiş döngü tamponu — döngü = tamponun tamamı
+//   (loopStart 0, loopEnd = duration; kuyruk yok), k. ölçünün ofseti k × 240 / bpm, playbackRate 1.
+//   buffer: modülün zaten çözdüğü özgün tampon (aynı dosya iki kez çözülmesin). mode vars.: davul türleri
+//   'beats', diğerleri 'tones'. Önbellek: id | bpm (0.01) | mode → en çok 8 tampon / 96 MB (LRU, görünümler arası
+//   sayfa ömrü; uçuştaki istek tek germeye bağlanır; başarısız / düşürülen istek önbellekte kalmaz).
+// labLoopBufferPeek(id, bpm, { mode? }) → AudioBuffer | null  eşzamanlı: hazır gerilmiş tampon (sıralayıcılar
+//   await edemez). Germe gerekmiyorsa da null — çağıran özgün tamponunu kullanır.
+// makeWarpSeg(value, onPick(bool), { size?:'md', cls? }) → makeSeg API'si { el, set, get, buttons } + setBusy(bool)
+//   WARP | RE-PITCH seçici (aria-pressed, TR/EN başlıklar canlı). Kök .lp-warp ([hidden] ile gizlenebilir);
+//   setBusy(true) → .is-busy + aria-busy (germe sürerken seçili düğme yavaşça yanıp söner, reduced-motion'da durur).
+// Geçiş kuralı (modüller): tempo değişince çalan tampon SÜRER (perdesi oynamaz); yeni tempo tamponu hazır olunca
+//   bir sonraki ölçü / loop başında ~4 ms'lik geçişle değiştirilir (boşluk yok, tık yok). Re-Pitch'te hız
+//   setTargetAtTime ile kayar. Davul one-shot'ları gerilmez; Beat Maker TUNE gibi bilinçli perde değişimi etkilenmez.
+// ═══════════════════════════════════════════════════════════════════
+Object.assign(LAB_TXT, {
+    lp_warp_aria:  [`Loop tempo eşleme: WARP ya da RE-PITCH`, `Loop tempo matching: WARP or RE-PITCH`],
+    lp_warp_on_t:  [`WARP: loop tempoya uyar, perdesi sabit kalır (Ableton'da clip Warp · Tones / Complex modu)`, `WARP: the loop follows the tempo and keeps its pitch (Ableton clip Warp · Tones / Complex mode)`],
+    lp_warp_off_t: [`RE-PITCH: loop hızlanır / yavaşlar, perdesi de kayar (plak, teyp — Ableton'daki Re-Pitch warp modu)`, `RE-PITCH: the loop speeds up / slows down and its pitch shifts too (vinyl, tape — Ableton's Re-Pitch warp mode)`],
+});
+// Saf WSOLA işleyici — Worker'a toString() ile gider: dış değişkene dokunmaz, yalnız ES5.
+// chs: Float32Array[] (giriş bölgesi), outLen: çıkış örneği. Döndürür { out, step(bütçe ms) → bitti mi }.
+function lpWsolaMake(chs, sr, outLen, o) {
+    'use strict';
+    o = o || {};
+    var nc = chs.length, inLen = chs[0].length, loop = !!o.loop, beats = o.mode === 'beats';
+    var out = [], tail = [], ch, i, j;
+    for (ch = 0; ch < nc; ch++) { out.push(new Float32Array(outLen)); tail.push(null); }
+    var ratio = outLen / inLen;
+    var ov = Math.max(16, Math.round(sr * (beats ? 0.006 : 0.012)));
+    var H0 = Math.max(ov, Math.round(sr * (beats ? 0.03 : 0.06)) - ov);        // çıkış adımı = dizi − örtüşme
+    var sk = Math.max(8, Math.round(sr * (beats ? 0.006 : 0.016)));            // arama yarıçapı
+    var K = Math.max(1, Math.round(outLen / H0));
+    var D = 4, ovD = Math.max(4, Math.ceil(ov / D)), skD = Math.max(1, Math.ceil(sk / D));
+    var mono = new Float32Array(inLen);
+    for (ch = 0; ch < nc; ch++) { var x0 = chs[ch]; for (i = 0; i < inLen; i++) mono[i] += x0[i]; }
+    var nd = Math.max(1, Math.floor(inLen / D)), md = new Float32Array(nd);
+    for (i = 0; i < nd; i++) { var s0 = 0; for (j = 0; j < D; j++) s0 += mono[i * D + j] || 0; md[i] = s0; }
+    var w = new Float32Array(ov);
+    for (j = 0; j < ov; j++) w[j] = 0.5 - 0.5 * Math.cos(Math.PI * (j + 0.5) / ov);
+    var segN = 2 * skD + 1 + ovD, fN = ov + 2 * D + 1;
+    var segD = new Float32Array(segN), segT = new Float32Array(segN), refD = new Float32Array(ovD), ref2D = new Float32Array(ovD);
+    var segF = new Float32Array(fN), segF2 = new Float32Array(fN), refF = new Float32Array(ov), ref2F = new Float32Array(ov);
+    function wrap(p, n) { p %= n; return p < 0 ? p + n : p; }
+    function grabD(p0, n, dst) {
+        for (var k = 0; k < n; k++) {
+            var p = p0 + k * D;
+            if (loop) p = wrap(p, inLen); else if (p < 0 || p >= inLen) { dst[k] = 0; continue; }
+            var q = (p / D) | 0; dst[k] = md[q < nd ? q : nd - 1];
+        }
+    }
+    function grabF(p0, n, dst) {
+        for (var k = 0; k < n; k++) {
+            var p = p0 + k;
+            if (loop) dst[k] = mono[p >= 0 && p < inLen ? p : wrap(p, inLen)];
+            else dst[k] = p >= 0 && p < inLen ? mono[p] : 0;
+        }
+    }
+    function ncc(a, ao, b, n) { var s = 0, e = 1e-9; for (var k = 0; k < n; k++) { var v = a[ao + k]; s += v * b[k]; e += v * v; } return s / Math.sqrt(e); }
+    // n: nominal başlangıç · pRef: önceki dizinin doğal devamı · tOff (döngünün son dizisi): kuyruğu başa da uysun
+    function search(n, pRef, tOff) {
+        var tl = tOff != null, base = n - skD * D, best = -Infinity, bd = 0, d, sc;
+        grabD(pRef, ovD, refD); grabD(base, segN, segD);
+        if (tl) { grabD(0, ovD, ref2D); grabD(base + tOff, segN, segT); }
+        for (d = 0; d <= 2 * skD; d++) { sc = ncc(segD, d, refD, ovD); if (tl) sc += ncc(segT, d, ref2D, ovD); if (sc > best) { best = sc; bd = d; } }
+        var q = base + bd * D - D;
+        grabF(pRef, ov, refF); grabF(q, fN, segF);
+        if (tl) { grabF(0, ov, ref2F); grabF(q + tOff, fN, segF2); }
+        best = -Infinity; bd = D;
+        for (d = 0; d <= 2 * D; d++) { sc = ncc(segF, d, refF, ov); if (tl) sc += ncc(segF2, d, ref2F, ov); if (sc > best) { best = sc; bd = d; } }
+        return q + bd;
+    }
+    // 'beats': 5 ms blok enerjisi, önceki 8 bloğun 4 katını aşan sıçrama = vuruş (en az 60 ms arayla)
+    var ons = [], oi = 0;
+    if (beats) {
+        var B = Math.max(64, Math.round(sr * 0.005)), nb = Math.floor(inLen / B), en = new Float32Array(nb), mx = 0, last = -1e9, gap = Math.round(sr * 0.06);
+        for (i = 0; i < nb; i++) { var e2 = 0; for (j = 0; j < B; j++) { var v2 = mono[i * B + j]; e2 += v2 * v2; } en[i] = e2; if (e2 > mx) mx = e2; }
+        for (i = 1; i < nb; i++) {
+            var a = 0, m = Math.min(8, i); for (j = 1; j <= m; j++) a += en[i - j]; a /= m;
+            if (en[i] > 4 * a + 1e-9 && en[i] > mx * 0.02 && i * B - last >= gap) { ons.push(i * B); last = i * B; }
+        }
+    }
+    function pos(k) { return Math.round(k * outLen / K); }
+    function put(k, c0) {
+        var op = pos(k), n = pos(k + 1) - op + ov;
+        for (var c = 0; c < nc; c++) {
+            var x = chs[c], y = out[c];
+            for (var jj = 0; jj < n; jj++) {
+                var p = c0 + jj, v;
+                if (loop) v = x[p >= 0 && p < inLen ? p : wrap(p, inLen)]; else v = p >= 0 && p < inLen ? x[p] : 0;
+                var oIx = op + jj;
+                if (oIx >= outLen) {
+                    if (loop && oIx - outLen < ov) { if (!tail[c]) tail[c] = new Float32Array(ov); tail[c][oIx - outLen] = v; }
+                    continue;
+                }
+                y[oIx] = jj < ov && k > 0 ? y[oIx] * (1 - w[jj]) + v * w[jj] : v;
+            }
+        }
+    }
+    var k = 0, prevC = 0, prevH = 0, fin = false;
+    function step(budget) {
+        var t0 = Date.now();
+        while (k < K) {
+            var op = pos(k), H = pos(k + 1) - op, c0 = 0;
+            if (k > 0) {
+                var lock = null;
+                if (beats) {
+                    while (oi < ons.length && Math.round(ons[oi] * ratio) < op + ov) oi++;
+                    if (oi < ons.length) { var T = Math.round(ons[oi] * ratio); if (T < op + H + ov) lock = ons[oi] - (T - op); }
+                }
+                c0 = lock != null ? lock : search(Math.round(op / ratio), prevC + prevH, loop && k === K - 1 ? H : null);
+            }
+            put(k, c0); prevC = c0; prevH = H; k++;
+            if (Date.now() - t0 >= budget) break;
+        }
+        if (k >= K && !fin) {
+            fin = true;
+            if (loop) for (var c = 0; c < nc; c++) {
+                var y = out[c], tt = tail[c]; if (!tt) continue;
+                for (var q = 0; q < ov && q < outLen; q++) y[q] = tt[q] * (1 - w[q]) + y[q] * w[q];
+            }
+        }
+        return fin;
+    }
+    return { out: out, step: step, K: K };
+}
+
+// ── İş kuyruğu: tek Worker (Blob URL) · yedek: ana iş parçacığında dilimli ─────────────
+let _lwWorker = null, _lwUrl = '', _lwDead = false, _lwBusy = null, _lwIdleT = 0, _lwStats = null;
+const _lwQ = [];
+const LW_QMAX = 4, LW_IDLE_MS = 30000;
+function lwWorkerSrc() {
+    return 'var lpWsolaMake = ' + lpWsolaMake.toString() + ';\n' +
+        'self.onmessage = function (e) { var d = e.data, t0 = Date.now(); try { var w = lpWsolaMake(d.chs, d.sr, d.outLen, d.o); w.step(1e12);' +
+        ' self.postMessage({ id: d.id, out: w.out, ms: Date.now() - t0 }, w.out.map(function (a) { return a.buffer; })); }' +
+        ' catch (err) { self.postMessage({ id: d.id, err: String(err && err.message || err) }); } };';
+}
+function lwKill() {
+    clearTimeout(_lwIdleT); _lwIdleT = 0;
+    if (_lwWorker) { try { _lwWorker.terminate(); } catch (_) {} _lwWorker = null; }
+    if (_lwUrl) { try { URL.revokeObjectURL(_lwUrl); } catch (_) {} _lwUrl = ''; }
+}
+function lwWorker() {
+    if (_lwWorker || _lwDead) return _lwWorker;
+    try {
+        if (typeof Worker !== 'function' || !window.Blob || !window.URL) throw new Error(`Worker yok`);
+        _lwUrl = URL.createObjectURL(new Blob([lwWorkerSrc()], { type: 'text/javascript' }));
+        const wk = new Worker(_lwUrl);
+        wk.onmessage = e => { if (wk === _lwWorker) lwDone(e.data); };
+        wk.onerror = e => {
+            if (e && e.preventDefault) e.preventDefault();
+            if (wk !== _lwWorker) return;
+            console.warn('[lab] warp worker:', e && e.message ? e.message : e);
+            _lwDead = true; lwKill();
+            const job = _lwBusy; _lwBusy = null;
+            if (job) lwRunMain(job); else lwPump();
+        };
+        _lwWorker = wk;
+    } catch (e) { _lwDead = true; lwKill(); console.warn('[lab] warp worker:', e && e.message ? e.message : e); }
+    return _lwWorker;
+}
+function lwChans(job) {
+    const b = job.buf, n = job.en - job.st, chs = [];
+    for (let c = 0; c < b.numberOfChannels; c++) {
+        const a = new Float32Array(n);
+        if (b.copyFromChannel) b.copyFromChannel(a, c, job.st); else a.set(b.getChannelData(c).subarray(job.st, job.en));
+        chs.push(a);
+    }
+    return chs;
+}
+function lwMakeBuf(chs, sr) {
+    let b = null;
+    try { b = new AudioBuffer({ length: chs[0].length, numberOfChannels: chs.length, sampleRate: sr }); }
+    catch (_) { const d = lpSampleDecoder(null); if (d) { try { b = d.createBuffer(chs.length, chs[0].length, sr); } catch (e) { b = null; } } }
+    if (!b) return null;
+    chs.forEach((a, i) => { if (b.copyToChannel) b.copyToChannel(a, i); else b.getChannelData(i).set(a); });
+    return b;
+}
+function lwFinish(job, chs, ms, where) {
+    const b = chs ? lwMakeBuf(chs, job.buf.sampleRate) : null;
+    if (b) _lwStats = { ms: Math.round(ms), where, inLen: job.en - job.st, outLen: job.outLen, sr: job.buf.sampleRate, mode: job.o.mode };
+    job.res(b);
+}
+function lwDone(d) {
+    const job = _lwBusy; _lwBusy = null;
+    if (job && d && d.id === job.id) {
+        if (d.err) { console.warn('[lab] warp:', d.err); job.res(null); }
+        else lwFinish(job, d.out, d.ms, 'worker');
+    }
+    lwPump();
+}
+// Ana iş parçacığı yedeği: 8 ms'lik dilimler (her dilimden sonra olay döngüsüne döner)
+function lwRunMain(job) {
+    _lwBusy = job;
+    const t0 = performance.now();
+    let w;
+    try { w = lpWsolaMake(lwChans(job), job.buf.sampleRate, job.outLen, job.o); }
+    catch (e) { console.warn('[lab] warp:', e); _lwBusy = null; job.res(null); lwPump(); return; }
+    const tick = () => {
+        let done;
+        try { done = w.step(8); } catch (e) { console.warn('[lab] warp:', e); _lwBusy = null; job.res(null); lwPump(); return; }
+        if (!done) { setTimeout(tick, 0); return; }
+        _lwBusy = null;
+        lwFinish(job, w.out, performance.now() - t0, 'main');
+        lwPump();
+    };
+    setTimeout(tick, 0);
+}
+let _lwSeq = 0;
+function lwPump() {
+    if (_lwBusy) return;
+    clearTimeout(_lwIdleT); _lwIdleT = 0;
+    if (!_lwQ.length) { if (_lwWorker) _lwIdleT = setTimeout(lwKill, LW_IDLE_MS); return; }
+    const job = _lwQ.pop();                                   // en yeni iş önce (sürüklenen tempo: son değer)
+    const wk = lwWorker();
+    if (!wk) { lwRunMain(job); return; }
+    _lwBusy = job;
+    try {
+        const chs = lwChans(job);
+        wk.postMessage({ id: job.id, chs, sr: job.buf.sampleRate, outLen: job.outLen, o: job.o }, chs.map(a => a.buffer));
+    } catch (e) {
+        console.warn('[lab] warp worker:', e && e.message ? e.message : e);
+        _lwDead = true; lwKill(); _lwBusy = null; lwRunMain(job);
+    }
+}
+function labStretch(buffer, ratio, o) {
+    o = o || {};
+    if (!buffer || !buffer.length) return Promise.resolve(null);
+    const st = Math.max(0, Math.min(buffer.length - 1, Math.round(+o.start || 0)));
+    const en = Math.max(st + 1, Math.min(buffer.length, Math.round(o.end != null ? +o.end : buffer.length)));
+    const outLen = o.length > 0 ? Math.round(o.length) : Math.round((en - st) * (ratio > 0 ? ratio : 1));
+    if (!(outLen >= 1)) return Promise.resolve(null);
+    return new Promise(res => {
+        _lwQ.push({ id: ++_lwSeq, buf: buffer, st, en, outLen, o: { mode: o.mode === 'beats' ? 'beats' : 'tones', loop: !!o.loop }, res });
+        while (_lwQ.length > LW_QMAX) _lwQ.shift().res(null);  // eski ara tempolar düşer (çağıran yeniden isteyebilir)
+        lwPump();
+    });
+}
+function labStretchStats() { return _lwStats ? Object.assign({}, _lwStats) : null; }
+
+// ── Loop tamponu: özgün ya da gerilmiş (LRU önbellek) ─────────────────
+const _lwCache = new Map();            // anahtar → { buf, bytes, p }
+const LW_MAX_N = 8, LW_MAX_BYTES = 96 * 1048576;
+const LW_BEAT_KINDS = ['kick', 'snare', 'clap', 'chat', 'ohat', 'ride'];
+const lwBpm = bpm => Math.round(bpm * 100) / 100;
+function lwMode(s, o) { return o && (o.mode === 'beats' || o.mode === 'tones') ? o.mode : (LW_BEAT_KINDS.indexOf(s.kind) >= 0 ? 'beats' : 'tones'); }
+function lwKey(id, bpm, mode) { return id + '|' + lwBpm(bpm).toFixed(2) + '|' + mode; }
+function lwTouch(k) { const e = _lwCache.get(k); if (e) { _lwCache.delete(k); _lwCache.set(k, e); } return e || null; }
+function lwTrim() {
+    let bytes = 0;
+    _lwCache.forEach(e => { bytes += e.bytes; });
+    for (const [k, e] of _lwCache) {
+        if (_lwCache.size <= LW_MAX_N && bytes <= LW_MAX_BYTES) break;
+        if (!e.buf) continue;                                   // uçuştaki istek düşmez
+        _lwCache.delete(k); bytes -= e.bytes;
+    }
+}
+function labLoopNeedsWarp(id, bpm) {
+    const s = labSample(id);
+    return !!(s && s.loop && s.bpm && bpm > 0 && Math.abs(bpm - s.bpm) >= 0.005);
+}
+function labLoopRateFor(id, bpm, warp) { return warp === false ? labLoopRate(id, bpm) : 1; }
+function labLoopBufferPeek(id, bpm, o) {
+    const s = labSample(id);
+    if (!s || !labLoopNeedsWarp(id, bpm)) return null;
+    const e = lwTouch(lwKey(id, bpm, lwMode(s, o)));
+    return e && e.buf ? e.buf : null;
+}
+function labLoopBuffer(ctx, id, bpm, o) {
+    o = o || {};
+    const s = labSample(id);
+    if (!s) return Promise.resolve(null);
+    const src = () => o.buffer ? Promise.resolve(o.buffer) : labSampleBuffer(ctx, id);
+    if (o.warp === false || !labLoopNeedsWarp(id, bpm)) return src();
+    const mode = lwMode(s, o), k = lwKey(id, bpm, mode), hit = lwTouch(k);
+    if (hit) return hit.buf ? Promise.resolve(hit.buf) : hit.p;
+    const b2 = lwBpm(bpm), ent = { buf: null, bytes: 0, p: null };
+    ent.p = src().then(buf => {
+        if (!buf) return null;
+        const sr = buf.sampleRate, bars = s.bars || Math.max(1, Math.round(buf.duration * s.bpm / 240));
+        const inLen = Math.min(buf.length, Math.round(bars * 240 / s.bpm * sr)), outLen = Math.round(bars * 240 / b2 * sr);
+        return labStretch(buf, outLen / inLen, { mode, loop: true, length: outLen, end: inLen });
+    }).then(b => {
+        if (!b) { if (_lwCache.get(k) === ent) _lwCache.delete(k); return null; }
+        if (_lwCache.get(k) === ent) { ent.buf = b; ent.bytes = b.length * b.numberOfChannels * 4; lwTrim(); }
+        return b;
+    }).catch(e => {
+        if (_lwCache.get(k) === ent) _lwCache.delete(k);
+        console.warn('[lab] warp:', id, e && e.message ? e.message : e);
+        return null;
+    });
+    _lwCache.set(k, ent); lwTrim();
+    return ent.p;
+}
+// WARP | RE-PITCH seçici (Ableton clip Warp düğmesi). Terimler iki dilde aynı; başlıklar TR/EN canlı.
+function makeWarpSeg(value, onPick, o) {
+    o = o || {};
+    const seg = makeSeg([
+        { value: true, label: 'WARP', title: () => L('lp_warp_on_t') },
+        { value: false, label: 'RE-PITCH', title: () => L('lp_warp_off_t') },
+    ], value !== false, v => { if (onPick) onPick(v); }, { size: o.size || 'md', label: () => L('lp_warp_aria'), cls: 'lp-warp' + (o.cls ? ' ' + o.cls : '') });
+    seg.buttons.forEach(b => { b.lang = 'en'; });
+    seg.setBusy = on => { seg.el.classList.toggle('is-busy', !!on); if (on) seg.el.setAttribute('aria-busy', 'true'); else seg.el.removeAttribute('aria-busy'); };
+    return seg;
+}
+if (/[?&]warpdebug=1\b/.test(location.search)) window.__lpWarp = { labStretch, labStretchStats, labLoopBuffer, labLoopBufferPeek, labLoopNeedsWarp, labLoopRateFor, labSampleBuffer, labSample, labLoopDuration };
 
 // ═══════════════════════════════════════════════════════════════════
 // NAVIGATION — hero listesi + modül sekmeleri + görünüm değişimi
@@ -11960,7 +12301,7 @@ const ARR_KEYS = [['lab_m4_k1','Tab'], ['lab_m4_k2','Ctrl/⌘ + D'], ['lab_m4_k3
 // ── Zaman çizelgesi: 8 bölüm × 2 bar = 16 bar = 256 on altılık adım; tempo = seçili loop setinin BPM'i ──────
 // Classic loop'lar 125 BPM (Lead Loop.wav 30.72 sn = 16 bar, Pad Loop.wav 7.68 sn = 4 bar), Cassianism 126 BPM
 // (8 bar = 15.238 sn) → aranjman temposu setin temposu olur, loop'lar perdesi bozulmadan (playbackRate 1),
-// şarkı zamanından ofsetle hizalı çalar. ARR_BPM / ARR_S16 yalnız m4ApplyBpm ile değişir.
+// şarkı zamanından ofsetle hizalı çalar (tempo loop'tan farklı olursa arrLoopBuf → LOOP WARP, perde yine sabit). ARR_BPM / ARR_S16 yalnız m4ApplyBpm ile değişir.
 let ARR_BPM = 125;
 const ARR_SECTION_BARS = 2;
 const ARR_SEC_STEPS = ARR_SECTION_BARS * 16;                 // 32
@@ -12197,6 +12538,15 @@ function arrLoopStep(tr, t, i, buf, v) {
     s.connect(g); s.start(a, off); s.stop(tEnd + ARR_XF);
     R.loops[tr] = arrKeep({ n: [s], g, tr, sec: i >> 5, st: a, end: tEnd + ARR_XF, to: secEnd });
 }
+// LOOP WARP: aranjman temposu loop'un kendi BPM'inden farklıysa (bugün set temposu = set loop'larının temposu; tempo
+// denetimi / set dışı loop gelirse) perdesi sabit gerilmiş tampon (labLoopBuffer). Hazır değilse iz o adımda susar
+// (istek Worker'da sürer, önbellek tek germeye bağlar) ve sonraki adımda ofsetle girer.
+function arrLoopBuf(id, buf) {
+    if (!labLoopNeedsWarp(id, m4S.bpm)) return buf;
+    const b = labLoopBufferPeek(id, m4S.bpm);
+    if (!b) labLoopBuffer(null, id, m4S.bpm, { buffer: buf });
+    return b;
+}
 // Örnek yüklenemezse (indirme/çözme hatası, 404) tasarımdaki sentez üreteci çalar — iz sessiz kalmaz
 function arrSynth(tr, t, i) {
     const ctx = arrCtx, s16 = i & 15, bar = i >> 4, sec = i >> 5;
@@ -12380,7 +12730,7 @@ function arrStep(i, t) {
         if (T.kind === 'loop') {
             const L = R.loops[tr];
             if (!on) { if (L) { if (L.to > i) arrFade(L, t); R.loops[tr] = null; } return; }
-            if (buf) { arrLoopStep(tr, t, i, buf, 0.34 * labSampleGain(id)); return; }
+            if (buf) { const lb = arrLoopBuf(id, buf); if (lb) arrLoopStep(tr, t, i, lb, 0.34 * labSampleGain(id)); return; }
         }
         if (!on || arrEff(tr) < 0.001) return;
         if (!buf && !arrFail[id]) return;      // örnek hâlâ yükleniyor: bu adımda iz susar (sentez yalnız gerçek hata için)
@@ -12518,11 +12868,12 @@ function arrCellOff(r, c) {
 // Temizlik: _m3StopAudio = m3StopAll (teardownView → çalma, zamanlayıcılar, rAF durur; bağlam askıya).
 // Görev kimlikleri 1–5 aynı anlamda (yalnız ifade tasarıma göre) → kayıtlı ilerleme korunur. Görev 6 (yeni): kaynak seçimi.
 // Tur 3 (DAW mantığı): KAYNAK paneli — davul kiti Classic / Mersey (LAB_SAMPLES), LEAD LOOP tarayıcısı (Classic 125 +
-// Cassianism 126 BPM; hız = labLoopRate), çalarken değişim sonraki ölçü başında (mixTrigger). Öğretici "Mix mantığı"
+// Cassianism 126 BPM; state.mix.warp: WARP = LOOP WARP gerilmiş tampon (perde sabit, vars.) | RE-PITCH = labLoopRate),
+// çalarken değişim (loop, tempo, mod) sonraki ölçü başında (mixTrigger). Öğretici "Mix mantığı"
 // (labTutorial mid 3 id 'mix', 9 adım; ilerleme 3-tut-mix-* → GÖREV sayacına girmez). Solo özel + solo-in-place (mute
 // fader'dan önce), kanal EQ / kompresör aç-kapa (eqOn / cpOn — anlık görüntüde), EQ+COMP kopyala/yapıştır, tepe tutma
 // düğmeleri (tıkla = sıfırla), Boşluk = çal/durdur, MIDI düğmesi + MAP (CC → knob/fader; localStorage 'lab_m3_midimap').
-// Kaynak seçimi (kit, lead) tempo gibi oturum ayarıdır: preset / undo anlık görüntüsüne girmez.
+// Kaynak seçimi (kit, lead, warp) tempo gibi oturum ayarıdır: preset / undo anlık görüntüsüne girmez.
 TASKS[3] = [1, 2, 3, 4, 5, 6].map(id => ({ id, get text() { return L('lab_m3_t' + id); } }));
 Object.assign(LAB_TXT, {
     // Modül 3 · Mixing metinleri: anahtar: [`TR`, `EN`],
@@ -12704,9 +13055,9 @@ Object.assign(LAB_TXT, {
     lab_m3_w4:          [`<strong>SEND A/B</strong> → Return Track: Reverb, Delay`, `<strong>SEND A/B</strong> → Return Track: Reverb, Delay`],
     lab_m3_w5:          [`<strong>PAN · M · S</strong> → Kanal pan, Track Activator, Solo`, `<strong>PAN · M · S</strong> → Track pan, Track Activator, Solo`],
     lab_m3_w6:          [`<strong>LIMITER</strong> → Master kanalda Limiter`, `<strong>LIMITER</strong> → Limiter on the Master track`],
-    lab_m3_w7:          [`<strong>KAYNAK</strong> → Browser (Samples / Drums) · clip Warp: Re-Pitch, Seg. BPM`, `<strong>SOURCE</strong> → Browser (Samples / Drums) · clip Warp: Re-Pitch, Seg. BPM`],
+    lab_m3_w7:          [`<strong>KAYNAK</strong> → Browser (Samples / Drums) · clip Warp: Complex (perde sabit) ya da Re-Pitch, Seg. BPM`, `<strong>SOURCE</strong> → Browser (Samples / Drums) · clip Warp: Complex (pitch held) or Re-Pitch, Seg. BPM`],
     lab_m3_w8:          [`<strong>MAP</strong> → MIDI Map Mode (Ctrl/⌘+M)`, `<strong>MAP</strong> → MIDI Map Mode (Ctrl/⌘+M)`],
-    lab_m3_s10:         [`KAYNAK · WARP|Davul kanalları seçili kiti (Classic / Mersey) çalar; LEAD LOOP tarayıcıdan seçilir. Loop hızı = mixer BPM / loop BPM (Ableton'daki Re-Pitch warp: tempo ile perde birlikte kayar). Değişim çalarken bir sonraki ölçü başında, örnek-doğru zamanla yapılır; demo bas loop'un tonunu izler.`, `SOURCE · WARP|The drum channels play the selected kit (Classic / Mersey); LEAD LOOP is picked in the browser. Loop speed = mixer BPM / loop BPM (Ableton's Re-Pitch warp: tempo and pitch move together). While playing, a change lands sample-accurately at the start of the next bar; the demo bass follows the loop key.`],
+    lab_m3_s10:         [`KAYNAK · WARP|Davul kanalları seçili kiti (Classic / Mersey) çalar; LEAD LOOP tarayıcıdan seçilir. WARP (varsayılan): loop mixer temposuna gerilir, perdesi sabit kalır (Ableton'da Complex / Tones warp) — yeni tempo hesaplanırken eski tampon çalar, geçiş sonraki ölçüde. RE-PITCH: hız = mixer BPM / loop BPM, tempo ile perde birlikte kayar (plak / teyp). Değişim çalarken bir sonraki ölçü başında, örnek-doğru zamanla yapılır; demo bas loop'un tonunu izler.`, `SOURCE · WARP|The drum channels play the selected kit (Classic / Mersey); LEAD LOOP is picked in the browser. WARP (default): the loop is stretched to the mixer tempo and keeps its pitch (Ableton's Complex / Tones warp) — while the new tempo is computed the old buffer keeps playing and the swap lands on the next bar. RE-PITCH: speed = mixer BPM / loop BPM, tempo and pitch move together (vinyl / tape). While playing, a change lands sample-accurately at the start of the next bar; the demo bass follows the loop key.`],
     // Kaynak paneli (kit + loop tarayıcısı)
     lab_m3_srcp:        [`KAYNAK`, `SOURCE`],
     lab_m3_srcp_aria:   [`Kaynaklar — davul kiti ve lead loop`, `Sources — drum kit and lead loop`],
@@ -12717,7 +13068,9 @@ Object.assign(LAB_TXT, {
     lab_m3_kit_note:    [`Çalarken kit ve loop değişimi bir sonraki ölçü başında devreye girer (kesintisiz).`, `While playing, a kit or loop change kicks in at the start of the next bar (seamless).`],
     lab_m3_loop:        [`LEAD LOOP · TARAYICI`, `LEAD LOOP · BROWSER`],
     lab_m3_loop_aria:   [`LEAD LOOP kanalının loop tarayıcısı`, `Loop browser for the LEAD LOOP channel`],
-    lab_m3_warp:        [`KEY {key} · {sbpm} → {bpm} BPM · ×{rate}`, `KEY {key} · {sbpm} → {bpm} BPM · ×{rate}`],
+    lab_m3_warp:        [`KEY {key} · {sbpm} → {bpm} BPM · ×{rate} · {st} yarım ton`, `KEY {key} · {sbpm} → {bpm} BPM · ×{rate} · {st} st`],
+    lab_m3_warp_w:      [`KEY {key} · {sbpm} → {bpm} BPM · PERDE SABİT`, `KEY {key} · {sbpm} → {bpm} BPM · PITCH HELD`],
+    lab_m3_warping:     [`{name} {bpm} BPM'ye geriliyor (WARP)…`, `Warping {name} to {bpm} BPM…`],
     lab_m3_next:        [`Sırada: {name} — sonraki ölçüde`, `Queued: {name} — at the next bar`],
     lab_m3_loading:     [`{name} yükleniyor…`, `Loading {name}…`],
     lab_m3_load_err:    [`{name} yüklenemedi — önceki kaynak çalmaya devam ediyor`, `{name} could not load — the previous source keeps playing`],
@@ -12849,6 +13202,7 @@ if (!state.mix) state.mix = Object.assign({ sel: 4, band: 2, tab: 0, preset: 'f1
 if (!M3_KITS[state.mix.kit]) state.mix.kit = 'classic';
 if (!labSample(state.mix.lead) || M3_LOOP_KINDS.indexOf(labSample(state.mix.lead).kind) < 0 || M3_LOOP_HIDE.indexOf(state.mix.lead) >= 0) state.mix.lead = M3_LEAD_DEF;
 if (state.mix.srcOpen == null) state.mix.srcOpen = true;
+if (state.mix.warp == null) state.mix.warp = true;             // LOOP WARP: WARP (perde sabit) | RE-PITCH — kaynak gibi oturum ayarı
 
 const m3Num = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 // Anlık görüntü (undo / A-B / preset kaydı): yalnız ses parametreleri (seçim, sekme, tempo, bypass hariç)
@@ -13079,7 +13433,7 @@ function mixSync(which, G) {
     const ck = S.mst.lim ? S.mst.ceil : null;
     if (G.clipK !== ck) { G.clipK = ck; G.clip.curve = ck == null ? null : m3ClipCurve(ck); }
     if (!S.sc.on) [4, 5].forEach(i => { const p = G.ch[i].dk.gain; p.cancelScheduledValues(t); m3T(p, 1, t); });
-    if (mixRun && mixRun.lead && G === mixNodes) m3T(mixRun.lead.playbackRate, labLoopRate(mixRun.leadId, S.bpm), t);
+    if (mixRun && mixRun.lead && G === mixNodes && !mixRun.leadWarp) m3T(mixRun.lead.playbackRate, labLoopRate(mixRun.leadId, S.bpm), t);   // WARP: tampon kendi temposunda (hız 1)
     mixWireSends(S.sendPre, G);
     if (G.ir !== S.rev.decay) {
         if (!G.ir) mixMakeIR(G, S.rev.decay);
@@ -13135,15 +13489,18 @@ function mixSynthLead(G, hz, t, run) {
     f.type = 'lowpass'; f.frequency.value = 3200; m3Env(g, 0.12, t, d); f.connect(g); g.connect(G.ch[5].in);
     [0, 9, -9].forEach(dt => { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz; o.detune.value = dt; o.connect(f); o.start(t); o.stop(t + d + 0.02); mixTrack(run, o, g); });
 }
-// LEAD LOOP: ölçü başında, döngüdeki doğru ölçüden (offset = ölçü mod loop ölçüsü) başlar; hız = mixer BPM / loop BPM
-// (Re-Pitch warp). Çalan loop varsa AYNI t anında ~4 ms'lik geçişle değişir (örnek-doğru, tık yok).
-function mixStartLead(G, run, t, bar, id) {
-    const buf = m3Buf(id), smp = labSample(id); if (!buf || !smp) return false;
+// LEAD LOOP: ölçü başında, döngüdeki doğru ölçüden (offset = ölçü mod loop ölçüsü) başlar. key = m3LeadWant():
+// 'id|w|bpm' → WARP (LOOP WARP gerilmiş tampon ya da aynı tempoda özgün tampon; hız 1, perde sabit) · 'id|rp' →
+// Re-Pitch (hız = mixer BPM / loop BPM, tempo ile kayar). Çalan loop varsa AYNI t anında ~4 ms'lik geçişle değişir
+// (örnek-doğru, tık yok) — tempo / mod değişimi de böyle: eski tampon ölçü sonuna kadar sürer.
+function mixStartLead(G, run, t, bar, id, buf, key) {
+    const smp = labSample(id); if (!buf || !smp) return false;
+    const kp = String(key || '').split('|'), wb = kp[1] === 'w';
     const c = G.ctx, s = c.createBufferSource(), g = c.createGain();
-    const barS = 240 / (smp.bpm || M3_LEAD_BPM), bars = smp.bars || Math.max(1, Math.round(buf.duration / barS));
+    const barS = 240 / (wb ? +kp[2] : (smp.bpm || M3_LEAD_BPM)), bars = smp.bars || Math.max(1, Math.round(buf.duration / barS));
     s.buffer = buf; s.loop = true;
     if (bars * barS < buf.duration - 0.005) { s.loopStart = 0; s.loopEnd = bars * barS; }   // kuyruklu dosya: tam ölçüde döngü
-    s.playbackRate.value = labLoopRate(id, state.mix.bpm);
+    s.playbackRate.value = wb ? 1 : labLoopRate(id, state.mix.bpm);
     g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(m3LeadLevel(id), t, 0.004);
     s.connect(g); g.connect(G.ch[5].in);
     s.start(t, ((bar % bars) * barS) % buf.duration);
@@ -13153,7 +13510,7 @@ function mixStartLead(G, run, t, bar, id) {
         try { o.stop(t + 0.06); } catch (_) {}
         o.onended = () => { try { og.disconnect(); } catch (_) {} };
     }
-    run.lead = s; run.leadG = g; run.leadId = id;
+    run.lead = s; run.leadG = g; run.leadId = id; run.leadKey = key; run.leadWarp = wb;
     return true;
 }
 // Bir adımı tetikle (gs: baştan beri adım sayacı). Kick'te sidechain zarfını planla.
@@ -13162,7 +13519,10 @@ function mixTrigger(G, run, gs, t) {
     let kick = false;
     // Kaynak değişimi yalnız ölçü başında (kesintisiz): kit tamponları hazırsa geçer, değilse eski kit sürer
     if (s16 === 0 && run.kit !== S.kit && m3KitReady(S.kit)) run.kit = S.kit;
-    if (s16 === 0 && run.leadId !== S.lead && m3Buf(S.lead)) mixStartLead(G, run, t, bar, S.lead);
+    if (s16 === 0) {                                              // lead / tempo (WARP) / mod değişimi: tampon hazırsa bu ölçüde
+        const want = m3LeadWant();
+        if (run.leadKey !== want) { const lb = m3LeadBuf(S.lead, S.bpm); if (lb) mixStartLead(G, run, t, bar, S.lead, lb, want); }
+    }
     for (let ti = 0; ti < 5; ti++) {
         let vel = 0;
         if (pat) { const row = pat[ti]; if (Array.isArray(row) && row.length) vel = +row[gs % row.length] || 0; }
@@ -13209,7 +13569,8 @@ function startMix() {
     mixGen++;
     const S = state.mix;
     m3Load(S.lead); if (S.kit !== 'classic') M3_KITS[S.kit].forEach(m3Load);
-    mixRun = { gen: mixGen, gs: 0, next: now + 0.06, queue: [], srcs: new Set(), lead: null, leadG: null, leadId: null, pat: null,
+    m3LeadBuf(S.lead, S.bpm);                               // WARP: gerilmiş tampon yoksa şimdi iste
+    mixRun = { gen: mixGen, gs: 0, next: now + 0.06, queue: [], srcs: new Set(), lead: null, leadG: null, leadId: null, leadKey: '', leadWarp: false, pat: null,
         kit: m3KitReady(S.kit) ? S.kit : 'classic',
         timer: 0, mTimer: 0, lv: null, hold: [], mpk: -Infinity, gr: [0, 0, 0, 0, 0, 0], limGr: 0, pos: null, hrT: 0, t63: 0 };
     m3Pk.fill(-Infinity);                                   // tepe tutma göstergeleri: yeni ölçüm
@@ -13293,7 +13654,7 @@ function mixSet(path, v) {
     mixPut(path, v);
     const m = /^ch\.(\d)\.(\w+)$/.exec(path);
     if (m && m[2] !== 'solo') mixSync(+m[1]); else mixSync();
-    if (path !== 'bpm') m3Mod(true);
+    if (path !== 'bpm') m3Mod(true); else m3WarpPrep();
     m3Dirty();
 }
 // Anlık görüntüyü yükle (undo / A-B / preset); preset seçimi (m3PickPreset) bayrağı sonra temizler
@@ -13490,7 +13851,40 @@ function m3SetLead(smp) {
     state.mix.lead = smp.id;
     if (m3SBuf[smp.id] === false) delete m3SBuf[smp.id];           // yeniden seçildi → yeniden dene
     m3Load(smp.id);
+    m3WarpPrep();
     m3Dirty();
+}
+// ── LOOP WARP (kit: labLoopBuffer) — WARP: tempo değişince perde sabit; RE-PITCH: hız = BPM oranı, perde kayar ──
+function m3SetWarp(v) {
+    state.mix.warp = v !== false;
+    m3LeadBuf(state.mix.lead, state.mix.bpm);
+    m3Dirty();
+}
+// Hedef lead anahtarı: 'id|w|bpm' (WARP; aynı tempoda bpm = loop bpm'i → özgün tampon) · 'id|rp' (RE-PITCH)
+function m3LeadWant() {
+    const S = state.mix, smp = labSample(S.lead);
+    if (S.warp === false || !smp) return S.lead + '|rp';
+    return S.lead + '|w|' + (labLoopNeedsWarp(S.lead, S.bpm) ? S.bpm : (smp.bpm || M3_LEAD_BPM)).toFixed(2);
+}
+// Çalınabilir tampon: gerilmiş (WARP, tempo farklı) ya da özgün. Gerilmiş hazır değilse null + istek (Worker'da;
+// önbellek aynı isteği tekrar başlatmaz) — çalan tampon sürer, sıralayıcı sonraki ölçü başında yeniden bakar.
+function m3LeadBuf(id, bpm) {
+    const src = m3Buf(id); if (!src) return null;
+    if (state.mix.warp === false || !labLoopNeedsWarp(id, bpm)) return src;
+    const b = labLoopBufferPeek(id, bpm);
+    if (!b) labLoopBuffer(null, id, bpm, { buffer: src }).then(() => m3Dirty());
+    return b;
+}
+if (/[?&]warpdebug=1\b/.test(location.search)) window.__lpWarpM3 = () => (mixRun ? { leadKey: mixRun.leadKey, leadWarp: mixRun.leadWarp, rate: mixRun.lead ? mixRun.lead.playbackRate.value : null } : null);
+function m3WarpPending() {
+    const S = state.mix;
+    return S.warp !== false && labLoopNeedsWarp(S.lead, S.bpm) && !!m3Buf(S.lead) && !labLoopBufferPeek(S.lead, S.bpm);
+}
+// Tempo knob'u sürüklenirken ara değerler gerilmez: 160 ms durulunca (çalmıyorken de → ▶'da hazır)
+let m3WarpT = 0;
+function m3WarpPrep() {
+    clearTimeout(m3WarpT);
+    m3WarpT = setTimeout(() => { m3WarpT = 0; m3LeadBuf(state.mix.lead, state.mix.bpm); }, 160);
 }
 // Kanal kaynağı (şerit altı + kit listesi): davul kanalları kitten, BASS demo/Beat Maker, LEAD LOOP tarayıcıdan
 function m3ChSource(i) {
@@ -13543,9 +13937,10 @@ function m3BuildSource(U) {
     const lc = mk('div', 'm3-loopcol');
     const lh = mk('div', 'm3-loophd');
     U.warp = mk('span', 'm3-warp');
-    lh.append(m3El('span', 'm3-sl', 'lab_m3_loop'), U.warp);
+    U.warpSeg = makeWarpSeg(S.warp, v => m3SetWarp(v));
+    lh.append(m3El('span', 'm3-sl', 'lab_m3_loop'), U.warpSeg.el, U.warp);
     U.sb = makeSampleBrowser({ kinds: M3_LOOP_KINDS, packs: M3_LOOP_PACKS, value: S.lead, filter: true, height: 172, cls: 'm3-sb',
-        label: L('lab_m3_loop_aria'), ctx: () => getMixCtx(), bpm: () => state.mix.bpm,
+        label: L('lab_m3_loop_aria'), ctx: () => getMixCtx(), bpm: () => state.mix.bpm, warp: () => state.mix.warp !== false,
         dest: () => (mixRun && mixNodes ? mixNodes.ch[5].in : null), onPick: smp => m3SetLead(smp) });
     m3PruneLoops(U.sb.el);
     lc.append(lh, U.sb.el);
@@ -13602,7 +13997,10 @@ function m3SrcPaint(U) {
         m3Txt(r.t, txt);
     });
     if (U.sb.get() !== S.lead) U.sb.set(S.lead);
-    m3Txt(U.warp, lead ? Lf('lab_m3_warp', { key: lead.key || '—', sbpm: lead.bpm, bpm: S.bpm, rate: labLoopRate(lead.id, S.bpm).toFixed(3) }) : '');
+    const wOn = S.warp !== false, wPend = m3WarpPending(), rt = lead ? labLoopRate(lead.id, S.bpm) : 1;
+    U.warpSeg.set(wOn); U.warpSeg.setBusy(wPend);
+    const st12 = 12 * Math.log2(rt), stT = (st12 > 0.005 ? '+' : st12 < -0.005 ? '−' : '±') + Math.abs(st12).toFixed(2);
+    m3Txt(U.warp, lead ? Lf(wOn ? 'lab_m3_warp_w' : 'lab_m3_warp', { key: lead.key || '—', sbpm: lead.bpm, bpm: S.bpm, rate: rt.toFixed(3), st: stT }) : '');
     m3Txt(U.srcSum, `${m3KitName(S.kit)} · ${lead ? lead.name : '—'}${lead && lead.key ? ' · ' + lead.key : ''} · ${lead ? lead.bpm : ''} BPM`);
     // Durum: yükleniyor / sırada (sonraki ölçü) / hata
     const kitIds = S.kit === 'classic' ? [] : M3_KITS[S.kit];
@@ -13612,6 +14010,7 @@ function m3SrcPaint(U) {
     else if (kitIds.some(id => m3SBuf[id] === false)) { st = Lf('lab_m3_load_err', { name: kitNm }); cls = 'is-err'; }
     else if (m3Loading[S.lead] && !m3Buf(S.lead)) st = Lf('lab_m3_loading', { name: leadNm });
     else if (kitIds.some(id => m3Loading[id])) st = Lf('lab_m3_loading', { name: kitNm });
+    else if (wPend) st = Lf('lab_m3_warping', { name: leadNm, bpm: S.bpm });
     else if (run && run.leadId && run.leadId !== S.lead) st = Lf('lab_m3_next', { name: leadNm });
     else if (run && run.kit !== S.kit) st = Lf('lab_m3_next', { name: kitNm });
     m3Txt(U.srcSt, st); U.srcSt.className = 'm3-srcst' + (cls ? ' ' + cls : '');
@@ -14463,6 +14862,7 @@ function m3StopAll() {
     stopMix();
     m3TE = null;
     clearTimeout(mixIrTimer); mixIrTimer = 0;
+    clearTimeout(m3WarpT); m3WarpT = 0;
     if (m3Ui) { cancelAnimationFrame(m3Ui.raf); m3Ui.raf = 0; m3Ui = null; }
     if (mixCtx && mixCtx.state === 'running') {
         if (mixNodes) mixNodes.stale = true;                       // askıdayken donan reverb kuyruğu dönüşte atılır
@@ -16921,7 +17321,8 @@ function renderModule4() {
 // ═══════════════════════════════════════════════════════════════════
 // Tasarım: Lab_Mastering (eklenti penceresi + "Çalışma mantığı" + görev / Ableton / hata şeridi).
 // Ses: ortak beatCtx (getBeatCtx — yeni AudioContext açılmaz, kapatılmaz). KAYNAK seçici (m5V.src):
-// 'beat' = startBeat() + beatRouteTo(mixBus) (+ tempo uyarsa Lead/Pad Loop; pattern boşken seçilemez),
+// 'beat' = startBeat() + beatRouteTo(mixBus) (+ Lead/Pad Loop: WARP her tempoda perde sabit, RE-PITCH yalnız tempo
+// ±%6 içindeyse — m5V.warp, kaynak şeridindeki WARP | RE-PITCH; pattern boşken seçilemez),
 // 'demo' = dahili sentez loop (124 BPM), 'cass' = Cassianism Mix (Pad/Lead/Pluck loop'ları + Mersey
 // davulları, 126 BPM, modülün lookahead zamanlayıcısı; stem'ler labSampleBuffer). Kaynak kırpmaları
 // (M5_BEAT_TRIM / M5_CASS_TRIM) varsayılan zincirde Integrated'ı ≈ aynı LUFS'a getirir; Beat kaynağı ayrıca her
@@ -17192,8 +17593,9 @@ const M5_RNG = {
 };
 const M5_BRNG = [[20, 20000], [-15, 15], [0.3, 8]], M5_MBRNG = [[-40, 0], [-6, 6]];
 const M5_VOICE_BPM = 124;
-// Beat Maker kaynağında tempo uyarsa eklenen döngüler: [dosya, kazanç, ölçü sayısı @125 BPM]
-const M5_LOOPS = [['assets/audio/Pad Loop.wav', 0.18, 4], ['assets/audio/Lead Loop.wav', 0.12, 16]];
+// Beat Maker kaynağına eklenen döngüler: [dosya, kazanç, ölçü sayısı @125 BPM, LAB_SAMPLES id]. m5V.warp: WARP →
+// her Beat temposunda perdesi sabit (LOOP WARP gerilmiş tampon) · RE-PITCH → yalnız tempo ±%6 içindeyse, hız = bpm / 125.
+const M5_LOOPS = [['assets/audio/Pad Loop.wav', 0.18, 4, 'classic-pad-loop'], ['assets/audio/Lead Loop.wav', 0.12, 16, 'classic-lead-loop']];
 // Beat kaynağı seviye eşleme: başlangıç kırpması Beat Maker'ın varsayılan House şablonuna göre (kuru mix ≈ M5_DRY_REF).
 // Pattern / ses düzeyi değişebildiğinden her Beat başlangıcında ilk M5_CAL_S saniyenin kuru K-ağırlıklı seviyesi
 // ölçülür ve beatIn + loopIn tek seferde M5_DRY_REF'e kaydırılır (±M5_CAL_MAX dB). Sonuç imzaya göre saklanır:
@@ -17245,6 +17647,7 @@ function m5Sanitize(src) {
 let m5P = m5Clone(M5_DEF);                   // aktif parametreler
 const m5V = { plat: 0, ref: false, byp: false, sel: 1, pre: 'f0', tool: 0, mod: false,
     src: 'demo', srcPicked: false,   // KAYNAK; seçilmediyse her görünümde Beat pattern'i doluysa 'beat', değilse 'demo'
+    warp: true,                      // Beat kaynağındaki Lead / Pad loop'ları: WARP (perde sabit) | RE-PITCH — KAYNAK gibi oturum ayarı
     match: true,                     // GAIN MATCH (BYPASS ALL seviye eşli)
     solo: null,                      // modül solo: 'eq'|'glue'|'mb'|'st'|'lim' (oturum; preset/geçmiş dışı)
     band: null };                    // multiband LISTEN: 0|1|2
@@ -17637,23 +18040,31 @@ function m5LoadBuf(ctx, file) {
     }
     return m5Bufs[file];
 }
-// Lead / Pad Loop (125 BPM) — yalnız Beat temposu yakınsa, ölçü sınırına hizalı
+// Lead / Pad Loop (125 BPM) — ölçü sınırına hizalı. WARP (vars.): her tempoda, perdesi sabit (gerilmiş tamponun ölçüsü
+// 240 / bpm, hız 1; hesaplanırken Beat çalar, loop'lar hazır olunca sonraki ölçüde girer). RE-PITCH: yalnız tempo yakınsa.
 function m5StartLoops(gen) {
     const E = m5E, R = m5R; if (!E || !R) return;
-    const ctx = E.ctx, bpm = +state.bpm || 125, rate = bpm / 125;
-    // VARSAYIM: ±%6 (≈ ±1 yarım ton) dışında perde kayması rahatsız eder → yalnız beat çalar
-    if (Math.abs(rate - 1) > 0.06) return;
-    M5_LOOPS.forEach(([file, v, bars]) => {
-        m5LoadBuf(ctx, file).then(buf => {
+    const ctx = E.ctx, bpm = +state.bpm || 125, warp = m5V.warp !== false, rate = warp ? 1 : bpm / 125;
+    // VARSAYIM: ±%6 (≈ ±1 yarım ton) dışında perde kayması rahatsız eder → RE-PITCH'te yalnız beat çalar
+    if (!warp && Math.abs(rate - 1) > 0.06) return;
+    const lg = R.lgen = (R.lgen || 0) + 1;                  // mod değişimi (m5SetWarp) eski istekleri geçersiz kılar
+    R.warpPend = 0;
+    M5_LOOPS.forEach(([file, v, bars, id]) => {
+        const pend = warp && labLoopNeedsWarp(id, bpm) && !labLoopBufferPeek(id, bpm);
+        if (pend) { R.warpPend++; m5PaintSrc(); }
+        (warp ? labLoopBuffer(ctx, id, bpm) : m5LoadBuf(ctx, file)).then(buf => {
+            if (R.lgen !== lg) return;
+            if (pend) { R.warpPend--; m5PaintSrc(); }
             if (!buf || !m5R || m5R.gen !== gen || !m5E || m5E.ctx !== ctx) return;
             const bar = 240 / bpm, now = ctx.currentTime + 0.1;
             const k = Math.max(0, Math.ceil((now - m5R.beatT0) / bar));
-            const when = m5R.beatT0 + k * bar, off = ((k % bars) * 240 / 125) % buf.duration;
+            const when = m5R.beatT0 + k * bar, off = ((k % bars) * (warp ? bar : 240 / 125)) % buf.duration;
             const s = ctx.createBufferSource(), gn = ctx.createGain();
             s.buffer = buf; s.loop = true; s.playbackRate.value = rate; gn.gain.value = v;
             s.connect(gn); gn.connect(m5E.A.loopIn);
             s.onended = () => { try { gn.disconnect(); } catch {} };
             s.start(when, off);
+            s._m5g = gn;
             m5R.loops.push(s);
             // Döngüler kuru seviyeyi yükseltir → eşleme döngülerle birlikte (yeniden) ölçülsün
             if (when + 0.1 > m5R.calT0) { m5R.cal = false; m5R.calT0 = Math.max(when + 0.1, m5R.calGlide); m5R.calE = 0; m5R.calN = 0; }
@@ -17744,6 +18155,21 @@ function m5SetSource(v) {
     // Çalarken kaynak değişimi: durdur + yeni kaynakla başlat (ölçüm yeni malzeme için sıfırlanır)
     if (m5R) { m5Stop(); m5Start(); }
     m5PaintSrc(); m5PaintMeter();
+}
+// WARP | RE-PITCH (Beat kaynağının Lead / Pad loop'ları): çalarken eski loop'lar ~10 ms'de söner, yeni moddakiler
+// sonraki ölçü başında girer (Beat ve ölçüm kesilmez)
+function m5SetWarp(v) {
+    v = v !== false;
+    if (m5V.warp === v) return;
+    m5V.warp = v;
+    const R = m5R, E = m5E;
+    if (R && R.beat && E) {
+        const t = E.ctx.currentTime;
+        R.loops.forEach(s => { try { if (s._m5g) { s._m5g.gain.cancelScheduledValues(t); s._m5g.gain.setTargetAtTime(0, t, 0.01); } s.stop(t + 0.08); } catch {} });
+        R.loops = [];
+        m5StartLoops(R.gen);
+    }
+    m5PaintSrc();
 }
 function m5SetSolo(k) {
     m5V.solo = m5V.solo === k ? null : k;
@@ -18679,7 +19105,8 @@ function m5BuildSrcBar(u) {
     const sp = mk('span', 'm5-src-sp'); sp.setAttribute('aria-hidden', 'true');
     u.match = makeToggle({ text: () => L('lab_m5_match'), led: true, color: 'var(--m5-eq)', title: () => L('lab_m5_match_t'), on: m5V.match, cls: 'm5-match',
         onToggle: b => { m5V.match = b; m5Monitor(); } });
-    bar.append(cap, u.srcSeg.el, u.srcMeta, sp, u.match.el);
+    u.warp = makeWarpSeg(m5V.warp, v => m5SetWarp(v), { cls: 'm5-warp' });
+    bar.append(cap, u.srcSeg.el, u.srcMeta, u.warp.el, sp, u.match.el);
     return bar;
 }
 function m5PaintSrc() {
@@ -18691,6 +19118,7 @@ function m5PaintSrc() {
         if (off) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
         b.title = L(off ? 'lab_m5_src_t_boff' : v === 'beat' && !m5BeatHasPattern() ? 'lab_m5_src_t_bseed' : 'lab_m5_src_t_' + v);
     });
+    if (u.warp) { u.warp.el.hidden = cur !== 'beat'; u.warp.set(m5V.warp !== false); u.warp.setBusy(!!(m5R && m5R.warpPend > 0)); }
     u.srcMeta.textContent = m5R && m5R.loading ? L('lab_m5_src_load')
         : cur === 'beat' ? Lf('lab_m5_src_m_beat', { bpm: Math.round(+state.bpm || 125) }) : L('lab_m5_src_m_' + cur);
 }
