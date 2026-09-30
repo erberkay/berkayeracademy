@@ -4837,8 +4837,8 @@ function showModal(title, html, actions) {
 // ── Kayıtlar ─────────────────────────────────────────────────────────
 // LAB_ROUTES = MODULE_SLUGS  {1:'synth', 2:'beat', 3:'mixing', 4:'arrangement', 5:'mastering'}
 //              Adres: /ableton-lab#<slug>; genel bakış = hash yok.
-// LAB_ORDER  [1,2,3,5,4]  Sekme + alt gezinme sırası (tasarım: Synth, Beat, Mixing, Mastering,
-//              Arrangement → LAB MENÜSÜ). Numara (01…05) modül kimliğidir, sıra değil.
+// LAB_ORDER  [1,2,3,4,5]  Sekme + alt gezinme sırası: Synth, Beat, Mixing, Arrangement, Mastering
+//              → LAB MENÜSÜ (kullanıcı isteği: aranjmandan sonra mastering). Numara = modül kimliği.
 // LAB_MODS[mid] → { route, tab, kick, a, b, desc, title, navName, name } = LAB_TXT anahtarları:
 //              tab 'lab_tab_N' (sekme), kick 'lab_mk_N' (künye), a/b 'lab_mt_N_a|b' (h1 düz + italik
 //              yarı), desc 'lab_mdesc_N', title 'lab_title_N' (document.title), navName 'lab_nav_N'
@@ -5077,7 +5077,7 @@ function showModal(title, html, actions) {
 // (Genel bakış = hash yok). Doğrudan bağlantı ve tarayıcının geri/ileri tuşu çalışır.
 const MODULE_SLUGS = { 1: 'synth', 2: 'beat', 3: 'mixing', 4: 'arrangement', 5: 'mastering' };
 const LAB_ROUTES = MODULE_SLUGS;
-const LAB_ORDER = [1, 2, 3, 5, 4];
+const LAB_ORDER = [1, 2, 3, 4, 5];
 const LAB_MODS = {};
 [1, 2, 3, 4, 5].forEach(n => {
     LAB_MODS[n] = { route: MODULE_SLUGS[n], tab: 'lab_tab_' + n, kick: 'lab_mk_' + n, a: `lab_mt_${n}_a`, b: `lab_mt_${n}_b`,
@@ -6746,6 +6746,7 @@ const LP_FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), sel
 
 // ═══ 1) ÖĞRETİCİ ═══════════════════════════════════════════════════
 const _lpTutDefs = {};       // `${mid}:${id}` → [adım id] (labTutorialProgress)
+let _lpTutByMid = {};        // mid → bu görünümde kurulan öğretici (render() başlığa büyük düğmeyi koyar)
 let _lpTutActive = null;     // açık öğretici (tek)
 
 // Metin: fonksiyon → çağır; LAB_TXT anahtarı → L(); yoksa düz metin
@@ -7130,6 +7131,7 @@ function labTutorial(o) {
     const api = {
         mid, id: tid, steps,
         get title() { return lpTutText(o.title); },
+        get titleKey() { return o.title; },
         get el() { build(); return card; },
         get current() { return cur; },
         get active() { return active; },
@@ -7189,6 +7191,7 @@ function labTutorial(o) {
         restart() { if (!active) return api.start(0); enter(0); keepFocus(); return api; },
         refresh() { if (active) { tgt = resolve(); watch(); paint(); } emit(); return api; },
     };
+    if (mid != null) _lpTutByMid[mid] = api;
     return api;
 }
 
@@ -22478,6 +22481,7 @@ function labObserve(root) {
 }
 function render() {
     teardownView();
+    _lpTutByMid = {};
     // Eski görünümün hedeflerini bırak (kaldırılan öğeler gözlemde kalmasın)
     if (_labIO) _labIO.disconnect();
     _labRefreshers = [];
@@ -22487,6 +22491,12 @@ function render() {
     _labCount = { done: mod != null ? getDoneCount(mod) : 0, total: mod != null ? (TASKS[mod] || []).length : 0 };
     const views={1:renderModule1, 2:renderModule2, 3:renderModule3, 4:renderModule4, 5:renderModule5};
     app.append((views[mod] || renderHome)());
+    // Öğretici her modülde görünür giriş: başlığın sağ yuvasında adıyla + ilerleme (modül kendisi koymadıysa)
+    const tut = mod != null ? _lpTutByMid[mod] : null, acts = tut && app.querySelector('.lab-mhead-actions');
+    if (acts && !acts.querySelector('.lp-tut-btn')) {
+        const tb = makeTutorialButton(tut, { text: () => lpTutText(tut.titleKey) });
+        acts.append(tb.el);
+    }
     const main = document.getElementById('labMain');
     const isMod = mod != null;
     if (main) main.dataset.view = isMod ? 'mod' : 'home';
