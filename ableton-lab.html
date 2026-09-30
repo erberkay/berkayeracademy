@@ -2058,6 +2058,7 @@
             .lab-m4-name-in { height:44px; font-size:16px; }
             .lab-m4 .lab-m4-setsel { font-size:16px; }
             .lab-m4-lcd--set { min-width:280px; }   /* "126.00 · Cassianism · C#m" 16 px'te kesilmesin */
+            .lab-m4-lcd--set .lab-m4-selw { inset:-1px; }   /* seçici LCD'nin 1 px kenarlığını da kaplar → 44 px isabet (iç kutu 42 px) */
             .lab-m4-ruler, .lab-m4-colh--top { height:44px; }
             .lab-m4-rbar { padding-top:16px; }
             .lab-m4-vb { width:44px; height:44px; }
@@ -13199,7 +13200,7 @@ Object.assign(LAB_TXT, {
     lab_m4_x1_t:      [`Klip`, `Clip`],
     lab_m4_x1_d:      [`Her kutu grid[track][bölüm] değerini 0/1 yapar. Scheduler o bölüme gelince yalnızca 1 olan track'lerin generator'ını tetikler.`, `Each box sets grid[track][section] to 0/1. When the scheduler reaches that section it only triggers the generators of tracks set to 1.`],
     lab_m4_x2_t:      [`Scheduler`, `Scheduler`],
-    lab_m4_x2_d:      [`Her 16'lık adım (60/BPM/4 — 125 BPM'de 120 ms) bir setTimeout ile ilerler; nota zamanı AudioContext saatinden (nextT) verilir, böylece kayma olmaz. BPM seçili loop setinden gelir.`, `Each 16th step (60/BPM/4 — 120 ms at 125 BPM) advances with a setTimeout; note times come from the AudioContext clock (nextT), so nothing drifts. The BPM comes from the chosen loop set.`],
+    lab_m4_x2_d:      [`Her 16'lık adım (60/BPM/4 — {bpm} BPM'de {ms} ms) bir setTimeout ile ilerler; nota zamanı AudioContext saatinden (nextT) verilir, böylece kayma olmaz. BPM seçili loop setinden gelir.`, `Each 16th step (60/BPM/4 — {ms} ms at {bpm} BPM) advances with a setTimeout; note times come from the AudioContext clock (nextT), so nothing drifts. The BPM comes from the chosen loop set.`],
     lab_m4_x3_t:      [`Locator`, `Locator`],
     lab_m4_x3_d:      [`Bölüm başlığına tıklamak o bölümü seçer (Shift+tık aralık); çalarken playhead bir sonraki adımda step = bölüm × 32'ye atlar.`, `Clicking a section header selects that section (Shift+click a range); while playing, the playhead jumps to step = section × 32 on the next step.`],
     lab_m4_x4_t:      [`Loop`, `Loop`],
@@ -13486,6 +13487,12 @@ function m4Select(j, noJump, extend) {
     if (arrRun.playing) { if (!noJump) arrRun.jump = m4S.sel * ARR_SEC_STEPS; }
     else m4S.resume = -1;                    // durmuşken: başlangıç noktası yeni bölüm
     m4PaintSel(); m4PaintGuide(); m4PaintPos(true); m4PaintDetail();
+}
+// Otomasyon noktası odak/basış: nokta locator aralığının dışındaysa bölümü seçer; içindeyse Shift+tık aralığı
+// (loop parantezi) korunur, yalnız klip odağı (csec) o bölüme geçer.
+function m4PointSec(j) {
+    if (j < m4S.sel || j > m4S.selEnd) { m4Select(j, true); return; }
+    if (m4S.csec !== j) { m4S.csec = j; m4PaintSel(); m4PaintDetail(); }
 }
 function m4ToggleLoop() { m4S.loop = !m4S.loop; m4PaintTransport(); m4PaintSel(); }
 function m4SetBypass(b) {
@@ -14440,6 +14447,9 @@ function m4PaintSet() {
     const ui = _m4ui; if (!ui) return;
     ui.setSel.value = m4S.set;
     ui.stBpm.textContent = Lf('lab_m4_st_5', { bpm: m4S.bpm });
+    // Çalışma mantığı: adım süresi (ms), tempo ve varsayılan ton setten gelir → set/tempo değişince yerinde yeniden kurulur
+    const hs = m4S.set + '|' + m4S.bpm;
+    if (ui.hiw && ui.hiwSig !== hs) { ui.hiwSig = hs; ui.hiw.rebuild(m4HiwOpts()); }
     m4PaintInst();
 }
 // Detay görünümü (Ableton Detail View): seçili klip (sol) + iz enstrümanı / sampler (sağ)
@@ -14536,7 +14546,7 @@ function m4Relang() {
         m4Labels(ui);
         ui.live.textContent = '';
         if (ui.dev) ui.dev.tr = -1;          // cihaz metinleri yeniden kurulur
-        if (ui.hiw) ui.hiw.rebuild(m4HiwOpts());
+        if (ui.hiw) { ui.hiwSig = m4S.set + '|' + m4S.bpm; ui.hiw.rebuild(m4HiwOpts()); }
         m4PaintGuide(); m4PaintFlow();
     }
     m4PaintAll(); m4PaintStrip();
@@ -14898,7 +14908,7 @@ function m4PointInput(p, j) {
         e.preventDefault();
         try { p.focus({ preventScroll: true }); } catch (_) {}
         m4Push();
-        if (m4S.sel !== j || m4S.selEnd !== j) m4Select(j, true);
+        m4PointSec(j);   // Shift+tık aralığı (loop parantezi) içindeyse korunur
         let y0 = e.clientY, v0 = m4S.auto[j], fine = e.shiftKey;
         p.classList.add('is-drag');
         lpDrag(e, ev => {
@@ -14928,7 +14938,7 @@ function m4PointInput(p, j) {
         if (!e.repeat) m4Push();
         m4SetAuto(j, nv);
     });
-    p.addEventListener('focus', () => { if (m4S.sel !== j || m4S.selEnd !== j) m4Select(j, true); });
+    p.addEventListener('focus', () => { m4PointSec(j); });
 }
 
 function m4Inspector(ui) {
@@ -15181,7 +15191,8 @@ function m4FlowBoxes() {
     return wrap;
 }
 function m4HiwOpts() {
-    const X = n => ({ t: L(`lab_m4_x${n}_t`), d: L(`lab_m4_x${n}_d`) });
+    const tv = { bpm: m4S.bpm, ms: Math.round(ARR_S16 * 1000) };    // tempo seti değişince m4PaintSet yeniden kurar
+    const X = n => ({ t: L(`lab_m4_x${n}_t`), d: Lf(`lab_m4_x${n}_d`, tv) });
     return {
         kicker: false, title: L('lab_m4_hiw_t'), aux: L('lab_m4_hiw_aux'), cls: 'lab-m4-hiw',
         blocks: [
@@ -15193,7 +15204,7 @@ function m4HiwOpts() {
                     [L('lab_m4_p_set'), 'Classic · Cassianism Am / C#m', 'Classic', 'labSampleBuffer(id) · rate 1'],
                     [L('lab_m4_p_sec'), '8 × 2 bar', 'Intro…Outro', 'sec = floor(step/32)'],
                     [L('lab_m4_p_clip'), '0 / 1', L('lab_m4_p_tpl'), 'grid[tr][sec] → trigger(tr,t)'],
-                    [L('lab_m4_p_key'), '12 × 13', 'C minor', 'inScale / snapToScale'],
+                    [L('lab_m4_p_key'), '12 × 13', m4KeyShort(ARR_SETS[m4S.set].key), 'inScale / snapToScale'],
                     [L('lab_m4_p_inst'), 'OSC · FILTER · ADSR', L('lab_m4_p_role'), 'Osc → Biquad → Gain → inst[tr]'],
                     ['Volume', '−∞ … 0 dB', '−1.9 dB (0.8)', 'trackGain[i].gain'],
                     [L('lab_m4_p_ms'), L('lab_m4_p_onoff'), L('lab_m4_p_off'), 'trackGain[i].gain → 0'],
@@ -15301,7 +15312,7 @@ function renderModule4() {
     // Öğreticinin görünür girişi: başlığın sağ yuvasında adıyla (pencere başlık çubuğunda kompakt kopyası)
     ui.tutBig = makeTutorialButton(ui.tut, { text: () => L('lab_m4_tut_t') });
     actions.append(ui.tutBig.el);
-    ui.hiw = howItWorks(m4HiwOpts());
+    ui.hiw = howItWorks(m4HiwOpts()); ui.hiwSig = m4S.set + '|' + m4S.bpm;
     const row = mk('div', 'lab-m4-row3');
     ui.tasks = makeTaskPanel(4, { auto: m4Auto, note: 'lab_m4_tasks_note' });
     ui.tasks.querySelectorAll('.lab-task-text').forEach((s, i) => { if (TASKS[4][i]) s.setAttribute('data-i18n', 'lab_m4_t' + TASKS[4][i].id); });
