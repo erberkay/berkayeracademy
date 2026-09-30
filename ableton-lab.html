@@ -1518,8 +1518,6 @@
         .m3-step:nth-child(4n):not(:last-child) { margin-right:5px; }
         .m3-step.is-k { background:color-mix(in srgb, var(--accent) 14%, var(--track-2)); }
         .m3-step.is-on { background:var(--accent); box-shadow:0 0 10px var(--accent-glow); }
-        .lab-m3 .m3-sct { height:36px; padding:0 12px; font-size:10px; }
-        .lab-m3 .m3-sct[aria-pressed="true"] { background:transparent; border-color:var(--m3-sc); color:var(--m3-sc-fg); }
         .m3-tap { display:flex; align-items:center; gap:6px; }
         .m3-tapseg .lp-seg-b { min-width:44px; }
         .m3-bypl { margin-left:auto; display:inline-flex; align-items:center; gap:5px; font-family:var(--ff-mono); font-size:10px; letter-spacing:.1em; color:var(--accent); white-space:nowrap; }
@@ -1549,6 +1547,15 @@
         .m3-grw { display:flex; flex-direction:column; align-items:center; gap:2px; margin-left:3px; }
         .m3-grt { font-size:8px; letter-spacing:0; }
         .m3-grl .lp-mtr-s:nth-child(n+4) { --z:var(--err-strong); }
+        /* Kanal başına sidechain (kick → kanal): SC anahtarı + miktar knob'u + DK (duck) çubuğu; KICK'te kaynak rozeti.
+           Satır yüksekliği sabit → KICK şeridi de aynı hizada kalır (M/S ve fader'lar kaymaz). */
+        .m3-scs .m3-kr { min-height:62px; gap:3px; }
+        .lab-m3 .m3-scb { flex-direction:column; gap:3px; width:30px; min-width:30px; height:40px; padding:0; font-size:9px; letter-spacing:.08em; }
+        .lab-m3 .m3-scb[aria-pressed="true"] { background:color-mix(in srgb, var(--m3-sc) 14%, var(--bg)); border-color:var(--m3-sc); color:var(--m3-sc-fg); }
+        .m3-scs.is-off .lp-knob, .m3-scs.is-off .m3-grw { opacity:.5; }
+        .m3-dkl .lp-mtr-s { --z:var(--m3-sc); }
+        .m3-scsrc { display:flex; align-items:center; justify-content:center; min-height:62px; width:100%; }
+        .m3-scsrc span { padding:3px 6px; border-radius:var(--r-6); border:1px dashed color-mix(in srgb, var(--m3-sc) 60%, transparent); font-family:var(--ff-mono); font-size:9px; letter-spacing:.1em; color:var(--m3-sc-fg); white-space:nowrap; }
         .m3-ms { display:flex; gap:4px; width:100%; }
         .m3-ms button { position:relative; flex:1; height:24px; padding:0; border-radius:var(--r-6); border:1px solid var(--line-3); background:var(--bg); color:var(--fg-soft); font-family:var(--ff-mono); font-size:10px; font-weight:700; cursor:pointer; }
         .m3-ms button:hover { border-color:var(--accent-line-2); }
@@ -1804,6 +1811,8 @@
             .m3-selb::after { content:''; position:absolute; inset:-12px 0; }
             .m3-ms button { height:32px; }
             .m3-ms button::after { content:''; position:absolute; inset:-7px 0; }
+            .lab-m3 .m3-scb { width:36px; min-width:36px; height:44px; }
+            .lab-m3 .m3-scb::after { content:''; position:absolute; inset:0 -4px; }   /* 36 + 2×4 = 44 · yükseklik 44 */
             .lab-m3 .m3-limb { height:32px; margin-bottom:4px; /* altındaki CEILING düğmesi isabet alanını örtmesin */ }
             .lab-m3 .m3-limb::after { content:''; position:absolute; inset:-7px 0; }
             .lab-m3 .lp-pwr::after { inset:-7px; }
@@ -14119,7 +14128,11 @@ function arrCellOff(r, c) {
 // (dururken adım girişi, çalarken ızgaraya kuantize). xch / key anlık görüntüdedir (undo, A/B, kullanıcı presetleri;
 // Firestore'da xch JSON metni 'xchJ' — iç içe dizi yok). xch'i olmayan (eski / fabrika) preset eklenen kanalların
 // tanımına ve kliplerine dokunmaz; fabrika preseti yalnız onların şerit ayarlarını türe göre kurar. MIDI MAP yalnız
-// yerleşik 6 kanalda (eklenen kanal sırası değişebilir). Sidechain duck: BASS + LEAD LOOP + eklenen BASS kanalları.
+// yerleşik 6 kanalda (eklenen kanal sırası değişebilir).
+// Tur 5 (kanal başına SIDECHAIN): KICK dışındaki her şeritte "SC" anahtarı + miktar knob'u (ch[i].sc / ch[i].scA, 0–1 →
+// dk.gain hedefi 1−scA) + DK çubuğu (duck dB, metre döngüsünde). Kick tetiğinde (mixTrigger) SC'si açık her kanal kendi
+// dk düğümünü setTargetAtTime ile kısar; ortak RELEASE state.mix.sc.rel (KAVRAMLAR → SIDECHAIN). KICK (0) asla duck
+// etmez. Eski biçim (global sc {on, depth}, kanal sc alanı yok) → BASS + LEAD LOOP + eklenen BASS kanallarına eşlenir.
 // Öğretici adımları 10–14 (yeni id): ses kanalı + pad loop → SYNTH → klibe tonda nota → BASS + bas hattı → fader dengesi.
 TASKS[3] = [1, 2, 3, 4, 5, 6].map(id => ({ id, get text() { return L('lab_m3_t' + id); } }));
 Object.assign(LAB_TXT, {
@@ -14154,8 +14167,13 @@ Object.assign(LAB_TXT, {
     lab_m3_play_aria:   [`Mix'i çal`, `Play the mix`],
     lab_m3_pos:         [`POZİSYON`, `POSITION`],
     lab_m3_steps_aria:  [`16 adım — kick deseni ve çalan adım`, `16 steps — kick pattern and current step`],
-    lab_m3_sc:          [`SIDECHAIN · KICK → BASS + LEAD`, `SIDECHAIN · KICK → BASS + LEAD`],
-    lab_m3_sc_t:        [`Kick her vurduğunda bass ve lead kısılır (duck)`, `Bass and lead duck on every kick hit`],
+    lab_m3_scb:         [`Kick'ten sidechain`, `Sidechain from kick`],
+    lab_m3_scb_aria:    [`{name}: kick'ten sidechain`, `{name}: sidechain from kick`],
+    lab_m3_scb_t:       [`Kick'ten sidechain — açıkken her kick vuruşunda bu kanal yanındaki knob'un miktarı kadar kısılır (duck)`, `Sidechain from kick — when on, this channel ducks by the amount on the knob next to it on every kick hit`],
+    lab_m3_sca_t:       [`Sidechain miktarı: kick anında kanal kazancı 1 − miktar'a iner`, `Sidechain amount: on a kick the channel gain drops to 1 − amount`],
+    lab_m3_dk_t:        [`DK: sidechain'in anlık kısması (dB)`, `DK: the sidechain's live ducking (dB)`],
+    lab_m3_scsrc:       [`KAYNAK`, `SOURCE`],
+    lab_m3_scsrc_t:     [`Sidechain kaynağı: diğer kanallardaki SC düğmeleri bu kick'e göre kısar`, `Sidechain source: the SC buttons on the other channels duck to this kick`],
     lab_m3_tap:         [`SEND TAP`, `SEND TAP`],
     lab_m3_tap_aria:    [`Send noktası: PRE = fader öncesi, POST = fader sonrası`, `Send point: PRE = before the fader, POST = after the fader`],
     lab_m3_byp_lbl:     [`BYPASS — HAM SİNYAL (EQ/COMP KAPALI)`, `BYPASS — RAW SIGNAL (EQ/COMP OFF)`],
@@ -14226,11 +14244,12 @@ Object.assign(LAB_TXT, {
     lab_m3_c0_live:     [`{name} · GR −{v} dB`, `{name} · GR −{v} dB`],
     lab_m3_c0_lbl:      [`GR ↓ (canlı)`, `GR ↓ (live)`],
     lab_m3_c1_h:        [`Sidechain`, `Sidechain`],
-    lab_m3_c1_p:        [`Kick her vurduğunda bass ve lead’in gain’i kısa süre düşer, sonra release süresinde geri gelir. Low-end çakışması azalır, dance müziğinin “pompa” hissi oluşur.`, `Every kick hit briefly drops the gain of the bass and lead, which comes back over the release time. Low-end clashes shrink and the “pumping” feel of dance music appears.`],
-    lab_m3_c1_n:        [`kick tetik → duck.gain.setTargetAtTime(1−depth) → release ile 1’e`, `kick trigger → duck.gain.setTargetAtTime(1−depth) → back to 1 over release`],
-    lab_m3_c1_on:       [`AÇIK · −{v} dB duck`, `ON · −{v} dB duck`],
-    lab_m3_c1_off:      [`KAPALI — üstteki SIDECHAIN’e bas`, `OFF — press SIDECHAIN above`],
-    lab_m3_c1_lbl:      [`BASS/LEAD GAIN`, `BASS/LEAD GAIN`],
+    lab_m3_c1_p:        [`Kick her vurduğunda SC’si açık kanalların gain’i kısa süre düşer, sonra release süresinde geri gelir. Her şeritte kick’ten sidechain düğmesi (SC) ve miktar knob’u var: bass’a çok, pad’e / hat’lere az ver. Low-end çakışması azalır, dance müziğinin “pompa” hissi oluşur.`, `Every kick hit briefly drops the gain of the channels whose SC is on, which comes back over the release time. Each strip has a sidechain-from-kick button (SC) and an amount knob: give the bass a lot, pads / hats a little. Low-end clashes shrink and the “pumping” feel of dance music appears.`],
+    lab_m3_c1_n:        [`kick tetik → her SC kanalında duck.gain.setTargetAtTime(1−miktar) → ortak release ile 1’e`, `kick trigger → on every SC channel duck.gain.setTargetAtTime(1−amount) → back to 1 over the shared release`],
+    lab_m3_c1_on:       [`{name}: SC AÇIK · −{v} dB duck`, `{name}: SC ON · −{v} dB duck`],
+    lab_m3_c1_off:      [`{name}: SC KAPALI — şeritteki SC düğmesine bas`, `{name}: SC OFF — press the SC button on its strip`],
+    lab_m3_c1_src:      [`KICK sidechain kaynağıdır — diğer kanallardan birini seç`, `KICK is the sidechain source — select another channel`],
+    lab_m3_c1_lbl:      [`{name} GAIN`, `{name} GAIN`],
     lab_m3_c2_h:        [`Reverb / Delay`, `Reverb / Delay`],
     lab_m3_c2_p:        [`Send/Return: kanallar efekti paylaşır, return %100 wet çalar. Reverb bir odanın yansımalarını (IR) konvolüsyonla ekler; delay sinyali tempoya kilitli aralıklarla, feedback oranında sönümlenerek tekrarlar.`, `Send/Return: channels share the effect and the return plays 100% wet. Reverb adds a room's reflections (IR) by convolution; delay repeats the signal at tempo-locked intervals, fading by the feedback amount.`],
     lab_m3_c2_n:        [`ConvolverNode (üretilmiş IR) · DelayNode + feedback GainNode`, `ConvolverNode (generated IR) · DelayNode + feedback GainNode`],
@@ -14271,7 +14290,7 @@ Object.assign(LAB_TXT, {
     lab_m3_s1:          [`GAIN|Giriş GainNode’u; EQ ve kompresöre giren seviyeyi ayarlar (gain staging).`, `GAIN|The input GainNode; sets the level going into the EQ and compressor (gain staging).`],
     lab_m3_s2:          [`EQ|4 BiquadFilter seri: highpass (low cut), lowshelf, peaking (Q), highshelf. Eğri gerçek biquad katsayılarından çizilir; arkadaki spektrum AnalyserNode (FFT 2048).`, `EQ|4 BiquadFilters in series: highpass (low cut), lowshelf, peaking (Q), highshelf. The curve is drawn from the real biquad coefficients; the spectrum behind it is an AnalyserNode (FFT 2048).`],
     lab_m3_s3:          [`COMP|DynamicsCompressor: threshold üstü ratio ile bastırılır. GR LED’i compressor.reduction değerini gösterir; WebAudio’nun otomatik makeup kazancı fader’da geri alınır.`, `COMP|DynamicsCompressor: anything above the threshold is pushed down by the ratio. The GR LEDs show compressor.reduction; WebAudio's automatic makeup gain is undone in the fader.`],
-    lab_m3_s4:          [`SIDECHAIN|Kick zamanında bass/lead DUCK gain’i 1−depth’e iner, setTargetAtTime ile release süresinde döner.`, `SIDECHAIN|On each kick the bass/lead DUCK gain drops to 1−depth and returns over the release time with setTargetAtTime.`],
+    lab_m3_s4:          [`SIDECHAIN|Kick zamanında SC’si açık her kanalın DUCK gain’i 1−miktar’a iner, setTargetAtTime ile ortak release süresinde döner.`, `SIDECHAIN|On each kick the DUCK gain of every channel with SC on drops to 1−amount and returns over the shared release time with setTargetAtTime.`],
     lab_m3_s5:          [`PAN|StereoPannerNode, −1 (L50) … +1 (R50).`, `PAN|StereoPannerNode, −1 (L50) … +1 (R50).`],
     lab_m3_s6:          [`M/S · FADER|Mute fader'dan önce: susturulan kanalın send'leri de susar. Solo yerinde (solo-in-place): diğer kanalların mute gain'i 0, return'ler açık kalır → solo kanal kendi reverb'üyle duyulur. S tıkı özeldir (diğer soloları kapatır); Ctrl/⌘ ile ekler. Fader dB → gain = 10^(dB/20); −∞ = 0.`, `M/S · FADER|Mute sits before the fader, so a muted channel's sends go silent too. Solo-in-place: the other channels' mute gain is 0 while the returns stay open → the soloed channel is heard with its own reverb. An S click is exclusive (clears other solos); Ctrl/⌘ adds. Fader dB → gain = 10^(dB/20); −∞ = 0.`],
     lab_m3_s7:          [`SEND / RETURN|Kanal başına iki send GainNode’u; POST’ta fader sonrası. Reverb: üstel sönümlü stereo gürültü IR (decay = RT60). Delay: DelayNode ↔ feedback + lowpass, süre = 60/BPM × nota.`, `SEND / RETURN|Two send GainNodes per channel; POST taps after the fader. Reverb: an exponentially decaying stereo noise IR (decay = RT60). Delay: DelayNode ↔ feedback + lowpass, time = 60/BPM × note.`],
@@ -14293,7 +14312,7 @@ Object.assign(LAB_TXT, {
     lab_m3_p14:         [`DECAY|0.3–6 s|2.2 s|conv.buffer (yeni IR)`, `DECAY|0.3–6 s|2.2 s|conv.buffer (new IR)`],
     lab_m3_p15:         [`DLY TIME|1/16…1/4|1/8.|del.delayTime = 60/BPM×k`, `DLY TIME|1/16…1/4|1/8.|del.delayTime = 60/BPM×k`],
     lab_m3_p16:         [`FEEDBACK|0–90 %|35 %|dFb.gain`, `FEEDBACK|0–90 %|35 %|dFb.gain`],
-    lab_m3_p17:         [`SC DEPTH / REL|0–100 % · 50–500 ms|60 % · 180|dk.gain hedef / τ`, `SC DEPTH / REL|0–100 % · 50–500 ms|60 % · 180|dk.gain target / τ`],
+    lab_m3_p17:         [`SC MİKTAR (kanal) / REL|0–100 % · 50–500 ms|60 % · 180|dk.gain hedef / τ`, `SC AMOUNT (channel) / REL|0–100 % · 50–500 ms|60 % · 180|dk.gain target / τ`],
     lab_m3_p18:         [`CEILING|−12…0 dBFS|−1|lim.threshold + clip.curve`, `CEILING|−12…0 dBFS|−1|lim.threshold + clip.curve`],
     lab_m3_p19:         [`TEMPO|100–140 BPM|125|adım = 60/BPM/4 s`, `TEMPO|100–140 BPM|125|step = 60/BPM/4 s`],
     lab_m3_w1:          [`<strong>Mixer bölümü</strong> → Session/Arrangement, Ctrl+Alt+M`, `<strong>Mixer section</strong> → Session/Arrangement, Ctrl+Alt+M`],
@@ -14372,7 +14391,7 @@ Object.assign(LAB_TXT, {
     lab_m3_tut_6b:      [`Efekti kanala takmak yerine paylaş: SNARE'in A·REV ya da B·DLY send'ini en az %10 aç. Sinyal RETURN A/B'ye gider, return %100 wet çalar; miktarı return fader'ı belirler.`, `Share the effect instead of inserting it: open the SNARE's A·REV or B·DLY send by at least 10%. The signal goes to RETURN A/B, which runs 100% wet; the return fader sets the amount.`],
     lab_m3_tut_6a:      [`Mixer'da Sends A/B knobları; Return Track'lerde Reverb ve Delay (Dry/Wet %100).`, `Sends A/B knobs in the Mixer; Reverb and Delay on the Return Tracks (Dry/Wet 100%).`],
     lab_m3_tut_7:       [`Bass'ı kick'ten sidechain'le`, `Sidechain the bass from the kick`],
-    lab_m3_tut_7b:      [`SIDECHAIN'i aç: her kick vuruşunda BASS ve LEAD kısa süre kısılır, low-end çakışması azalır ve house "pompası" oluşur. DEPTH (≥%40) ve RELEASE KAVRAMLAR → SIDECHAIN sekmesinde. Zaten açıksa DEPTH ya da RELEASE'i değiştir.`, `Switch SIDECHAIN on: every kick hit briefly ducks the BASS and LEAD, the low-end clash shrinks and the house "pump" appears. DEPTH (≥40%) and RELEASE live in CONCEPTS → SIDECHAIN. If it's already on, change DEPTH or RELEASE.`],
+    lab_m3_tut_7b:      [`BASS şeridindeki SC (kick'ten sidechain) düğmesine bas ve yanındaki miktar knob'unu en az %40 yap — MIX çalarken her kick vuruşunda bass kısa süre kısılır, low-end çakışması azalır ve house "pompası" oluşur. İstersen LEAD, pad ya da hat'lere de az miktarla aç; ortak RELEASE KAVRAMLAR → SIDECHAIN sekmesinde. Zaten açıksa miktarı ya da RELEASE'i değiştir.`, `Press the SC (sidechain from kick) button on the BASS strip and turn the amount knob next to it to at least 40% — while the MIX plays, every kick hit briefly ducks the bass, the low-end clash shrinks and the house "pump" appears. Add a little on the LEAD, pads or hats too if you like; the shared RELEASE lives in CONCEPTS → SIDECHAIN. If it's already on, change the amount or RELEASE.`],
     lab_m3_tut_7a:      [`Bass'taki Compressor → Sidechain aç → Audio From: Kick; Threshold'u indir.`, `Compressor on the bass → Sidechain on → Audio From: Kick; lower the Threshold.`],
     lab_m3_tut_8:       [`Pan ile genişlik`, `Width with pan`],
     lab_m3_tut_8b:      [`KICK ve BASS merkezde kalsın (mono uyumlu low-end). Hat'leri, SNARE'i ya da LEAD'i iki yana aç: en az bir kanal solda (≤L10), bir kanal sağda (≥R10). Aynı frekanstaki sesler farklı yerlere oturunca mix genişler.`, `Keep KICK and BASS in the centre (mono-safe low end). Spread the hats, SNARE or LEAD to both sides: at least one channel left (≤L10) and one right (≥R10). Sounds that share a frequency open up once they sit in different places.`],
@@ -14488,7 +14507,7 @@ const M3_BANDS = [
 // Kalıcı / yüklenen verinin doğrulaması: [min, max]
 const M3_RNG = { gain: [-12, 12], lc: [20, 500], loF: [30, 400], lo: [-15, 15], midF: [200, 8000], mid: [-15, 15], q: [0.3, 8],
     hiF: [2000, 16000], hi: [-15, 15], thr: [-40, 0], ratio: [1, 20], att: [1, 100], rel: [20, 600], sa: [0, 1], sb: [0, 1],
-    pan: [-1, 1], fader: [-70, 6] };
+    pan: [-1, 1], fader: [-70, 6], scA: [0, 1] };
 // Kaynaklar (LAB_SAMPLES): davul kiti → KICK/SNARE/CL.HAT/OP.HAT kanalları; LEAD LOOP → tarayıcı (Classic 125 +
 // Cassianism 126 BPM loop'ları). Classic dosyaları modülün kendi önbelleğinden (mixBuffers), diğerleri labSampleBuffer.
 const M3_KITS = {
@@ -14513,12 +14532,12 @@ const M3_XMIX = { pad: { lc: 150, sa: 0.25, fader: -8 }, lead: { lc: 180, sa: 0.
 // ── Durum: state.mix (rehber §2.1) ───────────────────────────────────
 function mixChDef(o) {
     return Object.assign({ gain: 0, lc: 20, loF: 100, lo: 0, midF: 1000, mid: 0, q: 1, hiF: 8000, hi: 0, thr: -24, ratio: 1,
-        att: 10, rel: 150, sa: 0, sb: 0, pan: 0, fader: 0, mute: false, solo: false, eqOn: true, cpOn: true }, o);
+        att: 10, rel: 150, sa: 0, sb: 0, pan: 0, fader: 0, mute: false, solo: false, eqOn: true, cpOn: true, sc: false, scA: 0.6 }, o);
 }
-// Fabrika presetleri (tasarımdaki preset(i) değerleri) → { ch, rev, dly, mst, sc, sendPre }
+// Fabrika presetleri (tasarımdaki preset(i) değerleri) → { ch, rev, dly, mst, sc: { rel }, sendPre }; kanal SC'si ch[i].sc / scA
 function mixPresetValues(i) {
     const flat = { ch: MIX_CH.map(() => mixChDef({})), rev: { decay: 2.2, tone: 6000, ret: -6 }, dly: { div: 2, fb: 0.35, tone: 4000, ret: -8 },
-        mst: { fader: 0, lim: true, ceil: -1 }, sc: { on: false, depth: 0.6, rel: 180 }, sendPre: false };
+        mst: { fader: 0, lim: true, ceil: -1 }, sc: { rel: 180 }, sendPre: false };
     if (i === 0) return flat;
     const h = Object.assign({}, flat, { ch: [
         mixChDef({ lc: 30, loF: 60, lo: 3, midF: 350, mid: -4, q: 1.4, thr: -20, ratio: 4, att: 15, rel: 120, fader: -3 }),
@@ -14528,7 +14547,11 @@ function mixPresetValues(i) {
         mixChDef({ lc: 35, loF: 80, lo: 2, midF: 500, mid: -3, thr: -20, ratio: 4, att: 20, rel: 180, fader: -6 }),
         mixChDef({ lc: 180, midF: 800, mid: -2, hiF: 6000, hi: 3, pan: 0.2, sa: 0.3, sb: 0.25, fader: -9 })] });
     if (i === 1) return h;
-    if (i === 2) return Object.assign({}, h, { sc: { on: true, depth: 0.85, rel: 220 }, ch: h.ch.map((x, j) => j === 4 ? Object.assign({}, x, { fader: -3 }) : x) });
+    // Sidechain Pompa: BASS derin, LEAD belirgin, hat'ler hafif (kick'in kendisi hiç) — kanal başına SC
+    if (i === 2) {
+        const pa = [0, 0, 0.35, 0.5, 0.85, 0.75];
+        return Object.assign({}, h, { sc: { rel: 220 }, ch: h.ch.map((x, j) => Object.assign({}, x, j === 4 ? { fader: -3 } : {}, pa[j] ? { sc: true, scA: pa[j] } : {})) });
+    }
     return Object.assign({}, h, { rev: { decay: 3.6, tone: 7000, ret: -4 }, dly: { div: 2, fb: 0.5, tone: 3500, ret: -6 },
         ch: h.ch.map((x, j) => Object.assign({}, x, { pan: [0, -0.35, 0.6, -0.6, 0, 0.45][j], sa: [0, 0.35, 0.15, 0.1, 0, 0.5][j], sb: [0, 0, 0, 0.2, 0, 0.4][j] })) });
 }
@@ -14554,6 +14577,7 @@ function mixCleanCh(x, d) {
     Object.keys(M3_RNG).forEach(k => { o[k] = m3Num(x[k], M3_RNG[k][0], M3_RNG[k][1], d[k]); });
     o.mute = !!x.mute; o.solo = !!x.solo;
     o.eqOn = x.eqOn !== false; o.cpOn = x.cpOn !== false;               // cihaz aç/kapa (eski kayıtlarda yok → açık)
+    o.sc = !!x.sc;                                                       // kick'ten sidechain (miktar scA, M3_RNG)
     return o;
 }
 // Dışarıdan gelen (Firestore / undo) mix → doğrulanmış tam durum. xch: dizi ya da Firestore'daki JSON metni (xchJ);
@@ -14567,12 +14591,19 @@ function mixClean(s) {
     const xch = Array.isArray(xs) ? m3XClean(xs) : null;
     if (xch) xch.forEach((x, k) => ch.push(mixCleanCh(src[6 + k], m3XChDef(x))));
     const r = s.rev || {}, dl = s.dly || {}, m = s.mst || {}, c = s.sc || {};
+    // Eski biçim (kanallarda sc alanı yok, global sc {on, depth}): BASS + LEAD LOOP + eklenen BASS kanalları o ayarı alır
+    if (!src.some(x => x && typeof x === 'object' && 'sc' in x) && (c.on != null || c.depth != null)) {
+        const a = m3Num(c.depth, 0, 1, 0.6), idx = [4, 5];
+        if (xch) xch.forEach((x, k) => { if (x.t === 'bass') idx.push(6 + k); });
+        idx.forEach(i => { if (ch[i]) { ch[i].sc = !!c.on; ch[i].scA = a; } });
+    }
+    ch[0].sc = false;                                                    // KICK = sidechain kaynağı, kendini kısmaz
     return {
         ch, xch, key: m3KeyClean(s.key),
         rev: { decay: m3Num(r.decay, 0.3, 6, 2.2), tone: m3Num(r.tone, 1000, 16000, 6000), ret: m3Num(r.ret, -70, 6, -6) },
         dly: { div: Math.round(m3Num(dl.div, 0, 3, 2)), fb: m3Num(dl.fb, 0, 0.9, 0.35), tone: m3Num(dl.tone, 800, 12000, 4000), ret: m3Num(dl.ret, -70, 6, -8) },
         mst: { fader: m3Num(m.fader, -70, 6, 0), lim: m.lim !== false, ceil: m3Num(m.ceil, -12, 0, -1) },
-        sc: { on: !!c.on, depth: m3Num(c.depth, 0, 1, 0.6), rel: m3Num(c.rel, 50, 500, 180) },
+        sc: { rel: m3Num(c.rel, 50, 500, 180) },
         sendPre: !!s.sendPre,
     };
 }
@@ -14593,9 +14624,10 @@ function m3XDefSample(kind) {
     const want = m3KeyShort(), all = LAB_SAMPLES.filter(s => s.kind === (kind || 'pad') && s.loop && M3_LOOP_HIDE.indexOf(s.id) < 0);
     return all.find(s => s.key === want) || all.find(s => s.key) || all[0] || LAB_SAMPLES.find(s => s.loop);
 }
-function m3XChDef(x) {
+// pump: "Sidechain Pompa" fabrika preseti → eklenen kanala da SC (bas derin, diğerleri orta; kick örneği hariç)
+function m3XChDef(x, pump) {
     const k = x.t === 'audio' ? ((labSample(x.smp) || {}).kind || 'pad') : 'x:' + x.t;
-    return mixChDef(Object.assign({}, M3_XMIX[k] || {}));
+    return mixChDef(Object.assign({}, M3_XMIX[k] || {}, pump && k !== 'kick' ? { sc: true, scA: k === 'x:bass' || k === 'bass' ? 0.85 : 0.6 } : {}));
 }
 function m3XPatFor(id) { const s = labSample(id), on = M3_XPAT[s && s.kind] || [0, 4, 8, 12]; return Array.from({ length: 16 }, (_, i) => on.indexOf(i) >= 0 ? 1 : 0); }
 function m3ClipClean(c) {
@@ -14861,6 +14893,7 @@ function mixSync(which, G) {
         m3T(n.pn.pan, x.pan, t); m3T(n.fd.gain, m3Lin(x.fader) * (cb ? 1 : m3CompMk(x.thr, x.ratio)), t);
         m3T(n.mu.gain, (x.mute || (solo && !x.solo)) ? 0 : 1, t);
         m3T(n.sa.gain, x.sa, t); m3T(n.sb.gain, x.sb, t);
+        if (!i || !x.sc) { const p = n.dk.gain; p.cancelScheduledValues(t); m3T(p, 1, t); }   // SC kapalı / KICK: duck yumuşakça 1'e
     });
     if (one) return;
     m3T(G.rLp.frequency, S.rev.tone, t); m3T(G.rRet.gain, m3Lin(S.rev.ret), t);
@@ -14871,7 +14904,6 @@ function mixSync(which, G) {
     m3T(G.lmk.gain, S.mst.lim ? Math.pow(10, 0.6 * S.mst.ceil * 19 / 20 / 20) : 1, t);
     const ck = S.mst.lim ? S.mst.ceil : null;
     if (G.clipK !== ck) { G.clipK = ck; G.clip.curve = ck == null ? null : m3ClipCurve(ck); }
-    if (!S.sc.on) m3DuckIdx().forEach(i => { if (!G.ch[i]) return; const p = G.ch[i].dk.gain; p.cancelScheduledValues(t); m3T(p, 1, t); });
     if (mixRun && mixRun.lead && G === mixNodes && !mixRun.leadWarp) m3T(mixRun.lead.playbackRate, labLoopRate(mixRun.leadId, S.bpm), t);   // WARP: tampon kendi temposunda (hız 1)
     if (mixRun && G === mixNodes) Object.keys(mixRun.xl).forEach(u => { const o = mixRun.xl[u]; if (!o.warp) m3T(o.s.playbackRate, labLoopRate(o.id, S.bpm), t); });
     mixWireSends(S.sendPre, G);
@@ -14978,9 +15010,15 @@ function mixTrigger(G, run, gs, t) {
     if (!pat && M3_BASS[s16]) mixSynthBass(G, M3_BASS[s16] * Math.pow(2, m3KeySemis(run.leadId || S.lead) / 12), t, run);
     if (!run.lead && m3LeadFailed(S.lead)) { const ln = M3_LEAD[(bar % 2) * 16 + s16]; if (ln) mixSynthLead(G, ln, t, run); }
     m3XTrigger(G, run, gs, t);                                    // eklenen kanallar: loop / one-shot / MIDI klip notaları
-    if (kick && S.sc.on) {
-        const dp = 1 - S.sc.depth, r = S.sc.rel / 3000;
-        m3DuckIdx().forEach(i => { if (!N[i]) return; const p = N[i].dk.gain; p.cancelScheduledValues(t); p.setTargetAtTime(dp, t, 0.004); p.setTargetAtTime(1, t + 0.03, r); });
+    // Kanal başına sidechain: SC'si açık her kanal (KICK hariç) kendi dk kazancını 1 − miktar'a indirir (atak τ 4 ms,
+    // 30 ms tutma), sonra ortak RELEASE ile 1'e. Kick zamanları DK çubuğu için saklanır (metre döngüsü).
+    if (kick) {
+        const kq = run.kq || (run.kq = []); kq.push(t); if (kq.length > 8) kq.shift();
+        const r = S.sc.rel / 3000;
+        S.ch.forEach((x, i) => {
+            if (!i || !x.sc || !N[i]) return;
+            const p = N[i].dk.gain; p.cancelScheduledValues(t); p.setTargetAtTime(1 - x.scA, t, 0.004); p.setTargetAtTime(1, t + 0.03, r);
+        });
     }
 }
 // Lookahead sıralayıcı: 25 ms'de bir, 120 ms ileriyi planlar; mixGen eski döngüleri geçersiz kılar
@@ -15049,8 +15087,12 @@ function m3XMem(u) { return m3XMems[u] || (m3XMems[u] = {}); }
 function m3XLevel(x) { return !x || x.t === 'audio' ? 1 : x.inst.lvl; }
 function m3XOf(u) { return state.mix.xch.find(x => x.u === u) || null; }
 function m3XAt(u) { return state.mix.xch.findIndex(x => x.u === u); }
-// Sidechain duck: BASS (4) + LEAD LOOP (5) + eklenen BASS kanalları
-function m3DuckIdx() { const o = [4, 5]; state.mix.xch.forEach((x, k) => { if (x.t === 'bass') o.push(6 + k); }); return o; }
+// DK çubuğu: son kick'ten bu yana dk zarfının analitik değeri (mixTrigger'daki setTargetAtTime ile aynı) → duck dB
+function m3DuckDb(x, tk, now, rel) {
+    if (!x.sc || !(tk >= 0) || now < tk) return 0;
+    const dt = now - tk, a = x.scA, g = dt < 0.03 ? 1 - a * (1 - Math.exp(-dt / 0.004)) : 1 - a * (1 - Math.exp(-0.03 / 0.004)) * Math.exp(-(dt - 0.03) / rel);
+    return Math.min(24, Math.max(0, -20 * Math.log10(Math.max(0.063, g))));
+}
 function m3XIdx(clip) {
     let ix = m3XIdxC.get(clip.notes);
     if (ix && ix.len === clip.len) return ix;
@@ -15159,6 +15201,8 @@ function mixMeterLoop(gen) {
     });
     run.mpk = run.hold[8].v;
     run.gr = G.ch.map(n => Math.max(0, -m3Red(n.cp.reduction)));
+    const ct = c.currentTime, tk = (run.kq || []).reduce((a, t) => t <= ct && t > a ? t : a, -1), rel = state.mix.sc.rel / 3000;
+    run.dk = state.mix.ch.map((x, i) => i ? m3DuckDb(x, tk, ct, rel) : 0);
     run.limGr = Math.max(0, -m3Red(G.lim.reduction));
     while (run.queue.length > 1 && run.queue[1][1] <= c.currentTime) run.queue.shift();
     run.pos = run.queue[0] && run.queue[0][1] <= c.currentTime ? run.queue[0] : null;
@@ -15210,7 +15254,7 @@ function mixApplySnap(s, factory) {
     const c = mixClean(s), S = state.mix, keep = S.ch.slice(6);
     ['rev', 'dly', 'mst', 'sc', 'sendPre'].forEach(k => { S[k] = c[k]; });
     if (c.xch) { S.xch = c.xch; S.ch = c.ch; }
-    else S.ch = c.ch.concat(factory != null ? S.xch.map(x => factory === 0 ? mixChDef({}) : m3XChDef(x)) : keep);
+    else S.ch = c.ch.concat(factory != null ? S.xch.map(x => factory === 0 ? mixChDef({}) : m3XChDef(x, factory === 2)) : keep);
     if (c.key) S.key = c.key;
     S.mod = true;
     m3XChanged();
@@ -15382,9 +15426,6 @@ function m3BuildTransport(tr, U) {
     U.posR.el.firstChild.setAttribute('data-i18n', 'lab_m3_pos');
     const steps = mk('div', 'm3-steps'); steps.setAttribute('role', 'img'); steps.setAttribute('data-i18n-aria', 'lab_m3_steps_aria'); steps.setAttribute('aria-label', L('lab_m3_steps_aria'));
     U.steps = Array.from({ length: 16 }, () => { const s = mk('span', 'm3-step'); steps.append(s); return s; });
-    U.sc = makeToggle({ text: L('lab_m3_sc'), led: true, color: 'var(--m3-sc)', on: S.sc.on, title: L('lab_m3_sc_t'), onToggle: on => { m3Push(); mixSet('sc.on', on); } });
-    U.sc.el.classList.add('m3-sct');
-    m3Lbl(U.sc.el, 'title', () => L('lab_m3_sc_t'));
     const tap = mk('div', 'm3-tap');
     const tl = m3El('span', 'm3-sl', 'lab_m3_tap');
     U.tap = makeSeg([[true, 'PRE'], [false, 'POST']], S.sendPre, v => { m3Push(); mixSet('sendPre', v); }, { label: L('lab_m3_tap_aria'), cls: 'm3-tapseg' });
@@ -15407,7 +15448,7 @@ function m3BuildTransport(tr, U) {
     kt.addEventListener('change', () => m3SetKey(state.mix.key.root, kt.value));
     U.keyR = kr; U.keyT = kt;
     key.append(m3El('span', 'm3-sl', 'lab_m3_key'), kr, kt);
-    tr.append(play, tempo.el, U.posR.el, steps, key, U.sc.el, tap, byp, U.mapBox);
+    tr.append(play, tempo.el, U.posR.el, steps, key, tap, byp, U.mapBox);
 }
 
 // ── Kaynak paneli: davul kiti (Classic / Mersey) + LEAD LOOP tarayıcısı (Ableton Browser gibi) ──
@@ -15672,6 +15713,25 @@ function m3BuildStrip(i, U) {
     grw.append(gr.el, grl);
     s2.append(m3Row([thr, rat], grw));
     const s3 = m3Sec('SEND'); s3.append(m3Row([sa, sb]));
+    // Kick'ten sidechain: KICK dışındaki her şeritte SC anahtarı + miktar knob'u + DK çubuğu; KICK'te kaynak rozeti (aynı yükseklik)
+    const sc = m3Sec('SC ← KICK'); sc.classList.add('m3-scs');
+    let scT = null, dk = null;
+    if (i) {
+        scT = makeToggle({ text: 'SC', led: true, color: 'var(--m3-sc)', on: !!S.ch[i].sc, cls: 'm3-scb',
+            label: () => Lf('lab_m3_scb_aria', { name: nm }), title: () => L('lab_m3_scb_t'),
+            onToggle: on => { m3Push(); mixSet(P('sc'), on); } });
+        const sca = m3Knob(P('scA'), ka('AMOUNT', { min: 0, max: 1, def: 0.6, step: 0.01, fmt: m3Pct, color: 'var(--m3-sc)', aria: `${nm} SC AMOUNT`, tip: () => L('lab_m3_sca_t') }));
+        dk = makeMeter({ channels: 1, gr: true, thresholds: [2, 4, 8, 12, 18], length: 33, thickness: 8, peakHold: false, release: 30, min: 0, max: 24, color: 'var(--m3-sc)', cls: 'm3-grl m3-dkl' });
+        const dkw = mk('div', 'm3-grw'); m3Lbl(dkw, 'title', () => L('lab_m3_dk_t'));
+        const dkl = mk('span', 'm3-sl m3-grt'); dkl.textContent = 'DK'; dkl.lang = 'en';
+        dkw.append(dk.el, dkl);
+        const row = mk('div', 'm3-kr'); row.append(scT.el, sca.el, dkw);
+        sc.append(row);
+    } else {
+        const src = mk('div', 'm3-scsrc'), b = mk('span');
+        m3Lbl(b, 'text', () => L('lab_m3_scsrc')); m3Lbl(src, 'title', () => L('lab_m3_scsrc_t'));
+        src.append(b); sc.append(src);
+    }
     const s4 = m3Sec(); s4.append(m3Row([pan]));
     const ms = mk('div', 'm3-ms');
     const bM = mk('button', 'm3-m', 'M'), bS = mk('button', 'm3-s', 'S');
@@ -15692,8 +15752,8 @@ function m3BuildStrip(i, U) {
     const srcn = mk('span', 'm3-srcn');
     el.append(sel);
     if (xb) el.append(xb);
-    el.append(s0, s1, s2, s3, s4, ms, fdr, dr.el, name, srcn);
-    return { el, sel, selT, led, curve, gr, bM, bS, mt, db: dr.db, pkb: dr.pkb, ck: '', fdr, send: s3, pan, eqSec: s1, cpSec: s2, srcn, xb, xbn, u: X ? X.u : null };
+    el.append(s0, s1, s2, s3, sc, s4, ms, fdr, dr.el, name, srcn);
+    return { el, sel, selT, led, curve, gr, bM, bS, mt, db: dr.db, pkb: dr.pkb, ck: '', fdr, send: s3, pan, eqSec: s1, cpSec: s2, scSec: sc, scT, dk, srcn, xb, xbn, u: X ? X.u : null };
 }
 // Fader dB okuması + tepe tutma düğmesi (Ableton mixer'daki peak kutusu: tıkla = sıfırla; 0 dBFS üstü kırmızı).
 // i = tepe dizini (m3LvI: yerleşik 0–5, return 6–7, master 8, eklenen 9…)
@@ -16077,9 +16137,10 @@ function m3RenderTab() {
     } else if (j === 1) {
         [0, 1, 2, 3].forEach(k => lpSvg('rect', { x: k * 150, y: 5, width: 5, height: 120, class: 'm3-ckick' }, svg));
         T.path = lpSvg('path', { d: '', class: 'm3-cline' }, svg);
-        txt(10, 16, 'KICK', 'm3-ct--a'); txt(590, 16, L('lab_m3_c1_lbl'), 'm3-ct--c', 'end');
-        knobs = [tk('sc.depth', { label: 'DEPTH', min: 0, max: 1, def: 0.6, step: 0.01, fmt: m3Pct, color: 'var(--m3-sc)' }),
+        txt(10, 16, 'KICK', 'm3-ct--a'); T.lbl = txt(590, 16, '', 'm3-ct--c', 'end');
+        knobs = [tk(P('scA'), { label: 'AMOUNT', min: 0, max: 1, def: 0.6, step: 0.01, fmt: m3Pct, color: 'var(--m3-sc)', tip: () => L('lab_m3_sca_t') }),
             tk('sc.rel', { label: 'RELEASE', min: 50, max: 500, def: 180, step: 5, fmt: m3Ms, color: 'var(--m3-sc)' })];
+        T.amt = knobs[0];
     } else if (j === 2) {
         T.ir = lpSvg('path', { d: '', class: 'm3-cir' }, svg);
         T.taps = Array.from({ length: 10 }, () => lpSvg('rect', { x: 0, y: 0, width: 6, height: 0, rx: 2, class: 'm3-ctap' }, svg));
@@ -16124,9 +16185,11 @@ function m3TabPaint() {
     const U = m3Ui, T = U && U.tab; if (!T) return;
     const S = state.mix;
     if (T.j === 1) {
-        const bar = 60 / S.bpm * 4, tau = S.sc.rel / 3000; let d = '';
-        for (let x = 0; x <= 600; x += 4) { const ts = x / 600 * bar, tk = ts % (bar / 4); const g = S.sc.on ? 1 - S.sc.depth * Math.exp(-tk / tau) : 1; d += (x ? 'L' : 'M') + x + ' ' + (125 - g * 100).toFixed(1) + ' '; }
+        const bar = 60 / S.bpm * 4, tau = S.sc.rel / 3000, X = S.ch[S.sel] || {}, on = S.sel > 0 && !!X.sc; let d = '';
+        for (let x = 0; x <= 600; x += 4) { const ts = x / 600 * bar, tk = ts % (bar / 4); const g = on ? 1 - X.scA * Math.exp(-tk / tau) : 1; d += (x ? 'L' : 'M') + x + ' ' + (125 - g * 100).toFixed(1) + ' '; }
         T.path.setAttribute('d', d);
+        m3Txt(T.lbl, Lf('lab_m3_c1_lbl', { name: m3ChName(S.sel) }));
+        T.amt.setDisabled(S.sel === 0);
     } else if (T.j === 2) {
         let d = 'M0 125 ';
         for (let x = 0; x <= 600; x += 6) d += 'L' + x + ' ' + (125 - 100 * Math.exp(-6.9 * (x / 100) / S.rev.decay)).toFixed(1) + ' ';
@@ -16163,7 +16226,10 @@ function m3TabLive(run) {
     if (T.j === 0) {
         T.bars.forEach((r, i) => r.setAttribute('height', lpClamp((run ? run.gr[i] : 0) * 5, 0, 110).toFixed(1)));
         live = Lf('lab_m3_c0_live', { name: nm, v: (run && run.gr[sel] ? run.gr[sel] : 0).toFixed(1) });
-    } else if (T.j === 1) live = S.sc.on ? Lf('lab_m3_c1_on', { v: (-20 * Math.log10(Math.max(0.01, 1 - S.sc.depth))).toFixed(1) }) : L('lab_m3_c1_off');
+    } else if (T.j === 1) {
+        const X = S.ch[sel] || {};
+        live = sel === 0 ? L('lab_m3_c1_src') : X.sc ? Lf('lab_m3_c1_on', { name: nm, v: (-20 * Math.log10(Math.max(0.01, 1 - X.scA))).toFixed(1) }) : Lf('lab_m3_c1_off', { name: nm });
+    }
     else if (T.j === 2) live = `${Math.round(60 / S.bpm * M3_DIV[S.dly.div][1] * 1000)} ms · FB ${m3Pct(S.dly.fb)}`;
     else if (T.j === 4) {
         const pk = run ? run.mpk : -Infinity;
@@ -16219,7 +16285,7 @@ function m3Paint() {
     if (U.power) U.power.set(!S.bypass);
     m3PlayBtnPaint(U.play);
     m3Txt(U.dsp, `${L('lab_m3_dsp')} ${L(run ? 'lab_m3_dsp_on' : 'lab_m3_dsp_ready')} · ${mixCtx ? (mixCtx.sampleRate / 1000).toFixed(1) : '48'} kHz · ${L('lab_m3_nodes')}`);
-    U.sc.set(S.sc.on); U.tap.set(S.sendPre);
+    U.tap.set(S.sendPre);
     const bsig = S.bypass + labLang();
     if (U.bypl.dataset.sig !== bsig) {
         U.bypl.dataset.sig = bsig; U.bypl.classList.toggle('is-byp', S.bypass); U.bypl.innerHTML = '';
@@ -16236,6 +16302,7 @@ function m3Paint() {
         st.bM.setAttribute('aria-pressed', String(x.mute)); st.bS.setAttribute('aria-pressed', String(x.solo));
         m3Txt(st.db, m3FdLbl(x.fader));
         st.eqSec.classList.toggle('is-byp', x.eqOn === false); st.cpSec.classList.toggle('is-byp', x.cpOn === false);
+        if (st.scT) { st.scT.set(!!x.sc); st.scSec.classList.toggle('is-off', !x.sc); }
         const key = [x.lc, x.loF, x.lo, x.midF, x.mid, x.q, x.hiF, x.hi, S.bypass, x.eqOn].join();
         if (st.ck !== key) { st.ck = key; st.curve.setAttribute('d', m3MiniCurve(x)); }
         if (st.xbn) { const X2 = S.xch[i - 6]; if (X2 && X2.clip) { const n = X2.clip.notes.length; m3Txt(st.xbn, String(n)); m3Lbl0(st.xb, 'aria-label', Lf('lab_m3_clip_aria', { name: X2.nm, n })); m3Lbl0(st.xb, 'aria-pressed', String(!!m3Ed && m3Ed.u === X2.u && m3RollOpen())); } }
@@ -16280,7 +16347,7 @@ function m3Paint() {
     m3Txt(U.tfOut, L('lab_m3_tf_out')); m3Txt(U.tfIn, L('lab_m3_tf_in'));
     m3Txt(U.cmpT, Lf('lab_m3_comp', { name: selNm }));
     U.cmpK.forEach(k => k.el.setAttribute('aria-label', `${selNm} ${k.el.querySelector('.lp-knob-lbl').textContent}`));
-    const scT = (sel === 4 || sel === 5) && S.sc.on;
+    const scT = sel > 0 && !!X.sc;
     m3Txt(U.cmpNote, L(X.cpOn === false ? 'lab_m3_note_cpoff' : scT ? 'lab_m3_note_sc' : X.ratio <= 1 ? 'lab_m3_note_off' : 'lab_m3_note_on'));
     m3SrcPaint(U);
     m3MapPaint(U);
@@ -16295,9 +16362,9 @@ function m3MeterPaint(run) {
     const all = U.strips.map((st, i) => [st.mt, m3LvI(i)]).concat([[U.rets[0].mt, 6], [U.rets[1].mt, 7], [U.mst.mt, 8]]);
     if (lv) {
         all.forEach(([m, j]) => { if (lv[j]) m.update(lv[j]); });
-        U.outM.update(lv[8]); U.strips.forEach((st, i) => st.gr.update([run.gr[i] || 0])); U.cmpGrM.update([run.gr[S.sel] || 0]); U.metersLive = true;
+        U.outM.update(lv[8]); U.strips.forEach((st, i) => { st.gr.update([run.gr[i] || 0]); if (st.dk) st.dk.update([run.dk ? run.dk[i] || 0 : 0]); }); U.cmpGrM.update([run.gr[S.sel] || 0]); U.metersLive = true;
     }
-    else if (U.metersLive !== false) { all.map(a => a[0]).concat([U.outM, U.cmpGrM], U.strips.map(st => st.gr)).forEach(m => m.reset()); U.metersLive = false; }
+    else if (U.metersLive !== false) { all.map(a => a[0]).concat([U.outM, U.cmpGrM], U.strips.map(st => st.gr), U.strips.filter(st => st.dk).map(st => st.dk)).forEach(m => m.reset()); U.metersLive = false; }
     const pk = run ? run.mpk : -Infinity, hs = m3HrState(pk);
     m3Txt(U.mst.pk, pk > -80 ? m3Sgn(pk, 1) : '—');
     U.mst.s2.dataset.hr = hs; U.outDb.dataset.hr = hs;
@@ -16369,7 +16436,9 @@ function m3XAdd(t) {
         Object.assign(x, { inst: labInstNorm(t, labInstPreset(t, pre)), pre, pm: false, clip: m3XDefClip(t),
             nm: (t === 'synth' ? 'SYNTH' : 'MIDI BASS') + (k > 1 ? ' ' + k : '') });
     }
-    S.xch.push(x); S.ch.push(m3XChDef(x));
+    const xd = m3XChDef(x), b4 = S.ch[4];
+    if (t === 'bass' && b4 && b4.sc) { xd.sc = true; xd.scA = b4.scA; }      // MIDI BASS: BASS kanalının sidechain'ini devralır
+    S.xch.push(x); S.ch.push(xd);
     S.sel = S.ch.length - 1;
     if (x.smp) { m3Load(x.smp); m3LeadBuf(x.smp, S.bpm); }
     m3XChanged(); m3Mod(true);
@@ -16876,7 +16945,7 @@ function m3RecCommit(x, notes) {
 // Eşlemeler kişisel kolaylık: localStorage 'lab_m3_midimap' { "kanal:cc": { p, min, max, log, fader, name } }.
 // CC aboneliği yalnız eşleme varken / MAP açıkken (port boşta açık kalmasın); görünüm ömürlü (labMidi.on).
 const M3_MAP_KEY = 'lab_m3_midimap';
-const M3_MAP_PATH = /^(ch\.[0-5]\.(gain|lc|loF|lo|midF|mid|q|hiF|hi|thr|ratio|att|rel|sa|sb|pan|fader)|rev\.(decay|tone|ret)|dly\.(fb|tone|ret)|mst\.(fader|ceil)|sc\.(depth|rel)|bpm)$/;
+const M3_MAP_PATH = /^(ch\.[0-5]\.(gain|lc|loF|lo|midF|mid|q|hiF|hi|thr|ratio|att|rel|sa|sb|pan|fader|scA)|rev\.(decay|tone|ret)|dly\.(fb|tone|ret)|mst\.(fader|ceil)|sc\.rel|bpm)$/;
 let m3Map = null;
 function m3MapLoad() {
     if (m3Map) return m3Map;
@@ -17015,9 +17084,10 @@ function m3TutSteps() {
             const c = C(), e = E(), S = state.mix;
             return c.some((x, i) => !!e[i] && (x.sa - e[i].sa >= 0.095 || x.sb - e[i].sb >= 0.095)) && (S.rev.ret > -40 || S.dly.ret > -40);
         }),
-        st(7, () => U() && U().sc.el, () => {
-            const S = state.mix, e = (m3TE || mixSnapshot()).sc;
-            return S.sc.on && S.sc.depth >= 0.4 && (!e.on || S.sc.depth !== e.depth || S.sc.rel !== e.rel);
+        // KICK dışı herhangi bir kanalda SC açık + miktar ≥ %40, bu adımda açıldı / değişti, MIX çalıyor
+        st(7, () => U() && U().strips[4] && U().strips[4].scSec, () => {
+            const c = C(), e = E(), rel = ((m3TE || mixSnapshot()).sc || {}).rel;
+            return !!mixRun && c.some((x, i) => i > 0 && x.sc && x.scA >= 0.4 && (!e[i] || !e[i].sc || x.scA !== e[i].scA || state.mix.sc.rel !== rel));
         }),
         st(8, () => U() && U().strips[2].pan.el, () => {
             const c = C(), e = E(), side = [1, 2, 3, 5];
@@ -17143,7 +17213,6 @@ function renderModule3() {
         if (U.lang !== labLang()) {
             U.lang = labLang();
             U.pb.setItems(m3PresetItems(), state.mix.preset);
-            U.sc.el.querySelector('span:last-child').textContent = L('lab_m3_sc');
             U.save.querySelector('span').textContent = L('lp_save');
             relSrc(); m3RenderTab();
             U.i18n.forEach(f => f());
@@ -17174,7 +17243,8 @@ if (/[?&]m3debug=1\b/.test(location.search)) {
         add: m3XAdd, del: m3XDel, move: m3XMove, openClip: m3OpenClip, roll: () => m3Ui && m3Ui.roll, setKey: m3SetKey, setSample: m3XSetSample,
         snap: mixSnapshot, apply: mixApplySnap, fs: m3FsMix, clean: mixClean, save: saveMixPreset, pick: m3PickPreset, start: startMix, stop: stopMix,
         set: mixSet, setInst: m3XSetInst, hist: () => m3Ui && m3Ui.hist, inst: { labInstVoice, labInstPresets, labInstNorm },
-        rollChange: m3RollChange, tut: () => m3Ui && m3Ui.tut,
+        rollChange: m3RollChange, tut: () => m3Ui && m3Ui.tut, ui: () => m3Ui, pv: mixPresetValues, ctxInit: getMixCtx, tab: m3SetTab,
+        paint: m3Paint, tutSteps: m3TutSteps, tutEnter: m3TutEnter,
         // Firestore taklidi (yalnız tanılama): saveMixPreset'in yükünü yakalamak için _db / currentUser geçici değişir
         stubFs: (db, user) => { const o = [_db, currentUser]; _db = db; currentUser = user; return () => { _db = o[0]; currentUser = o[1]; }; } };
 }
