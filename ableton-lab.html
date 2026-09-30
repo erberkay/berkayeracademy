@@ -515,7 +515,7 @@
 
         /* ── Pencere + başlık çubuğu ─────────────────────────────────── */
         .lp-win { position:relative; min-width:0; border-radius:var(--lp-win-r, var(--r-14)); background:var(--surface-0); /* tasarım #0e0e11 / #17171c→#0f0f12 */ border:1px solid var(--line-3); box-shadow:var(--shadow-card); }
-        .lp-bar { position:relative; z-index:3; display:flex; flex-wrap:wrap; row-gap:10px; align-items:center; gap:12px; min-height:var(--lp-bar-h, 56px); padding:0 14px; background:var(--surface-2); /* tasarım #1b1b21→#141418 */ border-bottom:1px solid var(--line-div); border-top-left-radius:inherit; border-top-right-radius:inherit; }
+        .lp-bar { position:relative; z-index:3; display:flex; flex-wrap:wrap; row-gap:10px; align-items:center; gap:12px; min-height:var(--lp-bar-h, 56px); padding:8px 14px; background:var(--surface-2); /* tasarım #1b1b21→#141418 */ border-bottom:1px solid var(--line-div); border-top-left-radius:inherit; border-top-right-radius:inherit; }
         .lp-screw { position:absolute; top:50%; width:9px; height:9px; margin-top:-5px; border-radius:50%; background:var(--bar-muted); box-shadow:inset 0 0 0 1px var(--bg-ink); }
         /* vidalar akış dışında (sarılan çubukta tek başına alt satıra düşmesin); yerleri dolgu ile ayrılır */
         .lp-bar--screws { padding-inline:35px; }
@@ -545,6 +545,7 @@
         .lp-btn[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent-line-2); color:var(--accent); }
         .lp-btn[aria-disabled="true"] { opacity:.4; cursor:default; }
         .lp-btn[aria-disabled="true"]:hover { border-color:var(--line-3); color:var(--fg-soft); }
+        .lp-btn.is-slot-off { visibility:hidden; }       /* lpBtnSlot: yeri korunur (çubuk sarılıp zıplamaz), görünmez + odaklanamaz */
         .lp-btn--accent { border-color:var(--accent-line-2); background:transparent; color:var(--accent); letter-spacing:.1em; }
         .lp-btn--danger { border-color:var(--err-line); background:transparent; color:var(--err); letter-spacing:.1em; }
         .lp-btn--danger:hover { border-color:var(--err-strong); color:var(--err); }
@@ -1121,7 +1122,7 @@
         }
         .lab-m3 .lp-win { --lp-win-r:var(--r-18); --lp-bar-h:54px; }
         /* Başlık çubuğu: 1440'ta tek satır; daha darda sağ grup (DSP · metre) alt satıra iner, preset adı kırpılmaz */
-        .lab-m3 .lp-bar { flex-wrap:wrap; row-gap:8px; padding-block:8px; }
+        .lab-m3 .lp-bar { row-gap:8px; }
         @media (min-width:1025px) { .lab-m3 .lp-pb-no { display:none; } }   /* tasarım: PRESET · ad · ▾ (sayaç yok) → ad 1440'ta tam sığar */
         .lab-m3 .lp-body { padding:0; gap:0; border-bottom-left-radius:inherit; border-bottom-right-radius:inherit; }
         .m3-sl { font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; line-height:1.2; color:var(--fg-3); white-space:nowrap; }
@@ -2733,7 +2734,9 @@ function beatNoiseFor(ctx) {
     return b;
 }
 
+let _beatSuspT = 0;             // beatSuspendSoon zamanlayıcısı
 function getBeatCtx() {
+    clearTimeout(_beatSuspT); _beatSuspT = 0;
     if (!beatCtx) {
         const AC = window.AudioContext || window.webkitAudioContext;
         const ctx = beatCtx = new AC();
@@ -2767,10 +2770,15 @@ function getBeatCtx() {
     if (beatCtx.state === 'suspended') { const p = beatCtx.resume(); if (p && p.catch) p.catch(() => {}); }
     return beatCtx;
 }
-// Beat'i kullanan görünüm kalmadıysa bağlamı askıya al (tek seferlik; getBeatCtx sonraki kullanımda resume eder)
+// Beat'i kullanan görünüm kalmadıysa bağlamı askıya al. Davul kuyrukları hâlâ çalıyorsa 500 ms sonra
+// yeniden dener; getBeatCtx (yeni kullanım) bekleyen denemeyi iptal eder ve bağlamı resume eder.
 function beatSuspendSoon(ms) {
-    setTimeout(() => {
-        if (beatCtx && !beatPlaying && !beatVoices && !m5R && !m5Routed && beatCtx.state === 'running') beatCtx.suspend().catch(() => {});
+    clearTimeout(_beatSuspT);
+    _beatSuspT = setTimeout(() => {
+        _beatSuspT = 0;
+        if (!beatCtx || beatPlaying || m5R || m5Routed || beatCtx.state !== 'running') return;
+        if (beatVoices) { beatSuspendSoon(500); return; }
+        beatCtx.suspend().catch(() => {});
     }, ms);
 }
 // Mastering: Beat çıkışını kendi zincirine al / varsayılana döndür (beatMasterGain'e dokunulmaz)
@@ -3816,7 +3824,7 @@ function showModal(title, html, actions) {
 //               color?, pos:'left'|'right'} | false, transport?:false, status?:false, cls? })
 //   → { root, bar, brand, left, center, right, transport, body, status, power }
 //   root section.lp-win[aria-label] (radius --lp-win-r, vars.: --r-14; modül: .lab-m1 .lp-win{--lp-win-r:var(--r-18)})
-//   bar  .lp-bar (min-height --lp-bar-h 56px; Synth 64px) = vida · [⏻ pos:left] · [BE logo] "BE·CODE NUM"
+//   bar  .lp-bar (min-height --lp-bar-h 56px; Synth 64px; dolgu 8/14 px — sarılınca satırlar kenara yapışmaz) = vida · [⏻ pos:left] · [BE logo] "BE·CODE NUM"
 //        (num altın) + alt satır · left (.lp-bar-l: preset tarayıcı, A|B, A→B, INIT, ↶ ↷, KAYDET) ·
 //        center (.lp-bar-c: REF / BYPASS / çal) · right (.lp-bar-r, sağa yaslı: okumalar, metreler) ·
 //        [⏻ pos:right] · vida. ≤1024 satır sarar. Güç kapalıyken root.is-off (stil modülde).
@@ -3872,6 +3880,9 @@ function showModal(title, html, actions) {
 // lpBtn({ text?, icon?(LP_IC anahtarı: prev next caret undo redo power play pause stop loop copy),
 //         label?(aria), title?, variant?:'accent'|'danger'|'ghost', onClick }) → button.lp-btn (30 px)
 //   INIT (danger), KAYDET (accent), ↶ ↷ (icon), A→B. aria-disabled="true" iken onClick çalışmaz.
+// lpBtnSlot(btn, reserve, show): reserve false → [hidden] (yer yok); reserve true + show false → yeri korunur
+//   ama görünmez / odaklanamaz / erişilebilirlik ağacı dışı (.is-slot-off) — ör. yalnız kullanıcı presetinde
+//   görünen SİL düğmesi preset gezinirken başlık çubuğunu sarıp gövdeyi kaydırmasın.
 // makeReadout({ label, value?, variant?:'ro'|'lcd'|'inline', color?, live? }) → { el, set(v), setLabel(t), setColor(c) }
 //   ro: başlık çubuğu sütunu (VOICES / DSP ≈); lcd: 44 px ekran (POZİSYON, ZAMAN); inline: durum satırı.
 // makeDisplay({ height?, grid?:[sütun, satır], cls? }) → { el, grid } · .lp-disp koyu kuyu (+ SVG ızgara).
@@ -4411,7 +4422,19 @@ const LP_IC = {
 // lpS(v): metin ya da () => metin. lpTr(el, attr, v): 'text' | öznitelik; şimdi yazar ve kaydeder —
 // dil değişince yalnız değer hâlâ kitin yazdığıysa (modül bu arada kendi metnini koymadıysa) yenilenir.
 // lpOnLang(el, fn): öğe bağlıyken dil değişiminde fn. Kayıtlar görünüm ömürlü (lpTeardown siler).
-let _lpLang = [];
+// Görünüm içi yeniden kurulumlar (ör. Beat Sound Editor knobları) ölü kayıt bırakmasın diye her kayıttan
+// sonraki karede budanır: bir kez DOM'a bağlanmış (seen) ama artık kopuk öğeler düşer; henüz hiç
+// bağlanmamış öğe (sonradan eklenecek) 10 s korunur — aynı görevde kurulup hemen değiştirilen ara kopyalar da birikmez.
+let _lpLang = [], _lpPruneQ = 0;
+function _lpPrune() {
+    _lpPruneQ = 0;
+    const now = Date.now();
+    _lpLang = _lpLang.filter(x => { if (x.el.isConnected) { x.seen = true; return true; } return !x.seen && now - x.t < 10000; });
+}
+function _lpReg(el, run) {
+    _lpLang.push({ el, run, seen: false, t: Date.now() });
+    if (!_lpPruneQ) _lpPruneQ = requestAnimationFrame(_lpPrune);
+}
 const lpS = v => typeof v === 'function' ? v() : (v == null ? '' : String(v));
 function lpTr(el, attr, v) {
     if (!el) return el;
@@ -4419,10 +4442,10 @@ function lpTr(el, attr, v) {
     let last = null;
     const put = () => { const t = lpS(v); if (attr === 'text') el.textContent = t; else el.setAttribute(attr, t); last = get(); };
     put();
-    _lpLang.push({ el, run: () => { if (get() === last) put(); } });
+    _lpReg(el, () => { if (get() === last) put(); });
     return el;
 }
-function lpOnLang(el, fn) { if (el && typeof fn === 'function') _lpLang.push({ el, run: fn }); return fn; }
+function lpOnLang(el, fn) { if (el && typeof fn === 'function') _lpReg(el, fn); return fn; }
 function lpRelabel() {
     _lpLang = _lpLang.filter(x => x.el.isConnected);
     _lpLang.slice().forEach(x => { try { x.run(); } catch (e) { console.warn('[lab] lp relabel:', e); } });
@@ -4435,7 +4458,7 @@ function lpOnTeardown(fn) { if (typeof fn === 'function') _lpCleanups.push(fn); 
 function lpTeardown() {
     Array.from(_lpDrags).forEach(f => { try { f(); } catch (e) { console.warn('[lab] lp drag:', e); } });
     _lpDrags.clear();
-    _lpLang = [];
+    _lpLang = []; cancelAnimationFrame(_lpPruneQ); _lpPruneQ = 0;
     const list = _lpCleanups; _lpCleanups = [];
     list.forEach(f => { try { f(); } catch (e) { console.warn('[lab] lp cleanup:', e); } });
 }
@@ -4891,6 +4914,15 @@ function lpBtn(o) {
     if (o.label) lpTr(b, 'aria-label', o.label);
     if (o.title) lpTr(b, 'title', o.title);
     if (o.onClick) b.addEventListener('click', e => { if (b.getAttribute('aria-disabled') === 'true') return; o.onClick(e); });
+    return b;
+}
+function lpBtnSlot(b, reserve, show) {
+    if (!b) return b;
+    const off = !!reserve && !show;
+    b.hidden = !reserve;
+    b.classList.toggle('is-slot-off', off);
+    if (off) { b.setAttribute('aria-hidden', 'true'); b.tabIndex = -1; }
+    else { b.removeAttribute('aria-hidden'); b.removeAttribute('tabindex'); }
     return b;
 }
 // Açık/kapalı metin düğmesi (aria-pressed), isteğe bağlı LED: { text, label, title, on, led:true, color, onToggle }
@@ -5506,6 +5538,9 @@ function navigate(mod, scroll, fromHistory) {
     // Beat yalnız Genel bakış ↔ Beat Maker arasında çalmaya devam eder
     const beatViews = v => v === null || v === 2;
     if (from !== mod && beatViews(from) && !beatViews(mod)) { stopBeat(false); if (mod !== 5) beatSuspendSoon(1000); }
+    // Synth yalnız Genel bakış kartında ve Synth görünümünde çalar; kartdan başka modüle geçince
+    // sesler söner ve 4 s sonra synthCtx askıya alınır (Synth görünümü kendi teardown'unda yapar)
+    if (from === null && mod !== null && mod !== 1) synthStopAll();
     teardownView();
     state.currentModule = mod;
     if (!fromHistory) {
@@ -6448,7 +6483,7 @@ function renderModule1() {
         if (mqPhone) { if (mqPhone.removeEventListener) mqPhone.removeEventListener('change', onPhone); else mqPhone.removeListener(onPhone); }
         if (io) io.disconnect();
         stopOsc();
-        _m1HeldChanged = null; _m1Update = null;
+        _m1HeldChanged = null; _m1Update = null; _m1TaskReset = null;   // renderModule1 kapsamı serbest kalsın
         synthStopAll();
         state.modWheel = 0;                 // LFO derinliği ilk notadaki applySynthParams ile tazelenir
         ui.power = true;                    // bypass yalnız bu görünümde; genel bakış kartı sessiz kalmasın
@@ -8543,17 +8578,25 @@ function m3Lbl(el, attr, fn) {
     return el;
 }
 function m3El(tag, cls, key) { const e = mk(tag, cls); if (key) { e.setAttribute('data-i18n', key); e.textContent = L(key); } return e; }
+// "Değiştirildi" bayrağı state.mix.mod'da yaşar (Genel bakış kartı da mixSet ile yazar → Mixing açılınca işaret doğru);
+// açık görünümde preset tarayıcısının işaretini de günceller
+function m3Mod(b) {
+    state.mix.mod = !!b;
+    if (m3Ui && m3Ui.pb) m3Ui.pb.setModified(!!b);
+}
 // Parametre yolu → state.mix + ses + boyama
 function mixSet(path, v) {
     mixPut(path, v);
     const m = /^ch\.(\d)\.(\w+)$/.exec(path);
     if (m && m[2] !== 'solo') mixSync(+m[1]); else mixSync();
-    if (m3Ui && m3Ui.pb && path !== 'bpm') m3Ui.pb.setModified(true);
+    if (path !== 'bpm') m3Mod(true);
     m3Dirty();
 }
+// Anlık görüntüyü yükle (undo / A-B / preset); preset seçimi (m3PickPreset) bayrağı sonra temizler
 function mixApplySnap(s) {
     const c = mixClean(s);
     ['ch', 'rev', 'dly', 'mst', 'sc', 'sendPre'].forEach(k => { state.mix[k] = c[k]; });
+    state.mix.mod = true;
     mixSync();
     m3Dirty();
 }
@@ -8584,6 +8627,7 @@ function m3PickPreset(it) {
     if (/^f\d$/.test(it.id)) mixApplySnap(mixPresetValues(+it.id.slice(1)));
     else { const p = m3UserPresets.find(x => 'u:' + x.id === it.id); if (p) mixApplySnap(p.mix); }
     state.mix.preset = it.id;
+    m3Mod(false);
 }
 async function loadMixPresets() {
     if (!currentUser || !_db) return [];
@@ -8599,19 +8643,26 @@ async function saveMixPreset(name) {
 function m3SyncUser(force) {
     const U = m3Ui; if (!U) return;
     const uid = currentUser ? currentUser.uid : null;
-    U.save.hidden = !uid;
-    if (!uid) { if (m3UserUid) { m3UserPresets = []; m3UserUid = null; U.pb.setItems(m3PresetItems(), state.mix.preset); } return; }
+    U.save.hidden = !uid; m3PaintDel(U);
+    if (!uid) { if (m3UserUid) { m3UserPresets = []; m3UserUid = null; U.pb.setItems(m3PresetItems(), state.mix.preset); m3PaintDel(U); } return; }
     if (!force && (m3UserUid === uid || m3UserBusy)) return;
     m3UserBusy = true;
     loadMixPresets().then(list => { m3UserPresets = list; m3UserUid = uid; })
         .catch(e => console.warn('[lab] m3 presets:', e))
-        .finally(() => { m3UserBusy = false; if (m3Ui) m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); });
+        .finally(() => { m3UserBusy = false; if (m3Ui) { m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3PaintDel(m3Ui); } });
 }
 async function deleteMixPreset(id) {
     if (!currentUser || !_db) return;
     await userDoc().collection('mixPresets').doc(id).delete();
 }
 // Seçili kullanıcı presetini sil (onayla); ses olduğu gibi kalır, seçim fabrika f0'a döner ve "değiştirildi" işaretlenir
+// Sil düğmesi yalnız kullanıcı presetinde görünür; girişli ve en az bir kullanıcı preseti varken yeri hep ayrılı
+// (fabrika ↔ kullanıcı preseti arasında gezinirken çubuk sarılıp gövde zıplamasın; preset yoksa yer de tutmaz)
+function m3PaintDel(U) {
+    if (!U || !U.del) return;
+    const id = String(state.mix.preset || ''), on = !!currentUser && m3UserPresets.length > 0;
+    lpBtnSlot(U.del, on, on && id.startsWith('u:') && m3UserPresets.some(x => 'u:' + x.id === id));
+}
 async function m3DeleteClick() {
     const U = m3Ui; if (!U || U.deleting || !currentUser) return;
     const id = String(state.mix.preset || '');
@@ -8622,7 +8673,13 @@ async function m3DeleteClick() {
         await deleteMixPreset(p.id);
         m3UserPresets = m3UserPresets.filter(x => x !== p);
         if (state.mix.preset === id) state.mix.preset = 'f0';
-        if (m3Ui) { m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3Ui.pb.setModified(true); m3Dirty(); }
+        if (m3Ui) {
+            // Odak gizlenecek düğmeden preset tetiğine (body'ye düşmesin)
+            const back = m3Ui.del && (document.activeElement === m3Ui.del || document.activeElement === document.body);
+            m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3Mod(true);
+            if (back) m3Ui.pb.trigger.focus();
+            m3PaintDel(m3Ui); m3Dirty();
+        }
     } catch (e) { console.warn('[lab] m3 delete:', e); alert(L('lp_del_failed')); }
     U.deleting = false;
 }
@@ -8638,17 +8695,18 @@ async function m3SaveClick() {
         const id = await saveMixPreset(name.trim());
         m3UserPresets.unshift({ id, name: name.trim().slice(0, 60), mix: mixSnapshot() }); m3UserUid = currentUser.uid;
         state.mix.preset = 'u:' + id;
-        if (m3Ui) { m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3Ui.pb.setModified(false); }
+        m3Mod(false);
+        if (m3Ui) { m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3PaintDel(m3Ui); }
         lbl.textContent = L('lab_saved_ok');
     } catch (e) { console.warn('[lab] m3 save:', e); lbl.textContent = L('lab_save_failed'); }
     setTimeout(() => { U.saving = false; U.save.removeAttribute('aria-busy'); lbl.textContent = L('lp_save'); }, 1400);
 }
 function m3BuildBar(win, U) {
     const S = state.mix;
-    U.pb = makePresetBrowser({ items: m3PresetItems(), value: S.preset, width: 240, capLabel: () => L('lp_preset_cap'), label: () => L('lab_m3_presets'), onPick: it => m3PickPreset(it) });
+    U.pb = makePresetBrowser({ items: m3PresetItems(), value: S.preset, modified: !!S.mod, width: 240, capLabel: () => L('lp_preset_cap'), label: () => L('lab_m3_presets'), onPick: it => m3PickPreset(it) });
     const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: () => L('lp_ab_aria') });
     const un = lpBtn({ icon: 'undo', label: () => L('lp_undo'), title: () => L('lp_undo') }), re = lpBtn({ icon: 'redo', label: () => L('lp_redo'), title: () => L('lp_redo') });
-    U.hist = makeHistory({ get: mixSnapshot, apply: s => { mixApplySnap(s); if (m3Ui) m3Ui.pb.setModified(true); }, max: 40 });
+    U.hist = makeHistory({ get: mixSnapshot, apply: s => { mixApplySnap(s); m3Mod(true); }, max: 40 });
     U.hist.bind({ undo: un, redo: re, ab, keys: win.root });
     U.save = lpBtn({ text: () => L('lp_save'), variant: 'accent', onClick: m3SaveClick });
     m3Lbl(U.save, 'title', () => L('lab_m3_save_t'));
@@ -8657,7 +8715,7 @@ function m3BuildBar(win, U) {
     m3Lbl(ab.el, 'aria-label', () => L('lp_ab_aria'));
     U.save.hidden = !currentUser;
     U.del = lpBtn({ icon: 'del', label: () => L('lp_del_preset'), title: () => L('lp_del_preset'), onClick: m3DeleteClick });
-    U.del.hidden = true;
+    m3PaintDel(U);
     win.left.append(U.pb.el, ab.el, un, re, U.save, U.del);
     // Sağ: DSP durumu · örnekleme hızı · çıkış metresi (L/R) + dB
     const dsp = mk('span', 'm3-dsp');
@@ -8844,7 +8902,7 @@ function m3ResetBand(j) {
     m3Push();
     const i = state.mix.sel, d = m3BandDefaults(j);
     Object.keys(d).forEach(k => { state.mix.ch[i][k] = d[k]; });
-    mixSync(i); if (m3Ui) m3Ui.pb.setModified(true); m3Dirty();
+    mixSync(i); m3Mod(true); m3Dirty();
 }
 function m3SetBand(j) { if (state.mix.band === j) return; state.mix.band = j; m3BuildBandKnobs(); m3Dirty(); }
 // Seçili bandın FREQ / GAIN / Q knobları (aralık banda göre → band değişince yeniden kurulur)
@@ -8868,14 +8926,14 @@ function m3NodeMove(j, ev) {
     const px = lpClamp((ev.clientX - r.left) / r.width, 0, 1), py = lpClamp((ev.clientY - r.top) / r.height, 0, 1);
     x[B.f] = Math.round(lpClamp(20 * Math.pow(1000, px), B.rng[0], B.rng[1]));
     if (B.g) x[B.g] = lpClamp(Math.round((120 - py * 240) / (100 / 18) * 2) / 2, -15, 15);
-    mixSync(i); U.pb.setModified(true); m3Dirty();
+    mixSync(i); m3Mod(true); m3Dirty();
 }
 function m3NodeNudge(j, df, dg, dq) {
     const B = M3_BANDS[j], i = state.mix.sel, x = state.mix.ch[i];
     if (df) x[B.f] = Math.round(lpClamp(x[B.f] * Math.pow(1.06, df), B.rng[0], B.rng[1]));
     if (dg && B.g) x[B.g] = lpClamp(Math.round((x[B.g] + dg) * 2) / 2, -15, 15);
     if (dq && B.q) x.q = +lpClamp(x.q * Math.pow(1.1, dq), 0.3, 8).toFixed(2);
-    mixSync(i); if (m3Ui) m3Ui.pb.setModified(true); m3Dirty();
+    mixSync(i); m3Mod(true); m3Dirty();
 }
 function m3BuildDetail(U) {
     const wrap = mk('div', 'm3-detail');
@@ -9191,7 +9249,7 @@ function m3Paint() {
     U.binds.forEach(b => { const v = mixGet(b.p()); if (typeof v !== 'number') return; b.c.update(b.fader ? (v <= -60 ? -Infinity : v) : v); });
     if (U.bandKnobs) { if (!U.bandKnobs.B.g) m3Txt(U.bandKnobs.g.el.querySelector('.lp-knob-val'), '—'); if (!U.bandKnobs.B.q) m3Txt(U.bandKnobs.q.el.querySelector('.lp-knob-val'), '—'); }
     // Başlık / taşıma
-    if (U.del) U.del.hidden = !(currentUser && String(S.preset || '').startsWith('u:') && m3UserPresets.some(x => 'u:' + x.id === S.preset));
+    m3PaintDel(U);
     if (U.power) U.power.set(!S.bypass);
     m3PlayBtnPaint(U.play);
     m3Txt(U.dsp, `${L('lab_m3_dsp')} ${L(run ? 'lab_m3_dsp_on' : 'lab_m3_dsp_ready')} · ${mixCtx ? (mixCtx.sampleRate / 1000).toFixed(1) : '48'} kHz · ${L('lab_m3_nodes')}`);
@@ -11471,7 +11529,7 @@ function renderModule5() {
     u.save = lpBtn({ text: () => L('lp_save'), variant: 'accent', title: () => L('lab_m5_save_t'), onClick: () => m5NameOpen() });
     u.save.setAttribute('aria-expanded', 'false'); u.save.setAttribute('aria-controls', 'm5NameIn');
     u.del = lpBtn({ icon: 'del', label: () => L('lp_del_preset'), title: () => L('lp_del_preset'), onClick: m5DeleteClick });
-    u.del.hidden = true;
+    lpBtnSlot(u.del, false, false);          // m5PaintDel (giriş / preset listesi) belirler
     win.left.append(vdiv(), u.pb.el, ab.el, un, re, u.save, u.del);
     u.ref = makeToggle({ text: L('lab_m5_ref'), led: true, color: 'var(--m5-eq)', title: L('lab_m5_ref_t'), on: m5V.ref,
         onToggle: b => { m5V.ref = b; if (m5R) m5R.refSince = b ? performance.now() : 0; m5Monitor(); } });
@@ -11824,10 +11882,12 @@ function m5LoadPreset(it) {
     u.pb.setModified(false);
     m5PaintDel();
 }
-// Sil düğmesi yalnız bir kullanıcı preseti seçiliyken (giriş yapılmış) görünür
+// Sil düğmesi yalnız bir kullanıcı preseti seçiliyken görünür; girişli ve en az bir kullanıcı preseti varken yeri
+// hep ayrılı (fabrika ↔ kullanıcı preseti arasında gezinirken çubuk sarılıp gövde zıplamasın)
 function m5PaintDel() {
     const u = m5U; if (!u || !u.del) return;
-    u.del.hidden = !(currentUser && String(m5V.pre || '').startsWith('u:') && m5UserPre.some(x => 'u:' + x.id === m5V.pre));
+    const on = !!currentUser && m5UserPre.length > 0;
+    lpBtnSlot(u.del, on, on && String(m5V.pre || '').startsWith('u:') && m5UserPre.some(x => 'u:' + x.id === m5V.pre));
 }
 async function m5DeleteClick() {
     const u = m5U; if (!u || u.deleting || !currentUser) return;
@@ -11839,7 +11899,11 @@ async function m5DeleteClick() {
         await deleteMasterPreset(x.id);
         m5UserPre = m5UserPre.filter(y => y !== x);
         if (m5V.pre === id) { m5V.pre = M5_PRE[0].id; m5V.mod = true; }
-        if (m5U) { m5U.pb.setItems(m5PbItems(), m5V.pre); m5U.pb.setModified(m5V.mod); }
+        if (m5U) {
+            const back = m5U.del && (document.activeElement === m5U.del || document.activeElement === document.body);
+            m5U.pb.setItems(m5PbItems(), m5V.pre); m5U.pb.setModified(m5V.mod);
+            if (back) m5U.pb.trigger.focus();      // odak gizlenecek düğmeden preset tetiğine
+        }
     } catch (e) { console.warn('[lab] m5 sil:', e); alert(L('lp_del_failed')); }
     u.deleting = false;
     m5PaintDel();
