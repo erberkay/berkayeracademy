@@ -852,6 +852,149 @@
         }
         /* ═══ /LAB PRO KİT · ÖĞRETİCİ + ÖRNEK KÜTÜPHANESİ ═══ */
 
+        /* ═══ LAB PİYANO RULOSU (makePianoRoll — MIDI nota düzenleyici penceresi; gam kütüphanesi JS'te) ═══
+           Sözleşme: script'teki "LAB PİYANO RULOSU" bloğunun başındaki yorum. Önek .lpr-*; pencere
+           kabuğu PRO KİT .lp-win / .lp-bar / .lp-status, düğmeler .lp-btn / .lp-seg / .lp-tgl.
+           Masaüstü: ortalanmış modal pencere; ≤600: tam ekran, araç çubuğu tek yatay kayan şerit. */
+        .lpr-ov { position:fixed; inset:0; z-index:var(--z-modal); display:flex; align-items:center; justify-content:center; padding:24px; background:var(--overlay); }
+        .lpr-ov[hidden] { display:none; }
+        .lpr { display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden; font-family:var(--ff); color:var(--fg); }
+        .lpr-ov .lpr { width:min(1280px, 100%); height:min(860px, 100%); animation:lpr-in var(--dur-slow) var(--ease-out) both; }
+        .lpr--inline { height:var(--lpr-h, 560px); }
+        @keyframes lpr-in { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+        .lpr :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        .lpr .lp-brand { flex-shrink:1; min-width:0; }
+        .lpr .lp-brand-txt { min-width:0; }
+        .lpr-title { margin:0; max-width:40ch; overflow:hidden; text-overflow:ellipsis; font-size:11px; font-weight:400; letter-spacing:.1em; color:var(--fg-soft); }
+        .lpr-close svg { width:12px; height:12px; }
+
+        /* ── Araç çubuğu ─────────────────────────────────────────────── */
+        .lpr .lp-bar, .lpr .lp-status { flex-shrink:0; }
+        .lpr-tb { flex-shrink:0; display:flex; flex-direction:column; gap:8px; padding:10px 14px; background:var(--surface-block); border-bottom:1px solid var(--line-2); }
+        .lpr-row { display:flex; align-items:center; flex-wrap:wrap; gap:8px 18px; }
+        .lpr-grp { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+        .lpr-gl { font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--fg-3); white-space:nowrap; }
+        .lpr .lp-lcd { height:34px; min-width:88px; padding:0 10px; }
+        .lpr .lp-lcd .lp-ro-v { font-size:13px; color:var(--accent); }
+        .lpr-play[aria-pressed="true"] { color:var(--ok); border-color:var(--ok-line); background:var(--ok-soft); }
+        .lpr-mode .lp-seg-b { display:inline-flex; align-items:center; gap:5px; }
+        .lpr-mode svg { width:13px; height:13px; }
+        .lpr-sel { height:30px; max-width:100%; padding:0 26px 0 9px; border-radius:var(--r-6); border:1px solid var(--line-3); background-color:var(--bg);
+            /* ▾ işareti — renk = --fg-3 (#8f897f), veri URI'sinde token kullanılamıyor */
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%238f897f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat:no-repeat; background-position:right 8px center; background-size:10px 10px;
+            color:var(--fg-soft); font-family:var(--ff-mono); font-size:11px; letter-spacing:.04em; color-scheme:dark; appearance:none; -webkit-appearance:none; cursor:pointer; transition:border-color var(--dur-fast); }
+        .lpr-sel:hover { border-color:var(--accent-line-2); }
+        .lpr-sel option { background:var(--surface-1); color:var(--fg); }
+        /* Telefon şeridinin "devamı var" düğmesi (yalnız ≤600 görünür; sarmalayıcı düz dikdörtgen maske) */
+        .lpr-tb-end { display:none; }
+        .lpr-tb-more svg { width:14px; height:14px; transition:transform var(--dur-fast); }
+        .lpr-tb-more.is-end svg { transform:scaleX(-1); }
+
+        /* ── Izgara alanı (tek kaydırıcı; cetvel/tuşlar/velocity yapışkan) ─ */
+        .lpr .lpr-body { position:relative; flex:1 1 auto; min-height:0; padding:0; gap:0; }
+        .lpr-scroll { position:relative; flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; background:var(--bg-sunk); }
+        /* Izgara odak halkası: yapışkan cetvel/tuş/şerit katmanlarının ÜSTÜNDE (kaydırıcının outline'ı altta kalırdı) */
+        .lpr-body:has(.lpr-gw:focus-visible)::after, .lpr-body:has(.lpr-gw.is-kbd:focus)::after { content:''; position:absolute; inset:0; z-index:5; border:2px solid var(--accent); pointer-events:none; }
+        .lpr-cv { position:relative; display:grid; grid-template-columns:var(--lpr-kw) 1fr; grid-template-rows:var(--lpr-rh) 1fr var(--lpr-vh); width:max-content; min-width:100%; min-height:100%; }
+        .lpr-corner, .lpr-vcorner { position:sticky; left:0; z-index:4; display:flex; align-items:center; justify-content:center; background:var(--surface-2); border-right:1px solid var(--line-div); font-family:var(--ff-mono); font-size:9px; letter-spacing:.06em; color:var(--fg-3); white-space:nowrap; }
+        .lpr-corner { top:0; border-bottom:1px solid var(--line-div); cursor:help; }
+        .lpr-vcorner { bottom:0; border-top:1px solid var(--line-ctl); letter-spacing:.14em; }
+        .lpr-ruler { position:sticky; top:0; z-index:1; background:var(--surface-2); border-bottom:1px solid var(--line-div); }
+        .lpr-keys { position:sticky; left:0; z-index:3; background:var(--surface-0); border-right:1px solid var(--line-div); cursor:pointer; touch-action:pan-y; user-select:none; -webkit-user-select:none; }
+        .lpr-gw { position:relative; min-width:0; outline:none; cursor:crosshair; touch-action:none; user-select:none; -webkit-user-select:none; }
+        .lpr-gw[data-mode="select"] { cursor:default; }
+        .lpr-gw[data-hover="note"] { cursor:grab; }
+        .lpr-gw[data-hover="edge"] { cursor:ew-resize; }
+        .lpr-gw.is-drag { cursor:grabbing; }
+        .lpr-vel { position:sticky; bottom:0; z-index:1; background:var(--bg-ink); border-top:1px solid var(--line-ctl); cursor:ns-resize; touch-action:none; user-select:none; -webkit-user-select:none; }
+        .lpr-ph { position:absolute; top:0; bottom:0; left:var(--lpr-kw); z-index:2; width:2px; margin-left:-1px; background:var(--accent); pointer-events:none; }
+        .lpr-ph[hidden] { display:none; }
+        .lpr-svg { display:block; overflow:visible; }
+        .lpr-keys, .lpr-gw, .lpr-vel { -webkit-tap-highlight-color:transparent; }
+
+        /* Satırlar ve çizgiler */
+        .lpr-r { fill:var(--surface-2); }
+        .lpr-r--b { fill:var(--bg); }
+        .lpr-r--in { fill:var(--surface-4); }
+        .lpr-r--out { fill:var(--bg-ink); }
+        .lpr-r-root { fill:var(--accent-soft); }
+        .lpr-hl, .lpr-vl, .lpr-vg, .lpr-rt, .lpr-ksep { stroke-width:1; shape-rendering:crispEdges; }
+        .lpr-hl { stroke:var(--line-faint); }
+        .lpr-hl--oct { stroke:var(--line-3); }
+        .lpr-vl { stroke:var(--line-2); }
+        .lpr-vl--beat { stroke:var(--line-ctl); }
+        .lpr-vl--bar { stroke:var(--line-hi); }
+        /* Notalar (dolgu opaklığı = velocity, çalışma anı) */
+        .lpr-n { fill:var(--lp-c, var(--accent)); stroke:var(--lp-c, var(--accent)); stroke-width:1; }
+        .lpr-n.is-sel { fill:var(--lpr-sc, var(--fg)); stroke:var(--lpr-sc, var(--fg)); stroke-width:2; }
+        .lpr-n.is-out { stroke-dasharray:3 2; }
+        /* Nota adı: koyu notada açık, açık notada koyu yazı (lprOp eşiği → her iki durumda ≥4.5:1) */
+        .lpr-nt { font-family:var(--ff-mono); font-size:10px; fill:var(--accent-ink); pointer-events:none; }
+        .lpr-nt--lt { fill:var(--fg); }
+        .lpr-cur { fill:none; stroke:var(--accent); stroke-width:2; opacity:0; pointer-events:none; }
+        .lpr-gw.is-kbd:focus .lpr-cur, .lpr-gw:focus-visible .lpr-cur { opacity:1; }
+        .lpr-marq { fill:var(--accent-wash); stroke:var(--accent); stroke-width:1; stroke-dasharray:4 3; pointer-events:none; }
+        /* Tuş sütunu */
+        .lpr-kw { fill:var(--fg-2); }
+        .lpr-kb { fill:var(--bg-ink); }
+        .lpr-ksep { stroke:var(--track); }
+        .lpr-kin { fill:var(--accent); }
+        .lpr-kin--root { fill:var(--ember-1); }
+        .lpr-kl { font-family:var(--ff-mono); fill:var(--bg); pointer-events:none; }
+        .lpr-k.is-on .lpr-kw, .lpr-k--b.is-on .lpr-kb { fill:var(--accent); }
+        /* Cetvel */
+        .lpr-loop { fill:var(--accent-line-2); }
+        .lpr-rt { stroke:var(--line-hi); }
+        .lpr-rt--bar { stroke:var(--fg-3); }
+        .lpr-rb { font-family:var(--ff-mono); font-size:10px; fill:var(--fg-2); }
+        .lpr-rtx { font-family:var(--ff-mono); font-size:9px; fill:var(--fg-3); }
+        /* Velocity şeridi */
+        .lpr-vg { stroke:var(--line-2); }
+        .lpr-vb line { stroke:var(--lp-c, var(--accent)); stroke-width:2; }
+        .lpr-vb rect { fill:var(--lp-c, var(--accent)); }
+        .lpr-vb.is-sel line { stroke:var(--lpr-sc, var(--fg)); }
+        .lpr-vb.is-sel rect { fill:var(--lpr-sc, var(--fg)); }
+        /* Durum satırı */
+        .lpr .lp-status { gap:6px 18px; }
+        .lpr-hint { margin-left:auto; color:var(--fg-3); }
+
+        @media (max-width:1024px) {
+            .lpr-sel { height:44px; }
+            .lpr-tb { padding-block:12px; }
+            .lpr-row { gap:16px 18px; }
+            .lpr-grp { gap:8px; }
+            /* Kit ::after (inset −7) çerçevenin içinden ölçülür → 42 px; burada tam 44 px */
+            .lpr .lp-btn::after { inset:-8px -4px; }
+        }
+        @media (max-width:600px) {
+            .lpr-ov { padding:0; }
+            .lpr-ov .lpr { width:100%; height:100%; border-radius:0; border:0; }
+            .lpr .lp-bar { flex-wrap:nowrap; gap:8px; }
+            .lpr .lp-bar-l { order:0; width:auto; margin-left:auto; flex-wrap:nowrap; }
+            .lpr .lp-bar-r { order:0; width:auto; margin-left:0; }
+            .lpr-close span { display:none; }
+            .lpr-title { max-width:20ch; }
+            .lpr-tb { flex-direction:row; align-items:center; gap:18px; overflow-x:auto; overscroll-behavior-x:contain; padding:12px; }
+            /* Satırlar çözülür → gruplar tek şeritte sıralanır: en sık kullanılanlar (çal, çiz/seç, çoğalt/sil) önde */
+            .lpr-row { display:contents; }
+            .lpr-grp--play { order:-3; }
+            .lpr-grp--mode { order:-2; }
+            .lpr-grp--edit { order:-1; }
+            /* Sağ kenarda yapışkan ileri düğmesi. Sarmalayıcı şeridin tüm yüksekliğini ve iç boşluğunu kaplayan
+               düz bir dikdörtgen (degrade değil): arkadan kayan öğeler görünmez; eksi margin → sonda sıçramaz */
+            .lpr-tb-end { display:flex; align-items:center; order:99; position:sticky; right:-12px; flex-shrink:0; align-self:stretch;
+                margin:-12px -12px -12px 0; padding:12px 12px 12px 10px; background:var(--surface-block); border-left:1px solid var(--line-2); }
+            /* Dokunma ipucu gizlenmez: durum satırında kendi satırında durur */
+            .lpr-hint { flex-basis:100%; margin-left:0; line-height:1.5; }
+            .lpr .lp-status { padding:8px 12px; gap:4px 12px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .lpr-ov .lpr { animation:none; }
+            .lpr-tb-more svg { transition:none; }
+        }
+        /* ═══ /LAB PİYANO RULOSU ═══ */
+
         /* ═══ LAB M1 · Synthesizer ═══ (Lab_Synth: BE·SYNTH 01 eklenti penceresi — PRO KİT parçalarıyla;
            altında Çalışma mantığı, yan panel kabuktan). Panel degradeleri düz token'a indirildi. */
         .lab-m1 {
@@ -6465,6 +6608,1424 @@ function makeSampleBrowser(o) {
         destroy: audOff,
         focus() { const f = opts.find(x => x._sid === cur) || opts[0]; if (f) f.focus(); },
     };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LAB PİYANO RULOSU — MIDI klip düzenleyici penceresi (makePianoRoll) + gam kütüphanesi (LAB_SCALES)
+// PRO KİT eki; modülden bağımsız (hiçbir modüle bağlı değil). CSS: "LAB PİYANO RULOSU" bloğu, önek .lpr-*.
+// Sözleşme bu yorumdadır (merkezi LAB KABUK API bloğuna dokunulmadı).
+// ═══════════════════════════════════════════════════════════════════
+//
+// ── Gam kütüphanesi (DOM'suz saf fonksiyonlar; Synth vb. de kullanabilir) ──────────
+// Nota adları ABLETON düzeninde: C3 = MIDI 60 (oktav = floor(midi / 12) − 2 → C−2 = 0, G8 = 127).
+// root = perde sınıfı 0..11 (C = 0), type = LAB_SCALES anahtarı (bilinmeyen tür → 'major').
+// LAB_SCALES  { id: { name:[tr, en], iv:[kökten yarım ses aralıkları] } }; sıra LAB_SCALE_ORDER =
+//     major (İyonyen), minor (Eolyen), harmonicMinor, melodicMinor, dorian, phrygian, lydian,
+//     mixolydian, locrian, majorPent, minorPent, blues, chromatic.
+// LAB_NOTE_NAMES ['C','C#','D',…,'B'] · LAB_NOTE_NAMES_FLAT ['C','Db','D',…,'B']
+// scaleName(type) → etkin dilde ad ('Doğal minör (Eolyen)' / 'Natural Minor (Aeolian)')
+// noteName(pc, { flat?, unicode? }) → 'C#' | 'Db' | 'C♯' | 'D♭' (pc herhangi bir tamsayı; mod 12)
+// midiName(midi, { flat?, unicode? }) → 'C3' (60), 'A#2' (58) · midiToHz(midi, a4 = 440) · hzToMidi(hz, a4) (kesirli)
+// scalePitchClasses(root, type) → [pc…] derece sırasıyla (kök ilk) · inScale(midi, root, type) → bool
+// snapToScale(midi, root, type, dir = 0) → gam notası: dir 0 en yakın (eşitlikte AŞAĞI), 1 yukarı, −1 aşağı
+// transposeInScale(midi, steps, root, type) → gam içinde ±steps derece; gam dışı nota ilk adımda o
+//     yöndeki gam notasına oturur (C majörde C#3 +1 → D3, D3 +1 → E3)
+// degreeOf(midi, root, type) → 1..n derece (kök = 1), gam dışıysa 0
+// chordOnDegree(root, type, degree, size = 3, base = 60) → [midi…]: dereceden başlayıp gam notalarını
+//     birer atlayarak üst üste koyar (size 3 üçlü, 4 yedili…). Kök, base'in oktavındaki root perdesi
+//     (base 60 → C3 oktavı; A minör 1. derece → A3 C4 E4). Pentatonik/blues'ta dörtlü yığınlar çıkar.
+// chordSymbol(midis, { flat?, unicode? }) → 'Am', 'G7', 'Bm7b5', 'Cmaj7', 'Ddim', 'Eaug', 'Fsus4'
+//     (en pes nota kök kabul edilir; tanınmayan yapı → kök + '?').
+//
+// ── makePianoRoll(opts) → MIDI nota düzenleyici (Ableton "MIDI Note Editor" mantığı) ─────────
+// Masaüstünde modal pencere (PRO KİT .lp-win görünümünde), ≤600 px tam ekran. opts.mode:'inline'
+// → pencere yerine sayfa içi panel (overlay/odak tuzağı/Esc yok; el'i sen yerleştirirsin).
+// Veri: notes [{ p: midi, s: başlangıç adımı, l: uzunluk (adım), v: velocity 1–127, sel?: bool }]
+//   Adım = 1/16 nota (vuruş başına 4). 1/32 ve triyole ızgarada s/l kesirli olabilir (0.5, 0.6667…).
+// opts: {
+//   title?     pencere başlığı (vars. L('lpr_title_def')) · notes? · length? adım (vars. 16; 1..maxLength)
+//   maxLength? (vars. 64 = 4 ölçü) · range? [lo, hi] MIDI (vars. [36, 96] = C1..C6). Aralık dışındaki notalar
+//       KIRPILMAZ: görünen aralık onları kapsayacak kadar genişler (perde yalnız 0..127'ye sıkışır)
+//   scale? { root:0..11, type:'minor', on:bool, fold:bool } · grid? '1/4'|'1/8'|'1/16'|'1/32' · triplet?
+//   accidentals? 'sharp' | 'flat' (nota adlarında ♯/♭ tercihi; vars. 'sharp')
+//   zoom? 0..6 (vars. fare 3, dokunmatik 6 = 44 px satır). Yatayda klip en az görünür genişliği doldurur
+//       (ResizeObserver, yalnız açıkken); zoom 4–6 bunun 1.25/1.5/2 katı · bpm? (dahili önizleme; vars. 120)
+//   colors? { note:'var(--lab-c-osc2)', sel:'var(--fg)' } (CSS rengi/var())
+//   readOnly? (düzenleme kapalı: dinleme, gezinme, çal, gam görünümü kalır) · cls? · mode? 'dialog'|'inline'
+//   passKeys? (vars. false) — pencere modunda tuş olayları (keydown/keyup/keypress) pencereden dışarı
+//       kabarcıklanmaz; arkadaki modülün window kısayolları (synth klavyesi, Boşluk) tetiklenmez. true → geçer.
+//   onChange(notes, meta)  YALNIZ nota düzenlemelerinden sonra (bırakınca / tuşta; sürükleme sırasında
+//       değil): meta.reason = add | delete | move | resize | velocity | quantize | duplicate | transpose |
+//       clear | length | undo | redo. notes = getNotes() kopyası (sel alanı yok).
+//   onAction(reason, meta)  her eylemde (yukarıdakiler + open | close | play | stop | select | mode |
+//       grid | scale | fold | zoom) — görev/öğretici kancası. meta = { reason, count, selected, length,
+//       grid, triplet, mode, scale:{ root, type, on, fold } }.
+//   onAudition(midi, vel, durSec)  tuş/nota önizlemesi + dahili oynatıcı (ses motoru senin).
+//   onPlayToggle(playing)  ÇAL düğmesi / Boşluk. Verilirse çalmayı sen yaparsın; getPlayhead() → adım
+//       (kesirli, 0..length) ya da null → çalma çizgisi rAF ile izlenir (yalnız pencere açıkken). Verilmezse
+//       dahili önizleme: bpm'de döngü, notalar onAudition(p, v, sn) ile tetiklenir (kaba; rAF zamanlaması).
+//   onClose()  pencere kapanınca (Esc, KAPAT, lpTeardown)
+// }
+// Döndürür { el, overlay, open(opener?), close(), isOpen(), setNotes(notes), getNotes(), setScale(sc),
+//            getScale(), setLength(steps), getLength(), setRange([lo, hi]), getRange(), setPlayhead(step|null),
+//            setPlaying(bool), setTitle(t), clearHistory(), relabel(), destroy() }
+//   el = section.lp-win.lpr (dialog: role=dialog aria-modal, aria-labelledby = gizli "MIDI nota düzenleyici"
+//     + başlık h2 → "MIDI nota düzenleyici Lead · Klip 1, iletişim kutusu").
+//   setRange: taban aralığı değiştirir, satırları yeniden kurar (klipteki notalar yine kapsanır); getRange →
+//     görünen [lo, hi].
+//   open(opener?): overlay body'ye eklenir, sayfa kaydırması kilitlenir, odak ızgaraya; kapanınca odak
+//     opener'a (vars. açılıştaki document.activeElement) döner. lpOnTeardown ile gezinmede kendiliğinden kapanır.
+//   setNotes: aynı içerikse bir şey yapmaz, değilse geri alınabilir değişiklik (onChange ÇAĞRILMAZ —
+//     onChange'i setNotes'a geri yansıtma). Yeni klip yüklüyorsan ardından clearHistory().
+//   setPlaying(b): dış taşıma durumunu düğmeye yansıtır (onPlayToggle çağrılmaz). close(), çalmayı
+//     pencere başlattıysa durdurur (onPlayToggle(false)).
+// Kontroller: başlık çubuğu ↶ ↷ · KAPAT; araç çubuğu ÇAL · DÖNGÜ 1/2/4 ölçü · POZİSYON (ölçü.vuruş.16'lık)
+//   · ÇİZ/SEÇ (B) · IZGARA 1/4 1/8 1/16 1/32 + triyole · KUANTİZE (güç %) · GAM (aç/kapa, kök, tür) ·
+//   KATLA · TRANSPOZE −12 −1 +1 +12 · GAM İÇİ ∨ ∧ · ÇOĞALT · SİL (seçim yoksa pasif) · TEMİZLE · ZOOM − +.
+//   ≤600 px: tek kayan şerit, sıra ÇAL · ÇİZ/SEÇ · ÇOĞALT/SİL/TEMİZLE · …; sağda yapışkan ileri düğmesi.
+// Çakışma (Ableton gibi): taşınan / boyu değişen / çizilen / çoğaltılan / transpoze edilen nota aynı perdede
+//   başka notanın başlangıcını örterse o nota silinir, içeri uzanan önceki nota kısaltılır (aynı geri alma
+//   adımı). GAM oturtması tık/Enter'ı var olan notaya düşürürse ikinci nota eklenmez: o nota seçilir
+//   (fare: sürükleme onu taşır) / imleç ona gider.
+// Fare: Çiz modunda boş hücreye tık = nota (ızgara boyu; sürükle uzat), notayı sürükle = taşı (ızgaraya
+//   oturur, Alt/Option serbest), sağ kenarı sürükle = boy, çift tık = sil (Seç modunda boşa çift tık = ekle).
+//   Seç modunda boş alanda sürükle = seçim çerçevesi (Shift ekler), Shift+tık = seçime ekle/çıkar.
+//   Velocity şeridi: çubuğu sürükle (Shift ince, göreli); seçiliyse bütün seçim birlikte değişir.
+//   Tuş sütunu: tık / sürükle = dinle.
+// Dokunma: dokun = nota ekle (Seç modunda seçimi kaldır), notaya dokun = seç, sürükle = taşı / kenardan
+//   boy, basılı tut (0,5 sn) = sil, boş alanda sürükle = kaydır (çift dokunuş silmez). Dokunmatikte satır
+//   44 px (zoom 6), araç çubuğu düğmelerinin isabet alanı 44 px.
+// Görünüm: nota dolgusu velocity'ye göre opak (1–63 soluk, 64–127 dolgun; seçili nota --lpr-sc, tam opak),
+//   GAM açıkken gam içi satırlar açık, dışı koyu, kök satırı altın; tuşlarda gam içi işaret (kök ember).
+// Klavye (ızgara odaklıyken; role=application): oklar imleci taşır (Shift: oktav / ölçü), Enter imleçte
+//   nota ekler/siler, Shift+Enter imleçteki notayı seçer, Boşluk çal/durdur, Home/End. Seçim varken
+//   ↑↓ notaları taşır (GAM açıksa gam içinde, Shift oktav), ←→ ızgara kadar (Shift ölçü), Alt+↑↓
+//   velocity ±8 (Shift ±1), Alt+←→ boy ± ızgara (Shift ölçü; seçim yoksa imleçteki nota), Esc seçimi kaldırır. Pencerenin her yerinde: Ctrl/⌘+A hepsini seç, Ctrl/⌘+D
+//   çoğalt (seçim yoksa klibi iki katına), Ctrl/⌘+U kuantize, Ctrl/⌘+Z / Shift+Z / Y geri al–yinele,
+//   Delete/Backspace sil, B çiz/seç, + / − zoom, Tab odak tuzağı, Esc kapat. İmleç değişince aria-live
+//   okur: "C3 · adım 5 · uzunluk 1/16".
+// Performans: tek SVG ızgara; sürüklemede yalnız sürüklenen notaların öğeleri güncellenir; çalma çizgisi
+//   transform ile; dinleyiciler lpDrag (sürükleme süresince) + açık pencere ömrü; rAF yalnız çalarken.
+// CSS kancaları: .lpr-ov · .lpr (.lpr--inline) · .lpr-title · .lpr-tb / -row / -grp / -gl · .lpr-sel ·
+//   .lpr-scroll / -cv / -corner / -ruler / -keys / -gw[data-mode][data-hover] / -vcorner / -vel / -ph ·
+//   SVG: .lpr-r(--b|--in|--out) .lpr-r-root .lpr-hl(--oct) .lpr-vl(--beat|--bar) .lpr-n(.is-sel .is-out)
+//   .lpr-nt .lpr-cur .lpr-marq .lpr-k(--b .is-on) .lpr-kl .lpr-kin(--root) .lpr-rb .lpr-rtx .lpr-rt
+//   .lpr-loop .lpr-vb(.is-sel) · değişkenler --lp-c (nota rengi), --lpr-sc (seçili), --lpr-kw/--lpr-rh/
+//   --lpr-vh (sütun/cetvel/şerit boyu, çalışma anı), --lpr-h (inline yükseklik).
+//
+// Örnek (Arrangement synth izi):
+//   const roll = makePianoRoll({ title: 'Lead · Klip 1', notes: clip.notes, length: clip.len,
+//       scale: { root: 9, type: 'minor', on: true }, colors: { note: 'var(--lab-lead)' },
+//       onChange: (notes, m) => { clip.notes = notes; clip.len = m.length; },
+//       onAudition: (p, v, d) => arrPreview(p, v, d),
+//       onPlayToggle: on => on ? arrPlayClip(clip) : arrStop(), getPlayhead: () => arrClipStep(),
+//       onAction: (r, m) => { if (r === 'quantize') markTaskDone(4, 11); } });
+//   clipBtn.addEventListener('click', () => roll.open(clipBtn));
+// ═══════════════════════════════════════════════════════════════════
+Object.assign(LAB_TXT, {
+    lpr_title_def:  [`MIDI klip`, `MIDI clip`],
+    lpr_editor:     [`MIDI nota düzenleyici`, `MIDI note editor`],
+    lpr_close:      [`Kapat`, `Close`],
+    lpr_close_t:    [`Pencereyi kapat (Esc)`, `Close the window (Esc)`],
+    lpr_play:       [`Klibi çal`, `Play clip`],
+    lpr_stop:       [`Durdur`, `Stop`],
+    lpr_play_t:     [`Klibi döngüde çal / durdur (Boşluk)`, `Loop the clip / stop (Space)`],
+    lpr_loop:       [`DÖNGÜ`, `LOOP`],
+    lpr_loop_aria:  [`Klip uzunluğu (ölçü)`, `Clip length (bars)`],
+    lpr_bars:       [`{n} ölçü`, `{n} bar`],
+    lpr_pos:        [`POZİSYON`, `POSITION`],
+    lpr_mode_aria:  [`Düzenleme modu (B)`, `Edit mode (B)`],
+    lpr_draw:       [`ÇİZ`, `DRAW`],
+    lpr_select:     [`SEÇ`, `SELECT`],
+    lpr_draw_t:     [`Çiz modu: tıkla nota ekle, sürükle uzat (B)`, `Draw mode: click adds a note, drag to extend (B)`],
+    lpr_select_t:   [`Seç modu: çerçeveyle seç, Shift ile ekle (B)`, `Select mode: marquee select, Shift adds (B)`],
+    lpr_grid:       [`IZGARA`, `GRID`],
+    lpr_grid_aria:  [`Izgara çözünürlüğü`, `Grid resolution`],
+    lpr_trip:       [`Triyole ızgara (üçleme)`, `Triplet grid`],
+    lpr_q:          [`KUANTİZE`, `QUANTIZE`],
+    lpr_q_t:        [`Seçili notaları (seçim yoksa hepsini) ızgaraya çek · Ctrl/⌘+U`, `Pull the selected notes (or all) to the grid · Ctrl/⌘+U`],
+    lpr_q_str:      [`Kuantize gücü`, `Quantize strength`],
+    lpr_scale:      [`GAM`, `SCALE`],
+    lpr_scale_t:    [`Gam modu: gam içi satırları vurgula, yeni notaları gama oturt, ↑↓ gam içinde taşı`, `Scale mode: highlight in-key rows, snap new notes to the scale, ↑↓ move within the scale`],
+    lpr_root:       [`Kök nota (ton)`, `Root note (key)`],
+    lpr_type:       [`Gam türü`, `Scale type`],
+    lpr_fold:       [`KATLA`, `FOLD`],
+    lpr_fold_t:     [`Katla: GAM açıksa yalnız gam içi satırlar, kapalıysa yalnız nota olan satırlar`, `Fold: with SCALE on only in-key rows, otherwise only rows that contain notes`],
+    lpr_tr:         [`TRANSPOZE`, `TRANSPOSE`],
+    lpr_oct_dn:     [`Bir oktav aşağı (−12 yarım ses)`, `One octave down (−12 semitones)`],
+    lpr_st_dn:      [`Yarım ses aşağı`, `One semitone down`],
+    lpr_st_up:      [`Yarım ses yukarı`, `One semitone up`],
+    lpr_oct_up:     [`Bir oktav yukarı (+12 yarım ses)`, `One octave up (+12 semitones)`],
+    lpr_deg:        [`GAM İÇİ`, `IN KEY`],
+    lpr_deg_dn:     [`Gam içinde bir derece aşağı`, `One scale degree down`],
+    lpr_deg_up:     [`Gam içinde bir derece yukarı`, `One scale degree up`],
+    lpr_dup:        [`ÇOĞALT`, `DUPLICATE`],
+    lpr_dup_t:      [`Seçimi çoğalt; seçim yoksa klibi iki katına çıkar · Ctrl/⌘+D`, `Duplicate the selection; with nothing selected, double the clip · Ctrl/⌘+D`],
+    lpr_del:        [`SİL`, `DELETE`],
+    lpr_del_t:      [`Seçili notaları sil · Delete`, `Delete the selected notes · Delete`],
+    lpr_tb_more:    [`Araç çubuğunda ileri kaydır`, `Scroll the toolbar forward`],
+    lpr_tb_back:    [`Araç çubuğunun başına dön`, `Back to the start of the toolbar`],
+    lpr_clear:      [`TEMİZLE`, `CLEAR`],
+    lpr_clear_t:    [`Klipteki bütün notaları sil (geri alınabilir)`, `Delete every note in the clip (undoable)`],
+    lpr_zoom:       [`ZOOM`, `ZOOM`],
+    lpr_zoom_in:    [`Yakınlaştır (+)`, `Zoom in (+)`],
+    lpr_zoom_out:   [`Uzaklaştır (−)`, `Zoom out (−)`],
+    lpr_keys_t:     [`Tuşa bas: notayı dinle · C3 = MIDI 60 (Ableton adlandırması)`, `Press a key to hear it · C3 = MIDI 60 (Ableton naming)`],
+    lpr_grid_lbl:   [`Nota ızgarası`, `Note grid`],
+    lpr_grid_help:  [`Oklar imleci taşır, Enter imleçte nota ekler ya da siler, Shift+Enter notayı seçer, Boşluk çalar. Seçim varken oklar notaları taşır, Alt+yukarı/aşağı velocity değiştirir, Alt+sol/sağ notayı kısaltır/uzatır (seçim yoksa imleçteki notayı; Shift ile bir ölçü), Esc seçimi kaldırır. Ctrl+D çoğalt, Ctrl+U kuantize, Delete sil, B çiz/seç modu.`,
+                     `Arrows move the cursor, Enter adds or removes a note at the cursor, Shift+Enter selects it, Space plays. With a selection the arrows move the notes, Alt+Up/Down changes velocity, Alt+Left/Right shortens/lengthens the note (the note at the cursor when nothing is selected; with Shift by one bar), Esc clears the selection. Ctrl+D duplicate, Ctrl+U quantize, Delete removes, B toggles draw/select.`],
+    lpr_vel:        [`VEL`, `VEL`],
+    lpr_vel_t:      [`Velocity: çubuğu sürükle (Shift ince ayar)`, `Velocity: drag a bar (Shift for fine)`],
+    lpr_off:        [`KAPALI`, `OFF`],
+    lpr_st_cur:     [`İMLEÇ`, `CURSOR`],
+    lpr_st_notes:   [`NOTA`, `NOTES`],
+    lpr_st_sel:     [`SEÇİLİ`, `SELECTED`],
+    lpr_st_key:     [`TON`, `KEY`],
+    lpr_hint:       [`B çiz/seç · Alt serbest · Shift ince · Alt+←/→ boy · Ctrl/⌘+D çoğalt · Ctrl/⌘+U kuantize · Del sil`, `B draw/select · Alt free · Shift fine · Alt+←/→ length · Ctrl/⌘+D duplicate · Ctrl/⌘+U quantize · Del delete`],
+    lpr_hint_touch: [`Dokun: ekle · notaya dokun: seç, SİL ile sil · sürükle: taşı · basılı tut: sil · boşlukta sürükle: kaydır`, `Tap: add · tap a note: select, DELETE removes it · drag: move · hold: delete · drag empty space: scroll`],
+    lpr_a_cursor:   [`{note} · adım {step} · uzunluk {len}`, `{note} · step {step} · length {len}`],
+    lpr_a_note:     [`nota var, velocity {v}`, `note here, velocity {v}`],
+    lpr_a_out:      [`gam dışı`, `out of key`],
+    lpr_a_add:      [`Nota eklendi: {note} · adım {step}`, `Note added: {note} · step {step}`],
+    lpr_a_del:      [`{n} nota silindi`, `{n} note(s) deleted`],
+    lpr_a_sel:      [`{n} nota seçili`, `{n} note(s) selected`],
+    lpr_a_desel:    [`Seçim kaldırıldı`, `Selection cleared`],
+    lpr_a_empty:    [`İmleçte nota yok`, `No note at the cursor`],
+    lpr_a_exists:   [`Gamda burada zaten nota var: {note} · adım {step}`, `A note is already here in the scale: {note} · step {step}`],
+    lpr_a_move:     [`{note} · adım {step}`, `{note} · step {step}`],
+    lpr_a_len:      [`Uzunluk {len}`, `Length {len}`],
+    lpr_a_tr:       [`{n} nota taşındı · {note}`, `{n} note(s) moved · {note}`],
+    lpr_a_range:    [`Aralığın dışına çıkıyor — değişiklik yapılmadı`, `Out of range — nothing changed`],
+    lpr_a_edge:     [`Klibin kenarı`, `Edge of the clip`],
+    lpr_a_q:        [`{n} nota kuantize edildi (%{pct})`, `{n} note(s) quantized ({pct}%)`],
+    lpr_a_dup:      [`{n} nota çoğaltıldı`, `{n} note(s) duplicated`],
+    lpr_a_dup_clip: [`Klip çoğaltıldı: {n} ölçü`, `Clip duplicated: {n} bars`],
+    lpr_a_dup_max:  [`Klip en fazla {n} ölçü olabilir`, `A clip can be at most {n} bars`],
+    lpr_a_dup_none: [`Çoğaltmak için yer yok`, `No room to duplicate`],
+    lpr_a_clear:    [`Klip temizlendi`, `Clip cleared`],
+    lpr_a_mode:     [`Mod: {m}`, `Mode: {m}`],
+    lpr_a_vel:      [`Velocity {v}`, `Velocity {v}`],
+    lpr_a_bars:     [`Klip uzunluğu {n} ölçü`, `Clip length {n} bars`],
+    lpr_a_outloop:  [`{n} nota döngü dışında`, `{n} note(s) outside the loop`],
+    lpr_a_play:     [`Çalıyor`, `Playing`],
+    lpr_a_stop:     [`Durdu`, `Stopped`],
+    lpr_a_undo:     [`Geri alındı`, `Undone`],
+    lpr_a_redo:     [`Yinelendi`, `Redone`],
+    lpr_a_zoom:     [`Yakınlık {z} / {n}`, `Zoom {z} / {n}`],
+    lpr_a_scale:    [`Gam: {s}`, `Scale: {s}`],
+    lpr_a_fold:     [`Katlama {s}`, `Fold {s}`],
+    lpr_on:         [`AÇIK`, `ON`],
+});
+
+// ── Gam kütüphanesi ─────────────────────────────────────────────────
+const LAB_SCALES = {
+    major:         { name: [`Majör (İyonyen)`, `Major (Ionian)`],               iv: [0, 2, 4, 5, 7, 9, 11] },
+    minor:         { name: [`Doğal minör (Eolyen)`, `Natural Minor (Aeolian)`], iv: [0, 2, 3, 5, 7, 8, 10] },
+    harmonicMinor: { name: [`Armonik minör`, `Harmonic Minor`],                 iv: [0, 2, 3, 5, 7, 8, 11] },
+    melodicMinor:  { name: [`Melodik minör`, `Melodic Minor`],                  iv: [0, 2, 3, 5, 7, 9, 11] },
+    dorian:        { name: [`Doryen`, `Dorian`],                                iv: [0, 2, 3, 5, 7, 9, 10] },
+    phrygian:      { name: [`Frigyen`, `Phrygian`],                             iv: [0, 1, 3, 5, 7, 8, 10] },
+    lydian:        { name: [`Lidyen`, `Lydian`],                                iv: [0, 2, 4, 6, 7, 9, 11] },
+    mixolydian:    { name: [`Miksolidyen`, `Mixolydian`],                       iv: [0, 2, 4, 5, 7, 9, 10] },
+    locrian:       { name: [`Lokriyen`, `Locrian`],                             iv: [0, 1, 3, 5, 6, 8, 10] },
+    majorPent:     { name: [`Majör pentatonik`, `Major Pentatonic`],            iv: [0, 2, 4, 7, 9] },
+    minorPent:     { name: [`Minör pentatonik`, `Minor Pentatonic`],            iv: [0, 3, 5, 7, 10] },
+    blues:         { name: [`Blues`, `Blues`],                                  iv: [0, 3, 5, 6, 7, 10] },
+    chromatic:     { name: [`Kromatik`, `Chromatic`],                           iv: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] },
+};
+const LAB_SCALE_ORDER = Object.keys(LAB_SCALES);
+const LAB_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const LAB_NOTE_NAMES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+const labPc = n => ((Math.round(n) % 12) + 12) % 12;
+const labScaleIv = type => (LAB_SCALES[type] || LAB_SCALES.major).iv;
+function scaleName(type) { return (LAB_SCALES[type] || LAB_SCALES.major).name[labLang() === 'en' ? 1 : 0]; }
+function noteName(pc, o) {
+    o = o || {};
+    const n = (o.flat ? LAB_NOTE_NAMES_FLAT : LAB_NOTE_NAMES)[labPc(pc)];
+    return o.unicode && n.length > 1 ? n.charAt(0) + (n.charAt(1) === '#' ? '♯' : '♭') : n;
+}
+function midiName(midi, o) { const m = Math.round(midi); return noteName(m, o) + (Math.floor(m / 12) - 2); }
+function midiToHz(midi, a4) { return (a4 || 440) * Math.pow(2, (midi - 69) / 12); }
+function hzToMidi(hz, a4) { return 69 + 12 * Math.log2(hz / (a4 || 440)); }
+function scalePitchClasses(root, type) { return labScaleIv(type).map(i => labPc(root + i)); }
+function inScale(midi, root, type) { return labScaleIv(type).indexOf(labPc(midi - root)) >= 0; }
+function snapToScale(midi, root, type, dir) {
+    const m = Math.round(midi);
+    if (inScale(m, root, type)) return m;
+    for (let d = 1; d < 12; d++) {
+        if (dir > 0) { if (inScale(m + d, root, type)) return m + d; }
+        else if (dir < 0) { if (inScale(m - d, root, type)) return m - d; }
+        else { if (inScale(m - d, root, type)) return m - d; if (inScale(m + d, root, type)) return m + d; }
+    }
+    return m;
+}
+function transposeInScale(midi, steps, root, type) {
+    let m = Math.round(midi), n = Math.abs(Math.trunc(steps || 0));
+    if (!n) return m;
+    const dir = steps > 0 ? 1 : -1;
+    if (!inScale(m, root, type)) { m = snapToScale(m, root, type, dir); n--; }
+    while (n-- > 0) { do { m += dir; } while (!inScale(m, root, type)); }
+    return m;
+}
+function degreeOf(midi, root, type) { return labScaleIv(type).indexOf(labPc(midi - root)) + 1; }
+function chordOnDegree(root, type, degree, size, base) {
+    const iv = labScaleIv(type), n = iv.length, k = Math.max(1, Math.round(size || 3));
+    const d0 = Math.max(1, Math.round(degree || 1)) - 1;
+    const b = base != null ? Math.round(base) : 60;
+    const r = b - labPc(b) + labPc(root);
+    const out = [];
+    for (let i = 0; i < k; i++) { const di = d0 + 2 * i; out.push(r + iv[di % n] + 12 * Math.floor(di / n)); }
+    return out;
+}
+const LAB_CHORD_Q = { '0,4,7': '', '0,3,7': 'm', '0,3,6': 'dim', '0,4,8': 'aug', '0,5,7': 'sus4', '0,2,7': 'sus2',
+    '0,4,7,11': 'maj7', '0,3,7,10': 'm7', '0,4,7,10': '7', '0,3,6,10': 'm7b5', '0,3,6,9': 'dim7', '0,3,7,11': 'mMaj7',
+    '0,4,8,11': 'maj7#5', '0,4,8,10': 'aug7', '0,5,7,10': '7sus4' };
+function chordSymbol(midis, o) {
+    if (!midis || !midis.length) return '';
+    const s = midis.map(Math.round).sort((a, b) => a - b), r = labPc(s[0]);
+    const key = Array.from(new Set(s.map(m => labPc(m - r)))).sort((a, b) => a - b).join(',');
+    const q = LAB_CHORD_Q[key];
+    return noteName(r, o) + (q != null ? q : '?');
+}
+
+// ── makePianoRoll ────────────────────────────────────────────────────
+const LPR_GRIDS = [['1/4', 4], ['1/8', 2], ['1/16', 1], ['1/32', 0.5]];
+const LPR_ZOOM = [[10, 12], [13, 16], [16, 22], [20, 28], [26, 36], [34, 44], [44, 52]];   // [satır px, 1/16 px]
+const LPR_ZFIT = [1, 1, 1, 1, 1.25, 1.5, 2];   // yatay: klip en az pencereyi doldurur, zoom 4+ bunun katları
+const LPR_BAR = 16, LPR_EPS = 1e-6;
+const LPR_BLACK = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
+const lprR = v => Math.round(v * 10000) / 10000;
+const lprNum = v => String(Math.round(v * 100) / 100);
+// Velocity → nota dolgu opaklığı. İki bant (1–63 → .30–.50, 64–127 → .65–1): aradaki boşluk, nota adının
+// koyu zeminde açık / açık zeminde koyu yazıyla her velocity'de ≥4.5:1 okunmasını sağlar (.50–.65 arası
+// altın dolguda ne açık ne koyu yazı 4.5:1'i tutar). Seçili nota tam opak (--lpr-sc) + koyu yazı.
+const LPR_OP_DARK = 0.6;
+const lprOp = v => v < 64 ? 0.3 + 0.2 * (v - 1) / 62 : 0.65 + 0.35 * (v - 64) / 63;
+const LPR_IC = {
+    x:    '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    pen:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-5L16 4l4 4L9 19z"/><path d="M13.5 6.5l4 4"/></svg>',
+    ptr:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3l12 9-5.5 1.2L10 19z"/></svg>',
+    zin:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8M7.5 10.5h6M10.5 7.5v6"/></svg>',
+    zout: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8M7.5 10.5h6"/></svg>',
+    up:   '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+    right:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
+    down: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+};
+
+function makePianoRoll(opts) {
+    const o = opts || {};
+    const inline = o.mode === 'inline';
+    const ro = !!o.readOnly;
+    // Görünen perde aralığı: taban (opts.range / setRange) ∪ klipteki notalar. Aralık dışındaki notalar
+    // KIRPILMAZ (veri bozulmasın) — aralık onları kapsayacak kadar genişler (widenRange, yalnız genişler).
+    let baseLo = 36, baseHi = 96;
+    const parseRange = r => {
+        if (!Array.isArray(r) || r.length !== 2) return false;
+        const a = r.map(x => lpClamp(Math.round(+x || 0), 0, 127));
+        baseLo = Math.min(a[0], a[1]); baseHi = Math.max(a[0], a[1]);
+        return true;
+    };
+    parseRange(o.range);
+    let LO = baseLo, HI = baseHi;
+    const maxLen = lpClamp(Math.round(o.maxLength || 64), 1, 256);
+    const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const KW = coarse ? 60 : 52, RH = coarse ? 28 : 24, VH = coarse ? 76 : 60;
+    const S = {
+        notes: [], len: lpClamp(Math.round(o.length || 16), 1, maxLen),
+        grid: LPR_GRIDS.some(g => g[0] === o.grid) ? o.grid : '1/16', trip: !!o.triplet,
+        mode: 'draw', qStr: 1, flat: o.accidentals === 'flat',
+        scale: { root: 0, type: 'major', on: false, fold: false },
+        zoom: o.zoom != null ? lpClamp(Math.round(o.zoom), 0, LPR_ZOOM.length - 1) : (coarse ? 6 : 3),
+        cur: { p: lpClamp(60, LO, HI), s: 0 }, playing: false, own: false, title: o.title || '',
+    };
+    mergeScale(o.scale);
+    S.notes = normNotes(o.notes);
+    widenRange(S.notes);
+
+    // Görünüm durumu (build/renderAll yeniden kurar)
+    let rh = 20, sw = 28, rows = [], rowOf = new Map();
+    const U = {};                       // arayüz öğeleri
+    let built = false, builtLang = '', isOpen = false, destroyed = false;
+    let opener = null, unreg = null, prevOverflow = '', active = null, keyDrag = null, lpTimer = 0;
+    let raf = 0, pl = null, liveFlip = false, histReason = 'undo', rsz = null, lastPtr = '';
+
+    const el = mk('section', 'lp-win lpr' + (inline ? ' lpr--inline' : '') + (o.cls ? ' ' + o.cls : ''));
+    let ov = null;
+    if (!inline) {
+        ov = mk('div', 'lpr-ov'); ov.hidden = true; ov.append(el);
+        el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+        // Modal: tuş olayları arkadaki modülün pencere kısayollarına (synth klavyesi, Boşluk = taşıma…)
+        // SIZMAZ. Hedef aşamasında (dlgKey'den sonra) kabarcıklanma durdurulur; yakalama aşamasındaki
+        // dinleyicilere dokunulmaz. opts.passKeys:true → modül arkada birlikte çalabilsin diye geçirir.
+        if (!o.passKeys) ['keydown', 'keyup', 'keypress'].forEach(t => el.addEventListener(t, e => e.stopPropagation()));
+        // Arka plana tıklamak odağı body'ye kaçırmasın (tuşlar yine pencereye gelsin)
+        ov.addEventListener('mousedown', e => { if (e.target === ov) e.preventDefault(); });
+    }
+    if (o.colors && o.colors.note) el.style.setProperty('--lp-c', o.colors.note);
+    if (o.colors && o.colors.sel) el.style.setProperty('--lpr-sc', o.colors.sel);
+
+    const hist = makeHistory({
+        max: 60,
+        get: () => ({ n: S.notes.map(n => [n.p, n.s, n.l, n.v]), len: S.len }),
+        apply: snap => {
+            S.notes = snap.n.map(a => ({ p: a[0], s: a[1], l: a[2], v: a[3], sel: false }));
+            S.len = snap.len; widenRange(S.notes);
+            renderAll(); syncUi();
+            announce(L(histReason === 'redo' ? 'lpr_a_redo' : 'lpr_a_undo'));
+            emit(histReason);
+        },
+        onChange: syncHist,
+    });
+
+    // ── Veri yardımcıları ─────────────────────────────────────────
+    function mergeScale(sc) {
+        if (!sc) return;
+        if (sc.root != null && isFinite(sc.root)) S.scale.root = labPc(sc.root);
+        if (sc.type && LAB_SCALES[sc.type]) S.scale.type = sc.type;
+        if (sc.on != null) S.scale.on = !!sc.on;
+        if (sc.fold != null) S.scale.fold = !!sc.fold;
+    }
+    // Perde yalnız MIDI alanına (0..127) sıkıştırılır; görünen aralığa DEĞİL (bkz. widenRange)
+    function normNotes(list) {
+        return (Array.isArray(list) ? list : []).filter(n => n && isFinite(n.p) && isFinite(n.s)).map(n => ({
+            p: lpClamp(Math.round(n.p), 0, 127), s: lprR(Math.max(0, +n.s)),
+            l: lprR(Math.max(0.125, isFinite(n.l) ? +n.l : 1)), v: lpClamp(Math.round(isFinite(n.v) ? +n.v : 100), 1, 127), sel: !!n.sel,
+        }));
+    }
+    // Aralığı gelen notaları kapsayacak kadar genişletir (daraltmaz; daraltma yalnız setRange ile)
+    function widenRange(list) {
+        list.forEach(n => { if (n.p < LO) LO = n.p; if (n.p > HI) HI = n.p; });
+    }
+    const plain = n => ({ p: n.p, s: n.s, l: n.l, v: n.v });
+    function getNotes() { return S.notes.slice().sort((a, b) => a.s - b.s || a.p - b.p).map(plain); }
+    // Izgara adımı (1/16 cinsinden, TAM değer — triyolede 2/3; konumlar lprR ile yuvarlanır, katlar kaymaz)
+    const gs = () => (LPR_GRIDS.find(g => g[0] === S.grid) || LPR_GRIDS[2])[1] * (S.trip ? 2 / 3 : 1);
+    const gridLbl = () => S.grid + (S.trip ? 'T' : '');
+    const nm = p => midiName(p, { flat: S.flat });
+    const pos = s => `${Math.floor(s / 16) + 1}.${Math.floor((s % 16) / 4) + 1}.${lprNum((s % 4) + 1)}`;
+    const selected = () => S.notes.filter(n => n.sel);
+    const targets = () => { const s = selected(); return s.length ? s : S.notes.slice(); };
+    const isVis = n => rowOf.has(n.p) && n.s < S.len - LPR_EPS;
+    const noteAt = (p, s) => { for (let i = S.notes.length - 1; i >= 0; i--) { const n = S.notes[i]; if (n.p === p && s >= n.s - LPR_EPS && s < n.s + n.l - LPR_EPS) return n; } return null; };
+    const snapIn = p => {                                     // gam açıksa gama oturt (aralık içinde kalarak)
+        if (!S.scale.on) return p;
+        const { root, type } = S.scale;
+        let q = snapToScale(p, root, type, 0);
+        if (q < LO || q > HI) q = snapToScale(p, root, type, q < LO ? 1 : -1);
+        return lpClamp(q, LO, HI);
+    };
+    function meta(reason) {
+        return { reason, count: S.notes.length, selected: selected().length, length: S.len, grid: S.grid, triplet: S.trip, mode: S.mode, scale: Object.assign({}, S.scale) };
+    }
+    const EDITS = { add: 1, delete: 1, move: 1, resize: 1, velocity: 1, quantize: 1, duplicate: 1, transpose: 1, clear: 1, length: 1, undo: 1, redo: 1 };
+    function emit(reason) {
+        updateStatus();
+        const m = meta(reason);
+        if (EDITS[reason] && typeof o.onChange === 'function') { try { o.onChange(getNotes(), m); } catch (e) { console.warn('[lab] roll onChange:', e); } }
+        if (typeof o.onAction === 'function') { try { o.onAction(reason, m); } catch (e) { console.warn('[lab] roll onAction:', e); } }
+    }
+    function announce(t) { if (!U.live) return; liveFlip = !liveFlip; U.live.textContent = t + (liveFlip ? ' ' : ''); }
+    function audition(p, v, d) {
+        if (typeof o.onAudition !== 'function') return;
+        try { o.onAudition(p, v || 100, d || 0.3); } catch (e) { console.warn('[lab] roll audition:', e); }
+    }
+
+    // ── Kurulum (dil değişiminde yeniden kurulur; durum S'de kalır) ──
+    function toolGroup(row, caption, items) {
+        const g = mk('div', 'lpr-grp');
+        if (caption) { const c = mk('span', 'lpr-gl'); c.textContent = caption; c.setAttribute('aria-hidden', 'true'); g.append(c); }
+        items.forEach(x => g.append(x && x.el ? x.el : x));
+        row.append(g);
+        return g;
+    }
+    function makeSelect(label, options, value, onPick) {
+        const s = mk('select', 'lpr-sel');
+        s.setAttribute('aria-label', label); s.title = label;
+        options.forEach(([v, t]) => { const op = mk('option'); op.value = String(v); op.textContent = t; s.append(op); });
+        s.value = String(value);
+        s.addEventListener('change', () => onPick(s.value));
+        return s;
+    }
+    function build() {
+        builtLang = labLang();
+        const w = pluginWindow({ code: 'CLIP', num: 'MIDI', status: true, aria: L('lpr_editor') });
+        el.replaceChildren(...Array.from(w.root.childNodes));
+        const tid = lpId('lprT'), eid = lpId('lprE');
+        const title = mk('h2', 'lp-brand-sub lpr-title'); title.id = tid; title.textContent = S.title || L('lpr_title_def');
+        // Erişilebilir ad = "MIDI nota düzenleyici" + klip başlığı (yalnız başlık, ne penceresi olduğunu söylemez)
+        const ename = mk('span', 'sr-only'); ename.id = eid; ename.textContent = L('lpr_editor');
+        w.brand.querySelector('.lp-brand-txt').append(ename, title);
+        el.setAttribute('aria-labelledby', `${eid} ${tid}`);
+        U.title = title;
+        // Başlık çubuğu: ↶ ↷ · KAPAT
+        U.undo = lpBtn({ icon: 'undo', label: L('lp_undo'), title: `${L('lp_undo')} (Ctrl/⌘+Z)`, onClick: doUndo });
+        U.redo = lpBtn({ icon: 'redo', label: L('lp_redo'), title: `${L('lp_redo')} (Ctrl/⌘+Shift+Z)`, onClick: doRedo });
+        if (!ro) w.left.append(U.undo, U.redo);
+        if (!inline) w.right.append(lpBtn({ icon: LPR_IC.x, text: L('lpr_close'), title: L('lpr_close_t'), cls: 'lpr-close', onClick: () => close() }));
+
+        // Araç çubuğu (iki satır; telefonda tek yatay kayan şerit)
+        const tb = mk('div', 'lpr-tb');
+        const r1 = mk('div', 'lpr-row'), r2 = mk('div', 'lpr-row');
+        tb.append(r1, r2);
+        U.play = lpBtn({ icon: 'play', label: L('lpr_play'), title: L('lpr_play_t'), cls: 'lpr-play', onClick: togglePlay });
+        U.play.setAttribute('aria-pressed', 'false');
+        toolGroup(r1, null, [U.play]).classList.add('lpr-grp--play');
+        U.loop = makeSeg([16, 32, 64].filter(x => x <= maxLen).map(x => ({ value: x, label: String(x / 16), aria: Lf('lpr_bars', { n: x / 16 }) })), S.len, v => setLength(v, true), { size: 'md', label: L('lpr_loop_aria') });
+        if (!ro) toolGroup(r1, L('lpr_loop'), [U.loop]);
+        U.pos = makeReadout({ label: L('lpr_pos'), value: pos(0), variant: 'lcd' });
+        toolGroup(r1, null, [U.pos]);
+        U.mode = makeSeg([
+            { value: 'draw', html: `${LPR_IC.pen}<span>${L('lpr_draw')}</span>`, title: L('lpr_draw_t') },
+            { value: 'select', html: `${LPR_IC.ptr}<span>${L('lpr_select')}</span>`, title: L('lpr_select_t') },
+        ], S.mode, v => setMode(v), { size: 'md', label: L('lpr_mode_aria'), cls: 'lpr-mode' });
+        if (!ro) toolGroup(r1, null, [U.mode]).classList.add('lpr-grp--mode');
+        U.grid = makeSeg(LPR_GRIDS.map(g => [g[0], g[0]]), S.grid, v => { S.grid = v; gridChanged(); }, { size: 'md', label: L('lpr_grid_aria') });
+        U.trip = makeToggle({ text: '3', label: L('lpr_trip'), title: L('lpr_trip'), on: S.trip, onToggle: b => { S.trip = b; gridChanged(); } });
+        toolGroup(r1, L('lpr_grid'), [U.grid, U.trip]);
+        U.qStr = makeSelect(L('lpr_q_str'), [[1, '100%'], [0.75, '75%'], [0.5, '50%'], [0.25, '25%']], S.qStr, v => { S.qStr = +v; });
+        U.q = lpBtn({ text: L('lpr_q'), title: L('lpr_q_t'), onClick: quantize });
+        if (!ro) toolGroup(r1, null, [U.qStr, U.q]);
+
+        U.scaleOn = makeToggle({ text: L('lpr_scale'), led: true, title: L('lpr_scale_t'), label: L('lpr_scale_t'), on: S.scale.on, onToggle: b => setScaleUi({ on: b }, 'scale') });
+        U.root = makeSelect(L('lpr_root'), LAB_NOTE_NAMES.map((x, i) => [i, noteName(i, { flat: S.flat })]), S.scale.root, v => setScaleUi({ root: +v }, 'scale'));
+        U.type = makeSelect(L('lpr_type'), LAB_SCALE_ORDER.map(k => [k, scaleName(k)]), S.scale.type, v => setScaleUi({ type: v }, 'scale'));
+        U.fold = makeToggle({ text: L('lpr_fold'), led: true, title: L('lpr_fold_t'), label: L('lpr_fold_t'), on: S.scale.fold, onToggle: b => setScaleUi({ fold: b }, 'fold') });
+        toolGroup(r2, null, [U.scaleOn, U.root, U.type, U.fold]);
+        if (!ro) {
+            toolGroup(r2, L('lpr_tr'), [
+                lpBtn({ text: '−12', label: L('lpr_oct_dn'), title: L('lpr_oct_dn'), onClick: () => transpose(-12, 'st') }),
+                lpBtn({ text: '−1', label: L('lpr_st_dn'), title: L('lpr_st_dn'), onClick: () => transpose(-1, 'st') }),
+                lpBtn({ text: '+1', label: L('lpr_st_up'), title: L('lpr_st_up'), onClick: () => transpose(1, 'st') }),
+                lpBtn({ text: '+12', label: L('lpr_oct_up'), title: L('lpr_oct_up'), onClick: () => transpose(12, 'st') }),
+            ]);
+            toolGroup(r2, L('lpr_deg'), [
+                lpBtn({ icon: LPR_IC.down, label: L('lpr_deg_dn'), title: L('lpr_deg_dn'), onClick: () => transpose(-1, 'deg') }),
+                lpBtn({ icon: LPR_IC.up, label: L('lpr_deg_up'), title: L('lpr_deg_up'), onClick: () => transpose(1, 'deg') }),
+            ]);
+            U.del = lpBtn({ text: L('lpr_del'), title: L('lpr_del_t'), onClick: deleteSel });
+            toolGroup(r2, null, [
+                lpBtn({ text: L('lpr_dup'), title: L('lpr_dup_t'), onClick: duplicate }),
+                U.del,
+                lpBtn({ text: L('lpr_clear'), title: L('lpr_clear_t'), variant: 'danger', onClick: clearAll }),
+            ]).classList.add('lpr-grp--edit');
+        }
+        U.zOut = lpBtn({ icon: LPR_IC.zout, label: L('lpr_zoom_out'), title: L('lpr_zoom_out'), onClick: () => zoomBy(-1) });
+        U.zIn = lpBtn({ icon: LPR_IC.zin, label: L('lpr_zoom_in'), title: L('lpr_zoom_in'), onClick: () => zoomBy(1) });
+        toolGroup(r2, L('lpr_zoom'), [U.zOut, U.zIn]);
+        // ≤600 px: araç çubuğu tek yatay kayan şerit → sağ kenarda yapışkan "devamı var" düğmesi (CSS'te
+        // yalnız telefonda görünür). Sona gelince yön değiştirip başa döndürür.
+        const more = lpBtn({ icon: LPR_IC.right, label: L('lpr_tb_more'), title: L('lpr_tb_more'), cls: 'lpr-tb-more',
+            onClick: () => {
+                const end = tb.scrollLeft + tb.clientWidth >= tb.scrollWidth - 4;
+                tb.scrollTo({ left: end ? 0 : tb.scrollLeft + Math.round(tb.clientWidth * 0.7), behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+            } });
+        const syncMore = () => {
+            const end = tb.scrollWidth > tb.clientWidth + 4 && tb.scrollLeft + tb.clientWidth >= tb.scrollWidth - 4;
+            more.classList.toggle('is-end', end);
+            const t = L(end ? 'lpr_tb_back' : 'lpr_tb_more');
+            more.setAttribute('aria-label', t); more.title = t;
+        };
+        const moreWrap = mk('div', 'lpr-tb-end'); moreWrap.append(more);
+        tb.append(moreWrap);
+        tb.addEventListener('scroll', syncMore, { passive: true });
+        U.syncMore = syncMore;
+        w.bar.after(tb);
+
+        // Izgara alanı: köşe · cetvel / tuşlar · notalar / VEL · velocity şeridi (tek kaydırıcı, yapışkan kenarlar)
+        w.body.classList.add('lpr-body');
+        const sc = mk('div', 'lpr-scroll'), cv = mk('div', 'lpr-cv');
+        const corner = mk('div', 'lpr-corner'); corner.textContent = 'C3·60'; corner.title = L('lpr_keys_t');
+        const ruler = mk('div', 'lpr-ruler'); ruler.setAttribute('aria-hidden', 'true');
+        const keys = mk('div', 'lpr-keys'); keys.title = L('lpr_keys_t'); keys.setAttribute('aria-hidden', 'true');
+        const gw = mk('div', 'lpr-gw'); gw.tabIndex = 0;
+        gw.setAttribute('role', 'application'); gw.setAttribute('aria-roledescription', L('lpr_grid_lbl'));
+        gw.setAttribute('aria-label', `${L('lpr_grid_lbl')} — ${S.title || L('lpr_title_def')}`);
+        const help = mk('p', 'sr-only'); help.id = lpId('lprH'); help.textContent = L('lpr_grid_help');
+        gw.setAttribute('aria-describedby', help.id);
+        gw.dataset.mode = S.mode;
+        const vcorner = mk('div', 'lpr-vcorner'); vcorner.textContent = L('lpr_vel'); vcorner.title = L('lpr_vel_t'); vcorner.setAttribute('aria-hidden', 'true');
+        const vel = mk('div', 'lpr-vel'); vel.title = L('lpr_vel_t'); vel.setAttribute('aria-hidden', 'true');
+        const ph = mk('div', 'lpr-ph'); ph.hidden = true; ph.setAttribute('aria-hidden', 'true');
+        cv.append(corner, ruler, keys, gw, vcorner, vel, ph);
+        sc.append(cv); w.body.append(sc, help);
+        cv.style.setProperty('--lpr-kw', KW + 'px'); cv.style.setProperty('--lpr-rh', RH + 'px'); cv.style.setProperty('--lpr-vh', VH + 'px');
+        U.sc = sc; U.cv = cv; U.gw = gw; U.ph = ph; U.keysEl = keys; U.velEl = vel;
+        U.ruler = lpSvg('svg', { class: 'lpr-svg' }, ruler);
+        U.keys = lpSvg('svg', { class: 'lpr-svg' }, keys);
+        U.grid_ = lpSvg('svg', { class: 'lpr-svg', 'aria-hidden': 'true' }, gw);
+        U.gBg = lpSvg('g', null, U.grid_); U.gLn = lpSvg('g', null, U.grid_); U.gN = lpSvg('g', null, U.grid_);
+        U.cur = lpSvg('rect', { class: 'lpr-cur', rx: 2 }, U.grid_);
+        U.marq = lpSvg('rect', { class: 'lpr-marq', display: 'none' }, U.grid_);
+        U.vel = lpSvg('svg', { class: 'lpr-svg' }, vel);
+        U.vBase = lpSvg('g', null, U.vel); U.gV = lpSvg('g', null, U.vel);
+
+        // Durum satırı
+        U.stCur = makeReadout({ label: L('lpr_st_cur'), value: '', variant: 'inline' });
+        U.stNotes = makeReadout({ label: L('lpr_st_notes'), value: '0', variant: 'inline' });
+        U.stSel = makeReadout({ label: L('lpr_st_sel'), value: '0', variant: 'inline' });
+        U.stKey = makeReadout({ label: L('lpr_st_key'), value: '', variant: 'inline' });
+        const hint = mk('span', 'lpr-hint'); hint.textContent = L(coarse ? 'lpr_hint_touch' : 'lpr_hint');
+        U.live = mk('span', 'sr-only'); U.live.setAttribute('aria-live', 'polite');
+        w.status.append(U.stCur.el, U.stNotes.el, U.stSel.el, U.stKey.el, hint, U.live);
+
+        // Olaylar (öğeler görünümle birlikte yaşar; pencere seviyesi dinleyici yalnız sürüklemede)
+        gw.addEventListener('pointerdown', gridDown);
+        gw.addEventListener('pointermove', gridHover);
+        gw.addEventListener('pointerleave', () => { delete gw.dataset.hover; });
+        gw.addEventListener('dblclick', gridDbl);
+        gw.addEventListener('keydown', gridKey);
+        gw.addEventListener('focus', () => updateCursor());
+        keys.addEventListener('pointerdown', keysDown);
+        vel.addEventListener('pointerdown', velDown);
+        el.onkeydown = dlgKey;
+        built = true;
+        syncHist(); syncUi();
+    }
+
+    // ── Çizim ───────────────────────────────────────────────────────
+    function computeRows() {
+        let list = [];
+        for (let p = HI; p >= LO; p--) list.push(p);
+        if (S.scale.fold) {
+            const has = new Set(S.notes.map(n => n.p));
+            const { root, type } = S.scale;
+            const f = S.scale.on ? list.filter(p => inScale(p, root, type) || has.has(p)) : list.filter(p => has.has(p));
+            if (f.length) list = f;
+        }
+        rows = list; rowOf = new Map(list.map((p, i) => [p, i]));
+    }
+    function renderAll() {
+        if (!built) return;
+        const z = LPR_ZOOM[S.zoom]; rh = z[0]; sw = Math.max(z[1], fitSw() * LPR_ZFIT[S.zoom]);
+        computeRows();
+        const W = S.len * sw, H = rows.length * rh;
+        [[U.grid_, W, H], [U.ruler, W, RH], [U.keys, KW, H], [U.vel, W, VH]].forEach(([s, w, h]) => { s.setAttribute('width', w); s.setAttribute('height', h); s.setAttribute('viewBox', `0 0 ${w} ${h}`); });
+        renderBg(); renderRuler(); renderKeys(); renderVelBase(); renderNotes();
+        if (!rowOf.has(S.cur.p)) S.cur.p = nearestRow(S.cur.p);
+        if (S.cur.s >= S.len) S.cur.s = lprR(Math.max(0, S.len - gs()));
+        updateCursor(); updateStatus();
+    }
+    // Klip en az görünür genişliği doldurur (Ableton gibi); zoom bunun üstüne yakınlaştırır
+    function fitSw() { const w = U.sc ? U.sc.clientWidth : 0; return w > KW ? Math.floor((w - KW - 1) / S.len * 100) / 100 : 0; }
+    // Pencere / görüntü alanı boyutu değişince sığdırma yeniden hesaplanır (yalnız açıkken gözlenir)
+    function watchSize(on) {
+        if (!on || !U.sc || typeof ResizeObserver !== 'function') { if (rsz) { rsz.disconnect(); rsz = null; } return; }
+        if (!rsz) rsz = new ResizeObserver(() => {
+            if (!built || destroyed) return;
+            U.syncMore();
+            if (Math.abs(Math.max(LPR_ZOOM[S.zoom][1], fitSw() * LPR_ZFIT[S.zoom]) - sw) > 0.5) renderAll();
+        });
+        rsz.disconnect(); rsz.observe(U.sc);
+    }
+    function vline(t, cls) { lpSvg('line', { x1: t * sw - 0.5, x2: t * sw - 0.5, y1: 0, y2: rows.length * rh, class: cls }, U.gLn); }
+    function renderBg() {
+        U.gBg.replaceChildren(); U.gLn.replaceChildren();
+        const W = S.len * sw, { root, type, on } = S.scale;
+        rows.forEach((p, i) => {
+            const pc = labPc(p);
+            const cls = on ? (inScale(p, root, type) ? 'lpr-r lpr-r--in' : 'lpr-r lpr-r--out') : (LPR_BLACK[pc] ? 'lpr-r lpr-r--b' : 'lpr-r');
+            lpSvg('rect', { x: 0, y: i * rh, width: W, height: rh, class: cls }, U.gBg);
+            if (on && pc === labPc(root)) lpSvg('rect', { x: 0, y: i * rh, width: W, height: rh, class: 'lpr-r-root' }, U.gBg);
+            const y = (i + 1) * rh - 0.5;
+            lpSvg('line', { x1: 0, x2: W, y1: y, y2: y, class: pc === 0 || S.scale.fold ? 'lpr-hl lpr-hl--oct' : 'lpr-hl' }, U.gLn);
+        });
+        const g = gs();
+        for (let k = 1; k * g < S.len - LPR_EPS; k++) {
+            const t = lprR(k * g);
+            if (Math.abs(t / 4 - Math.round(t / 4)) > 1e-4) vline(t, 'lpr-vl');
+        }
+        for (let t = 4; t < S.len; t += 4) vline(t, t % LPR_BAR === 0 ? 'lpr-vl lpr-vl--bar' : 'lpr-vl lpr-vl--beat');
+    }
+    function renderRuler() {
+        const R = U.ruler; R.replaceChildren();
+        lpSvg('rect', { x: 0, y: RH - 3, width: S.len * sw, height: 3, class: 'lpr-loop' }, R);
+        for (let t = 0; t < S.len; t += 4) {
+            const bar = t % LPR_BAR === 0, x = t * sw;
+            lpSvg('line', { x1: x + 0.5, x2: x + 0.5, y1: bar ? 2 : RH - 10, y2: RH - 3, class: bar ? 'lpr-rt lpr-rt--bar' : 'lpr-rt' }, R);
+            if (bar) { const tx = lpSvg('text', { x: x + 5, y: RH - 9, class: 'lpr-rb' }, R); tx.textContent = String(t / LPR_BAR + 1); }
+            else if (sw * 4 >= 40) { const tx = lpSvg('text', { x: x + 4, y: RH - 9, class: 'lpr-rtx' }, R); tx.textContent = `${Math.floor(t / LPR_BAR) + 1}.${(t % LPR_BAR) / 4 + 1}`; }
+        }
+    }
+    function renderKeys() {
+        const K = U.keys; K.replaceChildren(); U.keyRows = [];
+        const { root, type, on, fold } = S.scale;
+        const all = fold || rh >= 24, fs = Math.min(10, Math.max(8, rh - 5));
+        rows.forEach((p, i) => {
+            const pc = labPc(p), y = i * rh, blk = LPR_BLACK[pc];
+            const g = lpSvg('g', { class: 'lpr-k' + (blk ? ' lpr-k--b' : '') }, K);
+            lpSvg('rect', { x: 0, y, width: KW, height: rh, class: 'lpr-kw' }, g);
+            if (blk) lpSvg('rect', { x: 0, y, width: Math.round(KW * 0.5), height: rh, class: 'lpr-kb' }, g);
+            lpSvg('line', { x1: 0, x2: KW, y1: y + rh - 0.5, y2: y + rh - 0.5, class: 'lpr-ksep' }, g);
+            if (on && inScale(p, root, type)) lpSvg('rect', { x: KW - 5, y: y + 1, width: 5, height: rh - 2, class: 'lpr-kin' + (pc === root ? ' lpr-kin--root' : '') }, g);
+            if (pc === 0 || all || (on && pc === root && rh >= 13)) {
+                const t = lpSvg('text', { x: KW - 7, y: y + rh / 2 + fs * 0.36, class: 'lpr-kl', 'text-anchor': 'end', 'font-size': fs }, g);
+                t.textContent = nm(p);
+            }
+            U.keyRows.push(g);
+        });
+    }
+    function renderVelBase() {
+        U.vBase.replaceChildren();
+        const W = S.len * sw;
+        [0.5, 1].forEach(f => { const y = VH - 4 - f * (VH - 10) + 0.5; lpSvg('line', { x1: 0, x2: W, y1: y, y2: y, class: 'lpr-vg' }, U.vBase); });
+        for (let t = LPR_BAR; t < S.len; t += LPR_BAR) lpSvg('line', { x1: t * sw - 0.5, x2: t * sw - 0.5, y1: 0, y2: VH, class: 'lpr-vg' }, U.vBase);
+    }
+    function addNoteEl(n) {
+        n._r = lpSvg('rect', { rx: 2, class: 'lpr-n' }, U.gN);
+        n._t = null;
+        n._b = lpSvg('g', { class: 'lpr-vb' }, U.gV);
+        lpSvg('line', null, n._b); lpSvg('rect', { width: 7, height: 4, rx: 1 }, n._b);
+        updateNote(n);
+    }
+    function renderNotes() {
+        U.gN.replaceChildren(); U.gV.replaceChildren();
+        S.notes.forEach(addNoteEl);
+    }
+    function updateNote(n) {
+        if (!n._r) return;
+        const vis = isVis(n);
+        n._r.setAttribute('display', vis ? 'inline' : 'none'); n._b.setAttribute('display', vis ? 'inline' : 'none');
+        if (!vis) { if (n._t) n._t.setAttribute('display', 'none'); return; }
+        const ri = rowOf.get(n.p), x = n.s * sw, y = ri * rh + 1, h = Math.max(2, rh - 2);
+        const wd = Math.max(3, Math.min(n.l * sw, S.len * sw - x) - 1);
+        n._r.setAttribute('x', x + 0.5); n._r.setAttribute('y', y); n._r.setAttribute('width', wd); n._r.setAttribute('height', h);
+        const op = n.sel ? 1 : lprOp(n.v);
+        n._r.setAttribute('fill-opacity', op.toFixed(3));
+        n._r.setAttribute('class', 'lpr-n' + (n.sel ? ' is-sel' : '') + (S.scale.on && !inScale(n.p, S.scale.root, S.scale.type) ? ' is-out' : ''));
+        if (wd >= 30 && rh >= 13) {
+            if (!n._t) n._t = lpSvg('text', { class: 'lpr-nt' }, U.gN);
+            n._t.setAttribute('display', 'inline');
+            n._t.setAttribute('class', op < LPR_OP_DARK ? 'lpr-nt lpr-nt--lt' : 'lpr-nt');
+            n._t.setAttribute('x', x + 4); n._t.setAttribute('y', y + h / 2 + 3.2);
+            const t = nm(n.p); if (n._t.textContent !== t) n._t.textContent = t;
+        } else if (n._t) n._t.setAttribute('display', 'none');
+        const bx = x + 1.5, top = VH - 4 - ((n.v - 1) / 126) * (VH - 10);
+        const ln = n._b.firstChild, hd = n._b.lastChild;
+        ln.setAttribute('x1', bx); ln.setAttribute('x2', bx); ln.setAttribute('y1', VH); ln.setAttribute('y2', top);
+        hd.setAttribute('x', bx - 1.5); hd.setAttribute('y', top - 2);
+        n._b.setAttribute('class', 'lpr-vb' + (n.sel ? ' is-sel' : ''));
+    }
+    function nearestRow(p) {
+        let best = rows[0], d = 1e9;
+        rows.forEach(q => { const e = Math.abs(q - p); if (e < d) { d = e; best = q; } });
+        return best;
+    }
+    function updateCursor() {
+        if (!built || !U.cur) return;
+        const ri = rowOf.get(S.cur.p);
+        if (ri == null) { U.cur.setAttribute('display', 'none'); return; }
+        U.cur.setAttribute('display', 'inline');
+        U.cur.setAttribute('x', S.cur.s * sw + 1); U.cur.setAttribute('y', ri * rh + 1);
+        U.cur.setAttribute('width', Math.max(4, gs() * sw - 2)); U.cur.setAttribute('height', Math.max(3, rh - 2));
+    }
+    function updateStatus() {
+        if (!built) return;
+        const sel = selected();
+        U.stCur.set(`${nm(S.cur.p)} · ${pos(S.cur.s)}`);
+        U.stNotes.set(String(S.notes.length));
+        U.stSel.set(sel.length === 1 ? `${sel.length} · ${nm(sel[0].p)} · v${sel[0].v}` : String(sel.length));
+        if (U.del) U.del.setAttribute('aria-disabled', String(!sel.length));
+        U.stKey.set(S.scale.on ? `${noteName(S.scale.root, { flat: S.flat })} ${scaleName(S.scale.type)}` : L('lpr_off'));
+        if (!S.playing) U.pos.set(pos(S.cur.s));
+    }
+    function syncHist() {
+        if (!U.undo) return;
+        [[U.undo, hist.canUndo()], [U.redo, hist.canRedo()]].forEach(([b, ok]) => { b.setAttribute('aria-disabled', String(!ok)); b.classList.toggle('is-dim', !ok); });
+    }
+    function syncUi() {
+        if (!built) return;
+        U.loop.set(S.len); U.mode.set(S.mode); U.grid.set(S.grid); U.trip.set(S.trip);
+        U.scaleOn.set(S.scale.on); U.fold.set(S.scale.fold);
+        U.root.value = String(S.scale.root); U.type.value = S.scale.type; U.qStr.value = String(S.qStr);
+        U.gw.dataset.mode = S.mode;
+        U.zOut.setAttribute('aria-disabled', String(S.zoom <= 0)); U.zIn.setAttribute('aria-disabled', String(S.zoom >= LPR_ZOOM.length - 1));
+        syncPlay();
+    }
+    function syncPlay() {
+        if (!U.play) return;
+        U.play.innerHTML = S.playing ? LP_IC.stop : LP_IC.play;
+        U.play.setAttribute('aria-pressed', String(S.playing));   // ad sabit (lpr_play); durum yalnız aria-pressed
+    }
+    function setPh(step) {
+        if (!U.ph) return;
+        if (step == null || !isFinite(step)) { U.ph.hidden = true; return; }
+        U.ph.hidden = false;
+        U.ph.style.transform = `translateX(${(step * sw).toFixed(1)}px)`;
+        if (S.playing) U.pos.set(pos(Math.max(0, step)));
+    }
+
+    // ── Görünüm yardımcıları ───────────────────────────────────────
+    function centerView() {
+        const sc = U.sc; if (!sc) return;
+        const vis = S.notes.filter(isVis);
+        const p = vis.length ? vis.reduce((a, n) => a + n.p, 0) / vis.length : S.cur.p;
+        const ri = rowOf.has(Math.round(p)) ? rowOf.get(Math.round(p)) : rows.indexOf(nearestRow(p));
+        sc.scrollTop = Math.max(0, ri * rh + rh / 2 - (sc.clientHeight - RH - VH) / 2);
+        sc.scrollLeft = 0;
+    }
+    function revealCursor() {
+        const sc = U.sc, ri = rowOf.get(S.cur.p); if (!sc || ri == null) return;
+        const x = S.cur.s * sw, w = gs() * sw, y = ri * rh;
+        const vw = sc.clientWidth - KW, vh = sc.clientHeight - RH - VH;
+        if (x < sc.scrollLeft) sc.scrollLeft = x; else if (x + w > sc.scrollLeft + vw) sc.scrollLeft = x + w - vw;
+        if (y < sc.scrollTop) sc.scrollTop = y; else if (y + rh > sc.scrollTop + vh) sc.scrollTop = y + rh - vh;
+    }
+    function zoomBy(d) {
+        const z = lpClamp(S.zoom + d, 0, LPR_ZOOM.length - 1);
+        if (z === S.zoom) return;
+        const sc = U.sc, vw = sc.clientWidth - KW, vh = sc.clientHeight - RH - VH;
+        const cs = (sc.scrollLeft + vw / 2) / sw, cr = (sc.scrollTop + vh / 2) / rh;
+        S.zoom = z; renderAll(); syncUi();
+        sc.scrollLeft = Math.max(0, cs * sw - vw / 2); sc.scrollTop = Math.max(0, cr * rh - vh / 2);
+        announce(Lf('lpr_a_zoom', { z: z + 1, n: LPR_ZOOM.length }));
+        emit('zoom');
+    }
+    function setCursor(p, s, silent) {
+        S.cur.p = rowOf.has(p) ? p : nearestRow(p);
+        S.cur.s = lpClamp(lprR(s), 0, Math.max(0, S.len - LPR_EPS));
+        updateCursor(); updateStatus();
+        if (!silent) { revealCursor(); announceCursor(); }
+    }
+    function announceCursor() {
+        let t = Lf('lpr_a_cursor', { note: nm(S.cur.p), step: lprNum(S.cur.s + 1), len: gridLbl() });
+        const n = noteAt(S.cur.p, S.cur.s);
+        if (n) t += ' · ' + Lf('lpr_a_note', { v: n.v });
+        if (S.scale.on && !inScale(S.cur.p, S.scale.root, S.scale.type)) t += ' · ' + L('lpr_a_out');
+        announce(t);
+    }
+
+    // ── Seçim / düzenleme işlemleri ────────────────────────────────
+    function setSel(n, b) { if (n.sel !== b) { n.sel = b; updateNote(n); } }
+    function deselectAll() { S.notes.forEach(n => setSel(n, false)); }
+    function selectOnly(x) { S.notes.forEach(n => setSel(n, n === x)); }
+    function selectAll() {
+        S.notes.forEach(n => setSel(n, true));
+        announce(Lf('lpr_a_sel', { n: S.notes.length })); emit('select');
+    }
+    function removeNotes(list) {
+        if (!list.length) return;
+        S.notes = S.notes.filter(n => list.indexOf(n) < 0);
+        list.forEach(n => { [n._r, n._t, n._b].forEach(x => { if (x) x.remove(); }); });
+        if (S.scale.fold) renderAll();
+    }
+    function addNote(p, s, l, v) {
+        const n = { p, s: lprR(s), l: lprR(l), v, sel: false };
+        S.notes.push(n);
+        if (rowOf.has(p) && !S.scale.fold) addNoteEl(n); else renderAll();
+        return n;
+    }
+    // Ableton gibi: düzenlenen notalar (moved) aynı perdedeki başka notanın üstüne binerse, başlangıcı
+    // örtülen nota silinir, öncesinde başlayıp içeri uzanan nota kısaltılır. Aynı geri alma adımında çalışır
+    // (çağıran hist.push yapmış olmalı). Döndürür: silinen nota sayısı.
+    function resolveOverlaps(moved) {
+        if (!moved || !moved.length) return 0;
+        const set = new Set(moved), kill = [];
+        moved.forEach(m => {
+            const m1 = m.s + m.l;
+            S.notes.forEach(n => {
+                if (set.has(n) || n.p !== m.p || kill.indexOf(n) >= 0) return;
+                if (n.s >= m.s - LPR_EPS && n.s < m1 - LPR_EPS) kill.push(n);
+                else if (n.s < m.s - LPR_EPS && n.s + n.l > m.s + LPR_EPS) { n.l = lprR(Math.max(0.125, m.s - n.s)); updateNote(n); }
+            });
+        });
+        if (kill.length) removeNotes(kill);
+        return kill.length;
+    }
+    function deleteSel() {
+        if (ro) return;
+        let list = selected();
+        if (!list.length && document.activeElement === U.gw) { const n = noteAt(S.cur.p, S.cur.s); if (n) list = [n]; }
+        if (!list.length) return;
+        hist.push(); removeNotes(list);
+        announce(Lf('lpr_a_del', { n: list.length })); emit('delete');
+    }
+    function clearAll() {
+        if (ro || !S.notes.length) return;
+        hist.push(); S.notes = []; renderAll();
+        announce(L('lpr_a_clear')); emit('clear');
+    }
+    function toggleNoteAtCursor() {
+        const s = S.cur.s; if (s >= S.len) return;
+        const hitN = noteAt(S.cur.p, s);
+        if (hitN) { hist.push(); removeNotes([hitN]); announce(Lf('lpr_a_del', { n: 1 })); emit('delete'); return; }
+        const p = snapIn(S.cur.p), g = gs();
+        // GAM açıkken gam dışı satırda Enter en yakın gam notasına yazar; orada zaten nota varsa üst üste
+        // ikinci nota EKLENMEZ — imleç o notaya gider ve durum okunur (bir Enter daha = sil)
+        const there = p !== S.cur.p ? noteAt(p, s) : null;
+        if (there) {
+            setCursor(p, s, true); revealCursor(); audition(p, there.v);
+            announce(Lf('lpr_a_exists', { note: nm(p), step: lprNum(there.s + 1) }));
+            return;
+        }
+        hist.push();
+        addNote(p, s, Math.min(g, S.len - s), 100);
+        audition(p, 100);
+        if (p !== S.cur.p) setCursor(p, s, true);
+        announce(Lf('lpr_a_add', { note: nm(p), step: lprNum(s + 1) })); emit('add');
+    }
+    function toggleSelAtCursor() {
+        const n = noteAt(S.cur.p, S.cur.s);
+        if (!n) { announce(L('lpr_a_empty')); return; }
+        setSel(n, !n.sel); updateStatus();
+        announce(Lf('lpr_a_sel', { n: selected().length })); emit('select');
+    }
+    function transpose(d, kind, fromKey) {
+        if (ro) return;
+        const t = targets(); if (!t.length) return;
+        const { root, type } = S.scale;
+        const np = t.map(n => kind === 'deg' ? transposeInScale(n.p, d, root, type) : n.p + d);
+        if (np.some(p => p < LO || p > HI)) { announce(L('lpr_a_range')); return; }
+        hist.push();
+        t.forEach((n, i) => { n.p = np[i]; });
+        resolveOverlaps(t);
+        if (S.scale.fold || np.some(p => !rowOf.has(p))) renderAll(); else t.forEach(updateNote);
+        const lead = t.slice().sort((a, b) => a.s - b.s || b.p - a.p)[0];
+        audition(lead.p, lead.v);
+        if (fromKey) setCursor(lead.p, lead.s, true);
+        revealLead(lead);
+        announce(Lf('lpr_a_tr', { n: t.length, note: nm(lead.p) })); emit('transpose');
+    }
+    function revealLead(n) { if (document.activeElement === U.gw) { S.cur.p = n.p; S.cur.s = n.s; updateCursor(); revealCursor(); updateStatus(); } }
+    function shiftSel(d) {
+        const t = selected(); if (!t.length || ro) return;
+        const minS = Math.min(...t.map(n => n.s)), maxS = Math.max(...t.map(n => n.s));
+        const dd = lprR(lpClamp(d, -minS, S.len - LPR_EPS - maxS));
+        if (Math.abs(dd) < LPR_EPS || (d > 0 && maxS + d >= S.len)) { announce(L('lpr_a_edge')); return; }
+        hist.push();
+        t.forEach(n => { n.s = lprR(n.s + dd); updateNote(n); });
+        resolveOverlaps(t);
+        const lead = t.slice().sort((a, b) => a.s - b.s || b.p - a.p)[0];
+        revealLead(lead);
+        announce(Lf('lpr_a_move', { note: nm(lead.p), step: lprNum(lead.s + 1) })); emit('move');
+    }
+    // Klavyeyle boy: seçili notalar (seçim yoksa imleçteki nota) d adım uzar/kısalır; boy ≥ bir ızgara
+    // adımı (nota zaten daha kısaysa kendi boyu) ve klip sonunu aşmaz. Alt+←/→ ızgara, Alt+Shift ölçü.
+    function resizeBy(d) {
+        let t = selected();
+        if (!t.length) { const n = noteAt(S.cur.p, S.cur.s); if (n) t = [n]; }
+        if (!t.length) { announce(L('lpr_a_empty')); return; }
+        const g = gs();
+        const nl = t.map(n => { const mn = Math.min(g, n.l); return lprR(lpClamp(n.l + d, mn, Math.max(mn, S.len - n.s))); });
+        if (t.every((n, i) => Math.abs(nl[i] - n.l) < LPR_EPS)) { announce(L('lpr_a_edge')); return; }
+        hist.push();
+        t.forEach((n, i) => { n.l = nl[i]; updateNote(n); });
+        resolveOverlaps(t);
+        updateStatus();
+        announce(Lf('lpr_a_len', { len: `${lprNum(t[0].l)} × 1/16` })); emit('resize');
+    }
+    function velBy(d) {
+        const t = selected(); if (!t.length || ro) return;
+        hist.push();
+        t.forEach(n => { n.v = lpClamp(n.v + d, 1, 127); updateNote(n); });
+        announce(Lf('lpr_a_vel', { v: t[0].v })); emit('velocity');
+    }
+    function quantize() {
+        if (ro) return;
+        const t = targets(); if (!t.length) return;
+        hist.push();
+        const g = gs(), str = S.qStr;
+        t.forEach(n => {
+            const q = Math.round(n.s / g) * g;
+            let ns = lprR(n.s + (q - n.s) * str);
+            if (ns >= S.len - LPR_EPS) ns = lprR(Math.max(0, S.len - g));
+            n.s = Math.max(0, ns); updateNote(n);
+        });
+        announce(Lf('lpr_a_q', { n: t.length, pct: Math.round(str * 100) })); emit('quantize');
+    }
+    function duplicate() {
+        if (ro) return;
+        const sel = selected(), g = gs();
+        if (sel.length) {
+            const minS = Math.min(...sel.map(n => n.s)), maxE = Math.max(...sel.map(n => n.s + n.l));
+            const span = Math.max(g, Math.ceil((maxE - minS) / g - LPR_EPS) * g);
+            // Kopyalar döngü sonunu aşıyorsa döngü ölçü ölçü uzar (en çok maxLength); sığmayanlar düşer
+            const all = sel.map(n => ({ p: n.p, s: lprR(n.s + span), l: n.l, v: n.v }));
+            const need = Math.max(...all.map(c => c.s + c.l));
+            const newLen = need > S.len + LPR_EPS ? Math.min(maxLen, Math.ceil(need / LPR_BAR - LPR_EPS) * LPR_BAR) : S.len;
+            const copies = all.filter(c => c.s < newLen - LPR_EPS);
+            if (!copies.length) { announce(L('lpr_a_dup_none')); return; }
+            hist.push();
+            deselectAll();
+            const made = copies.map(c => ({ p: c.p, s: c.s, l: c.l, v: c.v, sel: true }));
+            S.notes.push(...made);
+            resolveOverlaps(made);
+            const grew = newLen !== S.len;
+            S.len = newLen;
+            renderAll(); syncUi();
+            announce(Lf('lpr_a_dup', { n: copies.length }) + (grew ? ' · ' + Lf('lpr_a_bars', { n: lprNum(S.len / LPR_BAR) }) : ''));
+        } else {
+            if (S.len * 2 > maxLen) { announce(Lf('lpr_a_dup_max', { n: maxLen / LPR_BAR })); return; }
+            hist.push();
+            const L0 = S.len;
+            S.notes.filter(n => n.s < L0 - LPR_EPS).forEach(n => S.notes.push({ p: n.p, s: lprR(n.s + L0), l: n.l, v: n.v, sel: false }));
+            S.len = L0 * 2;
+            renderAll(); syncUi();
+            announce(Lf('lpr_a_dup_clip', { n: lprNum(S.len / LPR_BAR) }));
+        }
+        emit('duplicate');
+    }
+    function setLength(steps, fromUi) {
+        const n = lpClamp(Math.round(steps), 1, maxLen);
+        if (n === S.len) return;
+        if (fromUi) hist.push();
+        S.len = n; renderAll(); syncUi();
+        const out = S.notes.filter(x => x.s >= S.len - LPR_EPS).length;
+        announce(Lf('lpr_a_bars', { n: lprNum(n / LPR_BAR) }) + (out ? ' · ' + Lf('lpr_a_outloop', { n: out }) : ''));
+        if (fromUi) emit('length');
+    }
+    function setMode(m) {
+        if (m !== 'draw' && m !== 'select') return;
+        S.mode = m; if (U.mode) U.mode.set(m); if (U.gw) U.gw.dataset.mode = m;
+        announce(Lf('lpr_a_mode', { m: L(m === 'draw' ? 'lpr_draw' : 'lpr_select') })); emit('mode');
+    }
+    function gridChanged() {
+        renderBg(); updateCursor(); updateStatus();
+        announce(`${L('lpr_grid')} ${gridLbl()}`); emit('grid');
+    }
+    function setScaleUi(p, reason) {
+        mergeScale(p);
+        renderAll(); syncUi();
+        announce(reason === 'fold' ? Lf('lpr_a_fold', { s: L(S.scale.fold ? 'lpr_on' : 'lpr_off') })
+            : Lf('lpr_a_scale', { s: S.scale.on ? `${noteName(S.scale.root, { flat: S.flat })} ${scaleName(S.scale.type)}` : L('lpr_off') }));
+        emit(reason);
+    }
+    function doUndo() { histReason = 'undo'; hist.undo(); }
+    function doRedo() { histReason = 'redo'; hist.redo(); }
+
+    // ── Oynatma (dışarıdan ya da dahili önizleme) ──────────────────
+    function togglePlay() { if (S.playing) stopPlay(); else startPlay(); }
+    function startPlay() {
+        if (S.playing) return;
+        S.playing = true; S.own = true; syncPlay();
+        if (typeof o.onPlayToggle === 'function') { try { o.onPlayToggle(true); } catch (e) { console.warn('[lab] roll play:', e); } }
+        else pl = { t0: performance.now(), last: -1e-6 };
+        loop();
+        announce(L('lpr_a_play')); emit('play');
+    }
+    function stopPlay() {
+        if (!S.playing) return;
+        S.playing = false; syncPlay();
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        pl = null; setPh(null); updateStatus();
+        if (S.own && typeof o.onPlayToggle === 'function') { try { o.onPlayToggle(false); } catch (e) { console.warn('[lab] roll play:', e); } }
+        S.own = false;
+        announce(L('lpr_a_stop')); emit('stop');
+    }
+    function loop() {
+        if (raf || (!o.getPlayhead && !pl)) return;
+        const f = now => {
+            raf = 0;
+            if (!S.playing || destroyed || (!isOpen && !inline)) return;
+            tick(now);
+            raf = requestAnimationFrame(f);
+        };
+        raf = requestAnimationFrame(f);
+    }
+    function tick(now) {
+        let step = null;
+        if (typeof o.getPlayhead === 'function') {
+            let v = null; try { v = o.getPlayhead(); } catch (_) {}
+            step = v == null || !isFinite(v) ? null : v;
+        } else if (pl) {
+            const sps = 60 / (+o.bpm || 120) / 4;
+            const at = (now - pl.t0) / 1000 / sps;
+            S.notes.forEach(n => {
+                if (n.s >= S.len - LPR_EPS) return;
+                const k = Math.floor((at - n.s) / S.len), t = n.s + k * S.len;
+                if (k >= 0 && t > pl.last && t <= at) audition(n.p, n.v, n.l * sps);
+            });
+            pl.last = at; step = at % S.len;
+        }
+        setPh(step);
+    }
+
+    // ── İşaretçi: ızgara ────────────────────────────────────────────
+    function pt(e) { const r = U.grid_.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+    function hit(x, y, touch) {
+        const ri = Math.floor(y / rh); if (ri < 0 || ri >= rows.length) return null;
+        const p = rows[ri];
+        for (let i = S.notes.length - 1; i >= 0; i--) {
+            const n = S.notes[i];
+            if (n.p !== p || !isVis(n)) continue;
+            const x0 = n.s * sw, x1 = Math.min(S.len, n.s + n.l) * sw;
+            if (x >= x0 && x < x1) return { n, edge: x >= x1 - Math.min(touch ? 16 : 7, (x1 - x0) * 0.4) };
+        }
+        return null;
+    }
+    function cellAt(P) { const g = gs(); return { p: rows[Math.floor(P.y / rh)], s: lprR(lpClamp(Math.floor(P.x / sw / g + LPR_EPS) * g, 0, Math.max(0, S.len - g))) }; }
+    function gridHover(e) {
+        if (active || e.pointerType !== 'mouse' || ro) return;
+        const P = pt(e), h = hit(P.x, P.y, false), c = h ? (h.edge ? 'edge' : 'note') : '';
+        if ((U.gw.dataset.hover || '') !== c) { if (c) U.gw.dataset.hover = c; else delete U.gw.dataset.hover; }
+    }
+    function gridDown(e) {
+        if (active || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        U.gw.classList.remove('is-kbd');
+        lastPtr = e.pointerType;
+        try { U.gw.focus({ preventScroll: true }); } catch (_) {}
+        const P = pt(e);
+        if (P.y < 0 || P.y >= rows.length * rh || P.x < 0 || P.x >= S.len * sw) return;
+        e.preventDefault();
+        const touch = e.pointerType === 'touch';
+        const h = hit(P.x, P.y, touch), c = cellAt(P);
+        setCursor(h ? h.n.p : c.p, h ? h.n.s : c.s, true);
+        if (ro) { audition(c.p, 100); return; }
+        if (touch) { touchDown(e, P, h); return; }
+        let ses = null;
+        if (h) {
+            if (e.shiftKey) {
+                setSel(h.n, !h.n.sel); updateStatus(); emit('select');
+                if (!h.n.sel) return;
+            } else if (!h.n.sel) { selectOnly(h.n); updateStatus(); }   // SEÇİLİ + SİL düğmesi hemen güncellenir
+            audition(h.n.p, h.n.v);
+            ses = noteDrag(P, h.n, h.edge ? 'resize' : 'move');
+        } else if (S.mode === 'draw') ses = drawNote(P);
+        else ses = marquee(P, e.shiftKey);
+        active = lpDrag(e, ev => ses.move(pt(ev), ev), ev => { active = null; ses.end(ev); });
+    }
+    function noteDrag(P, n, kind) {
+        const group = selected(); if (group.indexOf(n) < 0) group.push(n);
+        const orig = group.map(x => ({ x, p: x.p, s: x.s, l: x.l, ri: rowOf.get(x.p) }));
+        const a = orig.find(q => q.x === n), g = gs();
+        const minS = Math.min(...orig.map(q => q.s)), maxS = Math.max(...orig.map(q => q.s));
+        const ris = orig.filter(q => q.ri != null).map(q => q.ri);
+        let moved = false, lastP = n.p;
+        return {
+            move(Q, ev) {
+                if (!moved) {
+                    if (Math.abs(Q.x - P.x) < 3 && Math.abs(Q.y - P.y) < 3) return;
+                    moved = true; hist.push(); U.gw.classList.add('is-drag');
+                }
+                const free = !!(ev && ev.altKey), dx = (Q.x - P.x) / sw;
+                if (kind === 'move') {
+                    const ns = free ? a.s + dx : Math.round((a.s + dx) / g) * g;
+                    const ds = lpClamp(ns - a.s, -minS, Math.max(-minS, S.len - LPR_EPS - maxS));
+                    let dr = Math.round((Q.y - P.y) / rh);
+                    if (ris.length) dr = lpClamp(dr, -Math.min(...ris), rows.length - 1 - Math.max(...ris));
+                    orig.forEach(q => { q.x.s = lprR(q.s + ds); if (q.ri != null) q.x.p = rows[q.ri + dr]; updateNote(q.x); });
+                    if (n.p !== lastP) { lastP = n.p; audition(n.p, n.v, 0.2); }
+                } else {
+                    const ne = free ? a.s + a.l + dx : Math.round((a.s + a.l + dx) / g) * g;
+                    const dl = ne - (a.s + a.l);
+                    orig.forEach(q => { const mn = free ? 0.125 : Math.min(g, q.l); q.x.l = lprR(lpClamp(q.l + dl, mn, Math.max(mn, S.len - q.s))); updateNote(q.x); });
+                }
+                S.cur.p = n.p; S.cur.s = n.s; updateCursor(); updateStatus();
+            },
+            end() {
+                U.gw.classList.remove('is-drag');
+                if (!moved) return false;
+                resolveOverlaps(orig.map(q => q.x));
+                if (S.scale.fold) renderAll();
+                announce(kind === 'move' ? Lf('lpr_a_move', { note: nm(n.p), step: lprNum(n.s + 1) }) : Lf('lpr_a_len', { len: `${lprNum(n.l)} × 1/16` }));
+                emit(kind);
+                return true;
+            },
+        };
+    }
+    function drawNote(P) {
+        const c = cellAt(P), g = gs(), p = snapIn(c.p);
+        // GAM oturtması notayı var olan bir notanın üstüne düşürüyorsa ikinci nota eklenmez: o nota seçilir
+        // ve sürükleme onu taşır / (sağ kenardan) boyunu değiştirir
+        const there = p !== c.p ? noteAt(p, c.s) : null;
+        if (there) {
+            selectOnly(there); setCursor(there.p, there.s, true); audition(there.p, there.v);
+            const x1 = Math.min(S.len, there.s + there.l) * sw;
+            const ses = noteDrag(P, there, P.x >= x1 - Math.min(7, (x1 - there.s * sw) * 0.4) ? 'resize' : 'move');
+            return {
+                move: ses.move,
+                end(ev) {
+                    if (ses.end(ev)) return;
+                    updateStatus(); announce(Lf('lpr_a_exists', { note: nm(there.p), step: lprNum(there.s + 1) })); emit('select');
+                },
+            };
+        }
+        hist.push();
+        deselectAll();
+        const n = addNote(p, c.s, Math.min(g, S.len - c.s), 100);
+        setSel(n, true);
+        setCursor(p, n.s, true);
+        audition(p, 100);
+        return {
+            move(Q, ev) {
+                const free = !!(ev && ev.altKey), e = Q.x / sw;
+                const end = free ? e : Math.ceil(e / g - LPR_EPS) * g;
+                const l = lprR(lpClamp(end - n.s, free ? 0.125 : g, Math.max(free ? 0.125 : g, S.len - n.s)));
+                if (l !== n.l) { n.l = l; updateNote(n); updateStatus(); }
+            },
+            end() { resolveOverlaps([n]); updateStatus(); announce(Lf('lpr_a_add', { note: nm(n.p), step: lprNum(n.s + 1) })); emit('add'); },
+        };
+    }
+    function marquee(P, add) {
+        const base = new Set(add ? selected() : []);
+        if (!add) deselectAll();
+        const M = U.marq; let moved = false;
+        return {
+            move(Q) {
+                if (!moved && Math.abs(Q.x - P.x) < 3 && Math.abs(Q.y - P.y) < 3) return;
+                moved = true;
+                const x0 = Math.min(P.x, Q.x), x1 = Math.max(P.x, Q.x), y0 = Math.min(P.y, Q.y), y1 = Math.max(P.y, Q.y);
+                M.setAttribute('display', 'inline');
+                M.setAttribute('x', x0); M.setAttribute('y', y0); M.setAttribute('width', x1 - x0); M.setAttribute('height', y1 - y0);
+                S.notes.forEach(n => {
+                    let inR = false;
+                    if (isVis(n)) {
+                        const ri = rowOf.get(n.p), nx0 = n.s * sw, nx1 = (n.s + n.l) * sw, ny0 = ri * rh, ny1 = ny0 + rh;
+                        inR = nx0 < x1 && nx1 > x0 && ny0 < y1 && ny1 > y0;
+                    }
+                    setSel(n, base.has(n) || inR);
+                });
+                updateStatus();
+            },
+            end() {
+                M.setAttribute('display', 'none');
+                const k = selected().length;
+                announce(k ? Lf('lpr_a_sel', { n: k }) : L('lpr_a_desel'));
+                emit('select');
+            },
+        };
+    }
+    function touchDown(e, P, h) {
+        const x0 = e.clientX, y0 = e.clientY, sl = U.sc.scrollLeft, st = U.sc.scrollTop;
+        let phase = 'wait', ses = null;
+        clearTimeout(lpTimer); lpTimer = 0;
+        if (h) lpTimer = setTimeout(() => {                   // basılı tut = sil
+            lpTimer = 0;
+            if (phase !== 'wait') return;
+            phase = 'done';
+            hist.push(); removeNotes([h.n]);
+            announce(Lf('lpr_a_del', { n: 1 })); emit('delete');
+        }, 500);
+        active = lpDrag(e, ev => {
+            if (phase === 'done') return;
+            const dx = ev.clientX - x0, dy = ev.clientY - y0;
+            if (phase === 'wait') {
+                if (Math.hypot(dx, dy) < 8) return;
+                clearTimeout(lpTimer); lpTimer = 0;
+                if (h) { if (!h.n.sel) selectOnly(h.n); ses = noteDrag(P, h.n, h.edge ? 'resize' : 'move'); phase = 'note'; }
+                else phase = 'pan';
+            }
+            if (phase === 'note') ses.move(pt(ev), ev);
+            else if (phase === 'pan') { U.sc.scrollLeft = sl - dx; U.sc.scrollTop = st - dy; }
+        }, ev => {
+            active = null; clearTimeout(lpTimer); lpTimer = 0;
+            if (phase === 'note') { ses.end(ev); return; }
+            if (phase !== 'wait' || !ev || ev.type === 'pointercancel') return;
+            if (h) { selectOnly(h.n); audition(h.n.p, h.n.v); updateStatus(); announce(Lf('lpr_a_move', { note: nm(h.n.p), step: lprNum(h.n.s + 1) })); emit('select'); }
+            else if (S.mode === 'draw') drawNote(P).end();
+            else { deselectAll(); updateStatus(); announce(L('lpr_a_desel')); emit('select'); }
+        });
+    }
+    function gridDbl(e) {
+        if (ro || lastPtr === 'touch') return;               // dokunmada çift dokunuş = iki ayrı dokunuş (silme: basılı tut)
+        const P = pt(e); if (P.y < 0 || P.y >= rows.length * rh || P.x < 0 || P.x >= S.len * sw) return;
+        const h = hit(P.x, P.y, false);
+        if (h) { hist.push(); removeNotes([h.n]); updateStatus(); announce(Lf('lpr_a_del', { n: 1 })); emit('delete'); }
+        else if (S.mode === 'select') drawNote(P).end();
+    }
+
+    // ── İşaretçi: tuş sütunu (dinle) ve velocity şeridi ─────────────
+    function keysDown(e) {
+        if (keyDrag || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        const r = U.keys.getBoundingClientRect();
+        let ri = Math.floor((e.clientY - r.top) / rh);
+        if (ri < 0 || ri >= rows.length) return;
+        if (e.pointerType === 'mouse') e.preventDefault();
+        const press = i => { U.keyRows.forEach((g, j) => g.classList.toggle('is-on', j === i)); audition(rows[i], 100); };
+        press(ri);
+        keyDrag = lpDrag(e, ev => {
+            const j = Math.floor((ev.clientY - r.top) / rh);
+            if (j !== ri && j >= 0 && j < rows.length) { ri = j; press(ri); }
+        }, () => { keyDrag = null; if (U.keyRows) U.keyRows.forEach(g => g.classList.remove('is-on')); });
+    }
+    function velDown(e) {
+        if (ro || active || (e.pointerType === 'mouse' && e.button !== 0)) return;
+        const r = U.vel.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+        const tol = e.pointerType === 'touch' ? 22 : 6;
+        let best = null, bd = 1e9;
+        S.notes.forEach(n => { if (!isVis(n)) return; const d = Math.abs(n.s * sw + 1.5 - x) - (n.sel ? 0.01 : 0); if (d <= tol && d < bd) { bd = d; best = n; } });
+        if (!best) return;
+        e.preventDefault();
+        hist.push();
+        if (!best.sel) selectOnly(best);
+        const group = selected(), v0 = group.map(n => n.v), b0 = best.v, fine = e.shiftKey;
+        const valAt = yy => Math.round(lpClamp((VH - 4 - yy) / (VH - 10), 0, 1) * 126 + 1);
+        const apply = target => { const d = Math.round(target) - b0; group.forEach((n, i) => { n.v = lpClamp(v0[i] + d, 1, 127); updateNote(n); }); updateStatus(); };
+        if (!fine) apply(valAt(y));
+        active = lpDrag(e, ev => { const yy = ev.clientY - r.top; apply(fine ? b0 + (y - yy) * 0.25 * 126 / (VH - 10) : valAt(yy)); },
+            () => { active = null; announce(Lf('lpr_a_vel', { v: best.v })); emit('velocity'); });
+    }
+
+    // ── Klavye ──────────────────────────────────────────────────────
+    function moveCursorV(d, oct) {
+        const i = rowOf.get(S.cur.p);
+        let p;
+        if (oct) p = nearestRow(lpClamp(S.cur.p + d * 12, LO, HI));
+        else p = rows[lpClamp(i - d, 0, rows.length - 1)];
+        setCursor(p, S.cur.s);
+    }
+    function gridKey(e) {
+        if (e.ctrlKey || e.metaKey) return;                   // pencere seviyesinde (dlgKey)
+        const k = e.key, g = gs(), sel = selected();
+        const nav = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' ', 'Escape'];
+        if (nav.indexOf(k) < 0) return;
+        U.gw.classList.add('is-kbd');
+        if (k === 'Escape') {
+            if (!sel.length) return;                          // → dlgKey kapatır
+            e.preventDefault(); e.stopPropagation();
+            deselectAll(); updateStatus(); announce(L('lpr_a_desel')); emit('select');
+            return;
+        }
+        e.preventDefault();
+        if (k === 'ArrowUp' || k === 'ArrowDown') {
+            const d = k === 'ArrowUp' ? 1 : -1;
+            if (e.altKey && sel.length) velBy(d * (e.shiftKey ? 1 : 8));
+            else if (sel.length && !ro) transpose(e.shiftKey ? d * 12 : d, !e.shiftKey && S.scale.on ? 'deg' : 'st', true);
+            else moveCursorV(d, e.shiftKey);
+        } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+            const d = (k === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? LPR_BAR : g);
+            if (e.altKey) { if (!ro) resizeBy(d); }
+            else if (sel.length && !ro) shiftSel(d);
+            else setCursor(S.cur.p, lpClamp(Math.round((S.cur.s + d) / g) * g, 0, Math.max(0, S.len - g)));
+        } else if (k === 'Home') setCursor(S.cur.p, 0);
+        else if (k === 'End') setCursor(S.cur.p, Math.max(0, Math.floor((S.len - LPR_EPS) / g) * g));
+        else if (k === 'Enter') { if (e.shiftKey) toggleSelAtCursor(); else if (!ro) toggleNoteAtCursor(); else audition(S.cur.p, 100); }
+        else if (k === ' ') togglePlay();
+    }
+    function focusables() {
+        return Array.from(el.querySelectorAll('button, select, [tabindex="0"]'))
+            .filter(x => !x.disabled && x.getClientRects().length && !x.closest('[hidden]'));
+    }
+    function dlgKey(e) {
+        if (e.key === 'Tab' && !inline) {
+            const f = focusables(); if (!f.length) return;
+            const a = document.activeElement, first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && (a === first || !el.contains(a))) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && (a === last || !el.contains(a))) { e.preventDefault(); first.focus(); }
+            return;
+        }
+        if (e.key === 'Escape') {
+            if (inline || e.defaultPrevented) return;
+            e.preventDefault(); close(); return;
+        }
+        if (e.target && e.target.tagName === 'SELECT') return;
+        const k = (e.key || '').toLowerCase();
+        if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+            let used = true;
+            if (k === 'z' && !e.shiftKey) doUndo();
+            else if ((k === 'z' && e.shiftKey) || k === 'y') doRedo();
+            else if (k === 'a') selectAll();
+            else if (k === 'd') duplicate();
+            else if (k === 'u') quantize();
+            else used = false;
+            if (used) e.preventDefault();
+            return;
+        }
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        if (k === 'b' && !ro) { e.preventDefault(); setMode(S.mode === 'draw' ? 'select' : 'draw'); }
+        else if (k === '+' || k === '=') { e.preventDefault(); zoomBy(1); }
+        else if (k === '-' || k === '_') { e.preventDefault(); zoomBy(-1); }
+        else if (k === 'delete' || k === 'backspace') { e.preventDefault(); deleteSel(); }
+    }
+    function onFocusIn(e) { if (isOpen && ov && !ov.contains(e.target) && U.gw) { try { U.gw.focus({ preventScroll: true }); } catch (_) {} } }
+
+    // ── Aç / kapat ──────────────────────────────────────────────────
+    function open(src) {
+        if (destroyed) return api;
+        if (!built || builtLang !== labLang()) build();
+        if (inline) {
+            renderAll(); watchSize(true);
+            if (!unreg) unreg = lpOnTeardown(() => { unreg = null; halt(); });
+            if (!el.dataset.lprRef) { el.dataset.lprRef = '1'; labOnRefresh(el, relabel); }
+            return api;
+        }
+        if (isOpen) return api;
+        opener = src && typeof src.focus === 'function' ? src : document.activeElement;
+        document.body.append(ov); ov.hidden = false; isOpen = true;
+        prevOverflow = document.documentElement.style.overflow;
+        document.documentElement.style.overflow = 'hidden';
+        document.addEventListener('focusin', onFocusIn);
+        unreg = lpOnTeardown(() => { unreg = null; close(false); });
+        labOnRefresh(ov, relabel);
+        renderAll(); syncUi(); centerView(); watchSize(true); U.syncMore();
+        try { U.gw.focus({ preventScroll: true }); } catch (_) {}
+        if (S.playing && !S.own) loop();
+        emit('open');
+        return api;
+    }
+    function halt() {
+        if (active) { const c = active; active = null; c(); }
+        if (keyDrag) { const c = keyDrag; keyDrag = null; c(); }
+        clearTimeout(lpTimer); lpTimer = 0;
+        if (S.playing && S.own) stopPlay();
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
+        watchSize(false);
+    }
+    function close(focusBack) {
+        if (inline || !isOpen) return;
+        halt();
+        isOpen = false; ov.hidden = true; ov.remove();
+        document.documentElement.style.overflow = prevOverflow;
+        document.removeEventListener('focusin', onFocusIn);
+        if (unreg) { const f = unreg; unreg = null; _lpCleanups = _lpCleanups.filter(x => x !== f); }
+        const back = opener; opener = null;
+        if (focusBack !== false && back && back.isConnected) { try { back.focus({ preventScroll: true }); } catch (_) {} }
+        emit('close');
+        if (typeof o.onClose === 'function') { try { o.onClose(); } catch (e) { console.warn('[lab] roll onClose:', e); } }
+    }
+    function relabel(force) {
+        if (!built || (force !== true && builtLang === labLang())) return;
+        const sl = U.sc ? U.sc.scrollLeft : 0, st = U.sc ? U.sc.scrollTop : 0;
+        const had = el.contains(document.activeElement);
+        build(); renderAll();
+        if (rsz) watchSize(true);                              // yeni kaydırıcıyı gözle
+        U.sc.scrollLeft = sl; U.sc.scrollTop = st; U.syncMore();
+        if (had) { try { U.gw.focus({ preventScroll: true }); } catch (_) {} }
+    }
+
+    const api = {
+        el, overlay: ov,
+        open, close: () => close(), isOpen: () => isOpen,
+        getNotes,
+        setNotes(list) {
+            const nn = normNotes(list), key = a => JSON.stringify(a.map(plain));
+            if (key(nn) === key(S.notes)) return;
+            hist.push(); S.notes = nn; widenRange(nn); renderAll();
+        },
+        // Taban aralığı değiştirir (başka bir izin aralığı); klipteki notalar yine görünür kalır
+        setRange(r) {
+            if (!parseRange(r)) return;
+            LO = baseLo; HI = baseHi; widenRange(S.notes);
+            S.cur.p = lpClamp(S.cur.p, LO, HI);
+            renderAll();
+        },
+        getRange: () => [LO, HI],
+        getScale: () => Object.assign({}, S.scale),
+        setScale(sc) { mergeScale(sc); renderAll(); syncUi(); },
+        getLength: () => S.len,
+        setLength: steps => setLength(steps, false),
+        setPlayhead(step) { setPh(step); },
+        setPlaying(b) {
+            b = !!b;
+            if (b === S.playing) return;
+            S.playing = b; S.own = false; syncPlay();
+            if (b) loop(); else { if (raf) { cancelAnimationFrame(raf); raf = 0; } pl = null; setPh(null); updateStatus(); }
+        },
+        setTitle(t) {
+            S.title = t || '';
+            if (U.title) U.title.textContent = S.title || L('lpr_title_def');
+            if (U.gw) U.gw.setAttribute('aria-label', `${L('lpr_grid_lbl')} — ${S.title || L('lpr_title_def')}`);
+        },
+        clearHistory: () => hist.clear(),
+        relabel: () => relabel(true),
+        destroy() {
+            if (destroyed) return;
+            close(false); halt(); destroyed = true;
+            if (unreg) { const f = unreg; unreg = null; _lpCleanups = _lpCleanups.filter(x => x !== f); }
+            hist.clear(); el.remove(); if (ov) ov.remove();
+        },
+    };
+    build(); renderAll();
+    return api;
 }
 
 // ═══════════════════════════════════════════════════════════════════
