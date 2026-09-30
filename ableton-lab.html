@@ -2944,6 +2944,8 @@ function getSynthCtx() {
             synthClipIn = G(); synthClipIn.gain.value = 0.5;
             synthClip = c.createWaveShaper(); synthClip.curve = synthSoftClip(); synthClip.oversample = '4x';
             analyserNode = c.createAnalyser(); analyserNode.fftSize = 2048;
+            // Spektrum ekranı: kısık/filtreli seslerde de okunur (varsayılan −100…−30 dB çok dar)
+            analyserNode.minDecibels = -96; analyserNode.maxDecibels = -12; analyserNode.smoothingTimeConstant = 0.72;
             synthBus.connect(synthTrem); synthTrem.connect(synthPan);
             synthPan.connect(distDry); synthPan.connect(distShaper); distShaper.connect(distWet);
             distDry.connect(synthPost); distWet.connect(synthPost);
@@ -10195,7 +10197,11 @@ function renderModule1() {
     function frame() {
         _m1Raf = requestAnimationFrame(frame);
         const c = synthCtx, nv = Object.keys(_voices).length;
-        const live = !!c && c.state === 'running' && (nv > 0 || c.currentTime < _synthTail);
+        // Metre bir kez okunur; kuyruk (release/delay/reverb) yalnız duyulur seviyedeyken "canlı" sayılır —
+        // yoksa ses bitmişken ekran boş kalıp yalnız cutoff çizgisini gösteriyordu.
+        const lv = c ? [rmsDb(analyserL), rmsDb(analyserR)] : [-Infinity, -Infinity];
+        const audible = Math.max(lv[0], lv[1]) > -66;
+        const live = !!c && c.state === 'running' && (nv > 0 || (c.currentTime < _synthTail && audible));
         if (live) {
             if (ui.view === 'spec') {
                 analyserNode.getByteFrequencyData(fdb);
@@ -10223,7 +10229,7 @@ function renderModule1() {
             dispP.setInfo(L(live ? 'lab_s1_live' : 'lab_s1_preview'));
             dispP.info.classList.toggle('is-live', live);
         }
-        outM.update(c ? [rmsDb(analyserL), rmsDb(analyserR)] : [-Infinity, -Infinity]);
+        outM.update(lv);
         const held = _synthHeld.length ? _synthHeld[_synthHeld.length - 1] : null;
         const nt = held != null ? `${M1_NOTE_NAMES[((Math.round(held) % 12) + 12) % 12]}${Math.floor(Math.round(held) / 12) - 1} · ${synthHz(held).toFixed(1)} Hz` : L('lab_s1_nonote');
         if (nt !== lastNote) { lastNote = nt; dNote.textContent = nt; }
