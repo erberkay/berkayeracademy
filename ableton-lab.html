@@ -1150,6 +1150,7 @@
         .lab-m1-kb.is-scale .lab-m1-wk.is-out { background:var(--m1-key-out); box-shadow:inset 0 -5px 0 var(--m1-key-sh); }
         .lab-m1-kb.is-scale .lab-m1-bk.is-out { background:var(--bg); }
         .lab-m1-kb.is-scale .is-in::before { content:''; position:absolute; top:86px; left:50%; width:6px; height:6px; margin-left:-3px; border-radius:var(--r-pill); background:var(--accent-ink); pointer-events:none; }
+        .lab-m1-kb.is-scale .lab-m1-wk.is-c::before { top:70px; }   /* C tuşunda harf C etiketiyle yukarı kalkar → nokta onun üstüne */
         .lab-m1-kb.is-scale .lab-m1-bk.is-in::before { top:10px; background:var(--accent); }
         .lab-m1-kb.is-scale .is-root::before { width:10px; height:10px; margin-left:-5px; background:var(--m1-root); }
         .lab-m1-kb.is-scale .lab-m1-bk.is-root::before { background:var(--ember-2); }
@@ -8972,7 +8973,7 @@ Object.assign(LAB_TXT, {
     lab_s1_deleted:      [`"{name}" silindi`, `"{name}" deleted`],
     lab_s1_fpow:         [`Filtre açık/kapalı (bypass)`, `Filter on/off (bypass)`],
     lab_s1_rpow:         [`{name} açık/kapalı (bypass)`, `{name} on/off (bypass)`],
-    lab_s1_space_t:      [`Space: basılı tut = sustain pedalı · kısa dokun = önizleme (gam açıkken kök akoru)`, `Space: hold = sustain pedal · tap = preview (tonic chord when the scale is on)`],
+    lab_s1_space_t:      [`Space: basılı tut = sustain pedalı · kısa dokun = önizleme (gam açıkken kök akoru; MONO'da arpej)`, `Space: hold = sustain pedal · tap = preview (tonic chord when the scale is on; arpeggiated in MONO)`],
     lab_s1_midi_cc:      [`MIDI: nota + velocity · pitch bend ±2 st · CC1 mod wheel · CC64 sustain`, `MIDI: notes + velocity · pitch bend ±2 st · CC1 mod wheel · CC64 sustain`],
     lab_s1_where_sc:     [`<strong>SCALE</strong> Live 12: Control Bar → Scale Mode (kök + gam) klibe yazılır, piyano rulosu gamı vurgular; Push'ta Scale → In Key. MIDI Effects → Scale cihazı notaları gama katlar = bizim KİLİT.`,
                           `<strong>SCALE</strong> Live 12: Control Bar → Scale Mode (root + scale) is stored with the clip and the piano roll highlights it; on Push, Scale → In Key. MIDI Effects → Scale folds notes into the key = our LOCK.`],
@@ -9555,7 +9556,7 @@ function renderModule1() {
             const letter = semi < M1_CAPS ? M1_KEYCODES[semi].slice(3) : '';
             const kl = mk('span', 'lab-m1-kl'); kl.textContent = letter; kl.setAttribute('aria-hidden', 'true');
             b.append(kl);
-            if (semi % 12 === 0) { const c = mk('span', 'lab-m1-kc'); c.textContent = 'C' + (oct + o); c.setAttribute('aria-hidden', 'true'); b.append(c); }
+            if (semi % 12 === 0) { b.classList.add('is-c'); const c = mk('span', 'lab-m1-kc'); c.textContent = 'C' + (oct + o); c.setAttribute('aria-hidden', 'true'); b.append(c); }
             b.addEventListener('pointerdown', keyPress);
             b.addEventListener('click', e => { if (e.detail === 0 && b.getAttribute('aria-disabled') !== 'true') { playNote(synthHz(m), 0.4, 0.8); markNote(); } });
             keyEls.set(m, b);
@@ -9663,7 +9664,16 @@ function renderModule1() {
     function previewChord() {
         const base = 12 * (state.keyboardOctave + 1);
         const notes = SC.on ? chordOnDegree(SC.root, SC.type, 1, 3, base) : [base];
-        notes.forEach(m => playNote(synthHz(m), 0.6, 0.8));
+        // MONO yamada üç nota aynı sesi çalar (son nota kazanır) → akoru hızlı arpej olarak çal
+        // (kök → üçlü → beşli, 120 ms arayla); zamanlayıcılar _synthNoteTimers'ta (synthStopAll temizler).
+        if (state.poly === 'mono' && notes.length > 1) {
+            notes.forEach((m, i) => {
+                const last = i === notes.length - 1, go = () => playNote(synthHz(m), last ? 0.6 : 0.11, 0.8);
+                if (!i) { go(); return; }
+                const id = setTimeout(() => { _synthNoteTimers.delete(id); go(); }, i * 120);
+                _synthNoteTimers.add(id);
+            });
+        } else notes.forEach(m => playNote(synthHz(m), 0.6, 0.8));
         lastPlayed = notes[0]; markNote();
     }
     const onKey = e => {
@@ -9987,7 +9997,7 @@ function renderModule1() {
         TS('mod', () => kEl('modEnv.decay'), ['modEnv.decay'], () => heard()),
         TS('amp', () => env.adsr.svg.closest('.lp-panel'), ['adsr.attack', 'adsr.release'], () => state.adsr.attack >= 0.05 && state.adsr.release >= 0.8),
         TS('lfo', () => lfoP.el, ['lfo.amount', 'lfo.dest'], () => state.lfo.dest === 'cutoff' && state.lfo.amount >= 0.25),
-        TS('fx', () => rack, ['fx.reverbWet', 'fx.delayWet'], () => (state.fx.reverbWet >= 0.25 && state.fx.revOn !== false) || (state.fx.delayWet >= 0.2 && state.fx.delayOn !== false)),
+        TS('fx', () => kEl('fx.reverbWet') || revR.el, ['fx.reverbWet', 'fx.delayWet'], () => (state.fx.reverbWet >= 0.25 && state.fx.revOn !== false) || (state.fx.delayWet >= 0.2 && state.fx.delayOn !== false)),
         TS('save', () => saveB, [], () => tutN.saves > tb.s, { hint: 'lab_s1_tut_save_h' }),
     ] });
     const tutB = makeTutorialButton(tut, { compact: true });      // kep + x/N (başlık çubuğu tek satırda kalsın)
