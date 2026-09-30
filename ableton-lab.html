@@ -1623,8 +1623,9 @@
         /* ═══ LAB M4 · Arrangement ═══ */
         /* Lab_Arrangement: BE·ARRANGER 04 penceresi + Çalışma mantığı + alt kartlar */
 
-        /* Palet — yalnız modül 4 ekranı (.lab-m4). Beat/Mixer'ın --lab-* izleri ve genel bakış kartı değişmez. */
-        .lab-m4 {
+        /* Palet — yalnız modül 4 ekranı (.lab-m4) + modülün MIDI düzenleyici penceresi (.lab-m4-roll, body'de overlay).
+           Beat/Mixer'ın --lab-* izleri ve genel bakış kartı değişmez. */
+        .lab-m4, .lab-m4-roll {
             --lab-sec-intro:#8fc8e8;          /* tasarım: Intro/Outro buz mavisi (tek seferlik) */
             --lab-sec-verse:var(--accent);
             --lab-sec-pre:var(--ember-2);
@@ -1637,7 +1638,7 @@
             --lab-arr-lead:#8fc8e8;           /* tasarım: Lead buz mavisi (tek seferlik) */
             --lab-arr-pad:#a855f7;            /* tasarım: Pad mor (tek seferlik) */
             --m4-lane:#0d0d10;                /* tasarım: klip alanı zemini (tek seferlik) */
-            --m4-head:214px;                  /* iz başlığı sütunu */
+            --m4-head:232px;                  /* iz başlığı sütunu (tasarım 214 + SMP|MIDI · ARM) */
             --m4-rh:58px;                     /* iz satırı / klip yüksekliği */
             --m4-loc:30px;                    /* locator yüksekliği */
             --m4-ctl:20px;                    /* M / S / ● boyu */
@@ -1646,11 +1647,11 @@
 
         /* ── Pencere: başlık çubuğu ─────────────────────────────────────── */
         .lab-m4 .lp-win { --lp-bar-h:54px; }
-        .lab-m4 .lp-bar { gap:14px; }
+        .lab-m4 .lp-bar { gap:10px; }
         .lab-m4 .lp-bar-l { margin-left:18px; gap:8px; }
         .lab-m4 .lp-pb.is-custom .lp-pb-t { color:var(--accent); }
-        .lab-m4 .lp-bar-r { gap:14px; }
-        .lab-m4-cnt { font-family:var(--ff-mono); font-size:9px; letter-spacing:.1em; color:var(--fg-3); white-space:nowrap; }
+        .lab-m4 .lp-bar-r { gap:12px; }
+        .lab-m4-cnt { display:flex; flex-direction:column; gap:3px; font-family:var(--ff-mono); font-size:9px; line-height:1.2; letter-spacing:.1em; color:var(--fg-3); white-space:nowrap; }
         .lab-m4-cnt b { font-weight:400; color:var(--fg); }
         .lab-m4-outm { display:flex; flex-direction:column; gap:3px; width:110px; }
         .lab-m4-outrow { display:flex; justify-content:space-between; font-family:var(--ff-mono); font-size:9px; color:var(--fg-3); font-variant-numeric:tabular-nums; }
@@ -1687,11 +1688,12 @@
         /* ── Gövde ızgarası: [iz başlıkları | klip alanı] + Inspector ───── */
         .lab-m4 .lp-body { padding:0; gap:0; }
         .lab-m4-grid { display:grid; grid-template-columns:minmax(0,1fr) 286px; min-width:0; }
-        .lab-m4-scroll { min-width:0; }
-        .lab-m4-inner { display:grid; grid-template-columns:var(--m4-head) minmax(0,1fr); min-height:100%; }
+        .lab-m4-scroll { min-width:0; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; }
+        /* Yatay zoom: klip alanı --m4-z katı (başlık sütunu sabit, yapışkan) */
+        .lab-m4-inner { display:grid; grid-template-columns:var(--m4-head) minmax(0,1fr); min-height:100%; width:calc(var(--m4-head) + (100% - var(--m4-head)) * var(--m4-z, 1)); }
 
         /* İz başlıkları */
-        .lab-m4-heads { display:flex; flex-direction:column; gap:4px; padding:10px 8px 10px 12px; background:var(--surface); /* tasarım #111115 */ border-right:1px solid var(--line-2); }
+        .lab-m4-heads { position:sticky; left:0; z-index:3; display:flex; flex-direction:column; gap:4px; padding:10px 8px 10px 12px; background:var(--surface); /* tasarım #111115 */ border-right:1px solid var(--line-2); }
         .lab-m4-colh { display:flex; align-items:center; height:26px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--fg-3); white-space:nowrap; }
         .lab-m4-colh--loc { height:var(--m4-loc); }
         .lab-m4-th { display:grid; grid-template-columns:4px minmax(0,1fr); height:var(--m4-rh); border-radius:var(--r-6); background:var(--surface-2); border:1px solid var(--line-div); overflow:hidden; }
@@ -1731,7 +1733,7 @@
         /* Klip alanı */
         .lab-m4-lanes { position:relative; display:flex; flex-direction:column; gap:4px; min-width:0; padding:10px 12px; background:var(--m4-lane); }
         .lab-m4-ruler { position:relative; height:26px; border-radius:var(--r-2); background:var(--surface-hover); overflow:hidden; }
-        .lab-m4-brace { position:absolute; top:0; left:0; width:12.5%; height:6px; border-radius:0 0 var(--r-2) var(--r-2); background:var(--fg-3); opacity:.35; transition:transform var(--dur-fast) var(--ease-out); }
+        .lab-m4-brace { position:absolute; top:0; left:0; width:calc(12.5% * var(--n, 1)); height:6px; border-radius:0 0 var(--r-2) var(--r-2); background:var(--fg-3); opacity:.35; transition:transform var(--dur-fast) var(--ease-out); }
         .lab-m4-brace.is-on { background:var(--accent); opacity:1; }
         .lab-m4-rbars { position:absolute; inset:0; display:grid; grid-template-columns:repeat(16, minmax(0,1fr)); }
         .lab-m4-rbar { position:relative; padding:9px 0 0 4px; border-left:1px solid var(--line-hi); font-family:var(--ff-mono); font-size:9px; color:var(--fg-muted); }
@@ -1748,7 +1750,7 @@
         .lab-m4-loc.is-playing { background:var(--sc); border-color:var(--sc); color:var(--sci, var(--bg)); box-shadow:0 0 14px color-mix(in srgb, var(--sc) 53%, transparent); }
         .lab-m4-clips { position:relative; display:flex; flex-direction:column; gap:4px; }
         .lab-m4-crow { display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:3px; height:var(--m4-rh); }
-        .lab-m4-clip { position:relative; min-width:0; height:100%; padding:0; border-radius:var(--r-2); border:1px dashed var(--line); background:var(--surface-0); text-align:left; cursor:pointer; overflow:hidden; }
+        .lab-m4-clip { position:relative; width:100%; min-width:0; height:100%; padding:0; border-radius:var(--r-2); border:1px dashed var(--line); background:var(--surface-0); text-align:left; cursor:pointer; overflow:hidden; }
         .lab-m4-clip:hover { border-color:var(--line-hi); }
         .lab-m4-clip-h { position:absolute; top:0; left:0; right:0; height:13px; padding:0 5px; font-family:var(--ff-mono); font-size:8px; font-weight:700; line-height:13px; color:var(--bg); white-space:nowrap; overflow:hidden; }
         .lab-m4-crow--light .lab-m4-clip-h { color:var(--fg); }
@@ -1803,7 +1805,7 @@
         .lab-m4-ins-mtr, .lab-m4-ins-mtr .lp-mtr-ch { width:100%; }
         .lab-m4-ins-mtr .lp-mtr-ch { gap:2px; }
         .lab-m4-ins-chips { display:flex; gap:3px; }
-        .lab-m4-chip { flex:1; display:flex; align-items:center; justify-content:center; height:22px; border-radius:var(--r-2); background:var(--surface-2); font-family:var(--ff-mono); font-size:8px; color:var(--fg-faint); }
+        .lab-m4-chip { flex:1; display:flex; align-items:center; justify-content:center; height:22px; border-radius:var(--r-2); background:var(--surface-2); font-family:var(--ff-mono); font-size:8px; color:var(--fg-3); }   /* kapalı çip de ≥4.5:1 */
         .lab-m4-chip.is-on { background:var(--c); color:var(--bg); }
         .lab-m4-chip--light.is-on { color:var(--fg); }
         .lab-m4-ins-hz { font-family:var(--ff-mono); font-size:9px; color:var(--fg-3); }
@@ -1895,8 +1897,130 @@
         .lab-m4-tip-l { font-family:var(--ff-mono); font-size:10px; color:var(--accent); white-space:nowrap; }
         .lab-m4-tip-t { font-size:13px; line-height:1.5; color:var(--fg-soft); }
 
+        /* ── MIDI izi · proje tonu · loop seti · kayıt (DAW katmanı) ─────── */
+        /* Açılır seçici (native select + çizgi ok; veri URI yok) */
+        .lab-m4-selw { position:relative; display:inline-flex; min-width:0; }
+        .lab-m4-selw::after { content:''; position:absolute; right:9px; top:50%; margin-top:-2px; border-top:5px solid var(--fg-3); border-left:4px solid transparent; border-right:4px solid transparent; pointer-events:none; }
+        .lab-m4-sel { height:30px; max-width:100%; padding:0 24px 0 9px; border-radius:var(--r-6); border:1px solid var(--line-3); background:var(--bg); color:var(--fg-soft); font-family:var(--ff-mono); font-size:11px; letter-spacing:.04em; color-scheme:dark; appearance:none; -webkit-appearance:none; cursor:pointer; text-overflow:ellipsis; }
+        .lab-m4-sel:hover { border-color:var(--accent-line-2); }
+        .lab-m4-sel:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        .lab-m4-sel option { background:var(--surface-1); color:var(--fg); }
+        .lab-m4-sel--root { width:52px; }
+        .lab-m4-sel--type { width:128px; font-family:var(--ff); font-size:12px; letter-spacing:0; }
+        .lab-m4 .lab-mhead-actions .lp-tut-btn { height:40px; padding:0 14px; font-size:12px; }
+        .lab-m4 .lp-bar-c { gap:10px; }
+        .lab-m4-key { display:flex; align-items:center; gap:6px; }
+        .lab-m4 .lp-bar-r .lp-midi { margin-right:2px; }
+        /* KAYDET formu + ton değişimi önerisi (başlık çubuğunun altında) */
+        .lab-m4-name, .lab-m4-offer { display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; padding:8px 14px; background:var(--surface-0); border-bottom:1px solid var(--line-2); }
+        .lab-m4-name[hidden], .lab-m4-offer[hidden] { display:none; }
+        .lab-m4-name-l { font-family:var(--ff-mono); font-size:10px; letter-spacing:.12em; color:var(--fg-3); }
+        .lab-m4-name-in { flex:1 1 200px; min-width:0; max-width:340px; height:30px; padding:0 10px; border-radius:var(--r-6); border:1px solid var(--line-ctl); background:var(--bg); color:var(--fg); font-family:var(--ff); font-size:13px; }
+        .lab-m4-name-in::placeholder { color:var(--fg-faint); }
+        .lab-m4-name-in:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+        .lab-m4-offer { border-left:3px solid var(--accent); }
+        .lab-m4-offer-t { flex:1 1 260px; min-width:0; font-size:12px; line-height:1.45; color:var(--fg-soft); }
+        /* Taşıma: ● REC · LOOP SETİ ekranı */
+        .lab-m4 .lab-m4-tb--rec { color:var(--err); }
+        .lab-m4 .lab-m4-tb--rec svg { width:13px; height:13px; }
+        .lab-m4 .lab-m4-tb--rec[aria-pressed="true"] { background:var(--err-soft); border-color:var(--err-strong); color:var(--err-strong); }
+        /* Seçici bütün ekranı kaplar (isabet alanı = 44 px LCD); etiket üstte, tıklamayı geçirir */
+        .lab-m4-lcd--set { position:relative; justify-content:flex-start; min-width:244px; padding-top:6px; }   /* "126.00 · Cassianism · C#m" sığar */
+        .lab-m4-lcd--set .lp-ro-l { position:relative; z-index:1; pointer-events:none; }
+        .lab-m4-lcd--set .lab-m4-selw { position:absolute; inset:0; display:block; }
+        .lab-m4 .lab-m4-setsel { width:100%; height:100%; padding:15px 26px 0 12px; border:0; border-radius:var(--r-6); background:transparent; color:var(--accent); font-size:13px; letter-spacing:0; }
+        .lab-m4-lcd--set .lab-m4-selw::after { right:11px; margin-top:4px; }
+        /* İz başlığı: görünüm düğmeleri (TAKİP · zoom), SMP|MIDI, ARM, seçili iz */
+        .lab-m4-colh--top { justify-content:space-between; gap:6px; }
+        .lab-m4-colh-t { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+        .lab-m4-vbs { display:flex; gap:3px; flex-shrink:0; }
+        .lab-m4-vb { position:relative; display:inline-flex; align-items:center; justify-content:center; width:22px; height:20px; padding:0; border-radius:var(--r-2); border:1px solid var(--line-3); background:var(--bg); color:var(--fg-3); cursor:pointer; }
+        .lab-m4-vb svg { width:12px; height:12px; }
+        .lab-m4-vb:hover { color:var(--fg); border-color:var(--line-hi); }
+        .lab-m4-vb[aria-pressed="true"] { color:var(--accent); border-color:var(--accent-line-2); background:var(--accent-soft); }
+        .lab-m4-vb[aria-disabled="true"] { opacity:.4; cursor:default; }
+        .lab-m4-th { cursor:default; }
+        .lab-m4-th.is-sel { border-color:color-mix(in srgb, var(--c) 70%, transparent); background:var(--surface-3); }
+        .lab-m4 .lab-m4-inst { flex-shrink:0; gap:1px; padding:1px; border-radius:var(--r-6); background:var(--bg); }
+        .lab-m4 .lab-m4-inst .lp-seg-b { height:18px; min-width:0; padding:0 5px; font-size:8px; letter-spacing:.06em; }
+        .lab-m4 .lab-m4-inst .lp-seg-b[aria-pressed="true"] { background:color-mix(in srgb, var(--c) 22%, transparent); color:var(--fg); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--c) 70%, transparent); }
+        .lab-m4-arm { position:relative; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; width:22px; height:var(--m4-ctl); padding:0; border-radius:var(--r-2); border:1px solid var(--line-3); background:var(--bg); color:var(--fg-3); cursor:pointer; }
+        .lab-m4-arm svg { width:11px; height:11px; }
+        .lab-m4-arm:hover { color:var(--err); border-color:var(--err-line); }
+        .lab-m4-arm[aria-pressed="true"] { background:var(--err-strong); border-color:var(--err-strong); color:var(--fg); }
+        .lab-m4-arm[hidden] { display:none; }
+        .lab-m4-arm.is-slot-off { visibility:hidden; }
+        /* Klip hücresi: sarmalayıcı + MIDI klibi (not önizlemesi, boş = içi boş) + kalem */
+        .lab-m4-cellw { position:relative; min-width:0; height:100%; }
+        .lab-m4-cellw.is-sel::after { content:''; position:absolute; inset:-2px; border-radius:var(--r-6); border:2px solid var(--fg); pointer-events:none; }
+        .lab-m4-clip.is-midi svg { top:15px; height:calc(100% - 18px); }
+        .lab-m4-crow .lab-m4-clip.is-midi:not([aria-pressed="true"]) svg { opacity:.3; }
+        .lab-m4-clip.is-midi[aria-pressed="true"].is-empty { background:transparent; border-style:solid; border-color:color-mix(in srgb, var(--c) 45%, transparent); }
+        .lab-m4-clip.is-midi[aria-pressed="true"].is-empty .lab-m4-clip-h { background:color-mix(in srgb, var(--c) 30%, transparent); color:var(--fg); }
+        .lab-m4-clip.is-devoff[aria-pressed="true"] svg { opacity:.35; }
+        .lab-m4-edit { position:absolute; top:0; right:0; z-index:1; display:inline-flex; align-items:center; justify-content:center; width:18px; height:13px; padding:0; border:0; border-radius:0 var(--r-2) 0 var(--r-2); background:var(--bg); color:var(--fg-soft); cursor:pointer; }
+        .lab-m4-edit svg { width:10px; height:10px; }
+        .lab-m4-edit:hover { color:var(--accent); }
+        .lab-m4-edit[hidden] { display:none; }
+        /* Detay görünümü (Ableton Detail View): klip | enstrüman / sampler */
+        .lab-m4-det { display:grid; grid-template-columns:minmax(0,300px) minmax(0,1fr); gap:10px; padding:10px 12px 12px; background:var(--surface); border-top:1px solid var(--line-2); }
+        .lab-m4-det .lp-panel { --lp-c:var(--c); }
+        .lab-m4-det .lp-panel[hidden] { display:none; }
+        .lab-m4-cpanel .lp-pt, .lab-m4-dev .lp-pt, .lab-m4-sdev .lp-pt { color:var(--fg); }
+        .lab-m4-prev { height:56px; }
+        .lab-m4-prev svg { position:absolute; inset:6px 8px; width:calc(100% - 16px); height:calc(100% - 12px); }
+        .lab-m4-prev path { fill:var(--c); }
+        .lab-m4-prev.is-off path { opacity:.35; }
+        .lab-m4-prev.is-empty { border-style:dashed; border-color:color-mix(in srgb, var(--c) 45%, transparent); }
+        .lab-m4-cinfo { margin:0; font-family:var(--ff-mono); font-size:10px; letter-spacing:.06em; line-height:1.5; color:var(--fg-2); }
+        .lab-m4-cbtns { display:flex; flex-wrap:wrap; gap:6px; }
+        .lab-m4-cbtns[hidden], .lab-m4-csmp[hidden], .lab-m4-cclip[hidden] { display:none; }
+        .lab-m4-cgrp { display:flex; gap:6px; }
+        .lab-m4-cbtns .lp-btn svg, .lab-m4-csmp .lp-btn svg { width:12px; height:12px; }
+        .lab-m4 .lp-btn[aria-disabled="true"] { opacity:.45; cursor:default; }
+        .lab-m4-csmp .lp-btn[aria-pressed="true"] { color:var(--ok); border-color:var(--ok-line); background:var(--ok-soft); }
+        .lab-m4-cclip { margin:0; font-family:var(--ff-mono); font-size:9px; letter-spacing:.1em; color:var(--fg-3); }
+        .lab-m4-dgs { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:flex-start; }
+        .lab-m4-dg { display:flex; flex-direction:column; gap:6px; min-width:0; }
+        .lab-m4-dg.is-off .lab-m4-dg-k { opacity:.45; }
+        .lab-m4-dg-h { font-family:var(--ff-mono); font-size:9px; font-weight:700; letter-spacing:.16em; color:var(--fg-3); }
+        .lab-m4-dg-hrow { display:flex; align-items:center; gap:8px; min-height:30px; }
+        .lab-m4-dg > .lp-tgl { align-self:flex-start; }
+        .lab-m4-dg--osc .lab-m4-dg-h, .lab-m4-dg--amp > .lab-m4-dg-h { min-height:30px; display:flex; align-items:center; }
+        .lab-m4-dg-k { display:flex; gap:6px; transition:opacity var(--dur); }
+        .lab-m4-dg-k .lp-knob { width:58px; }
+        .lab-m4-sdev-p { margin:0; max-width:62ch; font-size:13px; line-height:1.5; color:var(--fg-2); }
+        .lab-m4-kitrow { display:flex; align-items:center; gap:10px; }
+        .lab-m4-kitrow[hidden], .lab-m4-sdev .lp-btn[hidden] { display:none; }
+        .lab-m4-sdev .lp-btn { align-self:flex-start; }
+
+        /* Öğretici kartı (kit, body'de): telefonda yerleşik kart, hedef düzenleyicinin altındaysa üste alınır */
+        @media (max-width:600px) {
+            .lp-tut-card.is-dock.lab-m4-tut-top { top:8px; bottom:auto; }
+        }
+
+        /* Piyano rulosu şeridi: REC · MIDI · klip gezinme · kopyala/yapıştır (pencere body'de → .lab-m4-roll) */
+        .lab-m4-rs { flex-shrink:0; display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; padding:8px 14px; background:var(--surface-block); border-top:1px solid var(--line-2); }
+        .lab-m4-rs.is-rec { border-top-color:var(--err-line); }
+        .lab-m4-rs-nav, .lab-m4-rs-ops { display:flex; align-items:center; gap:6px; }
+        .lab-m4-rs-name { min-width:128px; font-family:var(--ff-mono); font-size:11px; letter-spacing:.08em; color:var(--m4-tc, var(--fg)); text-align:center; white-space:nowrap; }
+        /* İz rengi yazıda okunur eşiyle (--m4-tc / --tc; bas → --err, pad → --violet): kit açık anahtarı + durum okumaları */
+        .lab-m4-roll .lp-tgl[aria-pressed="true"], .lab-m4-roll .lp-inline .lp-ro-v { color:var(--m4-tc, var(--fg)); }
+        .lab-m4-roll .lab-m4-rs-rec[aria-pressed="true"] { color:var(--err); }
+        .lab-m4-det .lp-tgl[aria-pressed="true"] { color:var(--tc, var(--fg)); }
+        .lab-m4-rs-ops .lp-btn svg { width:12px; height:12px; }
+        .lab-m4-rs .lp-btn[aria-disabled="true"] { opacity:.45; cursor:default; }
+        .lab-m4-rs-info { font-family:var(--ff-mono); font-size:10px; letter-spacing:.1em; color:var(--fg-2); }
+        .lab-m4-rs.is-rec .lab-m4-rs-info { color:var(--err); }
+        .lab-m4-rs-clip { margin-left:auto; font-family:var(--ff-mono); font-size:9px; letter-spacing:.1em; color:var(--fg-3); }
+        .lab-m4-rs :focus-visible, .lab-m4-rso :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        /* Düzenleyicide ton değişimi önerisi (şeridin üstünde) */
+        .lab-m4-rso { flex-shrink:0; display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; padding:8px 14px; background:var(--surface-0); border-top:1px solid var(--line-2); border-left:3px solid var(--accent); }
+        .lab-m4-rso[hidden] { display:none; }
+        .lab-m4-rso-t { flex:1 1 240px; min-width:0; font-size:12px; line-height:1.45; color:var(--fg-soft); }
+
         /* Odak halkaları */
-        .lab-m4 :is(.lab-m4-ms, .lab-m4-fill, .lab-m4-loc, .lab-m4-clip, .lab-m4-tplb, .lab-m4-reset, .lab-m4-ins-loop, .lab-m4-step, .lab-m4-gcard):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+        .lab-m4 :is(.lab-m4-ms, .lab-m4-fill, .lab-m4-loc, .lab-m4-clip, .lab-m4-tplb, .lab-m4-reset, .lab-m4-ins-loop, .lab-m4-step, .lab-m4-gcard, .lab-m4-arm, .lab-m4-edit, .lab-m4-vb):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 
         /* ── Dar masaüstü / tablet / telefon ────────────────────────────── */
         @media (max-width:1279px) {
@@ -1904,10 +2028,10 @@
             .lab-m4-gcards { grid-template-columns:repeat(4, minmax(0,1fr)); }
         }
         @media (max-width:1024px) {
-            .lab-m4 { --m4-head:296px; --m4-rh:84px; --m4-loc:44px; --m4-ctl:44px; }
+            /* 96 px satır: MIDI izlerinde SMP|MIDI (26) + M/S/ARM (44) başlığa sığar (kırpılmaz) */
+            .lab-m4 { --m4-head:340px; --m4-rh:96px; --m4-loc:44px; --m4-ctl:44px; }
             .lab-m4-grid { grid-template-columns:minmax(0,1fr); }
             /* Izgara kendi kaydırıcısında (sayfa yatay kaymaz) */
-            .lab-m4-scroll { overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; }
             .lab-m4-inner { min-width:1000px; }
             .lab-m4-ins { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px 16px; border-left:0; border-top:1px solid var(--line-2); }
             .lab-m4-ins-head { grid-column:1 / -1; }
@@ -1927,6 +2051,26 @@
             .lab-m4-row3 { grid-template-columns:repeat(2, minmax(0,1fr)); }
             .lab-m4-row3 > .lab-tasks { grid-column:1 / -1; }
             .lab-m4 .lp-status .lab-m4-st-r { margin-left:0; }
+            /* DAW katmanı: seçiciler 44 px + 16 px yazı (iOS yakınlaştırmasın), görünüm düğmeleri 44 px */
+            .lab-m4-sel { height:44px; font-size:16px; }
+            .lab-m4-sel--root { width:78px; }
+            .lab-m4-sel--type { width:210px; }
+            .lab-m4-name-in { height:44px; font-size:16px; }
+            .lab-m4 .lab-m4-setsel { font-size:16px; }
+            .lab-m4-lcd--set { min-width:280px; }   /* "126.00 · Cassianism · C#m" 16 px'te kesilmesin */
+            .lab-m4-ruler, .lab-m4-colh--top { height:44px; }
+            .lab-m4-rbar { padding-top:16px; }
+            .lab-m4-vb { width:44px; height:44px; }
+            .lab-m4-vb svg { width:16px; height:16px; }
+            .lab-m4-arm { width:44px; }
+            .lab-m4-arm svg { width:14px; height:14px; }
+            .lab-m4 .lab-m4-inst .lp-seg-b { height:26px; min-width:44px; font-size:10px; }   /* isabet alanı kit ::after ile 48 px */
+            .lab-m4-edit { width:30px; height:22px; }
+            .lab-m4-edit::after { content:''; position:absolute; inset:0 0 -22px -14px; }   /* görünür 30×22, isabet 44×44 (hücre içinde, sol-alta) */
+            .lab-m4-edit svg { width:14px; height:14px; }
+            .lab-m4-clip.is-midi svg { top:30px; height:calc(100% - 34px); }
+            .lab-m4-det { grid-template-columns:minmax(0,1fr); }
+            .lab-m4-rs-name { min-width:0; }
         }
         @media (max-width:600px) {
             .lab-m4 .lab-mmain { gap:12px; }
@@ -1943,10 +2087,25 @@
             .lab-m4-tright { width:100%; margin-left:0; justify-content:space-between; }
             .lab-m4 .lab-m4-tright .lp-knob { width:auto; }
             .lab-m4-card-h { font-size:24px; }
+            /* Telefonda başlık sütunu yapışkan değil (340 px ekranı kaplardı): ızgarayla birlikte kayar */
+            .lab-m4-heads { position:relative; }
+            /* ÖĞRETİCİ + ton seçicileri aynı satırda (tek başına duran öğretici düğmesi olmasın) */
+            .lab-m4 .lp-bar-c { width:100%; flex-wrap:nowrap; }
+            .lab-m4-key { flex:1; min-width:0; }
+            .lab-m4-sel--root { width:70px; }
+            .lab-m4-sel--type { flex:1; width:100%; min-width:0; }
+            .lab-m4-key .lab-m4-selw:last-child { flex:1; }
+            .lab-m4-lcd--set { flex:1 1 100%; }
+            .lab-m4-dg-k { flex-wrap:wrap; }
+            .lab-m4-dgs { gap:12px; }
+            /* Düzenleyici şeridi: tek yatay kayan satır (telefon tam ekran düzenleyici) */
+            .lab-m4-rs { flex-wrap:nowrap; overflow-x:auto; overscroll-behavior-x:contain; padding:8px 12px; }
+            .lab-m4-rs > * { flex-shrink:0; }
+            .lab-m4-rs-clip { margin-left:0; }
         }
         @media (prefers-reduced-motion: reduce) {
             .lab-m4-sc.is-live { animation:none; }
-            .lab-m4-brace, .lab-m4-pt { transition:none; }
+            .lab-m4-brace, .lab-m4-pt, .lab-m4-dg-k { transition:none; }
         }
 
         /* ═══ /LAB M4 ═══ */
@@ -10816,18 +10975,19 @@ const ARR_SESSION = [[1,1,0,1,1],[1,1,1,1,0],[1,0,1,1,1],[0,1,1,0,1]];
 const ARR_LANES = [[[0,100]], [[12,88]], [[12,36],[62,38]], [[37,26],[75,25]]];
 const ARR_KEYS = [['lab_m4_k1','Tab'], ['lab_m4_k2','Ctrl/⌘ + D'], ['lab_m4_k3','Ctrl/⌘ + L'], ['lab_m4_k4','Ctrl/⌘ + I'], ['lab_m4_k6','A'], ['lab_m4_k5','lab_m4_k5_key']];
 
-// ── Zaman çizelgesi: 8 bölüm × 2 bar = 16 bar = 256 on altılık adım, sabit tempo ──────
-// Kök loop'ların temposu 125 BPM (Lead Loop.wav 30.72 sn = 16 bar, Pad Loop.wav 7.68 sn = 4 bar)
-// → tasarımdaki 124 değil 125: loop'lar perdesi bozulmadan, ofsetle hizalı çalsın.
-const ARR_BPM = 125;
+// ── Zaman çizelgesi: 8 bölüm × 2 bar = 16 bar = 256 on altılık adım; tempo = seçili loop setinin BPM'i ──────
+// Classic loop'lar 125 BPM (Lead Loop.wav 30.72 sn = 16 bar, Pad Loop.wav 7.68 sn = 4 bar), Cassianism 126 BPM
+// (8 bar = 15.238 sn) → aranjman temposu setin temposu olur, loop'lar perdesi bozulmadan (playbackRate 1),
+// şarkı zamanından ofsetle hizalı çalar. ARR_BPM / ARR_S16 yalnız m4ApplyBpm ile değişir.
+let ARR_BPM = 125;
 const ARR_SECTION_BARS = 2;
 const ARR_SEC_STEPS = ARR_SECTION_BARS * 16;                 // 32
 const ARR_BARS = ARR_SECTIONS.length * ARR_SECTION_BARS;     // 16
 const ARR_STEPS = ARR_BARS * 16;                             // 256
-const ARR_S16 = 60 / ARR_BPM / 4;                            // 0.12 sn
+let ARR_S16 = 60 / ARR_BPM / 4;                              // 0.12 sn (125 BPM) · 0.119 sn (126 BPM)
 const ARR_XF = 0.005;                  // loop parçaları arası çapraz geçiş (tık sesi olmasın)
 const ARR_BASS_PAT = [1,0,0,1,0,0,1,0,1,0,0,0,1,0,1,0];
-const ARR_A1 = Math.pow(2, 5 / 12);    // bas: her bölümün 2. barı E → A (bir dörtlü yukarı)
+const ARR_A1 = Math.pow(2, 5 / 12);    // bas: her bölümün 2. barı bir dörtlü yukarı (i → iv)
 const ARR_W = [1, .6, .9, .8, .7];     // enerji ağırlıkları KICK, HAT, BASS, LEAD, PAD
 const ARR_MEL = [659, 0, 587, 494, 0, 440, 494, 0];   // sentez yedeği: lead motifi (8'lik)
 // Klip içi mini desen (viewBox 0 0 100 40): bir bölümün (2 bar) çalınan notaları
@@ -10841,6 +11001,38 @@ const ARR_PATS = (() => {
     return o;
 })();
 
+// Loop setleri (LAB_SAMPLES kimlikleri): tempo + varsayılan proje tonu + iz başına örnek. Davul kiti setle gelir,
+// ayrıca değiştirilebilir (KICK/HAT detayında). Bas one-shot'ı (bass.wav, kök C1) setin tonuna perdelenir.
+const ARR_KITS = {
+    classic: { id: 'classic', name: 'Classic', kick: 'classic-kick',   hat: 'classic-chat' },
+    mersey:  { id: 'mersey',  name: 'Mersey',  kick: 'mersey-kick-02', hat: 'mersey-closed-hat-02' },
+};
+const ARR_SETS = {
+    classic: { id: 'classic', name: 'Classic',    bpm: 125, key: { root: 0, type: 'minor' }, kit: 'classic', bass: 'classic-bass', lead: 'classic-lead-loop',  pad: 'classic-pad-loop' },
+    casAm:   { id: 'casAm',   name: 'Cassianism', bpm: 126, key: { root: 9, type: 'minor' }, kit: 'mersey',  bass: 'classic-bass', lead: 'cassianism-lead-02', pad: 'cassianism-pad-02' },
+    casCs:   { id: 'casCs',   name: 'Cassianism', bpm: 126, key: { root: 1, type: 'minor' }, kit: 'mersey',  bass: 'classic-bass', lead: 'cassianism-lead-12', pad: 'cassianism-pad-15' },
+};
+const ARR_SET_IDS = Object.keys(ARR_SETS);
+const m4ScaleShort = type => scaleName(type).replace(/\s*\(.*\)\s*$/, '');
+const m4KeyShort = k => noteName(k.root) + (k.type === 'minor' ? 'm' : k.type === 'major' ? '' : ' ' + m4ScaleShort(k.type));
+const m4SetLabel = id => { const s = ARR_SETS[id] || ARR_SETS.classic; return `${s.bpm.toFixed(2)} · ${s.name} · ${m4KeyShort(s.key)}`; };
+
+// ── MIDI izleri (BASS, LEAD, PAD): SAMPLE (loop / one-shot) ya da SYNTH (MIDI klip → iz enstrümanı) ──
+// Enstrüman (Ableton'da MIDI izine Analog koymak gibi): OSC (dalga, oktav, unison + detune) → LP filtre
+// (cutoff, rezonans, zarf miktarı) → AMP ADSR → seviye; bas mono + glide. Rol varsayılanları: bas mono kare +
+// glide, lead testere "pluck" (kısa decay + filtre zarfı), pad detune'lu testere + yavaş attack.
+const M4_MEL = [2, 3, 4];
+const M4_SYN_DEF = {
+    2: { pre: 'm4-bass', name: 'Mono Bass',   wave: 'square',   oct: 0, uni: 1, det: 6,  cut: 480,  res: 4, env: 0.35, filt: true, a: 0.004, d: 0.22, s: 0.6,  r: 0.08, mono: true,  glide: 0.06, lvl: 0,  on: true },
+    3: { pre: 'm4-lead', name: 'Saw Pluck',   wave: 'sawtooth', oct: 0, uni: 2, det: 8,  cut: 2200, res: 3, env: 0.5,  filt: true, a: 0.003, d: 0.26, s: 0.25, r: 0.16, mono: false, glide: 0,    lvl: -2, on: true },
+    4: { pre: 'm4-pad',  name: 'Detuned Pad', wave: 'sawtooth', oct: 0, uni: 4, det: 18, cut: 1600, res: 1, env: 0.1,  filt: true, a: 0.6,   d: 0.8,  s: 0.8,  r: 1.2,  mono: false, glide: 0,    lvl: -5, on: true },
+};
+const M4_RANGE = { 2: [24, 60], 3: [48, 96], 4: [40, 84] };     // piyano rulosu taban aralığı (C3 = 60)
+const M4_WAVES = ['sawtooth', 'square', 'triangle', 'sine'];
+const m4SynDef = tr => Object.assign({}, M4_SYN_DEF[tr]);
+const m4Clips8 = () => Array.from({ length: 8 }, () => ({ notes: [], len: ARR_SEC_STEPS }));
+const M4_ZOOM = [1, 1.5, 2, 3, 4];
+
 // Modül durumu — oturum boyunca yaşar (görünüm yeniden kurulunca korunur). Izgara = state.arrCells.
 const m4S = {
     tpl: 'Pop', auto: ARR_TPL_AUTO.Pop.slice(),
@@ -10850,15 +11042,28 @@ const m4S = {
     played: false, tplUsed: false, dirty: false,
     cols: [false, false, false, false, false, false, false, false],   // kullanıcının klip düzenlediği bölümler (görev 8)
     bdKick: false,                      // kullanıcı B-Down'daki kick klibini kendisi değiştirdi (görev 9)
+    // Loop seti / tempo / proje tonu
+    set: 'classic', kit: 'classic', bpm: 125, key: { root: 0, type: 'minor' }, scaleOn: true,
+    // İzler: enstrüman, sentez parametreleri, MIDI klipler (bölüm başına bir klip: { notes:[{p,s,l,v}], len })
+    inst: ['sample', 'sample', 'sample', 'sample', 'sample'],
+    syn: [null, null, m4SynDef(2), m4SynDef(3), m4SynDef(4)],
+    clips: [null, null, m4Clips8(), m4Clips8(), m4Clips8()],
+    arm: [0, 0, 0, 0, 0],
+    trk: 3, csec: 3,                    // seçili iz + seçili klibin bölümü (detay görünümü, kopyala/yapıştır hedefi)
+    selEnd: 3,                          // locator seçim aralığı sonu (Shift+tık; loop bu aralıkta döner)
+    rec: false, follow: true, zoom: 0,
+    clip: null,                         // pano: { notes, len, r, c }
+    added: [0, 0, 0, 0, 0], copied: false, keyMoved: false, flagUid: null,   // görev 11–14 (oturum bayrakları)
 };
 
-// ── Ses motoru (arrCtx): generator ×5 → trackGain ×5 → masterFilter → comp → outGain → çıkış ──
+// ── Ses motoru (arrCtx): generator ×5 → [inst ×3] → trackGain ×5 → masterFilter → comp → outGain → çıkış ──
 let arrCtx = null, arrG = null;
-const arrAB = {};            // dosya → Promise<ArrayBuffer|null> (bağlamsız ön yükleme)
-const arrBufP = {};          // dosya → Promise<AudioBuffer|null>
-const arrBufs = {};          // dosya → AudioBuffer (yoksa o iz sentez yedeğiyle çalar)
+const arrBufP = {};          // örnek id → Promise<AudioBuffer|null>
+const arrBufs = {};          // örnek id → AudioBuffer (yoksa o iz sentez yedeğiyle çalar)
+const arrFail = {};          // örnek id → true: yükleme gerçekten başarısız (yalnız o zaman sentez yedeği)
 const arrRun = { playing: false, i: 0, last: -2, nextT: 0, fromStart: false, jump: null, endAt: 0,
-    timer: 0, raf: 0, suspendT: 0, waitT: 0, gen: 0, queue: [], srcs: [], loops: [null, null, null, null, null], pos: -1 };
+    timer: 0, raf: 0, suspendT: 0, waitT: 0, gen: 0, queue: [], srcs: [], loops: [null, null, null, null, null], pos: -1,
+    cur: null, mono: [null, null, null, null, null], live: new Map(), monRaf: 0, monUntil: 0 };
 let _m4ui = null;            // açık modül 4 görünümünün DOM referansları
 
 function arrAudioOK() { return !!(window.AudioContext || window.webkitAudioContext); }
@@ -10876,48 +11081,44 @@ function arrEff(i) {
     if (m4S.solo.some(Boolean) && !m4S.solo[i]) return 0;
     return m4S.vol[i];
 }
+// İz tipi / klip sorguları
+function m4IsSyn(tr) { return m4S.inst[tr] === 'synth'; }
+function m4ClipOf(tr, c) { return m4S.clips[tr] ? m4S.clips[tr][c] : null; }
+function m4HasNotes(tr, c) { const k = m4ClipOf(tr, c); return !!(k && k.notes.length); }
+// Bölümde bu iz ses üretir mi: klip açık ve (SAMPLE ya da notalı SYNTH klibi, enstrüman açık)
+function m4Sounds(tr, c) { return !!state.arrCells[tr][c] && (!m4IsSyn(tr) || (m4HasNotes(tr, c) && m4S.syn[tr].on)); }
 function arrEnergy(j) {
     let e = 0;
-    state.arrCells.forEach((row, i) => { if (row[j]) e += ARR_W[i] * arrEff(i); });
+    state.arrCells.forEach((row, i) => { if (m4Sounds(i, j)) e += ARR_W[i] * arrEff(i); });
     return Math.min(1, e / 3.2) * (0.55 + 0.45 * (m4S.bypass ? 1 : m4S.auto[j]));
 }
-// Örnekler ilk etkileşimde (pointerdown/focusin) indirilir VE çözülür: çözme, jest gerektirmeyen
-// tek kullanımlık bir OfflineAudioContext ile yapılır (AudioBuffer bağlamlar arası kullanılabilir),
-// böylece ilk ▶'da tamponlar hazırdır. OfflineAudioContext yoksa çözme arrCtx kurulunca yapılır.
-const arrFail = {};          // dosya → true: indirme/çözme gerçekten başarısız (yalnız o zaman sentez yedeği)
-let arrDecoder = null;       // paylaşılan çözücü bağlam (OfflineAudioContext)
-function arrFetchAB(file) {
-    if (!arrAB[file]) arrAB[file] = fetch('assets/audio/' + encodeURIComponent(file))
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
-        .catch(e => { console.warn('[lab] arrangement sample:', file, e); return null; });
-    return arrAB[file];
+// İzin şu anki örneği (loop seti + davul kiti)
+function m4SmpId(tr) {
+    const S = ARR_SETS[m4S.set] || ARR_SETS.classic, K = ARR_KITS[m4S.kit] || ARR_KITS.classic;
+    return tr === 0 ? K.kick : tr === 1 ? K.hat : tr === 2 ? S.bass : tr === 3 ? S.lead : S.pad;
 }
-// decodeAudioData: vaat + eski geri çağırmalı (webkit) biçimi birlikte
-function arrDecodeWith(ctx, ab) {
-    return new Promise((res, rej) => { const p = ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+// Bas one-shot'ı: kökü C1 (24) → setin tonuna; 2. bar bir dörtlü yukarı
+function m4BassRate(odd) {
+    const S = ARR_SETS[m4S.set] || ARR_SETS.classic, root = labPc(S.key.root);
+    return Math.pow(2, root / 12) * (odd ? ARR_A1 : 1);
 }
-function arrLoadBuf(file, dec) {
-    if (arrBufP[file]) return;
-    arrBufP[file] = arrFetchAB(file)
-        .then(ab => ab ? arrDecodeWith(dec, ab) : null)
-        .catch(e => { console.warn('[lab] arrangement decode:', file, e); return null; })
-        .then(buf => { if (buf) arrBufs[file] = buf; else arrFail[file] = true; return buf; });
+// Örnekler ilk etkileşimde (pointerdown/focusin) ve set/kit değişince indirilir + çözülür: kitin genel
+// önbelleği (labSampleBuffer) jest gerektirmeyen OfflineAudioContext ile çözer (AudioBuffer bağlamlar arası
+// kullanılabilir) → ilk ▶'da tamponlar hazırdır. Başarısız istek arrFail'e yazılır (sentez yedeği).
+function arrLoadBuf(id) {
+    if (!id) return Promise.resolve(null);
+    if (arrBufs[id]) return Promise.resolve(arrBufs[id]);
+    if (!arrBufP[id]) arrBufP[id] = labSampleBuffer(arrCtx, id).then(buf => {
+        if (buf) { arrBufs[id] = buf; delete arrFail[id]; } else { arrFail[id] = true; delete arrBufP[id]; }
+        return buf;
+    });
+    return arrBufP[id];
 }
 function arrPrefetch() {
-    if (!arrDecoder && !arrCtx) {
-        const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-        // 48 kHz: çoğu donanımın hızı; çözülen tampon her bağlamda çalar
-        if (OAC) { try { arrDecoder = new OAC(2, 1, 48000); } catch (e) { arrDecoder = null; } }
-    }
-    const dec = arrDecoder || arrCtx;
-    ARR_TRACKS.forEach(t => { if (dec) arrLoadBuf(t.file, dec); else arrFetchAB(t.file); });
+    ARR_TRACKS.forEach((_, tr) => { if (!m4IsSyn(tr)) arrLoadBuf(m4SmpId(tr)); });
 }
-function arrDecode() {
-    if (!arrCtx) return;
-    arrPrefetch();
-    ARR_TRACKS.forEach(t => arrLoadBuf(t.file, arrCtx));
-}
-// Bağlam + kalıcı grafik bir kez (ensureArrGraph); yalnız kullanıcı hareketinde çağrılır
+const m4InstGain = tr => { const P = m4S.syn[tr]; return P && P.on ? lpLin(P.lvl) : 0; };
+// Bağlam + kalıcı grafik bir kez; yalnız kullanıcı hareketinde (ya da izinli MIDI girişinde) çağrılır
 function getArrCtx() {
     if (!arrCtx) {
         const AC = window.AudioContext || window.webkitAudioContext;
@@ -10925,7 +11126,7 @@ function getArrCtx() {
         const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 20000; flt.Q.value = m4S.q;
         const comp = ctx.createDynamicsCompressor();
         comp.threshold.value = -14; comp.ratio.value = 3; comp.knee.value = 6; comp.attack.value = 0.01; comp.release.value = 0.2;
-        const out = ctx.createGain(); out.gain.value = 0;            // durdururken 0; çalınca OUT kazancı
+        const out = ctx.createGain(); out.gain.value = 0;            // durdururken 0; çalınca / dinlerken OUT kazancı
         const split = ctx.createChannelSplitter(2), anL = ctx.createAnalyser(), anR = ctx.createAnalyser();
         anL.fftSize = anR.fftSize = 1024;
         flt.connect(comp); comp.connect(out); out.connect(ctx.destination);
@@ -10935,10 +11136,15 @@ function getArrCtx() {
             const a = ctx.createAnalyser(); a.fftSize = 256; g.connect(a);  // iz LED'i (fader sonrası)
             return { g, a };
         });
+        // MIDI izlerinin enstrüman çıkışı (LEVEL + cihaz aç/kapa) → iz kazancı
+        const inst = ARR_TRACKS.map((_, i) => {
+            if (M4_MEL.indexOf(i) < 0) return null;
+            const g = ctx.createGain(); g.gain.value = m4InstGain(i); g.connect(tg[i].g); return g;
+        });
         const noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = noise.getChannelData(0);
         for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1;
         arrCtx = ctx;
-        arrG = { flt, comp, out, anL, anR, tg, noise, buf: new Float32Array(1024), tbuf: new Float32Array(256) };
+        arrG = { flt, comp, out, anL, anR, tg, inst, noise, buf: new Float32Array(1024), tbuf: new Float32Array(256) };
     }
     if (arrCtx.state === 'suspended') arrCtx.resume().catch(() => {});   // tıklama içinde (iOS)
     return arrCtx;
@@ -10949,7 +11155,19 @@ function arrApplyMix() {
     const t = arrCtx.currentTime;
     arrG.tg.forEach((x, i) => x.g.gain.setTargetAtTime(arrEff(i), t, 0.015));
     arrG.flt.Q.setTargetAtTime(m4S.q, t, 0.02);
-    if (arrRun.playing) arrG.out.gain.setTargetAtTime(lpLin(m4S.outDb), t, 0.02);
+    if (arrRun.playing || arrRun.monRaf) arrG.out.gain.setTargetAtTime(lpLin(m4S.outDb), t, 0.02);
+    M4_MEL.forEach(arrApplySyn);
+}
+// Enstrüman parametresi çalarken: seviye + çalan seslerin filtresi (zarf yerine yeni kesim) — setTargetAtTime
+function arrApplySyn(tr) {
+    if (!arrCtx || !arrG || !arrG.inst[tr]) return;
+    const t = arrCtx.currentTime, P = m4S.syn[tr];
+    arrG.inst[tr].gain.setTargetAtTime(m4InstGain(tr), t, 0.02);
+    arrRun.srcs.forEach(x => {
+        if (x.tr !== tr || !x.flt || x.end <= t) return;
+        x.flt.frequency.setTargetAtTime(P.filt ? P.cut : 20000, t, 0.03);
+        x.flt.Q.setTargetAtTime(P.filt ? P.res : 0.7, t, 0.03);
+    });
 }
 // Bypass / otomasyon noktası değişince filtreyi hemen de yönelt (sonraki adımlar zaten okur)
 function arrApplyFilterNow() {
@@ -10969,9 +11187,10 @@ function arrKeep(rec) {
 function arrFade(rec, at) {
     try {
         const g = rec.g.gain;
-        g.cancelScheduledValues(at);
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(at); else g.cancelScheduledValues(at);
         g.setTargetAtTime(0, at, 0.008);
         rec.n.forEach(s => { try { s.stop(rec.st > at ? at : at + 0.05); } catch (e) {} });
+        rec.end = Math.min(rec.end, at + 0.05);
     } catch (e) {}
 }
 function arrHit(tr, sec, buf, t, vol, rate) {
@@ -10983,11 +11202,11 @@ function arrHit(tr, sec, buf, t, vol, rate) {
 }
 // Loop örneği: bölüm sonuna kadar, şarkı zamanından ofsetle (cümle bölümler arasında sürer).
 // Komşu bölümler aynı örneği çaldığından ±ARR_XF'lik doğrusal geçişler toplamı sabit tutar.
-function arrLoopStep(tr, t, i, buf) {
+function arrLoopStep(tr, t, i, buf, v) {
     const R = arrRun, cur = R.loops[tr];
     if (cur && cur.to > i) return;
     const secEnd = ((i >> 5) + 1) * ARR_SEC_STEPS, tEnd = t + (secEnd - i) * ARR_S16;
-    const a = Math.max(0, t - ARR_XF), v = 0.42, D = buf.duration;
+    const a = Math.max(0, t - ARR_XF), D = buf.duration;
     const off = (((i * ARR_S16) - (t - a)) % D + D) % D;
     const g = arrCtx.createGain(); g.gain.value = 0; g.connect(arrG.tg[tr].g);
     g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(v, t + ARR_XF);
@@ -11036,7 +11255,130 @@ function arrSynth(tr, t, i) {
     n.forEach(o => { if (o.frequency) { o.start(t); o.stop(end); } });
     arrKeep({ n, g, tr, sec, st: t, end });
 }
-// Süreksizlik (atlama, loop dönüşü, devam): çalan loop örnekleri t anında kısılır, yeni ofsetle başlar
+
+// ── İz enstrümanı: tek nota sesi (OSC ×uni → LP filtre (+zarf) → VCA ADSR → inst[tr]) ──────────────
+// dur null → basılı tutulur (MIDI klavye / canlı); arrRelease ile bırakılır. Mono izde önceki ses t anında
+// kesilir ve (glide > 0 ise) perde öncekinden yeni notaya kayar (portamento).
+function arrVoice(tr, p, t, dur, vel, sec) {
+    const ctx = arrCtx, P = m4S.syn[tr];
+    if (!ctx || !arrG || !P || !arrG.inst[tr]) return null;
+    const f = midiToHz(lpClamp(p + 12 * (P.oct | 0), 0, 127));
+    const n = lpClamp(Math.round(P.uni) || 1, 1, 4);
+    const g = ctx.createGain(); g.gain.value = 0;
+    const flt = ctx.createBiquadFilter(); flt.type = 'lowpass';
+    const cut = P.filt ? P.cut : 20000;
+    flt.Q.value = P.filt ? P.res : 0.7;
+    flt.connect(g); g.connect(arrG.inst[tr]);
+    let f0 = f;
+    if (P.mono) {
+        const prev = arrRun.mono[tr];
+        if (prev && prev.rec && prev.until > t - 0.12) {
+            if (P.glide > 0.001) f0 = prev.f;
+            arrFade(prev.rec, Math.max(t, ctx.currentTime));
+        }
+    }
+    const oscs = [];
+    for (let k = 0; k < n; k++) {
+        const o = ctx.createOscillator(); o.type = M4_WAVES.indexOf(P.wave) >= 0 ? P.wave : 'sawtooth';
+        o.detune.value = n > 1 ? (k / (n - 1) * 2 - 1) * P.det : 0;
+        if (f0 !== f) { o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f, t + Math.max(0.005, P.glide)); }
+        else o.frequency.setValueAtTime(f, t);
+        const og = ctx.createGain(); og.gain.value = 1 / Math.sqrt(n);
+        o.connect(og); og.connect(flt); oscs.push(o);
+    }
+    const a = Math.max(0.001, P.a), d = Math.max(0.01, P.d);
+    const hold = dur == null ? Infinity : Math.max(0.01, dur);
+    const aE = Math.min(a, hold);
+    // Filtre zarfı (amp zarfının attack/decay'iyle): cut → cut·2^(env·6) → cut
+    const fq = flt.frequency;
+    fq.setValueAtTime(cut, t);
+    if (P.filt && P.env > 0.001) {
+        const top = Math.min(20000, cut * Math.pow(2, P.env * 6));
+        fq.exponentialRampToValueAtTime(top, t + aE); fq.setTargetAtTime(cut, t + aE, d / 3);
+    }
+    // Amp ADSR — tepe = velocity eğrisi × başlık payı (akor + unison toplamı kompresöre taşmasın)
+    const pk = 0.26 * (0.25 + 0.75 * vel * vel), gg = g.gain;
+    gg.setValueAtTime(0, t);
+    gg.linearRampToValueAtTime(pk * (aE / a), t + aE);
+    if (hold > aE) gg.setTargetAtTime(pk * P.s, t + aE, d / 3);
+    oscs.forEach(o => o.start(t));
+    const rec = { n: oscs, g, flt, tr, sec: sec == null ? -1 : sec, st: t, end: Infinity, p, syn: true };
+    if (hold !== Infinity) arrRelease(rec, t + hold);
+    if (P.mono) arrRun.mono[tr] = { rec, f, until: t + hold };
+    return arrKeep(rec);
+}
+function arrRelease(rec, at) {
+    const P = m4S.syn[rec.tr], r = Math.max(0.01, P ? P.r : 0.1), gg = rec.g.gain;
+    try {
+        if (gg.cancelAndHoldAtTime) gg.cancelAndHoldAtTime(at); else gg.cancelScheduledValues(at);
+        gg.setTargetAtTime(0, at, r / 4);
+        const stop = at + r * 1.6 + 0.05;
+        rec.n.forEach(o => { try { o.stop(stop); } catch (e) {} });
+        rec.end = stop;
+    } catch (e) {}
+    const m = arrRun.mono[rec.tr];
+    if (m && m.rec === rec) m.until = at;
+}
+// Durmuşken dinleme (piyano rulosu, MIDI klavye): çıkışı aç, master filtreyi konumun değerine getir, metreleri sür
+function arrMonOpen() {
+    if (!arrCtx || !arrG) return;
+    const now = arrCtx.currentTime;
+    arrRun.monUntil = Math.max(arrRun.monUntil, performance.now() + 2600);
+    if (arrRun.playing) return;
+    arrG.out.gain.setTargetAtTime(lpLin(m4S.outDb), now, 0.005);
+    const st = m4S.resume >= 0 ? m4S.resume : m4S.sel * ARR_SEC_STEPS;
+    arrG.flt.frequency.setTargetAtTime(m4S.bypass ? 20000 : arrHz(arrAutoAt(st + 0.5)), now, 0.01);
+    if (!arrRun.monRaf) arrRun.monRaf = requestAnimationFrame(arrMonFrame);
+}
+function arrMonFrame() {
+    const R = arrRun;
+    R.monRaf = 0;
+    if (R.playing || !arrCtx) return;
+    if (!R.live.size && performance.now() > R.monUntil) { m4ResetMeters(); return; }
+    m4PaintMeters();
+    R.monRaf = requestAnimationFrame(arrMonFrame);
+}
+function arrAudition(tr, p, vel, dur) {
+    if (!m4IsSyn(tr) || !arrAudioOK()) return;
+    let ctx; try { ctx = getArrCtx(); } catch (e) { console.warn('[lab] arrangement audio:', e); return; }
+    arrMonOpen();
+    arrVoice(tr, p, ctx.currentTime + 0.005, Math.min(4, Math.max(0.05, dur || 0.3)), lpClamp(vel, 0, 1), -1);
+}
+// Basılı canlı nota (MIDI klavye): tr·128+p → ses
+function arrLiveOn(tr, p, vel) {
+    if (!m4IsSyn(tr) || !arrAudioOK()) return;
+    let ctx; try { ctx = getArrCtx(); } catch (e) { console.warn('[lab] arrangement audio:', e); return; }
+    arrLiveOff(tr, p);
+    arrMonOpen();
+    const rec = arrVoice(tr, p, ctx.currentTime + 0.003, null, lpClamp(vel, 0, 1), -1);
+    if (rec) arrRun.live.set(tr * 128 + p, rec);
+}
+function arrLiveOff(tr, p) {
+    const k = tr * 128 + p, rec = arrRun.live.get(k);
+    if (!rec) return;
+    arrRun.live.delete(k);
+    if (arrCtx) arrRelease(rec, arrCtx.currentTime);
+    arrRun.monUntil = Math.max(arrRun.monUntil, performance.now() + 2600);
+}
+function arrLiveAll() { Array.from(arrRun.live.keys()).forEach(k => arrLiveOff(Math.floor(k / 128), k % 128)); }
+
+// SYNTH izinin bir on altılık adımı: klibin bu adıma düşen notaları (kesirli başlangıçlar dahil) t'ye göre
+// planlanır. Klip döngü uzunluğu (len) bölümden kısaysa bölüm içinde döner (Ableton klip loop'u);
+// nota klip / bölüm sonunda kesilir.
+function arrSynStep(tr, sec, i, t) {
+    const clip = m4ClipOf(tr, sec);
+    if (!clip || !clip.notes.length) return;
+    const L = Math.max(1, clip.len), loc = i - sec * ARR_SEC_STEPS, ls = loc % L;
+    const secEnd = t + (ARR_SEC_STEPS - loc) * ARR_S16;
+    clip.notes.forEach(n => {
+        if (n.s < ls - 1e-6 || n.s >= ls + 1 - 1e-6 || n.s >= L - 1e-6) return;
+        const st = t + (n.s - ls) * ARR_S16;
+        if (st >= secEnd - 0.001) return;
+        const dur = Math.min((Math.min(n.s + n.l, L) - n.s) * ARR_S16, secEnd - st);
+        arrVoice(tr, n.p, st, dur, n.v / 127, sec);
+    });
+}
+// Süreksizlik (atlama, loop dönüşü, devam, tempo/set değişimi): çalan loop örnekleri t anında kısılır, yeni ofsetle başlar
 function arrLoopsCut(t) {
     arrRun.loops.forEach((L, tr) => { if (L) { arrFade(L, t); arrRun.loops[tr] = null; } });
 }
@@ -11046,18 +11388,24 @@ function arrStep(i, t) {
     if (i !== R.last + 1) arrLoopsCut(t);
     R.last = i;
     ARR_TRACKS.forEach((T, tr) => {
-        const on = !!cells[tr][sec], buf = arrBufs[T.file];
+        const on = !!cells[tr][sec];
+        if (m4IsSyn(tr)) {
+            const L = R.loops[tr]; if (L) { arrFade(L, t); R.loops[tr] = null; }
+            if (on && arrEff(tr) >= 0.001 && m4S.syn[tr].on) arrSynStep(tr, sec, i, t);
+            return;
+        }
+        const id = m4SmpId(tr), buf = arrBufs[id];
         if (T.kind === 'loop') {
             const L = R.loops[tr];
             if (!on) { if (L) { if (L.to > i) arrFade(L, t); R.loops[tr] = null; } return; }
-            if (buf) { arrLoopStep(tr, t, i, buf); return; }
+            if (buf) { arrLoopStep(tr, t, i, buf, 0.34 * labSampleGain(id)); return; }
         }
         if (!on || arrEff(tr) < 0.001) return;
-        if (!buf && !arrFail[T.file]) return;      // örnek hâlâ yükleniyor: bu adımda iz susar (sentez yalnız gerçek hata için)
-        const s16 = i & 15;
-        if (buf && tr === 0) { if (s16 % 4 === 0) arrHit(tr, sec, buf, t, 0.8); }
-        else if (buf && tr === 1) arrHit(tr, sec, buf, t, s16 % 4 === 2 ? 0.5 : 0.26);
-        else if (buf && tr === 2) { if (ARR_BASS_PAT[s16]) arrHit(tr, sec, buf, t, 0.7, (i >> 4) % 2 ? ARR_A1 : 0); }
+        if (!buf && !arrFail[id]) return;      // örnek hâlâ yükleniyor: bu adımda iz susar (sentez yalnız gerçek hata için)
+        const s16 = i & 15, g = labSampleGain(id);
+        if (buf && tr === 0) { if (s16 % 4 === 0) arrHit(tr, sec, buf, t, 0.8 * g); }
+        else if (buf && tr === 1) arrHit(tr, sec, buf, t, (s16 % 4 === 2 ? 0.5 : 0.26) * g);
+        else if (buf && tr === 2) { if (ARR_BASS_PAT[s16]) arrHit(tr, sec, buf, t, 0.7 * g, m4BassRate((i >> 4) % 2)); }
         else arrSynth(tr, t, i);
     });
     arrG.flt.frequency.setTargetAtTime(m4S.bypass ? 20000 : arrHz(arrAutoAt(i + 0.5)), t, 0.03);
@@ -11066,6 +11414,7 @@ function arrStep(i, t) {
 }
 // Planlayıcı: setTimeout zinciri, zaman AudioContext saatinden (kayma yok). Görünürken ~1 adım,
 // arka plan sekmesinde (setTimeout ≥1 sn) 1.2 sn ileri planlar; geride kalınca adımları sessizce atlar.
+// Loop: seçim aralığı [sel, selEnd] (locator'lar; Shift+tık aralığı genişletir) — Ableton loop brace'i.
 function arrTick() {
     const R = arrRun;
     R.timer = 0;
@@ -11076,8 +11425,8 @@ function arrTick() {
     while (!R.endAt && R.nextT < now + ahead) {
         let i = R.i;
         if (R.jump != null) { i = R.jump; R.jump = null; R.fromStart = false; }
-        const a = m4S.sel * ARR_SEC_STEPS;
-        if (m4S.loop && i >= a + ARR_SEC_STEPS) { i = a; R.fromStart = false; }
+        const a = m4S.sel * ARR_SEC_STEPS, b = (m4S.selEnd + 1) * ARR_SEC_STEPS;
+        if (m4S.loop && i >= b) { i = a; R.fromStart = false; }
         if (i >= ARR_STEPS) { R.endAt = R.nextT; break; }
         const t = R.nextT;
         if (t < now - 0.03) { R.last = -2; R.fromStart = false; }   // geride kaldı: bu adım sessiz geçer
@@ -11085,6 +11434,23 @@ function arrTick() {
         R.i = i + 1; R.nextT = t + ARR_S16;
     }
     R.timer = setTimeout(arrTick, 25);
+}
+// Çalma konumu (kesirli adım, ctx saatinden) — piyano rulosu playhead'i ve canlı kayıt için
+function arrPosF() {
+    const R = arrRun;
+    if (!R.playing || !arrCtx) return null;
+    const now = arrCtx.currentTime;
+    let e = R.cur;
+    for (let k = 0; k < R.queue.length; k++) { if (R.queue[k].t <= now) e = R.queue[k]; else break; }
+    if (!e) return null;
+    return e.i + lpClamp((now - e.t) / ARR_S16, 0, 0.999);
+}
+// Tempo (loop seti): adım süresi değişir; çalıyorsa loop'lar bir sonraki adımda yeni ofsetle yeniden başlar
+function m4ApplyBpm(bpm) {
+    bpm = lpClamp(+bpm || 125, 60, 200);
+    m4S.bpm = ARR_BPM = bpm;
+    ARR_S16 = 60 / bpm / 4;
+    arrRun.last = -2;
 }
 // Başlat: bağlam tıklama içinde (senkron) açılır/devam ettirilir; ilk adımdan önce örnek çözümleri
 // en çok 120 ms beklenir (çoğu zaman ön yüklemeden zaten hazırdır). Bekleme sırasında durdurulursa
@@ -11094,16 +11460,17 @@ function arrStart() {
     if (R.playing) return;
     let ctx;
     try { ctx = getArrCtx(); } catch (e) { console.warn('[lab] arrangement audio:', e); m4NoAudio(); return; }
-    arrDecode();
+    arrPrefetch();
     clearTimeout(R.suspendT); R.suspendT = 0;
+    if (R.monRaf) { cancelAnimationFrame(R.monRaf); R.monRaf = 0; }
     const resume = m4S.resume >= 0;
     const i = resume ? m4S.resume : m4S.sel * ARR_SEC_STEPS;
     if (!resume) R.fromStart = i === 0 && !m4S.loop;
     m4S.resume = -1;
     const gen = ++R.gen;
-    Object.assign(R, { playing: true, i, last: -2, jump: null, endAt: 0, queue: [], loops: [null, null, null, null, null], pos: i, nextT: 0 });
+    Object.assign(R, { playing: true, i, last: -2, jump: null, endAt: 0, queue: [], loops: [null, null, null, null, null], pos: i, cur: null, nextT: 0, mono: [null, null, null, null, null] });
     m4PaintTransport(); m4PaintPos(true);
-    const all = Promise.all(ARR_TRACKS.map(t => arrBufP[t.file] || null));
+    const all = Promise.all(ARR_TRACKS.map((_, tr) => m4IsSyn(tr) ? null : (arrBufP[m4SmpId(tr)] || null)));
     Promise.race([all, new Promise(r => { R.waitT = setTimeout(r, 120); })]).then(() => {
         if (!R.playing || R.gen !== gen || ctx !== arrCtx) return;
         const now = ctx.currentTime, st = R.jump != null ? R.jump : R.i;
@@ -11126,13 +11493,16 @@ function arrStop(mode) {
     clearTimeout(R.timer); R.timer = 0;
     if (R.raf) cancelAnimationFrame(R.raf);
     R.raf = 0;
+    if (R.monRaf) { cancelAnimationFrame(R.monRaf); R.monRaf = 0; }
     R.playing = false;
     if (arrCtx && arrG) {
         const now = arrCtx.currentTime, g = arrG.out.gain;
         g.cancelScheduledValues(now); g.setTargetAtTime(0, now, 0.012);     // ~50 ms'de sessiz
         R.srcs.slice().forEach(rec => rec.n.forEach(s => { try { s.stop(rec.st > now + 0.08 ? now : now + 0.08); } catch (e) {} }));
     }
-    R.loops = [null, null, null, null, null]; R.queue = []; R.jump = null; R.endAt = 0;
+    R.live.clear(); R.monUntil = 0;
+    R.loops = [null, null, null, null, null]; R.mono = [null, null, null, null, null];
+    R.queue = []; R.jump = null; R.endAt = 0; R.cur = null;
     if (mode === 'pause' && was && R.pos >= 0) m4S.resume = R.pos;
     else if (mode !== 'pause') m4S.resume = -1;
     if (mode === 'end' && R.fromStart) m4S.played = true;
@@ -12637,12 +13007,13 @@ function m3TaskLive() {
 // ═══════════════════════════════════════════════════════════════════
 // Modül 4 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
 // Otomatik görevler (m4Auto). Kimlikler 6–10: eski 1–5 başka görevlerdi, yeniden kullanılmaz.
-TASKS[4] = [6, 7, 8, 9, 10].map(id => ({ id, get text() { return L('lab_m4_t' + id); } }));
+// 11–14: MIDI iş akışı (synth izine nota, gam içi melodi, klip kopyala, tonu değiştir + gam içinde taşı).
+TASKS[4] = [6, 7, 8, 9, 10, 11, 12, 13, 14].map(id => ({ id, get text() { return L('lab_m4_t' + id); } }));
 Object.assign(LAB_TXT, {
     // Modül 4 · Arrangement metinleri: anahtar: [`TR`, `EN`],
     lab_m4_win_aria:  [`BE·ARRANGER 04 eklentisi`, `BE·ARRANGER 04 plug-in`],
     lab_m4_win_sub:   [`SONG ARRANGEMENT ENGINE`, `SONG ARRANGEMENT ENGINE`],
-    lab_m4_preset:    [`Tür şablonu`, `Genre template`],
+    lab_m4_preset:    [`Tür şablonu / kayıtlı aranjman`, `Genre template / saved arrangement`],
     lab_m4_tpl_prev:  [`Önceki şablon`, `Previous template`],
     lab_m4_tpl_next:  [`Sonraki şablon`, `Next template`],
     lab_m4_custom:    [`Özel (düzenlendi)`, `Custom (edited)`],
@@ -12651,12 +13022,14 @@ Object.assign(LAB_TXT, {
     lab_m4_out_aria:  [`Çıkış seviyesi L/R`, `Output level L/R`],
     lab_m4_pwr:       [`Master filtre ve otomasyon`, `Master filter and automation`],
     lab_m4_pwr_t:     [`Master filtre + otomasyon (kapalı = bypass)`, `Master filter + automation (off = bypass)`],
-    lab_m4_play:      [`Çal / Duraklat`, `Play / Pause`],
-    lab_m4_stop:      [`Durdur`, `Stop`],
-    lab_m4_loop:      [`Bölüm loop`, `Section loop`],
+    lab_m4_play:      [`Çal / Duraklat (Boşluk)`, `Play / Pause (Space)`],
+    lab_m4_stop:      [`Durdur — iki kez: şarkı başına`, `Stop — twice: back to the song start`],
+    lab_m4_loop:      [`Seçim loop'u`, `Selection loop`],
+    lab_m4_rec:       [`Kayıt (REC): MIDI klavyeden açık klibe yaz`, `Record (REC): write from a MIDI keyboard into the open clip`],
     lab_m4_lcd_pos:   [`POZİSYON · BAR.VURUŞ.16`, `POSITION · BAR.BEAT.16`],
     lab_m4_lcd_time:  [`ZAMAN`, `TIME`],
-    lab_m4_lcd_tempo: [`TEMPO · 4/4`, `TEMPO · 4/4`],
+    lab_m4_lcd_set:   [`TEMPO · LOOP SETİ`, `TEMPO · LOOP SET`],
+    lab_m4_set_aria:  [`Loop seti: tempo, örnekler ve varsayılan ton`, `Loop set: tempo, samples and default key`],
     lab_m4_lcd_sel:   [`SEÇİLİ BÖLÜM`, `SELECTED SECTION`],
     lab_m4_lcd_play:  [`ÇALAN BÖLÜM`, `PLAYING SECTION`],
     lab_m4_lcd_cut:   [`CUTOFF · LP 12dB`, `CUTOFF · LP 12dB`],
@@ -12670,7 +13043,7 @@ Object.assign(LAB_TXT, {
     lab_m4_loc_h:     [`LOCATOR · BÖLÜMLER`, `LOCATORS · SECTIONS`],
     lab_m4_sub_kick:  [`1/4 · four on the floor`, `1/4 · four on the floor`],
     lab_m4_sub_hat:   [`1/16 · groove`, `1/16 · groove`],
-    lab_m4_sub_bass:  [`E1 → A1`, `E1 → A1`],
+    lab_m4_sub_bass:  [`i → iv`, `i → iv`],
     lab_m4_sub_lead:  [`melodi loop`, `melody loop`],
     lab_m4_sub_pad:   [`akor loop`, `chord loop`],
     lab_m4_mute_a:    [`{trk} mute`, `{trk} mute`],
@@ -12678,16 +13051,27 @@ Object.assign(LAB_TXT, {
     lab_m4_fill_a:    [`{trk}: tüm bölümlere yaz / temizle`, `{trk}: write to / clear all sections`],
     lab_m4_fill_t:    [`Tüm bölümlere yaz / temizle`, `Write to / clear all sections`],
     lab_m4_vol_a:     [`{trk} ses seviyesi`, `{trk} volume`],
+    lab_m4_inst_aria: [`{trk} enstrümanı: SAMPLE ya da SYNTH (MIDI)`, `{trk} instrument: SAMPLE or SYNTH (MIDI)`],
+    lab_m4_inst_smp:  [`SAMPLE: loop / one-shot örnek çalar`, `SAMPLE: plays a loop / one-shot sample`],
+    lab_m4_inst_syn:  [`MIDI: bölüm başına bir MIDI klip, iz enstrümanı çalar`, `MIDI: one MIDI clip per section, played by the track instrument`],
+    lab_m4_arm_a:     [`{trk} kayda hazırla (ARM) — MIDI klavye bu izi çalar`, `Arm {trk} — the MIDI keyboard plays this track`],
+    lab_m4_edit_a:    [`{trk} · {sec} — MIDI klibi düzenle`, `{trk} · {sec} — edit the MIDI clip`],
+    lab_m4_edit_t:    [`Klibi düzenle (ya da klibe çift tık)`, `Edit the clip (or double-click the clip)`],
+    lab_m4_clip_midi_a: [`{trk} · {sec} · MIDI klip · {n} nota`, `{trk} · {sec} · MIDI clip · {n} notes`],
     lab_m4_master:    [`MASTER`, `MASTER`],
     lab_m4_auto_w:    [`OTOMASYON`, `AUTOMATION`],
     lab_m4_auto_p:    [`Filter · Cutoff`, `Filter · Cutoff`],
     lab_m4_auto_h:    [`Noktayı yukarı/aşağı sürükle · tekerlek = ince ayar`, `Drag a point up/down · wheel = fine adjust`],
     lab_m4_grid_aria: [`Aranjman ızgarası: 5 iz × 8 bölüm`, `Arrangement grid: 5 tracks × 8 sections`],
-    lab_m4_loc_aria:  [`Locator'lar: bölüm seç / atla`, `Locators: select / jump to a section`],
+    lab_m4_loc_aria:  [`Locator'lar: bölüm seç / atla (Shift+tık aralık seçer)`, `Locators: select / jump to a section (Shift+click selects a range)`],
     lab_m4_loc_a:     [`{sec} — seç, çalarken atla`, `{sec} — select, jump while playing`],
     lab_m4_auto_aria: [`Master filtre cutoff otomasyonu`, `Master filter cutoff automation`],
     lab_m4_pt_a:      [`{sec} · cutoff`, `{sec} · cutoff`],
     lab_m4_en_aria:   [`Enerji eğrisi: {list}`, `Energy curve: {list}`],
+    lab_m4_follow:    [`TAKİP`, `FOLLOW`],
+    lab_m4_follow_t:  [`Takip: çalarken ızgara playhead'le kayar`, `Follow: the grid scrolls with the playhead while playing`],
+    lab_m4_zin:       [`Yatay yakınlaştır`, `Zoom in horizontally`],
+    lab_m4_zout:      [`Yatay uzaklaştır`, `Zoom out horizontally`],
     lab_m4_ins:       [`INSPECTOR`, `INSPECTOR`],
     lab_m4_ins_n:     [`BÖLÜM {n} / 08`, `SECTION {n} / 08`],
     lab_m4_ins_rng:   [`BAR {a}–{b} · 2 BAR`, `BAR {a}–{b} · 2 BARS`],
@@ -12707,11 +13091,87 @@ Object.assign(LAB_TXT, {
     lab_m4_st_2:      [`LOCATOR = BÖLÜME ATLA / SEÇ`, `LOCATOR = JUMP TO / SELECT SECTION`],
     lab_m4_st_3:      [`= SEÇİLİ BÖLÜMÜ LOOP'LA`, `= LOOP THE SELECTED SECTION`],
     lab_m4_st_4:      [`M/S = MUTE/SOLO`, `M/S = MUTE/SOLO`],
-    lab_m4_st_5:      [`125 BPM · BÖLÜM = 2 BAR = 32 ADIM · 16 BAR`, `125 BPM · SECTION = 2 BARS = 32 STEPS · 16 BARS`],
+    lab_m4_st_5:      [`{bpm} BPM · BÖLÜM = 2 BAR = 32 ADIM · 16 BAR`, `{bpm} BPM · SECTION = 2 BARS = 32 STEPS · 16 BARS`],
+    lab_m4_st_6:      [`BOŞLUK = ÇAL/DUR · SHIFT+ENTER = SEÇİMDEN ÇAL`, `SPACE = PLAY/STOP · SHIFT+ENTER = PLAY FROM SELECTION`],
+    lab_m4_st_7:      [`MIDI KLİBE ÇİFT TIK = DÜZENLE`, `DOUBLE-CLICK A MIDI CLIP = EDIT`],
     lab_m4_noaudio:   [`Tarayıcın Web Audio desteklemiyor; çalma kapalı.`, `Your browser doesn't support Web Audio, so playback is off.`],
     lab_m4_sr_now:    [`Şu an çalan: {sec}`, `Now playing: {sec}`],
     lab_m4_sr_stop:   [`Çalma durdu`, `Playback stopped`],
     lab_m4_task_done: [`Görev tamamlandı: {task}.`, `Task completed: {task}.`],
+    // Proje tonu + loop seti + kayıt
+    lab_m4_key_root:  [`Proje tonu: kök nota`, `Project key: root note`],
+    lab_m4_key_type:  [`Proje tonu: gam türü`, `Project key: scale type`],
+    lab_m4_key_t:     [`Proje tonu — MIDI düzenleyici bu gamla açılır`, `Project key — the MIDI editor opens with this scale`],
+    lab_m4_offer:     [`MIDI notaları {from} → {to} gamına taşınsın mı? Dereceler korunur.`, `Move the MIDI notes from {from} to {to}? Scale degrees are kept.`],
+    lab_m4_offer_yes: [`GAM İÇİNDE TAŞI`, `TRANSPOSE IN KEY`],
+    lab_m4_offer_no:  [`NOTALARI BIRAK`, `KEEP NOTES`],
+    lab_m4_offer_done:[`{n} nota yeni gama taşındı.`, `{n} notes moved into the new key.`],
+    lab_m4_save_t:    [`Aranjmanı hesabına kaydet (ızgara, otomasyon, MIDI klipler, enstrümanlar, karışım)`, `Save the arrangement to your account (grid, automation, MIDI clips, instruments, mix)`],
+    lab_m4_save_in:   [`Kaydetmek için giriş yap`, `Sign in to save`],
+    lab_m4_save_p:    [`Aranjman adı`, `Arrangement name`],
+    lab_m4_save_ph:   [`ör. Deep House taslak 1`, `e.g. Deep House draft 1`],
+    lab_m4_save_no:   [`VAZGEÇ`, `CANCEL`],
+    lab_m4_del_t:     [`Seçili kayıtlı aranjmanı sil`, `Delete the selected saved arrangement`],
+    lab_m4_del_confirm:[`"{name}" aranjmanı silinsin mi? Bu geri alınamaz.`, `Delete the arrangement "{name}"? This cannot be undone.`],
+    lab_m4_del_failed:[`Aranjman silinemedi.`, `Could not delete the arrangement.`],
+    lab_m4_loaded:    [`Aranjman yüklendi: {name}`, `Arrangement loaded: {name}`],
+    // Detay görünümü (klip + cihaz)
+    lab_m4_det_aria:  [`Detay görünümü: seçili klip ve iz enstrümanı`, `Detail view: selected clip and track instrument`],
+    lab_m4_clip_h:    [`KLİP`, `CLIP`],
+    lab_m4_clip_info: [`{n} NOTA · {bars} BAR · {key}`, `{n} NOTES · {bars} BAR · {key}`],
+    lab_m4_clip_empty:[`Boş MIDI klip — KLİBİ DÜZENLE ile nota yaz`, `Empty MIDI clip — write notes with EDIT CLIP`],
+    lab_m4_clip_prev: [`Klip önizlemesi`, `Clip preview`],
+    lab_m4_c_edit:    [`KLİBİ DÜZENLE`, `EDIT CLIP`],
+    lab_m4_c_edit_t:  [`MIDI nota düzenleyicide aç (klibe çift tık)`, `Open in the MIDI note editor (double-click the clip)`],
+    lab_m4_c_dup:     [`ÇOĞALT`, `DUPLICATE`],
+    lab_m4_c_dup_t:   [`Klibi sonraki bölüme çoğalt (Ctrl/⌘+D)`, `Duplicate the clip into the next section (Ctrl/⌘+D)`],
+    lab_m4_c_copy:    [`KOPYALA`, `COPY`],
+    lab_m4_c_copy_t:  [`Klibi panoya kopyala (Ctrl/⌘+C)`, `Copy the clip to the clipboard (Ctrl/⌘+C)`],
+    lab_m4_c_paste:   [`YAPIŞTIR`, `PASTE`],
+    lab_m4_c_paste_t: [`Panodaki klibi seçili bölüme yapıştır (Ctrl/⌘+V)`, `Paste the clipboard clip into the selected section (Ctrl/⌘+V)`],
+    lab_m4_c_clear:   [`TEMİZLE`, `CLEAR`],
+    lab_m4_c_clear_t: [`Klibin notalarını sil (Delete) — geri alınabilir`, `Delete the clip's notes (Delete) — undoable`],
+    lab_m4_c_clip:    [`PANO · {trk} · {sec}`, `CLIPBOARD · {trk} · {sec}`],
+    lab_m4_c_none:    [`PANO BOŞ`, `CLIPBOARD EMPTY`],
+    lab_m4_a_copy:    [`{trk} · {sec} klibi kopyalandı`, `{trk} · {sec} clip copied`],
+    lab_m4_a_paste:   [`{trk} · {sec} bölümüne yapıştırıldı`, `Pasted into {trk} · {sec}`],
+    lab_m4_a_clear:   [`{trk} · {sec} klibi temizlendi`, `{trk} · {sec} clip cleared`],
+    lab_m4_a_nopaste: [`Pano boş — önce bir MIDI klibi kopyala`, `Clipboard empty — copy a MIDI clip first`],
+    lab_m4_a_last:    [`Son bölüm: sonrasına çoğaltılamaz`, `Last section: nothing after it to duplicate into`],
+    lab_m4_smp_h:     [`SAMPLER`, `SAMPLER`],
+    lab_m4_smp_listen:[`DİNLE`, `LISTEN`],
+    lab_m4_smp_listen_t: [`Bu izin örneğini dinle`, `Listen to this track's sample`],
+    lab_m4_smp_p:     [`SAMPLE modunda bu iz, loop setinin örneğini şarkı zamanıyla eş (perde değişmeden) çalar. MIDI'ye çevirip kendi klibini yazabilirsin.`, `In SAMPLE mode this track plays the loop set's sample in sync with the song time (no pitch change). Switch to MIDI to write your own clip.`],
+    lab_m4_drum_p:    [`Davul izi: örnek her vuruşta tetiklenir. Kiti değiştir — Mersey (Sounds Mania) ya da Classic.`, `Drum track: the sample fires on every hit. Swap the kit — Mersey (Sounds Mania) or Classic.`],
+    lab_m4_kit:       [`KİT`, `KIT`],
+    lab_m4_kit_aria:  [`Davul kiti (KICK + HAT)`, `Drum kit (KICK + HAT)`],
+    lab_m4_to_synth:  [`MIDI'YE ÇEVİR`, `SWITCH TO MIDI`],
+    lab_m4_dev_pwr:   [`Enstrüman açık/kapalı (cihaz)`, `Instrument on/off (device)`],
+    lab_m4_dev_pre:   [`Enstrüman preseti`, `Instrument preset`],
+    lab_m4_flt_t:     [`Filtre bölümünü aç / kapat`, `Turn the filter section on / off`],
+    lab_m4_wave_aria: [`Osilatör dalga formu`, `Oscillator waveform`],
+    lab_m4_mono_t:    [`Mono: tek ses; GLIDE ile notalar arasında kayar`, `Mono: one voice; GLIDE slides between notes`],
+    lab_m4_k_oct:     [`Oktav kaydırma`, `Octave shift`],
+    lab_m4_k_uni:     [`Unison ses sayısı`, `Unison voices`],
+    lab_m4_k_det:     [`Unison detune (cent)`, `Unison detune (cents)`],
+    lab_m4_k_cut:     [`Filtre kesim frekansı`, `Filter cutoff frequency`],
+    lab_m4_k_res:     [`Filtre rezonansı (Q)`, `Filter resonance (Q)`],
+    lab_m4_k_env:     [`Filtre zarfı miktarı (attack/decay ile açılır)`, `Filter envelope amount (opens with attack/decay)`],
+    lab_m4_k_a:       [`Amp attack`, `Amp attack`],
+    lab_m4_k_d:       [`Amp decay`, `Amp decay`],
+    lab_m4_k_s:       [`Amp sustain`, `Amp sustain`],
+    lab_m4_k_r:       [`Amp release`, `Amp release`],
+    lab_m4_k_gl:      [`Glide (portamento) süresi — mono`, `Glide (portamento) time — mono`],
+    lab_m4_k_lvl:     [`Enstrüman seviyesi`, `Instrument level`],
+    // Piyano rulosu şeridi (düzenleyici içinde)
+    lab_m4_rs_aria:   [`Klip gezinme ve MIDI kayıt`, `Clip navigation and MIDI recording`],
+    lab_m4_rs_rec_t:  [`REC: MIDI klavyeden bu klibe yaz — dururken adım adım (her tuş ızgara kadar ilerler), çalarken gerçek zamanlı + ızgaraya kuantize`, `REC: write from a MIDI keyboard into this clip — step input when stopped (each key advances by the grid), real time + quantized to the grid while playing`],
+    lab_m4_rs_prev:   [`Önceki bölümün klibi`, `Previous section's clip`],
+    lab_m4_rs_next:   [`Sonraki bölümün klibi`, `Next section's clip`],
+    lab_m4_rs_step:   [`ADIM KAYDI · {pos}`, `STEP INPUT · {pos}`],
+    lab_m4_rs_live:   [`CANLI KAYIT · IZGARA {g}`, `LIVE RECORDING · GRID {g}`],
+    lab_m4_rs_off:    [`REC KAPALI · MIDI KLAVYE ÇALAR`, `REC OFF · MIDI KEYBOARD PLAYS`],
+    lab_m4_a_rec:     [`Kaydedildi: {n}`, `Recorded: {n}`],
     // Çalışma mantığı
     lab_m4_hiw_t:     [`Çalışma mantığı`, `How it works`],
     lab_m4_hiw_aux:   [`ZAMAN ÇİZELGESİ → SCHEDULER → SES GRAFİĞİ`, `TIMELINE → SCHEDULER → AUDIO GRAPH`],
@@ -12721,12 +13181,12 @@ Object.assign(LAB_TXT, {
     lab_m4_fb1_2:     [`bölüm = 2 bar = 32 adım`, `section = 2 bars = 32 steps`],
     lab_m4_fb1_3:     [`toplam 256 adım (16 bar)`, `256 steps in total (16 bars)`],
     lab_m4_fb2_k:     [`02 · SCHEDULER`, `02 · SCHEDULER`],
-    lab_m4_fb2_2:     [`nextT += 60/125/4 (drift yok)`, `nextT += 60/125/4 (no drift)`],
+    lab_m4_fb2_2:     [`nextT += 60/BPM/4 (drift yok)`, `nextT += 60/BPM/4 (no drift)`],
     lab_m4_fb3_k:     [`03 · GENERATOR ×5`, `03 · GENERATOR ×5`],
     lab_m4_fb3_t:     [`grid[tr][sec] = 1 ise`, `if grid[tr][sec] = 1`],
-    lab_m4_fb3_1:     [`KICK Kick.wav · HAT Close Hat.wav`, `KICK Kick.wav · HAT Close Hat.wav`],
-    lab_m4_fb3_2:     [`BASS bass.wav · LEAD Lead Loop.wav`, `BASS bass.wav · LEAD Lead Loop.wav`],
-    lab_m4_fb3_3:     [`PAD Pad Loop.wav · yedek: sentez`, `PAD Pad Loop.wav · fallback: synth`],
+    lab_m4_fb3_1:     [`KICK · HAT: kit örneği (Classic / Mersey)`, `KICK · HAT: kit sample (Classic / Mersey)`],
+    lab_m4_fb3_2:     [`BASS · LEAD · PAD: loop ya da MIDI → synth`, `BASS · LEAD · PAD: loop or MIDI → synth`],
+    lab_m4_fb3_3:     [`yedek: sentez üreteci`, `fallback: synth generator`],
     lab_m4_fb4_k:     [`04 · TRACK GAIN ×5`, `04 · TRACK GAIN ×5`],
     lab_m4_fb4_1:     [`gain = mute ? 0 : vol`, `gain = mute ? 0 : vol`],
     lab_m4_fb4_2:     [`solo varsa diğerleri 0`, `with a solo, the others go to 0`],
@@ -12739,20 +13199,24 @@ Object.assign(LAB_TXT, {
     lab_m4_x1_t:      [`Klip`, `Clip`],
     lab_m4_x1_d:      [`Her kutu grid[track][bölüm] değerini 0/1 yapar. Scheduler o bölüme gelince yalnızca 1 olan track'lerin generator'ını tetikler.`, `Each box sets grid[track][section] to 0/1. When the scheduler reaches that section it only triggers the generators of tracks set to 1.`],
     lab_m4_x2_t:      [`Scheduler`, `Scheduler`],
-    lab_m4_x2_d:      [`Her 16'lık adım (60/125/4 = 120 ms) bir setTimeout ile ilerler; nota zamanı AudioContext saatinden (nextT) verilir, böylece kayma olmaz.`, `Each 16th step (60/125/4 = 120 ms) advances with a setTimeout; note times come from the AudioContext clock (nextT), so nothing drifts.`],
+    lab_m4_x2_d:      [`Her 16'lık adım (60/BPM/4 — 125 BPM'de 120 ms) bir setTimeout ile ilerler; nota zamanı AudioContext saatinden (nextT) verilir, böylece kayma olmaz. BPM seçili loop setinden gelir.`, `Each 16th step (60/BPM/4 — 120 ms at 125 BPM) advances with a setTimeout; note times come from the AudioContext clock (nextT), so nothing drifts. The BPM comes from the chosen loop set.`],
     lab_m4_x3_t:      [`Locator`, `Locator`],
-    lab_m4_x3_d:      [`Bölüm başlığına tıklamak o bölümü seçer; çalarken playhead bir sonraki adımda step = bölüm × 32'ye atlar.`, `Clicking a section header selects that section; while playing, the playhead jumps to step = section × 32 on the next step.`],
+    lab_m4_x3_d:      [`Bölüm başlığına tıklamak o bölümü seçer (Shift+tık aralık); çalarken playhead bir sonraki adımda step = bölüm × 32'ye atlar.`, `Clicking a section header selects that section (Shift+click a range); while playing, the playhead jumps to step = section × 32 on the next step.`],
     lab_m4_x4_t:      [`Loop`, `Loop`],
-    lab_m4_x4_d:      [`Loop açıkken adım seçili bölümün sonuna gelince başına döner — Ableton'daki loop brace ile aynı mantık.`, `With loop on, the step returns to the start of the selected section when it reaches its end — the same idea as Ableton's loop brace.`],
+    lab_m4_x4_d:      [`Loop açıkken adım seçim aralığının sonuna gelince başına döner — Ableton'daki loop brace ile aynı mantık.`, `With loop on, the step returns to the start of the selection when it reaches its end — the same idea as Ableton's loop brace.`],
     lab_m4_x5_t:      [`Mute / Solo / Volume`, `Mute / Solo / Volume`],
     lab_m4_x5_d:      [`Track gain düğümünü değiştirir; solo açıksa solo olmayan track'ler 0'a çekilir. Değişim tıkırtısız olsun diye setTargetAtTime kullanılır.`, `They change the track gain node; with a solo on, non-solo tracks are pulled to 0. setTargetAtTime keeps the change click-free.`],
     lab_m4_x6_t:      [`Otomasyon`, `Automation`],
     lab_m4_x6_d:      [`Her bölümde bir nokta var; noktalar arası doğrusal enterpolasyonla her adımda filter.frequency hedefi güncellenir. Kapalı filtre = düşük enerji.`, `Each section has one point; with linear interpolation between points, the filter.frequency target is updated on every step. A closed filter = low energy.`],
     lab_m4_x7_t:      [`Enerji`, `Energy`],
     lab_m4_x7_d:      [`Σ(klip × track ağırlığı × gain) normalize edilir, filtre açıklığıyla çarpılır. Eğri nefes almalı: yüksel → düş → patla.`, `Σ(clip × track weight × gain) is normalised and multiplied by how open the filter is. The curve should breathe: rise → fall → burst.`],
+    lab_m4_x8_t:      [`MIDI klip + enstrüman`, `MIDI clip + instrument`],
+    lab_m4_x8_d:      [`MIDI izinde her bölümün bir klibi var: notalar {perde, başlangıç, uzunluk, velocity}. Scheduler adımın notalarını ctx saatine planlar; her nota OSC → filtre (+zarf) → ADSR sesi açar, bas mono + glide. 1 barlık klip bölümde iki kez döner.`, `On a MIDI track every section holds one clip: notes {pitch, start, length, velocity}. The scheduler books each step's notes on the ctx clock; every note opens an OSC → filter (+envelope) → ADSR voice, the bass is mono + glide. A 1-bar clip loops twice in its section.`],
+    lab_m4_x9_t:      [`Ton + gam`, `Key + scale`],
+    lab_m4_x9_d:      [`Proje tonu (kök + gam) MIDI düzenleyiciyi açar: GAM açıkken gam içi satırlar vurgulanır, yeni notalar gama oturur. Tonu değiştirince notalar derece korunarak yeni gama taşınabilir.`, `The project key (root + scale) opens the MIDI editor: with SCALE on the in-key rows light up and new notes snap to the scale. When the key changes, notes can move into the new scale keeping their degrees.`],
     lab_m4_p_tempo:   [`Tempo`, `Tempo`],
-    lab_m4_p_tempo_r: [`125 BPM (sabit)`, `125 BPM (fixed)`],
-    lab_m4_p_tempo_w: [`adım = 60/125/4 s`, `step = 60/125/4 s`],
+    lab_m4_p_tempo_r: [`125 / 126 BPM (loop seti)`, `125 / 126 BPM (loop set)`],
+    lab_m4_p_tempo_w: [`adım = 60/BPM/4 s`, `step = 60/BPM/4 s`],
     lab_m4_p_sec:     [`Bölüm`, `Section`],
     lab_m4_p_clip:    [`Klip`, `Clip`],
     lab_m4_p_tpl:     [`şablon`, `template`],
@@ -12762,7 +13226,11 @@ Object.assign(LAB_TXT, {
     lab_m4_p_cut:     [`Cutoff otomasyonu`, `Cutoff automation`],
     lab_m4_p_curve:   [`şablon eğrisi`, `template curve`],
     lab_m4_p_byp:     [`on (filtre aktif)`, `on (filter active)`],
-    lab_m4_p_loop:    [`seçili bölüm`, `selected section`],
+    lab_m4_p_loop:    [`seçili bölüm(ler)`, `selected section(s)`],
+    lab_m4_p_set:     [`Loop seti`, `Loop set`],
+    lab_m4_p_key:     [`Proje tonu`, `Project key`],
+    lab_m4_p_inst:    [`Enstrüman (MIDI izi)`, `Instrument (MIDI track)`],
+    lab_m4_p_role:    [`rol varsayılanı`, `role default`],
     // Alt kartlar
     lab_m4_where_h:   [`Ableton'da nerede?`, `Where is it in Ableton?`],
     lab_m4_sv_tag:    [`SESSION · DİKEY KLİPLER`, `SESSION · VERTICAL CLIPS`],
@@ -12821,45 +13289,157 @@ Object.assign(LAB_TXT, {
     lab_m4_t8:        [`Chorus 1'de tüm kanalları aç`, `Turn on every channel in Chorus 1`],
     lab_m4_t9:        [`Breakdown'da kick'i kapat`, `Turn off the kick in the Breakdown`],
     lab_m4_t10:       [`Aranjmanı baştan sona dinle`, `Listen to the arrangement from start to finish`],
+    lab_m4_t11:       [`Bir synth (MIDI) izine en az 8 nota yaz`, `Write at least 8 notes on a synth (MIDI) track`],
+    lab_m4_t12:       [`Gam dışı nota bırakmadan bir melodi yaz`, `Write a melody with no out-of-key notes`],
+    lab_m4_t13:       [`Bir MIDI klibi başka bölüme kopyala`, `Copy a MIDI clip into another section`],
+    lab_m4_t14:       [`Tonu değiştir ve MIDI'yi gam içinde taşı`, `Change the key and move the MIDI in key`],
+    // Öğretici: DAW'da MIDI yazmak
+    lab_m4_tut_t:     [`DAW'da MIDI yazmak`, `Writing MIDI in a DAW`],
+    lab_m4_tut_i:     [`LEAD izini synth'e çevirip Chorus'a kendi melodini yazacaksın: klibi aç, tonu seç, nota çiz, uzunluk ve velocity ayarla, kuantize et, klibi çoğalt, enstrümanı şekillendir ve şarkıyı baştan dinle — Ableton Live'daki MIDI iş akışının aynısı.`, `You will turn the LEAD track into a synth and write your own melody for the chorus: open the clip, pick the key, draw notes, set length and velocity, quantize, duplicate the clip, shape the instrument and play the song from the top — the same MIDI workflow as in Ableton Live.`],
+    lab_m4_tut_o:     [`Tebrikler: MIDI klibini yazdın, gam içinde tuttun ve aranjmana yaydın. Live'da aynı adımlar: MIDI izi + enstrüman, klibe çift tık, Scale, Ctrl/⌘+U, kopyala/yapıştır.`, `Well done: you wrote a MIDI clip, kept it in key and spread it across the arrangement. The same steps in Live: MIDI track + instrument, double-click the clip, Scale, Ctrl/⌘+U, copy/paste.`],
+    lab_m4_tut_1:     [`LEAD izini MIDI (synth) yap`, `Turn LEAD into a MIDI (synth) track`],
+    lab_m4_tut_1b:    [`LEAD başlığındaki SMP | MIDI anahtarından MIDI'yi seç. İz artık loop çalmaz: her bölüm senin yazacağın bir MIDI klibi olur ve izin enstrümanı (osilatör → filtre → zarf) onu çalar.`, `Pick MIDI on the SMP | MIDI switch in the LEAD header. The track stops playing the loop: every section becomes a MIDI clip you write, played by the track's instrument (oscillator → filter → envelope).`],
+    lab_m4_tut_1a:    [`MIDI izi oluştur (Ctrl/⌘+Shift+T) ve üzerine bir enstrüman sürükle (Analog, Wavetable…).`, `Create a MIDI track (Ctrl/⌘+Shift+T) and drop an instrument on it (Analog, Wavetable…).`],
+    lab_m4_tut_2:     [`Chorus 1 klibini aç`, `Open the Chorus 1 clip`],
+    lab_m4_tut_2b:    [`LEAD satırında Chorus 1 kutusuna çift tıkla ya da köşedeki kalem düğmesine bas. MIDI nota düzenleyici açılır; klibin uzunluğu bölüm kadardır (2 bar).`, `Double-click the Chorus 1 box on the LEAD row, or press the pencil button in its corner. The MIDI note editor opens; the clip is as long as the section (2 bars).`],
+    lab_m4_tut_2a:    [`Klibe çift tık → alttaki Detail View'da MIDI Note Editor açılır.`, `Double-click the clip → the MIDI Note Editor opens in the Detail View below.`],
+    lab_m4_tut_3:     [`Tonu A minör yap, GAM açık kalsın`, `Set the key to A minor, keep SCALE on`],
+    lab_m4_tut_3b:    [`Araç çubuğunda kök notayı A, türü Doğal minör seç; GAM ışığı yanık olsun. Gam içi satırlar açılır ve yeni notalar gama oturur — bu, projenin tonu olur (başlık çubuğundaki ton seçicisi de değişir).`, `In the toolbar set the root to A and the type to Natural Minor; keep the SCALE light on. In-key rows light up and new notes snap to the scale — this becomes the project key (the key selector in the title bar changes too).`],
+    lab_m4_tut_3a:    [`Klip görünümünde Scale düğmesi + kök / tür (Live 12: Scale Awareness).`, `The Scale button + root / type in the clip view (Live 12: Scale Awareness).`],
+    lab_m4_tut_4:     [`En az 4 nota çiz`, `Draw at least 4 notes`],
+    lab_m4_tut_4b:    [`ÇİZ modunda boş kareye tıkla: ızgara boyunda nota eklenir, sürükleyerek uzatırsın. Akorun notalarıyla (A, C, E) başlamak melodiyi oturtur.`, `In DRAW mode click an empty cell: a grid-length note appears, drag to extend it. Starting from the chord tones (A, C, E) makes the melody sit.`],
+    lab_m4_tut_4a:    [`Draw Mode (B) ile çiz ya da boş yere çift tıkla.`, `Draw with Draw Mode (B) or double-click an empty spot.`],
+    lab_m4_tut_5:     [`Bir notanın uzunluğunu değiştir`, `Change a note's length`],
+    lab_m4_tut_5b:    [`Notanın sağ kenarını sürükle (ya da seçip Alt+→). Uzun nota cümleyi bağlar, kısa nota ritim verir.`, `Drag the note's right edge (or select it and press Alt+→). Long notes connect the phrase, short notes add rhythm.`],
+    lab_m4_tut_5a:    [`Notanın sağ kenarından sürükle.`, `Drag from the note's right edge.`],
+    lab_m4_tut_6:     [`Bir notanın velocity'sini düşür`, `Lower a note's velocity`],
+    lab_m4_tut_6b:    [`Alttaki VEL şeridinde bir çubuğu aşağı sürükle. Yumuşak basılan nota sessizleşir, rengi açılır — vurgu farkı groove yaratır.`, `Drag a bar down in the VEL lane at the bottom. A softer note gets quieter and paler — accents create the groove.`],
+    lab_m4_tut_6a:    [`Note Editor'ün altındaki Velocity şeridinde çubuğu sürükle.`, `Drag the bar in the Velocity lane under the Note Editor.`],
+    lab_m4_tut_7:     [`Kuantize et`, `Quantize`],
+    lab_m4_tut_7b:    [`KUANTİZE'ye bas (Ctrl/⌘+U): nota başlangıçları ızgaraya çekilir. Güç %100'ün altındaysa zamanlama biraz insan kalır.`, `Press QUANTIZE (Ctrl/⌘+U): note starts snap to the grid. Below 100% strength the timing stays a little human.`],
+    lab_m4_tut_7a:    [`Ctrl/⌘+U = Quantize · Ctrl/⌘+Shift+U = Quantize Settings.`, `Ctrl/⌘+U = Quantize · Ctrl/⌘+Shift+U = Quantize Settings.`],
+    lab_m4_tut_8:     [`Klibi Chorus 2'ye çoğalt`, `Duplicate the clip into Chorus 2`],
+    lab_m4_tut_8b:    [`Alttaki şeritte KOPYALA'ya bas, sonra sağ ok ile iki bölüm ilerleyip Chorus 2 klibine geç ve YAPIŞTIR. (Düzenleyici kapalıysa: Chorus 2 locator'ını seç → YAPIŞTIR.) İki nakarat aynı melodiyi çalar.`, `Press COPY in the strip at the bottom, then use the right arrow twice to reach the Chorus 2 clip and PASTE. (With the editor closed: select the Chorus 2 locator → PASTE.) Both choruses now play the melody.`],
+    lab_m4_tut_8a:    [`Klibi seç, Ctrl/⌘+C → hedef zamanı seç → Ctrl/⌘+V (ya da Alt/⌥+sürükle).`, `Select the clip, Ctrl/⌘+C → select the target time → Ctrl/⌘+V (or Alt/⌥+drag).`],
+    lab_m4_tut_9:     [`Enstrümanı şekillendir: CUTOFF ya da ATTACK`, `Shape the instrument: CUTOFF or ATTACK`],
+    lab_m4_tut_9b:    [`Düzenleyici kapandı; aşağıdaki detay görünümünde LEAD'in enstrümanı var. CUTOFF'u çevir (parlaklık) ya da ATTACK'ı uzat (yumuşak giriş). Aynı notalar, farklı karakter.`, `The editor is closed; the LEAD instrument sits in the detail view below. Turn CUTOFF (brightness) or lengthen ATTACK (soft onset). Same notes, different character.`],
+    lab_m4_tut_9a:    [`Detail View'daki cihaz: Filter Freq ve Amp Envelope Attack.`, `The device in the Detail View: Filter Freq and Amp Envelope Attack.`],
+    lab_m4_tut_10:    [`Aranjmanı baştan çal`, `Play the arrangement from the start`],
+    lab_m4_tut_10b:   [`Loop'u kapat, ■'e iki kez bas (şarkı başına döner) ya da Intro locator'ını seç, sonra ▶. Nakaratlarda kendi melodini duyacaksın.`, `Turn the loop off, press ■ twice (back to the song start) or select the Intro locator, then ▶. You will hear your melody in the choruses.`],
+    lab_m4_tut_10a:   [`Loop'u kapat (Ctrl/⌘+L), Home ile başa git, Boşluk ile çal.`, `Turn the loop off (Ctrl/⌘+L), press Home, then Space.`],
+    lab_m4_tut_reopen:[`Düzenleyiciyi kapattıysan LEAD · Chorus 1 klibine çift tıkla (ya da kaleme bas); başka klipteysen şeritteki ok düğmeleriyle Chorus 1'e dön.`, `If you closed the editor, double-click the LEAD · Chorus 1 clip (or press its pencil); if another clip is open, go back to Chorus 1 with the arrow buttons in the strip.`],
 });
-// İnce çizgi ikonlar (tasarımdaki ▸ 〰 ↺ glifleri yerine)
+// İnce çizgi ikonlar (tasarımdaki ▸ 〰 ↺ glifleri + MIDI araçları; currentColor)
 const M4_IC = {
     tri:  '<svg viewBox="0 0 8 8" aria-hidden="true"><path d="M2 1l4.5 3L2 7z" fill="currentColor"/></svg>',
     wave: '<svg viewBox="0 0 24 12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M1 6c2.5-5 5-5 7.5 0s5 5 7.5 0 5-5 7 0"/></svg>',
+    pen:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.2-1 10-10a2.1 2.1 0 0 0-3-3l-10 10z"/><path d="M13.5 7.5l3 3"/></svg>',
+    rec:  '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.5" fill="currentColor"/></svg>',
+    arm:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="6.5"/></svg>',
+    follow: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14"/><path d="M9 12h11"/><path d="M16 8l4 4-4 4"/></svg>',
+    zin:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg>',
+    zout: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 12h12"/></svg>',
+    listen: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg>',
 };
 const m4Txt = (tag, cls, key) => { const e = mk(tag, cls); e.setAttribute('data-i18n', key); e.textContent = L(key); return e; };
-const m4Bars = j => Lf('lab_m4_bars', { a: j * 2 + 1, b: j * 2 + 2 });
+const m4Bars = (j, k) => Lf('lab_m4_bars', { a: j * 2 + 1, b: (k != null ? k : j) * 2 + 2 });
 const m4VolTxt = v => v > 0.001 ? (20 * Math.log10(v)).toFixed(1) + 'dB' : '−∞';
 const m4PosTxt = st => pad2((st >> 4) + 1) + '.' + (((st % 16) >> 2) + 1) + '.' + (st % 4 + 1);
 const m4TimeTxt = st => { const s = st * ARR_S16; return `${Math.floor(s / 60)}:${pad2(Math.floor(s % 60))}.${Math.floor(s * 10 % 10)}`; };
 const m4Ay = v => 8 + (1 - v) * 62;          // otomasyon noktası y (px, şerit 82 px)
 const m4Ey = e => 96 - e * 84;               // enerji eğrisi y (viewBox 0..100)
+const m4Typing = t => !!t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+const m4Ann = t => lpAnnounce(t);
+const m4RollOpen = () => !!(_m4ui && _m4ui.roll && _m4ui.roll.isOpen());
+// İz rengi YAZI olarak (açık anahtar, düzenleyici okumaları): bas / pad paletinin okunur (≥4.5:1) eşi
+const m4TxtVar = tr => ({ 2: '--err', 4: '--violet' })[tr] || ARR_TRACKS[tr].arrVar;
+let m4ClickT = 0;                            // SYNTH klibinde tek tık / çift tık ayrımı (teardown temizler)
+const m4T = { resize: 0, vel: 0, q: 0 };     // öğretici sayaçları (piyano rulosu eylemleri)
+let m4Ed = null;                             // düzenleyicide açık klip { r, c }
+const m4Rec = { cur: 0, down: 0, held: new Map(), grid: 1 };   // MIDI kayıt: adım imleci, basılı notalar, ızgara (1/16 adım)
+const m4MidiTr = new Map();                  // basılı MIDI nota → çalınan iz (noteoff doğru ize gitsin)
 
-// ── Durum değişiklikleri ──────────────────────────────────────────────
-function m4Snap() { return { grid: state.arrCells.map(r => r.map(v => v ? 1 : 0)), auto: m4S.auto.slice(), tpl: m4S.tpl }; }
-// Anlık görüntüyü yükle (geri al / yinele / A-B): ızgara yerinde (genel bakış kartı aynı diziyi okur)
+// ── Anlık görüntü (geri al / yinele / A-B / kayıt): ızgara, otomasyon, karışım, set, ton, izler, klipler ──
+function m4Snap() {
+    return {
+        grid: state.arrCells.map(r => r.map(v => v ? 1 : 0)), auto: m4S.auto.slice(), tpl: m4S.tpl,
+        vol: m4S.vol.slice(), mute: m4S.mute.slice(), solo: m4S.solo.slice(), q: m4S.q, outDb: m4S.outDb, bypass: m4S.bypass,
+        set: m4S.set, kit: m4S.kit, key: { root: m4S.key.root, type: m4S.key.type }, scaleOn: m4S.scaleOn,
+        inst: m4S.inst.slice(), syn: m4S.syn.map(x => x ? Object.assign({}, x) : null),
+        clips: m4S.clips.map(cs => cs ? cs.map(k => ({ len: k.len, n: k.notes.map(n => [n.p, n.s, n.l, n.v]) })) : null),
+    };
+}
+function m4SynNorm(tr, x) {
+    const P = m4SynDef(tr), n = (v, a, b, d) => isFinite(+v) ? lpClamp(+v, a, b) : d;
+    if (!x || typeof x !== 'object') return P;
+    P.pre = typeof x.pre === 'string' ? x.pre.slice(0, 40) : P.pre;
+    P.name = typeof x.name === 'string' ? x.name.slice(0, 40) : P.name;
+    P.wave = M4_WAVES.indexOf(x.wave) >= 0 ? x.wave : P.wave;
+    P.oct = Math.round(n(x.oct, -2, 2, P.oct)); P.uni = Math.round(n(x.uni, 1, 4, P.uni)); P.det = n(x.det, 0, 50, P.det);
+    P.cut = n(x.cut, 60, 18000, P.cut); P.res = n(x.res, 0.5, 15, P.res); P.env = n(x.env, 0, 1, P.env);
+    P.a = n(x.a, 0.001, 2, P.a); P.d = n(x.d, 0.01, 2, P.d); P.s = n(x.s, 0, 1, P.s); P.r = n(x.r, 0.01, 4, P.r);
+    P.glide = n(x.glide, 0, 0.5, P.glide); P.lvl = n(x.lvl, -30, 6, P.lvl);
+    P.filt = x.filt !== false; P.mono = !!x.mono; P.on = x.on !== false; P.mod = !!x.mod;
+    return P;
+}
+function m4ClipNorm(k) {
+    const out = { len: ARR_SEC_STEPS, notes: [] };
+    if (!k || typeof k !== 'object') return out;
+    out.len = lpClamp(Math.round(+k.len || ARR_SEC_STEPS), 1, ARR_SEC_STEPS);
+    const src = Array.isArray(k.n) ? k.n : (Array.isArray(k.notes) ? k.notes : []);
+    src.slice(0, 512).forEach(a => {
+        const o = Array.isArray(a) ? { p: a[0], s: a[1], l: a[2], v: a[3] } : a;
+        if (!o || !isFinite(+o.p) || !isFinite(+o.s)) return;
+        out.notes.push({ p: lpClamp(Math.round(+o.p), 0, 127), s: Math.max(0, +o.s), l: Math.max(0.125, +o.l || 1), v: lpClamp(Math.round(+o.v || 100), 1, 127) });
+    });
+    return out;
+}
+// Anlık görüntüyü yükle: ızgara yerinde (genel bakış kartı aynı diziyi okur); tam render yok, ses sürer
 function m4Load(s) {
     if (!s || !s.grid) return;
     state.arrCells.forEach((row, r) => row.forEach((v, c) => { const nv = !!(s.grid[r] && s.grid[r][c]); if (nv !== !!v) { row[c] = nv; if (!nv) arrCellOff(r, c); } }));
     if (Array.isArray(s.auto) && s.auto.length === 8) m4S.auto = s.auto.map(x => lpClamp(+x || 0, 0, 1));
-    m4S.tpl = s.tpl || '';
+    m4S.tpl = typeof s.tpl === 'string' ? s.tpl : '';
+    if (Array.isArray(s.vol) && s.vol.length === 5) m4S.vol = s.vol.map(v => lpClamp(+v || 0, 0, 1));
+    if (Array.isArray(s.mute) && s.mute.length === 5) m4S.mute = s.mute.map(v => v ? 1 : 0);
+    if (Array.isArray(s.solo) && s.solo.length === 5) m4S.solo = s.solo.map(v => v ? 1 : 0);
+    if (isFinite(+s.q) && s.q != null) m4S.q = lpClamp(+s.q, 0.5, 10);
+    if (isFinite(+s.outDb) && s.outDb != null) m4S.outDb = lpClamp(+s.outDb, -24, 6);
+    if (s.bypass != null) m4S.bypass = !!s.bypass;
+    if (ARR_SETS[s.set] && s.set !== m4S.set) { m4S.set = s.set; m4ApplyBpm(ARR_SETS[s.set].bpm); }
+    if (ARR_KITS[s.kit]) m4S.kit = s.kit;
+    if (s.key && LAB_SCALES[s.key.type]) m4S.key = { root: labPc(+s.key.root || 0), type: s.key.type };
+    if (s.scaleOn != null) m4S.scaleOn = !!s.scaleOn;
+    M4_MEL.forEach(tr => {
+        const want = s.inst && s.inst[tr] === 'synth' ? 'synth' : 'sample';
+        if (want !== m4S.inst[tr]) m4SetInstRaw(tr, want);
+        if (s.syn && s.syn[tr]) m4S.syn[tr] = m4SynNorm(tr, s.syn[tr]);
+        if (s.clips && Array.isArray(s.clips[tr])) m4S.clips[tr] = Array.from({ length: 8 }, (_, c) => m4ClipNorm(s.clips[tr][c]));
+    });
     m4S.dirty = true;
-    m4Changed(); arrApplyFilterNow();
+    arrPrefetch(); arrApplyMix();
+    m4OfferHide();                               // geri al / A-B / kayıt: bekleyen ton önerisi artık geçersiz
+    const ui = _m4ui;
+    if (ui && ui.dev) ui.dev.tr = -1;            // cihaz görünümü yeni parametrelerle yeniden kurulur
+    m4PaintAll(); arrApplyFilterNow();
+    if (m4Ed && m4RollOpen()) { if (m4IsSyn(m4Ed.r)) m4RollLoad(); else ui.roll.close(); }
 }
 function m4Changed() {
     m4PaintGrid(); m4PaintAuto(); m4PaintTpl();
     m4Tasks();
 }
+function m4Push() { const ui = _m4ui; if (ui && ui.hist) ui.hist.push(); }
 function m4ToggleClip(r, c) {
-    const ui = _m4ui; if (ui) ui.hist.push();
+    m4Push();
     state.arrCells[r][c] = !state.arrCells[r][c];
     if (!state.arrCells[r][c]) arrCellOff(r, c);
     m4S.tpl = ''; m4S.dirty = true; m4S.cols[c] = true;
     if (r === 0 && c === 6) m4S.bdKick = true;
+    m4SelClip(r, c);
     m4Changed();
 }
 function m4FillRow(r) {
-    const ui = _m4ui; if (ui) ui.hist.push();
+    m4Push();
     const full = state.arrCells[r].every(Boolean);
     // Yalnız gerçekten değişen bölümler "düzenlendi" sayılır (görev 8/9 toplu işlemle kendiliğinden geçmesin)
     state.arrCells[r].forEach((v, c) => {
@@ -12874,7 +13454,7 @@ function m4FillRow(r) {
 function m4PickTpl(name) {
     const p = ARR_TEMPLATES[name];
     if (!p) return;
-    const ui = _m4ui; if (ui) ui.hist.push();
+    m4Push();
     state.arrCells.forEach((row, r) => row.forEach((v, c) => { const nv = !!p[r][c]; if (nv !== !!v) { row[c] = nv; if (!nv) arrCellOff(r, c); } }));
     m4S.auto = ARR_TPL_AUTO[name].slice();
     m4S.tpl = name; m4S.tplUsed = true; m4S.dirty = true;
@@ -12884,9 +13464,9 @@ function m4StepTpl(d) {
     const n = ARR_TPL_NAMES.length, i = ARR_TPL_NAMES.indexOf(m4S.tpl);
     m4PickTpl(ARR_TPL_NAMES[i < 0 ? (d > 0 ? 0 : n - 1) : (i + d + n) % n]);
 }
-// Sıfırla: tüm klipler kapalı, otomasyon tam açık (1)
+// Sıfırla: tüm klipler kapalı, otomasyon tam açık (1). MIDI notaları silinmez (klipler kapanır).
 function m4Reset() {
-    const ui = _m4ui; if (ui) ui.hist.push();
+    m4Push();
     state.arrCells.forEach((row, r) => row.forEach((v, c) => { if (v) { row[c] = false; arrCellOff(r, c); } }));
     m4S.auto = [1, 1, 1, 1, 1, 1, 1, 1];
     m4S.tpl = ''; m4S.dirty = true;          // bölüm düzenlemesi sayılmaz → Sıfırla görev 8/9'u tamamlamaz
@@ -12898,40 +13478,583 @@ function m4SetAuto(j, v) {
     m4S.auto[j] = v; m4S.tpl = '';
     m4PaintAuto(); m4PaintTpl();
 }
-function m4Select(j, noJump) {
-    m4S.sel = j; m4S.guide = ARR_SEC_GUIDE[j];
-    if (arrRun.playing) { if (!noJump) arrRun.jump = j * ARR_SEC_STEPS; }
+// Locator: bölüm seç (çalarken atla). extend (Shift+tık) → seçim aralığı [sel, selEnd] genişler; loop o aralıkta döner.
+function m4Select(j, noJump, extend) {
+    if (extend) { if (j >= m4S.sel) m4S.selEnd = j; else m4S.sel = j; }
+    else m4S.sel = m4S.selEnd = j;
+    m4S.csec = j; m4S.guide = ARR_SEC_GUIDE[m4S.sel];
+    if (arrRun.playing) { if (!noJump) arrRun.jump = m4S.sel * ARR_SEC_STEPS; }
     else m4S.resume = -1;                    // durmuşken: başlangıç noktası yeni bölüm
-    m4PaintSel(); m4PaintGuide(); m4PaintPos(true);
+    m4PaintSel(); m4PaintGuide(); m4PaintPos(true); m4PaintDetail();
 }
 function m4ToggleLoop() { m4S.loop = !m4S.loop; m4PaintTransport(); m4PaintSel(); }
 function m4SetBypass(b) {
+    if (!!b === m4S.bypass) return;
+    m4Push();
     m4S.bypass = !!b;
     if (_m4ui && _m4ui.pwr) _m4ui.pwr.set(!m4S.bypass);
     arrApplyFilterNow();
     m4PaintAuto(); m4PaintPos(true);
 }
-function m4SetMute(i) { m4S.mute[i] = m4S.mute[i] ? 0 : 1; arrApplyMix(); m4PaintMix(); }
-function m4SetSolo(i) { m4S.solo[i] = m4S.solo[i] ? 0 : 1; arrApplyMix(); m4PaintMix(); }
+function m4SetMute(i) { m4Push(); m4S.mute[i] = m4S.mute[i] ? 0 : 1; arrApplyMix(); m4PaintMix(); }
+function m4SetSolo(i) { m4Push(); m4S.solo[i] = m4S.solo[i] ? 0 : 1; arrApplyMix(); m4PaintMix(); }
 function m4Toggle() {
     if (!arrAudioOK()) { m4NoAudio(); return; }
     if (arrRun.playing) arrStop('pause'); else arrStart();
 }
+// ■: çalarken durdur (seçim başına); durmuşken duraklama noktasını sil; ikinci kez → şarkı başı (Ableton)
 function m4StopBtn() {
-    if (arrRun.playing) arrStop('stop');
-    else { m4S.resume = -1; arrRun.fromStart = false; m4PaintTransport(); m4PaintPos(true); }
+    if (arrRun.playing) { arrStop('stop'); return; }
+    if (m4S.resume >= 0) { m4S.resume = -1; arrRun.fromStart = false; m4PaintTransport(); m4PaintPos(true); return; }
+    if (m4S.sel !== 0 || m4S.selEnd !== 0) m4Select(0);
+}
+// Seçimden çal (Shift+Enter / Enter): çalıyorsa seçim başına atla
+function m4PlayFromSel() {
+    if (!arrAudioOK()) { m4NoAudio(); return; }
+    if (arrRun.playing) { arrRun.jump = m4S.sel * ARR_SEC_STEPS; return; }
+    m4S.resume = -1; arrStart();
+}
+
+// ── İz / enstrüman ────────────────────────────────────────────────────
+function m4SelTrack(tr) {
+    if (m4S.trk === tr) return;
+    m4S.trk = tr;
+    m4PaintDetail();
+}
+function m4SelClip(r, c) {
+    m4S.trk = r; m4S.csec = c;
+    m4PaintDetail();
+}
+function m4SetInstRaw(tr, mode) {
+    m4S.inst[tr] = mode;
+    if (mode !== 'synth') { m4S.arm[tr] = 0; arrLiveAll(); }
+    if (!arrRun.playing || !arrCtx) return;
+    const now = arrCtx.currentTime;
+    arrRun.srcs.forEach(x => { if (x.tr === tr && x.end > now) arrFade(x, now); });   // o izin sesleri tıkırtısız susar
+    arrRun.loops[tr] = null; arrRun.mono[tr] = null;
+}
+function m4SetInst(tr, mode) {
+    if (M4_MEL.indexOf(tr) < 0 || m4S.inst[tr] === mode) return;
+    m4Push();
+    m4SetInstRaw(tr, mode);
+    if (mode === 'synth' && m4S.clips[tr].every(k => !k.notes.length)) m4Starter(tr);
+    if (mode !== 'synth' && m4Ed && m4Ed.r === tr && m4RollOpen()) _m4ui.roll.close();
+    m4S.trk = tr;
+    if (mode === 'sample') arrPrefetch();
+    m4PaintInst(); m4PaintGrid(); m4PaintDetail(); m4Tasks();
+}
+// SYNTH'e ilk geçişte bas/pad izine proje tonunda başlangıç klipleri (lead boş kalır: melodiyi öğrenci yazar)
+function m4Starter(tr) {
+    const k = m4S.key, iv = labScaleIv(k.type), four = iv[3] != null ? iv[3] : 5;
+    if (tr === 2) {
+        const root = 36 + k.root, on = [];
+        ARR_BASS_PAT.forEach((x, s) => { if (x) on.push(s); });
+        m4S.clips[2].forEach(c => {
+            c.len = ARR_SEC_STEPS; c.notes = [];
+            [0, 1].forEach(bar => on.forEach((s, i) => {
+                const nx = i + 1 < on.length ? on[i + 1] : 16;
+                c.notes.push({ p: root + (bar ? four : 0), s: bar * 16 + s, l: Math.min(2, nx - s), v: s % 4 === 0 ? 112 : 96 });
+            }));
+        });
+    } else if (tr === 4) {
+        const a = chordOnDegree(k.root, k.type, 1, 3, 48), b = chordOnDegree(k.root, k.type, 4, 3, 48);
+        m4S.clips[4].forEach(c => {
+            c.len = ARR_SEC_STEPS;
+            c.notes = a.map(p => ({ p, s: 0, l: 16, v: 88 })).concat(b.map(p => ({ p, s: 16, l: 16, v: 88 })));
+        });
+    }
+}
+// ARM (kayda hazırla): tek iz; MIDI klavye bu izi çalar (Ableton: iz arm = giriş izlemesi)
+function m4SetArm(tr) {
+    if (!m4IsSyn(tr)) return;
+    const on = !m4S.arm[tr];
+    m4S.arm = m4S.arm.map((_, i) => (i === tr && on) ? 1 : 0);
+    if (on) m4S.trk = tr;
+    arrLiveAll();
+    m4PaintInst(); m4PaintDetail();
+}
+// Enstrüman parametresi (knob / seg / anahtar): geçmiş çağıranda (onStart / tık öncesi)
+function m4SynSet(tr, key, v) {
+    const P = m4S.syn[tr]; if (!P) return;
+    P[key] = v; P.mod = true;
+    const ui = _m4ui;
+    if (ui && ui.dev && ui.dev.tr === tr) ui.dev.pb.setModified(true);
+    if (key === 'cut' || key === 'res' || key === 'filt' || key === 'lvl' || key === 'on') arrApplySyn(tr);
+    if (key === 'on') { m4PaintGrid(); m4PaintDevice(); }
+}
+// BE·SYNTH 01 fabrika presetini iz enstrümanına eşle (SYNTH_PRESETS salt okunur; synthPatchFrom tam patch verir)
+function m4SynItems() {
+    return [
+        { id: 'm4-bass', name: 'Mono Bass', cat: 'BASS', group: 'factory', no: '' },
+        { id: 'm4-lead', name: 'Saw Pluck', cat: 'LEAD', group: 'factory', no: '' },
+        { id: 'm4-pad', name: 'Detuned Pad', cat: 'PAD', group: 'factory', no: '' },
+    ].concat(SYNTH_PRESETS.map(p => ({ id: 's1:' + p.id, name: p.name, cat: p.cat, group: 'BE·SYNTH 01', no: '' })));
+}
+function m4SynPreset(tr, id) {
+    let P = null;
+    if (id === 'm4-bass' || id === 'm4-lead' || id === 'm4-pad') P = Object.assign({}, M4_SYN_DEF[id === 'm4-bass' ? 2 : id === 'm4-lead' ? 3 : 4]);
+    else if (id.indexOf('s1:') === 0) {
+        const sp = SYNTH_PRESETS.find(x => 's1:' + x.id === id); if (!sp) return;
+        const X = synthPatchFrom(sp);
+        P = m4SynNorm(tr, {
+            pre: id, name: sp.name, wave: X.osc1.wave, oct: X.osc1.octave, uni: Math.min(4, X.osc1.unison || 1),
+            det: Math.min(50, X.osc1.unison > 1 ? X.osc1.uniDetune : (X.osc2.enabled ? Math.abs(X.osc2.detune) : 0)),
+            cut: X.filter.cutoff, res: Math.min(15, X.filter.resonance || 0.7), env: Math.max(0, X.filterEnv.amount) / 100,
+            a: X.adsr.attack, d: X.adsr.decay, s: X.adsr.sustain, r: X.adsr.release,
+            mono: X.poly === 'mono', glide: Math.min(0.5, X.glide || 0), lvl: m4S.syn[tr].lvl, filt: true, on: true,
+        });
+    }
+    if (!P) return;
+    P.mod = false;
+    m4S.syn[tr] = m4SynNorm(tr, P); m4S.syn[tr].mod = false;
+    arrApplySyn(tr);
+    const ui = _m4ui; if (ui && ui.dev) ui.dev.tr = -1;
+    m4PaintDetail(); m4PaintInst();
+}
+
+// ── Proje tonu + loop seti + kit ─────────────────────────────────────
+function m4AnyNotes() { return M4_MEL.some(tr => m4S.clips[tr].some(k => k.notes.length)); }
+function m4SetKey(k, offer, noPush) {
+    const o = m4S.key, nk = { root: labPc(k.root), type: LAB_SCALES[k.type] ? k.type : 'minor' };
+    if (o.root === nk.root && o.type === nk.type) return;
+    if (!noPush) m4Push();
+    m4S.key = nk;
+    const ui = _m4ui;
+    if (ui && ui.roll) ui.roll.setScale({ root: nk.root, type: nk.type });
+    m4PaintKey(); m4PaintDetail(); m4Tasks();
+    if (offer && m4AnyNotes()) m4OfferShow(o, nk); else m4OfferHide();
+}
+// Tonu değiştirince MIDI'yi gam içinde taşı: kök kaydırması en yakın yön, derece korunur (aynı derece sayısında);
+// gam dışı nota / farklı boyda gam → kaydırılıp yeni gama oturtulur (snapToScale)
+function m4TransposeAll(from, to) {
+    let d = labPc(to.root - from.root); if (d > 6) d -= 12;
+    const ivF = labScaleIv(from.type), ivT = labScaleIv(to.type);
+    let moved = 0;
+    M4_MEL.forEach(tr => m4S.clips[tr].forEach(k => k.notes.forEach(n => {
+        const deg = degreeOf(n.p, from.root, from.type);
+        let p;
+        if (deg > 0 && ivF.length === ivT.length) { const oct = Math.floor((n.p - from.root) / 12); p = from.root + oct * 12 + d + ivT[deg - 1]; }
+        else p = snapToScale(n.p + d, to.root, to.type, 0);
+        p = lpClamp(p, 0, 127);
+        if (p !== n.p) { n.p = p; moved++; }
+    })));
+    return moved;
+}
+// Öneri (başlık çubuğunun altında + açık düzenleyicinin şeridinin üstünde). Yanıtlanmadan ton yine değişirse
+// kaynak ton ilk öneridekidir (notalar hâlâ o gamda); asıl tona dönülürse öneri kalkar.
+function m4OfferShow(from, to) {
+    const ui = _m4ui; if (!ui || !ui.offer) return;
+    const f = ui.offerFrom || from;
+    if (f.root === to.root && f.type === to.type) { m4OfferHide(); return; }
+    ui.offerFrom = f; ui.offerTo = to;
+    ui.offerTxt.textContent = Lf('lab_m4_offer', { from: m4KeyShort(f), to: m4KeyShort(to) });
+    ui.offer.hidden = false;
+    m4PaintStrip();
+}
+function m4OfferHide() { const ui = _m4ui; if (ui && ui.offer) { ui.offer.hidden = true; ui.offerFrom = null; m4PaintStrip(); } }
+// Yanıttan sonra odak: pencere önerisindeyse kök seçiciye, düzenleyicideyse nota ızgarasına
+function m4OfferFocus(inWin, inRoll) {
+    const ui = _m4ui; if (!ui) return;
+    try {
+        if (inRoll && m4RollOpen()) { const g = ui.roll.el.querySelector('.lpr-gw'); if (g) g.focus({ preventScroll: true }); }
+        else if (inWin) ui.keyRoot.focus({ preventScroll: true });
+    } catch (_) {}
+}
+const m4OfferWhere = ui => [ui.offer.contains(document.activeElement), !!(ui.rso && ui.rso.el.contains(document.activeElement))];
+function m4OfferYes() {
+    const ui = _m4ui; if (!ui || !ui.offerFrom) return;
+    const from = ui.offerFrom, to = m4S.key;
+    const [inWin, inRoll] = m4OfferWhere(ui);
+    m4Push();
+    const n = m4TransposeAll(from, to);
+    if (n) m4S.keyMoved = true;
+    m4OfferHide();
+    m4Ann(Lf('lab_m4_offer_done', { n }));
+    m4PaintGrid(); m4PaintDetail(); m4Tasks();
+    if (m4Ed && m4RollOpen()) m4RollLoad();
+    m4OfferFocus(inWin, inRoll);
+}
+function m4OfferNo() {
+    const ui = _m4ui; if (!ui) return;
+    const [inWin, inRoll] = m4OfferWhere(ui);
+    m4OfferHide();
+    m4OfferFocus(inWin, inRoll);
+}
+function m4SetSet(id) {
+    if (!ARR_SETS[id] || id === m4S.set) return;
+    m4Push();
+    const S = ARR_SETS[id];
+    m4S.set = id; m4S.kit = S.kit;
+    m4ApplyBpm(S.bpm);
+    arrPrefetch();
+    m4SetKey(S.key, true, true);             // varsayılan ton setten; MIDI varsa gam içinde taşımayı önerir
+    m4PaintSet(); m4PaintPos(true); m4PaintDetail();
+}
+function m4SetKit(id) {
+    if (!ARR_KITS[id] || id === m4S.kit) return;
+    m4Push();
+    m4S.kit = id; arrRun.last = -2;
+    arrPrefetch(); m4PaintDetail();
+}
+
+// ── Klip işlemleri (Ableton: Ctrl/⌘+C / V / D, Delete) ────────────────
+function m4ClipCopy(r, c) {
+    const k = m4ClipOf(r, c);
+    if (!k || !m4IsSyn(r)) return false;
+    m4S.clip = { notes: k.notes.map(n => Object.assign({}, n)), len: k.len, r, c };
+    m4Ann(Lf('lab_m4_a_copy', { trk: ARR_TRACKS[r].name, sec: ARR_SECTIONS[c].name }));
+    m4PaintDetail(); m4PaintStrip();
+    return true;
+}
+function m4ClipWrite(r, c, notes, len) {
+    const k = m4ClipOf(r, c); if (!k) return;
+    k.notes = notes.map(n => Object.assign({}, n)); k.len = len;
+    if (!state.arrCells[r][c]) { state.arrCells[r][c] = true; m4S.cols[c] = true; m4S.tpl = ''; m4S.dirty = true; }
+}
+function m4ClipPaste(r, c) {
+    const P = m4S.clip;
+    if (!m4IsSyn(r)) return;
+    if (!P) { m4Ann(L('lab_m4_a_nopaste')); return; }
+    m4Push();
+    m4ClipWrite(r, c, P.notes, P.len);
+    if (P.notes.length && (P.r !== r || P.c !== c)) m4S.copied = true;
+    m4Ann(Lf('lab_m4_a_paste', { trk: ARR_TRACKS[r].name, sec: ARR_SECTIONS[c].name }));
+    m4ClipChanged(r, c);
+}
+function m4ClipDup(r, c) {
+    if (!m4IsSyn(r)) return;
+    if (c >= 7) { m4Ann(L('lab_m4_a_last')); return; }
+    const k = m4ClipOf(r, c);
+    m4Push();
+    m4ClipWrite(r, c + 1, k.notes, k.len);
+    if (k.notes.length) m4S.copied = true;
+    m4S.csec = c + 1;
+    m4Ann(Lf('lab_m4_a_paste', { trk: ARR_TRACKS[r].name, sec: ARR_SECTIONS[c + 1].name }));
+    m4ClipChanged(r, c + 1);
+}
+function m4ClipClear(r, c) {
+    const k = m4ClipOf(r, c);
+    if (!k || !m4IsSyn(r) || !k.notes.length) return;
+    m4Push();
+    k.notes = [];
+    arrCellOff(r, c);
+    m4Ann(Lf('lab_m4_a_clear', { trk: ARR_TRACKS[r].name, sec: ARR_SECTIONS[c].name }));
+    m4ClipChanged(r, c);
+}
+// Klip değişti: hücre önizlemesi, detay, enerji, açık düzenleyici (aynı klipse), görevler
+function m4ClipChanged(r, c, fromRoll) {
+    m4PaintGrid(); m4PaintDetail(); m4PaintStrip();
+    if (!fromRoll && m4Ed && m4Ed.r === r && m4Ed.c === c && m4RollOpen()) {
+        const k = m4ClipOf(r, c);
+        _m4ui.roll.setLength(k.len); _m4ui.roll.setNotes(k.notes);
+    }
+    m4Tasks();
+}
+// Klip hücresi / kalem düğmesi kısayolları
+function m4ClipKey(e, r, c) {
+    const mod = (e.ctrlKey || e.metaKey) && !e.altKey, k = (e.key || '').toLowerCase();
+    if (!M4_MEL.includes(r) || !m4IsSyn(r)) return;
+    if (mod && k === 'c') { e.preventDefault(); m4SelClip(r, c); m4ClipCopy(r, c); }
+    else if (mod && k === 'v') { e.preventDefault(); m4SelClip(r, c); m4ClipPaste(r, c); }
+    else if (mod && k === 'd') { e.preventDefault(); m4SelClip(r, c); m4ClipDup(r, c); }
+    else if (!mod && !e.altKey && (k === 'delete' || k === 'backspace')) { e.preventDefault(); m4SelClip(r, c); m4ClipClear(r, c); }
+}
+
+// ── MIDI klip düzenleyici (makePianoRoll — tek pencere, klipler arası yeniden kullanılır) ──
+// Piyano rulosu kitin penceresidir; alta kendi şeridimizi (REC · MIDI · klip gezinme · kopyala/yapıştır)
+// ekleriz. Kit dil değişiminde pencereyi yeniden kurar (replaceChildren) → MutationObserver şeridi geri takar.
+function m4Roll(ui) {
+    if (ui.roll) return ui.roll;
+    const roll = makePianoRoll({
+        title: '', notes: [], length: ARR_SEC_STEPS, maxLength: ARR_SEC_STEPS, range: M4_RANGE[3],
+        scale: { root: m4S.key.root, type: m4S.key.type, on: m4S.scaleOn, fold: false },
+        colors: { note: 'var(--lab-arr-lead)' }, cls: 'lab-m4-roll',
+        onChange: (notes, m) => m4RollChange(notes, m),
+        onAction: (r, m) => m4RollAction(r, m),
+        onAudition: (p, v, d) => { if (m4Ed) arrAudition(m4Ed.r, p, v / 127, d); },
+        onPlayToggle: on => m4RollPlay(on),
+        getPlayhead: () => m4RollPh(),
+        onClose: () => m4RollClosed(),
+    });
+    ui.roll = roll;
+    ui.rs = m4RollStrip();
+    ui.rso = m4RollOffer();
+    const mo = new MutationObserver(() => { if (ui.rs && ui.roll === roll && !roll.el.contains(ui.rs.el)) m4RollMount(ui); });
+    mo.observe(roll.el, { childList: true });
+    lpOnTeardown(() => { mo.disconnect(); try { roll.destroy(); } catch (e) {} if (ui.roll === roll) ui.roll = null; m4Ed = null; });
+    m4RollMount(ui);
+    return roll;
+}
+function m4RollMount(ui) {
+    const st = ui.roll.el.querySelector(':scope > .lp-status');
+    ui.roll.el.insertBefore(ui.rs.el, st || null);
+    ui.roll.el.insertBefore(ui.rso.el, ui.rs.el);
+    m4PaintStrip();
+    if (ui.rs.midi) ui.rs.midi.refresh();
+}
+// Düzenleyicide ton değişimi önerisi (pencere önerisinin eşi; aynı durum ui.offerFrom)
+function m4RollOffer() {
+    const el = mk('div', 'lab-m4-rso'); el.hidden = true; el.setAttribute('role', 'group');
+    const txt = mk('span', 'lab-m4-rso-t');
+    const yes = lpBtn({ text: ' ', variant: 'accent', onClick: m4OfferYes });
+    const no = lpBtn({ text: ' ', onClick: m4OfferNo });
+    el.append(txt, yes, no);
+    el.addEventListener('keydown', e => { if (e.key !== 'Tab' && e.key !== 'Escape') e.stopPropagation(); });
+    return { el, txt, yes, no };
+}
+function m4RollStrip() {
+    const el = mk('div', 'lab-m4-rs');
+    el.setAttribute('role', 'group');
+    const rec = makeToggle({ text: 'REC', led: true, color: 'var(--err-strong)', on: m4S.rec, cls: 'lab-m4-rs-rec', onToggle: b => m4SetRec(b) });
+    const midi = makeMidiButton({ cls: 'lab-m4-rs-midi' });
+    const nav = mk('div', 'lab-m4-rs-nav');
+    const prev = lpBtn({ icon: 'prev', onClick: () => m4RollNav(-1) });
+    const name = mk('span', 'lab-m4-rs-name');
+    const next = lpBtn({ icon: 'next', onClick: () => m4RollNav(1) });
+    nav.append(prev, name, next);
+    const ops = mk('div', 'lab-m4-rs-ops');
+    const cp = lpBtn({ text: ' ', onClick: () => { if (m4Ed) m4ClipCopy(m4Ed.r, m4Ed.c); } });
+    const ps = lpBtn({ text: ' ', variant: 'accent', onClick: () => { if (m4Ed) m4ClipPaste(m4Ed.r, m4Ed.c); } });
+    const dup = lpBtn({ text: ' ', icon: 'copy', onClick: () => { if (m4Ed) { const r = m4Ed.r, c = m4Ed.c; m4ClipDup(r, c); if (c < 7) m4RollGo(r, c + 1); } } });
+    ops.append(cp, ps, dup);
+    const info = mk('span', 'lab-m4-rs-info');
+    const clip = mk('span', 'lab-m4-rs-clip');
+    el.append(rec.el, midi.el, nav, ops, info, clip);
+    // Şerit tuşları kitin pencere kısayollarına (Delete, B, +/−) gitmesin; Tab tuzağı ve Esc pencereye kalsın
+    el.addEventListener('keydown', e => { if (e.key !== 'Tab' && e.key !== 'Escape') e.stopPropagation(); });
+    return { el, rec, midi, prev, name, next, cp, ps, dup, info, clip };
+}
+function m4PaintStrip() {
+    const ui = _m4ui; if (!ui || !ui.rs) return;
+    const R = ui.rs;
+    R.el.setAttribute('aria-label', L('lab_m4_rs_aria'));
+    lpBtnText(R.rec.el, 'REC'); R.rec.el.title = L('lab_m4_rs_rec_t'); R.rec.el.setAttribute('aria-label', L('lab_m4_rs_rec_t'));
+    R.rec.set(m4S.rec);
+    [[R.prev, 'lab_m4_rs_prev'], [R.next, 'lab_m4_rs_next']].forEach(([b, k]) => { b.setAttribute('aria-label', L(k)); b.title = L(k); });
+    [[R.cp, 'lab_m4_c_copy'], [R.ps, 'lab_m4_c_paste'], [R.dup, 'lab_m4_c_dup']].forEach(([b, k]) => { lpBtnText(b, L(k)); b.title = L(k + '_t'); });
+    const e = m4Ed;
+    R.name.textContent = e ? `${ARR_TRACKS[e.r].name} · ${ARR_SECTIONS[e.c].name}` : '';
+    R.prev.setAttribute('aria-disabled', String(!e || e.c <= 0));
+    R.next.setAttribute('aria-disabled', String(!e || e.c >= 7));
+    R.dup.setAttribute('aria-disabled', String(!e || e.c >= 7));
+    R.ps.setAttribute('aria-disabled', String(!m4S.clip));
+    R.clip.textContent = m4S.clip ? Lf('lab_m4_c_clip', { trk: ARR_TRACKS[m4S.clip.r].name, sec: ARR_SECTIONS[m4S.clip.c].name }) : L('lab_m4_c_none');
+    const gl = m4GridLbl();
+    R.info.textContent = !m4S.rec ? L('lab_m4_rs_off') : arrRun.playing ? Lf('lab_m4_rs_live', { g: gl }) : Lf('lab_m4_rs_step', { pos: m4RecPos() });
+    R.el.classList.toggle('is-rec', m4S.rec);
+    const O = ui.rso;
+    if (O) {
+        const f = ui.offerFrom;
+        O.el.hidden = !f;
+        if (f) O.txt.textContent = Lf('lab_m4_offer', { from: m4KeyShort(f), to: m4KeyShort(m4S.key) });
+        lpBtnText(O.yes, L('lab_m4_offer_yes')); lpBtnText(O.no, L('lab_m4_offer_no'));
+    }
+}
+function m4SetRec(b) {
+    m4S.rec = !!b;
+    m4Rec.down = 0; m4Rec.held.clear();
+    const ui = _m4ui;
+    if (ui && ui.recBtn) ui.recBtn.setAttribute('aria-pressed', String(m4S.rec));
+    if (ui && ui.rs) ui.rs.rec.set(m4S.rec);
+    if (m4S.rec && !arrRun.playing && m4RollOpen()) ui.roll.setPlayhead(m4Rec.cur);
+    else if (m4RollOpen() && !arrRun.playing) ui.roll.setPlayhead(null);
+    m4PaintStrip();
+}
+function m4OpenClip(r, c, opener) {
+    const ui = _m4ui;
+    if (!ui || !m4IsSyn(r)) return;
+    const roll = m4Roll(ui);
+    m4S.trk = r; m4S.csec = c;
+    m4Ed = { r, c };
+    m4Rec.cur = 0;
+    m4RollLoad();
+    if (!roll.isOpen()) roll.open(opener || document.activeElement);
+    if (arrRun.playing) roll.setPlaying(true);
+    else if (m4S.rec) roll.setPlayhead(m4Rec.cur);
+    m4PaintDetail(); m4PaintStrip();
+}
+// Açık düzenleyiciyi m4Ed klibine yükle (başlık, renk, aralık, gam, uzunluk, notalar; roll geçmişi sıfırlanır)
+function m4RollLoad() {
+    const ui = _m4ui, roll = ui && ui.roll; if (!roll || !m4Ed) return;
+    const { r, c } = m4Ed, k = m4ClipOf(r, c);
+    roll.setTitle(`${ARR_TRACKS[r].name} · ${ARR_SECTIONS[c].name}`);
+    roll.el.style.setProperty('--lp-c', `var(${ARR_TRACKS[r].arrVar})`);
+    roll.el.style.setProperty('--m4-tc', `var(${m4TxtVar(r)})`);
+    roll.setRange(M4_RANGE[r]);
+    roll.setScale({ root: m4S.key.root, type: m4S.key.type, on: m4S.scaleOn });
+    roll.setLength(k.len);
+    roll.setNotes(k.notes);
+    roll.clearHistory();
+    m4PaintStrip();
+}
+function m4RollGo(r, c) {
+    if (!m4IsSyn(r)) return;
+    m4Ed = { r, c }; m4S.trk = r; m4S.csec = c; m4Rec.cur = 0;
+    m4RollLoad();
+    if (!arrRun.playing && m4S.rec) _m4ui.roll.setPlayhead(0);
+    m4PaintDetail();
+}
+function m4RollNav(d) { if (!m4Ed) return; const c = m4Ed.c + d; if (c < 0 || c > 7) return; m4RollGo(m4Ed.r, c); }
+function m4RollChange(notes, meta) {
+    if (!m4Ed) return;
+    const { r, c } = m4Ed, k = m4ClipOf(r, c);
+    const before = k.notes.length;
+    m4Push();                                 // aranjman geri alması klip düzenlemesini de kapsar
+    k.notes = notes.map(n => ({ p: n.p, s: n.s, l: n.l, v: n.v }));
+    k.len = lpClamp(Math.round(meta.length || k.len), 1, ARR_SEC_STEPS);
+    if (meta.reason === 'add' || meta.reason === 'duplicate') m4S.added[r] += Math.max(0, k.notes.length - before);
+    if (r === 3 && c === 3) {                 // öğretici sayaçları yalnız LEAD · Chorus 1 klibinde
+        if (meta.reason === 'resize') m4T.resize++;
+        else if (meta.reason === 'velocity') m4T.vel++;
+        else if (meta.reason === 'quantize') m4T.q++;
+    }
+    if (k.notes.length && !state.arrCells[r][c]) { state.arrCells[r][c] = true; m4S.cols[c] = true; m4S.tpl = ''; m4S.dirty = true; }
+    m4ClipChanged(r, c, true);
+}
+function m4RollAction(reason, meta) {
+    if (reason === 'grid' || reason === 'open') {
+        const g = { '1/4': 4, '1/8': 2, '1/16': 1, '1/32': 0.5 }[meta.grid] || 1;
+        m4Rec.grid = g * (meta.triplet ? 2 / 3 : 1); m4Rec.gridLbl = meta.grid + (meta.triplet ? 'T' : '');
+        m4PaintStrip();
+    }
+    if (reason === 'scale' && _m4ui && _m4ui.roll) {
+        // Düzenleyicideki GAM seçimi proje tonudur (başlık çubuğundaki TON ile iki yönlü)
+        // Ton değiştiyse ve MIDI nota varsa gam içinde taşıma önerilir (düzenleyicide şeridin üstünde)
+        const sc = _m4ui.roll.getScale(), o = m4S.key;
+        if (sc.root !== o.root || sc.type !== o.type || sc.on !== m4S.scaleOn) {
+            const keyCh = sc.root !== o.root || sc.type !== o.type;
+            m4Push();
+            m4S.key = { root: sc.root, type: sc.type }; m4S.scaleOn = sc.on;
+            if (keyCh) { if (m4AnyNotes()) m4OfferShow(o, m4S.key); else m4OfferHide(); }
+            m4PaintKey(); m4PaintDetail(); m4Tasks();
+        }
+    }
+}
+// Düzenleyicinin ÇAL'ı: klibin bölümünü loop'ta çal (tüm izlerle — bağlam içinde duy)
+function m4RollPlay(on) {
+    if (!on) { if (arrRun.playing) arrStop('stop'); return; }
+    if (!m4Ed || !arrAudioOK()) return;
+    const c = m4Ed.c;
+    m4S.sel = m4S.selEnd = c; m4S.guide = ARR_SEC_GUIDE[c]; m4S.loop = true; m4S.resume = -1;
+    if (arrRun.playing) arrRun.jump = c * ARR_SEC_STEPS; else arrStart();
+    m4PaintTransport(); m4PaintSel(); m4PaintGuide();
+}
+function m4RollPh() {
+    if (!m4Ed) return null;
+    const f = arrPosF(); if (f == null) return null;
+    const sec = Math.floor(f / ARR_SEC_STEPS); if (sec !== m4Ed.c) return null;
+    const k = m4ClipOf(m4Ed.r, m4Ed.c);
+    return (f - sec * ARR_SEC_STEPS) % Math.max(1, k.len);
+}
+function m4RollClosed() {
+    m4Ed = null; m4Rec.down = 0; m4Rec.held.clear();
+    m4PaintDetail(); m4Tasks();
+}
+const m4GridLbl = () => m4Rec.gridLbl || '1/16';
+const m4RecPos = () => { const s = m4Rec.cur; return `${Math.floor(s / 16) + 1}.${Math.floor((s % 16) / 4) + 1}.${Math.round((s % 4 + 1) * 100) / 100}`; };
+
+// ── Web MIDI: REC açık + düzenleyici açıkken kayıt; değilse ARM'lı / seçili MIDI izini çalar ──
+function m4MidiTarget() {
+    if (m4Ed && m4RollOpen() && m4IsSyn(m4Ed.r)) return m4Ed.r;
+    const a = M4_MEL.find(tr => m4S.arm[tr] && m4IsSyn(tr));
+    if (a != null) return a;
+    return m4IsSyn(m4S.trk) ? m4S.trk : -1;
+}
+function m4MidiOn(e) {
+    const tr = m4MidiTarget();
+    if (tr < 0) return;
+    const key = e.input + ':' + e.ch + ':' + e.note;
+    m4MidiTr.set(key, tr);
+    arrLiveOn(tr, e.note, e.vel);
+    if (m4S.rec && m4Ed && m4Ed.r === tr && m4RollOpen()) m4RecOn(e);
+}
+function m4MidiOff(e) {
+    const key = e.input + ':' + e.ch + ':' + e.note, tr = m4MidiTr.get(key);
+    if (tr == null) return;
+    m4MidiTr.delete(key);
+    arrLiveOff(tr, e.note);
+    if (m4S.rec && m4Ed && m4Ed.r === tr && m4RollOpen()) m4RecOff(e);
+}
+// Adım kaydı (dururken): nota imlece ızgara boyunda yazılır; bütün tuşlar bırakılınca imleç ızgara kadar ilerler
+// (akor = aynı adım). Canlı kayıt (çalarken): basış konumu ve süresi ızgaraya kuantize edilir, bırakınca yazılır.
+function m4RecOn(e) {
+    const { r, c } = m4Ed, k = m4ClipOf(r, c), g = m4Rec.grid, v = lpClamp(Math.round(e.vel * 127), 1, 127);
+    if (!arrRun.playing) {
+        const s = lpClamp(m4Rec.cur, 0, Math.max(0, k.len - g));
+        m4Push();
+        k.notes = k.notes.filter(n => !(n.p === e.note && Math.abs(n.s - s) < 1e-6));
+        k.notes.push({ p: e.note, s, l: Math.min(g, k.len - s), v });
+        m4Rec.down++;
+        m4S.added[r]++;
+        m4RecCommit(r, c, k);
+        return;
+    }
+    const f = arrPosF();
+    if (f == null || Math.floor(f / ARR_SEC_STEPS) !== c) return;
+    m4Rec.held.set(e.input + ':' + e.ch + ':' + e.note, { s: (f - c * ARR_SEC_STEPS) % Math.max(1, k.len), t: arrCtx.currentTime, v, p: e.note });
+}
+function m4RecOff(e) {
+    const { r, c } = m4Ed, k = m4ClipOf(r, c), g = m4Rec.grid;
+    if (!arrRun.playing) {
+        m4Rec.down = Math.max(0, m4Rec.down - 1);
+        if (!m4Rec.down) {
+            m4Rec.cur = m4Rec.cur + g >= k.len - 1e-6 ? 0 : Math.round((m4Rec.cur + g) * 1000) / 1000;
+            if (m4RollOpen()) _m4ui.roll.setPlayhead(m4Rec.cur);
+            m4PaintStrip();
+        }
+        return;
+    }
+    const key = e.input + ':' + e.ch + ':' + e.note, h = m4Rec.held.get(key);
+    if (!h) return;
+    m4Rec.held.delete(key);
+    const L0 = Math.max(1, k.len);
+    let s = Math.round(h.s / g) * g; if (s >= L0 - 1e-6) s = 0;
+    const len = Math.max(g, Math.round(((arrCtx.currentTime - h.t) / ARR_S16) / g) * g);
+    m4Push();
+    k.notes = k.notes.filter(n => !(n.p === h.p && Math.abs(n.s - s) < 1e-6));
+    k.notes.push({ p: h.p, s: Math.round(s * 1000) / 1000, l: Math.min(len, L0 - s), v: h.v });
+    m4S.added[r]++;
+    m4RecCommit(r, c, k);
+}
+function m4RecCommit(r, c, k) {
+    k.notes.sort((a, b) => a.s - b.s || a.p - b.p);
+    if (!state.arrCells[r][c]) { state.arrCells[r][c] = true; m4S.cols[c] = true; m4S.tpl = ''; m4S.dirty = true; }
+    if (m4RollOpen()) _m4ui.roll.setNotes(k.notes);
+    m4PaintGrid(); m4PaintDetail(); m4PaintStrip(); m4Tasks();
+}
+function m4MidiCc(e) {
+    if (e.cc === 123 || e.cc === 120) { arrLiveAll(); m4MidiTr.clear(); }     // all notes / sound off
+}
+
+// ── Görevler ──────────────────────────────────────────────────────────
+// Oturum bayrakları (11–14) hesap değişince sıfırlanır (kabuğun labResetSessionTasks'ı 6–10'unkileri sıfırlar);
+// girişsiz → giriş geçişinde yerel ilerleme birleştiği için korunur.
+function m4FlagGuard() {
+    const uid = currentUser ? currentUser.uid : '';
+    if (m4S.flagUid === uid) return;
+    if (m4S.flagUid) { m4S.added = [0, 0, 0, 0, 0]; m4S.copied = false; m4S.keyMoved = false; }
+    m4S.flagUid = uid;
 }
 // Görev koşulları (TASKS[4] sırasıyla). Modülü açmak tek başına hiçbir şey kazandırmaz:
 // ızgara koşulları yalnız kullanıcı builder'da bir şey değiştirdikten sonra sayılır
 // (Pop'ta Chorus 1 zaten dolu → görev 8 için o bölümde klip düzenlemiş olmak gerekir).
+// MIDI görevleri kullanıcının yazdığı notaları sayar (başlangıç klipleri saymaz).
 function m4Auto() {
-    const c = state.arrCells, d = m4S.dirty;
+    m4FlagGuard();
+    const c = state.arrCells, d = m4S.dirty, K = m4S.key;
+    const syn = M4_MEL.filter(m4IsSyn);
+    const notes = tr => m4S.clips[tr].reduce((a, k) => a + k.notes.length, 0);
+    const inKey = tr => m4S.clips[tr].every(k => k.notes.every(n => inScale(n.p, K.root, K.type)));
     return [
         m4S.tplUsed,
         d && c[0][0] && c[1][0] && !c[2][0] && !c[3][0] && !c[4][0],
         m4S.cols[3] && c.every(row => row[3]),     // Chorus 1'de klip düzenleyip hepsini açtı
         m4S.bdKick && !c[0][6],                    // Breakdown'daki kick'i kullanıcı kendisi kapattı
         m4S.played,
+        syn.some(tr => m4S.added[tr] >= 8 && notes(tr) >= 8),
+        K.type !== 'chromatic' && syn.some(tr => m4S.added[tr] >= 4 && notes(tr) >= 4 && inKey(tr)),
+        m4S.copied,
+        m4S.keyMoved,
     ];
 }
 function m4Tasks() {
@@ -12949,33 +14072,170 @@ function m4NoAudio() {
     ui.noAudio.hidden = false;
 }
 
+// ── Kullanıcı aranjmanları (users/{uid}/arrangements) — preset tarayıcıda KULLANICI grubu ──
+// Firestore iç içe dizi kabul etmez → her şey (ızgara, otomasyon, klipler, enstrümanlar) tek JSON metni (v:1).
+const m4User = { uid: null, list: [], busy: false };
+async function m4LoadUserArr() {
+    if (!currentUser || !_db) return [];
+    const snap = await userDoc().collection('arrangements').orderBy('createdAt', 'desc').limit(20).get();
+    return snap.docs.map(d => {
+        const x = d.data() || {};
+        let data = null;
+        try { data = typeof x.data === 'string' ? JSON.parse(x.data) : null; } catch (e) { data = null; }
+        return { id: d.id, name: String(x.name || '—').slice(0, 60), data };
+    }).filter(x => x.data && Array.isArray(x.data.grid));
+}
+async function m4SaveUserArr(name) {
+    if (!currentUser || !_db) return null;
+    const ref = await userDoc().collection('arrangements').add({
+        name: name.slice(0, 60), v: 1, bpm: m4S.bpm, set: m4S.set,
+        data: JSON.stringify(m4Snap()), createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+}
+async function m4DelUserArr(id) {
+    if (!currentUser || !_db) return;
+    await userDoc().collection('arrangements').doc(id).delete();
+}
+function m4SyncUser(force) {
+    const ui = _m4ui; if (!ui) return;
+    const uid = currentUser ? currentUser.uid : null;
+    ui.save.title = L(uid ? 'lab_m4_save_t' : 'lab_m4_save_in');
+    if (!uid) { if (m4User.uid) { m4User.list = []; m4User.uid = null; m4PaintTpl(); } m4PaintDel(); return; }
+    if (!force && (m4User.uid === uid || m4User.busy)) { m4PaintDel(); return; }
+    m4User.busy = true;
+    m4LoadUserArr().then(list => { m4User.list = list; m4User.uid = uid; })
+        .catch(e => console.warn('[lab] m4 arrangements:', e))
+        .finally(() => { m4User.busy = false; m4PaintTpl(); m4PaintDel(); });
+}
+function m4PaintDel() {
+    const ui = _m4ui; if (!ui || !ui.del) return;
+    const on = !!currentUser && m4User.list.length > 0;
+    lpBtnSlot(ui.del, on, on && String(m4S.tpl).indexOf('u:') === 0 && m4User.list.some(x => 'u:' + x.id === m4S.tpl));
+}
+function m4PickUser(id) {
+    const it = m4User.list.find(x => 'u:' + x.id === id);
+    if (!it) return;
+    m4Push();
+    m4Load(it.data);
+    m4S.tpl = 'u:' + it.id;
+    m4PaintTpl(); m4PaintDel();
+    m4Ann(Lf('lab_m4_loaded', { name: it.name }));
+}
+function m4NameOpen() {
+    const ui = _m4ui; if (!ui) return;
+    if (!currentUser) { if (window.bkAuth) window.bkAuth.openLogin(); return; }
+    ui.nameF.hidden = false; ui.save.setAttribute('aria-expanded', 'true');
+    ui.nameIn.value = ''; try { ui.nameIn.focus(); } catch (_) {}
+}
+function m4NameClose(focus) {
+    const ui = _m4ui; if (!ui) return;
+    ui.nameF.hidden = true; ui.save.setAttribute('aria-expanded', 'false');
+    if (focus !== false) try { ui.save.focus({ preventScroll: true }); } catch (_) {}
+}
+async function m4SaveSubmit() {
+    const ui = _m4ui; if (!ui || ui.saving) return;
+    const name = (ui.nameIn.value || '').trim();
+    if (!name) { try { ui.nameIn.focus(); } catch (_) {} return; }
+    ui.saving = true; ui.save.setAttribute('aria-busy', 'true');
+    const lbl = ui.save.querySelector('span');
+    lbl.textContent = L('lab_saving');
+    m4NameClose();
+    try {
+        const id = await m4SaveUserArr(name);
+        if (id) { m4User.list.unshift({ id, name: name.slice(0, 60), data: m4Snap() }); m4User.uid = currentUser.uid; m4S.tpl = 'u:' + id; }
+        lbl.textContent = L('lab_saved_ok');
+    } catch (e) { console.warn('[lab] m4 save:', e); lbl.textContent = L('lab_save_failed'); }
+    m4PaintTpl(); m4PaintDel();
+    clearTimeout(ui.saveT);
+    ui.saveT = setTimeout(() => { ui.saving = false; ui.save.removeAttribute('aria-busy'); if (lbl.isConnected) lbl.textContent = L('lp_save'); }, 1400);
+}
+async function m4DeleteClick() {
+    const ui = _m4ui; if (!ui || ui.deleting || !currentUser) return;
+    const it = m4User.list.find(x => 'u:' + x.id === m4S.tpl);
+    if (!it || !confirm(Lf('lab_m4_del_confirm', { name: it.name }))) return;
+    ui.deleting = true;
+    try {
+        await m4DelUserArr(it.id);
+        m4User.list = m4User.list.filter(x => x !== it);
+        if (m4S.tpl === 'u:' + it.id) m4S.tpl = '';
+        if (_m4ui) {
+            const back = document.activeElement === _m4ui.del || document.activeElement === document.body;
+            m4PaintTpl(); m4PaintDel();
+            if (back) _m4ui.pb.trigger.focus();
+        }
+    } catch (e) { console.warn('[lab] m4 delete:', e); alert(L('lab_m4_del_failed')); }
+    ui.deleting = false;
+}
+
 // ── Boyama (yerinde; tam render yok → ses kesilmez, her adımda yalnız stil/metin) ─────
 function m4PaintTpl() {
     const ui = _m4ui; if (!ui) return;
-    const custom = !m4S.tpl;
-    ui.pb.setItems(m4PresetItems(), custom ? '_custom' : m4S.tpl);
-    ui.pb.el.classList.toggle('is-custom', custom);
+    const items = m4PresetItems();
+    const cur = items.some(x => x.id === m4S.tpl) ? m4S.tpl : '_custom';
+    ui.pb.setItems(items, cur);
+    ui.pb.el.classList.toggle('is-custom', cur === '_custom');
     ui.tplBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tpl === m4S.tpl)));
 }
 function m4PresetItems() {
     const it = ARR_TPL_NAMES.map(n => ({ id: n, name: n, no: '' }));
-    if (!m4S.tpl) it.push({ id: '_custom', name: L('lab_m4_custom'), group: 'user', no: '' });
-    return it;
+    const user = m4User.list.map(x => ({ id: 'u:' + x.id, name: x.name, group: 'user', no: '' }));
+    if (!m4S.tpl || (String(m4S.tpl).indexOf('u:') === 0 && !user.some(x => x.id === m4S.tpl)))
+        it.push({ id: '_custom', name: L('lab_m4_custom'), group: 'user', no: '' });
+    return it.concat(user);
 }
 function m4Cur() { return arrRun.playing && arrRun.pos >= 0 ? arrRun.pos >> 5 : m4S.sel; }
+// SYNTH klibinin mini piyano rulosu (viewBox 0 0 100 40): kısa klip bölümde tekrarlanır
+function m4NotePath(k) {
+    if (!k || !k.notes.length) return '';
+    let lo = 127, hi = 0;
+    k.notes.forEach(n => { if (n.p < lo) lo = n.p; if (n.p > hi) hi = n.p; });
+    const span = Math.max(6, hi - lo), top = (lo + hi) / 2 + span / 2;
+    const L0 = Math.max(1, k.len), reps = Math.ceil(ARR_SEC_STEPS / L0);
+    let d = '';
+    for (let rp = 0; rp < reps; rp++) k.notes.forEach(n => {
+        if (n.s >= L0) return;
+        const s = n.s + rp * L0; if (s >= ARR_SEC_STEPS) return;
+        const w = Math.max(1.2, Math.min(n.l, L0 - n.s, ARR_SEC_STEPS - s) / ARR_SEC_STEPS * 100 - 0.5);
+        const x = s / ARR_SEC_STEPS * 100, y = 4 + (top - n.p) / span * 30;
+        d += `M${x.toFixed(2)},${y.toFixed(2)}h${w.toFixed(2)}v3h-${w.toFixed(2)}Z`;
+    });
+    return d;
+}
+const m4ClipSig = k => k ? k.len + ':' + k.notes.map(n => `${n.p},${n.s},${n.l}`).join(';') : '';
+function m4PaintCell(r, j) {
+    const ui = _m4ui; if (!ui) return;
+    const b = ui.clips[r][j], on = !!state.arrCells[r][j], syn = m4IsSyn(r);
+    const k = syn ? m4ClipOf(r, j) : null, n = k ? k.notes.length : 0;
+    const sig = `${on}|${syn}|${syn ? m4ClipSig(k) : ''}|${syn && m4S.syn[r].on}|${labLang()}`;
+    if (b._sig === sig) return;
+    b._sig = sig;
+    b.setAttribute('aria-pressed', String(on));
+    b._lbl.textContent = on ? `${ARR_TRACKS[r].name} ${j * 2 + 1}` : '';
+    b.classList.toggle('is-midi', syn);
+    b.classList.toggle('is-empty', syn && !n);
+    b.classList.toggle('is-devoff', syn && !m4S.syn[r].on);
+    b._path.setAttribute('d', syn ? m4NotePath(k) : ARR_PATS[r]);
+    b.setAttribute('aria-label', syn ? Lf('lab_m4_clip_midi_a', { trk: ARR_TRACKS[r].name, sec: ARR_SECTIONS[j].name, n }) : `${ARR_TRACKS[r].name} · ${ARR_SECTIONS[j].name}`);
+    const ed = ui.edits[r] && ui.edits[r][j];
+    if (ed) {
+        ed.hidden = !syn;
+        const t = Lf('lab_m4_edit_a', { trk: ARR_TRACKS[r].name, sec: ARR_SECTIONS[j].name });
+        ed.setAttribute('aria-label', t); ed.title = L('lab_m4_edit_t');
+    }
+}
 function m4PaintGrid() {
     const ui = _m4ui; if (!ui) return;
     const c = state.arrCells;
-    ui.clips.forEach((row, r) => row.forEach((b, j) => {
-        const on = !!c[r][j];
-        if (b._on === on) return;
-        b._on = on;
-        b.setAttribute('aria-pressed', String(on));
-        b._lbl.textContent = on ? `${ARR_TRACKS[r].name} ${j * 2 + 1}` : '';
-    }));
+    ui.clips.forEach((row, r) => row.forEach((b, j) => m4PaintCell(r, j)));
     ui.fills.forEach((b, r) => b.classList.toggle('is-full', c[r].every(Boolean)));
     ui.clipN.textContent = String(c.reduce((a, row) => a + row.filter(Boolean).length, 0));
-    m4PaintHot(); m4PaintVoices(); m4PaintEnergy(); m4PaintChips();
+    m4PaintSelClip(); m4PaintHot(); m4PaintVoices(); m4PaintEnergy(); m4PaintChips();
+}
+function m4PaintSelClip() {
+    const ui = _m4ui; if (!ui) return;
+    ui.cellw.forEach((row, r) => row.forEach((w, j) => w.classList.toggle('is-sel', r === m4S.trk && j === m4S.csec)));
+    ui.heads.forEach((h, i) => h.classList.toggle('is-sel', i === m4S.trk));
 }
 function m4PaintMix() {
     const ui = _m4ui; if (!ui) return;
@@ -12985,19 +14245,22 @@ function m4PaintMix() {
         const dim = arrEff(i) <= 0;
         ui.heads[i].classList.toggle('is-dim', dim);
         ui.crows[i].classList.toggle('is-dim', dim);
+        ui.vols[i].update(m4S.vol[i]);
+        ui.vtxt[i].textContent = m4VolTxt(m4S.vol[i]);
+        ui.vfill[i].style.width = (m4S.vol[i] * 100).toFixed(1) + '%';
     });
     m4PaintVoices(); m4PaintEnergy();
 }
 function m4PaintVoices() {
     const ui = _m4ui; if (!ui) return;
     const cur = m4Cur();
-    const v = state.arrCells.filter((row, i) => row[cur] && arrEff(i) > 0).length;
+    const v = ARR_TRACKS.filter((_, i) => m4Sounds(i, cur) && arrEff(i) > 0).length;
     ui.voiceN.textContent = String(v);
 }
 function m4PaintHot() {
     const ui = _m4ui; if (!ui) return;
     const ps = arrRun.playing && arrRun.pos >= 0 ? arrRun.pos >> 5 : -1;
-    ui.clips.forEach(row => row.forEach((b, j) => b.classList.toggle('is-hot', j === ps && b._on)));
+    ui.clips.forEach((row, r) => row.forEach((b, j) => b.classList.toggle('is-hot', j === ps && m4Sounds(r, j))));
 }
 function m4PaintEnergy() {
     const ui = _m4ui; if (!ui) return;
@@ -13013,7 +14276,7 @@ function m4PaintEnergy() {
 }
 function m4PaintChips() {
     const ui = _m4ui; if (!ui) return;
-    ui.chips.forEach((ch, i) => ch.classList.toggle('is-on', !!state.arrCells[i][m4S.sel]));
+    ui.chips.forEach((ch, i) => ch.classList.toggle('is-on', m4Sounds(i, m4S.sel)));
 }
 function m4PaintAuto() {
     const ui = _m4ui; if (!ui) return;
@@ -13024,6 +14287,7 @@ function m4PaintAuto() {
     ui.autoBox.classList.toggle('is-byp', m4S.bypass);
     ui.win.root.classList.toggle('is-byp', m4S.bypass);
     ui.autoLed.set(!m4S.bypass);
+    ui.pwr.set(!m4S.bypass);
     ui.pts.forEach((p, j) => {
         const y = m4Ay(a[j]), hz = lpFmt.hz(arrHz(a[j]));
         p.style.top = y.toFixed(1) + 'px';
@@ -13037,9 +14301,10 @@ function m4PaintAuto() {
 }
 function m4PaintSel() {
     const ui = _m4ui; if (!ui) return;
-    const j = m4S.sel, s = ARR_SECTIONS[j], g = ARR_GUIDE[ARR_SEC_GUIDE[j]];
-    ui.locs.forEach((b, k) => b.setAttribute('aria-pressed', String(k === j)));
-    ui.brace.style.transform = `translateX(${j * 100}%)`;   // genişlik %12.5 → %100 = bir bölüm
+    const j = m4S.sel, e = m4S.selEnd, n = e - j + 1, s = ARR_SECTIONS[j], g = ARR_GUIDE[ARR_SEC_GUIDE[j]];
+    ui.locs.forEach((b, k) => b.setAttribute('aria-pressed', String(k >= j && k <= e)));
+    ui.brace.style.setProperty('--n', String(n));
+    ui.brace.style.transform = `translateX(${(j / n * 100).toFixed(3)}%)`;   // genişlik n × %12.5
     ui.brace.classList.toggle('is-on', m4S.loop);
     ui.insCard.style.setProperty('--sc', `var(${s.col})`);
     ui.insCard.style.setProperty('--sct', `var(${s.txt})`);
@@ -13049,7 +14314,8 @@ function m4PaintSel() {
     ui.insRole.textContent = Lf('lab_m4_ins_role', { role: g.name.toUpperCase(), bars: L(g.bars) });
     ui.insText.textContent = L('lab_m4_g_' + g.key);
     ui.insTip.textContent = L('lab_m4_gt_' + g.key);
-    ui.insLoopT.textContent = m4S.loop ? Lf('lab_m4_loop_on', { sec: s.name.toUpperCase() }) : L('lab_m4_loop_b');
+    const selName = n > 1 ? `${s.name} → ${ARR_SECTIONS[e].name}` : s.name;
+    ui.insLoopT.textContent = m4S.loop ? Lf('lab_m4_loop_on', { sec: selName.toUpperCase() }) : L('lab_m4_loop_b');
     ui.insLoop.setAttribute('aria-pressed', String(m4S.loop));
     ui.insHz.textContent = m4S.bypass ? L('lab_m4_bypass') : lpFmt.hz(arrHz(m4S.auto[j]));
     m4PaintChips(); m4PaintEnergy(); m4PaintVoices();
@@ -13060,10 +14326,13 @@ function m4PaintTransport() {
     ui.play.innerHTML = LP_IC[pl ? 'pause' : 'play'];
     ui.play.setAttribute('aria-pressed', String(pl));
     ui.loop.setAttribute('aria-pressed', String(m4S.loop));
+    ui.recBtn.setAttribute('aria-pressed', String(m4S.rec));
     const key = pl ? (m4S.loop ? 'lab_m4_st_loop' : 'lab_m4_st_play') : (m4S.resume >= 0 ? 'lab_m4_st_pause' : 'lab_m4_st_ready');
     ui.stTxt.textContent = L(key);
     ui.stDot.classList.toggle('is-on', pl);
     ui.win.root.classList.toggle('is-playing', pl);
+    if (ui.roll && ui.roll.isOpen()) { ui.roll.setPlaying(pl); if (!pl && m4S.rec) ui.roll.setPlayhead(m4Rec.cur); }
+    m4PaintStrip();
 }
 // Konum: çalarken sesle eş (kuyruktaki adım zamanı ≤ ctx saati), durmuşken seçili bölüm / duraklama noktası
 function m4PaintPos(force) {
@@ -13079,7 +14348,10 @@ function m4PaintPos(force) {
     ui.lcdCut.set(m4S.bypass ? L('lab_m4_bypass') : lpFmt.hz(arrHz(arrAutoAt(st + 0.5))));
     ui.lcdCut.el.classList.toggle('is-byp', m4S.bypass);
     const bar = pl ? st >> 4 : -1;
-    if (force || bar !== ui.bar) { ui.bar = bar; ui.rbars.forEach((b, k) => b.classList.toggle('is-cur', k === bar)); }
+    if (force || bar !== ui.bar) {
+        ui.bar = bar; ui.rbars.forEach((b, k) => b.classList.toggle('is-cur', k === bar));
+        if (pl) m4Follow(st);
+    }
     const ps = pl ? st >> 5 : -1;
     if (force || ps !== ui.ps) {
         const changed = ps !== ui.ps;
@@ -13088,11 +14360,42 @@ function m4PaintPos(force) {
         const cur = ps >= 0 ? ps : m4S.sel, s = ARR_SECTIONS[cur];
         ui.lcdSec.setLabel(L(ps >= 0 ? 'lab_m4_lcd_play' : 'lab_m4_lcd_sel'));
         ui.lcdSecN.textContent = s.name;
-        ui.lcdSecB.textContent = m4Bars(cur);
+        ui.lcdSecB.textContent = ps >= 0 ? m4Bars(cur) : m4Bars(m4S.sel, m4S.selEnd);
         ui.lcdSec.el.style.setProperty('--sct', `var(${s.txt})`);
         m4PaintHot(); m4PaintVoices();
         if (changed) ui.live.textContent = ps >= 0 ? Lf('lab_m4_sr_now', { sec: s.name }) : (R.playing ? '' : L('lab_m4_sr_stop'));
     }
+}
+// Yapışkan başlık sütununun kapladığı genişlik (telefonda yapışkan değil → 0)
+const m4HeadW = ui => getComputedStyle(ui.headsCol).position === 'sticky' ? ui.headsCol.offsetWidth : 0;
+// Takip (Ableton Follow): yakınlaştırılmış ızgarada playhead görünür alanın dışına çıkınca sayfa çevrilir
+function m4Follow(st) {
+    const ui = _m4ui; if (!ui || !m4S.follow) return;
+    const sc = ui.scroll, lanes = ui.lanes;
+    if (!sc || sc.scrollWidth <= sc.clientWidth + 2) return;
+    const head = m4HeadW(ui), x = lanes.offsetLeft + 12 + (st / ARR_STEPS) * (lanes.clientWidth - 24);
+    const vis0 = sc.scrollLeft + head + 8, vis1 = sc.scrollLeft + sc.clientWidth - 24;
+    if (x >= vis0 && x <= vis1) return;
+    sc.scrollLeft = Math.max(0, x - head - 16);
+}
+function m4PaintZoom(keepSel) {
+    const ui = _m4ui; if (!ui) return;
+    const z = M4_ZOOM[m4S.zoom] || 1;
+    ui.inner.style.setProperty('--m4-z', String(z));
+    ui.zOut.setAttribute('aria-disabled', String(m4S.zoom <= 0));
+    ui.zIn.setAttribute('aria-disabled', String(m4S.zoom >= M4_ZOOM.length - 1));
+    ui.follow.setAttribute('aria-pressed', String(m4S.follow));
+    if (keepSel) {
+        const st = arrRun.playing && arrRun.pos >= 0 ? arrRun.pos : m4S.sel * ARR_SEC_STEPS;
+        const sc = ui.scroll, lanes = ui.lanes, head = m4HeadW(ui);
+        const x = lanes.offsetLeft + 12 + (st / ARR_STEPS) * (lanes.clientWidth - 24);
+        sc.scrollLeft = Math.max(0, x - head - 24);
+    }
+}
+function m4Zoom(d) {
+    const z = lpClamp(m4S.zoom + d, 0, M4_ZOOM.length - 1);
+    if (z === m4S.zoom) return;
+    m4S.zoom = z; m4PaintZoom(true);
 }
 function m4PaintGuide() {
     const ui = _m4ui; if (!ui) return;
@@ -13113,7 +14416,78 @@ function m4PaintFlow() {
     } else { link = mk('span', 'lab-m4-fdet-here'); link.textContent = L('lab_m4_here'); }
     ui.fLink.replaceWith(link); ui.fLink = link;
 }
-// Metreler (yalnız çalarken, tek rAF): OUT L/R RMS + iz LED'leri (fader sonrası RMS)
+// İz başlıkları: SMP|MIDI, ARM görünürlüğü, alt yazı (loop adı / enstrüman preseti)
+function m4PaintInst() {
+    const ui = _m4ui; if (!ui) return;
+    M4_MEL.forEach(tr => {
+        const syn = m4IsSyn(tr);
+        if (ui.instSeg[tr]) ui.instSeg[tr].set(m4S.inst[tr]);
+        const arm = ui.arms[tr];
+        if (arm) { lpBtnSlot(arm, true, syn); arm.setAttribute('aria-pressed', String(!!m4S.arm[tr])); }
+        ui.crows[tr].classList.toggle('is-syn', syn);
+        ui.heads[tr].classList.toggle('is-syn', syn);
+        const s = labSample(m4SmpId(tr));
+        ui.subs[tr].textContent = syn ? `MIDI · ${m4S.syn[tr].name}` : (s ? s.name : L(ARR_TRACKS[tr].sub));
+    });
+    [0, 1].forEach(tr => { const s = labSample(m4SmpId(tr)); ui.subs[tr].textContent = `${L(ARR_TRACKS[tr].sub)} · ${s ? s.name : ''}`; });
+}
+function m4PaintKey() {
+    const ui = _m4ui; if (!ui) return;
+    ui.keyRoot.value = String(m4S.key.root);
+    ui.keyType.value = m4S.key.type;
+}
+function m4PaintSet() {
+    const ui = _m4ui; if (!ui) return;
+    ui.setSel.value = m4S.set;
+    ui.stBpm.textContent = Lf('lab_m4_st_5', { bpm: m4S.bpm });
+    m4PaintInst();
+}
+// Detay görünümü (Ableton Detail View): seçili klip (sol) + iz enstrümanı / sampler (sağ)
+function m4PaintDetail() {
+    const ui = _m4ui; if (!ui || !ui.det) return;
+    const r = m4S.trk, c = m4S.csec, T = ARR_TRACKS[r], S = ARR_SECTIONS[c], syn = m4IsSyn(r), mel = M4_MEL.indexOf(r) >= 0;
+    ui.det.style.setProperty('--c', `var(${T.arrVar})`);
+    ui.det.style.setProperty('--tc', `var(${m4TxtVar(r)})`);
+    ui.cPanel.title.textContent = `${L('lab_m4_clip_h')} · ${T.name} · ${S.name}`;
+    ui.cPanel.setInfo(m4Bars(c));
+    const k = syn ? m4ClipOf(r, c) : null;
+    ui.cPath.setAttribute('d', syn ? m4NotePath(k) : ARR_PATS[r]);
+    ui.cPrev.classList.toggle('is-off', !state.arrCells[r][c]);
+    ui.cPrev.classList.toggle('is-empty', syn && !k.notes.length);
+    ui.cPrev.setAttribute('aria-label', `${L('lab_m4_clip_prev')}: ${T.name} · ${S.name}`);
+    if (syn) ui.cInfo.textContent = k.notes.length ? Lf('lab_m4_clip_info', { n: k.notes.length, bars: Math.round(k.len / 16 * 100) / 100, key: m4KeyShort(m4S.key) }) : L('lab_m4_clip_empty');
+    else { const s = labSample(m4SmpId(r)); ui.cInfo.textContent = s ? `${s.name} · ${LAB_SAMPLE_PACKS[s.pack].name} · ${lpSmpMeta(s)}` : '—'; }
+    ui.cBtns.hidden = !syn; ui.cSmp.hidden = syn;
+    if (syn) {
+        const empty = !k.notes.length;
+        ui.cDup.setAttribute('aria-disabled', String(c >= 7));
+        ui.cCopy.setAttribute('aria-disabled', 'false');
+        ui.cPaste.setAttribute('aria-disabled', String(!m4S.clip));
+        ui.cClear.setAttribute('aria-disabled', String(empty));
+    }
+    ui.cClip.textContent = m4S.clip ? Lf('lab_m4_c_clip', { trk: ARR_TRACKS[m4S.clip.r].name, sec: ARR_SECTIONS[m4S.clip.c].name }) : L('lab_m4_c_none');
+    ui.cClip.hidden = !syn;
+    ui.cListen.setAttribute('aria-pressed', String(labSampleAuditionId() === m4SmpId(r)));
+    ui.devPanel.el.hidden = !syn; ui.smpPanel.el.hidden = syn;
+    if (syn) { if (!ui.dev || ui.dev.tr !== r) m4BuildDevice(ui, r); else m4PaintDevice(); }
+    // SAMPLER paneli gizliyken de etkin dilde kalsın (iz SAMPLE'a dönünce eski dil görünmesin)
+    ui.smpPanel.title.textContent = `${L('lab_m4_smp_h')} · ${T.name}`;
+    ui.smpText.textContent = L(mel ? 'lab_m4_smp_p' : 'lab_m4_drum_p');
+    ui.kitRow.hidden = mel; ui.kitSeg.set(m4S.kit);
+    ui.toSyn.hidden = !mel;
+    m4PaintSelClip();
+}
+function m4PaintDevice() {
+    const ui = _m4ui, D = ui && ui.dev; if (!D || D.tr < 0) return;
+    const P = m4S.syn[D.tr];
+    Object.keys(D.knobs).forEach(k => D.knobs[k].update(P[k]));
+    D.wave.set(P.wave); D.mono.set(P.mono); D.filt.set(P.filt); D.pwr.set(P.on);
+    D.fgrp.classList.toggle('is-off', !P.filt);
+    ui.devPanel.el.classList.toggle('is-off', !P.on);
+    D.knobs.glide.setDisabled(!P.mono);
+    D.pb.setItems(m4SynItems(), P.pre); D.pb.setModified(!!P.mod);
+}
+// Metreler (çalarken / dinlerken, tek rAF): OUT L/R RMS + iz LED'leri (fader sonrası RMS)
 function m4Rms(an, buf) {
     if (an.getFloatTimeDomainData) an.getFloatTimeDomainData(buf);
     else { const b = new Uint8Array(buf.length); an.getByteTimeDomainData(b); for (let k = 0; k < b.length; k++) buf[k] = (b[k] - 128) / 128; }
@@ -13139,13 +14513,36 @@ function m4Frame() {
     const now = arrCtx.currentTime;
     let cur = null;
     while (R.queue.length && R.queue[0].t <= now) cur = R.queue.shift();
-    if (cur) { R.pos = cur.i; m4PaintPos(false); }
+    if (cur) { R.pos = cur.i; R.cur = cur; m4PaintPos(false); }
     m4PaintMeters();
     R.raf = requestAnimationFrame(m4Frame);
 }
+function m4PaintAll() {
+    const ui = _m4ui; if (!ui) return;
+    ui.reso.update(m4S.q); ui.out.update(m4S.outDb);
+    m4PaintTpl(); m4PaintKey(); m4PaintSet(); m4PaintInst(); m4PaintGrid(); m4PaintMix(); m4PaintAuto(); m4PaintSel();
+    m4PaintTransport(); m4PaintPos(true); m4PaintDetail(); m4PaintDel(); m4Tasks();
+}
 // Dil değişince birleşik metinler yerinde (labShellLang → labOnRefresh; ses sürer)
+// İlerleme tazelemesinde (giriş/çıkış, bulut ilerlemesi) yalnız durum boyanır; cihaz ve Çalışma mantığı yalnız
+// dil gerçekten değişince yeniden kurulur (sürüklenen bir knob'un altından DOM değişmesin).
 function m4Relang() {
     const ui = _m4ui; if (!ui) return;
+    m4FlagGuard();
+    const lg = labLang(), langCh = lg !== ui.lang;
+    ui.lang = lg;
+    m4SyncUser(false);
+    if (langCh) {
+        m4Labels(ui);
+        ui.live.textContent = '';
+        if (ui.dev) ui.dev.tr = -1;          // cihaz metinleri yeniden kurulur
+        if (ui.hiw) ui.hiw.rebuild(m4HiwOpts());
+        m4PaintGuide(); m4PaintFlow();
+    }
+    m4PaintAll(); m4PaintStrip();
+}
+// Birleşik erişilebilir adlar / ipuçları (data-i18n ile ifade edilemeyenler): ilk kurulumda ve her dil değişiminde
+function m4Labels(ui) {
     ARR_TRACKS.forEach((T, i) => {
         ui.mBtns[i].setAttribute('aria-label', Lf('lab_m4_mute_a', { trk: T.name }));
         ui.sBtns[i].setAttribute('aria-label', Lf('lab_m4_solo_a', { trk: T.name }));
@@ -13155,16 +14552,24 @@ function m4Relang() {
     });
     ui.locs.forEach((b, j) => b.setAttribute('aria-label', Lf('lab_m4_loc_a', { sec: ARR_SECTIONS[j].name })));
     ui.pts.forEach((p, j) => p.setAttribute('aria-label', Lf('lab_m4_pt_a', { sec: ARR_SECTIONS[j].name })));
-    ui.play.setAttribute('aria-label', L('lab_m4_play'));
-    ui.stop.setAttribute('aria-label', L('lab_m4_stop'));
-    ui.loop.setAttribute('aria-label', L('lab_m4_loop'));
+    [[ui.play, 'lab_m4_play'], [ui.stop, 'lab_m4_stop'], [ui.loop, 'lab_m4_loop'], [ui.recBtn, 'lab_m4_rec'],
+        [ui.follow, 'lab_m4_follow_t'], [ui.zIn, 'lab_m4_zin'], [ui.zOut, 'lab_m4_zout']].forEach(([b, k]) => { b.setAttribute('aria-label', L(k)); b.title = L(k); });
     ui.lcdPosW.setLabel(L('lab_m4_lcd_pos')); ui.lcdTimeW.setLabel(L('lab_m4_lcd_time'));
-    ui.lcdTempo.setLabel(L('lab_m4_lcd_tempo')); ui.lcdCut.setLabel(L('lab_m4_lcd_cut'));
+    ui.lcdCut.setLabel(L('lab_m4_lcd_cut'));
+    ui.setSel.setAttribute('aria-label', L('lab_m4_set_aria')); ui.setSel.title = L('lab_m4_set_aria');
+    Array.from(ui.setSel.options).forEach(op => { op.textContent = m4SetLabel(op.value); });
     ui.reso.setLabel('RESO'); ui.out.setLabel('OUT');
     ui.reso.el.title = `${L('lab_m4_reso_t')} — ${L('lp_knob_tip')}`; ui.out.el.title = `${L('lab_m4_out_t')} — ${L('lp_knob_tip')}`;
     ui.eTgl.el.title = L('lab_m4_energy_t');
     ui.pwr.el.setAttribute('aria-label', L('lab_m4_pwr')); ui.pwr.el.title = L('lab_m4_pwr_t');
     ui.win.root.setAttribute('aria-label', L('lab_m4_win_aria'));
+    // Proje tonu seçicileri (gam adları dile bağlı)
+    ui.keyRoot.setAttribute('aria-label', L('lab_m4_key_root')); ui.keyRoot.title = L('lab_m4_key_t');
+    ui.keyType.setAttribute('aria-label', L('lab_m4_key_type')); ui.keyType.title = L('lab_m4_key_t');
+    Array.from(ui.keyType.options).forEach(op => { op.textContent = m4ScaleShort(op.value); });
+    if (ui.offerFrom) ui.offerTxt.textContent = Lf('lab_m4_offer', { from: m4KeyShort(ui.offerFrom), to: m4KeyShort(m4S.key) });
+    // Kaydet formu
+    ui.nameL.textContent = L('lab_m4_save_p'); ui.nameIn.placeholder = L('lab_m4_save_ph');
     // Kit bileşenlerinin oluştururken yazdığı etiketler (tarayıcı, A/B, geri al, metre, fader ipuçları)
     const pbA = ui.pb.el.querySelectorAll('.lp-pb-arrow');
     if (pbA[0]) pbA[0].setAttribute('aria-label', L('lab_m4_tpl_prev'));
@@ -13178,23 +14583,38 @@ function m4Relang() {
     [[ui.undo, 'lp_undo'], [ui.redo, 'lp_redo']].forEach(([b, k]) => { b.setAttribute('aria-label', L(k)); b.title = L(k); });
     ui.outM.el.setAttribute('aria-label', L('lab_m4_out_aria'));
     ui.vols.forEach(v => { v.track.title = L('lp_knob_tip'); });
-    ui.live.textContent = '';
-    m4PaintTpl(); m4PaintTransport(); m4PaintSel(); m4PaintAuto(); m4PaintGrid(); m4PaintPos(true);
-    m4PaintGuide(); m4PaintFlow();
-    if (ui.hiw) ui.hiw.rebuild(m4HiwOpts());
 }
 
 // ── BE·ARRANGER 04 penceresi ─────────────────────────────────────────
+// Boşluk = çal/durdur (metin alanı / liste dışında, düğmelerde de — Ableton; düğmeler Enter ile çalışır),
+// Enter (düğme dışında) ya da Shift+Enter = seçimden çal.
+function m4WinKey(e) {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (!t || !t.closest || m4Typing(t)) return;
+    if (t.closest('[role="listbox"], [role="option"], .lp-pb-pop, .lp-midi-pop, .lab-m4-name')) return;
+    if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); if (!e.repeat) m4Toggle(); return; }
+    if (e.key === 'Enter' && (e.shiftKey || !t.closest('button, a[href], [role="button"], [role="checkbox"]'))) {
+        e.preventDefault(); if (!e.repeat) m4PlayFromSel();
+    }
+}
+function m4Sel(cls, opts, value, onPick) {
+    const s = mk('select', 'lab-m4-sel' + (cls ? ' ' + cls : ''));
+    opts.forEach(([v, t]) => { const op = mk('option'); op.value = String(v); op.textContent = t; s.append(op); });
+    s.value = String(value);
+    s.addEventListener('change', () => onPick(s.value));
+    return s;
+}
+const m4SelW = s => { const w = mk('span', 'lab-m4-selw'); w.append(s); return w; };
 function m4Window(ui) {
     const win = ui.win = pluginWindow({ code: 'ARRANGER', num: '04', sub: L('lab_m4_win_sub'), aria: L('lab_m4_win_aria'),
         power: { on: !m4S.bypass, onToggle: on => m4SetBypass(!on), label: L('lab_m4_pwr'), title: L('lab_m4_pwr_t'), pos: 'right' },
         transport: true, status: true, cls: 'lab-m4-win' });
     ui.pwr = win.power;
-    // Başlık çubuğu: şablon tarayıcı · A|B · ↶ ↷
-    // Seçenek nesnesi saklanır: tarayıcı etiketi her boyamada o.label'dan okur → m4Relang yerinde çevirir
-    ui.pbOpts = { items: m4PresetItems(), value: m4S.tpl || '_custom', width: 190, capLabel: L('lp_preset_cap'),
+    // Başlık çubuğu · sol: şablon / kayıt tarayıcı · A|B · ↶ ↷ · KAYDET · SİL
+    ui.pbOpts = { items: m4PresetItems(), value: m4S.tpl || '_custom', width: 150, capLabel: L('lp_preset_cap'),
         label: L('lab_m4_preset'), prevLabel: L('lab_m4_tpl_prev'), nextLabel: L('lab_m4_tpl_next'),
-        onPick: it => { if (it.id !== '_custom') m4PickTpl(it.id); else m4PaintTpl(); },
+        onPick: it => { if (it.id.indexOf('u:') === 0) m4PickUser(it.id); else if (it.id !== '_custom') m4PickTpl(it.id); else m4PaintTpl(); },
         onPrev: () => m4StepTpl(-1), onNext: () => m4StepTpl(1) };
     ui.pb = makePresetBrowser(ui.pbOpts);
     ui.hist = makeHistory({ get: m4Snap, apply: m4Load, max: 40 });
@@ -13204,12 +14624,28 @@ function m4Window(ui) {
     const re = lpBtn({ icon: 'redo', label: L('lp_redo'), title: L('lp_redo') });
     ui.ab = ab; ui.undo = un; ui.redo = re;
     ui.hist.bind({ undo: un, redo: re, ab, keys: win.root });
-    win.left.append(ui.pb.el, ab.el, un, re);
-    // Sağ: KLİP x/40 · SES y/5 · OUT L/R metre + dB
+    ui.save = lpBtn({ text: () => L('lp_save'), variant: 'accent', onClick: m4NameOpen });
+    ui.save.setAttribute('aria-expanded', 'false'); ui.save.setAttribute('aria-controls', 'labM4NameIn');
+    ui.del = lpBtn({ icon: 'del', label: () => L('lab_m4_del_t'), title: () => L('lab_m4_del_t'), onClick: m4DeleteClick });
+    lpBtnSlot(ui.del, false, false);
+    win.left.append(ui.pb.el, ab.el, un, re, ui.save, ui.del);
+    // Orta: ÖĞRETİCİ · proje TONU (kök + gam)
+    ui.tut = m4Tutorial();
+    ui.tutBtn = makeTutorialButton(ui.tut, { compact: true });
+    const key = mk('div', 'lab-m4-key');
+    ui.keyRoot = m4Sel('lab-m4-sel--root', LAB_NOTE_NAMES.map((n, i) => [i, noteName(i)]), m4S.key.root, v => m4SetKey({ root: +v, type: m4S.key.type }, true));
+    ui.keyType = m4Sel('lab-m4-sel--type', LAB_SCALE_ORDER.map(k => [k, m4ScaleShort(k)]), m4S.key.type, v => m4SetKey({ root: m4S.key.root, type: v }, true));
+    key.setAttribute('role', 'group'); key.setAttribute('data-i18n-aria', 'lab_m4_key_t'); key.setAttribute('aria-label', L('lab_m4_key_t'));
+    key.append(m4SelW(ui.keyRoot), m4SelW(ui.keyType));
+    win.center.append(ui.tutBtn.el, key);
+    // Sağ: MIDI · KLİP x/40 · SES y/5 · OUT L/R metre + dB
+    ui.midiBtn = makeMidiButton();
     ui.cnt = mk('span', 'lab-m4-cnt');
     ui.clipN = mk('b'); ui.voiceN = mk('b');
-    const w1 = m4Txt('span', '', 'lab_m4_clip_w'), w2 = m4Txt('span', '', 'lab_m4_voice_w');
-    ui.cnt.append(w1, document.createTextNode(' '), ui.clipN, document.createTextNode('/40 · '), w2, document.createTextNode(' '), ui.voiceN, document.createTextNode('/5'));
+    const c1 = mk('span'), c2 = mk('span');
+    c1.append(m4Txt('span', '', 'lab_m4_clip_w'), document.createTextNode(' '), ui.clipN, document.createTextNode('/40'));
+    c2.append(m4Txt('span', '', 'lab_m4_voice_w'), document.createTextNode(' '), ui.voiceN, document.createTextNode('/5'));
+    ui.cnt.append(c1, c2);
     const outBox = mk('div', 'lab-m4-outm');
     ui.outM = makeMeter({ orientation: 'h', length: 110, thickness: 5, aria: L('lab_m4_out_aria') });
     const outRow = mk('span', 'lab-m4-outrow'); outRow.setAttribute('aria-hidden', 'true');
@@ -13217,42 +14653,64 @@ function m4Window(ui) {
     ui.outDb = mk('span'); ui.outDb.textContent = '−∞';
     outRow.append(ol, ui.outDb);
     outBox.append(ui.outM.el, outRow);
-    win.right.append(ui.cnt, outBox);
+    win.right.append(ui.midiBtn.el, ui.cnt, outBox);
+    // Kaydet formu (prompt() yok: uygulama içi WebView'ler onu bastırabiliyor) + ton değişimi önerisi
+    const nf = ui.nameF = mk('form', 'lab-m4-name'); nf.hidden = true; nf.noValidate = true;
+    ui.nameL = mk('label', 'lab-m4-name-l'); ui.nameL.htmlFor = 'labM4NameIn'; ui.nameL.textContent = L('lab_m4_save_p');
+    ui.nameIn = mk('input', 'lab-m4-name-in'); ui.nameIn.id = 'labM4NameIn'; ui.nameIn.type = 'text'; ui.nameIn.maxLength = 60;
+    ui.nameIn.autocomplete = 'off'; ui.nameIn.placeholder = L('lab_m4_save_ph');
+    const nOk = lpBtn({ text: () => L('lp_save'), variant: 'accent' }); nOk.type = 'submit';
+    const nNo = lpBtn({ text: () => L('lab_m4_save_no'), onClick: () => m4NameClose() });
+    nf.append(ui.nameL, ui.nameIn, nOk, nNo);
+    nf.addEventListener('submit', e => { e.preventDefault(); m4SaveSubmit(); });
+    ui.nameIn.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') { e.preventDefault(); m4NameClose(); } });
+    const of = ui.offer = mk('div', 'lab-m4-offer'); of.hidden = true; of.setAttribute('role', 'group');
+    ui.offerTxt = mk('span', 'lab-m4-offer-t');
+    const oY = lpBtn({ text: () => L('lab_m4_offer_yes'), variant: 'accent', onClick: m4OfferYes });
+    const oN = lpBtn({ text: () => L('lab_m4_offer_no'), onClick: m4OfferNo });
+    of.append(ui.offerTxt, oY, oN);
+    win.bar.after(nf, of);
 
-    // Taşıma: ▶/❚❚ ■ ⟲ · LCD'ler · ENERJİ · RESO · OUT
-    ui.play = lpBtn({ icon: 'play', label: L('lab_m4_play'), cls: 'lab-m4-tb lab-m4-tb--play', onClick: m4Toggle });
-    ui.stop = lpBtn({ icon: 'stop', label: L('lab_m4_stop'), cls: 'lab-m4-tb', onClick: m4StopBtn });
-    ui.loop = lpBtn({ icon: 'loop', label: L('lab_m4_loop'), cls: 'lab-m4-tb lab-m4-tb--loop', onClick: m4ToggleLoop });
-    const tbtns = mk('div', 'lab-m4-tbtns'); tbtns.append(ui.play, ui.stop, ui.loop);
+    // Taşıma: ▶/❚❚ ■ ⟲ ● · LCD'ler (+ LOOP SETİ) · ENERJİ · RESO · OUT
+    ui.play = lpBtn({ icon: 'play', label: L('lab_m4_play'), title: L('lab_m4_play'), cls: 'lab-m4-tb lab-m4-tb--play', onClick: m4Toggle });
+    ui.stop = lpBtn({ icon: 'stop', label: L('lab_m4_stop'), title: L('lab_m4_stop'), cls: 'lab-m4-tb', onClick: m4StopBtn });
+    ui.loop = lpBtn({ icon: 'loop', label: L('lab_m4_loop'), title: L('lab_m4_loop'), cls: 'lab-m4-tb lab-m4-tb--loop', onClick: m4ToggleLoop });
+    ui.recBtn = lpBtn({ icon: M4_IC.rec, label: L('lab_m4_rec'), title: L('lab_m4_rec'), cls: 'lab-m4-tb lab-m4-tb--rec', onClick: () => m4SetRec(!m4S.rec) });
+    const tbtns = mk('div', 'lab-m4-tbtns'); tbtns.append(ui.play, ui.stop, ui.loop, ui.recBtn);
     const lcds = mk('div', 'lab-m4-lcds');
     ui.lcdPos = ui.lcdPosW = makeReadout({ label: L('lab_m4_lcd_pos'), variant: 'lcd', cls: 'lab-m4-lcd lab-m4-lcd--pos' });
     ui.lcdTime = ui.lcdTimeW = makeReadout({ label: L('lab_m4_lcd_time'), variant: 'lcd', cls: 'lab-m4-lcd lab-m4-lcd--time' });
-    ui.lcdTempo = makeReadout({ label: L('lab_m4_lcd_tempo'), value: ARR_BPM.toFixed(2), variant: 'lcd', cls: 'lab-m4-lcd lab-m4-lcd--tempo' });
+    // TEMPO ekranı = loop seti seçici (tempo setten gelir: 125 Classic · 126 Cassianism)
+    const setBox = mk('div', 'lp-lcd lab-m4-lcd lab-m4-lcd--set');
+    ui.setSel = m4Sel('lab-m4-setsel', ARR_SET_IDS.map(id => [id, m4SetLabel(id)]), m4S.set, v => m4SetSet(v));
+    ui.setSel.id = 'labM4Set';
+    const setL = m4Txt('label', 'lp-ro-l', 'lab_m4_lcd_set'); setL.htmlFor = 'labM4Set';
+    setBox.append(setL, m4SelW(ui.setSel));
     ui.lcdSec = makeReadout({ label: L('lab_m4_lcd_sel'), variant: 'lcd', cls: 'lab-m4-lcd lab-m4-lcd--sec' });
     const sv = ui.lcdSec.el.querySelector('.lp-ro-v');
     ui.lcdSecN = mk('span', 'lab-m4-lcd-n'); ui.lcdSecB = mk('span', 'lab-m4-lcd-b');
     sv.append(ui.lcdSecN, document.createTextNode(' '), ui.lcdSecB);
     ui.lcdCut = makeReadout({ label: L('lab_m4_lcd_cut'), variant: 'lcd', cls: 'lab-m4-lcd lab-m4-lcd--cut' });
-    lcds.append(ui.lcdPos.el, ui.lcdTime.el, ui.lcdTempo.el, ui.lcdSec.el, ui.lcdCut.el);
+    lcds.append(ui.lcdPos.el, ui.lcdTime.el, setBox, ui.lcdSec.el, ui.lcdCut.el);
     const tr = mk('div', 'lab-m4-tright');
     ui.eTgl = makeToggle({ text: L('lab_m4_energy_b'), icon: M4_IC.wave, title: L('lab_m4_energy_t'), on: m4S.showE, cls: 'lab-m4-etgl',
         onToggle: on => { m4S.showE = on; ui.en.hidden = !on; } });
     ui.eTgl.el.querySelector('span').setAttribute('data-i18n', 'lab_m4_energy_b');
     ui.reso = makeKnob({ label: 'RESO', min: 0.5, max: 10, step: 0.1, value: m4S.q, def: 0.9, size: 40, fmt: v => 'Q ' + v.toFixed(1),
-        tip: L('lab_m4_reso_t'), onChange: v => { m4S.q = v; arrApplyMix(); } });
+        tip: L('lab_m4_reso_t'), onStart: m4Push, onChange: v => { m4S.q = v; arrApplyMix(); } });
     ui.out = makeKnob({ label: 'OUT', min: -24, max: 6, step: 0.1, value: m4S.outDb, def: 0, size: 40, fmt: v => (v > 0 ? '+' : '') + v.toFixed(1) + 'dB',
-        tip: L('lab_m4_out_t'), onChange: v => { m4S.outDb = v; arrApplyMix(); } });
+        tip: L('lab_m4_out_t'), onStart: m4Push, onChange: v => { m4S.outDb = v; arrApplyMix(); } });
     tr.append(ui.eTgl.el, ui.reso.el, ui.out.el);
     win.transport.append(tbtns, lcds, tr);
 
-    // Gövde: [iz başlıkları | klip alanı] + Inspector
+    // Gövde: [iz başlıkları | klip alanı] + Inspector · altta detay görünümü (klip + enstrüman)
     const grid = mk('div', 'lab-m4-grid');
-    const scroll = mk('div', 'lab-m4-scroll');
-    const inner = mk('div', 'lab-m4-inner');
+    const scroll = ui.scroll = mk('div', 'lab-m4-scroll');
+    const inner = ui.inner = mk('div', 'lab-m4-inner');
     inner.append(m4Heads(ui), m4Lanes(ui));
     scroll.append(inner);
     grid.append(scroll, m4Inspector(ui));
-    win.body.append(grid);
+    win.body.append(grid, m4Detail(ui));
 
     // Durum satırı
     const st = mk('span', 'lab-m4-st');
@@ -13261,47 +14719,79 @@ function m4Window(ui) {
     st.append(ui.stDot, ui.stTxt);
     const loopHint = mk('span', 'lab-m4-st-ic', LP_IC.loop); loopHint.append(m4Txt('span', '', 'lab_m4_st_3'));
     ui.noAudio = m4Txt('span', 'lab-m4-noaudio', 'lab_m4_noaudio'); ui.noAudio.hidden = arrAudioOK();
-    win.status.append(st, m4Txt('span', '', 'lab_m4_st_1'), m4Txt('span', '', 'lab_m4_st_2'), loopHint, m4Txt('span', '', 'lab_m4_st_4'), ui.noAudio, m4Txt('span', 'lab-m4-st-r', 'lab_m4_st_5'));
+    ui.stBpm = mk('span', 'lab-m4-st-r');
+    win.status.append(st, m4Txt('span', '', 'lab_m4_st_1'), m4Txt('span', '', 'lab_m4_st_7'), m4Txt('span', '', 'lab_m4_st_2'), loopHint, m4Txt('span', '', 'lab_m4_st_4'), m4Txt('span', '', 'lab_m4_st_6'), ui.noAudio, ui.stBpm);
     ui.live = mk('span', 'sr-only'); ui.live.setAttribute('aria-live', 'polite');
     win.status.append(ui.live);
     // İlk etkileşimde örnekleri indirmeye başla (bağlam gerekmez) → ilk ▶'da ses hazır
     const pre = () => { arrPrefetch(); win.root.removeEventListener('pointerdown', pre, true); win.root.removeEventListener('focusin', pre, true); };
     win.root.addEventListener('pointerdown', pre, true);
     win.root.addEventListener('focusin', pre, true);
+    win.root.addEventListener('keydown', m4WinKey);
     if (!arrAudioOK()) ui.play.setAttribute('aria-disabled', 'true');
     return win;
 }
 
 function m4Heads(ui) {
-    const col = mk('div', 'lab-m4-heads');
-    col.append(m4Txt('div', 'lab-m4-colh', 'lab_m4_trk_h'), m4Txt('div', 'lab-m4-colh lab-m4-colh--loc', 'lab_m4_loc_h'));
-    ui.heads = []; ui.mBtns = []; ui.sBtns = []; ui.fills = []; ui.vols = []; ui.leds = [];
+    const col = ui.headsCol = mk('div', 'lab-m4-heads');
+    // Üst satır: TRACK · 5 KANAL + görünüm düğmeleri (TAKİP, yatay zoom)
+    const top = mk('div', 'lab-m4-colh lab-m4-colh--top');
+    const vb = mk('div', 'lab-m4-vbs');
+    const vbtn = (icon, onClick) => { const b = mk('button', 'lab-m4-vb', icon); b.type = 'button'; b.addEventListener('click', e => { if (b.getAttribute('aria-disabled') === 'true') return; onClick(e); }); return b; };
+    ui.follow = vbtn(M4_IC.follow, () => { m4S.follow = !m4S.follow; m4PaintZoom(false); });
+    ui.zOut = vbtn(M4_IC.zout, () => m4Zoom(-1));
+    ui.zIn = vbtn(M4_IC.zin, () => m4Zoom(1));
+    vb.append(ui.follow, ui.zOut, ui.zIn);
+    top.append(m4Txt('span', 'lab-m4-colh-t', 'lab_m4_trk_h'), vb);
+    col.append(top, m4Txt('div', 'lab-m4-colh lab-m4-colh--loc', 'lab_m4_loc_h'));
+    ui.heads = []; ui.mBtns = []; ui.sBtns = []; ui.fills = []; ui.vols = []; ui.leds = []; ui.vtxt = []; ui.vfill = [];
+    ui.subs = []; ui.instSeg = []; ui.arms = [];
     ARR_TRACKS.forEach((T, i) => {
-        const h = mk('div', 'lab-m4-th' + (T.light ? ' lab-m4-th--light' : ''));
+        const mel = M4_MEL.indexOf(i) >= 0;
+        const h = mk('div', 'lab-m4-th' + (T.light ? ' lab-m4-th--light' : '') + (mel ? ' lab-m4-th--mel' : ''));
         h.style.setProperty('--c', `var(${T.arrVar})`);
         const strip = mk('span', 'lab-m4-th-strip'); strip.setAttribute('aria-hidden', 'true');
         const inn = mk('div', 'lab-m4-th-in');
-        const top = mk('div', 'lab-m4-th-top');
+        const top2 = mk('div', 'lab-m4-th-top');
         const no = mk('span', 'lab-m4-th-no'); no.textContent = pad2(i + 1); no.setAttribute('aria-hidden', 'true');
         const nm = mk('span', 'lab-m4-th-n'); nm.textContent = T.name;
+        const sub = mk('span', 'lab-m4-th-s'); ui.subs.push(sub);
         const led = makeMeter({ channels: 1, orientation: 'h', segments: 8, length: 31, thickness: 8, min: -40, max: -4, warn: -12, hot: 0, peakHold: false, release: 36, cls: 'lab-m4-led' });
-        top.append(no, nm, m4Txt('span', 'lab-m4-th-s', T.sub), led.el);
+        top2.append(no, nm, sub);
+        if (mel) {
+            const seg = makeSeg([
+                { value: 'sample', label: 'SMP', title: () => L('lab_m4_inst_smp') },
+                { value: 'synth', label: 'MIDI', title: () => L('lab_m4_inst_syn') },
+            ], m4S.inst[i], v => m4SetInst(i, v), { label: () => Lf('lab_m4_inst_aria', { trk: T.name }), cls: 'lab-m4-inst' });
+            ui.instSeg[i] = seg; top2.append(seg.el);
+        }
+        top2.append(led.el);
         const ctl = mk('div', 'lab-m4-th-ctl');
         const mb = mk('button', 'lab-m4-ms lab-m4-ms--m'); mb.type = 'button'; mb.textContent = 'M'; mb.onclick = () => m4SetMute(i);
         const sb = mk('button', 'lab-m4-ms lab-m4-ms--s'); sb.type = 'button'; sb.textContent = 'S'; sb.onclick = () => m4SetSolo(i);
         const fb = mk('button', 'lab-m4-fill', '<span aria-hidden="true"></span>'); fb.type = 'button'; fb.onclick = () => m4FillRow(i);
+        ctl.append(mb, sb, fb);
+        if (mel) {
+            const arm = mk('button', 'lab-m4-arm', M4_IC.arm); arm.type = 'button';
+            lpTr(arm, 'aria-label', () => Lf('lab_m4_arm_a', { trk: T.name })); lpTr(arm, 'title', () => Lf('lab_m4_arm_a', { trk: T.name }));
+            arm.onclick = () => m4SetArm(i);
+            ui.arms[i] = arm; ctl.append(arm);
+        }
         const vt = mk('span', 'lab-m4-voltxt'); vt.textContent = m4VolTxt(m4S.vol[i]); vt.setAttribute('aria-hidden', 'true');
         const vfill = mk('span', 'lab-m4-vfill'); vfill.setAttribute('aria-hidden', 'true');
-        const fd = makeFader({ law: 'linear', min: 0, max: 1, step: 0.01, def: 0.8, value: m4S.vol[i], wheelStep: 0.03, orientation: 'h', length: 66, scale: false,
-            color: `var(${T.arrVar})`, aria: Lf('lab_m4_vol_a', { trk: T.name }), fmt: m4VolTxt,
+        const fd = makeFader({ law: 'linear', min: 0, max: 1, step: 0.01, def: 0.8, value: m4S.vol[i], wheelStep: 0.03, orientation: 'h', length: mel ? 58 : 66, scale: false,
+            color: `var(${T.arrVar})`, aria: Lf('lab_m4_vol_a', { trk: T.name }), fmt: m4VolTxt, onStart: m4Push,
             onChange: v => { m4S.vol[i] = v; vt.textContent = m4VolTxt(v); vfill.style.width = (v * 100).toFixed(1) + '%'; arrApplyMix(); m4PaintMix(); } });
         fd.track.insertBefore(vfill, fd.track.firstChild);
         vfill.style.width = (m4S.vol[i] * 100).toFixed(1) + '%';
-        ctl.append(mb, sb, fb, fd.el, vt);
-        inn.append(top, ctl);
+        ctl.append(fd.el, vt);
+        inn.append(top2, ctl);
         h.append(strip, inn);
+        // İz seçimi: başlığa tık / odak (detay görünümü o izi gösterir)
+        h.addEventListener('pointerdown', () => m4SelTrack(i));
+        h.addEventListener('focusin', () => m4SelTrack(i));
         col.append(h);
-        ui.heads.push(h); ui.mBtns.push(mb); ui.sBtns.push(sb); ui.fills.push(fb); ui.vols.push(fd); ui.leds.push(led);
+        ui.heads.push(h); ui.mBtns.push(mb); ui.sBtns.push(sb); ui.fills.push(fb); ui.vols.push(fd); ui.leds.push(led); ui.vtxt.push(vt); ui.vfill.push(vfill);
     });
     const mbox = ui.autoBox = mk('div', 'lab-m4-mbox');
     const r1 = mk('span', 'lab-m4-mbox-h');
@@ -13313,7 +14803,7 @@ function m4Heads(ui) {
 }
 
 function m4Lanes(ui) {
-    const col = mk('div', 'lab-m4-lanes');
+    const col = ui.lanes = mk('div', 'lab-m4-lanes');
     // Cetvel: 16 bar + vuruş tikleri + loop brace
     const ruler = mk('div', 'lab-m4-ruler'); ruler.setAttribute('aria-hidden', 'true');
     ui.brace = mk('span', 'lab-m4-brace');
@@ -13324,7 +14814,7 @@ function m4Lanes(ui) {
         bars.append(s); return s;
     });
     ruler.append(ui.brace, bars);
-    // Locator'lar
+    // Locator'lar (Shift+tık = aralık)
     const locs = mk('div', 'lab-m4-locs'); locs.setAttribute('role', 'group');
     locs.setAttribute('data-i18n-aria', 'lab_m4_loc_aria'); locs.setAttribute('aria-label', L('lab_m4_loc_aria'));
     ui.locs = ARR_SECTIONS.map((s, j) => {
@@ -13332,25 +14822,45 @@ function m4Lanes(ui) {
         const t = mk('span'); t.textContent = s.name; b.append(t);
         b.style.setProperty('--sc', `var(${s.col})`); b.style.setProperty('--sct', `var(${s.txt})`);
         if (s.ink) b.style.setProperty('--sci', `var(${s.ink})`);
-        b.onclick = () => m4Select(j);
+        b.onclick = e => m4Select(j, false, e.shiftKey);
         locs.append(b); return b;
     });
-    // Klip ızgarası + enerji eğrisi katmanı
+    // Klip ızgarası + enerji eğrisi katmanı. MIDI izinde: tık = aç/kapa (çift tıktan ayırmak için ~0.23 sn
+    // gecikmeli), çift tık / kalem = düzenleyici; Ctrl/⌘+C/V/D, Delete kısayolları.
     const clips = mk('div', 'lab-m4-clips'); clips.setAttribute('role', 'group');
     clips.setAttribute('data-i18n-aria', 'lab_m4_grid_aria'); clips.setAttribute('aria-label', L('lab_m4_grid_aria'));
-    ui.crows = []; ui.clips = ARR_TRACKS.map((T, r) => {
+    ui.crows = []; ui.cellw = []; ui.edits = [];
+    ui.clips = ARR_TRACKS.map((T, r) => {
         const row = mk('div', 'lab-m4-crow' + (T.light ? ' lab-m4-crow--light' : ''));
         row.style.setProperty('--c', `var(${T.arrVar})`);
         ui.crows.push(row);
+        const mel = M4_MEL.indexOf(r) >= 0;
+        const ws = [], eds = [];
         const cells = ARR_SECTIONS.map((s, j) => {
+            const w = mk('div', 'lab-m4-cellw');
             const b = mk('button', 'lab-m4-clip'); b.type = 'button';
-            b.setAttribute('aria-label', `${T.name} · ${s.name}`);
             b._lbl = mk('span', 'lab-m4-clip-h'); b._lbl.setAttribute('aria-hidden', 'true');
             b.append(b._lbl);
-            b.insertAdjacentHTML('beforeend', `<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="${ARR_PATS[r]}"/></svg>`);
-            b.onclick = () => m4ToggleClip(r, j);
-            row.append(b); return b;
+            const svg = lpSvg('svg', { viewBox: '0 0 100 40', preserveAspectRatio: 'none', 'aria-hidden': 'true', focusable: 'false' }, b);
+            b._path = lpSvg('path', { d: ARR_PATS[r] }, svg);
+            b.addEventListener('click', e => {
+                if (m4IsSyn(r) && e.detail === 1) { clearTimeout(m4ClickT); m4ClickT = setTimeout(() => { m4ClickT = 0; m4ToggleClip(r, j); }, 230); return; }
+                if (m4IsSyn(r) && e.detail > 1) { clearTimeout(m4ClickT); m4ClickT = 0; return; }
+                m4ToggleClip(r, j);
+            });
+            b.addEventListener('dblclick', () => { if (!m4IsSyn(r)) return; clearTimeout(m4ClickT); m4ClickT = 0; m4OpenClip(r, j, b); });
+            b.addEventListener('keydown', e => m4ClipKey(e, r, j));
+            w.append(b);
+            if (mel) {
+                const ed = mk('button', 'lab-m4-edit', M4_IC.pen); ed.type = 'button'; ed.hidden = true;
+                ed.addEventListener('click', () => m4OpenClip(r, j, ed));
+                ed.addEventListener('keydown', e => m4ClipKey(e, r, j));
+                w.append(ed); eds.push(ed);
+            }
+            row.append(w); ws.push(w);
+            return b;
         });
+        ui.cellw.push(ws); ui.edits.push(mel ? eds : null);
         clips.append(row); return cells;
     });
     ui.en = mk('div', 'lab-m4-en'); ui.en.setAttribute('role', 'img'); ui.en.hidden = !m4S.showE;
@@ -13381,14 +14891,14 @@ function m4Lanes(ui) {
     return col;
 }
 // Otomasyon noktası: dikey sürükleme (1/62 px, Shift ×0.2), tekerlek ±0.02, ↑/↓ ±0.02 (Shift ±0.1), Home/End.
-// Sürükleme/tuş başında geri alma anlık görüntüsü; nokta seçilince bölüm de seçilir.
+// Sürükleme/tuş başında geri alma anlık görüntüsü; nota seçilince bölüm de seçilir.
 function m4PointInput(p, j) {
     p.addEventListener('pointerdown', e => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.preventDefault();
         try { p.focus({ preventScroll: true }); } catch (_) {}
-        const ui = _m4ui; if (ui) ui.hist.push();
-        if (m4S.sel !== j) m4Select(j, true);
+        m4Push();
+        if (m4S.sel !== j || m4S.selEnd !== j) m4Select(j, true);
         let y0 = e.clientY, v0 = m4S.auto[j], fine = e.shiftKey;
         p.classList.add('is-drag');
         lpDrag(e, ev => {
@@ -13399,10 +14909,11 @@ function m4PointInput(p, j) {
     let wheelT = 0;
     p.addEventListener('wheel', e => {
         e.preventDefault();
-        if (!wheelT && _m4ui) _m4ui.hist.push();
+        if (!wheelT) m4Push();
         clearTimeout(wheelT); wheelT = setTimeout(() => { wheelT = 0; }, 300);
         m4SetAuto(j, m4S.auto[j] - Math.sign(e.deltaY) * (e.shiftKey ? 0.005 : 0.02));
     }, { passive: false });
+    lpOnTeardown(() => { clearTimeout(wheelT); wheelT = 0; });
     p.addEventListener('keydown', e => {
         const big = e.shiftKey ? 0.1 : 0.02, v = m4S.auto[j];
         let nv = null;
@@ -13414,10 +14925,10 @@ function m4PointInput(p, j) {
         else if (e.key === 'End') nv = 1;
         if (nv == null) return;
         e.preventDefault();
-        if (!e.repeat && _m4ui) _m4ui.hist.push();
+        if (!e.repeat) m4Push();
         m4SetAuto(j, nv);
     });
-    p.addEventListener('focus', () => { if (m4S.sel !== j) m4Select(j, true); });
+    p.addEventListener('focus', () => { if (m4S.sel !== j || m4S.selEnd !== j) m4Select(j, true); });
 }
 
 function m4Inspector(ui) {
@@ -13464,13 +14975,186 @@ function m4Inspector(ui) {
     return ins;
 }
 
+// ── Detay görünümü: KLİP paneli + iz enstrümanı (SYNTH) / SAMPLER paneli ──
+function m4Detail(ui) {
+    const det = ui.det = mk('div', 'lab-m4-det');
+    det.setAttribute('role', 'region'); det.setAttribute('data-i18n-aria', 'lab_m4_det_aria'); det.setAttribute('aria-label', L('lab_m4_det_aria'));
+    // Sol: klip
+    const cp = ui.cPanel = makePanel({ title: ' ', color: 'var(--c)', cls: 'lab-m4-cpanel' });
+    const prev = ui.cPrev = mk('div', 'lab-m4-prev lab-well lab-well--sm'); prev.setAttribute('role', 'img');
+    const svg = lpSvg('svg', { viewBox: '0 0 100 40', preserveAspectRatio: 'none', 'aria-hidden': 'true', focusable: 'false' }, prev);
+    ui.cPath = lpSvg('path', { d: '' }, svg);
+    ui.cInfo = mk('p', 'lab-m4-cinfo');
+    const btns = ui.cBtns = mk('div', 'lab-m4-cbtns');
+    const op = (fn) => () => fn(m4S.trk, m4S.csec);
+    ui.cEdit = lpBtn({ icon: M4_IC.pen, text: () => L('lab_m4_c_edit'), title: () => L('lab_m4_c_edit_t'), variant: 'accent', cls: 'lab-m4-cedit', onClick: () => m4OpenClip(m4S.trk, m4S.csec, ui.cEdit) });
+    ui.cDup = lpBtn({ icon: 'copy', text: () => L('lab_m4_c_dup'), title: () => L('lab_m4_c_dup_t'), onClick: () => { const r = m4S.trk, c = m4S.csec; m4ClipDup(r, c); } });
+    ui.cCopy = lpBtn({ text: () => L('lab_m4_c_copy'), title: () => L('lab_m4_c_copy_t'), onClick: op(m4ClipCopy) });
+    ui.cPaste = lpBtn({ text: () => L('lab_m4_c_paste'), title: () => L('lab_m4_c_paste_t'), onClick: op(m4ClipPaste) });
+    ui.cClear = lpBtn({ icon: 'del', text: () => L('lab_m4_c_clear'), title: () => L('lab_m4_c_clear_t'), variant: 'danger', onClick: op(m4ClipClear) });
+    const cg = mk('div', 'lab-m4-cgrp'); cg.append(ui.cCopy, ui.cPaste);
+    btns.append(ui.cEdit, ui.cDup, cg, ui.cClear);
+    ui.cClip = mk('p', 'lab-m4-cclip');
+    const smp = ui.cSmp = mk('div', 'lab-m4-csmp');
+    ui.cListen = lpBtn({ icon: M4_IC.listen, text: () => L('lab_m4_smp_listen'), title: () => L('lab_m4_smp_listen_t'), onClick: () => {
+        const id = m4SmpId(m4S.trk);
+        if (labSampleAuditionId() === id) labSampleAuditionStop();
+        else labSampleAudition(id, { ctx: () => { try { return getArrCtx(); } catch (e) { return null; } }, bpm: () => m4S.bpm });
+    } });
+    ui.cListen.setAttribute('aria-pressed', 'false');
+    smp.append(ui.cListen);
+    cp.el.append(prev, ui.cInfo, btns, smp, ui.cClip);
+    // Önizleme durumu (düğme ▶/■)
+    const unAud = labSampleAuditionSubscribe(() => { if (_m4ui === ui) ui.cListen.setAttribute('aria-pressed', String(labSampleAuditionId() === m4SmpId(m4S.trk))); });
+    lpOnTeardown(unAud);
+    // Sağ: iz enstrümanı (MIDI izi) — gövdesi seçili ize göre kurulur (m4BuildDevice)
+    const dp = ui.devPanel = makePanel({ title: ' ', color: 'var(--c)', cls: 'lab-m4-dev', led: false });
+    ui.devHead = dp.head; ui.devBody = mk('div', 'lab-m4-dgs');
+    dp.el.append(ui.devBody);
+    // Sağ: SAMPLER (SAMPLE izi)
+    const sp = ui.smpPanel = makePanel({ title: ' ', color: 'var(--c)', cls: 'lab-m4-sdev' });
+    ui.smpText = mk('p', 'lab-m4-sdev-p');
+    const kr = ui.kitRow = mk('div', 'lab-m4-kitrow');
+    ui.kitSeg = makeSeg(Object.keys(ARR_KITS).map(id => [id, ARR_KITS[id].name.toUpperCase()]), m4S.kit, v => m4SetKit(v), { size: 'md', label: () => L('lab_m4_kit_aria') });
+    kr.append(m4Txt('span', 'lab-m4-dg-h', 'lab_m4_kit'), ui.kitSeg.el);
+    ui.toSyn = lpBtn({ text: () => L('lab_m4_to_synth'), variant: 'accent', onClick: () => { m4SetInst(m4S.trk, 'synth'); } });
+    sp.el.append(ui.smpText, kr, ui.toSyn);
+    det.append(cp.el, dp.el, sp.el);
+    return det;
+}
+// İz enstrümanı gövdesi: OSC · FILTER · AMP ENV · VOICE (kit knob'ları: çift tık = rol varsayılanı, Shift ince)
+function m4BuildDevice(ui, tr) {
+    const P = m4S.syn[tr], T = ARR_TRACKS[tr], C = `var(${T.arrVar})`;
+    const D = ui.dev = { tr, knobs: {} };
+    ui.devBody.innerHTML = '';
+    Array.from(ui.devHead.querySelectorAll('.lab-m4-devx')).forEach(x => x.remove());
+    ui.devPanel.title.textContent = `SYNTH · ${T.name}`;
+    // Başlık: cihaz ⏻ + preset tarayıcı (rol varsayılanları + BE·SYNTH 01 fabrika presetleri)
+    D.pwr = makePowerBtn({ size: 'sm', on: P.on, color: C, label: () => L('lab_m4_dev_pwr'), title: () => L('lab_m4_dev_pwr'), cls: 'lab-m4-devx',
+        onToggle: b => { m4Push(); m4SynSet(tr, 'on', b); } });
+    ui.devHead.insertBefore(D.pwr.el, ui.devHead.firstChild);
+    D.pb = makePresetBrowser({ items: m4SynItems(), value: P.pre, modified: !!P.mod, width: 190, cls: 'lab-m4-devx lab-m4-devpb',
+        label: () => L('lab_m4_dev_pre'), capLabel: null, onPick: it => { m4Push(); m4SynPreset(tr, it.id); } });
+    ui.devPanel.actions.append(D.pb.el);
+    const K = (key, label, tip, o) => {
+        const k = makeKnob(Object.assign({ label, value: P[key], def: M4_SYN_DEF[tr][key], size: 40, color: C,
+            tip: () => L(tip), aria: () => `${T.name} ${label} — ${L(tip)}`,
+            onStart: m4Push, onChange: v => m4SynSet(tr, key, v) }, o));
+        D.knobs[key] = k; return k;
+    };
+    const grp = (head, knobs, cls) => {
+        const g = mk('div', 'lab-m4-dg' + (cls ? ' ' + cls : ''));
+        const h = typeof head === 'string' ? mk('span', 'lab-m4-dg-h') : head;
+        if (typeof head === 'string') h.textContent = head;
+        const row = mk('div', 'lab-m4-dg-k');
+        knobs.forEach(k => row.append(k.el || k));
+        g.append(h, row); ui.devBody.append(g); return g;
+    };
+    D.wave = makeSeg(M4_WAVES.map(w => [w, { sawtooth: 'SAW', square: 'SQR', triangle: 'TRI', sine: 'SIN' }[w]]), P.wave,
+        v => { m4Push(); m4SynSet(tr, 'wave', v); }, { label: () => L('lab_m4_wave_aria'), cls: 'lab-m4-wave' });
+    const oscH = mk('div', 'lab-m4-dg-hrow'); const oh = mk('span', 'lab-m4-dg-h'); oh.textContent = 'OSC';
+    oscH.append(oh, D.wave.el);
+    grp(oscH, [
+        K('oct', 'OCT', 'lab_m4_k_oct', { min: -2, max: 2, step: 1, fmt: v => (v > 0 ? '+' : '') + v }),
+        K('uni', 'VOICES', 'lab_m4_k_uni', { min: 1, max: 4, step: 1, fmt: v => String(v) }),
+        K('det', 'DETUNE', 'lab_m4_k_det', { min: 0, max: 50, step: 1, fmt: v => v + ' ct' }),
+    ], 'lab-m4-dg--osc');
+    D.filt = makeToggle({ text: 'FILTER', led: true, color: C, on: P.filt, title: () => L('lab_m4_flt_t'), label: () => L('lab_m4_flt_t'),
+        onToggle: b => { m4Push(); m4SynSet(tr, 'filt', b); D.fgrp.classList.toggle('is-off', !b); } });
+    D.fgrp = grp(D.filt.el, [
+        K('cut', 'CUTOFF', 'lab_m4_k_cut', { min: 60, max: 18000, log: true, fmt: lpFmt.hz }),
+        K('res', 'RESO', 'lab_m4_k_res', { min: 0.5, max: 15, step: 0.1, fmt: v => 'Q ' + v.toFixed(1) }),
+        K('env', 'ENV', 'lab_m4_k_env', { min: 0, max: 1, step: 0.01, fmt: lpFmt.pct1 }),
+    ], 'lab-m4-dg--flt');
+    grp('AMP ENV', [
+        K('a', 'ATTACK', 'lab_m4_k_a', { min: 0.001, max: 2, log: true, fmt: lpFmt.ms }),
+        K('d', 'DECAY', 'lab_m4_k_d', { min: 0.01, max: 2, log: true, fmt: lpFmt.ms }),
+        K('s', 'SUSTAIN', 'lab_m4_k_s', { min: 0, max: 1, step: 0.01, fmt: lpFmt.pct1 }),
+        K('r', 'RELEASE', 'lab_m4_k_r', { min: 0.01, max: 4, log: true, fmt: lpFmt.ms }),
+    ], 'lab-m4-dg--amp');
+    D.mono = makeToggle({ text: 'MONO', led: true, color: C, on: P.mono, title: () => L('lab_m4_mono_t'), label: () => L('lab_m4_mono_t'),
+        onToggle: b => { m4Push(); m4SynSet(tr, 'mono', b); D.knobs.glide.setDisabled(!b); } });
+    grp(D.mono.el, [
+        K('glide', 'GLIDE', 'lab_m4_k_gl', { min: 0, max: 0.5, step: 0.005, fmt: v => v > 0 ? lpFmt.ms(v) : 'OFF' }),
+        K('lvl', 'LEVEL', 'lab_m4_k_lvl', { min: -30, max: 6, step: 0.1, fmt: lpFmt.db }),
+    ], 'lab-m4-dg--voice');
+    m4PaintDevice();
+}
+
+// Izgara yatay kaydırıcısında bölümü görünür yap (öğretici hedefi; −1 = başlık sütunu / en sol).
+// Kitin scrollToTarget'ı yalnız dikey bandı denetler → yatay kayan ızgarada hedefi modül getirir.
+function m4Reveal(c) {
+    const ui = _m4ui; if (!ui || !ui.scroll) return;
+    const sc = ui.scroll;
+    if (sc.scrollWidth <= sc.clientWidth + 2) return;
+    if (c < 0) { sc.scrollLeft = 0; return; }
+    const w = ui.cellw[0][c], head = m4HeadW(ui);
+    const x = w.getBoundingClientRect().left - sc.getBoundingClientRect().left + sc.scrollLeft;
+    sc.scrollLeft = Math.max(0, x - head - Math.max(16, (sc.clientWidth - head - w.offsetWidth) / 2));
+}
+
+// ── Öğretici: DAW'da MIDI yazmak (her adım gerçek kontrolü hedefler, yapınca kendiliğinden ilerler) ──
+function m4Tutorial() {
+    const U = () => _m4ui;
+    const rollEl = () => { const u = U(); return u && u.roll && u.roll.isOpen() ? u.roll.el : null; };
+    // Düzenleyici adımları: LEAD · Chorus 1 açıksa düzenleyicideki kontrol; başka klip açıksa şeridin klip
+    // gezinmesi (←/→ ile Chorus 1'e dön); düzenleyici kapalıysa klip hücresi (çift tık / kalem = yeniden aç)
+    const inRoll = f => () => {
+        const u = U(), el = rollEl();
+        if (el) return m4Ed && m4Ed.r === 3 && m4Ed.c === 3 ? f(el) : (u.rs ? u.rs.el.querySelector('.lab-m4-rs-nav') : null);
+        return u && u.cellw[3] ? u.cellw[3][3] : null;
+    };
+    const lead = () => m4ClipOf(3, 3);
+    const same = (a, b) => JSON.stringify(a.notes.map(n => [n.p, n.s, n.l, n.v])) === JSON.stringify(b.notes.map(n => [n.p, n.s, n.l, n.v]));
+    const K = { r: 0, v: 0, q: 0, cut: 0, a: 0 };
+    // Telefonda kart altta yerleşir (kit); hedef tam ekran düzenleyicinin altındaysa (VEL şeridi, klip şeridi)
+    // kart bu adımda üste alınır → kontrol kapanmaz (modül yerel sınıf, yalnız .is-dock iken etkili)
+    const top = on => t => { if (t && t.el) t.el.classList.toggle('lab-m4-tut-top', on); };
+    return labTutorial({ mid: 4, id: 'midi', title: 'lab_m4_tut_t', intro: 'lab_m4_tut_i', outro: 'lab_m4_tut_o', steps: [
+        { id: 'synth', title: 'lab_m4_tut_1', body: 'lab_m4_tut_1b', ableton: 'lab_m4_tut_1a', onEnter: () => m4Reveal(-1),
+          target: () => { const u = U(); return u && u.instSeg[3] ? u.instSeg[3].el : null; },
+          check: () => m4IsSyn(3) },
+        { id: 'open', title: 'lab_m4_tut_2', body: 'lab_m4_tut_2b', ableton: 'lab_m4_tut_2a', onEnter: () => m4Reveal(3),
+          target: () => { const u = U(); return u && u.cellw[3] ? u.cellw[3][3] : null; },
+          check: () => !!(m4Ed && m4Ed.r === 3 && m4Ed.c === 3 && m4RollOpen()) },
+        { id: 'key', title: 'lab_m4_tut_3', body: 'lab_m4_tut_3b', ableton: 'lab_m4_tut_3a',
+          target: () => { const el = rollEl(); if (el) return Array.from(el.querySelectorAll('select.lpr-sel')).find(s => s.getAttribute('aria-label') === L('lpr_root')) || null; const u = U(); return u ? u.keyRoot : null; },
+          check: () => m4S.key.root === 9 && m4S.key.type === 'minor' && m4S.scaleOn },
+        { id: 'draw', title: 'lab_m4_tut_4', body: 'lab_m4_tut_4b', ableton: 'lab_m4_tut_4a', hint: 'lab_m4_tut_reopen', dim: false,
+          target: inRoll(el => el.querySelector('.lpr-gw')), check: () => lead().notes.length >= 4 },
+        { id: 'len', title: 'lab_m4_tut_5', body: 'lab_m4_tut_5b', ableton: 'lab_m4_tut_5a', hint: 'lab_m4_tut_reopen', dim: false,
+          onEnter: () => { K.r = m4T.resize; }, target: inRoll(el => el.querySelector('.lpr-gw')),
+          check: () => m4T.resize > K.r && lead().notes.length > 0 },
+        { id: 'vel', title: 'lab_m4_tut_6', body: 'lab_m4_tut_6b', ableton: 'lab_m4_tut_6a', hint: 'lab_m4_tut_reopen', dim: false, placement: 'top',
+          onEnter: t => { K.v = m4T.vel; top(true)(t); }, onLeave: top(false), target: inRoll(el => el.querySelector('.lpr-vel')),
+          check: () => m4T.vel > K.v && lead().notes.some(n => n.v < 100) },
+        { id: 'quant', title: 'lab_m4_tut_7', body: 'lab_m4_tut_7b', ableton: 'lab_m4_tut_7a', hint: 'lab_m4_tut_reopen',
+          onEnter: () => { K.q = m4T.q; }, target: inRoll(el => Array.from(el.querySelectorAll('button.lp-btn')).find(b => b.title === L('lpr_q_t')) || null),
+          check: () => m4T.q > K.q },
+        { id: 'dup', title: 'lab_m4_tut_8', body: 'lab_m4_tut_8b', ableton: 'lab_m4_tut_8a', onEnter: top(true), onLeave: top(false),
+          target: () => { const u = U(); if (!u) return null; if (m4RollOpen() && u.rs) return u.rs.el.querySelector('.lab-m4-rs-ops'); return u.cBtns && !u.cBtns.hidden ? u.cBtns.querySelector('.lab-m4-cgrp') : null; },
+          check: () => { const a = lead(), b = m4ClipOf(3, 5); return a.notes.length > 0 && same(a, b); } },
+        { id: 'shape', title: 'lab_m4_tut_9', body: 'lab_m4_tut_9b', ableton: 'lab_m4_tut_9a', placement: 'top',
+          onEnter: () => {
+              const u = U(); if (u && u.roll && u.roll.isOpen()) u.roll.close();
+              if (m4IsSyn(3)) { m4S.trk = 3; m4PaintDetail(); }
+              K.cut = m4S.syn[3].cut; K.a = m4S.syn[3].a;
+          },
+          target: () => { const u = U(); return u && u.dev && u.dev.tr === 3 && !u.devPanel.el.hidden ? u.devBody : null; },
+          check: () => m4IsSyn(3) && (m4S.syn[3].cut !== K.cut || m4S.syn[3].a !== K.a) },
+        { id: 'play', title: 'lab_m4_tut_10', body: 'lab_m4_tut_10b', ableton: 'lab_m4_tut_10a',
+          target: () => { const u = U(); return u ? u.play : null; },
+          check: () => arrRun.playing && arrRun.fromStart },
+    ] });
+}
+
 // ── Çalışma mantığı ──────────────────────────────────────────────────
 // Tasarımdaki 6 kutulu akış: kutu başına 3 satır mono metin (flowDiagram tek alt satır çizdiği için
 // howItWorks'e { el } bloğu olarak modül içinde kurulur).
 function m4FlowBoxes() {
     const B = [
         { k: 'lab_m4_fb1_k', t: 'grid[5][8]', c: '--accent', f: 1, lines: [['lab_m4_fb1_1'], ['lab_m4_fb1_2'], ['lab_m4_fb1_3']] },
-        { k: 'lab_m4_fb2_k', t: 'setTimeout · 120 ms', c: '--ember-2', f: 1.15, lines: [[null, 'sec = floor(step / 32)', '--fg'], ['lab_m4_fb2_2'], [null, 'loop: step ∈ [sel·32, sel·32+31]']] },
+        { k: 'lab_m4_fb2_k', t: `setTimeout · ${Math.round(ARR_S16 * 1000)} ms`, c: '--ember-2', f: 1.15, lines: [[null, 'sec = floor(step / 32)', '--fg'], ['lab_m4_fb2_2'], [null, 'loop: step ∈ [sel·32, selEnd·32+31]']] },
         { k: 'lab_m4_fb3_k', tk: 'lab_m4_fb3_t', c: '--err', f: 1.2, lines: [['lab_m4_fb3_1', null, '--accent'], ['lab_m4_fb3_2', null, '--lab-arr-lead'], ['lab_m4_fb3_3', null, '--violet']] },
         { k: 'lab_m4_fb4_k', t: 'vol · mute · solo', c: '--lab-arr-hat', f: 1, lines: [['lab_m4_fb4_1'], ['lab_m4_fb4_2'], [null, 'setTargetAtTime(τ 15 ms)']] },
         { k: 'lab_m4_fb5_k', t: 'Biquad lowpass', c: '--accent', f: 1.2, strong: true, lines: [['lab_m4_fb5_1', null, '--fg'], [null, 'hz = 150 · 120^v (v 0–1)'], ['lab_m4_fb5_3']] },
@@ -13503,18 +15187,21 @@ function m4HiwOpts() {
         blocks: [
             { el: m4FlowBoxes() },
             { row: [
-                { steps: [1, 2, 3, 4, 5, 6, 7].map(X), cols: 1 },
+                { steps: [1, 2, 3, 4, 5, 6, 7, 8, 9].map(X), cols: 1 },
                 { table: { cols: '1.1fr 1.2fr 1fr 1.5fr', rows: [
-                    [L('lab_m4_p_tempo'), L('lab_m4_p_tempo_r'), '125', L('lab_m4_p_tempo_w')],
+                    [L('lab_m4_p_tempo'), L('lab_m4_p_tempo_r'), String(m4S.bpm), L('lab_m4_p_tempo_w')],
+                    [L('lab_m4_p_set'), 'Classic · Cassianism Am / C#m', 'Classic', 'labSampleBuffer(id) · rate 1'],
                     [L('lab_m4_p_sec'), '8 × 2 bar', 'Intro…Outro', 'sec = floor(step/32)'],
                     [L('lab_m4_p_clip'), '0 / 1', L('lab_m4_p_tpl'), 'grid[tr][sec] → trigger(tr,t)'],
+                    [L('lab_m4_p_key'), '12 × 13', 'C minor', 'inScale / snapToScale'],
+                    [L('lab_m4_p_inst'), 'OSC · FILTER · ADSR', L('lab_m4_p_role'), 'Osc → Biquad → Gain → inst[tr]'],
                     ['Volume', '−∞ … 0 dB', '−1.9 dB (0.8)', 'trackGain[i].gain'],
                     [L('lab_m4_p_ms'), L('lab_m4_p_onoff'), L('lab_m4_p_off'), 'trackGain[i].gain → 0'],
                     [L('lab_m4_p_cut'), '150 Hz – 18 kHz (log)', L('lab_m4_p_curve'), 'masterFilter.frequency'],
                     ['RESO', 'Q 0.5 – 10', '0.9', 'masterFilter.Q'],
                     ['OUT', '−24 … +6 dB', '0 dB', 'outGain.gain = 10^(dB/20)'],
                     ['Bypass', 'on / off', L('lab_m4_p_byp'), 'frequency = 20000'],
-                    ['Loop', L('lab_m4_p_loop'), L('lab_m4_p_off'), 'step = sel·32 … +31'],
+                    ['Loop', L('lab_m4_p_loop'), L('lab_m4_p_off'), 'step = sel·32 … selEnd·32+31'],
                 ] } },
             ], cols: 'minmax(0,.9fr) minmax(0,1.1fr)' },
         ],
@@ -13605,10 +15292,15 @@ function m4GuideSection(ui) {
 }
 
 function renderModule4() {
-    const { root, top, main } = modLayout(4);
+    const { root, top, main, actions } = modLayout(4);
     root.classList.add('lab-m4');
-    const ui = _m4ui = { st: -1, bar: -2, ps: -2 };
+    // ps −1 = "durmuş" başlangıcı: ilk boyama "Çalma durdu" duyurmasın
+    const ui = _m4ui = { st: -1, bar: -2, ps: -1, lang: labLang() };
+    m4FlagGuard();
     top.append(m4Window(ui).root);
+    // Öğreticinin görünür girişi: başlığın sağ yuvasında adıyla (pencere başlık çubuğunda kompakt kopyası)
+    ui.tutBig = makeTutorialButton(ui.tut, { text: () => L('lab_m4_tut_t') });
+    actions.append(ui.tutBig.el);
     ui.hiw = howItWorks(m4HiwOpts());
     const row = mk('div', 'lab-m4-row3');
     ui.tasks = makeTaskPanel(4, { auto: m4Auto, note: 'lab_m4_tasks_note' });
@@ -13617,12 +15309,23 @@ function renderModule4() {
     ui.tasks.append(ui.taskLive);
     row.append(ui.tasks, m4WhereCard(), m4FlowCard(ui));
     main.append(ui.hiw.el, row, m4GuideSection(ui));
-    // İlk boyama (render() önce teardownView çağırır → çalma burada hep durmuş)
-    m4PaintTpl(); m4PaintGrid(); m4PaintMix(); m4PaintAuto(); m4PaintSel(); m4PaintTransport(); m4PaintPos(true);
-    m4PaintGuide(); m4PaintFlow(); m4ResetMeters();
+    // Web MIDI (görünüm ömürlü abonelik — gezinmede kit bırakır): REC + açık klip → kayıt, değilse ARM / seçili MIDI izi çalar
+    labMidi.on('noteon', m4MidiOn);
+    labMidi.on('noteoff', m4MidiOff);
+    labMidi.on('cc', m4MidiCc);
+    // İlk boyama (render() önce teardownView çağırır → çalma burada hep durmuş). Birleşik aria adları burada da
+    // yazılır: kabuk görünüm yeniden kurulunca labOnRefresh'i çağırmaz (Genel bakış → Arrangement dönüşü).
+    m4Labels(ui);
+    m4PaintAll(); m4PaintZoom(false); m4PaintGuide(); m4PaintFlow(); m4ResetMeters();
+    m4SyncUser(false);
     labOnRefresh(root, m4Relang);
-    _m4StopAudio = () => arrStop('teardown');
-    lpOnTeardown(() => { if (_m4ui === ui) _m4ui = null; });
+    _m4StopAudio = () => { arrLiveAll(); arrStop('teardown'); };
+    lpOnTeardown(() => {
+        clearTimeout(m4ClickT); m4ClickT = 0;
+        clearTimeout(ui.saveT);
+        m4MidiTr.clear(); m4Rec.held.clear(); m4Rec.down = 0;
+        if (_m4ui === ui) _m4ui = null;
+    });
     return root;
 }
 
