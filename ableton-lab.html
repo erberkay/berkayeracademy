@@ -2071,6 +2071,16 @@
         .m5-mbk { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; }
         .m5-mbb { display:flex; justify-content:center; padding:6px 2px 4px; border-radius:var(--r-8); background:var(--surface-0); border-top:2px solid var(--c); }
         .lab-m5 .m5-mbb .lp-knob { width:62px; }
+        .m5-mbb { flex-direction:column; align-items:stretch; gap:2px; }
+        .m5-mbh { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:0 4px; }
+        .m5-mbn { font-family:var(--ff-mono); font-size:9px; letter-spacing:.12em; color:var(--c); }
+        .m5-mbkr { display:flex; justify-content:center; }
+        .m5-lis { position:relative; display:inline-flex; align-items:center; justify-content:center; width:24px; height:22px; padding:0; border-radius:var(--r-6); border:1px solid var(--line-3); background:var(--bg); color:var(--fg-3); cursor:pointer; transition:border-color var(--dur-fast), color var(--dur-fast), background var(--dur-fast); }
+        .m5-lis svg { width:14px; height:14px; }
+        .m5-lis:hover { border-color:var(--c); color:var(--fg); }
+        .m5-lis[aria-pressed="true"] { background:var(--c); border-color:var(--c); color:var(--bg-ink); }
+        .m5-lis:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+        .m5-mbb.is-listen { box-shadow:inset 0 0 0 1px var(--c); }
 
         /* 04 · STEREO */
         .m5-stb { display:flex; gap:12px; align-items:center; }
@@ -2168,6 +2178,17 @@
         .m5-mcard strong { font-size:13px; }
         .m5-mcard span { font-size:12px; line-height:1.5; color:var(--fg-muted); }
 
+        /* Kaynak şeridi · SOLO · GAIN MATCH */
+        .m5-srcbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:8px 12px; border-radius:var(--r-10); background:var(--surface-0); border:1px solid var(--line-2); }
+        .m5-src-cap { flex-shrink:0; }
+        .m5-src-m { font-family:var(--ff-mono); font-size:10px; letter-spacing:.06em; color:var(--fg-3); white-space:nowrap; }
+        .m5-src-sp { flex:1 1 0; }
+        .lab-m5 .m5-src .lp-seg-b[aria-disabled="true"] { opacity:.45; cursor:not-allowed; }
+        .lab-m5 .m5-solo { height:22px; min-width:24px; padding:0 6px; font-size:10px; }
+        .lab-m5 .m5-solo[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+        .lab-m5 .m5-mod.is-solo-out { opacity:.55; }
+        .lab-m5 .lp-win:focus { outline:none; }
+
         @media (max-width:1279px) {
             .m5-row3 { grid-template-columns:300px minmax(0,1fr); }
         }
@@ -2179,6 +2200,10 @@
             .m5-chip::after { content:''; position:absolute; inset:-10px -1px; }
             .lab-m5 .m5-tpb::after, .lab-m5 .m5-rst::after { inset:-11px -4px; }
             .m5-play::after { content:''; position:absolute; inset:-5px; }
+            /* 22 px görünür kutu (kenarlık hariç 20) + 2×12 = 44 */
+            .lab-m5 .m5-solo { min-width:24px; }
+            .lab-m5 .m5-solo::after { inset:-12px -11px; }
+            .m5-lis::after { content:''; position:absolute; inset:-12px -11px; }
         }
         @media (min-width:601px) and (max-width:1024px) {
             .m5-plats, .m5-ros { grid-template-columns:repeat(4, minmax(0,1fr)); }
@@ -13630,9 +13655,16 @@ function renderModule4() {
 // MODULE 5 — MASTERING (BE·MASTER 05: EQ → Glue → Multiband → Stereo → Limiter + BS.1770 LUFS)
 // ═══════════════════════════════════════════════════════════════════
 // Tasarım: Lab_Mastering (eklenti penceresi + "Çalışma mantığı" + görev / Ableton / hata şeridi).
-// Ses: ortak beatCtx (getBeatCtx — yeni AudioContext açılmaz, kapatılmaz). Kaynak: Beat Maker
-// pattern'i doluysa startBeat() + beatRouteTo(mixBus) (+ tempo uyarsa Lead/Pad Loop), boşsa dahili
-// demo loop (124 BPM, lookahead zamanlayıcı). Graf ilk MIX ÇAL'da bir kez kurulur; her parametre
+// Ses: ortak beatCtx (getBeatCtx — yeni AudioContext açılmaz, kapatılmaz). KAYNAK seçici (m5V.src):
+// 'beat' = startBeat() + beatRouteTo(mixBus) (+ tempo uyarsa Lead/Pad Loop; pattern boşken seçilemez),
+// 'demo' = dahili sentez loop (124 BPM), 'cass' = Cassianism Mix (Pad/Lead/Pluck loop'ları + Mersey
+// davulları, 126 BPM, modülün lookahead zamanlayıcısı; stem'ler labSampleBuffer). Kaynak kırpmaları
+// (M5_BEAT_TRIM / M5_CASS_TRIM) varsayılan zincirde Integrated'ı ≈ aynı LUFS'a getirir. Seçilmediyse
+// bugünkü davranış: pattern doluysa beat, değilse demo.
+// Pro: modül SOLO (m5On — diğerleri nötr, m5P değişmez), multiband bant LISTEN, GAIN MATCH'li BYPASS ALL
+// (kuru mix S-LUFS'a eşlenir + güvenlik limiteri), Boşluk = çal/durdur (m5SpaceKey), öğretici
+// "Mastering zinciri" (m5MakeTutorial, 10 adım; ilerleme 5-tut-chain-* — GÖREV sayacına girmez).
+// Graf ilk MIX ÇAL'da bir kez kurulur; her parametre
 // setTargetAtTime ile kayar, bypass düğüm sökmez (nötr değere kayar). Ölçüm tek setTimeout (80 ms),
 // rAF yok. Temizlik: _m5StopAudio (teardownView) → zamanlayıcılar, kaynaklar, düğümler, beatOut rotası.
 //
@@ -13658,7 +13690,7 @@ Object.assign(LAB_TXT, {
     lab_m5_ref:        [`REF · SEVİYE EŞLİ`, `REF · LEVEL-MATCHED`],
     lab_m5_ref_t:      [`Sabit "pro" referans zinciri, işlenmiş sinyalle aynı loudness'ta`, `A fixed "pro" reference chain at the same loudness as the processed signal`],
     lab_m5_byp:        [`BYPASS ALL`, `BYPASS ALL`],
-    lab_m5_byp_t:      [`İşlenmemiş mix (seviye eşlemesiz)`, `The unprocessed mix (not level-matched)`],
+    lab_m5_byp_t:      [`İşlenmemiş mix — GAIN MATCH açıkken seviye eşli`, `The unprocessed mix — level-matched while GAIN MATCH is on`],
     lab_m5_play:       [`MIX ÇAL`, `PLAY MIX`],
     lab_m5_stop:       [`DURDUR`, `STOP`],
     lab_m5_save_t:     [`Ayarı hesabına kaydet`, `Save the setting to your account`],
@@ -13710,7 +13742,7 @@ Object.assign(LAB_TXT, {
     lab_m5_loud_note:  [`Tüm platformlar: tavan −1 dBTP. Hedeften yüksek master platformda kısılır.`, `All platforms: −1 dBTP ceiling. A master above the target gets turned down by the platform.`],
     lab_m5_st_idle:    [`MIX ÇAL'a bas: çıkış K-weighting ile ölçülür; 400 ms (M), 3 s (S) ve kapılı (I) değerler canlı hesaplanır.`, `Press PLAY MIX: the output is measured with K-weighting; 400 ms (M), 3 s (S) and gated (I) values are calculated live.`],
     lab_m5_src_beat:   [` Kaynak: Beat Maker pattern'in.`, ` Source: your Beat Maker pattern.`],
-    lab_m5_src_demo:   [` Kaynak: dahili demo loop (Beat Maker pattern'in boş).`, ` Source: the built-in demo loop (your Beat Maker pattern is empty).`],
+    lab_m5_src_demo:   [` Kaynak: dahili demo loop.`, ` Source: the built-in demo loop.`],
     lab_m5_st_wait:    [`Ölçülüyor… Integrated değer birkaç saniyede oturur.`, `Measuring… the integrated value settles in a few seconds.`],
     lab_m5_st_ok:      [`Hedefte. {p} için {t} LUFS yakalandı. Şimdi REF ile ton ve dinamiği karşılaştır.`, `On target. {t} LUFS reached for {p}. Now compare tone and dynamics with REF.`],
     lab_m5_st_high:    [`Hedefin {d} dB üstünde — {p} parçayı bu kadar kısacak; fazladan limitlemenin bedelini dinamikle ödersin. DRIVE'ı azalt.`, `{d} dB above the target — {p} will turn the track down by that much; you pay for the extra limiting with dynamics. Lower DRIVE.`],
@@ -13729,7 +13761,7 @@ Object.assign(LAB_TXT, {
     lab_m5_fl_mon:     [`→ çıkış`, `→ destination`],
     lab_m5_fl_ref:     [`REF ZİNCİR`, `REF CHAIN`],
     lab_m5_fl_refs:    [`sabit pro master`, `fixed pro master`],
-    lab_m5_fl_dry:     [`DRY · BYPASS ALL (seviye eşlemesiz)`, `DRY · BYPASS ALL (not level-matched)`],
+    lab_m5_fl_dry:     [`DRY · BYPASS ALL (GAIN MATCH → seviye eşli)`, `DRY · BYPASS ALL (GAIN MATCH → level-matched)`],
     lab_m5_fl_refn:    [`REF: kısa-dönem LUFS farkı kadar kazanç → aynı yükseklikte karşılaştırma`, `REF: gain equal to the short-term LUFS difference → a same-loudness comparison`],
     lab_m5_fl_meas:    [`ÖLÇÜM · her 80 ms`, `METERING · every 80 ms`],
     lab_m5_s1_t:       [`HPF + EQ`, `HPF + EQ`],
@@ -13784,6 +13816,75 @@ Object.assign(LAB_TXT, {
     lab_m5_mist3_p:    [`±2 dB bile büyük değişimdir; +6 dB gerekiyorsa sorun mix'tedir.`, `Even ±2 dB is a big change; if you need +6 dB, the problem is in the mix.`],
     lab_m5_mist4_t:    [`Seviye eşlemeden karşılaştırmak`, `Comparing without level matching`],
     lab_m5_mist4_p:    [`Yüksek olan her zaman daha iyi gelir. REF/A-B yaparken LUFS eşle.`, `Louder always sounds better. Match LUFS when you do REF / A-B.`],
+    // Kaynak seçici (Ozone'daki "kaynak" = master'lanan malzeme)
+    lab_m5_src_cap:    [`KAYNAK`, `SOURCE`],
+    lab_m5_src_aria:   [`Mastering kaynağı`, `Mastering source`],
+    lab_m5_src_o_demo: [`DEMO LOOP`, `DEMO LOOP`],
+    lab_m5_src_o_beat: [`BEAT MAKER`, `BEAT MAKER`],
+    lab_m5_src_o_cass: [`CASSIANISM MIX`, `CASSIANISM MIX`],
+    lab_m5_src_t_demo: [`Dahili sentez loop'u (kick, bas, hat, clap, akor) · 124 BPM`, `Built-in synth loop (kick, bass, hat, clap, chords) · 124 BPM`],
+    lab_m5_src_t_beat: [`Beat Maker pattern'in — Beat çıkışı mastering zincirine yönlenir`, `Your Beat Maker pattern — the Beat output is routed into the mastering chain`],
+    lab_m5_src_t_boff: [`Beat Maker pattern'in boş — önce Beat Maker'da birkaç adım yaz`, `Your Beat Maker pattern is empty — write a few steps in Beat Maker first`],
+    lab_m5_src_t_cass: [`Sounds Mania Cassianism Pad + Lead + Pluck (Am) ve Mersey davulları · 126 BPM · kaba mix`, `Sounds Mania Cassianism Pad + Lead + Pluck (Am) with Mersey drums · 126 BPM · rough mix`],
+    lab_m5_src_m_demo: [`124 BPM · SENTEZ`, `124 BPM · SYNTH`],
+    lab_m5_src_m_beat: [`{bpm} BPM · PATTERN`, `{bpm} BPM · PATTERN`],
+    lab_m5_src_m_boff: [`PATTERN BOŞ`, `PATTERN EMPTY`],
+    lab_m5_src_m_cass: [`126 BPM · Am · 6 STEM`, `126 BPM · Am · 6 STEMS`],
+    lab_m5_src_load:   [`YÜKLENİYOR…`, `LOADING…`],
+    lab_m5_src_cass:   [` Kaynak: Cassianism Mix (126 BPM, Am — kaba mix, master'lanmayı bekliyor).`, ` Source: the Cassianism Mix (126 BPM, Am — a rough mix waiting for its master).`],
+    lab_m5_st_load:    [`Cassianism stem'leri yükleniyor…`, `Loading the Cassianism stems…`],
+    lab_m5_st_fail:    [` Cassianism yüklenemedi — demo loop çalıyor.`, ` The Cassianism mix could not load — playing the demo loop.`],
+    lab_m5_st_solo:    [` SOLO / LISTEN açık: duyduğun ve ölçülen tam master değil (hedef görevi sayılmaz).`, ` SOLO / LISTEN is on: what you hear and measure is not the full master (the target task doesn't count).`],
+    lab_m5_match:      [`GAIN MATCH`, `GAIN MATCH`],
+    lab_m5_match_t:    [`BYPASS ALL seviye eşli: kuru mix işlenmiş sinyalin short-term LUFS'una çekilir (tepeler güvenlik limiterinde)`, `Level-matched BYPASS ALL: the dry mix is brought to the processed short-term LUFS (peaks caught by a safety limiter)`],
+    lab_m5_play_t:     [`Çal / durdur — Boşluk (odak eklentideyken)`, `Play / stop — Space (while focus is in the plugin)`],
+    lab_m5_solo_a:     [`{name} solo — yalnız bu modül işlesin`, `{name} solo — process with this module only`],
+    lab_m5_solo_t:     [`SOLO: diğer modüller geçici olarak bypass (ayar değişmez)`, `SOLO: the other modules are bypassed for now (settings unchanged)`],
+    lab_m5_lis_a:      [`{b} bandını dinle`, `Listen to the {b} band`],
+    lab_m5_lis_t:      [`LISTEN: yalnız bu bant duyulur — sorunu kulakla bul`, `LISTEN: only this band is heard — find the problem by ear`],
+    // Çalışma mantığı ek adımları
+    lab_m5_s9_t:       [`Kaynak + seviye eşleme`, `Source + level matching`],
+    lab_m5_s9_d:       [`Demo / Beat / Cassianism aynı mix bus'a girer; kaynak kırpması hepsini ≈ aynı LUFS'a getirir. GAIN MATCH kuru sinyali işlenmişin S-LUFS'una çeker.`, `Demo / Beat / Cassianism feed the same mix bus; a per-source trim brings them to ≈ the same LUFS. GAIN MATCH pulls the dry signal to the processed S-LUFS.`],
+    lab_m5_s10_t:      [`Solo / Listen`, `Solo / Listen`],
+    lab_m5_s10_d:      [`Modül SOLO'su diğerlerini nötre kaydırır; bant LISTEN'i öteki iki bandın kazancını 0 yapar.`, `Module SOLO glides the others to neutral; band LISTEN sets the other two bands' gain to 0.`],
+    // Öğretici · Mastering zinciri
+    lab_m5_tut_t:      [`Mastering zinciri`, `Mastering chain`],
+    lab_m5_tut_i:      [`Gerçek bir kaba mix'i (Cassianism) Ableton'daki master zinciri sırasıyla bitireceksin: dinle → temizle → yapıştır → evcilleştir → genişliği kontrol et → tavanı koy → loudness hedefi → referansla karşılaştır → kaydet.`, `You'll finish a real rough mix (Cassianism) in the order of an Ableton master chain: listen → clean → glue → tame → check width → set the ceiling → loudness target → compare with a reference → save.`],
+    lab_m5_tut_o:      [`Zinciri baştan sona kurdun. Live'da aynı sıra: Master kanalına EQ Eight → Glue Compressor → Multiband Dynamics → Utility → Limiter, sonra Export'ta LUFS'u kontrol et.`, `You built the chain end to end. Same order in Live: EQ Eight → Glue Compressor → Multiband Dynamics → Utility → Limiter on the Master track, then check LUFS on export.`],
+    lab_m5_tut1_h:     [`Master'lanacak mix'i seç ve çal`, `Pick the mix to master and play it`],
+    lab_m5_tut1_b:     [`KAYNAK'ta CASSIANISM MIX'i seç, sonra MIX ÇAL'a (ya da eklentideyken Boşluk'a) bas. Pad, lead, pluck ve Mersey davulları kaba mix halinde gelir — master buradan başlar.`, `Choose CASSIANISM MIX under SOURCE, then press PLAY MIX (or Space while in the plugin). Pad, lead, pluck and Mersey drums arrive as a rough mix — this is where mastering starts.`],
+    lab_m5_tut1_a:     [`Mix'i tek stereo dosya olarak bounce et (File → Export), yeni sette bir audio kanala at ve master zincirini o kanalda ya da Master'da kur.`, `Bounce the mix to one stereo file (File → Export), drop it on an audio track in a new set and build the chain there or on the Master.`],
+    lab_m5_tut2_h:     [`Önce işlenmemiş hâli dinle`, `First listen to it unprocessed`],
+    lab_m5_tut2_b:     [`GAIN MATCH açıkken BYPASS ALL'u aç, en az 2 saniye dinle, sonra kapat. Seviye eşli olduğu için yalnız ton ve dinamik farkını duyarsın — "daha yüksek = daha iyi" tuzağı yok.`, `With GAIN MATCH on, switch BYPASS ALL on, listen for at least 2 seconds, then switch it off. Because it's level-matched you only hear tone and dynamics — no "louder = better" trap.`],
+    lab_m5_tut2_a:     [`Cihaz başlığındaki güç düğmesi ya da Rack'in Chain Activator'ı; Utility Gain ile seviye eşle.`, `The device title-bar power switch or the Rack's Chain Activator; match the level with Utility Gain.`],
+    lab_m5_tut3_h:     [`HPF + nazik EQ`, `HPF + gentle EQ`],
+    lab_m5_tut3_b:     [`HPF'yi 20–45 Hz arasına koy (duyulmayan alt enerji limiter'ı boşa yorar), sonra bir bandı ±3 dB içinde oynat — ör. 250 Hz'de hafif kesim. Masterda büyük hareket yok.`, `Put the HPF between 20 and 45 Hz (inaudible low energy wastes limiter headroom), then move one band within ±3 dB — e.g. a light cut at 250 Hz. No big moves on the master.`],
+    lab_m5_tut3_a:     [`EQ Eight: 1. bant Low Cut 48 dB, Oversampling açık; Adaptive Q ile geniş, küçük hareketler.`, `EQ Eight: band 1 Low Cut 48 dB, Oversampling on; wide, small moves with Adaptive Q.`],
+    lab_m5_tut3_n:     [`Koşul: EQ açık, HPF 20–45 Hz, en az bir bant değişti, hepsi ±3 dB içinde.`, `Condition: EQ on, HPF 20–45 Hz, at least one band changed, all within ±3 dB.`],
+    lab_m5_tut4_h:     [`Glue: 1–3 dB yapıştır`, `Glue: 1–3 dB of glue`],
+    lab_m5_tut4_b:     [`THRESH'i GR okuması 1–3 dB'de kalana kadar ayarla ve 2 saniye tut. Ratio 2:1, attack 10–30 ms transient'i korur; amaç ezmek değil, mix'i tek parça yapmak.`, `Set THRESH until the GR reading stays at 1–3 dB and hold it for 2 seconds. Ratio 2:1 and a 10–30 ms attack keep the transients; the goal is cohesion, not squashing.`],
+    lab_m5_tut4_a:     [`Glue Compressor: Ratio 2, Attack 10/30 ms, Release Auto, GR iğnesi 1–3 dB.`, `Glue Compressor: Ratio 2, Attack 10/30 ms, Release Auto, GR needle 1–3 dB.`],
+    lab_m5_tut5_h:     [`Multiband: sorunlu bandı evcilleştir`, `Multiband: tame the problem band`],
+    lab_m5_tut5_b:     [`Bir bandın kulaklık düğmesiyle LISTEN yap (sorunu kulakla bul), sonra o bandın THR'ini indir: ortalama GR 0.5–4 dB olsun. Yalnız sorunlu bant çalışır, gerisi dokunulmaz.`, `Press a band's headphone button to LISTEN (find the problem by ear), then lower that band's THR: average GR between 0.5 and 4 dB. Only the problem band works, the rest stays untouched.`],
+    lab_m5_tut5_a:     [`Multiband Dynamics: bant Solo (S) düğmesi, Above Threshold, Amount %20–30.`, `Multiband Dynamics: the band Solo (S) button, Above threshold, Amount 20–30%.`],
+    lab_m5_tut5_n:     [`Koşul: bir bant dinlendi, Multiband açık, bir THR değişti, bir bantta ortalama GR 0.5–4 dB.`, `Condition: a band was listened to, Multiband on, a THR changed, one band averages 0.5–4 dB GR.`],
+    lab_m5_tut6_h:     [`Genişliği korelasyonla kontrol et`, `Check the width against correlation`],
+    lab_m5_tut6_b:     [`WIDTH'i 80–140 % arasında değiştir ve KORELASYON'u izle: +0.3'ün üstünde kalmalı. Sıfıra yaklaşan ya da eksiye düşen korelasyon mono'da (kulüp, telefon) sesin kaybolması demek.`, `Change WIDTH within 80–140% and watch CORRELATION: it must stay above +0.3. Correlation near zero or negative means the sound collapses in mono (club, phone).`],
+    lab_m5_tut6_a:     [`Utility: Width + Bass Mono (120 Hz); korelasyon için Spectrum/Correlation metre ya da üçüncü parti.`, `Utility: Width + Bass Mono (120 Hz); use a correlation meter to check.`],
+    lab_m5_tut7_h:     [`Limiter tavanı −1 dBTP`, `Limiter ceiling −1 dBTP`],
+    lab_m5_tut7_b:     [`TRUE PEAK açık, CEILING ≤ −1.0 dB olsun ve 3 saniye boyunca ölçülen tepe −1 dBTP'yi aşmasın. Streaming kodlayıcıları (AAC/Ogg) örnekler arası tepeleri büyütür; 1 dB pay bozulmayı önler.`, `Keep TRUE PEAK on, CEILING ≤ −1.0 dB, and the measured peak must not exceed −1 dBTP for 3 seconds. Streaming encoders (AAC/Ogg) grow inter-sample peaks; 1 dB of margin prevents distortion.`],
+    lab_m5_tut7_a:     [`Limiter: Ceiling −1 dB, True Peak açık (Live 12), Lookahead 3 ms.`, `Limiter: Ceiling −1 dB, True Peak on (Live 12), Lookahead 3 ms.`],
+    lab_m5_tut8_h:     [`Platform LUFS hedefini yakala`, `Hit the platform LUFS target`],
+    lab_m5_tut8_b:     [`Hedef platformu seç, LIMITER DRIVE ile loudness'ı it ve LOUDNESS'ta RESET'e bas: Integrated 5 saniyede ±1 LU içinde otursun. Hedeften yüksek master platformda kısılır — fazlası kazanç değil kayıp.`, `Pick the target platform, push the loudness with LIMITER DRIVE and press RESET in LOUDNESS: Integrated must settle within ±1 LU in 5 seconds. A master above the target gets turned down — the extra is a loss, not a gain.`],
+    lab_m5_tut8_a:     [`Limiter Gain ile it; ölçüm için Youlean Loudness Meter ya da Live 12'nin LUFS metresi.`, `Push with the Limiter's Gain; measure with Youlean Loudness Meter or Live 12's LUFS meter.`],
+    lab_m5_tut8_n:     [`BYPASS, REF, SOLO ve LISTEN kapalıyken sayılır.`, `Counts with BYPASS, REF, SOLO and LISTEN off.`],
+    lab_m5_tut9_h:     [`Referansla A/B`, `A/B with a reference`],
+    lab_m5_tut9_b:     [`REF'i aç ve 2 saniye dinle: referans zinciri senin short-term LUFS'una eşlenir. Aynı yükseklikte bas, parlaklık ve punch'ı karşılaştır, sonra REF'i kapat.`, `Turn REF on and listen for 2 seconds: the reference is matched to your short-term LUFS. At the same loudness compare low end, brightness and punch, then switch REF off.`],
+    lab_m5_tut9_a:     [`Referans parçayı ayrı bir kanala koy, Solo ile değiş; Utility ile LUFS eşle.`, `Put the reference track on its own track, switch with Solo; match LUFS with Utility.`],
+    lab_m5_tut10_h:    [`Master presetini kaydet`, `Save the master preset`],
+    lab_m5_tut10_b:    [`KAYDET'e bas, bir ad ver ve kaydet: zincir hesabına yazılır, preset listesinde KULLANICI altında görünür (silmek için seçip çöp kutusu).`, `Press SAVE, give it a name and save: the chain is written to your account and shows under USER in the preset list (select it and use the bin to delete).`],
+    lab_m5_tut10_a:    [`Rack'i gruplayıp (Ctrl/⌘+G) Browser'a kaydet: User Library → Presets → Audio Effects → Audio Effect Rack.`, `Group the chain (Ctrl/⌘+G) and save the Rack to the Browser: User Library → Presets → Audio Effects → Audio Effect Rack.`],
+    lab_m5_tut10_n:    [`Kaydetmek için giriş gerekir — KAYDET seni giriş penceresine götürür.`, `Saving needs sign-in — SAVE takes you to the sign-in window.`],
 });
 
 // ── Veri ─────────────────────────────────────────────────────────────
@@ -13825,6 +13926,21 @@ const M5_VOICE_BPM = 124;
 const M5_LOOPS = [['assets/audio/Pad Loop.wav', 0.18, 4], ['assets/audio/Lead Loop.wav', 0.12, 16]];
 // VARSAYIM: kaynak kalibrasyonu — varsayılan ayarda Integrated ≈ −15…−17 LUFS (başsız Chrome'da ölçüldü)
 const M5_BEAT_TRIM = 0.35;
+// Kaynaklar (KAYNAK seçici): demo (dahili sentez) · beat (Beat Maker, beatRouteTo) · cass (Cassianism Mix)
+const M5_SRCS = ['demo', 'beat', 'cass'];
+// Cassianism Mix: 126 BPM, Am. Loop'lar (8 ölçü, döngü) + Mersey one-shot'ları kendi lookahead zamanlayıcısıyla.
+// Kaba mix: [örnek id, fader dB, pan]; kazanç = labSampleGain(id) (paket seviye eşlemesi) × fader.
+// Pad kick'te ~4 dB ducking alır (sidechain pompası). VARSAYIM: kırpma M5_CASS_TRIM, varsayılan zincirde
+// Integrated'ı demo / beat kaynağıyla ±1.5 LU içine getirir (başsız Chrome'da ölçüldü).
+const M5_CASS = {
+    bpm: 126,
+    loops: [['cassianism-pad-02', -8, 0, true], ['cassianism-lead-02', -10, 0.2], ['cassianism-pluck-02', -13, -0.25]],
+    drums: { kick: ['mersey-kick-02', -3, 0], clap: ['mersey-clap-11', -8, 0], ohat: ['mersey-open-hat-03', -15, 0.25],
+        chat: ['mersey-closed-hat-02', -19, -0.2], ride: ['mersey-ride-01', -21, 0.3] },
+};
+const M5_CASS_TRIM = 0.43;
+// Kulaklık (bant LISTEN) çizgi ikonu
+const M5_HP_IC = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="6.5" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="6.5" rx="1.5"/></svg>';
 
 const m5Clone = o => JSON.parse(JSON.stringify(o));
 function m5Merge(a, b) {
@@ -13853,7 +13969,14 @@ function m5Sanitize(src) {
 
 // ── Modül durumu (oturum boyunca; yeni localStorage anahtarı yok) ──────
 let m5P = m5Clone(M5_DEF);                   // aktif parametreler
-const m5V = { plat: 0, ref: false, byp: false, sel: 1, pre: 'f0', tool: 0, mod: false };
+const m5V = { plat: 0, ref: false, byp: false, sel: 1, pre: 'f0', tool: 0, mod: false,
+    src: 'demo', srcPicked: false,   // KAYNAK; seçilmediyse her görünümde Beat pattern'i doluysa 'beat', değilse 'demo'
+    match: true,                     // GAIN MATCH (BYPASS ALL seviye eşli)
+    solo: null,                      // modül solo: 'eq'|'glue'|'mb'|'st'|'lim' (oturum; preset/geçmiş dışı)
+    band: null };                    // multiband LISTEN: 0|1|2
+// Öğretici ("Mastering zinciri") oturum izleri — adımların check()'leri buradan okur (TASKS'a dokunmaz)
+const m5Tut = { bypN: 0, byp: false, eqSnap: '', mbSnap: '', bandHeard: false, wSnap: 0, corrEma: 0, corrN: 0,
+    tpS: -Infinity, tpN: 0, lufs: false, saved: false };
 const m5Met = [false, false, false, false, false];   // TASKS[5] sırasıyla, oturumda sağlanan koşullar
 let m5E = null;            // ses motoru { ctx, A, clipKey }
 let m5R = null;            // çalma durumu (null = durmuş)
@@ -13897,19 +14020,19 @@ function m5Set(path, v) { const ks = path.split('.'), last = ks.pop(); ks.reduce
 function m5NewMeas(t0) {
     return { blocks: [], gates: [], sArr: [], hist: [], grH: [], refB: [], M: null, S: null, I: null, LRA: null,
         tpMax: -Infinity, pk: [-90, -90], corr: 0, mid: -90, side: -90, spec: null, gG: 0, gL: 0, gB: [0, 0, 0],
-        gGs: 0, gBs: [0, 0, 0], refMatch: 0, t0: t0 || 0, glueOk: 0 };
+        gGs: 0, gBs: [0, 0, 0], refMatch: 0, t0: t0 || 0, glueOk: 0, dryB: [], dryMatch: 0 };
 }
 m5M = m5NewMeas();
 
 // ── Ses motoru ───────────────────────────────────────────────────────
 // Graf (rehber §2):
-//   kaynak → mixBus(0.33) → HPF → EQ×5 → Glue(DynComp) → glueMk → mbIn ─┬ LP·LP(x1) → AP(x2) → C0 → G0 ──┐
+//   kaynak (beatIn 0.35 · demoIn · loopIn · cassIn) → mixBus(0.33) → HPF → EQ×5 → Glue(DynComp) → glueMk → mbIn ─┬ LP·LP(x1) → AP(x2) → C0 → G0 ──┐
 //                                                                        └ HP·HP(x1) ─┬ LP·LP(x2) → C1 → G1 ┼ mbSum
 //                                                                                     └ HP·HP(x2) → C2 → G2 ┘
 //   mbSum → Splitter → ll/lr/rl/rr → Merger → drive → lim(20:1) → clip(WaveShaper) → out
-//   out → procG ┐   mixBus → dryG ┤ (BYPASS ALL)   mixBus → REF zinciri → rOut → refG ┤ → mon → çıkış
+//   out → procG ┐   mixBus → dryMk → drySafe → dryG ┤ (BYPASS ALL; GAIN MATCH)   mixBus → REF zinciri → rOut → refG ┤ → mon → çıkış
 //   Ölçüm: out → K (shelf+HP) → kL/kR · out → aL/aR (TP, L/R, korelasyon, M/S) · out → sa (spektrum)
-//          rOut → K → rL/rR (REF seviye eşleme)
+//          rOut → K → rL/rR (REF seviye eşleme) · mixBus → K → dL/dR (GAIN MATCH)
 // Not: lowpass/highpass Q dB cinsinden (−3.01 = Butterworth, −6.02 = K-filtre HP'si); peaking Q doğrusal.
 function m5Build(ctx) {
     const all = [];
@@ -13930,11 +14053,11 @@ function m5Build(ctx) {
     };
     const kw = src => chain([src, bq('highshelf', 1681.97, null, 4), bq('highpass', 38.13, -6.02)]);
     const A = { all };
-    A.beatIn = g(M5_BEAT_TRIM); A.demoIn = g(1); A.loopIn = g(1);
+    A.beatIn = g(M5_BEAT_TRIM); A.demoIn = g(1); A.loopIn = g(1); A.cassIn = g(M5_CASS_TRIM);
     A.mix = g(0.33);
     // Mono kaynaklar (tek kanallı örnekler) iki kanala açılsın: splitter mono girişi çoğaltmaz
     A.mix.channelCount = 2; A.mix.channelCountMode = 'explicit'; A.mix.channelInterpretation = 'speakers';
-    A.beatIn.connect(A.mix); A.demoIn.connect(A.mix); A.loopIn.connect(A.mix);
+    A.beatIn.connect(A.mix); A.demoIn.connect(A.mix); A.loopIn.connect(A.mix); A.cassIn.connect(A.mix);
     A.hpf = bq('highpass', 30, -3.01);
     A.eq = M5_BT.map(t => bq(t, 1000, 1, 0));
     A.glue = dc(); A.glueMk = g();
@@ -13960,7 +14083,9 @@ function m5Build(ctx) {
     chain([A.mg, A.drive, A.lim, A.clip, A.out]);
     A.mon = g(0); A.procG = g(1); A.dryG = g(0); A.refG = g(0);
     A.out.connect(A.procG); A.procG.connect(A.mon);
-    A.mix.connect(A.dryG); A.dryG.connect(A.mon);
+    // Kuru yol (BYPASS ALL): GAIN MATCH kazancı → güvenlik limiteri (match kapalıyken nötr) → dryG
+    A.dryMk = g(1); A.drySafe = dc({ threshold: 0, ratio: 1, knee: 0, attack: 0.001, release: 0.08 });
+    chain([A.mix, A.dryMk, A.drySafe, A.dryG, A.mon]);
     // REF: sabit "pro" master zinciri (tasarım) — seviyesi ölçümle işlenmiş sinyale eşlenir
     A.rOut = g();
     chain([A.mix, bq('lowshelf', 90, null, 2), bq('highshelf', 7000, null, 3),
@@ -13972,7 +14097,8 @@ function m5Build(ctx) {
     [A.aL, A.aR] = pair(A.out);
     A.sa = an(4096, 0.8); A.out.connect(A.sa);
     [A.rL, A.rR] = pair(kw(A.rOut));
-    A.buf = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(4096));
+    [A.dL, A.dR] = pair(kw(A.mix));          // kuru mix'in K-ağırlıklı seviyesi (GAIN MATCH)
+    A.buf = [0, 1, 2, 3, 4, 5, 6, 7].map(() => new Float32Array(4096));
     A.fb = new Float32Array(A.sa.frequencyBinCount);
     // Demo loop gürültüsü (hat / clap)
     const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = nb.getChannelData(0);
@@ -13986,8 +14112,11 @@ function m5Build(ctx) {
 // width 1 · drive 1 · limiter eşik 0 / oran 1 · clip eğrisi doğrusal.
 function m5Apply() {
     const E = m5E; if (!E) return;
-    const A = E.A, p = m5P, t = E.ctx.currentTime;
+    const A = E.A, t = E.ctx.currentTime;
     const s = (prm, v) => { try { prm.setTargetAtTime(v, t, 0.015); } catch (e) { console.warn('[lab] m5 param:', e); } };
+    // Ses için ETKİN açık/kapalı: modül SOLO'suyla diğerleri geçici nötr (m5P değişmez → preset/undo etkilenmez)
+    const p = m5Clone(m5P);
+    ['eq', 'glue', 'mb', 'st', 'lim'].forEach(k => { p[k].on = m5On(k); });
     const e = p.eq, gl = p.glue, mb = p.mb, li = p.lim;
     s(A.hpf.frequency, e.on ? e.hpf : 10);
     A.eq.forEach((n, i) => { s(n.frequency, e.b[i][0]); s(n.gain, e.on ? e.b[i][1] : 0); s(n.Q, e.b[i][2]); });
@@ -14001,7 +14130,9 @@ function m5Apply() {
     A.mbC.forEach((c, i) => {
         s(c.threshold, mb.on ? mb.b[i][0] : 0); s(c.ratio, mb.on ? 3 : 1);
         s(c.attack, 0.01); s(c.release, 0.15); s(c.knee, 6);
-        s(A.mbG[i].gain, m5Db(mb.b[i][1] + (mb.on ? 0 : m5AutoMk(mb.b[i][0], 3, 6) - effGr(E.bE[i]))));
+        // LISTEN: yalnız seçili bant duyulur (öteki iki bandın kazancı 0)
+        const lis = m5V.band != null && m5V.band !== i;
+        s(A.mbG[i].gain, lis ? 0 : m5Db(mb.b[i][1] + (mb.on ? 0 : m5AutoMk(mb.b[i][0], 3, 6) - effGr(E.bE[i]))));
     });
     const w = p.st.on ? p.st.w / 100 : 1, a = (1 + w) / 2, b = (1 - w) / 2;
     s(A.ll.gain, a); s(A.rr.gain, a); s(A.lr.gain, b); s(A.rl.gain, b);
@@ -14029,7 +14160,14 @@ function m5Monitor() {
     A.procG.gain.setTargetAtTime(!r && !m5V.byp ? 1 : 0, t, 0.02);
     A.dryG.gain.setTargetAtTime(!r && m5V.byp ? 1 : 0, t, 0.02);
     A.refG.gain.setTargetAtTime(r ? m5Db(m5M.refMatch || 0) : 0, t, 0.05);
+    // GAIN MATCH: kuru mix işlenmiş S-LUFS'a çekilir; +dB'de tepeler −1 dBFS güvenlik limiterinde (kapalıyken nötr)
+    const mt = m5V.match;
+    A.dryMk.gain.setTargetAtTime(mt ? m5Db(m5M.dryMatch || 0) : 1, t, 0.05);
+    A.drySafe.threshold.setTargetAtTime(mt ? -1 : 0, t, 0.02);
+    A.drySafe.ratio.setTargetAtTime(mt ? 20 : 1, t, 0.02);
 }
+// Ses için etkin modül durumu (SOLO)
+function m5On(k) { return !!m5P[k].on && (!m5V.solo || m5V.solo === k); }
 
 // ── Dahili demo loop (tasarımın voices(): kick / bas / hat / clap / stereo akor, 124 BPM, 16'lık) ──
 function m5Osc(A, ctx, type, f, t, d, v, pan, lp, det) {
@@ -14065,15 +14203,92 @@ function m5Voices(A, ctx, step, t) {
     if (s === 4 || s === 12) m5Hit(A, ctx, t, 0.16, 1200, 0.5, 0);
     if (s === 0 || s === 10) ch.forEach(f => { m5Osc(A, ctx, 'sawtooth', f, t, 0.5, 0.045, -0.7, 2600, -9); m5Osc(A, ctx, 'sawtooth', f, t, 0.5, 0.045, 0.7, 2600, 9); });
 }
-// Lookahead zamanlayıcı: 25 ms'de bir, 120 ms ileriyi planla (tek setTimeout zinciri)
+// Lookahead zamanlayıcı: 25 ms'de bir, 120 ms ileriyi planla (tek setTimeout zinciri). Demo 124 BPM,
+// Cassianism 126 BPM (loop'larla aynı t0'dan: faz örnek saatinde kilitli).
 function m5Sched(gen) {
     const R = m5R, E = m5E;
     if (!R || R.gen !== gen || !E) return;
-    const spb = 60 / M5_VOICE_BPM / 4;
-    // Ana iş parçacığı takıldıysa kaçan 16'lıkları çalmadan atla (üst üste binen patlama yok)
-    if (R.nextT < E.ctx.currentTime - 0.05) { const n = Math.ceil((E.ctx.currentTime - R.nextT) / spb); R.step += n; R.nextT += n * spb; }
-    while (R.nextT < E.ctx.currentTime + 0.12) { m5Voices(E.A, E.ctx, R.step, R.nextT); R.nextT += spb; R.step++; }
+    const cass = R.src === 'cass', spb = 60 / (cass ? M5_CASS.bpm : M5_VOICE_BPM) / 4, now = E.ctx.currentTime;
+    // Ana iş parçacığı takıldıysa kaçan 16'lıkları çalmadan atla (üst üste binen patlama yok; faz korunur)
+    if (R.nextT < now - 0.05) { const n = Math.ceil((now - R.nextT) / spb); R.step += n; R.nextT += n * spb; }
+    if (cass && R.pend.length) R.pend = R.pend.filter(v => v.t > now);
+    while (R.nextT < now + 0.12) {
+        if (cass) m5CassVoices(E, R, R.step, R.nextT); else m5Voices(E.A, E.ctx, R.step, R.nextT);
+        R.nextT += spb; R.step++;
+    }
     R.timer = setTimeout(() => m5Sched(gen), 25);
+}
+
+// ── Cassianism Mix (kaba mix): Pad + Lead + Pluck loop'ları + Mersey davulları → cassIn ──
+function m5CassHit(E, R, key, v, t) {
+    const d = M5_CASS.drums[key], buf = R.cass.bufs[d[0]];
+    if (!buf) return;
+    const ctx = E.ctx, src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = buf; g.gain.value = v * labSampleGain(d[0]) * lpLin(d[1]);
+    src.connect(g);
+    m5Pan(ctx, g, d[2]).connect(R.cass.bus);
+    src.onended = () => { try { src.disconnect(); g.disconnect(); } catch (_) {} };
+    src.start(t);
+    R.pend.push({ s: src, t });
+}
+// Desen (16'lık, 8 ölçülük döngüyle aynı uzunluk): four-on-the-floor kick, 2/4 clap, offbeat open hat,
+// 16'lık kapalı hat, ikinci yarıda ride; 8. ölçünün son vuruşunda kick boşluğu + clap dolgusu.
+function m5CassVoices(E, R, step, t) {
+    const s = step % 16, bar = Math.floor(step / 16) % 8;
+    if (s % 4 === 0 && !(bar === 7 && s === 12)) {
+        m5CassHit(E, R, 'kick', 1, t);
+        const dk = R.cass.duck;
+        if (dk) { dk.gain.setTargetAtTime(0.62, t, 0.004); dk.gain.setTargetAtTime(1, t + 0.05, 0.09); }
+    }
+    if (s === 4 || s === 12) m5CassHit(E, R, 'clap', 0.9, t);
+    if (bar === 7 && (s === 14 || s === 15)) m5CassHit(E, R, 'clap', 0.45, t);
+    if (s % 4 === 2) m5CassHit(E, R, 'ohat', 0.85, t);
+    if (s % 2 === 1) m5CassHit(E, R, 'chat', s % 4 === 3 ? 0.6 : 0.42, t);
+    if (bar >= 4 && s % 4 === 0) m5CassHit(E, R, 'ride', 0.55, t);
+}
+function m5CassIds() { return M5_CASS.loops.map(l => l[0]).concat(Object.keys(M5_CASS.drums).map(k => M5_CASS.drums[k][0])); }
+// Stem'leri yükle (labSampleBuffer genel önbellek), sonra loop'ları ve davul saatini aynı t0'da başlat.
+// Hiç stem gelmezse demo loop'a düşer (durum satırında not).
+function m5StartCass(gen) {
+    const E = m5E, R = m5R; if (!E || !R) return;
+    const ctx = E.ctx, ids = m5CassIds();
+    R.loading = true;
+    Promise.all(ids.map(id => labSampleBuffer(ctx, id))).then(list => {
+        if (!m5R || m5R.gen !== gen || !m5E || m5E.ctx !== ctx) return;
+        const R2 = m5R, bufs = {};
+        ids.forEach((id, i) => { if (list[i]) bufs[id] = list[i]; });
+        R2.loading = false;
+        if (!Object.keys(bufs).length) {
+            console.warn('[lab] m5 cassianism: stem yok, demo loop');
+            R2.src = 'demo'; R2.fail = true; R2.nextT = ctx.currentTime + 0.06; R2.step = 0;
+            m5M = m5NewMeas(ctx.currentTime);
+            m5Sched(gen); m5PaintSrc(); m5PaintMeter();
+            return;
+        }
+        const bus = ctx.createGain(); bus.connect(m5E.A.cassIn);
+        const t0 = ctx.currentTime + 0.08;
+        const C = R2.cass = { bus, bufs, duck: null, nodes: [bus] };
+        M5_CASS.loops.forEach(([id, db, pan, duck]) => {
+            const buf = bufs[id]; if (!buf) return;
+            const src = ctx.createBufferSource(), g = ctx.createGain();
+            src.buffer = buf; src.loop = true;
+            src.loopStart = 0; src.loopEnd = Math.min(buf.duration, labLoopDuration(id, M5_CASS.bpm));
+            g.gain.value = labSampleGain(id) * lpLin(db);
+            src.connect(g);
+            let last = g;
+            if (duck) { C.duck = ctx.createGain(); g.connect(C.duck); last = C.duck; C.nodes.push(C.duck); }
+            const out = m5Pan(ctx, last, pan);
+            out.connect(bus);
+            C.nodes.push(src, g, out);
+            src.start(t0);
+            R2.loops.push(src);
+        });
+        R2.step = 0; R2.nextT = t0;
+        m5M = m5NewMeas(t0);
+        m5TutWin();
+        m5Sched(gen);
+        m5PaintSrc(); m5PaintMeter();
+    });
 }
 
 // Beat Maker kaynağı: pattern dolu mu + Modül 2'nin yönlendirme API'si var mı
@@ -14130,10 +14345,11 @@ function m5Start() {
     }
     const A = m5E.A, t = ctx.currentTime, gen = ++m5Gen;
     m5Apply();
-    const useBeat = m5BeatHasPattern() && m5CanRouteBeat();
-    m5R = { gen, src: useBeat ? 'beat' : 'demo', timer: 0, meterT: 0, step: 0, nextT: t + 0.06, loops: [],
-        beat: false, beatT0: 0, refSince: m5V.ref ? performance.now() : 0 };
+    const src = m5SrcEff(), useBeat = src === 'beat';
+    m5R = { gen, src, timer: 0, meterT: 0, step: 0, nextT: t + 0.06, loops: [], pend: [], cass: null,
+        loading: false, fail: false, beat: false, beatT0: 0, refSince: m5V.ref ? performance.now() : 0 };
     m5M = m5NewMeas(t);
+    m5TutWin();
     A.mon.gain.cancelScheduledValues(t); A.mon.gain.setTargetAtTime(1, t, 0.03);
     if (useBeat) {
         try {
@@ -14146,7 +14362,11 @@ function m5Start() {
             console.warn('[lab] m5 beat:', e); m5RouteDefault();
             m5R.src = 'demo'; m5Sched(gen);
         }
-    } else m5Sched(gen);
+    } else {
+        // Beat'ten başka kaynağa geçildiyse beatOut'u durmuş Beat'in kuyrukları sönünce varsayılana döndür
+        if (m5Routed) m5DefT = setTimeout(() => { m5DefT = null; if (!m5R || !m5R.beat) m5RouteDefault(); }, M5_ROUTE_MS);
+        if (src === 'cass') m5StartCass(gen); else m5Sched(gen);
+    }
     m5R.meterT = setTimeout(() => m5Meter(gen), 120);
     m5PaintPlay();
     m5PaintMeter();
@@ -14166,12 +14386,41 @@ function m5Stop() {
         const t = E.ctx.currentTime;
         E.A.mon.gain.cancelScheduledValues(t); E.A.mon.gain.setTargetAtTime(0, t, 0.03);
         if (R) R.loops.forEach(s => { try { s.stop(t + 0.15); } catch {} });
+        // Cassianism: lookahead'de planlanmış ama başlamamış vuruşlar susar; stem düğümleri rampadan sonra ayrılır
+        if (R && R.pend) R.pend.forEach(v => { if (v.t > t + 0.003) { try { v.s.stop(t); } catch {} } });
+        if (R && R.cass) { const ns = R.cass.nodes; setTimeout(() => ns.forEach(n => { try { n.disconnect(); } catch {} }), 250); }
     }
+    m5Tut.lufs = false;
     clearTimeout(m5DefT); m5DefT = null;
     if (m5Routed) { const g = m5Gen; m5DefT = setTimeout(() => { m5DefT = null; if (m5Gen === g) m5RouteDefault(); }, M5_ROUTE_MS); }
     if (m5U) { m5PaintPlay(); m5PaintMeter(); }
 }
 function m5Toggle() { if (m5R) m5Stop(); else m5Start(); }
+// ── Kaynak / SOLO / LISTEN ───────────────────────────────────────────
+function m5BeatOk() { return m5BeatHasPattern() && m5CanRouteBeat(); }
+// Etkin kaynak: 'beat' seçili ama pattern boşsa demo (Beat Maker'da pattern silinmiş olabilir)
+function m5SrcEff() { return m5V.src === 'beat' && !m5BeatOk() ? 'demo' : m5V.src; }
+function m5SetSource(v) {
+    if (M5_SRCS.indexOf(v) < 0) return;
+    if (v === 'beat' && !m5BeatOk()) { m5PaintSrc(); lpAnnounce(L('lab_m5_src_t_boff')); return; }
+    m5V.srcPicked = true;
+    if (m5V.src === v) return;
+    m5V.src = v;
+    // Çalarken kaynak değişimi: durdur + yeni kaynakla başlat (ölçüm yeni malzeme için sıfırlanır)
+    if (m5R) { m5Stop(); m5Start(); }
+    m5PaintSrc(); m5PaintMeter();
+}
+function m5SetSolo(k) {
+    m5V.solo = m5V.solo === k ? null : k;
+    m5Apply(); m5TutWin(); m5PaintSolo();
+}
+function m5SetBand(i) {
+    m5V.band = m5V.band === i ? null : i;
+    if (m5V.band != null && m5R) m5Tut.bandHeard = true;
+    m5Apply(); m5TutWin(); m5PaintSolo();
+}
+// Öğretici ölçüm pencerelerini sıfırla (parametre / kaynak değişince: "şimdiki ayarla" ölçülsün)
+function m5TutWin() { m5Tut.tpS = -Infinity; m5Tut.tpN = 0; m5Tut.corrN = 0; }
 function m5Destroy(E) {
     // Monitör rampası (30 ms) bitince bütün düğümleri ayır — tek seferlik, kendini bitiren zamanlayıcı
     setTimeout(() => E.A.all.forEach(n => { try { n.disconnect(); } catch {} }), 150);
@@ -14214,10 +14463,11 @@ function m5Meter(gen) {
     const R = m5R, E = m5E;
     if (!R || R.gen !== gen || !E) return;
     const A = E.A, m = m5M, now = E.ctx.currentTime, p = m5P;
-    const [kl, kr, al, ar, rl, rr] = A.buf;
+    const [kl, kr, al, ar, rl, rr, dl, dr] = A.buf;
     A.kL.getFloatTimeDomainData(kl); A.kR.getFloatTimeDomainData(kr);
     A.aL.getFloatTimeDomainData(al); A.aR.getFloatTimeDomainData(ar);
     A.rL.getFloatTimeDomainData(rl); A.rR.getFloatTimeDomainData(rr);
+    A.dL.getFloatTimeDomainData(dl); A.dR.getFloatTimeDomainData(dr);
     // 1–2: z = ort(L²) + ort(R²); M = son 0.4 s, S = son 3 s
     m.blocks.push([now, m5Msq(kl) + m5Msq(kr)]);
     while (m.blocks.length && now - m.blocks[0][0] > 3) m.blocks.shift();
@@ -14256,8 +14506,8 @@ function m5Meter(gen) {
     // Modül kapalıyken son değerler tutulur.
     const ka = 1 - Math.exp(-0.08 / 0.6), kb = 1 - Math.exp(-0.08 / 2), z = m.blocks[m.blocks.length - 1][1];
     const eff = (acc, gr) => { acc[0] += (z * Math.pow(10, gr / 10) - acc[0]) * kb; acc[1] += (z - acc[1]) * kb; };
-    if (p.glue.on) { E.gS += (m.gG - E.gS) * ka; if (z > 1e-9) eff(E.gE, m.gG); }
-    if (p.mb.on) m.gB.forEach((v, i) => { E.bS[i] += (v - E.bS[i]) * ka; if (z > 1e-9) eff(E.bE[i], v); });
+    if (m5On('glue')) { E.gS += (m.gG - E.gS) * ka; if (z > 1e-9) eff(E.gE, m.gG); }
+    if (m5On('mb')) m.gB.forEach((v, i) => { E.bS[i] += (v - E.bS[i]) * ka; if (z > 1e-9) eff(E.bE[i], v); });
     m.gGs = E.gS; m.gBs = E.bS.slice();
     m.hist.push(m.S); if (m.hist.length > 150) m.hist.shift();
     m.grH.push(m.gL); if (m.grH.length > 120) m.grH.shift();
@@ -14275,15 +14525,32 @@ function m5Meter(gen) {
     m.refB.push([now, m5Msq(rl) + m5Msq(rr)]);
     while (m.refB.length && now - m.refB[0][0] > 3) m.refB.shift();
     const rS = m5Lu(avg(m.refB, 3));
-    if (isFinite(rS) && isFinite(m.S)) { m.refMatch = lpClamp(m.S - rS, -24, 6); if (m5V.ref) m5Monitor(); }
+    if (isFinite(rS) && isFinite(m.S)) m.refMatch = lpClamp(m.S - rS, -24, 6);
+    // GAIN MATCH: kuru mix'in 3 s LUFS'u işlenmiş S'ye çekilir (+18 dB'ye kadar; tepeler drySafe'te)
+    m.dryB.push([now, m5Msq(dl) + m5Msq(dr)]);
+    while (m.dryB.length && now - m.dryB[0][0] > 3) m.dryB.shift();
+    const dS = m5Lu(avg(m.dryB, 3));
+    if (isFinite(dS) && isFinite(m.S)) m.dryMatch = lpClamp(m.S - dS, -12, 18);
+    if (m5V.ref || (m5V.byp && m5V.match)) m5Monitor();
     // 10: görevler (TASKS[5] sırası: 1 hedef · 6 true peak · 7 glue · 8 REF · 4 limiter kapalı)
     const el = now - m.t0, tnow = performance.now();
     if (p.glue.on && m.gGs >= 1 && m.gGs <= 3) m.glueOk++; else m.glueOk = 0;
-    if (el > 5 && m.I != null && Math.abs(m.I - M5_PL[m5V.plat].lufs) <= 1 && !m5V.ref && !m5V.byp) m5Flag(0);
+    const full = !m5V.ref && !m5V.byp && !m5V.solo && m5V.band == null;   // duyulan = tam master
+    const onT = el > 5 && m.I != null && Math.abs(m.I - M5_PL[m5V.plat].lufs) <= 1 && full;
+    if (onT) m5Flag(0);
     if (el > 3 && p.lim.on && p.lim.tp && m.tpMax <= -1 && m.tpMax > -40) m5Flag(1);
     if (m.glueOk > 25) m5Flag(2);
     if (m5V.ref && R.refSince && tnow - R.refSince > 2000) m5Flag(3);
     if (!p.lim.on && el > 1) m5Flag(4);
+    // Öğretici izleri ("Mastering zinciri" adımlarının check()'leri okur)
+    const T = m5Tut;
+    T.lufs = onT;
+    if (m5V.byp && m5V.match) T.bypN++;
+    else if (T.bypN >= 19) T.byp = true;          // ≥ 1.5 s seviye eşli bypass dinlendi, sonra kapatıldı
+    else T.bypN = 0;
+    if (m5V.band != null) T.bandHeard = true;
+    T.corrEma += (m.corr - T.corrEma) * 0.15; T.corrN++;
+    if (el > 0.5 && m5On('lim')) { T.tpS = Math.max(T.tpS, tL, tR); T.tpN++; }
     if (m5U) m5PaintMeter();
     R.meterT = setTimeout(() => m5Meter(gen), 80);
 }
@@ -14355,6 +14622,7 @@ function m5GrabTouch(el) { el.addEventListener('touchstart', e => { if (e.cancel
 // Parametre değişti: ses + çizim (+ preset "değiştirildi" işareti)
 function m5Changed(quiet) {
     m5Apply();
+    m5TutWin();
     if (!m5U) return;
     m5PaintParams();
     if (!quiet) { m5V.mod = true; m5U.pb.setModified(true); }
@@ -14608,6 +14876,7 @@ function m5PaintSys() {
 }
 function m5PaintPlay() {
     const u = m5U; if (!u) return;
+    m5PaintSrc();
     const on = !!m5R;
     u.play.setAttribute('aria-pressed', String(on));
     u.play.classList.toggle('is-on', on);
@@ -14675,8 +14944,10 @@ function m5PaintMeter() {
         else { st = 'low'; txt = Lf('lab_m5_st_low', { d: (-diff).toFixed(1) }); }
         if (m.tpMax > p.lim.ceil + 0.3) txt += Lf('lab_m5_st_tp', { v: m5Num(m.tpMax, 1), fix: L(p.lim.tp ? 'lab_m5_st_tp_ceil' : 'lab_m5_st_tp_on') });
         if (on && m.gL > 6) txt += L('lab_m5_st_lim');
-    } else if (on) { st = 'wait'; txt = L('lab_m5_st_wait'); }
-    else txt = L('lab_m5_st_idle') + L(m5BeatHasPattern() && m5CanRouteBeat() ? 'lab_m5_src_beat' : 'lab_m5_src_demo');
+    } else if (on) { st = 'wait'; txt = L(m5R.loading ? 'lab_m5_st_load' : 'lab_m5_st_wait'); }
+    else txt = L('lab_m5_st_idle') + L({ demo: 'lab_m5_src_demo', beat: 'lab_m5_src_beat', cass: 'lab_m5_src_cass' }[m5SrcEff()]);
+    if (on && m5R.fail) txt += L('lab_m5_st_fail');
+    if (on && (m5V.solo || m5V.band != null)) txt += L('lab_m5_st_solo');
     if (u.status.dataset.state !== st) {
         u.status.dataset.state = st; u.intBox.dataset.state = st; u.lHist.dataset.state = st;
         u.statusIc.hidden = st !== 'ok';
@@ -14699,7 +14970,8 @@ function m5PaintMeter() {
 function renderModule5() {
     const { root, top, main } = modLayout(5);
     root.classList.add('lab-m5');
-    const u = m5U = { knobs: [], panels: {}, pushT: 0 };
+    const u = m5U = { knobs: [], panels: {}, pushT: 0, solos: {}, lis: [] };
+    if (!m5V.srcPicked) m5V.src = m5BeatOk() ? 'beat' : 'demo';   // seçilmediyse bugünkü davranış
     u.hist = makeHistory({ get: () => m5P, apply: s => { m5P = m5Sanitize(s); m5Changed(); } });
 
     // ── Pencere + başlık çubuğu ──────────────────────────────────────
@@ -14727,6 +14999,7 @@ function renderModule5() {
     u.playIc = mk('span', 'm5-play-ic'); u.playTx = mk('span');
     u.play.append(u.playIc, u.playTx);
     u.play.addEventListener('click', m5Toggle);
+    u.play.setAttribute('aria-keyshortcuts', 'Space'); lpTr(u.play, 'title', () => L('lab_m5_play_t'));
     if (!(window.AudioContext || window.webkitAudioContext)) u.play.disabled = true;
     win.center.append(vdiv(), u.ref.el, u.byp.el, u.play);
     // KAYDET → satır içi ad alanı (prompt() yok: uygulama içi WebView'ler onu bastırabiliyor)
@@ -14763,6 +15036,11 @@ function renderModule5() {
             power: { on: m5P[key].on, label: Lf('lab_m5_pwr', { name: title.replace(/^\d+ · /, '') }),
                 onToggle: b => { u.hist.push(); m5P[key].on = b; m5Changed(); } },
         }, extra));
+        // SOLO (Ozone modül solo'su): yalnız bu modül işler, ayar değişmez
+        const name = title.replace(/^\d+ · /, '');
+        const so = lpBtn({ text: 'S', cls: 'm5-solo', label: () => Lf('lab_m5_solo_a', { name }), title: () => L('lab_m5_solo_t'), onClick: () => m5SetSolo(key) });
+        P.actions.append(so);
+        u.solos[key] = so;
         u.panels[key] = P;
         return P;
     };
@@ -14847,9 +15125,18 @@ function renderModule5() {
     M5_MBC.forEach((c, i) => {
         const box = mk('div', 'm5-mbb'); box.style.setProperty('--c', c);
         const nm = ['LOW', 'MID', 'HIGH'][i];
-        box.append(
+        // LISTEN (bant solo'su, kulaklık)
+        const lis = mk('button', 'm5-lis', M5_HP_IC); lis.type = 'button';
+        lpTr(lis, 'aria-label', () => Lf('lab_m5_lis_a', { b: nm })); lpTr(lis, 'title', () => L('lab_m5_lis_t'));
+        lis.addEventListener('click', () => m5SetBand(i));
+        u.lis[i] = lis;
+        const bh = mk('div', 'm5-mbh'), bn = mk('span', 'm5-mbn'); bn.textContent = nm; bn.setAttribute('aria-hidden', 'true');
+        bh.append(bn, lis);
+        const kr = mk('div', 'm5-mbkr');
+        kr.append(
             m5Knob(u, `mb.b.${i}.0`, { label: 'THR', aria: `MB ${nm} THR`, min: -40, max: 0, step: 0.5, size: 44, fmt: v => m5Num(v, 1), color: c }).el,
             m5Knob(u, `mb.b.${i}.1`, { label: 'GAIN', aria: `MB ${nm} GAIN`, min: -6, max: 6, step: 0.1, bipolar: true, size: 44, fmt: m5Sg, color: c }).el);
+        box.append(bh, kr);
         mbk.append(box);
     });
     mb.el.append(mbd, mbk);
@@ -14912,6 +15199,7 @@ function renderModule5() {
         m5PaintMeter();
     } });
     const loud = makePanel({ title: 'LOUDNESS', led: false, info: 'BS.1770 · K-WEIGHTED', actions: [rst], cls: 'm5-loud', tag: 'h3' });
+    u.loud = loud.el;
     const plats = mk('div', 'm5-plats'); plats.setAttribute('role', 'group');
     plats.setAttribute('data-i18n-aria', 'lab_m5_plat_aria'); plats.setAttribute('aria-label', L('lab_m5_plat_aria'));
     u.plats = M5_PL.map((pl, i) => {
@@ -14958,7 +15246,7 @@ function renderModule5() {
     u.status.append(u.statusIc, u.statusTxt, u.statusSr);
     loud.el.append(plats, u.intBox, ros, hd, u.status, m5T('p', 'm5-lnote', 'lab_m5_loud_note'));
     grid.append(rack, loud.el);
-    win.body.append(grid);
+    win.body.append(m5BuildSrcBar(u), grid);
     top.append(win.root);
 
     // ── Çalışma mantığı ──────────────────────────────────────────────
@@ -15015,12 +15303,70 @@ function renderModule5() {
     labOnRefresh(root, m5Relabel);
     _m5StopAudio = m5Teardown;
 
-    m5PaintParams(); m5PaintPlay(); m5PaintPlat(); m5PaintTools(); m5PaintMeter();
+    // Öğretici "Mastering zinciri" → eklentinin ikinci araç satırı (kaynak şeridi) sağında: başlık çubuğu
+    // 1440 px'te tasarımdaki tek satırı dolduruyor, düğme orada çubuğu ikiye sarardı.
+    u.tut = m5MakeTutorial();
+    u.tutBtn = makeTutorialButton(u.tut);
+    u.srcBar.append(u.tutBtn.el);
+
+    // Boşluk = çal/durdur (odak modülün içindeyken; metin alanı ve Boşluk'la etkinleşen denetimler hariç).
+    // Pencere tıklanınca odak ona geçsin diye tabindex −1 (Tab sırasına girmez).
+    win.root.tabIndex = -1;
+    root.addEventListener('keydown', m5SpaceKey);
+
+    m5PaintParams(); m5PaintPlay(); m5PaintPlat(); m5PaintTools(); m5PaintMeter(); m5PaintSrc(); m5PaintSolo();
     requestAnimationFrame(m5HitSize);
     m5LoadUser(false);
     return root;
 }
 
+// ── Kaynak şeridi (eklenti gövdesinin üstü): KAYNAK seçici · bilgi · GAIN MATCH ──
+function m5BuildSrcBar(u) {
+    const bar = u.srcBar = mk('div', 'm5-srcbar');
+    const cap = mk('span', 'm5-cap2 m5-src-cap'); lpTr(cap, 'text', () => L('lab_m5_src_cap')); cap.setAttribute('aria-hidden', 'true');
+    u.srcSeg = makeSeg(M5_SRCS.map(v => ({ value: v, label: () => L('lab_m5_src_o_' + v) })), m5SrcEff(), v => m5SetSource(v),
+        { size: 'md', label: () => L('lab_m5_src_aria'), cls: 'm5-src' });
+    // Pattern boşken BEAT MAKER seçilemez (aria-disabled): tık hedefe ulaşmadan yakalanır
+    u.srcSeg.el.addEventListener('click', e => {
+        const b = e.target.closest && e.target.closest('.lp-seg-b');
+        if (b && b.getAttribute('aria-disabled') === 'true') { e.stopPropagation(); e.preventDefault(); lpAnnounce(L('lab_m5_src_t_boff')); }
+    }, true);
+    u.srcMeta = mk('span', 'm5-src-m');
+    const sp = mk('span', 'm5-src-sp'); sp.setAttribute('aria-hidden', 'true');
+    u.match = makeToggle({ text: () => L('lab_m5_match'), led: true, color: 'var(--m5-eq)', title: () => L('lab_m5_match_t'), on: m5V.match, cls: 'm5-match',
+        onToggle: b => { m5V.match = b; m5Monitor(); } });
+    bar.append(cap, u.srcSeg.el, u.srcMeta, sp, u.match.el);
+    return bar;
+}
+function m5PaintSrc() {
+    const u = m5U; if (!u || !u.srcSeg) return;
+    const ok = m5BeatOk(), cur = m5SrcEff();
+    u.srcSeg.set(cur);
+    u.srcSeg.buttons.forEach((b, i) => {
+        const v = M5_SRCS[i], off = v === 'beat' && !ok;
+        if (off) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
+        b.title = L(off ? 'lab_m5_src_t_boff' : 'lab_m5_src_t_' + v);
+    });
+    u.srcMeta.textContent = m5R && m5R.loading ? L('lab_m5_src_load')
+        : cur === 'beat' ? Lf('lab_m5_src_m_beat', { bpm: Math.round(+state.bpm || 125) }) : L('lab_m5_src_m_' + cur);
+}
+function m5PaintSolo() {
+    const u = m5U; if (!u) return;
+    Object.keys(u.solos).forEach(k => {
+        u.solos[k].setAttribute('aria-pressed', String(m5V.solo === k));
+        u.panels[k].el.classList.toggle('is-solo-out', !!m5V.solo && m5V.solo !== k);
+    });
+    u.lis.forEach((b, i) => { b.setAttribute('aria-pressed', String(m5V.band === i)); b.closest('.m5-mbb').classList.toggle('is-listen', m5V.band === i); });
+}
+// Boşluk = transport (DAW): odak modülde, metin alanında değil, Boşluk'u kendisi kullanan denetimde değil
+function m5SpaceKey(e) {
+    if (e.key !== ' ' || e.defaultPrevented || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    const t = e.target;
+    if (!t || !t.closest || t.closest('input, textarea, select, [contenteditable], button, a[href], summary, [role="option"], [role="listbox"], [role="checkbox"], [role="menuitem"], [role="switch"], [role="button"]')) return;
+    if (!(window.AudioContext || window.webkitAudioContext)) return;
+    e.preventDefault();
+    m5Toggle();
+}
 function m5PaintTools() {
     const u = m5U; if (!u) return;
     u.tools.forEach((t, i) => { const open = m5V.tool === i; t.b.setAttribute('aria-expanded', String(open)); t.tp.hidden = !open; });
@@ -15044,6 +15390,7 @@ function m5Relabel() {
     u.xovers.forEach(x => x.g.setAttribute('aria-label', L(x.g.dataset.ak)));
     u.statusSr.textContent = '';
     u.status.dataset.state = '';                       // durum metni yeniden yazılsın
+    m5PaintSrc(); m5PaintSolo();
     u.tasks.querySelectorAll('.lab-task-text').forEach((s, i) => { if (TASKS[5][i]) s.textContent = TASKS[5][i].text; });
     m5PaintParams(); m5PaintPlay(); m5PaintPlat(); m5PaintMeter();
     m5LoadUser(false);
@@ -15132,9 +15479,46 @@ async function m5SavePreset(raw) {
     m5NameClose();
     const btn = u.save, sp = btn.querySelector('span');
     btn.setAttribute('aria-disabled', 'true');
-    try { await saveMasterPreset(name.slice(0, 60), m5P); sp.textContent = L('lab_m5_save_ok'); m5LoadUser(true); }
+    try { await saveMasterPreset(name.slice(0, 60), m5P); sp.textContent = L('lab_m5_save_ok'); m5Tut.saved = true; m5LoadUser(true); }
     catch (e) { console.warn('[lab] m5 kaydet:', e); sp.textContent = L('lab_m5_save_err'); }
     setTimeout(() => { if (!btn.isConnected) return; btn.removeAttribute('aria-disabled'); sp.textContent = L('lp_save'); }, 1400);
+}
+
+// ── Öğretici: "Mastering zinciri" (labTutorial; adımlar gerçek kontrolleri hedefler, check() canlı durumdan) ──
+// Adım kimlikleri kalıcıdır (5-tut-chain-<id>); anlamı değişen adım YENİ id alır. Hedefler m5U'dan her tikte
+// yeniden çözülür → dil değişimi / yerinde tazeleme / yeniden kurulumdan sonra da doğru öğe halkalanır.
+function m5MakeTutorial() {
+    const K = (n, x) => `lab_m5_tut${n}_${x}`;
+    const P = k => () => m5U && m5U.panels[k] ? m5U.panels[k].el : null;
+    const st = (n, id, target, check, o) => Object.assign({ id, target, check, title: K(n, 'h'), body: K(n, 'b'), ableton: K(n, 'a') }, o);
+    const mbThr = () => JSON.stringify(m5P.mb.b.map(b => b[0]));
+    return labTutorial({
+        mid: 5, id: 'chain', title: 'lab_m5_tut_t', intro: 'lab_m5_tut_i', outro: 'lab_m5_tut_o',
+        steps: [
+            st(1, 'source', () => m5U && m5U.srcSeg.el, () => !!m5R && m5R.src === 'cass' && !m5R.loading),
+            st(2, 'bypass', () => m5U && m5U.byp.el, () => m5Tut.byp,
+                { onEnter: () => { m5Tut.byp = false; m5Tut.bypN = 0; } }),
+            st(3, 'eq', P('eq'), () => {
+                const e = m5P.eq;
+                return e.on && e.hpf >= 20 && e.hpf <= 45 && JSON.stringify(e.b) !== m5Tut.eqSnap && e.b.every(b => Math.abs(b[1]) <= 3);
+            }, { hint: K(3, 'n'), onEnter: () => { m5Tut.eqSnap = JSON.stringify(m5P.eq.b); } }),
+            st(4, 'glue', P('glue'), () => !!m5R && m5On('glue') && m5M.glueOk > 25),
+            st(5, 'multiband', P('mb'), () => !!m5R && !!m5E && m5Tut.bandHeard && m5On('mb') && mbThr() !== m5Tut.mbSnap
+                && m5E.bS.some(v => v >= 0.5 && v <= 4),
+                { hint: K(5, 'n'), onEnter: () => { m5Tut.mbSnap = mbThr(); m5Tut.bandHeard = false; } }),
+            st(6, 'width', P('st'), () => !!m5R && m5On('st') && m5P.st.w !== m5Tut.wSnap && m5P.st.w >= 80 && m5P.st.w <= 140
+                && m5Tut.corrN >= 19 && m5Tut.corrEma >= 0.3,
+                { onEnter: () => { m5Tut.wSnap = m5P.st.w; } }),
+            st(7, 'ceiling', P('lim'), () => {
+                const l = m5P.lim;
+                return !!m5R && m5On('lim') && l.tp && l.ceil <= -1 + 1e-6 && m5Tut.tpN >= 38 && m5Tut.tpS <= -1;
+            }, { onEnter: () => m5TutWin() }),
+            st(8, 'lufs', () => m5U && m5U.loud, () => !!m5R && m5Tut.lufs, { hint: K(8, 'n'), placement: 'left' }),
+            st(9, 'ref', () => m5U && m5U.ref.el, () => !!m5R && m5V.ref && !!m5R.refSince && performance.now() - m5R.refSince > 2000),
+            st(10, 'save', () => m5U && m5U.save, () => m5Tut.saved,
+                { hint: K(10, 'n'), onEnter: () => { m5Tut.saved = false; } }),
+        ],
+    });
 }
 
 // ── "Çalışma mantığı" (howItWorks; dil değişiminde yerinde yeniden kurulur) ──
@@ -15143,7 +15527,7 @@ function m5HiwOpts() {
         st: 'var(--m5-st)', lim: 'var(--err-strong)', mb: 'var(--m5-mb)', mut: 'var(--fg-muted)' };
     const bx = (id, x, y, t, s, c, w, h) => ({ id, x, y, w: w || 92, h: h || 40, t, s, c });
     const nodes = [
-        bx('mix', 6, 60, 'MIX BUS', 'Gain (voices)', C.soft), bx('hpf', 118, 60, 'HPF', 'Biquad HP', C.eq),
+        bx('mix', 6, 60, 'MIX BUS', 'DEMO·BEAT·CASS', C.soft), bx('hpf', 118, 60, 'HPF', 'Biquad HP', C.eq),
         bx('eq', 230, 60, 'EQ ×5', L('lab_m5_fl_eq'), C.eq), bx('glue', 342, 60, 'GLUE', 'DynComp+Gain', C.acc),
         bx('lo', 454, 14, 'LOW', 'LP·LP·AP', C.emb, 92, 34), bx('mid', 454, 63, 'MID', 'HP·HP·LP·LP', C.acc, 92, 34),
         bx('hi', 454, 112, 'HIGH', 'HP·HP·HP·HP', C.eq, 92, 34), bx('st', 566, 60, 'STEREO', 'Split→4 Gain', C.st),
@@ -15165,7 +15549,7 @@ function m5HiwOpts() {
         { x: 600, y: 30, t: L('lab_m5_fl_dry') }, { x: 420, y: 227, t: L('lab_m5_fl_refn'), c: C.eq },
         { x: 790, y: 152, t: L('lab_m5_fl_meas'), c: C.acc },
     ];
-    const steps = [['s1', C.eq], ['s2', C.acc], ['s3', C.mb], ['s4', C.st], ['s5', C.lim], ['s6', C.lim], ['s7', C.mut], ['s8', C.eq]]
+    const steps = [['s1', C.eq], ['s2', C.acc], ['s3', C.mb], ['s4', C.st], ['s5', C.lim], ['s6', C.lim], ['s7', C.mut], ['s8', C.eq], ['s9', C.soft], ['s10', C.mb]]
         .map(([k, c]) => ({ t: L(`lab_m5_${k}_t`), d: L(`lab_m5_${k}_d`), c }));
     // LUFS kutusu: 7 satır (numara · formül · açıklama)
     const lufs = mk('ol', 'm5-lufs');
