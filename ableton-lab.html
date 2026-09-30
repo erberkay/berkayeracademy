@@ -1043,6 +1043,8 @@
             --m1-l-soft:rgba(180,140,242,.12);  /* tasarım: LFO cutoff bandı, MOD şeridi dolgusu */
             --m1-key-w:#ece6da;                 /* tasarım: beyaz tuş yüzü (degrade → düz) */
             --m1-key-sh:rgba(0,0,0,.14);        /* tasarım: beyaz tuş alt gölgesi */
+            --m1-key-out:#bdb6a9;               /* gam dışı beyaz tuş (üstündeki --fg-off harf 4.6:1) */
+            --m1-root:#a34e14;                  /* beyaz tuşta kök noktası (--m1-key-w üstünde 4.5:1) */
         }
         .lab-m1 .lp-win { --lp-win-r:var(--r-18); --lp-bar-h:64px; }
         .lab-m1 .lp-win.is-off .lp-body { opacity:.6; transition:opacity var(--dur); }
@@ -1138,13 +1140,33 @@
         .lab-m1-wk.is-on, .lab-m1-bk.is-on { background:var(--accent); color:var(--accent-ink); box-shadow:0 0 16px var(--accent-glow); }
         .lab-m1-kl, .lab-m1-kc { pointer-events:none; }
 
+        /* SCALE şeridi (klavyenin üstü): SCALE · kök · gam · KİLİT · gam notaları */
+        .lab-m1-kbcol { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+        .lab-m1-scale { display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; min-width:0; }
+        .lab-m1 .lab-m1-sel--root { width:62px; }
+        .lab-m1 .lab-m1-sel--type { width:190px; }
+        .lab-m1-scn { flex:1 1 140px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right; font-family:var(--ff-mono); font-size:10px; letter-spacing:.12em; color:var(--fg-3); }
+        /* Gam işaretleri: gamdaki tuşta nokta (kök turuncu, büyük), gam dışı koyu; kilitte gam dışı kapalı */
+        .lab-m1-kb.is-scale .lab-m1-wk.is-out { background:var(--m1-key-out); box-shadow:inset 0 -5px 0 var(--m1-key-sh); }
+        .lab-m1-kb.is-scale .lab-m1-bk.is-out { background:var(--bg); }
+        .lab-m1-kb.is-scale .is-in::before { content:''; position:absolute; top:86px; left:50%; width:6px; height:6px; margin-left:-3px; border-radius:var(--r-pill); background:var(--accent-ink); pointer-events:none; }
+        .lab-m1-kb.is-scale .lab-m1-bk.is-in::before { top:10px; background:var(--accent); }
+        .lab-m1-kb.is-scale .is-root::before { width:10px; height:10px; margin-left:-5px; background:var(--m1-root); }
+        .lab-m1-kb.is-scale .lab-m1-bk.is-root::before { background:var(--ember-2); }
+        .lab-m1-kb.is-scale .is-on::before { background:var(--accent-ink); }
+        .lab-m1-kb.is-lock .is-out { cursor:not-allowed; }
+        .lab-m1-kb.is-lock .is-out:active { transform:none; }
+
         /* Çalışma mantığı + yan panel */
         .lab-m1-hiw .lp-hiw-aux { color:var(--accent); letter-spacing:.2em; }
         .lab-m1 .lab-where-list li { display:flex; flex-direction:column; gap:3px; padding:9px 10px; border-radius:var(--r-9); background:var(--bg); border:1px solid var(--line-faint); font-size:12px; line-height:1.5; }
         .lab-m1 .lab-where-list strong { font-family:var(--ff-mono); font-size:10px; font-weight:400; letter-spacing:.12em; color:var(--accent); }
         .lab-m1 .lab-where-path { padding:0; background:none; font-size:10px; line-height:1.6; }
 
-        @media (min-width:1025px) { .lab-m1 .lp-brand { width:206px; } }
+        /* Pencere en çok ~1310 px: KAYDET + öğretici + MIDI eklenince başlık çubuğu tek satırda kalsın diye
+           masaüstünde tahmini DSP okuması gizlenir (≤1024 satırlar sarılır, orada görünür) */
+        @media (min-width:1025px) { .lab-m1 .lp-bar { gap:10px; } .lab-m1 .lab-m1-ro-dsp { display:none; } }
+        @media (max-width:600px) { .lab-m1 .lab-m1-ro-dsp { display:none; } }
         @media (max-width:1279px) {
             .lab-m1-grid { grid-template-columns:repeat(2, minmax(0,1fr)); grid-template-areas:"c c" "l r"; }
             .lab-m1-col--l { grid-area:l; } .lab-m1-col--c { grid-area:c; } .lab-m1-col--r { grid-area:r; }
@@ -1157,7 +1179,7 @@
             .lab-m1-grid { grid-template-columns:minmax(0,1fr); grid-template-areas:"l" "c" "r"; }
             .lab-m1-rack { grid-template-columns:minmax(0,1fr); }
             .lab-m1 .lab-m1-play { flex-wrap:wrap; }
-            .lab-m1-kb { flex:1 1 100%; }
+            .lab-m1-kbcol { flex:1 1 100%; }
             .lab-m1-ctl { flex:1; }
         }
         @media (max-width:600px) {
@@ -1168,6 +1190,8 @@
             .lab-m1 .lab-m1-play { padding-inline:8px; }
             .lab-m1-whites { gap:1px; }
             .lab-m1-bk { width:44px; margin-left:-22px; }
+            .lab-m1 .lab-m1-sel--type { width:auto; flex:1 1 150px; }
+            .lab-m1-scn { flex-basis:100%; text-align:left; }
             .lab-m1-dest { margin-left:0; }
             .lab-m1-ctl { width:auto; flex-direction:row; flex-wrap:wrap; justify-content:flex-start; align-items:center; gap:10px 16px; }
             .lab-m1 .lp-bar-r { justify-content:space-between; }
@@ -2482,18 +2506,20 @@ const state = {
     osc2: { enabled:false, wave:'square',   octave:0, semi:0, detune:7, unison:1, uniDetune:12, uniWidth:0.5, mix:0.5, pan:0 },
     sub:   { enabled:false, level:0, wave:'sine', octave:-1 },           // wave: sine|square, octave: -1|-2
     noise: { enabled:false, level:0, tone:8000 },                        // tone = noise lowpass Hz
-    filter:{ type:'lowpass', slope:12, cutoff:8000, resonance:1, drive:0 }, // drive 0..1 (filtre öncesi)
+    filter:{ type:'lowpass', slope:12, cutoff:8000, resonance:1, drive:0, on:true }, // drive 0..1 (filtre öncesi) · on = ⏻ (kapalı: allpass)
     filterEnv:{ amount:0 },                                              // -100..+100 (±4 oktav, MOD ENV şekli)
     adsr:  { attack:0.01, decay:0.3, sustain:0.7, release:0.4 },
     modEnv:{ attack:0.01, decay:0.4, sustain:0, release:0.3, pitchAmount:0 }, // pitchAmount: ±24 st
     lfo:   { rate:4, wave:'sine', sync:false, div:'1/8', dest:'cutoff', amount:0 }, // dest: cutoff|pitch|amp|pan
-    fx:    { dist:0, delaySync:'1/8.', delayTime:0.36, delayFeedback:0.3, delayWet:0, reverbSize:2, reverbWet:0.1 },
+    fx:    { dist:0, delaySync:'1/8.', delayTime:0.36, delayFeedback:0.3, delayWet:0, reverbSize:2, reverbWet:0.1,
+             distOn:true, delayOn:true, revOn:true },                   // *On = raf modülü ⏻ (Serum FX gibi)
     master: 0.7, glide:0, poly:'poly',
     volume: 0.25,                            // voice tepe seviyesi (sabit); kullanıcı seviyesi state.master
     keyboardOctave:4,                        // Modül 1 klavyesinin başlangıç oktavı (1…6)
     pitchBend:0, modWheel:0,                 // çalım kontrolleri (patch'e yazılmaz)
     // Arayüz: SCOPE/SPECTRUM, güç, tarayıcıdaki preset ('u:<id>' kullanıcı) + değiştirildi (*)
-    synthUi: { view:'scope', power:true, presetId:null, dirty:false },
+    // scale: çalım gamı (patch'e yazılmaz; Live 12 Scale Mode / Push In Key gibi) — kişisel, localStorage
+    synthUi: { view:'scope', power:true, presetId:null, dirty:false, scale:{ on:false, root:9, type:'minor', lock:false } },
     activePreset: null,
     beatPatterns: Array.from({length:5}, () => new Array(16).fill(0)),   // = beat.slots[beat.slot] (aynı dizi)
     beatVolumes: [90,80,60,55,75],           // Beat VOL 0–100 (Genel bakış mixer'ı ve Mixing de okur)
@@ -2698,11 +2724,13 @@ function applySynthParams(init) {
     if (drv !== _synthDrvAmt) { _synthDrvAmt = drv; _synthDrvCurve = drv > 0 ? synthTanh(1 + drv * 9) : null; }
     const dist = +s.fx.dist || 0;
     if (dist !== _synthDistAmt) { _synthDistAmt = dist; distShaper.curve = synthTanh(1 + dist * 24); }
-    T(distWet.gain, dist * 0.8); T(distDry.gain, 1 - dist * 0.8);
+    // Raf ⏻: kapalı modül kuru geçer (DIST), çıkışı kısılır (DELAY: feedback de sıfır → kuyruk söner; REVERB)
+    const dOn = s.fx.distOn !== false, yOn = s.fx.delayOn !== false, rOn = s.fx.revOn !== false;
+    T(distWet.gain, dOn ? dist * 0.8 : 0); T(distDry.gain, dOn ? 1 - dist * 0.8 : 1);
     T(delayNode.delayTime, currentDelaySeconds());
-    T(delayFb.gain, Math.min(0.9, +s.fx.delayFeedback || 0));
-    T(delayWetG.gain, +s.fx.delayWet || 0);
-    T(reverbWetG.gain, (+s.fx.reverbWet || 0) * 1.2);
+    T(delayFb.gain, yOn ? Math.min(0.9, +s.fx.delayFeedback || 0) : 0);
+    T(delayWetG.gain, yOn ? +s.fx.delayWet || 0 : 0);
+    T(reverbWetG.gain, rOn ? (+s.fx.reverbWet || 0) * 1.2 : 0);
     const size = Math.max(0.3, Math.min(6, +s.fx.reverbSize || 2));
     if (size !== _synthIrSize) {
         _synthIrSize = size;
@@ -2734,7 +2762,8 @@ function updateVoice(v, init) {
     T(v.gs.gain, s.sub.enabled !== false ? (+s.sub.level || 0) * 0.8 : 0);
     T(v.gn.gain, s.noise.enabled !== false ? (+s.noise.level || 0) * 0.5 : 0);
     T(v.nf.frequency, +s.noise.tone || 8000);
-    const tp = s.filter.type || 'lowpass', st = +s.filter.slope === 24;
+    // FILTER ⏻ kapalı: iki biquad da allpass (genlik düz; zarf/LFO detune yalnız fazı kaydırır)
+    const fOn = s.filter.on !== false, tp = fOn ? s.filter.type || 'lowpass' : 'allpass', st = fOn && +s.filter.slope === 24;
     if (v.f1.type !== tp) v.f1.type = tp;
     const t2 = st ? tp : 'allpass';
     if (v.f2.type !== t2) v.f2.type = t2;
@@ -3360,6 +3389,7 @@ function synthFilterMag(freqs, cutoff) {
             _synthOffFilt = [oc.createBiquadFilter(), oc.createBiquadFilter()];
         }
         const f = state.filter, tp = f.type || 'lowpass', fc = Math.max(20, Math.min(23900, cutoff || f.cutoff));
+        if (f.on === false) return mag;                                  // ⏻ kapalı: düz yanıt
         const m = new Float32Array(N), ph = new Float32Array(N);
         const [a, b] = _synthOffFilt;
         a.type = tp; a.frequency.value = fc; a.Q.value = synthQ(tp, +f.resonance || 0);
@@ -8777,8 +8807,8 @@ TASKS[1] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(id => ({ id, get text() { return 
 Object.assign(LAB_TXT, {
     // Modül 1 · Synthesizer metinleri: anahtar: [`TR`, `EN`],
     lab_s1_win_aria:     [`BE·SYNTH 01 synthesizer eklentisi`, `BE·SYNTH 01 synthesizer plugin`],
-    lab_s1_hint:         [`BİLGİSAYAR KLAVYESİ ÇALAR · Z / X OKTAV · SHIFT+SÜRÜKLE İNCE AYAR · ÇİFT TIK SIFIRLAR`,
-                          `COMPUTER KEYBOARD PLAYS · Z / X OCTAVE · SHIFT+DRAG FINE-TUNES · DOUBLE-CLICK RESETS`],
+    lab_s1_hint:         [`BİLGİSAYAR KLAVYESİ ÇALAR · Z / X OKTAV · SPACE SUSTAIN / DOKUN ÖNİZLE · SHIFT+SÜRÜKLE İNCE · ÇİFT TIK SIFIRLAR`,
+                          `COMPUTER KEYBOARD PLAYS · Z / X OCTAVE · SPACE SUSTAIN / TAP PREVIEWS · SHIFT+DRAG FINE · DOUBLE-CLICK RESETS`],
     lab_s1_init_t:       [`Başlangıç patch'i: tek saw, açık filtre`, `Initial patch: a single saw, open filter`],
     lab_s1_cat_init:     [`INIT`, `INIT`],
     lab_s1_cat_user:     [`USER`, `USER`],
@@ -8833,8 +8863,8 @@ Object.assign(LAB_TXT, {
     lab_s1_oct_dn:       [`Oktav aşağı`, `Octave down`],
     lab_s1_oct_up:       [`Oktav yukarı`, `Octave up`],
     lab_s1_oct_aria:     [`Klavye oktavı C{n}`, `Keyboard octave C{n}`],
-    lab_s1_kb_aria:      [`Synthesizer klavyesi — A W S E D F T G Y H U J K çalar, Space sustain`,
-                          `Synthesizer keyboard — A W S E D F T G Y H U J K play, Space sustains`],
+    lab_s1_kb_aria:      [`Synthesizer klavyesi — A W S E D F T G Y H U J K çalar (gam kilidinde A–L), Space basılı sustain, dokununca önizleme`,
+                          `Synthesizer keyboard — A W S E D F T G Y H U J K play (A–L in scale lock), hold Space to sustain, tap to preview`],
     lab_s1_where_wt:     [`<strong>WAVETABLE</strong> OSC 1/2 + Sub → Filter 1/2 (12/24, Drive) → Amp. Env 2/3 ve LFO 1/2 Matrix'ten hedefe atanır; Unison = Classic/Shimmer modları.`,
                           `<strong>WAVETABLE</strong> OSC 1/2 + Sub → Filter 1/2 (12/24, Drive) → Amp. Env 2/3 and LFO 1/2 are assigned to targets in the Matrix; Unison = Classic/Shimmer modes.`],
     lab_s1_where_an:     [`<strong>ANALOG</strong> OSC1/OSC2 + Noise → Fil1/Fil2 → Amp1/Amp2. Fil Env = bizim MOD ENV→cutoff; LFO1/2 hedefleri pitch, cutoff, amp.`,
@@ -8919,6 +8949,91 @@ Object.assign(LAB_TXT, {
     lab_t1_8:  [`LFO hedefi CUTOFF, AMOUNT %70 → wobble (SQR + SUB)`, `LFO destination CUTOFF, AMOUNT 70% → wobble (SQR + SUB)`],
     lab_t1_9:  [`ENV AMT %80, MOD ENV Decay 0.4 s — acid sweep`, `ENV AMT 80%, MOD ENV Decay 0.4 s — acid sweep`],
     lab_t1_10: [`Pad preset'inde Reverb MIX %60 — ambient derinlik`, `On the Pad preset, Reverb MIX 60% — ambient depth`],
+    // ── Tur 3: gam (SCALE / LOCK), MIDI, raf ⏻, KAYDET/SİL, Space önizleme ──
+    lab_s1_sc_g:         [`Çalım gamı`, `Play scale`],
+    lab_s1_sc_t:         [`Gam modu: gamdaki tuşları klavyede işaretler (Live 12 Scale Mode)`, `Scale mode: marks the in-key notes on the keyboard (Live 12 Scale Mode)`],
+    lab_s1_sc_root:      [`Gam kökü`, `Scale root`],
+    lab_s1_sc_type:      [`Gam türü`, `Scale type`],
+    lab_s1_lock:         [`KİLİT`, `LOCK`],
+    lab_s1_lock_l:       [`Gam kilidi`, `Scale lock`],
+    lab_s1_lock_t:       [`Gam kilidi (Push "In Key" gibi): A S D F G H J K L sıradaki gam derecelerini çalar, gam dışı tuşlar ve MIDI notaları gama katlanır — yanlış nota yok`,
+                          `Scale lock (like Push "In Key"): A S D F G H J K L play consecutive scale degrees, out-of-key keys and MIDI notes fold into the scale — no wrong notes`],
+    lab_s1_sc_off:       [`GAM KAPALI · KROMATİK`, `SCALE OFF · CHROMATIC`],
+    lab_s1_sc_lockn:     [`A–L = 1.–9. derece`, `A–L = degrees 1–9`],
+    lab_s1_sc_aria:      [`Gamdaki notalar: {n}`, `Notes in the scale: {n}`],
+    lab_s1_key_in:       [`gamda`, `in key`],
+    lab_s1_key_root:     [`kök`, `root`],
+    lab_s1_key_out:      [`gam dışı`, `out of key`],
+    lab_s1_cat_local:    [`YEREL`, `LOCAL`],
+    lab_s1_save_t:       [`Sesi preset olarak kaydet — girişliysen hesabına, değilsen bu tarayıcıya`, `Save the sound as a preset — to your account when signed in, otherwise to this browser`],
+    lab_s1_saved_acc:    [`"{name}" hesabına kaydedildi`, `"{name}" saved to your account`],
+    lab_s1_saved_loc:    [`"{name}" bu tarayıcıya kaydedildi — giriş yapınca hesabına da kaydedebilirsin`, `"{name}" saved to this browser — sign in to save it to your account too`],
+    lab_s1_saved_fb:     [`Hesaba kaydedilemedi — "{name}" bu tarayıcıya kaydedildi`, `Could not save to your account — "{name}" saved to this browser`],
+    lab_s1_deleted:      [`"{name}" silindi`, `"{name}" deleted`],
+    lab_s1_fpow:         [`Filtre açık/kapalı (bypass)`, `Filter on/off (bypass)`],
+    lab_s1_rpow:         [`{name} açık/kapalı (bypass)`, `{name} on/off (bypass)`],
+    lab_s1_space_t:      [`Space: basılı tut = sustain pedalı · kısa dokun = önizleme (gam açıkken kök akoru)`, `Space: hold = sustain pedal · tap = preview (tonic chord when the scale is on)`],
+    lab_s1_midi_cc:      [`MIDI: nota + velocity · pitch bend ±2 st · CC1 mod wheel · CC64 sustain`, `MIDI: notes + velocity · pitch bend ±2 st · CC1 mod wheel · CC64 sustain`],
+    lab_s1_where_sc:     [`<strong>SCALE</strong> Live 12: Control Bar → Scale Mode (kök + gam) klibe yazılır, piyano rulosu gamı vurgular; Push'ta Scale → In Key. MIDI Effects → Scale cihazı notaları gama katlar = bizim KİLİT.`,
+                          `<strong>SCALE</strong> Live 12: Control Bar → Scale Mode (root + scale) is stored with the clip and the piano roll highlights it; on Push, Scale → In Key. MIDI Effects → Scale folds notes into the key = our LOCK.`],
+    lab_s1_x_13: [`SCALE · KİLİT · MIDI|SCALE gamdaki tuşları işaretler (nokta; kök turuncu). KİLİT bilgisayar klavyesini A–L gam derecelerine eşler, ekrandaki gam dışı tuşları kapatır ve MIDI notalarını en yakın gam notasına katlar. MIDI: velocity, pitch bend (±2 st), CC1 mod wheel, CC64 sustain.`,
+                  `SCALE · LOCK · MIDI|SCALE marks the in-key notes (dot; root in orange). LOCK maps the computer keyboard A–L to scale degrees, disables the out-of-key keys on screen and folds MIDI notes to the nearest in-key note. MIDI: velocity, pitch bend (±2 st), CC1 mod wheel, CC64 sustain.`],
+    lab_s1_pt_23: [`SCALE / KİLİT|kök C…B · 13 gam|A minör · kapalı|snapToScale / transposeInScale`, `SCALE / LOCK|root C…B · 13 scales|A minor · off|snapToScale / transposeInScale`],
+    // Öğretici: "Synth'in anatomisi" (12 adım; id'ler sabit — anlam değişirse yeni id)
+    lab_s1_tut_t:        [`Synth'in anatomisi`, `Anatomy of a synth`],
+    lab_s1_tut_i:        [`Subtractive synth'i Ableton'daki gibi soldan sağa kuracağız: kaynak (osilatör) → renk (filtre) → hareket (zarf, LFO) → mekân (FX) → kaydet. Her adımda gösterilen kontrolü gerçekten çevir; adım kendiliğinden tamamlanır. Temiz başlamak için önce INIT'e basabilirsin.`,
+                          `We build a subtractive synth left to right, the way you would in Ableton: source (oscillator) → colour (filter) → motion (envelopes, LFO) → space (FX) → save. Actually turn the control each step points at; the step completes by itself. Press INIT first for a clean start.`],
+    lab_s1_tut_o:        [`Bir synth sesinin bütün zincirini kurdun: OSC → FILTER → ENV → LFO → FX. Ableton'da Wavetable ya da Analog açtığında aynı sırayla düşün — önce kaynak, sonra renk, sonra hareket.`,
+                          `You built the whole chain of a synth sound: OSC → FILTER → ENV → LFO → FX. When you open Wavetable or Analog in Ableton, think in the same order — source first, then colour, then motion.`],
+    lab_s1_tut_wave:     [`Kaynağı seç: OSC A dalgası`, `Pick the source: OSC A wave`],
+    lab_s1_tut_wave_b:   [`Her şey osilatörle başlar. SAW bütün harmonikleri taşır (parlak, filtrelemeye en uygun), SQR yalnız tek harmonikleri (oyuk, bas), SIN tek harmonik. OSC A'da farklı bir dalga seç ve bir tuşa bas.`,
+                          `Everything starts with the oscillator. SAW carries every harmonic (bright, best for filtering), SQR only the odd ones (hollow, bassy), SIN a single harmonic. Pick a different wave on OSC A and play a key.`],
+    lab_s1_tut_wave_a:   [`Wavetable → Osc 1 dalga tablosu (Basics: Saw / Square) · Analog → OSC1 Shape`, `Wavetable → Osc 1 wavetable (Basics: Saw / Square) · Analog → OSC1 Shape`],
+    lab_s1_tut_uni:      [`Kalınlaştır: UNISON sesleri`, `Thicken it: UNISON voices`],
+    lab_s1_tut_uni_b:    [`VOICES aynı osilatörün kopyalarını açar. OSC A'da VOICES'i en az 3 yap — tek nota birkaç sesten oluşmaya başlar (yeni notalarda geçerli).`,
+                          `VOICES stacks copies of the same oscillator. Set VOICES on OSC A to at least 3 — one note now consists of several voices (applies to new notes).`],
+    lab_s1_tut_uni_a:    [`Wavetable → Unison: Classic, Voices 3–8 · Analog'da unison yok: iki OSC + Detune`, `Wavetable → Unison: Classic, Voices 3–8 · Analog has no unison: two OSCs + Detune`],
+    lab_s1_tut_det:      [`Yay: DETUNE`, `Spread it: DETUNE`],
+    lab_s1_tut_det_b:    [`Kopyalar aynı perdedeyse tek ses gibi duyulur. DETUNE'u 20 ct üstüne çıkar: kopyalar hafifçe ayrışır, "supersaw" koro etkisi doğar. WIDTH onları stereoya açar.`,
+                          `Copies at the same pitch sound like one. Raise DETUNE above 20 ct: the copies drift apart and the "supersaw" chorus appears. WIDTH spreads them in stereo.`],
+    lab_s1_tut_det_a:    [`Wavetable → Unison Amount · Serum → Unison Detune`, `Wavetable → Unison Amount · Serum → Unison Detune`],
+    lab_s1_tut_sub:      [`Taban ekle: SUB`, `Add weight: SUB`],
+    lab_s1_tut_sub_b:    [`SUB, notanın bir oktav altında saf bir sine ekler — kulüp sisteminde hissedilen alt uç. SUB'ı %30 üstüne çıkar. NOISE ise attack'a hava/çıtırtı katar.`,
+                          `SUB adds a pure sine an octave below the note — the low end you feel on a club system. Raise SUB above 30%. NOISE adds air/crackle to the attack.`],
+    lab_s1_tut_sub_a:    [`Wavetable → Sub osc (Gain, Transpose −1 okt) · Analog → Noise + OSC2 −12 st`, `Wavetable → Sub osc (Gain, Transpose −1 oct) · Analog → Noise + OSC2 −12 st`],
+    lab_s1_tut_cut:      [`Renk: FILTER CUTOFF`, `Colour: FILTER CUTOFF`],
+    lab_s1_tut_cut_b:    [`Subtractive = çıkarma: filtre harmonikleri keser. Lowpass'ta CUTOFF'u 1.5 kHz altına indir ve çalarak dinle — ses koyulaşır, eğri ekranda sola kayar.`,
+                          `Subtractive = taking away: the filter removes harmonics. On lowpass, bring CUTOFF below 1.5 kHz and play — the sound darkens and the curve moves left.`],
+    lab_s1_tut_cut_a:    [`Wavetable → Filter 1 Frequency · Auto Filter → Frequency`, `Wavetable → Filter 1 Frequency · Auto Filter → Frequency`],
+    lab_s1_tut_res:      [`Karakter: RESO`, `Character: RESO`],
+    lab_s1_tut_res_b:    [`Rezonans kesim frekansında bir tepe yapar — acid ve "ıslak" filtre sesinin kaynağı. RESO'yu 6 üstüne çıkar; ekrandaki tepeye bak.`,
+                          `Resonance makes a peak at the cutoff — the source of acid and "wet" filter sounds. Raise RESO above 6; watch the peak on the display.`],
+    lab_s1_tut_res_a:    [`Wavetable → Filter Res · Analog → Fil1 Reso`, `Wavetable → Filter Res · Analog → Fil1 Reso`],
+    lab_s1_tut_env:      [`Hareket: ENV AMT`, `Motion: ENV AMT`],
+    lab_s1_tut_env_b:    [`Sabit bir filtre cansızdır. ENV AMT, MOD ENV zarfının cutoff'u her notada ne kadar açacağını belirler. %40 üstüne çıkar — ekranda kesik çizgili tepe eğrisi belirir.`,
+                          `A static filter is lifeless. ENV AMT sets how far the MOD ENV opens the cutoff on every note. Raise it above 40% — a dashed peak curve appears on the display.`],
+    lab_s1_tut_env_a:    [`Wavetable → Matrix: Env 2 → Filter 1 Freq · Analog → Fil1 Env Amount`, `Wavetable → Matrix: Env 2 → Filter 1 Freq · Analog → Fil1 Env Amount`],
+    lab_s1_tut_mod:      [`Şekillendir: MOD ENV DECAY`, `Shape it: MOD ENV DECAY`],
+    lab_s1_tut_mod_b:    [`MOD ENV'in DECAY'i süpürmenin ne kadar sürdüğünü belirler: kısa = pluck "tık", uzun = yavaş açılan pad. DECAY'i değiştir ve bir nota çal.`,
+                          `MOD ENV DECAY sets how long the sweep lasts: short = a pluck "tick", long = a slowly opening pad. Change DECAY and play a note.`],
+    lab_s1_tut_mod_a:    [`Wavetable → Env 2 Decay · Analog → Fil1 Env D`, `Wavetable → Env 2 Decay · Analog → Fil1 Env D`],
+    lab_s1_tut_amp:      [`Ses seviyesi zarfı: AMP ENV`, `Volume envelope: AMP ENV`],
+    lab_s1_tut_amp_b:    [`AMP ENV notanın nasıl başlayıp bittiğini çizer. ATTACK'ı 50 ms, RELEASE'i 0.8 s üstüne getir (knob ya da noktaları sürükle): yumuşak giriş, uzun kuyruk — pad karakteri.`,
+                          `AMP ENV draws how a note starts and ends. Set ATTACK above 50 ms and RELEASE above 0.8 s (knobs or drag the points): soft start, long tail — pad character.`],
+    lab_s1_tut_amp_a:    [`Wavetable → Amp Envelope (Env 1) · Analog → Amp1 Env A / R`, `Wavetable → Amp Envelope (Env 1) · Analog → Amp1 Env A / R`],
+    lab_s1_tut_lfo:      [`Döngü: LFO → CUTOFF`, `Loop it: LFO → CUTOFF`],
+    lab_s1_tut_lfo_b:    [`LFO yavaş, tekrar eden bir modülasyondur. HEDEF'i CUTOFF bırak, AMOUNT'u %25 üstüne çıkar. SYNC'i açarsan hız tempoya (1/8, 1/4…) kilitlenir — wobble bass böyle yapılır.`,
+                          `An LFO is a slow, repeating modulation. Keep DESTINATION on CUTOFF and raise AMOUNT above 25%. With SYNC on, the rate locks to the tempo (1/8, 1/4…) — that is how wobble bass is made.`],
+    lab_s1_tut_lfo_a:    [`Wavetable → LFO 1 + Matrix → Filter 1 Freq · Sync: Beat`, `Wavetable → LFO 1 + Matrix → Filter 1 Freq · Sync: Beat`],
+    lab_s1_tut_fx:       [`Mekân: DELAY / REVERB`, `Space: DELAY / REVERB`],
+    lab_s1_tut_fx_b:     [`Efektler sesi odaya koyar. REVERB MIX'i %25 ya da DELAY MIX'i %20 üstüne çıkar. Delay süresi tempoya bağlı (1/8· = noktalı sekizlik). ⏻ ile modülü bypass edip farkı dinle.`,
+                          `Effects place the sound in a room. Raise REVERB MIX above 25% or DELAY MIX above 20%. The delay time is tempo-synced (1/8· = dotted eighth). Bypass a unit with ⏻ to hear the difference.`],
+    lab_s1_tut_fx_a:     [`Audio Effects → Echo / Reverb (Hybrid Reverb) — cihazın ardına sürükle, Dry/Wet`, `Audio Effects → Echo / Reverb (Hybrid Reverb) — drag after the device, Dry/Wet`],
+    lab_s1_tut_save:     [`Sakla: preset KAYDET`, `Keep it: SAVE a preset`],
+    lab_s1_tut_save_b:   [`Beğendiğin sesi kaybetme: KAYDET'e bas, bir ad ver. Preset tarayıcıda KULLANICI grubunda görünür; A/B ile başka bir denemeyle karşılaştırabilirsin.`,
+                          `Don't lose a sound you like: press SAVE and give it a name. It shows up under USER in the preset browser; compare it with another try using A/B.`],
+    lab_s1_tut_save_a:   [`Cihaz başlığındaki disket simgesi (Save Preset) → Browser → User Library → Presets`, `The floppy icon in the device title bar (Save Preset) → Browser → User Library → Presets`],
+    lab_s1_tut_save_h:   [`Giriş yapmadıysan preset bu tarayıcıya kaydedilir (YEREL).`, `If you are not signed in, the preset is saved to this browser (LOCAL).`],
 });
 // Genel bakış synth kartı da kullanır (dalga düğmeleri C4 çalar) — silme.
 const _C4_HZ = 261.63;
@@ -8929,13 +9044,26 @@ const M1_KEYCODES = ['KeyA', 'KeyW', 'KeyS', 'KeyE', 'KeyD', 'KeyF', 'KeyT', 'Ke
 const M1_CAPS = 13;                                   // başlıktaki / tuşlardaki harfler: A … K
 const M1_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const M1_OCT_MIN = 1, M1_OCT_MAX = 6;
+// Gam kilidi (Push "In Key"): ana sıra A…L = kökten başlayarak sıradaki 9 gam derecesi
+const M1_LOCK_CODES = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL'];
 
 function renderModule1() {
     const { root, top, main, side, actions } = modLayout(1);
     root.classList.add('lab-m1');
     const ui = state.synthUi;
     try { const v = localStorage.getItem('berkay_synth_scope'); if (v === 'spec' || v === 'scope') ui.view = v; } catch {}
+    // Çalım gamı (kişisel kolaylık: localStorage 'berkay_synth_scale'; patch'e / undo'ya girmez)
+    const SC = ui.scale || (ui.scale = { on: false, root: 9, type: 'minor', lock: false });
+    try {
+        const j = JSON.parse(localStorage.getItem('berkay_synth_scale') || 'null');
+        if (j && typeof j === 'object') {
+            SC.on = !!j.on; SC.lock = !!j.lock;
+            if (Number.isInteger(j.root) && j.root >= 0 && j.root < 12) SC.root = j.root;
+            if (LAB_SCALES[j.type]) SC.type = j.type;
+        }
+    } catch {}
     const knobs = [], segs = [];
+    const tutTouch = new Set();          // öğretici: açık adımdan beri ELLE değiştirilen yollar (preset/undo sayılmaz)
     let hist = null;
     const histPush = () => { if (hist) hist.push(); };
     const COL = { a:'var(--accent)', b:'var(--m1-b)', c:'var(--ember-1)', f:'var(--ember-2)', l:'var(--lp-mod)' };
@@ -8949,6 +9077,7 @@ function renderModule1() {
 
     // ── Düzenleme akışı: state → ses (applySynthParams) → görseller → preset "*" → görevler ──
     function edited(what, o) {
+        tutTouch.add(String(what));
         state.activePreset = null; ui.dirty = true;
         tkMark(what);
         applySynthParams();
@@ -8987,11 +9116,20 @@ function renderModule1() {
     function syncSegs() { segs.forEach(({ sg, get }) => sg.set(get())); }
 
     // ── Başlık sağı: bilgisayar klavyesi kapakları + ipucu ────────────
+    // Gam kilidinde yalnız ana sıra A…L (sıradaki gam dereceleri); kapalıyken kromatik A W S E … K
     const caps = mk('div', 'lab-m1-caps'); caps.setAttribute('aria-hidden', 'true');
-    const capEls = M1_KEYCODES.slice(0, M1_CAPS).map((c, i) => {
-        const s = mk('span', 'lab-m1-cap' + ([1, 3, 6, 8, 10].includes(i) ? ' is-b' : ''));
-        s.textContent = c.slice(3); caps.append(s); return s;
-    });
+    let capEls = [], capMidi = [];
+    function buildCaps() {
+        const lock = scLock(), codes = lock ? M1_LOCK_CODES : M1_KEYCODES.slice(0, M1_CAPS);
+        const sig = (lock ? 'L' : 'C') + codes.map((c, i) => codeMidi(c)).join(',');
+        if (caps.dataset.sig === sig) return;
+        caps.dataset.sig = sig; caps.innerHTML = '';
+        capMidi = codes.map(c => codeMidi(c));
+        capEls = codes.map((c, i) => {
+            const e = mk('span', 'lab-m1-cap' + (!lock && [1, 3, 6, 8, 10].includes(i) ? ' is-b' : ''));
+            e.textContent = c.slice(3); caps.append(e); return e;
+        });
+    }
     actions.append(caps, i18n(mk('p', 'lab-m1-hint'), 'lab_s1_hint'));
 
     // ── Eklenti penceresi + başlık çubuğu ────────────────────────────
@@ -9002,27 +9140,38 @@ function renderModule1() {
     // Preset tarayıcı: FABRİKA (11) + KULLANICI (kayıtlı presetler, girişliyse)
     let userPresets = [];
     try { if (currentUser && _labSavedCache['preset:' + currentUser.uid]) userPresets = _labSavedCache['preset:' + currentUser.uid].slice(); } catch {}
+    // Yerel (girişsiz) kullanıcı presetleri: bu tarayıcıda 'berkay_synth_local' (en çok 20) — id 'l:<id>'
+    const M1_LOCAL = 'berkay_synth_local';
+    const localLoad = () => { try { const a = JSON.parse(localStorage.getItem(M1_LOCAL) || '[]'); return Array.isArray(a) ? a.filter(x => x && x.id && x.p && typeof x.p === 'object') : []; } catch { return []; } };
+    const localSave = list => { try { localStorage.setItem(M1_LOCAL, JSON.stringify(list.slice(0, 20))); return true; } catch { return false; } };
+    let localPresets = localLoad();
+    const isUserId = id => /^[ul]:/.test(String(id || ''));
     const pbItems = () => SYNTH_PRESETS.map(p => ({ id: p.id, name: p.name, cat: p.cat, group: 'factory' }))
-        .concat(userPresets.map(d => ({ id: 'u:' + d.id, name: d.name || '—', cat: L('lab_s1_cat_user'), group: 'user', data: d })));
-    const isModified = () => !!ui.dirty || (ui.presetId != null && !String(ui.presetId).startsWith('u:') && state.activePreset !== ui.presetId);
-    const pb = makePresetBrowser({ items: pbItems(), value: ui.presetId, modified: isModified(), width: 250, label: () => L('lp_presets'),
+        .concat(userPresets.map(d => ({ id: 'u:' + d.id, name: d.name || '—', cat: L('lab_s1_cat_user'), group: 'user', data: d })))
+        .concat(localPresets.map(d => ({ id: 'l:' + d.id, name: d.name || '—', cat: L('lab_s1_cat_local'), group: 'user', data: Object.assign({ v: 2 }, d.p) })));
+    const isModified = () => !!ui.dirty || (ui.presetId != null && !isUserId(ui.presetId) && state.activePreset !== ui.presetId);
+    const pb = makePresetBrowser({ items: pbItems(), value: ui.presetId, modified: isModified(), width: 200, label: () => L('lp_presets'),
         onPick: it => loadItem(it) });
     function loadItem(it) {
         histPush();
-        if (it.group === 'user') { applyPreset(it.data); ui.presetId = it.id; ui.presetName = it.name; tk.from = null; }
+        if (it.group === 'user') { applyPreset(it.data); ui.presetId = it.id; ui.presetName = it.name; tk.from = null; }   // 'u:' hesap · 'l:' yerel
         else { applyPreset(SYNTH_PRESETS.find(p => p.id === it.id)); ui.presetName = null; tk.from = it.id; }
         tkReset();
         syncAll(); previewNote(); checkTasks('preset');
     }
     function setUserPresets(list) { userPresets = (list || []).slice(); pb.setItems(pbItems(), ui.presetId); paintPreset(); }
+    function setLocalPresets(list) { localPresets = list.slice(0, 20); localSave(localPresets); pb.setItems(pbItems(), ui.presetId); paintPreset(); }
     // Tarayıcıda olmayan durum (INIT ya da henüz yüklenmemiş kullanıcı preseti) — kitin boş gösterimi yerine
     function paintPreset() {
         pb.set(ui.presetId); pb.setModified(isModified());
+        paintDel();
         if (pb.getItem()) return;
-        const user = ui.presetId != null, name = user ? (ui.presetName || '—') : 'Init';
+        // Tarayıcıda yok: INIT, henüz yüklenmemiş / silinmiş kullanıcı preseti (ad korunur, "*" ile)
+        const user = ui.presetId != null || !!ui.presetName, name = user ? (ui.presetName || '—') : 'Init';
         const q = s => pb.trigger.querySelector(s);
         q('.lp-pb-no').textContent = `--/${pad2(SYNTH_PRESETS.length)}`;
-        const tag = q('.lp-tag'); tag.hidden = false; tag.textContent = L(user ? 'lab_s1_cat_user' : 'lab_s1_cat_init');
+        const tag = q('.lp-tag'); tag.hidden = false;
+        tag.textContent = L(!user ? 'lab_s1_cat_init' : String(ui.presetId || '').startsWith('l:') ? 'lab_s1_cat_local' : 'lab_s1_cat_user');
         q('.lp-pb-t').textContent = name;
         q('.lp-pb-mod').hidden = !isModified();
         pb.trigger.setAttribute('aria-label', `${L('lp_browser')}: ${name}${isModified() ? ' (' + L('lp_modified') + ')' : ''}`);
@@ -9035,13 +9184,79 @@ function renderModule1() {
     } });
     const un = lpBtn({ icon: 'undo', label: L('lp_undo') }), re = lpBtn({ icon: 'redo', label: L('lp_redo') });
     un.setAttribute('data-i18n-aria', 'lp_undo'); re.setAttribute('data-i18n-aria', 'lp_redo');
-    win.left.append(pb.el, ab.el, cp, initB, un, re);
+    // KAYDET (girişliyse hesap → Firestore users/{uid}/presets, değilse / hata olursa bu tarayıcı) · SİL (yalnız kullanıcı preseti)
+    const saveB = lpBtn({ text: () => L('lp_save'), variant: 'accent', title: () => L('lab_s1_save_t'), onClick: () => savePreset() });
+    const delB = lpBtn({ icon: 'del', label: () => L('lp_del_preset'), title: () => L('lp_del_preset'), onClick: () => deletePreset() });
+    win.left.append(pb.el, ab.el, cp, initB, un, re, saveB, delB);
+    let saving = false, deleting = false;
+    function paintDel() {
+        const id = String(ui.presetId || ''), any = userPresets.length + localPresets.length > 0;
+        const has = id.startsWith('u:') ? userPresets.some(x => 'u:' + x.id === id) : id.startsWith('l:') ? localPresets.some(x => 'l:' + x.id === id) : false;
+        lpBtnSlot(delB, any, has);
+    }
+    function savedLocal(name) {
+        const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+        setLocalPresets([{ id, name, p: synthPatch() }].concat(localPresets));
+        return 'l:' + id;
+    }
+    async function savePreset() {
+        if (saving) return;
+        const raw = prompt(L('lab_saved_name_preset'));
+        const name = String(raw || '').trim().slice(0, 60);
+        if (!name) return;
+        saving = true; saveB.setAttribute('aria-busy', 'true');
+        let msg, id = null;
+        if (currentUser && _db) {
+            try {
+                await saveUserPreset(name);
+                const list = await loadUserPresets();
+                _labSavedCache['preset:' + currentUser.uid] = list;
+                setUserPresets(list);
+                const it = list.find(x => x.name === name);
+                id = it ? 'u:' + it.id : null;
+                msg = Lf('lab_s1_saved_acc', { name });
+                if (saved.refresh) saved.refresh();
+            } catch (e) { console.warn('[lab] m1 save:', e); id = savedLocal(name); msg = Lf('lab_s1_saved_fb', { name }); }
+        } else { id = savedLocal(name); msg = Lf('lab_s1_saved_loc', { name }); }
+        ui.presetId = id; ui.presetName = name; ui.dirty = false; state.activePreset = null;
+        tutN.saves++;
+        paintPreset();
+        // Geri bildirim: düğme etiketi ~1.4 sn "Kaydedildi" (m3 kalıbı) + ekran okuyucu duyurusu; nereye
+        // kaydedildiği tarayıcıdaki etikette (USER / YEREL) ve düğmenin title'ında
+        const lbl = saveB.querySelector('span');
+        if (lbl) lbl.textContent = L('lab_saved_ok');
+        saveB.title = msg; lpAnnounce(msg);
+        setTimeout(() => { saving = false; saveB.removeAttribute('aria-busy'); if (lbl) lbl.textContent = L('lp_save'); saveB.title = L('lab_s1_save_t'); }, 1400);
+    }
+    async function deletePreset() {
+        if (deleting) return;
+        const id = String(ui.presetId || '');
+        const u = id.startsWith('u:') ? userPresets.find(x => 'u:' + x.id === id) : null;
+        const l = id.startsWith('l:') ? localPresets.find(x => 'l:' + x.id === id) : null;
+        const p = u || l;
+        if (!p || !confirm(Lf('lp_del_confirm', { name: p.name || '—' }))) return;
+        deleting = true;
+        try {
+            if (u) {
+                await deleteUserPreset(u.id);
+                setUserPresets(userPresets.filter(x => x !== u));
+                if (currentUser) _labSavedCache['preset:' + currentUser.uid] = userPresets.slice();
+                if (saved.refresh) saved.refresh();
+            } else setLocalPresets(localPresets.filter(x => x !== l));
+            // Ses olduğu gibi kalır: adı korunur, "değiştirildi" (kaydedilmemiş) olarak işaretlenir
+            ui.presetId = null; ui.presetName = p.name || null; ui.dirty = true;
+            paintPreset();
+            pb.trigger.focus();
+            lpAnnounce(Lf('lab_s1_deleted', { name: p.name || '—' }));
+        } catch (e) { console.warn('[lab] m1 delete:', e); lpAnnounce(L('lp_del_failed')); delB.title = L('lp_del_failed'); }
+        deleting = false;
+    }
     // Sağ: VOICES · DSP ≈ · MASTER · OUT L/R
-    const roVoices = makeReadout({ label: 'VOICES', value: `0 / ${SYNTH_MAX_VOICES}` });
-    const roDsp = makeReadout({ label: 'DSP ≈', value: '0%' });
+    const roVoices = makeReadout({ label: 'VOICES', value: `0/${SYNTH_MAX_VOICES}` });
+    const roDsp = makeReadout({ label: 'DSP ≈', value: '0%', cls: 'lab-m1-ro-dsp' });   // masaüstünde gizli (CSS)
     const masterK = KP('master', 'MASTER', 0, 100, { mul: 100, step: 1, fmt: fmtPct, layout: 'side', size: 36, color: COL.a });
     const roMaster = mk('div', 'lp-ro lab-m1-ro-k'); roMaster.append(masterK.el);
-    const outM = makeMeter({ orientation: 'h', length: 92, thickness: 5 });
+    const outM = makeMeter({ orientation: 'h', length: 64, thickness: 5 });
     const roOut = mk('div', 'lp-ro lab-m1-ro-out'); const outLbl = mk('b', 'lp-ro-l'); outLbl.textContent = 'OUT L/R';
     roOut.append(outLbl, outM.el);
     win.right.append(roVoices.el, roDsp.el, roMaster, roOut);
@@ -9130,7 +9345,9 @@ function renderModule1() {
     // FILTER
     const fType = SG([['lowpass', 'LP', 'lab_s1_o_lowpass'], ['bandpass', 'BP', 'lab_s1_o_bandpass'], ['highpass', 'HP', 'lab_s1_o_highpass'], ['notch', 'NOTCH', 'lab_s1_o_notch']], 'filter.type', { label: 'lab_s1_g_ftype' });
     const fSlope = SG([[12, '12dB'], [24, '24dB']], 'filter.slope', { label: 'lab_s1_g_fslope' });
-    const fltP = makePanel({ title: 'FILTER', color: COL.f, actions: [fType, fSlope] });
+    // ⏻ = bypass (Wavetable / Serum filtre anahtarı); patch'in parçası → undo, A/B, preset
+    const fltP = makePanel({ title: 'FILTER', color: COL.f, actions: [fType, fSlope],
+        power: { on: state.filter.on !== false, label: () => L('lab_s1_fpow'), onToggle: b => { histPush(); state.filter.on = b; edited('filter.on'); } } });
     const fd = makeDisplay({ height: 92, grid: [3, 5], cls: 'lab-m1-fdisp' });
     const fsvg = svgIn(fd.el, '0 0 400 100', null, L('lab_s1_filter_aria'));
     fsvg.setAttribute('data-i18n-aria', 'lab_s1_filter_aria');
@@ -9215,23 +9432,25 @@ function renderModule1() {
 
     // FX RACK: DIST · DELAY · REVERB
     const rack = mk('div', 'lab-m1-rack');
-    const rk = (title, col, infoKey, ks) => {
-        const p = makePanel({ rack: true, title, color: col, info: infoKey ? L(infoKey) : ' ' });
+    const rk = (title, col, infoKey, ks, onKey) => {
+        const p = makePanel({ rack: true, title, color: col, info: infoKey ? L(infoKey) : ' ',
+            power: { on: state.fx[onKey] !== false, label: () => Lf('lab_s1_rpow', { name: title }),
+                onToggle: b => { histPush(); state.fx[onKey] = b; edited('fx.' + onKey); } } });
         if (infoKey) p.info.setAttribute('data-i18n', infoKey);
         const row = mk('div', 'lab-m1-rk'); ks.forEach(k => row.append(k.el));
         p.el.append(row); rack.append(p.el);
         return p;
     };
-    const distR = rk('DIST', COL.c, 'lab_s1_rack_dist', [KP('fx.dist', 'DRIVE', 0, 100, { mul: 100, step: 1, fmt: fmtPct, color: COL.c, pre: 'DIST' })]);
+    const distR = rk('DIST', COL.c, 'lab_s1_rack_dist', [KP('fx.dist', 'DRIVE', 0, 100, { mul: 100, step: 1, fmt: fmtPct, color: COL.c, pre: 'DIST' })], 'distOn');
     const delayR = rk('DELAY', COL.f, null, [
         K({ id: 'fx.delaySync', label: 'TIME', pre: 'DELAY', min: 0, max: SYNTH_DELAY_LIST.length - 1, step: 1, def: SYNTH_DELAY_LIST.indexOf('1/8.'), color: COL.f,
             get: () => Math.max(0, SYNTH_DELAY_LIST.indexOf(state.fx.delaySync)), set: v => { state.fx.delaySync = SYNTH_DELAY_LIST[v] || '1/8.'; },
             fmt: v => synthDivLabel(SYNTH_DELAY_LIST[v] || '') }),
         KP('fx.delayFeedback', 'FEEDBACK', 0, 90, { mul: 100, step: 1, fmt: fmtPct, color: COL.f, pre: 'DELAY' }),
-        KP('fx.delayWet', 'MIX', 0, 100, { mul: 100, step: 1, fmt: fmtPct, color: COL.f, pre: 'DELAY' })]);
+        KP('fx.delayWet', 'MIX', 0, 100, { mul: 100, step: 1, fmt: fmtPct, color: COL.f, pre: 'DELAY' })], 'delayOn');
     const revR = rk('REVERB', COL.a, 'lab_s1_rack_rev', [
         KP('fx.reverbSize', 'SIZE', 0.3, 6, { log: true, fmt: v => v.toFixed(1) + ' s', color: COL.a, pre: 'REVERB' }),
-        KP('fx.reverbWet', 'MIX', 0, 100, { mul: 100, step: 1, fmt: fmtPct, color: COL.a, pre: 'REVERB' })]);
+        KP('fx.reverbWet', 'MIX', 0, 100, { mul: 100, step: 1, fmt: fmtPct, color: COL.a, pre: 'REVERB' })], 'revOn');
 
     // ÇALIM SATIRI: PITCH / MOD şeritleri · OKT · POLY|MONO · GLIDE · klavye
     const playRow = mk('div', 'lp-panel lab-m1-play');
@@ -9321,6 +9540,7 @@ function renderModule1() {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         e.preventDefault();
         const b = e.currentTarget, m = +b.dataset.midi, r = b.getBoundingClientRect();
+        if (b.getAttribute('aria-disabled') === 'true') return;                        // gam kilidi: gam dışı tuş
         play(m, 0.4 + lpClamp((e.clientY - r.top) / (r.height || 1), 0, 1) * 0.6);   // tuşun altı = güçlü
         lpDrag(e, () => {}, () => release(m));
     }
@@ -9337,7 +9557,7 @@ function renderModule1() {
             b.append(kl);
             if (semi % 12 === 0) { const c = mk('span', 'lab-m1-kc'); c.textContent = 'C' + (oct + o); c.setAttribute('aria-hidden', 'true'); b.append(c); }
             b.addEventListener('pointerdown', keyPress);
-            b.addEventListener('click', e => { if (e.detail === 0) { playNote(synthHz(m), 0.4, 0.8); markNote(); } });
+            b.addEventListener('click', e => { if (e.detail === 0 && b.getAttribute('aria-disabled') !== 'true') { playNote(synthHz(m), 0.4, 0.8); markNote(); } });
             keyEls.set(m, b);
             return b;
         };
@@ -9350,57 +9570,166 @@ function renderModule1() {
         octVal.textContent = 'C' + oct;
         octVal.setAttribute('aria-label', Lf('lab_s1_oct_aria', { n: oct }));
         octDn.setAttribute('aria-disabled', String(oct <= M1_OCT_MIN)); octUp.setAttribute('aria-disabled', String(oct >= M1_OCT_MAX));
-        paintHeld();
+        paintScale();
     }
     function setOct(o) { const n = lpClamp(o, M1_OCT_MIN, M1_OCT_MAX); if (n !== state.keyboardOctave) { state.keyboardOctave = n; buildKeys(); } }
     const onPhone = () => buildKeys();
     if (mqPhone) { if (mqPhone.addEventListener) mqPhone.addEventListener('change', onPhone); else mqPhone.addListener(onPhone); }
-    playRow.append(strips, ctl, kb);
+
+    // ── SCALE: kök + LAB_SCALES türü · KİLİT (Push In Key) ────────────
+    // Gam açıkken klavyede gamdaki tuşlar noktalı (kök turuncu), gam dışı tuşlar koyu; kilitte gam dışı
+    // tuşlar kapanır, A…L sıradaki dereceleri çalar, MIDI notaları en yakın gam notasına katlanır.
+    function scLock() { return !!(SC.on && SC.lock); }
+    function lockMidi(i) { return transposeInScale(12 * (state.keyboardOctave + 1) + SC.root, i, SC.root, SC.type); }
+    // Fiziksel tuş → nota (kilitte yalnız ana sıra; değilse kromatik). Eşleşme yoksa null.
+    function codeMidi(code) {
+        if (scLock()) { const i = M1_LOCK_CODES.indexOf(code); return i < 0 ? null : lockMidi(i); }
+        const i = M1_KEYCODES.indexOf(code); return i < 0 ? null : 12 * (state.keyboardOctave + 1) + i;
+    }
+    const keyLetter = m => {
+        const codes = scLock() ? M1_LOCK_CODES : M1_KEYCODES.slice(0, M1_CAPS);
+        const c = codes.find(x => codeMidi(x) === m); return c ? c.slice(3) : '';
+    };
+    const scBar = mk('div', 'lab-m1-scale');
+    scBar.setAttribute('role', 'group'); scBar.setAttribute('data-i18n-aria', 'lab_s1_sc_g'); scBar.setAttribute('aria-label', L('lab_s1_sc_g'));
+    const scT = makeToggle({ text: 'SCALE', led: true, color: COL.a, on: SC.on, title: () => L('lab_s1_sc_t'), onToggle: b => { SC.on = b; scChanged(); } });
+    const selM = (cls, key, opts, val, pick) => {
+        const s = mk('select', 'lpr-sel lab-m1-sel ' + cls);
+        s.setAttribute('data-i18n-aria', key); s.setAttribute('aria-label', L(key)); s.title = L(key);
+        opts().forEach(([v, t]) => { const op = mk('option'); op.value = String(v); op.textContent = t; s.append(op); });
+        s.value = String(val);
+        s.addEventListener('change', () => pick(s.value));
+        return s;
+    };
+    const rootOpts = () => LAB_NOTE_NAMES.map((n, i) => [i, n]);
+    const typeOpts = () => LAB_SCALE_ORDER.map(t => [t, scaleName(t)]);
+    const selRoot = selM('lab-m1-sel--root', 'lab_s1_sc_root', rootOpts, SC.root, v => { SC.root = +v; if (!SC.on) scT.set(SC.on = true); scChanged(); });
+    const selType = selM('lab-m1-sel--type', 'lab_s1_sc_type', typeOpts, SC.type, v => { SC.type = v; if (!SC.on) scT.set(SC.on = true); scChanged(); });
+    const lockT = makeToggle({ text: () => L('lab_s1_lock'), led: true, color: COL.f, on: SC.lock, label: () => L('lab_s1_lock_l'), title: () => L('lab_s1_lock_t'),
+        onToggle: b => { SC.lock = b; if (b && !SC.on) scT.set(SC.on = true); scChanged(); } });
+    const scNotes = mk('span', 'lab-m1-scn');
+    scBar.append(scT.el, selRoot, selType, lockT.el, scNotes);
+    function scChanged() {
+        try { localStorage.setItem('berkay_synth_scale', JSON.stringify({ on: SC.on, root: SC.root, type: SC.type, lock: SC.lock })); } catch {}
+        // Kilit değişince basılı bilgisayar tuşları bırakılır (eşleme değişti — takılı nota kalmasın)
+        Object.keys(kmap).forEach(k => { const m = kmap[k]; delete kmap[k]; release(m); });
+        buildKeys();
+    }
+    // Gam görünümü: tuş sınıfları + aria (in/kök/dışı), kapak harfleri, gam notaları satırı
+    function paintScale() {
+        const on = !!SC.on, lock = scLock();
+        kb.classList.toggle('is-scale', on); kb.classList.toggle('is-lock', lock);
+        keyEls.forEach((b, m) => {
+            const inK = inScale(m, SC.root, SC.type), root = labPc(m) === labPc(SC.root);
+            b.classList.toggle('is-in', on && inK); b.classList.toggle('is-root', on && root); b.classList.toggle('is-out', on && !inK);
+            const nm = M1_NOTE_NAMES[labPc(m)] + (Math.floor(m / 12) - 1);
+            b.setAttribute('aria-label', on ? `${nm} · ${L(root ? 'lab_s1_key_root' : inK ? 'lab_s1_key_in' : 'lab_s1_key_out')}` : nm);
+            if (lock && !inK) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
+            const kl = b.querySelector('.lab-m1-kl'); if (kl) kl.textContent = keyLetter(m);
+        });
+        scT.set(on); lockT.set(!!SC.lock);
+        selRoot.value = String(SC.root); selType.value = SC.type;
+        const names = scalePitchClasses(SC.root, SC.type).map(pc => noteName(pc)).join(' ');
+        scNotes.textContent = on ? names + (lock ? ' · ' + L('lab_s1_sc_lockn') : '') : L('lab_s1_sc_off');
+        scNotes.setAttribute('aria-label', on ? Lf('lab_s1_sc_aria', { n: names }) : L('lab_s1_sc_off'));
+        buildCaps();
+        paintHeld();
+    }
+    const kbCol = mk('div', 'lab-m1-kbcol');
+    kbCol.append(scBar, kb);
+    playRow.append(strips, ctl, kbCol);
 
     win.body.append(grid, rack, playRow);
     top.append(win.root);
 
     // ── Nota akışı (klavye / fare / dokunma) ─────────────────────────
     let lastPlayed = null;
-    function markNote() { checkTasks(null, 'note'); }
+    const tutN = { notes: 0, saves: 0 };               // öğretici sayaçları (çalınan nota, kaydedilen preset)
+    function markNote() { tutN.notes++; checkTasks(null, 'note'); }
     function play(m, vel) { if (noteOn(m, vel)) { lastPlayed = m; markNote(); } }
     function release(m) { noteOff(m); checkTasks(null, 'off'); }
     function paintHeld() {
         keyEls.forEach((b, m) => b.classList.toggle('is-on', _synthHeld.includes(m)));
-        const base = 12 * (state.keyboardOctave + 1);
-        capEls.forEach((c, i) => c.classList.toggle('is-on', _synthHeld.includes(base + i)));
+        capEls.forEach((c, i) => c.classList.toggle('is-on', _synthHeld.includes(capMidi[i])));
     }
     _m1HeldChanged = paintHeld;
     const kmap = {};
     const typing = t => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+    // Space: basılı = sustain pedalı (rehber); kısa dokunuş (≤ 350 ms, arada nota yok) = önizleme —
+    // gam açıkken tonik akoru (chordOnDegree), kapalıyken klavye oktavının C'si. Yalnız odak modüldeyken
+    // (ya da sayfada hiçbir yerde değilken) ve metin alanında değilken.
+    let spaceDown = null;
+    const inModule = t => !(t instanceof Node) || t === document.body || t === document.documentElement || root.contains(t);
+    function previewChord() {
+        const base = 12 * (state.keyboardOctave + 1);
+        const notes = SC.on ? chordOnDegree(SC.root, SC.type, 1, 3, base) : [base];
+        notes.forEach(m => playNote(synthHz(m), 0.6, 0.8));
+        lastPlayed = notes[0]; markNote();
+    }
     const onKey = e => {
         if (typing(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
         const t = e.target;
         if (e.code === 'Space') {
-            // Odak düğme/bağlantıdaysa Space onu etkinleştirsin (piyano tuşları hariç)
-            if (t && t.closest && t.closest('button, a[href], [role="button"], [role="checkbox"], [role="option"]') && !t.closest('.lab-m1-wk, .lab-m1-bk')) return;
+            // Odak düğme/bağlantıdaysa Space onu etkinleştirsin (piyano tuşları hariç); modül dışındaysa dokunma
+            if (t && t.closest && t.closest('button, a[href], select, [role="button"], [role="checkbox"], [role="option"]') && !t.closest('.lab-m1-wk, .lab-m1-bk')) return;
+            if (!inModule(t)) return;
             e.preventDefault();
-            if (!e.repeat) synthSetPedal(true);
+            if (!e.repeat) { synthSetPedal(true); spaceDown = { t: performance.now(), n: tutN.notes }; }
             return;
         }
         if (e.code === 'KeyZ' || e.code === 'KeyX') { if (!e.repeat) setOct(state.keyboardOctave + (e.code === 'KeyZ' ? -1 : 1)); return; }
-        const i = M1_KEYCODES.indexOf(e.code);
-        if (i < 0) return;
+        const m = codeMidi(e.code);
+        if (m == null) return;
         e.preventDefault();
         if (e.repeat || kmap[e.code] != null) return;
-        const m = 12 * (state.keyboardOctave + 1) + i;
         kmap[e.code] = m;                               // bırakırken basıldığı andaki nota (oktav değişse de)
         play(m, e.shiftKey ? 0.55 : 0.9);
     };
     const onKeyUp = e => {
-        if (e.code === 'Space') { if (_sustainPedal) { e.preventDefault(); synthSetPedal(false); } return; }
+        if (e.code === 'Space') {
+            const sd = spaceDown; spaceDown = null;
+            if (_sustainPedal) { e.preventDefault(); synthSetPedal(false); }
+            if (sd && tutN.notes === sd.n && performance.now() - sd.t <= 350) { e.preventDefault(); previewChord(); }
+            return;
+        }
         const m = kmap[e.code];
         if (m != null) { delete kmap[e.code]; release(m); }
     };
-    const onBlur = () => { Object.keys(kmap).forEach(k => { const m = kmap[k]; delete kmap[k]; noteOff(m); }); synthSetPedal(false); };
+    const onBlur = () => { Object.keys(kmap).forEach(k => { const m = kmap[k]; delete kmap[k]; noteOff(m); }); synthSetPedal(false); spaceDown = null; };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
+
+    // ── Web MIDI (labMidi; abonelikler görünüm ömürlü → gezinmede kendiliğinden düşer) ──
+    // nota + velocity → noteOn/noteOff (kilitte gama katlanır) · pitch bend → ±2 st · CC1 mod wheel ·
+    // CC64 sustain · CC120/123 tüm notalar kapalı. Yoğun CC/bend akışında görseller tek rAF'ta tazelenir.
+    const midiB = makeMidiButton({ color: 'var(--ok)' });
+    midiB.el.title = L('lab_s1_midi_cc');
+    win.right.prepend(midiB.el);
+    const midiNotes = new Map();                        // gelen nota → çalınan nota (katlama sonrası)
+    let uiQ = 0, uiQv = false;
+    const queueUi = vis => { uiQv = uiQv || !!vis; if (!uiQ) uiQ = requestAnimationFrame(() => { uiQ = 0; paintBend(); paintMod(); if (uiQv) { uiQv = false; syncVisuals(); } }); };
+    function midiAllOff() { midiNotes.forEach(m => release(m)); midiNotes.clear(); }
+    labMidi.on('noteon', e => {
+        if (midiNotes.has(e.note)) release(midiNotes.get(e.note));
+        const m = scLock() ? snapToScale(e.note, SC.root, SC.type, 0) : e.note;
+        midiNotes.set(e.note, m);
+        play(m, e.vel);
+    });
+    labMidi.on('noteoff', e => {
+        const m = midiNotes.has(e.note) ? midiNotes.get(e.note) : e.note;
+        midiNotes.delete(e.note);
+        // Aynı perdeye katlanmış başka basılı nota varsa sesi kesme
+        for (const v of midiNotes.values()) if (v === m) return;
+        release(m);
+    });
+    labMidi.on('pitchbend', e => { synthSetBend(e.value); queueUi(false); });
+    labMidi.on('cc', e => {
+        if (e.cc === 1) { state.modWheel = +lpClamp(e.value, 0, 1).toFixed(3); applySynthParams(); queueUi(true); checkTasks('mod'); }
+        else if (e.cc === 64) synthSetPedal(e.raw >= 64);
+        else if (e.cc === 120 || e.cc === 123) { midiAllOff(); synthSetPedal(false); }
+    });
+    lpOnTeardown(() => { cancelAnimationFrame(uiQ); uiQ = 0; midiNotes.clear(); });
     const previewNote = () => playNote(_C4_HZ, 0.45, 0.8);
 
     // ── Tarih: undo/redo + A/B (bellekte) ────────────────────────────
@@ -9449,7 +9778,7 @@ function renderModule1() {
         fEnvC.setAttribute('d', envOct ? curveD(pkC) : '');
         const lo = lpClamp(cut * Math.pow(2, -lfoOct), 20, 20000), hi = lpClamp(cut * Math.pow(2, lfoOct), 20, 20000);
         fBand.setAttribute('x', lfoOct ? fX(lo).toFixed(1) : 0); fBand.setAttribute('width', lfoOct ? (fX(hi) - fX(lo)).toFixed(1) : 0);
-        fInfo.textContent = `${s.filter.type.toUpperCase()} ${s.filter.slope}dB · ${fmtHz(cut)} · Q ${synthQ(s.filter.type, +s.filter.resonance || 0).toFixed(1)}${envOct ? ' · ENV→' + fmtHz(pkC) : ''}`;
+        fInfo.textContent = s.filter.on === false ? 'BYPASS' : `${s.filter.type.toUpperCase()} ${s.filter.slope}dB · ${fmtHz(cut)} · Q ${synthQ(s.filter.type, +s.filter.resonance || 0).toFixed(1)}${envOct ? ' · ENV→' + fmtHz(pkC) : ''}`;
         cutK.setRing(lpClamp((envOct + lfoOct) / 9.97, -1, 1));
         amtK.setRing(+s.modWheel || 0);
         // Zarflar
@@ -9470,7 +9799,8 @@ function renderModule1() {
         syncT.el.title = Lf('lab_s1_sync_t', { bpm: s.bpm || 125 });
         rateK.el.hidden = !!s.lfo.sync; divK.el.hidden = !s.lfo.sync;
         // FX rafı: aktif LED + delay nota değeri
-        distR.led.set(s.fx.dist > 0); delayR.led.set(s.fx.delayWet > 0); revR.led.set(s.fx.reverbWet > 0);
+        distR.setOn(s.fx.distOn !== false); delayR.setOn(s.fx.delayOn !== false); revR.setOn(s.fx.revOn !== false);
+        fltP.setOn(s.filter.on !== false);
         delayR.setInfo(`${synthDivLabel(s.fx.delaySync)} @ ${s.bpm || 125} BPM`);
         // Ekran: cutoff çizgisi, bant renkleri, alt bilgi
         const cx = lpClamp(specX(cut), 0, 100);
@@ -9533,7 +9863,7 @@ function renderModule1() {
         const held = _synthHeld.length ? _synthHeld[_synthHeld.length - 1] : null;
         const nt = held != null ? `${M1_NOTE_NAMES[((Math.round(held) % 12) + 12) % 12]}${Math.floor(Math.round(held) / 12) - 1} · ${synthHz(held).toFixed(1)} Hz` : L('lab_s1_nonote');
         if (nt !== lastNote) { lastNote = nt; dNote.textContent = nt; }
-        const vo = `${nv} / ${SYNTH_MAX_VOICES}`;
+        const vo = `${nv}/${SYNTH_MAX_VOICES}`;
         if (vo !== lastVo) { lastVo = vo; roVoices.set(vo); }
         let nodes = 0; Object.values(_voices).forEach(v => { nodes += v.src.length; });
         const dsp = Math.min(99, Math.round(nodes * 0.45 + (c ? 2 : 0))) + '%';
@@ -9617,16 +9947,16 @@ function renderModule1() {
     const hiwOpts = () => ({ kicker: false, aux: L('lp_hiw_flow'), id: 'labM1Hiw', cls: 'lab-m1-hiw', blocks: [
         { flow: flowOpts() },
         { cap: L('lp_hiw_ctrl') },
-        { steps: Array.from({ length: 12 }, (_, i) => { const [t, d] = L('lab_s1_x_' + (i + 1)).split('|'); return { n: pad2(i + 1), t, d }; }), cols: 2 },
+        { steps: Array.from({ length: 13 }, (_, i) => { const [t, d] = L('lab_s1_x_' + (i + 1)).split('|'); return { n: pad2(i + 1), t, d }; }), cols: 2 },
         { cap: L('lp_hiw_ptable') },
-        { table: { rows: Array.from({ length: 22 }, (_, i) => L('lab_s1_pt_' + (i + 1)).split('|')) } },
+        { table: { rows: Array.from({ length: 23 }, (_, i) => L('lab_s1_pt_' + (i + 1)).split('|')) } },
     ] });
     const hiw = howItWorks(hiwOpts());
     main.append(hiw.el);
 
     // ── Yan panel: Görevler · Ableton'da nerede? · Presetlerim ────────
     const tasks = makeTaskPanel(1);
-    const where = whereCard({ mid: 1, items: ['lab_s1_where_wt', 'lab_s1_where_an', 'lab_s1_where_op'], pathKey: 'lab_s1_where_path' });
+    const where = whereCard({ mid: 1, items: ['lab_s1_where_wt', 'lab_s1_where_an', 'lab_s1_where_op', 'lab_s1_where_sc'], pathKey: 'lab_s1_where_path' });
     const saved = savedCard({ kind: 'preset', titleKey: 'lab_saved_presets', saveKey: 'lab_saved_preset_save',
         emptyKey: 'lab_s1_saved_empty', signinKey: 'lab_s1_saved_signin',
         load: async () => { const items = await loadUserPresets(); setUserPresets(items); return items; },
@@ -9634,6 +9964,34 @@ function renderModule1() {
         del: async p => { await deleteUserPreset(p.id); setUserPresets(userPresets.filter(x => x.id !== p.id)); },
         apply: p => { histPush(); applyPreset(p); ui.presetId = 'u:' + p.id; ui.presetName = p.name || null; tk.from = null; tkReset(); syncAll(); previewNote(); } });
     side.append(tasks, where, saved);
+
+    // ── Öğretici: "Synth'in anatomisi" (OSC → UNISON → SUB → FILTER → ENV → LFO → FX → KAYDET) ──
+    // Her adım gerçek bir kontrolü hedefler; check() yalnız adım açıldıktan SONRA o kontrol ELLE
+    // değiştirildiyse (edited → tutTouch; preset, INIT, A/B, geri al sayılmaz) ve eşik tutuyorsa true olur.
+    const kEl = id => { const k = knobs.find(x => x.o.id === id); return k ? k.kn.el : null; };
+    const tb = { id: null, n: 0, s: 0 };
+    const TS = (id, target, paths, ok, o) => Object.assign({
+        id, target, title: `lab_s1_tut_${id}`, body: `lab_s1_tut_${id}_b`, ableton: `lab_s1_tut_${id}_a`,
+        onEnter: () => { tb.id = id; tutTouch.clear(); tb.n = tutN.notes; tb.s = tutN.saves; },
+        check: () => tb.id === id && (!paths.length || paths.some(p => tutTouch.has(p))) && ok(),
+    }, o || {});
+    const heard = () => tutN.notes > tb.n;
+    const tut = labTutorial({ mid: 1, id: 'anatomy', title: 'lab_s1_tut_t', intro: 'lab_s1_tut_i', outro: 'lab_s1_tut_o', steps: [
+        TS('wave', () => osc.osc1.pn.actions.firstChild, ['osc1.wave'], heard),
+        TS('uni', () => kEl('osc1.unison'), ['osc1.unison'], () => state.osc1.unison >= 3),
+        TS('det', () => kEl('osc1.uniDetune'), ['osc1.uniDetune'], () => state.osc1.uniDetune >= 20 && state.osc1.unison >= 2),
+        TS('sub', () => kEl('sub.level'), ['sub.level'], () => state.sub.level >= 0.3),
+        TS('cut', () => kEl('filter.cutoff'), ['filter.cutoff'], () => state.filter.cutoff <= 1500),
+        TS('res', () => kEl('filter.resonance'), ['filter.resonance'], () => state.filter.resonance >= 6),
+        TS('env', () => kEl('filterEnv.amount'), ['filterEnv.amount'], () => state.filterEnv.amount >= 40),
+        TS('mod', () => kEl('modEnv.decay'), ['modEnv.decay'], () => heard()),
+        TS('amp', () => env.adsr.svg.closest('.lp-panel'), ['adsr.attack', 'adsr.release'], () => state.adsr.attack >= 0.05 && state.adsr.release >= 0.8),
+        TS('lfo', () => lfoP.el, ['lfo.amount', 'lfo.dest'], () => state.lfo.dest === 'cutoff' && state.lfo.amount >= 0.25),
+        TS('fx', () => rack, ['fx.reverbWet', 'fx.delayWet'], () => (state.fx.reverbWet >= 0.25 && state.fx.revOn !== false) || (state.fx.delayWet >= 0.2 && state.fx.delayOn !== false)),
+        TS('save', () => saveB, [], () => tutN.saves > tb.s, { hint: 'lab_s1_tut_save_h' }),
+    ] });
+    const tutB = makeTutorialButton(tut, { compact: true });      // kep + x/N (başlık çubuğu tek satırda kalsın)
+    win.left.append(tutB.el);                   // KAYDET'in yanında (telefonda aynı satırda sarılır)
 
     // ── Dil / giriş değişimi: yerinde tazele (ses sürer) ─────────────
     let lastUid = currentUser ? currentUser.uid : null;
@@ -9651,6 +10009,14 @@ function renderModule1() {
         osc.osc1.pn.actions.firstChild.setAttribute('aria-label', Lf('lab_s1_g_wave', { name: 'OSC A' }));
         osc.osc2.pn.actions.firstChild.setAttribute('aria-label', Lf('lab_s1_g_wave', { name: 'OSC B' }));
         roDsp.el.title = L('lab_s1_dsp_t');
+        midiB.el.title = L('lab_s1_midi_cc');
+        [[selRoot, rootOpts], [selType, typeOpts]].forEach(([sel, f]) => {
+            const k = sel.getAttribute('data-i18n-aria'); sel.setAttribute('aria-label', L(k)); sel.title = L(k);
+            f().forEach(([v, t], i) => { if (sel.options[i]) sel.options[i].textContent = t; });
+        });
+        scBar.setAttribute('aria-label', L('lab_s1_sc_g'));
+        kb.title = L('lab_s1_space_t');
+        pb.setItems(pbItems(), ui.presetId);        // YEREL / USER etiketleri
         lastLive = null; lastNote = '';
         buildKeys(); paintView(); syncVisuals(); paintPreset();
         hiw.rebuild(hiwOpts());
@@ -9658,10 +10024,12 @@ function renderModule1() {
 
     // ── Başlangıç ────────────────────────────────────────────────────
     roDsp.el.title = L('lab_s1_dsp_t');
+    kb.title = L('lab_s1_space_t');
     buildKeys(); paintView(); syncAll();
     _m1Update = syncAll;
     // Tanılama (yalnız ?m1debug=1): headless doğrulama için motor + durum
-    if (/[?&]m1debug=1\b/.test(location.search)) window.__m1 = { state, voices: () => _voices, ctx: () => synthCtx, apply: applySynthParams, noteOn, noteOff, synthSetPedal, applyPreset, SYNTH_PRESETS, SYNTH_INIT, synthFilterMag, hist: () => hist };
+    if (/[?&]m1debug=1\b/.test(location.search)) window.__m1 = { state, voices: () => _voices, ctx: () => synthCtx, apply: applySynthParams, noteOn, noteOff, synthSetPedal, applyPreset, SYNTH_PRESETS, SYNTH_INIT, synthFilterMag, hist: () => hist,
+        tut: () => tut, fxNodes: () => ({ distWet, distDry, delayFb, delayWetG, reverbWetG }), scale: SC };
 
     // Görünümden çıkış (teardownView): dinleyiciler, döngü, gözlemci ve sesler
     _m1StopAudio = () => {
