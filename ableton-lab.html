@@ -1005,6 +1005,37 @@
         }
         /* ═══ /LAB PİYANO RULOSU ═══ */
 
+        /* ═══ LAB PRO KİT · MIDI (makeMidiButton — başlık çubuğu "MIDI" düğmesi + giriş menüsü) ═══
+           Sözleşme: script'teki "LAB PRO KİT · MIDI" yorum bloğu. Önek .lp-midi-*; düğme .lp-btn, ışık
+           .lp-led (PRO KİT). Menü konumu yalnız left (JS, görüntü alanına sığdırma = çalışma anı durumu). */
+        .lp-midi { position:relative; display:inline-flex; flex-shrink:0; }
+        .lp-midi-btn { letter-spacing:.1em; }
+        .lp-midi-btn .lp-led { width:7px; height:7px; }
+        .lp-midi.is-ready .lp-midi-btn .lp-led:not(.on) { background:color-mix(in srgb, var(--ok) 32%, var(--track)); }
+        .lp-midi.is-err .lp-midi-btn .lp-led { background:var(--warn); box-shadow:none; }
+        .lp-midi.is-unsup .lp-midi-btn { color:var(--fg-3); border-style:dashed; }
+        .lp-midi-caret { display:flex; color:var(--fg-3); }
+        .lp-midi-caret svg { width:10px; height:10px; }
+        .lp-midi.is-open .lp-midi-btn { border-color:var(--accent-line-2); color:var(--fg); }
+        .lp-midi-pop { position:absolute; top:calc(100% + 6px); left:0; z-index:var(--z-pop); display:flex; flex-direction:column; gap:6px; width:min(300px, calc(100vw - 32px)); max-height:min(360px, 60vh); overflow-y:auto; padding:10px; border-radius:var(--r-12); background:var(--surface-1); border:1px solid var(--accent-line); box-shadow:var(--shadow-pop); }
+        .lp-midi-pop[hidden] { display:none; }
+        .lp-midi-cap { padding:2px 4px 0; font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; color:var(--fg-3); }
+        .lp-midi-note { margin:0; padding:0 4px; font-size:12px; line-height:1.5; color:var(--fg-soft); }
+        .lp-midi-note:empty { display:none; }
+        .lp-midi.is-err .lp-midi-note { color:var(--warn); }
+        .lp-midi-list { display:flex; flex-direction:column; gap:2px; }
+        .lp-midi-list[hidden] { display:none; }
+        .lp-midi-opt { display:flex; align-items:center; gap:8px; min-width:0; min-height:34px; padding:0 10px; border-radius:var(--r-8); border:1px solid transparent; color:var(--fg-soft); font-size:12px; cursor:pointer; outline:none; }
+        .lp-midi-opt:hover { background:var(--surface-3); }
+        .lp-midi-opt:focus-visible { background:var(--surface-3); outline:2px solid var(--accent); outline-offset:-2px; }
+        .lp-midi-opt[aria-selected="true"] { border-color:var(--accent-line-2); color:var(--accent); }
+        .lp-midi-opt-t { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .lp-midi-opt-n { flex-shrink:0; font-family:var(--ff-mono); font-size:10px; color:var(--fg-3); }
+        @media (max-width:1024px) {
+            .lp-midi-opt { min-height:44px; }
+        }
+        /* ═══ /LAB PRO KİT · MIDI ═══ */
+
         /* ═══ LAB M1 · Synthesizer ═══ (Lab_Synth: BE·SYNTH 01 eklenti penceresi — PRO KİT parçalarıyla;
            altında Çalışma mantığı, yan panel kabuktan). Panel degradeleri düz token'a indirildi. */
         .lab-m1 {
@@ -8123,6 +8154,471 @@ function makePianoRoll(opts) {
     build(); renderAll();
     return api;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// LAB PRO KİT · MIDI (labMidi — Web MIDI girişi · makeMidiButton — başlık çubuğu "MIDI" düğmesi)
+// Modülden bağımsız; PRO KİT'in görsel dilini (.lp-btn / .lp-led) kullanır. CSS: "LAB PRO KİT · MIDI"
+// bloğu (önek .lp-midi-*). Merkezi LAB KABUK API bloğu değişmedi; sözleşme bu yorumdadır.
+// ═══════════════════════════════════════════════════════════════════
+//
+// labMidi — sayfada TEK Web MIDI bağlantısı (MIDIAccess sayfa ömürlü; modüller arası gezinmede kalır).
+//   supported() → bool   tarayıcıda navigator.requestMIDIAccess var mı (Safari: yok → false).
+//   status() → 'unsupported' | 'idle' | 'pending' | 'ready' | 'denied' | 'error'
+//   message() → etkin dilde durum cümlesi (desteklenmiyor → "…Chrome / Edge gerekir.", izin reddi →
+//            site ayarından izin ver + yeniden dene, hazır → "MIDI hazır: n giriş"). Canlı dil değişiminde
+//            yeniden çağır (sabit metin saklama).
+//   request() → Promise<bool>  navigator.requestMIDIAccess({ sysex:false }) — YALNIZ kullanıcı jestinde
+//            (tık / tuş işleyicisinin içinden). Jest yoksa (navigator.userActivation.isActive false) izin
+//            penceresi açılmaz: console.warn + false. Zaten bağlıysa hemen true; uçuştaki istek paylaşılır.
+//            Desteklenmiyorsa / reddedilirse / hata olursa false döner, status + message() güncellenir ve
+//            message() aria-live ile duyurulur ('state' olayı da gelir).
+//   resume() → Promise<bool>  İzin daha önce VERİLMİŞSE (navigator.permissions 'midi' = granted) istem
+//            göstermeden bağlanır; değilse false (hiçbir şey sormaz). makeMidiButton takılınca bunu çağırır
+//            → sayfa yenilense de klavye kendiliğinden bağlanır.
+//   inputs() → [{ id, name, manufacturer }]  bağlı (disconnected olmayan) giriş portları; bağlı değilse [].
+//   select(id | 'all')  Dinlenecek giriş ('all' vars.). Seçim localStorage'da ('lab_midi_in', kişisel
+//            kolaylık) hatırlanır; seçili cihaz çıkarılsa da seçim kalır, takılınca yeniden dinlenir.
+//            Seçim değişince bırakılan portun basılı notaları için noteoff üretilir (takılı nota kalmaz).
+//   selected() → id | 'all'
+//   on(type, fn, { persist? }) → unsubscribe()
+//     type ve olay nesnesi (ch 1…16 — DAW'daki kanal numarası; input = port id; t = event.timeStamp, ms,
+//     performance.now tabanı; raw = 0…127 ham değer):
+//       'noteon'    { note 0…127, vel 0..1 (vel/127), raw, ch, input, t }
+//       'noteoff'   { note, vel 0..1 (release; 0x9n vel 0 → 0), ch, input, t }
+//       'cc'        { cc 0…127, value 0..1, raw, ch, input, t }  (64 sustain, 1 mod, 123 all notes off —
+//                   yorumlamak modülün işi)
+//       'pitchbend' { value −1..1 (14 bit, merkez 8192 → 0), raw 0…16383, ch, input, t }
+//       'state'     { status, inputs, selected, message, change? { type:'connected'|'disconnected', id, name } }
+//                   durum değişimi (request/resume sonucu), cihaz tak/çıkar (statechange) ve select().
+//     Abonelik varsayılan olarak GÖRÜNÜM ÖMÜRLÜDÜR: lpOnTeardown'a kaydolur, gezinmede (teardownView →
+//     lpTeardown) kendiliğinden düşer — modül ayrıca bir şey yapmak zorunda değil (erken bırakmak için
+//     dönen fonksiyonu çağır). persist:true → sayfa ömürlü (kitin kendi iç aboneliği gibi, elle bırak).
+//     Aynı fn iki kez kaydedilirse iki bağımsız abonelik olur. Bilinmeyen type → console.warn + boş unsub.
+//   learn(fn, { types?:['cc','note'] }?) → cancel()  MIDI öğren (isteğe bağlı): sıradaki cc ya da noteon
+//     bir kez fn({ type:'cc', cc, ch, input } | { type:'note', note, ch, input }) çağırır ve TÜKETİLİR
+//     (normal abonelere gitmez). Görünüm ömürlü (lpOnTeardown). Örn. knoba CC bağlamak.
+//   Ayrıştırma: bir olayda birden çok mesaj, koşan durum (running status: durum baytı olmadan gelen veri
+//     baytları son durum baytını kullanır; port başına saklanır), araya giren gerçek zamanlı baytlar
+//     (0xF8–0xFF: clock, active sensing — yok sayılır, akışı bozmaz), SysEx / sistem ortak (koşan durumu
+//     siler, atlanır), noteon vel 0 = noteoff, yarım mesaj atılır.
+//   Portlar: yalnız mesaj abonesi (noteon/noteoff/cc/pitchbend ya da learn) varken ve yalnız seçili
+//     giriş(ler) açılır (addEventListener('midimessage') + port.open()); son abone gidince dinleyici kalkar
+//     ve port kapanır (Windows'ta port tek uygulamaya açılır — Live'ı kilitlemesin). Tak/çıkar
+//     (MIDIAccess statechange, sayfa ömürlü tek dinleyici): liste yenilenir, yeni cihaz açılır, çıkan
+//     cihazın basılı notaları noteoff olur, 'state' olayı gelir; görünür bir MIDI düğmesi varsa duyurulur.
+//   Güvenlik/izin: sysex HİÇ istenmez. Güvenli olmayan bağlamda (http) tarayıcı API'yi vermez →
+//     'unsupported'. Desteklenmeyen tarayıcı: Safari (macOS/iOS) — Chrome / Edge / Opera (Firefox eklenti
+//     izni ister).
+//
+// makeMidiButton({ color?, cls? }?) → { el, button, refresh(), open(), close(), destroy() }
+//   Başlık çubuğu denetimi (lp-btn 30 px, ≤1024 isabet alanı 44 px): LED + "MIDI" + ▾.
+//   LED: gelen notada yanar (basılı nota varken yanık, her notada en az ~110 ms; CC / pitch bend kısa
+//   yanıp söner); bağlı ve hazırken sönük yeşil, değilken koyu. Renk o.color (vars. var(--ok)).
+//   Tık: bağlı değilse request() (tık = jest) → başarılıysa cihaz menüsü açılır, değilse neden notu
+//   (ör. Safari "Web MIDI yok — Chrome / Edge gerekir.", izin reddi) açılır. Bağlıyken menüyü açar/kapatır.
+//   Menü = listbox deseni: tetik aria-haspopup=listbox + aria-expanded + aria-controls; seçenekler
+//   "Tüm girişler (n)" + her cihaz, aria-selected seçili olan. ↑/↓ (tetikte de açar), Home/End, Enter/Space
+//   seçer ve kapatır, Esc kapatır ve odağı tetiğe döndürür, Tab / dışarı tık kapatır. Görüntü alanına
+//   sığdırılır. Cihaz yokken not satırı "Cihaz yok — bağla…" (liste tak/çıkarda kendiliğinden yenilenir).
+//   Desteklenmeyen tarayıcıda düğme sönük kalır, title + aria-describedby neden notunu taşır, tık notu açar.
+//   Metinler canlı TR↔EN (labOnRefresh). Abonelik lpElSub kalıbıyla: görünüm kapanınca, öğe DOM'dan
+//   ayrılınca ya da destroy() ile biter; LED zamanlayıcısı ve açık menü de bırakılır.
+//
+// Örnek (Synth):
+//   win.right.prepend(makeMidiButton().el);
+//   labMidi.on('noteon',  e => synthNoteOn(e.note, e.vel));        // görünüm ömürlü, temizlik otomatik
+//   labMidi.on('noteoff', e => synthNoteOff(e.note));
+//   labMidi.on('cc', e => { if (e.cc === 64) synthSetPedal(e.value >= 0.5); });
+//   labMidi.on('pitchbend', e => setBend(e.value * 2));            // ±2 yarım ton
+//   // CC öğren: knob çift tık + Alt → labMidi.learn(m => { if (m.type === 'cc') map[m.cc] = cutKnob; });
+//
+// Tanılama: ?mididebug=1 → window.__lpMidi = { labMidi, makeMidiButton } (headless doğrulama).
+// ═══════════════════════════════════════════════════════════════════
+Object.assign(LAB_TXT, {
+    lp_midi_btn:      [`MIDI`, `MIDI`],
+    lp_midi_aria:     [`MIDI girişi`, `MIDI input`],
+    lp_midi_cap:      [`MIDI GİRİŞİ`, `MIDI INPUT`],
+    lp_midi_all:      [`Tüm girişler`, `All inputs`],
+    lp_midi_off:      [`kapalı`, `off`],
+    lp_midi_idle:     [`MIDI klavyeni bağlamak için tıkla — tarayıcı izin ister.`, `Click to connect your MIDI keyboard — the browser asks for permission.`],
+    lp_midi_unsup:    [`Bu tarayıcıda Web MIDI yok — Chrome / Edge gerekir.`, `This browser has no Web MIDI — Chrome / Edge required.`],
+    lp_midi_pending:  [`MIDI izni bekleniyor…`, `Waiting for MIDI permission…`],
+    lp_midi_denied:   [`MIDI izni verilmedi. Adres çubuğundaki site ayarlarından MIDI'ye izin ver, sonra MIDI düğmesine yeniden bas.`, `MIDI permission was not granted. Allow MIDI in the site settings in the address bar, then press the MIDI button again.`],
+    lp_midi_error:    [`MIDI başlatılamadı. Cihazı çıkarıp tak ve yeniden dene.`, `MIDI could not start. Unplug the device, plug it back in and try again.`],
+    lp_midi_ready:    [`MIDI hazır: {n} giriş`, `MIDI ready: {n} inputs`],
+    lp_midi_none:     [`Cihaz yok — MIDI klavyeni bağla, liste kendiliğinden yenilenir.`, `No device — plug in your MIDI keyboard, the list updates by itself.`],
+    lp_midi_conn:     [`MIDI cihazı bağlandı: {name}`, `MIDI device connected: {name}`],
+    lp_midi_disc:     [`MIDI cihazı çıkarıldı: {name}`, `MIDI device disconnected: {name}`],
+    lp_midi_sel:      [`MIDI girişi: {name}`, `MIDI input: {name}`],
+    lp_midi_t:        [`MIDI girişi — klavye / kontrolcü seç`, `MIDI input — choose a keyboard / controller`],
+});
+
+const LP_MIDI_TYPES = ['noteon', 'noteoff', 'cc', 'pitchbend', 'state'];
+const _lmSubs = {};                  // type → Set(fn)
+LP_MIDI_TYPES.forEach(t => { _lmSubs[t] = new Set(); });
+const _lmLearn = new Set();          // { fn, types }
+const _lmOpen = new Map();           // port id → { port, fn } (dinlenen girişler)
+const _lmRun = new Map();            // port id → koşan durum baytı
+const _lmHeld = new Map();           // port id → Map(ch*128+note → { note, ch })
+let _lmAccess = null, _lmStatus = 'idle', _lmReq = null, _lmKnown = new Map();
+// Seçili giriş (kişisel kolaylık: localStorage 'lab_midi_in' = { id, name }; okunamazsa 'all')
+let _lmSel = 'all', _lmSelName = '';
+try { const v = JSON.parse(localStorage.getItem('lab_midi_in') || 'null'); if (v && v.id) { _lmSel = String(v.id); _lmSelName = String(v.name || ''); } } catch (_) {}
+
+const lmSupported = () => typeof navigator !== 'undefined' && typeof navigator.requestMIDIAccess === 'function';
+function lmStatus() { return (!_lmAccess && !lmSupported()) ? 'unsupported' : _lmStatus; }
+function lmInputs() {
+    const out = [];
+    if (!_lmAccess || !_lmAccess.inputs) return out;
+    let i = 0;
+    _lmAccess.inputs.forEach(p => { i++; if (p && p.state !== 'disconnected') out.push({ id: String(p.id), name: String(p.name || ('MIDI ' + i)), manufacturer: String(p.manufacturer || '') }); });
+    return out;
+}
+function lmMessage() {
+    const s = lmStatus();
+    if (s === 'unsupported') return L('lp_midi_unsup');
+    if (s === 'pending') return L('lp_midi_pending');
+    if (s === 'denied') return L('lp_midi_denied');
+    if (s === 'error') return L('lp_midi_error');
+    if (s === 'ready') return lmInputs().length ? Lf('lp_midi_ready', { n: lmInputs().length }) : L('lp_midi_none');
+    return L('lp_midi_idle');
+}
+function _lmEmit(type, ev) {
+    Array.from(_lmSubs[type]).forEach(fn => { try { fn(ev); } catch (e) { console.warn('[lab] midi ' + type + ':', e); } });
+}
+function _lmState(change) {
+    const ev = { status: lmStatus(), inputs: lmInputs(), selected: _lmSel, message: lmMessage() };
+    if (change) ev.change = change;
+    _lmEmit('state', ev);
+}
+function _lmSetStatus(s) { if (_lmStatus !== s) { _lmStatus = s; _lmState(); } }
+const _lmNeed = () => _lmLearn.size > 0 || ['noteon', 'noteoff', 'cc', 'pitchbend'].some(t => _lmSubs[t].size > 0);
+
+// Bırakılan portun basılı notaları → noteoff (takılı nota kalmasın)
+function _lmRelease(id) {
+    const h = _lmHeld.get(id); if (!h) return;
+    _lmHeld.delete(id);
+    const t = performance.now();
+    h.forEach(n => _lmEmit('noteoff', { note: n.note, vel: 0, ch: n.ch, input: id, t }));
+}
+function _lmDetach(id) {
+    const a = _lmOpen.get(id); if (!a) return;
+    _lmOpen.delete(id); _lmRun.delete(id);
+    try { a.port.removeEventListener('midimessage', a.fn); } catch (_) {}
+    try { if (a.port.state !== 'disconnected' && typeof a.port.close === 'function') { const r = a.port.close(); if (r && r.catch) r.catch(() => {}); } } catch (_) {}
+    _lmRelease(id);
+}
+function _lmAttach(p) {
+    const id = String(p.id);
+    const fn = e => _lmParse(id, e && e.data, e && e.timeStamp);
+    p.addEventListener('midimessage', fn);
+    _lmOpen.set(id, { port: p, fn });
+    // addEventListener portu her tarayıcıda örtük açmaz → açıkça aç
+    try { if (typeof p.open === 'function') { const r = p.open(); if (r && r.catch) r.catch(e => console.warn('[lab] midi open:', e && e.name)); } } catch (_) {}
+}
+// Dinlenen portları ihtiyaca + seçime göre eşitle (abonelik / seçim / tak-çıkar sonrası)
+function _lmSync() {
+    const want = new Map();
+    if (_lmAccess && _lmAccess.inputs && _lmNeed()) {
+        _lmAccess.inputs.forEach(p => { if (p && p.state !== 'disconnected' && (_lmSel === 'all' || String(p.id) === _lmSel)) want.set(String(p.id), p); });
+    }
+    Array.from(_lmOpen.keys()).forEach(id => { if (want.get(id) !== _lmOpen.get(id).port) _lmDetach(id); });
+    want.forEach((p, id) => { if (!_lmOpen.has(id)) _lmAttach(p); });
+}
+
+// ── Ayrıştırıcı: çoklu mesaj, koşan durum, gerçek zamanlı / SysEx ────
+function _lmParse(id, data, t) {
+    if (!data || !data.length || !_lmOpen.has(id)) return;
+    if (_lmSel !== 'all' && id !== _lmSel) return;
+    t = typeof t === 'number' ? t : performance.now();
+    let rs = _lmRun.get(id) || 0, i = 0;
+    const n = data.length;
+    while (i < n) {
+        const b = data[i];
+        if (b >= 0xF8) { i++; continue; }                       // gerçek zamanlı: yok say
+        if (b >= 0xF0) {                                        // SysEx / sistem ortak: koşan durum silinir
+            rs = 0; i++;
+            if (b === 0xF0) { while (i < n && data[i] !== 0xF7) i++; i++; }
+            continue;                                           // artakalan veri baytları sahipsiz → atlanır
+        }
+        if (b & 0x80) { rs = b; i++; }
+        else if (!rs) { i++; continue; }                        // sahipsiz veri baytı
+        const hi = rs & 0xF0, len = (hi === 0xC0 || hi === 0xD0) ? 1 : 2, d = [];
+        while (d.length < len && i < n) {
+            const x = data[i];
+            if (x >= 0xF8) { i++; continue; }
+            if (x & 0x80) break;
+            d.push(x); i++;
+        }
+        if (d.length < len) continue;                           // yarım mesaj: at (sıradaki durum baytından devam)
+        _lmDispatch(id, hi, (rs & 0x0F) + 1, d, t);
+    }
+    _lmRun.set(id, rs);
+}
+function _lmDispatch(id, hi, ch, d, t) {
+    if (hi === 0x90 || hi === 0x80) {
+        const note = d[0], on = hi === 0x90 && d[1] > 0, key = ch * 128 + note;
+        let h = _lmHeld.get(id);
+        if (on) {
+            if (_lmTakeLearn('note', { type: 'note', note, ch, input: id })) return;
+            if (!h) _lmHeld.set(id, h = new Map());
+            h.set(key, { note, ch });
+            _lmEmit('noteon', { note, vel: d[1] / 127, raw: d[1], ch, input: id, t });
+        } else {
+            if (h) h.delete(key);
+            _lmEmit('noteoff', { note, vel: hi === 0x80 ? d[1] / 127 : 0, ch, input: id, t });
+        }
+    } else if (hi === 0xB0) {
+        if (_lmTakeLearn('cc', { type: 'cc', cc: d[0], ch, input: id })) return;
+        _lmEmit('cc', { cc: d[0], value: d[1] / 127, raw: d[1], ch, input: id, t });
+    } else if (hi === 0xE0) {
+        const raw = d[0] | (d[1] << 7), v = raw - 8192;
+        _lmEmit('pitchbend', { value: v < 0 ? v / 8192 : v / 8191, raw, ch, input: id, t });
+    }
+}
+function _lmTakeLearn(kind, msg) {
+    const l = Array.from(_lmLearn).find(x => x.types.indexOf(kind) >= 0);
+    if (!l) return false;
+    l.cancel();
+    try { l.fn(msg); } catch (e) { console.warn('[lab] midi learn:', e); }
+    return true;
+}
+
+// ── Tak / çıkar ──────────────────────────────────────────────────────
+function _lmOnState(e) {
+    const p = e && e.port;
+    if (p && p.type && p.type !== 'input') return;               // çıkış portları ilgilendirmez
+    const now = new Map();
+    lmInputs().forEach(x => now.set(x.id, x.name));
+    const added = [], removed = [];
+    now.forEach((name, id) => { if (!_lmKnown.has(id)) added.push({ id, name }); });
+    _lmKnown.forEach((name, id) => { if (!now.has(id)) removed.push({ id, name }); });
+    _lmKnown = now;
+    _lmSync();
+    const vis = _lmSubs.state.size > 0;
+    removed.forEach(x => { if (vis) lpAnnounce(Lf('lp_midi_disc', { name: x.name })); _lmState({ type: 'disconnected', id: x.id, name: x.name }); });
+    added.forEach(x => { if (vis) lpAnnounce(Lf('lp_midi_conn', { name: x.name })); _lmState({ type: 'connected', id: x.id, name: x.name }); });
+}
+function _lmInit(acc) {
+    _lmAccess = acc;
+    try { acc.addEventListener('statechange', _lmOnState); } catch (_) { acc.onstatechange = _lmOnState; }
+    _lmKnown = new Map(); lmInputs().forEach(x => _lmKnown.set(x.id, x.name));
+    _lmSync();
+    _lmSetStatus('ready');
+}
+function _lmAsk() {
+    _lmSetStatus('pending');
+    let p;
+    try { p = navigator.requestMIDIAccess({ sysex: false }); } catch (e) { p = Promise.reject(e); }
+    _lmReq = Promise.resolve(p).then(acc => {
+        _lmReq = null;
+        if (!acc || !acc.inputs) throw new Error('no MIDIAccess');
+        _lmInit(acc); return true;
+    }).catch(e => {
+        _lmReq = null;
+        const nm = e && e.name;
+        _lmSetStatus(nm === 'SecurityError' || nm === 'NotAllowedError' ? 'denied' : 'error');
+        console.warn('[lab] midi:', nm || '', (e && e.message) || e);
+        lpAnnounce(lmMessage());
+        return false;
+    });
+    return _lmReq;
+}
+function lmRequest() {
+    if (_lmAccess) return Promise.resolve(true);
+    if (!lmSupported()) { _lmState(); lpAnnounce(lmMessage()); return Promise.resolve(false); }
+    if (_lmReq) return _lmReq;
+    const ua = navigator.userActivation;
+    if (ua && !ua.isActive) { console.warn('[lab] midi: request() yalnız kullanıcı jestinde (tık / tuş) çağrılır'); return Promise.resolve(false); }
+    return _lmAsk();
+}
+function lmResume() {
+    if (_lmAccess) return Promise.resolve(true);
+    if (_lmReq) return _lmReq;
+    if (!lmSupported() || !navigator.permissions || typeof navigator.permissions.query !== 'function') return Promise.resolve(false);
+    let q;
+    try { q = navigator.permissions.query({ name: 'midi', sysex: false }); } catch (_) { return Promise.resolve(false); }
+    return Promise.resolve(q).then(st => {
+        if (_lmAccess) return true;
+        if (_lmReq) return _lmReq;
+        return st && st.state === 'granted' ? _lmAsk() : false;
+    }, () => false);
+}
+function lmSelect(id) {
+    id = id == null || id === 'all' ? 'all' : String(id);
+    if (id === _lmSel) return;
+    const it = lmInputs().find(x => x.id === id);
+    _lmSel = id; _lmSelName = it ? it.name : '';
+    try { if (id === 'all') localStorage.removeItem('lab_midi_in'); else localStorage.setItem('lab_midi_in', JSON.stringify({ id, name: _lmSelName })); } catch (_) {}
+    _lmSync();
+    _lmState();
+}
+function lmOn(type, fn, o) {
+    const set = _lmSubs[type];
+    if (!set || typeof fn !== 'function') { console.warn('[lab] midi on: bilinmeyen tür', type); return () => {}; }
+    const rec = ev => fn(ev);
+    set.add(rec);
+    let td = null;
+    const off = () => { if (!set.delete(rec)) return; if (td) { lpOffTeardown(td); td = null; } if (type !== 'state') _lmSync(); };
+    if (!(o && o.persist)) td = lpOnTeardown(off);
+    if (type !== 'state') _lmSync();
+    return off;
+}
+function lmLearn(fn, o) {
+    if (typeof fn !== 'function') return () => {};
+    const types = (o && o.types) || ['cc', 'note'];
+    const rec = { fn, types, cancel: null };
+    let td = null;
+    rec.cancel = () => { if (!_lmLearn.delete(rec)) return; if (td) { lpOffTeardown(td); td = null; } _lmSync(); };
+    _lmLearn.add(rec);
+    td = lpOnTeardown(rec.cancel);
+    _lmSync();
+    return rec.cancel;
+}
+const labMidi = {
+    supported: lmSupported, status: lmStatus, message: lmMessage,
+    request: lmRequest, resume: lmResume,
+    inputs: lmInputs, select: lmSelect, selected: () => _lmSel,
+    on: lmOn, learn: lmLearn,
+};
+
+// ── makeMidiButton ───────────────────────────────────────────────────
+function makeMidiButton(o) {
+    o = o || {};
+    const el = mk('div', 'lp-midi' + (o.cls ? ' ' + o.cls : ''));
+    const b = mk('button', 'lp-btn lp-midi-btn'); b.type = 'button';
+    const led = makeLed({ on: false, color: o.color || 'var(--ok)' });
+    const tx = mk('span'); tx.textContent = L('lp_midi_btn');
+    b.append(led.el, tx, mk('span', 'lp-midi-caret', LP_IC.caret));
+    const listId = lpId('lpMidiL'), noteId = lpId('lpMidiN'), capId = lpId('lpMidiC');
+    const pop = mk('div', 'lp-midi-pop'); pop.hidden = true;
+    const cap = mk('div', 'lp-midi-cap'); cap.id = capId;
+    const note = mk('p', 'lp-midi-note'); note.id = noteId;
+    const list = mk('div', 'lp-midi-list'); list.id = listId;
+    list.setAttribute('role', 'listbox'); list.setAttribute('aria-labelledby', capId);
+    pop.append(cap, note, list);
+    el.append(b, pop);
+    b.setAttribute('aria-expanded', 'false'); b.setAttribute('aria-describedby', noteId);
+
+    let opts = [], held = new Set(), flashT = 0, flashing = false, unreg = null, busy = false;
+    const ready = () => lmStatus() === 'ready';
+    const paintLed = () => led.set(flashing || held.size > 0);
+    function flash(ms) {
+        flashing = true; paintLed();
+        clearTimeout(flashT);
+        flashT = setTimeout(() => { flashT = 0; flashing = false; paintLed(); }, ms);
+    }
+    function selName() {
+        const s = labMidi.selected();
+        if (s === 'all') return `${L('lp_midi_all')} (${lmInputs().length})`;
+        const it = lmInputs().find(x => x.id === s);
+        return `${it ? it.name : (_lmSelName || s)}${it ? '' : ' — ' + L('lp_midi_off')}`;
+    }
+    function build() {
+        list.innerHTML = ''; opts = [];
+        const sel = labMidi.selected();
+        const ins = lmInputs(), rows = [{ id: 'all', name: L('lp_midi_all'), n: String(ins.length) }].concat(ins);
+        // Seçili cihaz şu an takılı değilse de listede görünsün (seçim korunur, takılınca yeniden dinlenir)
+        if (sel !== 'all' && !ins.some(x => x.id === sel)) rows.push({ id: sel, name: _lmSelName || sel, n: L('lp_midi_off') });
+        rows.forEach(it => {
+            const op = mk('div', 'lp-midi-opt'); op.setAttribute('role', 'option'); op.tabIndex = -1; op.id = lpId('lpMidiO'); op._id = it.id;
+            const t = mk('span', 'lp-midi-opt-t'); t.textContent = it.name; op.append(t);
+            const m = mk('span', 'lp-midi-opt-n'); m.textContent = it.n != null ? it.n : (it.manufacturer || ''); if (m.textContent) op.append(m);
+            op.setAttribute('aria-selected', String(it.id === sel));
+            op.addEventListener('click', () => pick(it.id));
+            list.append(op); opts.push(op);
+        });
+    }
+    function refresh() {
+        if (!sub.alive()) return;
+        const s = lmStatus(), msg = lmMessage();
+        el.classList.toggle('is-ready', s === 'ready');
+        el.classList.toggle('is-unsup', s === 'unsupported');
+        el.classList.toggle('is-err', s === 'denied' || s === 'error');
+        tx.textContent = L('lp_midi_btn');
+        cap.textContent = L('lp_midi_cap');
+        // Not satırı: hazır + cihaz varken boş (liste konuşur), yoksa neden cümlesi
+        note.textContent = s === 'ready' && lmInputs().length ? '' : msg;
+        list.hidden = s !== 'ready';
+        if (s === 'ready') { b.setAttribute('aria-haspopup', 'listbox'); b.setAttribute('aria-controls', listId); }
+        else { b.removeAttribute('aria-haspopup'); b.removeAttribute('aria-controls'); }
+        b.setAttribute('aria-label', `${L('lp_midi_aria')}: ${s === 'ready' ? selName() : msg}`);
+        b.title = s === 'ready' ? L('lp_midi_t') : msg;
+        if (!pop.hidden && s === 'ready') { const f = opts.indexOf(document.activeElement); build(); if (f >= 0) (opts[Math.min(f, opts.length - 1)] || b).focus(); }
+        paintLed();
+    }
+    const onDoc = e => { if (!el.isConnected || !el.contains(e.target)) close(false); };
+    function open() {
+        if (!pop.hidden) return;
+        if (ready()) build();
+        pop.hidden = false; b.setAttribute('aria-expanded', 'true'); el.classList.add('is-open');
+        pop.style.left = '0px';                                  // görüntü alanına sığdır (çalışma anı durumu)
+        const r = pop.getBoundingClientRect(), vw = document.documentElement.clientWidth;
+        let dx = 0;
+        if (r.right > vw - 16) dx = (vw - 16) - r.right;
+        if (r.left + dx < 16) dx = 16 - r.left;
+        pop.style.left = dx + 'px';
+        document.addEventListener('pointerdown', onDoc, true);
+        unreg = lpOnTeardown(() => close(false));
+        if (ready()) { const s = opts.find(x => x.getAttribute('aria-selected') === 'true') || opts[0]; if (s) s.focus(); }
+    }
+    function close(focusBack) {
+        if (pop.hidden) return;
+        pop.hidden = true; b.setAttribute('aria-expanded', 'false'); el.classList.remove('is-open');
+        document.removeEventListener('pointerdown', onDoc, true);
+        if (unreg) { lpOffTeardown(unreg); unreg = null; }
+        if (focusBack) try { b.focus({ preventScroll: true }); } catch (_) {}
+    }
+    function pick(id) {
+        labMidi.select(id);
+        close(true);
+        lpAnnounce(Lf('lp_midi_sel', { name: selName() }));
+    }
+    b.addEventListener('click', () => {
+        if (busy) return;
+        if (!pop.hidden) { close(true); return; }
+        const s = lmStatus();
+        if (s === 'ready' || s === 'unsupported') { open(); return; }
+        busy = true;
+        labMidi.request().then(ok => { busy = false; if (!el.isConnected) return; refresh(); if (ok || lmStatus() !== 'pending') open(); });
+    });
+    b.addEventListener('keydown', e => {
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && ready()) { e.preventDefault(); open(); }
+        else if (e.key === 'Escape' && !pop.hidden) { e.preventDefault(); e.stopPropagation(); close(true); }
+    });
+    pop.addEventListener('keydown', e => {
+        const i = opts.indexOf(document.activeElement);
+        let j = -1;
+        if (e.key === 'ArrowDown') j = Math.min(opts.length - 1, i + 1);
+        else if (e.key === 'ArrowUp') j = Math.max(0, i - 1);
+        else if (e.key === 'Home') j = 0;
+        else if (e.key === 'End') j = opts.length - 1;
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (i >= 0) pick(opts[i]._id); return; }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); return; }
+        else if (e.key === 'Tab') { close(false); return; }
+        if (j >= 0) { e.preventDefault(); if (opts[j]) opts[j].focus(); }
+    });
+    // Abonelik (lpElSub): nota / CC LED'i + durum. persist → ömrü lpElSub yönetir.
+    const sub = lpElSub(el, () => {
+        const offs = [
+            labMidi.on('noteon', ev => { if (!sub.alive()) return; held.add(ev.input + ':' + ev.ch + ':' + ev.note); flash(110); }, { persist: true }),
+            labMidi.on('noteoff', ev => { held.delete(ev.input + ':' + ev.ch + ':' + ev.note); paintLed(); }, { persist: true }),
+            labMidi.on('cc', () => { if (sub.alive()) flash(60); }, { persist: true }),
+            labMidi.on('pitchbend', () => { if (sub.alive()) flash(60); }, { persist: true }),
+            labMidi.on('state', () => { held = new Set(); refresh(); }, { persist: true }),
+        ];
+        return () => {
+            offs.forEach(f => f());
+            clearTimeout(flashT); flashT = 0; flashing = false; held = new Set(); led.set(false);
+            close(false);
+        };
+    });
+    labOnRefresh(el, refresh);
+    refresh();
+    if (lmStatus() === 'idle') lmResume();
+    return { el, button: b, refresh, open, close: () => close(true), destroy: sub.off };
+}
+if (/[?&]mididebug=1\b/.test(location.search)) window.__lpMidi = { labMidi, makeMidiButton };
 
 // ═══════════════════════════════════════════════════════════════════
 // NAVIGATION — hero listesi + modül sekmeleri + görünüm değişimi
