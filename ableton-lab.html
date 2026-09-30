@@ -1201,7 +1201,7 @@
 
         /* Başlık çubuğu sağı: SES · LAT · L/R · tepe */
         .m2-bar-r { display:flex; align-items:center; gap:14px; }
-        .m2-peak { width:52px; font-family:var(--ff-mono); font-size:10px; text-align:right; color:var(--fg-muted); font-variant-numeric:tabular-nums; }
+        .m2-peak { width:46px; font-family:var(--ff-mono); font-size:10px; text-align:right; color:var(--fg-muted); font-variant-numeric:tabular-nums; }
         .m2-peak.is-hot { color:var(--err-strong); }
 
         /* Taşıma satırı */
@@ -1307,6 +1307,25 @@
         .lab-m2 .m2-edk .lp-knob { width:66px; }
         .m2-hint { padding:8px 10px; border-radius:var(--r-6); font-size:12px; line-height:1.5; color:var(--fg-muted); }
 
+        /* Kit (başlık çubuğu ortası) · REC · örnek tarayıcı · MIDI nota · dalga formu */
+        .m2-kitbox { display:flex; align-items:center; gap:8px; }
+        .lab-m2 .m2-kit.is-custom { box-shadow:inset 0 0 0 1px var(--line-strong); }
+        .m2-recbox { display:flex; flex-direction:column; align-items:stretch; gap:6px; }
+        .lab-m2 .m2-rec { height:34px; min-width:72px; font-size:11px; font-weight:700; letter-spacing:.1em; }
+        .lab-m2 .m2-rec[aria-pressed="true"] { background:var(--err-soft); border-color:var(--err-line); color:var(--err); }
+        .lab-m2 .m2-rec.is-live .lp-led { animation:m2-blink 1s steps(1) infinite; }
+        .m2-pad-s { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+        .m2-edm { display:flex; flex-direction:column; gap:12px; min-width:0; }
+        .lab-m2 .m2-edm .m2-disp { align-self:stretch; }
+        .m2-sbbox { min-width:0; }
+        .m2-midi { display:flex; align-items:center; gap:8px; min-width:0; }
+        .m2-midi-v { font-family:var(--ff-mono); font-size:11px; color:var(--fg); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .lab-m2 .m2-learn { margin-left:auto; }
+        .lab-m2 .m2-learn.is-learn { border-color:var(--err-line); color:var(--err); }
+        .m2-dwave { fill:var(--c); opacity:.42; }
+        .m2-dwave--cut { opacity:.14; }
+        .m2-dinfo { margin:6px 2px 0; font-family:var(--ff-mono); font-size:10px; line-height:1.5; color:var(--fg-3); overflow-wrap:anywhere; }
+
         /* Durum satırı */
         .m2-sched { display:inline-flex; align-items:center; gap:6px; }
         .m2-sv { color:var(--fg-muted); }
@@ -1341,6 +1360,8 @@
         @media (max-width:1279px) {
             .m2-row { grid-template-columns:384px minmax(0,1fr); }
             .m2-strip { grid-template-columns:100px 30px 30px repeat(4, 50px); }
+            .m2-cap--ch { white-space:normal; line-height:1.3; }
+            .m2-pad-pk { display:none; }
             .m2-ed { grid-template-columns:250px minmax(0,1fr); }
             .m2-edr { grid-column:1 / -1; }
         }
@@ -2343,7 +2364,8 @@ async function saveProgress() {
 }
 
 // Beat kaydı (v:2). Firestore iç içe dizi kabul etmez → aktif slot {r0..r4} haritası (eski okuyucular
-// için) + her şey tek JSON metninde (4 slot, uzunluk, VOL, kanal/sentez ayarları, master, choke).
+// için) + her şey tek JSON metninde (4 slot, uzunluk, VOL, kanal/sentez ayarları — tracks[i].smp = kanalın
+// örnek kimliği (kit), master, choke). smp'siz eski kayıtlar Classic kit ile açılır (m2Tracks).
 async function saveBeat(name) {
     if (!currentUser || !_db) return;
     const B = state.beat, act = state.beatPatterns, patterns = {};
@@ -2503,12 +2525,14 @@ const state = {
     // Beat Maker · BE·RHYTHM 02 (rehber 2.1). slots motor bloğunda bağlanır: [A = beatPatterns, B, C, D]
     beat: {
         len: 16, slots: null, slot: 0, pendingSlot: null, preset: null,
+        // smp: LAB_SAMPLES kimliği (SAMPLE modunda çalan örnek; varsayılan Classic kit = eski wav'lar).
+        // Kanal türleri BEAT_SMP_KINDS (Kick → kick · Snare → snare/clap · C.Hat → chat · O.Hat → ohat/ride · Bass → bass)
         tracks: [
-            { tune:0, decay:100, pan:0,   mute:false, solo:false, src:'sample' },   // Kick
-            { tune:0, decay:100, pan:0,   mute:false, solo:false, src:'sample' },   // Snare
-            { tune:0, decay:100, pan:-15, mute:false, solo:false, src:'sample' },   // Close Hat
-            { tune:0, decay:100, pan:20,  mute:false, solo:false, src:'sample' },   // Open Hat
-            { tune:0, decay:100, pan:0,   mute:false, solo:false, src:'sample' },   // Bass
+            { tune:0, decay:100, pan:0,   mute:false, solo:false, src:'sample', smp:'classic-kick'  },   // Kick
+            { tune:0, decay:100, pan:0,   mute:false, solo:false, src:'sample', smp:'classic-snare' },   // Snare
+            { tune:0, decay:100, pan:-15, mute:false, solo:false, src:'sample', smp:'classic-chat'  },   // Close Hat
+            { tune:0, decay:100, pan:20,  mute:false, solo:false, src:'sample', smp:'classic-ohat'  },   // Open Hat
+            { tune:0, decay:100, pan:0,   mute:false, solo:false, src:'sample', smp:'classic-bass'  },   // Bass
         ],
         synth: [
             { start:150, end:45, sweep:150 },    // Kick  (Hz, Hz, ms)
@@ -2932,12 +2956,20 @@ function playNote(freq, dur = 0.8, velocity = 0.85) {
 //   beatMasterGain → ChannelSplitter(2) → analyserL / analyserR (metreler, fftSize 512)
 // Vuruş başına (stop() sonrası çöp toplanır): kaynak (osc / 1 sn gürültü / sample) → [filtre] → zarf → trackGain[i].
 // beatMasterGain bağlam yaşadıkça DEĞİŞTİRİLMEZ (eski beatRestartRun ana kazanç değiş-tokuşu kaldırıldı).
+// Örnekler (kit): kanal i SAMPLE modunda state.beat.tracks[i].smp'yi (LAB_SAMPLES kimliği) çalar — tampon
+// labSampleBuffer'ın genel önbelleğinden (beatSmpBufs, sayfa ömürlü; AudioBuffer bağlamlar arası geçer), zarf
+// tepesi × labSampleGain (gainDb seviye eşleme). Seçili örnek henüz yüklenmediyse o kanalın Classic wav'ı,
+// o da yoksa sentez çalar. beatBuffers[BEAT_TRACKS[i].file] Classic wav'lar için korunur (eski sözleşme).
+// Canlı kayıt (MIDI / pad, REC): scheduleStep her adımı beatStepLog'a yazar {step, t (swing'siz grid), pat, spb};
+// beatRecordHit(i, vel, perfMs) vuruşu en yakın 16'lığa kuantize edip o adımın pattern dizisine yazar.
 let beatCtx = null, beatBuffers = {}, beatMasterGain = null, beatOut = null;
 let beatTimerID = null, beatStep = 0, beatNextTime = 0, beatPlaying = false, beatGeneration = 0;
 let beatBus = [], beatBusMemo = [], beatNoiseBuf = null, beatAnL = null, beatAnR = null;
 // Görsel kuyruk: scheduleStep → {step, time, hits}; tek rAF döngüsü (beatUiLoop) currentTime'a göre okur
 let beatQueue = [], beatUiRaf = 0, beatUiUntil = 0, beatUiHook = null;
 let beatVoices = 0, beatPending = [];            // çalan ses sayısı · henüz başlamamış kaynaklar (durdurunca susar)
+let beatStepLog = [];                            // planlanan son adımlar {step, t, pat, spb} (canlı kayıt kuantizesi)
+const beatRecSkip = new Map();                   // 'i:adım' → pattern: erken kaydedilen vuruş o turda bir kez çalınmaz (çift vuruş yok)
 const beatHitT = [0, 0, 0, 0, 0];                 // son vuruş zamanı (performance.now) — pad parlaması
 const BEAT_LOOKAHEAD = 0.100, BEAT_TICK_MS = 25;  // s · ms
 const BEAT_BASE_DECAY = [350, 200, 50, 350, 300]; // ms, DECAY %100 (Kick, Snare, C.Hat, O.Hat, Bass)
@@ -2960,6 +2992,39 @@ const BEAT_TRACKS = [
 ];
 BEAT_TRACKS.forEach(t => { t.color = _cssTok(t.cssVar) || TOK.accent; });
 function _btc(t) { return t.color; }
+// Kanal başına izinli örnek türleri + Classic (varsayılan) örnek kimlikleri — LAB_SAMPLES (PRO KİT)
+const BEAT_SMP_KINDS = [['kick'], ['snare', 'clap'], ['chat'], ['ohat', 'ride'], ['bass']];
+const BEAT_SMP_DEF = ['classic-kick', 'classic-snare', 'classic-chat', 'classic-ohat', 'classic-bass'];
+// Çözülmüş örnek tamponları (id → AudioBuffer), sayfa ömürlü; yükleme bitince beatSmpSubs haber alır
+const beatSmpBufs = {};
+const beatSmpBad = {};                            // id → true: son yükleme başarısız (sonraki çağrı yeniden dener)
+const beatSmpSubs = new Set();
+function beatSmpLoad(id) {
+    if (!id || beatSmpBufs[id]) return Promise.resolve(beatSmpBufs[id] || null);
+    return labSampleBuffer(beatCtx, id).then(buf => {
+        const first = buf ? !beatSmpBufs[id] : !beatSmpBad[id];
+        if (!buf) beatSmpBad[id] = true; else { delete beatSmpBad[id]; beatSmpBufs[id] = buf; }
+        if (first) beatSmpSubs.forEach(f => { try { f(id); } catch (e) { console.warn('[lab] beat sample sub:', e); } });
+        return buf;
+    });
+}
+// Kanalların seçili örnekleri + Classic yedekleri; Classic tamponları beatBuffers[file]'a da yazılır
+function beatEnsureSamples() {
+    const ctx = beatCtx;
+    const all = BEAT_TRACKS.map((t, i) => {
+        const def = beatSmpLoad(BEAT_SMP_DEF[i]).then(buf => { if (buf && ctx && beatCtx === ctx) beatBuffers[t.file] = buf; return buf; });
+        const id = state.beat.tracks[i].smp;
+        return id && id !== BEAT_SMP_DEF[i] ? Promise.all([def, beatSmpLoad(id)]) : def;
+    });
+    return Promise.all(all);
+}
+// Kanal i'nin çalacağı örnek: { id, buf, gain } | null (seçili yüklenmediyse Classic yedeği)
+function beatTrackSmp(i) {
+    const t = state.beat.tracks[i];
+    let id = t && t.smp, buf = id ? beatSmpBufs[id] : null;
+    if (!buf) { id = BEAT_SMP_DEF[i]; buf = beatSmpBufs[id] || beatBuffers[BEAT_TRACKS[i].file] || null; }
+    return buf ? { id, buf, gain: labSampleGain(id) } : null;
+}
 
 // Beat durumu (state.beat, rehber 2.1). A slotu açılıştaki state.beatPatterns dizisinin kendisi.
 const beatEmpty = len => BEAT_TRACKS.map(() => new Array(len || 16).fill(0));
@@ -3032,12 +3097,8 @@ function getBeatCtx() {
             } else g.connect(beatMasterGain);
             return { g, p };
         });
-        BEAT_TRACKS.forEach(t => {
-            fetch(t.file).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
-                .then(ab => ctx.decodeAudioData(ab))
-                .then(buf => { if (beatCtx === ctx) beatBuffers[t.file] = buf; })
-                .catch(e => console.warn('[lab] beat sample:', t.file, e));
-        });
+        // Classic wav'lar + kanalların seçili örnekleri (labSampleBuffer: tek fetch, genel önbellek)
+        beatEnsureSamples();
     }
     if (beatCtx.state === 'suspended') { const p = beatCtx.resume(); if (p && p.catch) p.catch(() => {}); }
     return beatCtx;
@@ -3084,9 +3145,10 @@ function beatChoke(ctx, when) {
 }
 
 // Tek vuruş (rehber 2.2). i: BEAT_TRACKS sırası · v: 0..1 zarf tepesi · dest: hedef düğüm.
-// useSample: yüklü wav'ı playbackRate = 2^(tune/12) ile çal (DECAY sample'ın sonunu kısaltır).
+// smp: { buf, gain } (beatTrackSmp) → örneği playbackRate = 2^(tune/12) ile çal, tepe × gain (gainDb);
+// DECAY sample'ın sonunu kısaltır. true (eski çağrı) → kanalın Classic wav'ı. false/null → sentez.
 // Sentez parametreleri state.beat.synth[i]; TUNE/DECAY state.beat.tracks[i] (sonraki vuruşta duyulur).
-function beatVoice(ctx, i, v, when, dest, useSample) {
+function beatVoice(ctx, i, v, when, dest, smp) {
     const t = state.beat.tracks[i], e = state.beat.synth[i];
     const k = Math.pow(2, (+t.tune || 0) / 12);
     const D = BEAT_BASE_DECAY[i] / 1000 * (+t.decay || 100) / 100;
@@ -3110,15 +3172,17 @@ function beatVoice(ctx, i, v, when, dest, useSample) {
     };
     const noise = () => { const n = ctx.createBufferSource(); n.buffer = beatNoiseFor(ctx); return n; };
     if (i === 2 && state.beat.choke) beatChoke(ctx, when);
-    const buf = useSample ? beatBuffers[BEAT_TRACKS[i].file] : null;
+    const S = smp === true ? { buf: beatBuffers[BEAT_TRACKS[i].file], gain: 1 } : smp;
+    const buf = S && S.buf ? S.buf : null;
     let ohEnv = null, ohDur = D, ohPeak = v;
     if (buf) {
         const s = ctx.createBufferSource(); s.buffer = buf;
         s.playbackRate.value = k;                                       // başlamadan önce (sesli değil)
         const Ds = Math.max(0.02, buf.duration / k * Math.min(1, (+t.decay || 100) / 100));
-        const g = env(v, Ds, Math.max(0.004, Ds * 0.7));
+        const pk = v * (S.gain > 0 ? S.gain : 1);                       // gainDb: örnekler arası seviye eşleme
+        const g = env(pk, Ds, Math.max(0.004, Ds * 0.7));
         s.connect(g); go(s, when + Ds + 0.02);
-        if (i === 3) { ohEnv = g; ohDur = Ds; }
+        if (i === 3) { ohEnv = g; ohDur = Ds; ohPeak = pk; }
     } else if (i === 0) {
         const o = ctx.createOscillator();
         o.frequency.setValueAtTime(e.start * k, when);
@@ -3164,11 +3228,11 @@ function synthDrum(ctx, fileOrIndex, v, when, dest = null) {
     if (!dest) dest = ctx === beatCtx && beatBus[i] ? beatBus[i].g : ctx.destination;
     beatVoice(ctx, i, Math.max(0, +v || 0), when, dest, false);
 }
-// Beat Maker sesi: SAMPLE seçiliyse ve wav yüklendiyse sample, yoksa sentez → iz bus'ı
+// Beat Maker sesi: SAMPLE seçiliyse ve örnek (ya da Classic yedeği) yüklendiyse sample, yoksa sentez → iz bus'ı
 function triggerDrum(i, v, when) {
     const ctx = getBeatCtx();
-    const useSample = state.beat.tracks[i].src === 'sample' && !!beatBuffers[BEAT_TRACKS[i].file];
-    beatVoice(ctx, i, v, when, beatBus[i].g, useSample);
+    const smp = state.beat.tracks[i].src === 'sample' ? beatTrackSmp(i) : null;
+    beatVoice(ctx, i, v, when, beatBus[i].g, smp);
 }
 // Önizleme (pad, hücre, knob bırakma): hemen, iz bus'ı üzerinden (mute/solo/VOL geçerli)
 function beatPreview(i, vel) {
@@ -3183,8 +3247,14 @@ function scheduleStep(step, when) {
     const spb = 60 / state.bpm / 4;
     const t = when + (step % 2 === 1 ? (state.swing / 100) * spb * 0.66 : 0);   // swing: yalnız tek 16'lıklar
     const pat = state.beatPatterns, hits = [];
+    beatStepLog.push({ step, t: when, pat, spb });
+    if (beatStepLog.length > 64) beatStepLog.shift();
     BEAT_TRACKS.forEach((track, ti) => {
         const vel = (pat[ti] || [])[step];
+        if (beatRecSkip.size) {                                                  // canlı kayıtta zaten çalındı
+            const k = ti + ':' + step;
+            if (beatRecSkip.get(k) === pat) { beatRecSkip.delete(k); return; }
+        }
         if (!(vel > 0) || beatTrackGain(ti) <= 0) return;                        // mute/solo: ses kurulmaz
         triggerDrum(ti, vel / 100, t);
         hits.push(ti);
@@ -3226,6 +3296,7 @@ function startBeat() {
     beatPlaying  = true;
     beatStep     = 0;
     beatQueue    = [];
+    beatStepLog  = []; beatRecSkip.clear();
     beatGeneration++;
     syncBeatBus();
     beatNextTime = ctx.currentTime + 0.06;
@@ -3238,6 +3309,7 @@ function stopBeat(resetCtx = false) {
     beatGeneration++;                                   // çalışan zamanlayıcıyı geçersiz kılar
     if (beatTimerID) { clearTimeout(beatTimerID); beatTimerID = null; }
     beatQueue = [];
+    beatStepLog = []; beatRecSkip.clear();
     if (state.beat) state.beat.pendingSlot = null;
     if (beatCtx) {                                      // lookahead'de planlanmış ama başlamamış vuruşlar susar
         const now = beatCtx.currentTime;
@@ -3251,6 +3323,40 @@ function stopBeat(resetCtx = false) {
         beatBus = []; beatBusMemo = []; beatNoiseBuf = null; beatAnL = null; beatAnR = null; beatVoices = 0;
     }
     highlightStep(-1);
+}
+
+// performance.now() (ms) → o anda DUYULAN beatCtx zamanı (s). getOutputTimestamp çıkış gecikmesini hesaba
+// katar: çalan kişi duyduğuna göre vurur, kayıt da duyulan grid'e göre kuantize edilir.
+function beatCtxTimeAt(perfMs) {
+    const ctx = beatCtx;
+    if (!ctx) return 0;
+    let ct = ctx.currentTime, pt = performance.now();
+    try {
+        const o = ctx.getOutputTimestamp && ctx.getOutputTimestamp();
+        if (o && o.contextTime > 0 && o.performanceTime > 0) { ct = o.contextTime; pt = o.performanceTime; }
+        else ct -= (ctx.outputLatency || ctx.baseLatency || 0);
+    } catch (_) {}
+    return ct + ((+perfMs || pt) - pt) / 1000;
+}
+// Canlı kayıt (Ableton'da Drum Rack clip'ine Record Quantization 1/16 ile kayıt): vuruşu en yakın 16'lığa
+// yazar. En yakın adım henüz planlanmadıysa (yavaş tempoda erken vuruş) o tur bir kez atlanır — canlı
+// duyulan vuruş çift çalmasın. → { step, pat } | null (çalmıyorsa)
+function beatRecordHit(i, vel, perfMs) {
+    if (!beatPlaying || !beatCtx || !beatStepLog.length || i < 0 || i >= BEAT_TRACKS.length) return null;
+    const hitT = beatCtxTimeAt(perfMs);
+    let best = beatStepLog[0], bd = Infinity;
+    beatStepLog.forEach(e => { const d = Math.abs(e.t - hitT); if (d < bd) { bd = d; best = e; } });
+    let step = best.step, pat = best.pat;
+    const last = beatStepLog[beatStepLog.length - 1];
+    if (best === last && hitT - last.t > last.spb / 2) {
+        const B = state.beat;
+        step = (last.step + 1) % B.len;
+        pat = step === 0 && B.pendingSlot != null ? B.slots[B.pendingSlot] : last.pat;
+        beatRecSkip.set(i + ':' + step, pat);
+    }
+    if (!pat || !pat[i] || step >= pat[i].length) return null;
+    pat[i][step] = Math.max(1, Math.min(100, Math.round(+vel || 100)));
+    return { step, pat };
 }
 
 // Analyser tepe genliği (0..1) — metreler için; tampon bir kez
@@ -9750,7 +9856,7 @@ Object.assign(LAB_TXT, {
     lab_m2_hint_2:      [`Highpass'lı beyaz gürültü. Kısa decay = kapalı hat.`, `High-passed white noise. Short decay = closed hat.`],
     lab_m2_hint_3:      [`Aynı kaynak, uzun decay. Close Hat çalınca susturulur (choke).`, `Same source, long decay. Muted when the Close Hat plays (choke).`],
     lab_m2_hint_4:      [`Sawtooth → rezonanslı lowpass. ENV AMT filtreyi her vuruşta açıp kapatır ("pluck").`, `Sawtooth → resonant lowpass. ENV AMT opens and closes the filter on every hit ("pluck").`],
-    lab_m2_hint_sample: [`SAMPLE: wav dosyası çalar. TUNE = playbackRate 2^(st/12), DECAY sample'ın sonunu kısaltır (%100 = doğal uzunluk). Sentez knob'ları için SYNTH'e geç.`, `SAMPLE: plays the wav file. TUNE = playbackRate 2^(st/12), DECAY shortens the end of the sample (100% = natural length). Switch to SYNTH for the synthesis knobs.`],
+    lab_m2_hint_sample: [`SAMPLE: seçili örneği çalar (seviye gainDb ile eşlenir). TUNE = playbackRate 2^(st/12), DECAY sample'ın sonunu kısaltır (%100 = doğal uzunluk). Ekranın altındaki SAMPLE listesinden başka örnek yükle; sentez knob'ları için SYNTH'e geç.`, `SAMPLE: plays the selected sample (level matched by gainDb). TUNE = playbackRate 2^(st/12), DECAY shortens the end of the sample (100% = natural length). Load another sample from the SAMPLE list under the display; switch to SYNTH for the synthesis knobs.`],
     lab_m2_disp_choke:  [`Close Hat bu sesi keser (choke)`, `Close Hat cuts this sound (choke)`],
     lab_m2_disp_smp:    [`SYNTH'e geçince sentez eğrileri`, `synthesis curves in SYNTH mode`],
     // Durum satırı
@@ -9806,8 +9912,108 @@ Object.assign(LAB_TXT, {
     lab_m2_where_li3:   [`<strong>Swing</strong> → Groove Pool: clip'e groove sürükle, Timing %'si = buradaki SWING.`, `<strong>Swing</strong> → Groove Pool: drag a groove onto the clip, its Timing % = SWING here.`],
     lab_m2_where_li4:   [`<strong>Choke</strong> → Drum Rack chain'inde aynı Choke grubu.`, `<strong>Choke</strong> → the same Choke group in the Drum Rack chain.`],
     lab_m2_where_path:  [`Browser → Drums → Drum Rack · Groove Pool: Ctrl/Cmd+Alt+G`, `Browser → Drums → Drum Rack · Groove Pool: Ctrl/Cmd+Alt+G`],
-    lab_m2_saved_empty: [`Henüz kayıtlı beat yok. Pattern'i kur, KAYDET'e bas — 4 slot, BPM, swing ve tüm kanal ayarları birlikte saklanır.`, `No saved beats yet. Build the pattern and press SAVE — 4 slots, BPM, swing and all channel settings are stored together.`],
+    lab_m2_saved_empty: [`Henüz kayıtlı beat yok. Pattern'i kur, KAYDET'e bas — 4 slot, BPM, swing, kit ve tüm kanal ayarları birlikte saklanır.`, `No saved beats yet. Build the pattern and press SAVE — 4 slots, BPM, swing, the kit and all channel settings are stored together.`],
+    // Kit + örnek tarayıcı (Drum Rack + Simpler mantığı)
+    lab_m2_kit_aria:    [`Davul kiti (Drum Rack preset'i)`, `Drum kit (Drum Rack preset)`],
+    lab_m2_kit_t:       [`Kit: beş pad'e hazır örnek seti yükler — pattern değişmez`, `Kit: loads a ready sample set onto the five pads — the pattern stays`],
+    lab_m2_kit_custom:  [`Kit: özel (pad'lere tek tek örnek yüklendi)`, `Kit: custom (samples loaded pad by pad)`],
+    lab_m2_toast_kit:   [`{name} kiti yüklendi`, `{name} kit loaded`],
+    lab_m2_toast_smp:   [`{track} ← {name}`, `{track} ← {name}`],
+    lab_m2_sb_aria:     [`{name} için örnek tarayıcı`, `Sample browser for {name}`],
+    lab_m2_smp_load:    [`örnek yükleniyor…`, `loading sample…`],
+    lab_m2_smp_err:     [`örnek yüklenemedi — Classic yedeği çalar`, `sample failed to load — the Classic fallback plays`],
+    lab_m2_disp_wave:   [`dalga formu + zarf`, `waveform + envelope`],
+    // Canlı kayıt + MIDI
+    lab_m2_rec_aria:    [`Kayıt (REC): çalarken pad ve MIDI vuruşlarını en yakın 16'lığa yaz`, `Record (REC): while playing, write pad and MIDI hits to the nearest 16th`],
+    lab_m2_rec_t:       [`REC — çalarken pad'e ya da MIDI klavyene vur, vuruş adıma yazılır (kuantize 1/16)`, `REC — while playing, hit a pad or your MIDI keyboard and the hit is written to the step (quantize 1/16)`],
+    lab_m2_toast_rec:   [`REC açık — ▶ çalarken pad'lere ya da MIDI klavyene vur`, `REC armed — hit the pads or your MIDI keyboard while ▶ is playing`],
+    lab_m2_midi_cap:    [`MIDI NOTA`, `MIDI NOTE`],
+    lab_m2_learn:       [`ÖĞREN`, `LEARN`],
+    lab_m2_learn_wait:  [`BAS…`, `PLAY…`],
+    lab_m2_learn_t:     [`MIDI öğren: bu pad'i tetikleyecek notaya klavyende bas (Esc / yeniden tık = iptal)`, `MIDI learn: press the key on your keyboard that should trigger this pad (Esc / click again = cancel)`],
+    lab_m2_learn_aria:  [`{name} için MIDI notasını öğren — şu an {note}`, `Learn the MIDI note for {name} — now {note}`],
+    lab_m2_toast_learn: [`{name} ← MIDI {note}`, `{name} ← MIDI {note}`],
+    lab_m2_space:       [`SPACE = ÇAL/DUR`, `SPACE = PLAY/STOP`],
+    lab_m2_where_li5:   [`<strong>Kit / Hot-Swap</strong> → Drum Rack preset'i = buradaki KIT; pad'i seç, Browser'dan örneği pad'e sürükle (Simpler açılır).`, `<strong>Kit / Hot-Swap</strong> → a Drum Rack preset = the KIT here; select a pad and drag a sample from the Browser onto it (Simpler opens).`],
+    lab_m2_where_li6:   [`<strong>Canlı kayıt</strong> → izi Arm et, Record'a bas; Edit → Record Quantization 1/16 = buradaki REC. C1 (36) kick, D1 (38) snare, F#1 (42) kapalı hat.`, `<strong>Live recording</strong> → arm the track, press Record; Edit → Record Quantization 1/16 = REC here. C1 (36) kick, D1 (38) snare, F#1 (42) closed hat.`],
+    lab_m2_x9_t: [`Kit / Sample`, `Kit / Sample`],
+    lab_m2_x9_d: [`Her pad bir örnek çalar (Classic ya da Mersey). Seviye gainDb ile eşlenir: zarf tepesi × 10^(gainDb/20); TUNE/DECAY örneğe de uygulanır.`, `Every pad plays a sample (Classic or Mersey). Levels are matched by gainDb: envelope peak × 10^(gainDb/20); TUNE/DECAY apply to the sample as well.`],
+    lab_m2_x10_t: [`MIDI / REC`, `MIDI / REC`],
+    lab_m2_x10_d: [`GM notaları (36 kick, 38/39 snare-clap, 42 kapalı, 46 açık hat, 35/41 bass) pad'i velocity ile çalar; REC açıkken vuruş duyulan zamana göre en yakın 16'lığa yazılır.`, `GM notes (36 kick, 38/39 snare-clap, 42 closed, 46 open hat, 35/41 bass) play the pad with velocity; with REC armed the hit is written to the nearest 16th of the time you heard.`],
+    // Öğretici · Drum Rack mantığı
+    lab_m2_tut_t:       [`Drum Rack mantığı`, `Drum Rack logic`],
+    lab_m2_tut_i:       [`Ableton'daki gibi çalış: önce kiti seç, sonra MIDI clip'i programla (kick, clap, hat), groove ver, pad'e başka örnek yükle ve kaydet. Her adım gerçek kontrolü gösterir; adımı yapınca kendiliğinden ilerler.`, `Work the Ableton way: pick the kit first, then program the MIDI clip (kick, clap, hats), add groove, load another sample onto a pad and save. Every step points at the real control and moves on by itself once you do it.`],
+    lab_m2_tut_o:       [`Aynı akış Live'da: Drum Rack + MIDI clip + Groove Pool. Sıradaki: REC'i aç, ▶ çalarken pad'lere ya da MIDI klavyene vur — vuruşlar adımlara yazılır.`, `The same flow in Live: Drum Rack + MIDI clip + Groove Pool. Next: arm REC and hit the pads or your MIDI keyboard while ▶ plays — the hits are written to the steps.`],
+    lab_m2_tut_1_t:     [`Kit seç: MERSEY`, `Pick a kit: MERSEY`],
+    lab_m2_tut_1_b:     [`Drum Rack'te her pad bir örnek çalar; kit bu beş pad'in hazır dizilişidir. MERSEY'e bas: Kick 08, Clap 11, Closed Hat 02 ve Open Hat 03 yüklenir. Pattern değişmez — yalnız sesler değişir.`, `In a Drum Rack every pad plays a sample; a kit is a ready layout of these five pads. Press MERSEY: Kick 08, Clap 11, Closed Hat 02 and Open Hat 03 load. The pattern stays — only the sounds change.`],
+    lab_m2_tut_1_a:     [`Browser → Drums → bir Drum Rack preset'ini izin üstüne sürükle ya da Hot-Swap ile değiştir.`, `Browser → Drums → drag a Drum Rack preset onto the track, or swap it with Hot-Swap.`],
+    lab_m2_tut_2_t:     [`Boş clip ile başla: INIT`, `Start from an empty clip: INIT`],
+    lab_m2_tut_2_b:     [`INIT aktif pattern'i temizler (Ctrl/⌘+Z geri alır). Hazır groove yerine iskeleti kendin kuracaksın.`, `INIT clears the active pattern (Ctrl/⌘+Z undoes it). Instead of a ready groove you will build the skeleton yourself.`],
+    lab_m2_tut_2_a:     [`Boş clip slotuna çift tık ya da Ctrl/⌘+Shift+M → yeni MIDI clip.`, `Double-click an empty clip slot or Ctrl/⌘+Shift+M → new MIDI clip.`],
+    lab_m2_tut_3_t:     [`Four-on-the-floor: 1 · 5 · 9 · 13`, `Four-on-the-floor: 1 · 5 · 9 · 13`],
+    lab_m2_tut_3_b:     [`Kick satırında 1, 5, 9 ve 13. kutulara tıkla — her vuruşta (1/4) bir kick. House ve techno'nun iskeleti budur.`, `Click boxes 1, 5, 9 and 13 in the Kick row — one kick on every beat (1/4). This is the skeleton of house and techno.`],
+    lab_m2_tut_3_a:     [`Drum Rack'te C1 (36) pad'i; MIDI clip'te Draw modu (B) ile her 1/4'e bir nota.`, `The C1 (36) pad in the Drum Rack; in the MIDI clip, Draw mode (B) puts a note on every 1/4.`],
+    lab_m2_tut_4_t:     [`Clap: 2. ve 4. vuruş (5 · 13)`, `Clap: beats 2 and 4 (5 · 13)`],
+    lab_m2_tut_4_b:     [`Snare/Clap satırında 5 ve 13'e bas. Kick'e cevap veren bu backbeat groove'un omurgasıdır.`, `Hit 5 and 13 in the Snare/Clap row. This backbeat answers the kick — it is the spine of the groove.`],
+    lab_m2_tut_4_a:     [`D1 (38) snare ya da D#1 (39) clap pad'i — 2. ve 4. vuruşa nota.`, `The D1 (38) snare or D#1 (39) clap pad — a note on beats 2 and 4.`],
+    lab_m2_tut_5_t:     [`Hi-hat + velocity aksanları`, `Hi-hats + velocity accents`],
+    lab_m2_tut_5_b:     [`Close Hat'e en az 4 vuruş koy, sonra bazılarına yeniden tıklayarak velocity'yi 70 ya da 40'a indir (ya da hücreyi dikey sürükle). Güçlü–zayıf farkı hat'i insan gibi çaldırır.`, `Put at least 4 hits in the Close Hat row, then click some of them again to drop the velocity to 70 or 40 (or drag the cell vertically). The strong–weak contrast makes the hats sound played by a human.`],
+    lab_m2_tut_5_a:     [`MIDI clip'in altındaki velocity şeridi; notayı dikey sürükleyince velocity değişir.`, `The velocity lane under the MIDI clip; dragging a note's velocity marker changes it.`],
+    lab_m2_tut_6_t:     [`Çal: Space`, `Play: Space`],
+    lab_m2_tut_6_b:     [`▶'ye bas ya da eklenti odaktayken Space'e bas. Scheduler 100 ms önden planlar; üstteki LED'ler çalan adımı, metreler seviyeyi gösterir.`, `Press ▶, or Space while the plug-in has focus. The scheduler plans 100 ms ahead; the LEDs on top show the playing step, the meters show the level.`],
+    lab_m2_tut_6_a:     [`Space = Play/Stop — Live'da da aynı kısayol.`, `Space = Play/Stop — the same shortcut in Live.`],
+    lab_m2_tut_7_t:     [`Swing ile groove ver`, `Add groove with swing`],
+    lab_m2_tut_7_b:     [`SWING'i %10'un üstüne getir (%15–30 iyi başlangıç). Tek 16'lıklar geriye kayar; hat'lerdeki shuffle'ı dinle.`, `Turn SWING above 10% (15–30% is a good start). The odd 16ths move later; listen to the shuffle in the hats.`],
+    lab_m2_tut_7_a:     [`Groove Pool (Ctrl/⌘+Alt+G): bir swing groove'unu clip'e sürükle; Timing % = buradaki SWING.`, `Groove Pool (Ctrl/⌘+Alt+G): drag a swing groove onto the clip; its Timing % = SWING here.`],
+    lab_m2_tut_8_t:     [`Open Hat + Choke`, `Open Hat + Choke`],
+    lab_m2_tut_8_b:     [`Open Hat'i bir off-beat'e koy (3, 7, 11 ya da 15). Sound editor'de CHOKE açıkken Close Hat çalınca Open Hat kesilir — gerçek hi-hat pedalı gibi.`, `Put the Open Hat on an off-beat (3, 7, 11 or 15). With CHOKE on in the sound editor, the Close Hat cuts the Open Hat — like a real hi-hat pedal.`],
+    lab_m2_tut_8_a:     [`Drum Rack → Chain listesi → Choke sütunu: iki pad'e aynı grup numarası.`, `Drum Rack → chain list → Choke column: give both pads the same group number.`],
+    lab_m2_tut_9_t:     [`Pad'e başka örnek yükle`, `Load another sample onto a pad`],
+    lab_m2_tut_9_b:     [`Sound editor'deki SAMPLE listesinde ▶ ile dinle, tıkla ya da Enter ile yükle. Kanal pad'inde yeni ad görünür; TUNE ve DECAY örneğe de uygulanır.`, `In the SAMPLE list of the sound editor, press ▶ to listen, click or press Enter to load. The channel pad shows the new name; TUNE and DECAY apply to the sample too.`],
+    lab_m2_tut_9_a:     [`Pad'i seç → Browser'da örneğe çift tık ya da pad'e sürükle (Simpler açılır).`, `Select the pad → double-click the sample in the Browser or drag it onto the pad (Simpler opens).`],
+    lab_m2_tut_10_t:    [`Kaydet`, `Save`],
+    lab_m2_tut_10_b:    [`KAYDET beat'i (4 slot, BPM, swing, kit ve kanal ayarları) hesabına yazar; preset tarayıcının KULLANICI grubundan geri yüklersin. Giriş yapmadıysan önce giriş penceresi açılır.`, `SAVE writes the beat (4 slots, BPM, swing, kit and channel settings) to your account; load it back from the USER group of the preset browser. If you are not signed in, the sign-in window opens first.`],
+    lab_m2_tut_10_a:    [`Drum Rack başlığındaki disket → User Library'ye preset; set'i Ctrl/⌘+S ile kaydet.`, `The disk icon in the Drum Rack title → preset to the User Library; save the set with Ctrl/⌘+S.`],
 });
+// ─── Kitler (Drum Rack preset'i: beş pad'in örnekleri) ───
+// Mersey: Kick 08 (Kick 02 yerine) — ölçüm: iki kick de ~46 Hz gövdeli, ama 08'in kuyruğu −40 dB'e 221 ms'de
+// iner (02: 338 ms) ve 100 Hz–1 kHz payı daha yüksek (%6 / %3): laptop hoparlöründe "punch" duyulur, 125 BPM'de
+// Bass kanalının 4. 16'lıktaki notasına taşmaz. Clap 11 (uzun gövde, −17 LUFS) Classic Snare'in yerini tutar;
+// Closed Hat 02 ve Open Hat 03 (0.48 sn — choke ile kesilir). Mersey'de bas yok → Bass kanalı Classic kalır.
+const M2_KITS = [
+    { id: 'classic', name: 'Classic', smp: BEAT_SMP_DEF.slice() },
+    { id: 'mersey',  name: 'Mersey',  smp: ['mersey-kick-08', 'mersey-clap-11', 'mersey-closed-hat-02', 'mersey-open-hat-03', 'classic-bass'] },
+];
+function m2KitOf(tracks) {
+    const T = tracks || state.beat.tracks;
+    const k = M2_KITS.find(x => x.smp.every((id, i) => T[i] && T[i].smp === id));
+    return k ? k.id : null;
+}
+// Kanal i için geçerli örnek kimliği (bilinmeyen / türü uymayan → Classic)
+function m2ValidSmp(i, id) { const s = labSample(id); return s && BEAT_SMP_KINDS[i].indexOf(s.kind) >= 0 ? id : BEAT_SMP_DEF[i]; }
+function m2SmpLabel(id) { const s = labSample(id); return s ? `${(LAB_SAMPLE_PACKS[s.pack] || {}).name || s.pack} · ${s.name}` : '—'; }
+// ─── MIDI: GM davul notaları → kanal (Ableton Drum Rack düzeni; C1 = 36). Kanal başına birincil nota
+// ÖĞREN ile değişir (kişisel kolaylık: localStorage 'lab_m2_midi'); diğer GM notaları takma ad.
+const M2_MIDI_DEF = [36, 38, 42, 46, 35];
+const M2_MIDI_ALIAS = { 39: 1, 40: 1, 37: 1, 44: 2, 51: 3, 41: 4 };
+let _m2Midi = (() => {
+    try {
+        const a = JSON.parse(localStorage.getItem('lab_m2_midi') || 'null');
+        if (Array.isArray(a) && a.length === 5 && a.every(n => Number.isInteger(n) && n >= 0 && n <= 127) && new Set(a).size === 5) return a;
+    } catch (_) {}
+    return M2_MIDI_DEF.slice();
+})();
+function m2SaveMidi() { try { localStorage.setItem('lab_m2_midi', JSON.stringify(_m2Midi)); } catch (_) {} }
+function m2TrackForNote(n) {
+    const i = _m2Midi.indexOf(n);
+    if (i >= 0) return i;
+    const a = M2_MIDI_ALIAS[n];
+    return a != null ? a : -1;
+}
+// Öğretici / oturum sayaçları (sayfa ömürlü): örnek seçimi, kit, kayıt, canlı kayıt vuruşu
+const m2Stats = { picks: 0, kits: 0, saves: 0, saveTries: 0, recs: 0 };
+let _m2Rec = false;                                       // REC (canlı kayıt) kurulu mu — görünüm değişse de kalır
+let _m2UserBeats = { uid: '', list: null };               // Beatlerim listesi (preset tarayıcı KULLANICI grubu)
 
 // ─── Genel bakış step sequencer ızgarası (16 adım; Beat kartı) ───
 // Tıkla = aç/kapat · yukarı sürükle = velocity · satır adı = önizle · Enter/Boşluk = aç/kapat.
@@ -9934,7 +10140,7 @@ const M2_ED = [
     [{ k:'cut', l:'LP Hz', min:100, max:2000, d:400, st:5, log:true, f:m2Hz }, { k:'res', l:'RES', min:0.5, max:15, d:5, st:0.1, f:v => v.toFixed(1) }, { k:'env', l:'ENV AMT %', min:0, max:100, d:40, st:1 }],
 ];
 const m2Clamp = (v, a, b, d) => { v = +v; return isFinite(v) ? Math.max(a, Math.min(b, v)) : d; };
-function m2DefTracks() { return M2_PAN_DEF.map(p => ({ tune:0, decay:100, pan:p, mute:false, solo:false, src:'sample' })); }
+function m2DefTracks() { return M2_PAN_DEF.map((p, i) => ({ tune:0, decay:100, pan:p, mute:false, solo:false, src:'sample', smp: BEAT_SMP_DEF[i] })); }
 function m2DefSynth() { return M2_ED.map(sp => { const o = {}; sp.forEach(p => { o[p.k] = p.d; }); return o; }); }
 // Dış veri (kayıt / anlık görüntü) → doğrulanmış kanal ve sentez ayarları
 function m2Tracks(list) {
@@ -9942,7 +10148,7 @@ function m2Tracks(list) {
     return d.map((t, i) => {
         const x = (list && list[i]) || {};
         return { tune: Math.round(m2Clamp(x.tune, -12, 12, t.tune)), decay: m2Clamp(x.decay, 25, 250, t.decay), pan: m2Clamp(x.pan, -100, 100, t.pan),
-                 mute: !!x.mute, solo: !!x.solo, src: x.src === 'synth' ? 'synth' : 'sample' };
+                 mute: !!x.mute, solo: !!x.solo, src: x.src === 'synth' ? 'synth' : 'sample', smp: m2ValidSmp(i, x.smp) };
     });
 }
 function m2Synth(list) {
@@ -9974,6 +10180,7 @@ function m2Restore(o) {
     beatStep %= B.len;
     refreshDelayTime();
     syncBeatBus();
+    beatEnsureSamples();                           // kitin örnekleri (önbellekte değilse) yüklenir
 }
 // Kayıtlı beat → anlık görüntü. v:2 → JSON verisi; eski biçim → yalnız pattern (slot A) + BPM + swing,
 // diğer alanlar varsayılan.
@@ -10018,6 +10225,8 @@ function m2KitBlock(block) { return howItWorks({ bare: true, kicker: false, titl
 let _m2Seeded = false;   // House ön yüklemesi sayfa başına bir kez (INIT'ten sonra geri gelmesin)
 let _m2Page = 0;         // 32 adımda durunca görünen sayfa
 let _m2UserName = null;  // yüklenen kayıtlı beat'in adı (preset tarayıcıda KULLANICI satırı)
+let _m2UserId = null;    // yüklenen kayıtlı beat'in Firestore kimliği (KULLANICI listesinde seçili satır)
+let _m2UserDirty = false;// yüklenen kayıtlı beat sonradan düzenlendi mi (preset adında *)
 function renderModule2() {
     beatAdopt();
     // Tasarım: modül House yüklü açılır — yalnız bütün slotlar boşsa
@@ -10032,7 +10241,7 @@ function renderModule2() {
     root.classList.add('lab-m2');
     const i18n = (tag, cls, key) => { const e = mk(tag, cls); e.setAttribute('data-i18n', key); e.textContent = L(key); return e; };
     const cap = key => i18n('span', 'm2-cap', key);
-    let toastT = 0, tapT = [], wheelT = 0, lastCtxTxt = 0, curStep = -1;
+    let toastT = 0, tapT = [], wheelT = 0, lastCtxTxt = 0, curStep = -1, recTake = false;
 
     // ── Geçmiş: undo/redo (40) + A/B — anlık görüntü = pattern'ler + tempo + kanal/sentez ayarları ──
     const hist = makeHistory({ get: m2Snap, apply: o => { m2Restore(o); paintAll(); m2CheckTasks(); } });
@@ -10046,27 +10255,35 @@ function renderModule2() {
     });
     win.root.classList.add('m2-win');
 
-    // Başlık çubuğu · sol: preset tarayıcı (FABRİKA = GENRE_TEMPLATES), INIT, A|B, ↶ ↷, KAYDET
+    // Başlık çubuğu · sol: preset tarayıcı (FABRİKA = GENRE_TEMPLATES, KULLANICI = Beatlerim), INIT, A|B, ↶ ↷, KAYDET
     let pbShown = '';
+    const userList = () => (currentUser && _m2UserBeats.uid === currentUser.uid && _m2UserBeats.list) || [];
+    const userSel = () => !B.preset && _m2UserId && userList().some(it => it.id === _m2UserId);
     const pbItems = () => {
         const list = GENRE_TEMPLATES.map(g => ({ id: g.name, name: g.name, aux: String(g.bpm), no: '' }));
-        if (!B.preset) list.push({ id: '__user', name: _m2UserName || L('lab_m2_pat_user'), group: 'user', aux: '—', no: '' });
+        userList().forEach(it => list.push({ id: 'u:' + it.id, name: it.name || '—', group: 'user', aux: it.bpm ? String(it.bpm) : '—', no: '' }));
+        if (!B.preset && !userSel()) list.push({ id: '__user', name: _m2UserName || L('lab_m2_pat_user'), group: 'user', aux: '—', no: '' });
         return list;
     };
+    const pbValue = () => B.preset || (userSel() ? 'u:' + _m2UserId : '__user');
     const tplStep = d => {
         const i = GENRE_TEMPLATES.findIndex(g => g.name === B.preset);
         const j = i < 0 ? (d > 0 ? 0 : GENRE_TEMPLATES.length - 1) : (i + d + GENRE_TEMPLATES.length) % GENRE_TEMPLATES.length;
         loadTpl(GENRE_TEMPLATES[j]);
     };
     const pb = makePresetBrowser({
-        items: pbItems(), value: B.preset || '__user', capLabel: () => L('lp_preset_cap'), width: 230, label: () => L('lab_m2_pb_aria'),
-        onPick: it => { if (it.id === '__user') { paintPreset(true); return; } const g = GENRE_TEMPLATES.find(x => x.name === it.id); if (g) loadTpl(g); },
+        items: pbItems(), value: pbValue(), capLabel: () => L('lp_preset_cap'), width: 186, label: () => L('lab_m2_pb_aria'),
+        onPick: it => {
+            if (it.id === '__user') { paintPreset(true); return; }
+            if (it.id.indexOf('u:') === 0) { const u = userList().find(x => 'u:' + x.id === it.id); if (u) applySaved(u); else paintPreset(true); return; }
+            const g = GENRE_TEMPLATES.find(x => x.name === it.id); if (g) loadTpl(g);
+        },
         onPrev: () => tplStep(-1), onNext: () => tplStep(1),
     });
     const bInit = lpBtn({ text: () => L('lp_init'), variant: 'danger', title: () => L('lab_m2_init_t'), onClick: () => {
         push();
         B.slots[B.slot] = beatEmpty(B.len); beatBindActive();
-        beatSetPreset(null); _m2UserName = null; _m2Edited = false;
+        beatSetPreset(null); _m2UserName = _m2UserId = null; _m2Edited = false;
         paintPreset(); paintGrid(); paintSlots();
     } });
     const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: () => L('lp_ab_aria') });
@@ -10074,26 +10291,40 @@ function renderModule2() {
     const bUndo = lpBtn({ icon: 'undo', label: () => L('lp_undo'), title: () => L('lp_undo') });
     const bRedo = lpBtn({ icon: 'redo', label: () => L('lp_redo'), title: () => L('lp_redo') });
     const bSave = lpBtn({ text: () => L('lp_save'), variant: 'accent', title: () => L('lab_m2_save_t'), onClick: () => {
+        m2Stats.saveTries++;
         if (!currentUser) toast(L('lab_m2_toast_signin'));
         const b = saved.querySelector('.lab-saved-head button'); if (b) b.click();
     } });
     hist.bind({ undo: bUndo, redo: bRedo, ab, keys: win.root });
     ab.el.addEventListener('click', e => { if (e.target.closest('.lp-seg-b')) toast(Lf('lab_m2_toast_ab', { id: hist.ab.slot })); });
     win.left.append(pb.el, bInit, ab.el, bUndo, bRedo, bSave);
+    // Başlık çubuğu · orta: KIT (Drum Rack preset'i — beş pad'in örnekleri; pattern değişmez) + öğretici (aşağıda)
+    const segKit = makeSeg(M2_KITS.map(k => ({ value: k.id, label: k.name.toLocaleUpperCase('en-US'), title: () => L('lab_m2_kit_t') })),
+        m2KitOf(), id => applyKit(id), { size: 'md', label: () => L('lab_m2_kit_aria'), cls: 'm2-kit', repick: true });
+    const kitBox = mk('div', 'm2-kitbox');
+    const kitCap = mk('span', 'm2-cap', 'KIT'); kitCap.setAttribute('aria-hidden', 'true');
+    kitBox.append(kitCap, segKit.el);
+    win.center.append(kitBox);
+    // MIDI girişi (Web MIDI — GM davul notaları pad'leri çalar): taşıma satırında REC'in yanında (kayıt grubu)
+    const midiB = makeMidiButton({ color: 'var(--ok)' });
 
     // Başlık çubuğu · sağ: SES n · LAT x ms, yatay L/R metre, tepe dB
     const roV = makeReadout({ label: L('lab_m2_voices'), value: '0', variant: 'inline' });
     const roL = makeReadout({ label: 'LAT', value: '—', variant: 'inline' });
-    const mH = makeMeter({ orientation: 'h', length: 110, thickness: 5, min: -48, max: 0, warn: -12, hot: -3, aria: () => L('lab_m2_out_aria') });
+    const mH = makeMeter({ orientation: 'h', length: 72, thickness: 5, min: -48, max: 0, warn: -12, hot: -3, aria: () => L('lab_m2_out_aria') });
     const pkEl = mk('span', 'm2-peak'); pkEl.textContent = '−∞ dB';
-    const rBox = mk('div', 'm2-bar-r'); rBox.append(roV.el, roL.el, mH.el, pkEl);
+    const rBox = mk('div', 'm2-bar-r'); rBox.append(roV.el, mH.el, pkEl);     // LAT durum satırında (çubuk sarılmasın)
     win.right.append(rBox);
 
     // ── Taşıma satırı ──
     const tr = win.transport;
     const play = mk('button', 'm2-play'); play.type = 'button';
     play.setAttribute('data-i18n-aria', 'lab_m2_play_aria'); play.setAttribute('aria-label', L('lab_m2_play_aria'));
-    play.onclick = () => { toggleBeat(); paintPlay(); paintStatus(); };
+    play.onclick = () => togglePlay();
+    // REC: çalarken pad / MIDI vuruşları en yakın 16'lığa yazılır (Ableton: Arm + Record, Record Quantization 1/16)
+    const tRec = makeToggle({ text: 'REC', led: true, color: 'var(--err-strong)', cls: 'm2-rec', on: _m2Rec,
+        label: () => L('lab_m2_rec_aria'), title: () => L('lab_m2_rec_t'),
+        onToggle: on => { _m2Rec = on; recTake = false; paintRec(); if (on) toast(L('lab_m2_toast_rec')); } });
     // Tempo: sürüklenebilir BPM ekranı (0.5 BPM/px, Shift 0.1) + TAP
     const tCol = mk('div', 'm2-tcol');
     const bpmBox = mk('div', 'm2-bpm');
@@ -10121,6 +10352,7 @@ function renderModule2() {
             setBpm(v0 + (y0 - ev.clientY) * (fine ? 0.1 : 0.5));
         }, () => bpmBox.classList.remove('is-drag'));
     });
+    bpmBox.addEventListener('dblclick', () => { if (state.bpm !== 125) { push(); setBpm(125); } });   // çift tık = varsayılan (knob'larla aynı)
     bpmBox.addEventListener('wheel', e => {
         e.preventDefault();
         if (!wheelT) push();
@@ -10171,7 +10403,8 @@ function renderModule2() {
     const scale = mk('div', 'm2-scale'); scale.setAttribute('aria-hidden', 'true');
     ['0', '-12', '-24', '-48'].forEach(t => scale.append(mk('span', '', t)));
     const mBox = mk('div', 'm2-mbox'); mBox.append(kMaster.el, scale, mV.el);
-    tr.append(play, tCol, kSwing.el, lCol, pCol, posCol, mBox);
+    const recBox = mk('div', 'm2-recbox'); recBox.append(tRec.el, midiB.el);
+    tr.append(play, recBox, tCol, kSwing.el, lCol, pCol, posCol, mBox);
 
     // ── Gövde 1: kanal şeritleri + step ızgarası ──
     const seqWrap = mk('div', 'm2-seqwrap');
@@ -10203,7 +10436,14 @@ function renderModule2() {
         const pn = mk('span', 'm2-pad-n'); pn.textContent = track.name;
         const ps = mk('span', 'm2-pad-s');
         pad.append(pn, ps);
-        pad.onclick = () => { if (B.sel !== ri) { B.sel = ri; paintEditor(true); paintRows(); } beatPreview(ri, 100); };
+        // Pad = Drum Rack pad'i: basınca (pointerdown, gecikmesiz) çalar + editörde seçer; REC'te adıma yazar.
+        // Klavye (Enter) click ile; dokunuşun ardından gelen click yok sayılır.
+        const padHit = t => { if (B.sel !== ri) { B.sel = ri; paintEditor(true); paintRows(); } m2Hit(ri, 100, t); };
+        pad.addEventListener('pointerdown', e => {
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            pad._m2T = performance.now(); padHit(e.timeStamp);
+        });
+        pad.onclick = e => { if (performance.now() - (pad._m2T || 0) < 800) return; padHit(e.timeStamp); };
         const tM = makeToggle({ text: 'M', label: Lf('lab_m2_mute_aria', { name: track.name }), title: 'Mute', cls: 'm2-m',
             onToggle: on => { push(); B.tracks[ri].mute = on; syncBeatBus(); paintRows(); } });
         const tS = makeToggle({ text: 'S', label: Lf('lab_m2_solo_aria', { name: track.name }), title: 'Solo', cls: 'm2-s',
@@ -10234,7 +10474,7 @@ function renderModule2() {
         }
         row.append(strip, cellsEl);
         seq.append(row);
-        return { row, pad, ps, tM, tS, kT, kD, kV, kP, cells, flash: false };
+        return { row, pad, ps, tM, tS, kT, kD, kV, kP, cells, cellsEl, flash: false };
     });
     scroller.append(seq);
     seqWrap.append(hint, scroller);
@@ -10300,7 +10540,52 @@ function renderModule2() {
     const chk = makeToggle({ text: () => L('lab_m2_choke'), led: true, color: 'var(--lab-ohat)', cls: 'm2-choke', on: B.choke,
         onToggle: on => { push(); B.choke = on; paintEditor(); } });
     const chkState = mk('span', 'm2-choke-st'); chk.el.append(chkState);
-    edL.append(edHead, segTab.el, segSrc.el, well, chk.el);
+    // Örnek tarayıcı (Simpler / hot-swap): yalnız bu kanalın türleri; kanal değişince yeniden kurulur
+    const sbBox = mk('div', 'm2-sbbox');
+    let sb = null, sbFor = -1;
+    function buildBrowser() {
+        const si = B.sel;
+        if (sb) sb.destroy();
+        sbBox.innerHTML = '';
+        sb = makeSampleBrowser({ kinds: BEAT_SMP_KINDS[si], value: B.tracks[si].smp, height: 168, cls: 'm2-sb',
+            label: Lf('lab_m2_sb_aria', { name: BEAT_TRACKS[si].name }),
+            ctx: () => getBeatCtx(), dest: () => beatMasterGain,            // önizleme master'dan geçer → metreler oynar
+            onPick: smp => pickSample(si, smp.id) });
+        sbBox.append(sb.el); sbFor = si;
+    }
+    // MIDI nota (pad'in "Receive" notası) + ÖĞREN
+    const midiRow = mk('div', 'm2-midi');
+    const midiCap = i18n('span', 'm2-cap', 'lab_m2_midi_cap');
+    const midiVal = mk('span', 'm2-midi-v');
+    let learnCancel = null;
+    const bLearn = lpBtn({ text: () => L(learnCancel ? 'lab_m2_learn_wait' : 'lab_m2_learn'), title: () => L('lab_m2_learn_t'), cls: 'm2-learn', onClick: () => {
+        if (learnCancel) { stopLearn(); return; }
+        if (!labMidi.supported()) { toast(labMidi.message()); return; }
+        if (labMidi.status() === 'ready') { startLearn(); return; }
+        labMidi.request().then(ok => { if (ok) startLearn(); else toast(labMidi.message()); });   // tık = jest
+    } });
+    bLearn.setAttribute('aria-pressed', 'false');
+    bLearn.addEventListener('keydown', e => { if (e.key === 'Escape' && learnCancel) { e.preventDefault(); e.stopPropagation(); stopLearn(); } });
+    midiRow.append(midiCap, midiVal, bLearn);
+    function startLearn() {
+        const si = B.sel;
+        stopLearn();
+        learnCancel = labMidi.learn(m => {
+            learnCancel = null;
+            if (m.type === 'note') assignNote(si, m.note);
+            paintMidi();
+        }, { types: ['note'] });
+        paintMidi();
+    }
+    function stopLearn() { if (learnCancel) { const c = learnCancel; learnCancel = null; try { c(); } catch (_) {} } paintMidi(); }
+    function assignNote(si, n) {
+        const j = _m2Midi.indexOf(n);
+        if (j >= 0 && j !== si) _m2Midi[j] = _m2Midi[si];              // başka pad'in notasıydı → takas
+        _m2Midi[si] = n; m2SaveMidi();
+        toast(Lf('lab_m2_toast_learn', { name: BEAT_TRACKS[si].name, note: `${midiName(n)} (${n})` }));
+        if (!beatPlaying) beatPreview(si, 100);
+    }
+    edL.append(edHead, segTab.el, segSrc.el, well, midiRow, chk.el);
     // Zarf ekranı (SVG 542×176): ms ızgarası, genlik zarfı dolgu + çizgi, pitch/cutoff eğrisi, değer etiketleri
     const disp = makeDisplay({ cls: 'm2-disp' });
     const dsv = lpSvg('svg', { viewBox: '0 0 542 176', class: 'm2-dsvg', role: 'img' }, disp.el);
@@ -10316,6 +10601,8 @@ function renderModule2() {
     lpSvg('line', { x1: 34, y1: 79, x2: 536, y2: 79, class: 'm2-dg' }, dsv);
     lpSvg('line', { x1: 34, y1: 150, x2: 536, y2: 150, class: 'm2-dg m2-dg--base' }, dsv);
     [['1.0', 14], ['0.5', 82], ['0', 152]].forEach(([t, y]) => { const e = lpSvg('text', { x: 4, y, class: 'm2-dt' }, dsv); e.textContent = t; });
+    const pWave = lpSvg('path', { class: 'm2-dwave' }, dsv);            // SAMPLE: çalınan kısım (DECAY'e kadar)
+    const pWaveCut = lpSvg('path', { class: 'm2-dwave m2-dwave--cut' }, dsv);   // DECAY'in kestiği kuyruk
     const pFill = lpSvg('path', { class: 'm2-dfill' }, dsv);
     const pAmp2 = lpSvg('path', { class: 'm2-damp2' }, dsv);
     const pAmp = lpSvg('path', { class: 'm2-damp' }, dsv);
@@ -10323,11 +10610,15 @@ function renderModule2() {
     const tl1 = lpSvg('text', { x: 536, y: 18, class: 'm2-dl m2-dl--1', 'text-anchor': 'end' }, dsv);
     const tl2 = lpSvg('text', { x: 536, y: 31, class: 'm2-dl m2-dl--2', 'text-anchor': 'end' }, dsv);
     const tl3 = lpSvg('text', { x: 536, y: 44, class: 'm2-dl m2-dl--3', 'text-anchor': 'end' }, dsv);
+    const dInfo = mk('p', 'm2-dinfo');                                    // örnek künyesi (Simpler başlığı gibi)
+    disp.el.append(dInfo);
     const edR = mk('div', 'm2-edr');
     const kRow = mk('div', 'm2-edk');
     const edHint = mk('p', 'm2-hint');
     edR.append(cap('lab_m2_params_cap'), kRow, edHint);
-    ed.append(edL, disp.el, edR);
+    // Orta sütun = Simpler: dalga formu + zarf ekranı, altında örnek tarayıcı (hot-swap)
+    const edM = mk('div', 'm2-edm'); edM.append(disp.el, sbBox);
+    ed.append(edL, edM, edR);
     let edK = {}, edBuilt = -1;
     function buildEdKnobs() {
         const si = B.sel, t = BEAT_TRACKS[si];
@@ -10361,7 +10652,7 @@ function renderModule2() {
     const roSw = makeReadout({ label: L('lab_m2_swoff'), value: '', variant: 'inline' });
     const roCt = makeReadout({ label: 'ctx.currentTime', value: '—', variant: 'inline' });
     const sToast = mk('span', 'm2-toast'); sToast.setAttribute('role', 'status'); sToast.setAttribute('aria-live', 'polite');
-    st.append(sSched, roLook.el, roTick.el, roSix.el, roSw.el, roCt.el, sToast);
+    st.append(sSched, roLook.el, roTick.el, roSix.el, roSw.el, roCt.el, roL.el, sToast);
     function toast(msg) {
         sToast.textContent = msg;
         clearTimeout(toastT); toastT = setTimeout(() => { sToast.textContent = ''; }, 2600);
@@ -10425,7 +10716,7 @@ function renderModule2() {
             ],
             labels: [{ x: 360, y: 118, t: L('lab_m2_b_vel') }, { x: 160, y: 118, t: L('lab_m2_b_kick') }],
         });
-        const steps = m2KitBlock({ steps: [1, 2, 3, 4, 5, 6, 7, 8].map(n => ({ t: L(`lab_m2_x${n}_t`), d: L(`lab_m2_x${n}_d`) })), cols: 1 });
+        const steps = m2KitBlock({ steps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ t: L(`lab_m2_x${n}_t`), d: L(`lab_m2_x${n}_d`) })), cols: 1 });
         const onoff = L('lab_m2_t_onoff');
         const table = m2KitBlock({ table: { rows: m2PctRows([
             ['BPM', '60–200', '125', 'spb = 60 / bpm / 4'],
@@ -10442,6 +10733,8 @@ function renderModule2() {
             ['Bass LP·RES·ENV', '100–2k Hz·0.5–15·%0–100', '400·5·40', 'lowpass.frequency ramp / .Q'],
             ['Choke', onoff, L('lab_m2_t_on'), 'ohEnv.gain.cancelAndHoldAtTime + setTargetAtTime(0)'],
             ['MASTER', '0–100', '80', 'masterGain.gain'],
+            ['KIT / SAMPLE', 'Classic · Mersey', 'Classic', 'BufferSource → env × 10^(gainDb/20)'],
+            ['MIDI', 'GM 35–46', '36·38·42·46·35', 'noteon → trigger · REC → pat[i][step]'],
         ]), cols: '130px 128px 96px minmax(0,1fr)' } });
         return {
             bare: true, cls: 'm2-hiw', title: L('lab_m2_hiw_t'),
@@ -10463,22 +10756,15 @@ function renderModule2() {
     // ── Görevler · "Ableton'da nerede?" · Beatlerim ──
     const tasks = makeTaskPanel(2);
     tasks.querySelectorAll('.lab-task-text').forEach((s, i) => { const t = TASKS[2][i]; if (t) s.setAttribute('data-i18n', 'lab_m2_task_' + t.id); });
-    const where = whereCard({ mid: 2, items: ['lab_m2_where_li1', 'lab_m2_where_li2', 'lab_m2_where_li3', 'lab_m2_where_li4'], pathKey: 'lab_m2_where_path' });
+    const where = whereCard({ mid: 2, items: ['lab_m2_where_li1', 'lab_m2_where_li2', 'lab_m2_where_li3', 'lab_m2_where_li4', 'lab_m2_where_li5', 'lab_m2_where_li6'], pathKey: 'lab_m2_where_path' });
+    // Beatlerim: liste preset tarayıcının KULLANICI grubuna da gider (aynı dizi — silme kartta yapılır)
     const saved = savedCard({
         kind: 'beat', titleKey: 'lab_saved_beats', saveKey: 'lab_saved_beat_save',
         emptyKey: 'lab_m2_saved_empty', signinKey: 'lab_saved_signin_tr', promptKey: 'lab_m2_name_prompt',
-        load: () => loadBeats(),
-        save: name => saveBeat(name),
-        del: it => deleteBeat(it.id),
-        apply: it => {
-            push();
-            const o = m2FromSaved(it);
-            B.pendingSlot = null; B.slot = 0;            // kayıt A slotundan başlar (çalarken de)
-            m2Restore(o);
-            _m2UserName = it.name || null; _m2Page = 0;
-            paintAll(); m2CheckTasks();
-            toast(Lf('lab_m2_toast_load', { name: it.name || '—' }));
-        },
+        load: () => loadBeats().then(list => { _m2UserBeats = { uid: currentUser ? currentUser.uid : '', list }; paintPreset(true); return list; }),
+        save: name => saveBeat(name).then(() => { m2Stats.saves++; }),
+        del: it => deleteBeat(it.id).then(() => { if (_m2UserId === it.id) _m2UserId = null; setTimeout(() => paintPreset(true), 0); }),
+        apply: it => applySaved(it),
     });
     const cards = mk('div', 'm2-cards');
     cards.append(tasks, where, saved);
@@ -10488,12 +10774,88 @@ function renderModule2() {
     let shownSlot = -1, shownPage = -1, playShown = null, schedShown = null;
     function edited() {
         _m2Edited = true;                         // öğrenci bir hücreyi kendisi değiştirdi
+        if (_m2UserName) _m2UserDirty = true;
         beatSetPreset(null);
         paintPreset(); paintSlots(); m2CheckTasks(true);
     }
+    // Taşıma: ▶ düğmesi ve Space aynı yol
+    function togglePlay() {
+        toggleBeat(); if (!beatPlaying) recTake = false;
+        paintPlay(); paintStatus(); paintRec();
+    }
+    // Pad / MIDI vuruşu: hemen çal (canlı izleme), REC + çalıyorsa en yakın 16'lığa yaz (bir kayıt = bir geri al adımı)
+    function m2Hit(ti, vel, t) {
+        beatPreview(ti, vel);
+        if (!_m2Rec || !beatPlaying) return;
+        if (!recTake) { push(); recTake = true; }
+        const r = beatRecordHit(ti, vel, t);
+        if (!r) return;
+        m2Stats.recs++;
+        _m2Edited = true; if (_m2UserName) _m2UserDirty = true;
+        beatSetPreset(null);
+        if (r.pat === state.beatPatterns && Math.floor(r.step / 16) === viewPage()) { rows[ti].cells[r.step % 16].vel = -1; paintCell(ti, r.step % 16); }
+        paintPreset(); paintSlots(); m2CheckTasks(true);
+    }
+    // Pad'e örnek yükle (hot-swap): SAMPLE moduna geçer; tampon gelince (çalmıyorsa) bir kez duyulur
+    function pickSample(si, id) {
+        id = m2ValidSmp(si, id);
+        const t = B.tracks[si];
+        if (t.smp === id && t.src === 'sample') { if (!beatPlaying) beatPreview(si, 100); return; }
+        push();
+        t.smp = id; t.src = 'sample';
+        m2Stats.picks++;
+        getBeatCtx();                              // jest içinde: bağlam açık olsun (önizleme tampon gelince)
+        beatSmpLoad(id).then(buf => {
+            if (!buf) toast(L('lab_m2_smp_err'));
+            else if (!beatPlaying && t.smp === id) beatPreview(si, 100);
+            paintEditor();
+        });
+        paintRows(); paintEditor(); paintKit();
+        toast(Lf('lab_m2_toast_smp', { track: BEAT_TRACKS[si].name, name: m2SmpLabel(id) }));
+    }
+    // Kit: beş pad'in örnekleri (pattern, TUNE/DECAY/VOL/PAN değişmez); hepsi SAMPLE moduna geçer
+    function applyKit(id) {
+        const k = M2_KITS.find(x => x.id === id);
+        if (!k) return;
+        push();
+        B.tracks.forEach((t, i) => { t.smp = k.smp[i]; t.src = 'sample'; });
+        m2Stats.kits++;
+        getBeatCtx();
+        beatEnsureSamples().then(() => { if (!beatPlaying) beatPreview(B.sel, 100); paintEditor(); });
+        paintKit(); paintRows(); paintEditor();
+        toast(Lf('lab_m2_toast_kit', { name: k.name }));
+    }
+    // Kayıtlı beat'i uygula (Beatlerim kartı ve preset tarayıcının KULLANICI grubu)
+    function applySaved(it) {
+        push();
+        const o = m2FromSaved(it);
+        B.pendingSlot = null; B.slot = 0;            // kayıt A slotundan başlar (çalarken de)
+        m2Restore(o);
+        _m2UserName = it.name || null; _m2UserId = it.id || null; _m2UserDirty = false; _m2Page = 0;
+        paintAll(); m2CheckTasks();
+        toast(Lf('lab_m2_toast_load', { name: it.name || '—' }));
+    }
+    function paintKit() {
+        const k = m2KitOf();
+        segKit.set(k);
+        segKit.el.classList.toggle('is-custom', !k);
+        segKit.el.title = k ? L('lab_m2_kit_t') : L('lab_m2_kit_custom');
+    }
+    function paintRec() {
+        tRec.set(_m2Rec);
+        tRec.el.classList.toggle('is-live', _m2Rec && beatPlaying);
+    }
+    function paintMidi() {
+        const si = B.sel, n = _m2Midi[si], nm = `${midiName(n)} · ${n}`;
+        if (midiVal.textContent !== nm) midiVal.textContent = nm;
+        bLearn.setAttribute('aria-pressed', String(!!learnCancel));
+        bLearn.classList.toggle('is-learn', !!learnCancel);
+        lpBtnText(bLearn, L(learnCancel ? 'lab_m2_learn_wait' : 'lab_m2_learn'));
+        bLearn.setAttribute('aria-label', Lf('lab_m2_learn_aria', { name: BEAT_TRACKS[si].name, note: nm }));
+    }
     function loadTpl(g) {
         push();
-        loadGenreTemplate(g); _m2UserName = null;
+        loadGenreTemplate(g); _m2UserName = _m2UserId = null;
         paintPreset(); paintGrid(); paintSlots(); paintBpm(); paintStatus(); paintTimeline();
         toast(Lf('lab_m2_toast_tpl', { name: g.name, bpm: g.bpm }));
         m2CheckTasks();
@@ -10511,15 +10873,15 @@ function renderModule2() {
             B.pendingSlot = k === B.slot ? null : k;
             if (B.pendingSlot != null) toast(Lf('lab_m2_toast_slot', { id: 'ABCD'[k] }));
         } else {
-            B.slot = k; B.pendingSlot = null; beatBindActive(); beatSetPreset(null); _m2UserName = null; _m2Page = 0;
+            B.slot = k; B.pendingSlot = null; beatBindActive(); beatSetPreset(null); _m2UserName = _m2UserId = null; _m2Page = 0;
             paintGrid(); paintPreset();
         }
         paintSlots();
     }
     function paintPreset(force) {
-        const id = B.preset || '__user', key = id + '|' + (_m2UserName || '') + '|' + labLang();
+        const id = pbValue(), key = id + '|' + (_m2UserName || '') + '|' + labLang() + '|' + userList().map(x => x.id + (x.name || '')).join(',');
         if (force || key !== pbShown) { pb.setItems(pbItems(), id); pbShown = key; }
-        pb.setModified(!B.preset && !_m2UserName);
+        pb.setModified(!B.preset && (!_m2UserName || _m2UserDirty));
     }
     function paintBpm() {
         bpmNum.textContent = state.bpm;
@@ -10555,6 +10917,8 @@ function renderModule2() {
         play.innerHTML = beatPlaying ? LP_IC.stop : LP_IC.play;
         play.setAttribute('aria-pressed', String(beatPlaying));
         play.classList.toggle('is-on', beatPlaying);
+        if (!beatPlaying) recTake = false;
+        paintRec();
     }
     function paintRows() {
         const solo = B.tracks.some(t => t.solo);
@@ -10565,8 +10929,14 @@ function renderModule2() {
             R.row.classList.toggle('is-dim', t.mute || (solo && !t.solo));
             R.pad.classList.toggle('is-sel', B.sel === i);
             R.pad.setAttribute('aria-pressed', String(B.sel === i));
-            const sb = t.src === 'sample' ? L('lab_m2_src_sample') : M2_SUB[i];
-            if (R.ps.textContent !== sb) R.ps.textContent = sb;
+            // SAMPLE: "Mersey · Kick 08" (≤1024 paket adı gizlenir, dar pad'de örnek adı okunsun)
+            const sb = t.src === 'sample' ? m2SmpLabel(t.smp) : M2_SUB[i];
+            if (R.ps.title !== sb) {
+                R.ps.title = sb;
+                const e = t.src === 'sample' ? labSample(t.smp) : null;
+                if (e) { const pk = mk('span', 'm2-pad-pk'); pk.textContent = `${(LAB_SAMPLE_PACKS[e.pack] || {}).name || e.pack} · `; R.ps.replaceChildren(pk, document.createTextNode(e.name)); }
+                else R.ps.textContent = sb;
+            }
         });
     }
     // Tek hücre: dolgu yüksekliği = velocity, sayı, çalan sütun, aria
@@ -10604,6 +10974,8 @@ function renderModule2() {
     function paintEditor(rebuild) {
         const si = B.sel, t = B.tracks[si], e = B.synth[si], trk = BEAT_TRACKS[si];
         if (rebuild || edBuilt !== si) buildEdKnobs();
+        if (sbFor !== si) buildBrowser(); else if (sb.get() !== t.smp) sb.set(t.smp);
+        paintMidi();
         ed.style.setProperty('--c', M2_COL[si]);
         segTab.set(si);
         segSrc.set(t.src);
@@ -10617,8 +10989,9 @@ function renderModule2() {
             `NOISE → HP ${Math.round(e.cut * k)} Hz Q${(+e.q || 1).toFixed(1)} → ENV ${Math.round(Dms)} ms → VOL → PAN`,
             `OSC saw ${(55 * k).toFixed(0)} Hz → LP ${Math.round(e.cut)} (env) → ENV → VOL → PAN`,
         ];
+        const smpE = labSample(t.smp), S = beatTrackSmp(si), gDb = smpE ? +smpE.gainDb || 0 : 0;
         edChain.textContent = t.src === 'sample'
-            ? `SAMPLE ${trk.file.split('/').pop()} · rate ×${k.toFixed(2)} → ENV ${Math.round(Dms)} ms → VOL → PAN`
+            ? `SAMPLE ${m2SmpLabel(t.smp)} · rate ×${k.toFixed(2)} · ${gDb > 0 ? '+' : ''}${gDb.toFixed(1)} dB → ENV ${Math.round(Dms)} ms → VOL → PAN`
             : chains[si];
         const hat = si === 2 || si === 3;
         chk.el.hidden = !hat;
@@ -10634,10 +11007,33 @@ function renderModule2() {
         const ampF = dur => tt => tt < 2 ? tt / 2 : Math.pow(0.0001, (tt - 2) / Math.max(1, dur - 2));
         const holdF = dur => tt => tt < 2 ? tt / 2 : tt < dur * 0.7 ? 1 : Math.pow(0.0001, (tt - dur * 0.7) / Math.max(1, dur * 0.3));
         const logY = (f, lo, hi) => Math.max(0, Math.min(1, Math.log(f / lo) / Math.log(hi / lo)));
-        let amp = '', amp2 = '', pitch = '', l1 = '', l2 = '', l3 = '';
+        let amp = '', amp2 = '', pitch = '', l1 = '', l2 = '', l3 = '', wave = '', waveCut = '';
         if (t.src === 'sample') {
             amp = curve(holdF(Dms), Dms);
-            l1 = `SAMPLE · ENV ${Math.round(Dms)} ms`; l2 = `playbackRate × ${k.toFixed(2)}`; l3 = L('lab_m2_disp_smp');
+            // Dalga formu (Simpler gibi ortada, ±66 px): kaynak zamanı = ekran zamanı × playbackRate; DECAY'ten
+            // sonrası (zarfın kestiği kuyruk) soluk. Tepeler tampon başına bir kez (m2Peaks).
+            const own = S && S.id === t.smp;
+            if (S && S.buf) {
+                const pk = m2Peaks(S.buf), NB = pk.length, durMs = S.buf.duration * 1000 / k;
+                const cols = 125, mid = 79, h = 66;
+                const seg = (a, b) => {
+                    if (b <= a) return '';
+                    let top = '', bot = '';
+                    for (let c = a; c <= b; c++) {
+                        const tt = tmax * c / cols;
+                        if (tt > durMs) break;
+                        const v = pk[Math.min(NB - 1, Math.floor(tt / durMs * NB))];
+                        const x = X(tt);
+                        top += (top ? 'L' : 'M') + x + ' ' + (mid - v * h).toFixed(1);
+                        bot = 'L' + x + ' ' + (mid + v * h).toFixed(1) + bot;
+                    }
+                    return top ? top + bot + 'Z' : '';
+                };
+                const cut = Math.min(cols, Math.ceil(Dms / tmax * cols));
+                wave = seg(0, cut); waveCut = seg(cut, cols);
+            }
+            l1 = `SAMPLE · ENV ${Math.round(Dms)} ms`; l2 = `playbackRate × ${k.toFixed(2)}`;
+            l3 = own ? L('lab_m2_disp_wave') : L(beatSmpBad[t.smp] ? 'lab_m2_smp_err' : 'lab_m2_smp_load');
         } else if (si === 0) {
             amp = curve(ampF(Dms), Dms);
             pitch = curve(tt => logY(tt < e.sweep ? e.start * k * Math.pow(e.end / e.start, tt / e.sweep) : e.end * k, 20, 400), Math.min(tmax, Dms * 1.1));
@@ -10656,7 +11052,15 @@ function renderModule2() {
             pitch = curve(tt => logY(tt < fd ? topF * Math.pow(e.cut / topF, tt / fd) : e.cut, 50, 16000), Math.min(tmax, Dms * 1.1));
             l1 = `AMP exp → ${Math.round(Dms)} ms`; l2 = `LP ${Math.round(topF)} → ${Math.round(e.cut)} Hz · Q ${(+e.res).toFixed(1)}`; l3 = `SAW ${(55 * k).toFixed(1)} Hz`;
         }
-        pFill.setAttribute('d', amp ? amp + 'L' + X(si === 1 && t.src !== 'sample' ? Dms : Dms) + ' ' + Y0 + 'L' + X0 + ' ' + Y0 + 'Z' : '');
+        pFill.setAttribute('d', amp && t.src !== 'sample' ? amp + 'L' + X(Dms) + ' ' + Y0 + 'L' + X0 + ' ' + Y0 + 'Z' : '');
+        pWave.setAttribute('d', wave); pWaveCut.setAttribute('d', waveCut);
+        // Örnek künyesi: paket · ad · süre · örnekleme hızı · seviye eşleme · MIDI notası
+        const note = _m2Midi[si];
+        dInfo.textContent = t.src === 'sample'
+            ? [m2SmpLabel(t.smp), smpE ? (smpE.dur < 1 ? Math.round(smpE.dur * 1000) + ' ms' : smpE.dur.toFixed(2) + ' s') : '',
+               S && S.buf ? (S.buf.sampleRate / 1000).toFixed(1) + ' kHz' : '', `GAIN ${gDb > 0 ? '+' : ''}${gDb.toFixed(1)} dB`,
+               `MIDI ${midiName(note)}`].filter(Boolean).join(' · ')
+            : `SYNTH · ${M2_SUB[si]} · MIDI ${midiName(note)}`;
         pAmp.setAttribute('d', amp); pAmp2.setAttribute('d', amp2); pPitch.setAttribute('d', pitch);
         tl1.textContent = l1; tl2.textContent = l2; tl3.textContent = l3;
         vgrid.forEach((tx, q) => { tx.textContent = Math.round(tmax * q / 4) + (q === 4 ? ' ms' : ''); });
@@ -10685,7 +11089,7 @@ function renderModule2() {
         }
     }
     function paintAll() {
-        paintPreset(); paintTransport(); paintRows(); paintGrid(); paintEditor(true); paintStatus(); paintTimeline(); paintPlay();
+        paintPreset(); paintTransport(); paintRows(); paintGrid(); paintEditor(true); paintStatus(); paintTimeline(); paintPlay(); paintKit(); paintRec();
     }
 
     // ═══ Canlı döngü kancası (motorun tek rAF'ı çağırır) ═══
@@ -10717,13 +11121,77 @@ function renderModule2() {
         },
     };
 
+    // ═══ Space = çal/durdur (odak eklentideyken; metin alanı, liste / menü seçenekleri ve açık pencereler hariç).
+    // Düğmeler Enter ile çalışmaya devam eder (Ableton'da da Space taşımadır). keyup da yutulur: Firefox
+    // düğmeyi Space'in keyup'ında tetikler.
+    const spaceOk = e => {
+        if (e.key !== ' ' && e.code !== 'Space') return false;
+        if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return false;
+        const t = e.target;
+        if (!t || !t.closest) return false;
+        if (t.isContentEditable || t.closest('input, textarea, select, [contenteditable="true"], [role="listbox"], [role="option"], [role="menu"], [role="dialog"], .lp-pb-pop')) return false;
+        return true;
+    };
+    win.root.addEventListener('keydown', e => { if (!spaceOk(e)) return; e.preventDefault(); if (!e.repeat) togglePlay(); });
+    win.root.addEventListener('keyup', e => { if (spaceOk(e)) e.preventDefault(); });
+    win.root.setAttribute('aria-keyshortcuts', 'Space');
+    const spaceHint = makeReadout({ label: () => L('lab_m2_space'), value: '', variant: 'inline' });
+    spaceHint.el.classList.add('m2-space');
+    st.insertBefore(spaceHint.el, sToast);
+
+    // ═══ Web MIDI: GM davul notaları → pad (velocity), REC'te adıma yazar. Abonelik görünüm ömürlü (labMidi.on).
+    labMidi.on('noteon', e => {
+        const ti = m2TrackForNote(e.note);
+        if (ti < 0) return;
+        m2Hit(ti, Math.max(1, Math.round((+e.raw || e.vel * 127) / 127 * 100)), e.t);
+    });
+    labMidi.on('cc', e => { if (e.cc === 123 && beatPlaying) togglePlay(); });   // All Notes Off → dur
+
+    // Örnek tamponu gelince (kit / tarayıcı / ilk açılış) editör ekranı ve künye yenilenir
+    const onSmp = () => { paintEditor(); };
+    beatSmpSubs.add(onSmp);
+    lpOnTeardown(() => { beatSmpSubs.delete(onSmp); });
+    beatEnsureSamples();                           // bağlamsız (OfflineAudioContext) çözer: dalga formu hemen çizilir
+
+    // ═══ Öğretici: "Drum Rack mantığı" (kit → programla → groove → hot-swap → kaydet) ═══
+    const g16 = r => state.beatPatterns[r].slice(0, B.len);
+    const tsnap = {};
+    const tut = labTutorial({
+        mid: 2, id: 'rack', title: 'lab_m2_tut_t', intro: 'lab_m2_tut_i', outro: 'lab_m2_tut_o',
+        steps: [
+            { id: 'kit', target: () => segKit.el, placement: 'bottom', check: () => m2KitOf() === 'mersey' },
+            { id: 'clear', target: () => bInit, placement: 'bottom',
+              check: () => state.beatPatterns.every(r => r.every(v => !(v > 0))) },
+            { id: 'kick', target: () => rows[0].cellsEl, check: () => [0, 4, 8, 12].every(k => g16(0)[k] > 0) },
+            { id: 'clap', target: () => rows[1].cellsEl, check: () => g16(1)[4] > 0 && g16(1)[12] > 0 },
+            { id: 'hats', target: () => rows[2].cellsEl, check: () => { const h = g16(2).filter(v => v > 0); return h.length >= 4 && new Set(h).size >= 2; } },
+            { id: 'play', target: () => play, placement: 'bottom', check: () => beatPlaying },
+            { id: 'swing', target: () => kSwing.el, placement: 'bottom', check: () => state.swing >= 10 },
+            { id: 'choke', target: () => rows[3].row,
+              onEnter: () => { if (B.sel !== 3) { B.sel = 3; paintEditor(true); paintRows(); } },
+              check: () => B.choke && [2, 6, 10, 14].some(k => g16(3)[k] > 0) },
+            { id: 'browse', target: () => sbBox, placement: 'right',
+              onEnter: () => { tsnap.picks = m2Stats.picks; }, check: () => m2Stats.picks > (tsnap.picks || 0) },
+            { id: 'save', target: () => bSave, placement: 'bottom',
+              onEnter: () => { tsnap.saves = m2Stats.saves; tsnap.tries = m2Stats.saveTries; },
+              check: () => m2Stats.saves > (tsnap.saves || 0) || (!currentUser && m2Stats.saveTries > (tsnap.tries || 0)) },
+        ].map((st2, i) => Object.assign(st2, { title: `lab_m2_tut_${i + 1}_t`, body: `lab_m2_tut_${i + 1}_b`, ableton: `lab_m2_tut_${i + 1}_a` })),
+    });
+    const tutB = makeTutorialButton(tut);
+    win.center.append(tutB.el);
+
     // Dil / ilerleme tazelemesi (kabuk): hesaplanan metinler yerinde; Çalışma mantığı yalnız dil değişince
     labOnRefresh(root, () => {
         const lg = labLang();
         if (lg !== hiwLang) { hiwLang = lg; hiw.rebuild(hiwOpts()); }
         roV.setLabel(L('lab_m2_voices')); roSw.setLabel(L('lab_m2_swoff'));
         rows.forEach((R, i) => { R.pad.title = L('lab_m2_pad_t'); R.pad.setAttribute('aria-label', Lf('lab_m2_pad_aria', { name: BEAT_TRACKS[i].name })); });
-        paintPreset(); paintSlots(); paintRows(); paintGrid(); paintEditor(); paintStatus(); paintTimeline();
+        if (sb) {                                  // kitin tarayıcısı etiketini kurulurken sabitler
+            const lb = Lf('lab_m2_sb_aria', { name: BEAT_TRACKS[B.sel].name });
+            sb.el.setAttribute('aria-label', lb);
+            const ls = sb.el.querySelector('.lp-sb-list'); if (ls) ls.setAttribute('aria-label', lb);
+        }
+        paintPreset(); paintSlots(); paintRows(); paintGrid(); paintEditor(); paintStatus(); paintTimeline(); paintKit(); paintMidi();
     });
 
     // Temizlik (teardownView): Beat Genel bakış ↔ Beat arasında çalmaya devam eder → yalnız arayüz
@@ -10731,18 +11199,43 @@ function renderModule2() {
     _m2StopAudio = () => {
         beatUiHook = null;
         clearTimeout(toastT); clearTimeout(wheelT); wheelT = 0; tapT = [];
+        stopLearn(); recTake = false;              // MIDI öğren iptal; labMidi.on / learn / tarayıcı aboneliği lpTeardown'da düşer
+        if (sb) { sb.destroy(); sb = null; }
         // Güç/bypass ve sıradaki slot yalnız bu görünümde: Genel bakış kartı ve Mastering kaynağı sessiz
         // kalmasın; Genel bakış ızgarası görünmeyen slota geçip ses/ekran ters düşmesin
         state.beat.power = true; state.beat.pendingSlot = null; syncBeatBus();
     };
 
     paintAll();
+    // Tanılama (yalnız ?m2debug=1): headless doğrulama için motor + durum
+    if (/[?&]m2debug=1\b/.test(location.search)) window.__m2 = { state, B, hist: () => hist, tut, m2Stats, kits: M2_KITS, midi: () => _m2Midi,
+        applyKit, pickSample, m2Hit, togglePlay, beatRecordHit, beatTrackSmp, beatSmpBufs, ctx: () => beatCtx, bus: () => beatBus,
+        log: () => beatStepLog, smpSubs: () => beatSmpSubs.size, m2Snap, m2Restore, m2FromSaved, m2KitOf, sb: () => sb, triggerDrum, beatVoice, getBeatCtx };
     return root;
+}
+// Dalga formu tepeleri (0..1, kanal başına mutlak tepe, en yüksek tepeye normalize) — tampon başına bir kez
+const _m2PeakCache = new WeakMap();
+function m2Peaks(buf) {
+    let p = _m2PeakCache.get(buf);
+    if (p) return p;
+    const NB = 400, n = buf.length, chs = [];
+    for (let c = 0; c < buf.numberOfChannels; c++) chs.push(buf.getChannelData(c));
+    p = new Float32Array(NB);
+    let mx = 0;
+    for (let b = 0; b < NB; b++) {
+        const a = Math.floor(b * n / NB), z = Math.max(a + 1, Math.floor((b + 1) * n / NB));
+        let m = 0;
+        for (let c = 0; c < chs.length; c++) { const d = chs[c]; for (let i = a; i < z; i++) { const v = d[i] < 0 ? -d[i] : d[i]; if (v > m) m = v; } }
+        p[b] = m; if (m > mx) mx = m;
+    }
+    if (mx > 0) for (let b = 0; b < NB; b++) p[b] /= mx;
+    _m2PeakCache.set(buf, p);
+    return p;
 }
 // SAMPLE modunda sample'ın (tune'lu) doğal uzunluğu × DECAY (≤ %100), sentezde taban × DECAY
 function m2DecayMs(si) {
-    const t = state.beat.tracks[si], buf = beatBuffers[BEAT_TRACKS[si].file];
-    if (t.src === 'sample' && buf) return Math.max(20, buf.duration / Math.pow(2, t.tune / 12) * Math.min(1, t.decay / 100) * 1000);
+    const t = state.beat.tracks[si], S = t.src === 'sample' ? beatTrackSmp(si) : null, buf = S && S.buf;
+    if (buf) return Math.max(20, buf.duration / Math.pow(2, t.tune / 12) * Math.min(1, t.decay / 100) * 1000);
     return BEAT_BASE_DECAY[si] * t.decay / 100;
 }
 
