@@ -515,8 +515,12 @@
 
         /* ── Pencere + başlık çubuğu ─────────────────────────────────── */
         .lp-win { position:relative; min-width:0; border-radius:var(--lp-win-r, var(--r-14)); background:var(--surface-0); /* tasarım #0e0e11 / #17171c→#0f0f12 */ border:1px solid var(--line-3); box-shadow:var(--shadow-card); }
-        .lp-bar { position:relative; z-index:3; display:flex; align-items:center; gap:12px; min-height:var(--lp-bar-h, 56px); padding:0 14px; background:var(--surface-2); /* tasarım #1b1b21→#141418 */ border-bottom:1px solid var(--line-div); border-top-left-radius:inherit; border-top-right-radius:inherit; }
-        .lp-screw { flex-shrink:0; width:9px; height:9px; border-radius:50%; background:var(--bar-muted); box-shadow:inset 0 0 0 1px var(--bg-ink); }
+        .lp-bar { position:relative; z-index:3; display:flex; flex-wrap:wrap; row-gap:10px; align-items:center; gap:12px; min-height:var(--lp-bar-h, 56px); padding:8px 14px; background:var(--surface-2); /* tasarım #1b1b21→#141418 */ border-bottom:1px solid var(--line-div); border-top-left-radius:inherit; border-top-right-radius:inherit; }
+        .lp-screw { position:absolute; top:50%; width:9px; height:9px; margin-top:-5px; border-radius:50%; background:var(--bar-muted); box-shadow:inset 0 0 0 1px var(--bg-ink); }
+        /* vidalar akış dışında (sarılan çubukta tek başına alt satıra düşmesin); yerleri dolgu ile ayrılır */
+        .lp-bar--screws { padding-inline:35px; }
+        .lp-bar > .lp-screw:first-child { left:14px; }
+        .lp-bar > .lp-screw:last-child { right:14px; }
         .lp-brand { display:flex; align-items:center; gap:10px; flex-shrink:0; }
         .lp-logo { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--r-8); background:var(--bg-ink); border:1px solid var(--accent-line); font-size:12px; font-weight:700; color:var(--accent); }
         .lp-brand-txt { display:flex; flex-direction:column; gap:2px; line-height:1.15; }
@@ -541,6 +545,7 @@
         .lp-btn[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent-line-2); color:var(--accent); }
         .lp-btn[aria-disabled="true"] { opacity:.4; cursor:default; }
         .lp-btn[aria-disabled="true"]:hover { border-color:var(--line-3); color:var(--fg-soft); }
+        .lp-btn.is-slot-off { visibility:hidden; }       /* lpBtnSlot: yeri korunur (çubuk sarılıp zıplamaz), görünmez + odaklanamaz */
         .lp-btn--accent { border-color:var(--accent-line-2); background:transparent; color:var(--accent); letter-spacing:.1em; }
         .lp-btn--danger { border-color:var(--err-line); background:transparent; color:var(--err); letter-spacing:.1em; }
         .lp-btn--danger:hover { border-color:var(--err-strong); color:var(--err); }
@@ -625,7 +630,7 @@
         .lp-pb-arrow:last-child { border-radius:0 var(--r-8) var(--r-8) 0; }
         .lp-pb-arrow:hover { color:var(--accent); }
         .lp-pb-arrow svg { width:10px; height:10px; }
-        .lp-pb-name { position:relative; display:flex; align-items:center; gap:8px; width:var(--lp-pbw, 250px); min-width:0; padding:0 10px; border:0; border-inline:1px solid var(--line-div); background:var(--bg-sunk); color:var(--fg); font-family:var(--ff); font-size:13px; font-weight:600; text-align:left; cursor:pointer; }
+        .lp-pb-name { position:relative; display:flex; align-items:center; gap:8px; width:var(--lp-pbw, 250px); min-width:120px; padding:0 10px; border:0; border-inline:1px solid var(--line-div); background:var(--bg-sunk); color:var(--fg); font-family:var(--ff); font-size:13px; font-weight:600; text-align:left; cursor:pointer; }
         .lp-pb-name:hover, .lp-pb.is-open .lp-pb-name { background:var(--bg-ink); }
         .lp-pb-cap { font-family:var(--ff-mono); font-size:9px; font-weight:400; letter-spacing:.14em; color:var(--fg-3); }
         .lp-pb-no { flex-shrink:0; font-family:var(--ff-mono); font-size:10px; font-weight:400; color:var(--fg-3); }
@@ -712,20 +717,30 @@
 
         /* ── Dokunma: görünür kutu aynı, isabet alanı ≥44 px (::after) ──── */
         @media (max-width:1024px) {
-            .lp-btn::after, .lp-pb-arrow::after, .lp-pb-name::after { content:''; position:absolute; inset:-7px -4px; }
-            .lp-pwr::after { content:''; position:absolute; inset:-6px; }
-            .lp-pwr--sm::after, .lp-ledb::after { content:''; position:absolute; inset:-11px; }
+            /* ::after dolgu kutusundan ölçülür (1 px kenarlık hariç): 30 px düğme → 28 + 2×8 = 44 */
+            .lp-btn::after { content:''; position:absolute; inset:-8px -4px; }
+            .lp-pb-arrow::after { content:''; position:absolute; inset:-7px 0; }
+            .lp-pb-name::after { content:''; position:absolute; inset:-7px -4px; }
+            .lp-pwr::after { content:''; position:absolute; inset:-7px; }
+            .lp-pwr--sm::after { content:''; position:absolute; inset:-11px; }
+            .lp-ledb::after { content:''; position:absolute; inset:-12px; }
             .lp-seg-b::after { content:''; position:absolute; inset:-11px -1px; }
             .lp-seg--md .lp-seg-b::after { inset:-9px -1px; }
             .lp-fader-track::after { content:''; position:absolute; inset:0 -10px; }
-            .lp-bar { flex-wrap:wrap; row-gap:10px; padding-block:10px; }
+            .lp-pb-arrow { width:44px; }
+            .lp-seg .lp-seg-b { min-width:44px; }
+            .lp-btn { min-width:44px; }
+            .lp-knob--side { min-height:44px; }
+            .lp-bar { row-gap:16px; padding-block:10px; }        /* sarılan satırların isabet alanları çakışmasın */
             .lp-bar-l { margin-left:0; flex-wrap:wrap; }
             .lp-bar-c { flex-wrap:wrap; }
             .lp-hrow { grid-template-columns:minmax(0,1fr); }
+            .lp-flow { overflow-x:auto; }
+            .lp-flow-svg { min-width:var(--lp-fmin, 640px); }
         }
         @media (max-width:600px) {
             .lp-body { padding:8px; gap:8px; }
-            .lp-bar { padding-inline:10px; gap:10px; }
+            .lp-bar, .lp-bar--screws { padding-inline:10px; gap:10px; }
             .lp-screw { display:none; }
             .lp-bar-pw { order:1; margin-left:auto; padding-left:0; }
             .lp-bar-l { order:2; width:100%; }
@@ -735,18 +750,13 @@
             .lp-pb { flex:1 1 100%; }
             .lp-pb-grp { flex:1; }
             .lp-pb-name { flex:1; width:auto; }
-            .lp-pb-arrow { width:44px; }
             .lp-pb-list { grid-template-columns:minmax(0,1fr); }
             .lp-pb-opt { height:44px; }
-            .lp-seg .lp-seg-b { min-width:44px; }
-            .lp-btn { min-width:44px; }
             .lp-krow { grid-template-columns:repeat(auto-fill, minmax(64px, 1fr)); gap:10px 0; }
             .lp-knob { min-width:64px; min-height:64px; }
             .lp-hiw { padding:16px; gap:14px; border-radius:var(--r-16); }
             .lp-hiw--bare { padding:0; }
             .lp-hiw-h { font-size:28px; }
-            .lp-flow { overflow-x:auto; }
-            .lp-flow-svg { min-width:var(--lp-fmin, 640px); }
             .lp-steps { grid-template-columns:minmax(0,1fr); }
             .lp-tr--h { display:none; }
             .lp-tr { grid-template-columns:minmax(0,1fr); gap:3px; padding:10px 4px; }
@@ -870,11 +880,6 @@
         @media (max-width:1024px) {
             .lab-m1-strip::after { content:''; position:absolute; inset:0 -6px; }
             .lab-m1-pth { r:18px; }
-            /* isabet alanı ≥44 px (kit ::after dolgu kutusundan 42 px veriyordu) */
-            .lab-m1 .lp-btn::after { inset:-9px -4px; }
-            .lab-m1 .lp-pwr::after { inset:-7px; }
-            .lab-m1 .lp-ledb::after { inset:-12px; }
-            .lab-m1 .lp-pwr--sm::after { inset:-11px; }
         }
         @media (max-width:900px) {
             .lab-m1-grid { grid-template-columns:minmax(0,1fr); grid-template-areas:"l" "c" "r"; }
@@ -1117,16 +1122,16 @@
         }
         .lab-m3 .lp-win { --lp-win-r:var(--r-18); --lp-bar-h:54px; }
         /* Başlık çubuğu: 1440'ta tek satır; daha darda sağ grup (DSP · metre) alt satıra iner, preset adı kırpılmaz */
-        .lab-m3 .lp-bar { flex-wrap:wrap; row-gap:8px; padding-block:8px; }
+        .lab-m3 .lp-bar { row-gap:8px; }
         @media (min-width:1025px) { .lab-m3 .lp-pb-no { display:none; } }   /* tasarım: PRESET · ad · ▾ (sayaç yok) → ad 1440'ta tam sığar */
         .lab-m3 .lp-body { padding:0; gap:0; border-bottom-left-radius:inherit; border-bottom-right-radius:inherit; }
-        .m3-sl { font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; line-height:1.2; color:var(--fg-faint); white-space:nowrap; }
+        .m3-sl { font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; line-height:1.2; color:var(--fg-3); white-space:nowrap; }
         .m3-sl--9 { letter-spacing:.14em; }
 
         /* ── Başlık çubuğu (sağ): DSP · örnekleme hızı · çıkış metresi ── */
         .m3-dsp { margin-right:14px; font-family:var(--ff-mono); font-size:10px; letter-spacing:.08em; color:var(--fg-3); white-space:nowrap; }
         .m3-out { display:flex; align-items:center; gap:5px; }
-        .m3-outl { display:flex; flex-direction:column; gap:2px; font-family:var(--ff-mono); font-size:8px; line-height:6px; color:var(--fg-faint); }
+        .m3-outl { display:flex; flex-direction:column; gap:2px; font-family:var(--ff-mono); font-size:8px; line-height:6px; color:var(--fg-3); }
         .m3-outdb { width:56px; text-align:right; font-family:var(--ff-mono); font-size:10px; color:var(--fg-3); font-variant-numeric:tabular-nums; }
         .m3-outdb[data-hr="ok"] { color:var(--ok); } .m3-outdb[data-hr="low"] { color:var(--accent); } .m3-outdb[data-hr="clip"] { color:var(--err-strong); }
 
@@ -1160,6 +1165,7 @@
         .m3-selb:hover { border-color:var(--accent-line); }
         .m3-selt { font-size:8px; letter-spacing:.08em; color:var(--c); }
         .m3-selb .lp-led { width:7px; height:7px; }
+        .m3-no { color:var(--fg-3); }                     /* 9–10 px etiket: --fg-faint panel yüzeyinde 4.38:1 */
         .m3-sec { width:100%; display:flex; flex-direction:column; align-items:center; gap:3px; padding-top:5px; border-top:1px solid var(--line-2); }
         .m3-kr { display:flex; align-items:center; justify-content:center; gap:1px; }
         .m3-strip .lp-knob { min-width:38px; }
@@ -1188,13 +1194,13 @@
         .m3-seg2 { display:grid; grid-template-columns:1fr 1fr; gap:3px; width:100%; padding:0; border:0; background:none; }
         .m3-seg2 .lp-seg-b { height:22px; min-width:0; padding:0; border:1px solid var(--line-3); border-radius:var(--r-6); background:var(--bg); font-size:9px; }
         .m3-seg2 .lp-seg-b[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); box-shadow:none; }
-        .m3-rnote { font-size:10px; line-height:1.45; text-align:center; color:var(--fg-faint); }
+        .m3-rnote { font-size:10px; line-height:1.45; text-align:center; color:var(--fg-3); }
         .m3-mst { padding:8px; background:var(--surface-1); /* tasarım #1a1712→#121215 */ border-color:var(--accent-line); }
         .lab-m3 .m3-limb { width:100%; height:26px; justify-content:center; }
         .lab-m3 .m3-limb[aria-pressed="true"] { background:transparent; border-color:var(--err-strong); color:var(--fg); }
         .m3-limgr { font-family:var(--ff-mono); font-size:9px; color:var(--err); }
         .m3-pk { font-family:var(--ff-mono); font-size:20px; line-height:1.2; color:var(--fg-3); font-variant-numeric:tabular-nums; }
-        .m3-pksub { font-family:var(--ff-mono); font-size:8px; letter-spacing:.06em; color:var(--fg-faint); text-align:center; }
+        .m3-pksub { font-family:var(--ff-mono); font-size:8px; letter-spacing:.06em; color:var(--fg-3); text-align:center; }
         .m3-hrn { display:inline-flex; align-items:center; justify-content:center; gap:4px; font-size:10px; line-height:1.4; text-align:center; color:var(--fg-3); }
         .m3-hrn .icon { width:11px; height:11px; flex-shrink:0; }
         [data-hr="ok"] > .m3-pk, [data-hr="ok"] > .m3-hrn { color:var(--ok); }
@@ -1208,7 +1214,7 @@
         .m3-chips { display:flex; flex-wrap:wrap; gap:6px; }
         .m3-chip { position:relative; height:26px; padding:0 8px; border-radius:var(--r-6); border:1px solid var(--line-3); background:var(--bg); color:var(--c); font-family:var(--ff-mono); font-size:10px; letter-spacing:.06em; cursor:pointer; }
         .m3-chip[aria-pressed="true"] { background:var(--c); border-color:var(--c); color:var(--bg); }
-        .m3-hint { margin-left:auto; font-family:var(--ff-mono); font-size:9px; color:var(--fg-faint); }
+        .m3-hint { margin-left:auto; font-family:var(--ff-mono); font-size:9px; color:var(--fg-3); }
         .m3-eqbox { --c:var(--accent); position:relative; height:240px; border-radius:var(--r-10); background:var(--bg-sunk); border:1px solid var(--line-div); overflow:hidden; touch-action:none; }
         .m3-eqsvg { position:absolute; inset:0; width:100%; height:100%; }
         .m3-eqgrid line { stroke:var(--line-faint); stroke-width:1; vector-effect:non-scaling-stroke; }
@@ -1216,8 +1222,8 @@
         .m3-spec { fill:color-mix(in srgb, var(--m3-c5) 13%, transparent); stroke:color-mix(in srgb, var(--m3-c5) 35%, transparent); stroke-width:1; vector-effect:non-scaling-stroke; }
         .m3-eqfill { fill:color-mix(in srgb, var(--c) 14%, transparent); }
         .m3-eqcurve { fill:none; stroke:var(--c); stroke-width:2.5; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
-        .m3-eqay { position:absolute; left:6px; top:4px; bottom:4px; display:flex; flex-direction:column; justify-content:space-between; font-family:var(--ff-mono); font-size:8px; color:var(--fg-off); pointer-events:none; }
-        .m3-eqax { position:absolute; left:0; right:0; bottom:4px; height:10px; font-family:var(--ff-mono); font-size:8px; line-height:10px; color:var(--fg-off); pointer-events:none; }
+        .m3-eqay { position:absolute; left:6px; top:4px; bottom:4px; display:flex; flex-direction:column; justify-content:space-between; font-family:var(--ff-mono); font-size:8px; color:var(--fg-3); pointer-events:none; }
+        .m3-eqax { position:absolute; left:0; right:0; bottom:4px; height:10px; font-family:var(--ff-mono); font-size:8px; line-height:10px; color:var(--fg-3); pointer-events:none; }
         .m3-eqax span { position:absolute; left:var(--x); transform:translateX(-50%); white-space:nowrap; }
         .m3-eqax span:last-child { transform:translateX(-85%); }
         .m3-speclbl { position:absolute; right:10px; top:8px; font-family:var(--ff-mono); font-size:9px; color:var(--fg-faint); pointer-events:none; }
@@ -1245,7 +1251,7 @@
         .m3-grrow { display:flex; align-items:center; gap:8px; }
         .m3-grh { flex:1; min-width:0; }
         .m3-grh .lp-mtr-ch { width:100%; }
-        .m3-grs { font-family:var(--ff-mono); font-size:9px; color:var(--fg-faint); white-space:nowrap; }
+        .m3-grs { font-family:var(--ff-mono); font-size:9px; color:var(--fg-3); white-space:nowrap; }
         .m3-cnote { font-size:11px; line-height:1.5; color:var(--fg-3); }
         .m3-tauto { display:inline-flex; align-items:center; gap:3px; margin-left:5px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.06em; color:var(--ok); white-space:nowrap; vertical-align:1px; /* tasarım #7fd99c */ }
         .m3-tauto .icon { width:10px; height:10px; stroke-width:2.5; }
@@ -1310,8 +1316,6 @@
             .lab-m3 .lp-bar { row-gap:14px; }                         /* sarılan satırlardaki isabet alanları çakışmasın */
             .lab-m3 .lp-bar-l { gap:14px; }
             .lab-m3 .lp-bar .lp-btn::after { inset:-8px; }            /* 30 px ikon düğmesi → 44 × 44 */
-            .lab-m3 .lp-pb-arrow { width:44px; }
-            .lab-m3 .lp-bar .lp-seg-b { min-width:44px; }
             .lab-m3 .lp-bar { padding-block:10px; }
             .m3-seg2 { gap:8px 6px; }
             .m3-seg2 .lp-seg-b { height:36px; }
@@ -1416,7 +1420,7 @@
 
         /* İz başlıkları */
         .lab-m4-heads { display:flex; flex-direction:column; gap:4px; padding:10px 8px 10px 12px; background:var(--surface); /* tasarım #111115 */ border-right:1px solid var(--line-2); }
-        .lab-m4-colh { display:flex; align-items:center; height:26px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--fg-faint); white-space:nowrap; }
+        .lab-m4-colh { display:flex; align-items:center; height:26px; font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--fg-3); white-space:nowrap; }
         .lab-m4-colh--loc { height:var(--m4-loc); }
         .lab-m4-th { display:grid; grid-template-columns:4px minmax(0,1fr); height:var(--m4-rh); border-radius:var(--r-6); background:var(--surface-2); border:1px solid var(--line-div); overflow:hidden; }
         .lab-m4-th-strip { background:var(--c); }
@@ -1513,7 +1517,7 @@
         .lab-m4-ins { display:flex; flex-direction:column; gap:12px; min-width:0; padding:12px 14px; background:var(--surface); border-left:1px solid var(--line-2); }
         .lab-m4-ins-head { display:flex; justify-content:space-between; align-items:center; }
         .lab-m4-ins-h { font-family:var(--ff-mono); font-size:9px; letter-spacing:.16em; color:var(--fg-3); }
-        .lab-m4-ins-no { font-family:var(--ff-mono); font-size:9px; color:var(--fg-faint); }
+        .lab-m4-ins-no { font-family:var(--ff-mono); font-size:9px; color:var(--fg-3); }
         .lab-m4-ins-card { display:flex; flex-direction:column; gap:6px; padding:12px; border-radius:var(--r-8); background:var(--bg); border:1px solid var(--line-div); border-top:3px solid var(--sc); }
         .lab-m4-ins-r1 { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
         .lab-m4-ins-name { font-family:var(--ff-disp); font-size:32px; line-height:1; color:var(--sc); }
@@ -1899,8 +1903,9 @@
             .m5-grid { grid-template-columns:minmax(0,1fr); }
             .m5-foot { grid-template-columns:repeat(2, minmax(0,1fr)); }
             .m5-foot > .lab-tasks { grid-column:1 / -1; }
-            .m5-chip::after { content:''; position:absolute; inset:-9px -1px; }
-            .lab-m5 .m5-tpb::after, .lab-m5 .m5-rst::after { inset:-10px -4px; }
+            /* dolgu kutusundan (1 px kenarlık hariç): 24 + 2×10 = 44 · 22 + 2×11 = 44 */
+            .m5-chip::after { content:''; position:absolute; inset:-10px -1px; }
+            .lab-m5 .m5-tpb::after, .lab-m5 .m5-rst::after { inset:-11px -4px; }
             .m5-play::after { content:''; position:absolute; inset:-5px; }
         }
         @media (min-width:601px) and (max-width:1024px) {
@@ -2181,6 +2186,7 @@ _auth.onAuthStateChanged(async user => {
             clearTimeout(_labSaveTimer); _labSaveTimer = null;
             state.completedTasks = {};
             try { localStorage.removeItem('berkay_tasks'); localStorage.removeItem('berkay_tasks_owner'); } catch {}
+            labResetSessionTasks();    // oturum bayrakları tazelemede sahipsiz ilerleme olarak geri yazılmasın
         }
         updateAuthBar();
         if (user) await loadUserData(user.uid);
@@ -2349,7 +2355,9 @@ function syncFilterNodes() { applySynthParams(); }
 const synthHz = m => 440 * Math.pow(2, (m - 69) / 12);
 const synthRatio = o => Math.pow(2, (+o.octave || 0) + (+o.semi || 0) / 12);
 
+let _synthSuspT = 0;
 function getSynthCtx() {
+    clearTimeout(_synthSuspT); _synthSuspT = 0;
     try {
         if (!synthCtx) {
             const C = window.AudioContext || window.webkitAudioContext;
@@ -2610,6 +2618,7 @@ function synthSetPedal(on) {
 // synthCtx kapatılmaz (yeniden kurmak pahalı); ilk notada applySynthParams master'ı geri getirir.
 function synthStopAll() {
     _synthNoteTimers.forEach(id => clearTimeout(id)); _synthNoteTimers.clear();
+    clearTimeout(_synthSuspT); _synthSuspT = 0;
     _sustainPedal = false; _synthHeld = []; _synthLast = null; state.pitchBend = 0;
     if (!synthCtx) return;
     const t = synthCtx.currentTime;
@@ -2618,6 +2627,12 @@ function synthStopAll() {
     bendSrc.offset.cancelScheduledValues(t); bendSrc.offset.setTargetAtTime(0, t, 0.01);
     Object.values(_voices).forEach(v => killVoice(v, t));
     _synthTail = 0;
+    // Delay/reverb kuyruğundan uzun bekle, sonra bağlamı askıya al (LFO/bend/efektler işlemesin);
+    // getSynthCtx sonraki notada resume eder
+    _synthSuspT = setTimeout(() => {
+        _synthSuspT = 0;
+        if (synthCtx && !Object.keys(_voices).length && synthCtx.state === 'running') synthCtx.suspend().catch(() => {});
+    }, 4000);
 }
 // Pitch bend: −1..+1 → ±2 yarım ton (ConstantSource cent → her osc.detune)
 function synthSetBend(b) {
@@ -2719,7 +2734,9 @@ function beatNoiseFor(ctx) {
     return b;
 }
 
+let _beatSuspT = 0;             // beatSuspendSoon zamanlayıcısı
 function getBeatCtx() {
+    clearTimeout(_beatSuspT); _beatSuspT = 0;
     if (!beatCtx) {
         const AC = window.AudioContext || window.webkitAudioContext;
         const ctx = beatCtx = new AC();
@@ -2752,6 +2769,17 @@ function getBeatCtx() {
     }
     if (beatCtx.state === 'suspended') { const p = beatCtx.resume(); if (p && p.catch) p.catch(() => {}); }
     return beatCtx;
+}
+// Beat'i kullanan görünüm kalmadıysa bağlamı askıya al. Davul kuyrukları hâlâ çalıyorsa 500 ms sonra
+// yeniden dener; getBeatCtx (yeni kullanım) bekleyen denemeyi iptal eder ve bağlamı resume eder.
+function beatSuspendSoon(ms) {
+    clearTimeout(_beatSuspT);
+    _beatSuspT = setTimeout(() => {
+        _beatSuspT = 0;
+        if (!beatCtx || beatPlaying || m5R || m5Routed || beatCtx.state !== 'running') return;
+        if (beatVoices) { beatSuspendSoon(500); return; }
+        beatCtx.suspend().catch(() => {});
+    }, ms);
 }
 // Mastering: Beat çıkışını kendi zincirine al / varsayılana döndür (beatMasterGain'e dokunulmaz)
 function beatRouteTo(node) {
@@ -2920,6 +2948,8 @@ function beatSchedulerLoop(gen) {
 function startBeat() {
     if (beatPlaying) return;
     const ctx = getBeatCtx();
+    // Mastering'den yeni çıkıldıysa beatOut hâlâ sökülen zincirde (M5_ROUTE_MS) → ilk vuruş kaybolmasın
+    if (!m5R && m5DefT) { clearTimeout(m5DefT); m5DefT = null; m5RouteDefault(); }
     beatAdopt();
     beatPlaying  = true;
     beatStep     = 0;
@@ -2969,7 +2999,10 @@ function beatPeak(an) {
 }
 // Tek görsel döngü (rehber 2.3): kuyruktan zamanı gelen adımı çek → highlightStep + pad parlaması;
 // açık Beat görünümünün kancası (beatUiHook.frame) metre/okuma günceller. Çalmıyor ve sessizse durur.
+// Boyanacak yüzey: açık Beat görünümü (kanca) ya da Genel bakış ızgarası — Mastering'de Beat çalarken döngü yok
+function beatUiPaints() { return !!beatUiHook || state.currentModule == null; }
 function beatUiKick() {
+    if (!beatUiPaints()) return;
     beatUiUntil = performance.now() + 2200;             // metre düşüşü + tepe tutma bitene kadar
     if (!beatUiRaf) beatUiRaf = requestAnimationFrame(beatUiLoop);
 }
@@ -2988,7 +3021,7 @@ function beatUiLoop() {
     if (beatUiHook && beatUiHook.frame) { try { beatUiHook.frame(pn); } catch (e) { console.warn('[lab] beat ui:', e); } }
     if (beatPlaying || beatVoices > 0) beatUiUntil = pn + 2200;
     // Durmuşken açık Beat görünümü yoksa metre kuyruğunu bekleme (görünümden çıkınca döngü hemen biter)
-    if (pn < beatUiUntil && (beatPlaying || beatUiHook)) beatUiRaf = requestAnimationFrame(beatUiLoop);
+    if (pn < beatUiUntil && beatUiPaints() && (beatPlaying || beatUiHook)) beatUiRaf = requestAnimationFrame(beatUiLoop);
 }
 
 // Çalan adımı işaretle: Genel bakış ızgarası (16 hücre, 32'de adım % 16) + playhead, kanal metreleri,
@@ -3478,8 +3511,8 @@ const LAB_TXT = {
                          `Blend two oscillators, a sub and noise; shape them with the filter, envelopes and LFO. Every knob drives the real sound engine — play, turn, listen.`],
     lab_mdesc_2:        [`5 kanallı, tamamen sentezlenmiş drum sequencer. Hücreye tıkla: velocity 100 → 70 → 40 → kapalı. Knob'ları yukarı/aşağı sürükle (Shift = ince, çift tık = varsayılan, tekerlek = adım adım).`,
                          `A 5-track, fully synthesised drum sequencer. Click a cell: velocity 100 → 70 → 40 → off. Drag the knobs up and down (Shift = fine, double-click = default, wheel = step by step).`],
-    lab_mdesc_3:        [`6 kanallı bir konsol: her kanalda gain, EQ, kompresör, send, pan ve fader var. Hepsi WebAudio grafiğine bağlı — MIX ÇAL'a bas, çalarken çevir ve farkı duy.`,
-                         `A 6-channel console: every channel has gain, EQ, a compressor, sends, pan and a fader. All of it is wired into the WebAudio graph — press PLAY MIX, turn things while it plays and hear the difference.`],
+    lab_mdesc_3:        [`6 kanallı bir konsol: her kanalda gain, EQ, kompresör, send, pan ve fader var. Hepsi WebAudio grafiğine bağlı — ▶ MIX'e bas, çalarken çevir ve farkı duy.`,
+                         `A 6-channel console: every channel has gain, EQ, a compressor, sends, pan and a fader. All of it is wired into the WebAudio graph — press ▶ MIX, turn things while it plays and hear the difference.`],
     lab_mdesc_4:        [`Loop'u şarkıya çevir: her bölümde hangi kanalın çalacağını seç, master filtreyi otomasyonla aç-kapa, enerji eğrisini izle ve aranjmanı baştan sona dinle.`,
                          `Turn the loop into a song: choose which tracks play in each section, open and close the master filter with automation, watch the energy curve and listen to the arrangement from start to finish.`],
     lab_mdesc_5:        [`Tonal denge, dinamik kontrol, doğru loudness. Bu suite gerçek bir WebAudio zinciri: çalan mix'i K-weighting ile ölçer. Modülleri kapatıp farkı duy, REF ile seviye eşli karşılaştır.`,
@@ -3791,7 +3824,7 @@ function showModal(title, html, actions) {
 //               color?, pos:'left'|'right'} | false, transport?:false, status?:false, cls? })
 //   → { root, bar, brand, left, center, right, transport, body, status, power }
 //   root section.lp-win[aria-label] (radius --lp-win-r, vars.: --r-14; modül: .lab-m1 .lp-win{--lp-win-r:var(--r-18)})
-//   bar  .lp-bar (min-height --lp-bar-h 56px; Synth 64px) = vida · [⏻ pos:left] · [BE logo] "BE·CODE NUM"
+//   bar  .lp-bar (min-height --lp-bar-h 56px; Synth 64px; dolgu 8/14 px — sarılınca satırlar kenara yapışmaz) = vida · [⏻ pos:left] · [BE logo] "BE·CODE NUM"
 //        (num altın) + alt satır · left (.lp-bar-l: preset tarayıcı, A|B, A→B, INIT, ↶ ↷, KAYDET) ·
 //        center (.lp-bar-c: REF / BYPASS / çal) · right (.lp-bar-r, sağa yaslı: okumalar, metreler) ·
 //        [⏻ pos:right] · vida. ≤1024 satır sarar. Güç kapalıyken root.is-off (stil modülde).
@@ -3825,8 +3858,8 @@ function showModal(title, html, actions) {
 //   console (vars.): değer dB (−∞ olabilir), max +6, konum = lin^¼ / maxLin^¼ (konum < 0.03 ya da
 //   dB < min → −∞), ölçek +6 0 −6 −12 −24 −40 −∞, def 0 dB. linear: min..max doğrusal (0..1 seviye;
 //   yatay mini fader orientation:'h'). Sürükleme göreli (kapak zıplamaz), Shift ×0.2, çift tık def,
-//   tekerlek ±wheelStep (1 dB; Shift ×0.1), oklar ±step (Shift ×10), PageUp/Down ±6 dB, Home max,
-//   End −∞/min. role=slider (track öğesi). lpLin(dB) → kazanç (−∞ → 0), lpDb(lin) → dB.
+//   tekerlek ±wheelStep (1 dB; Shift ×0.1), oklar ±step (Shift ×10), PageUp/Down ±6 dB, Home −∞/min,
+//   End max. role=slider (track öğesi). lpLin(dB) → kazanç (−∞ → 0), lpDb(lin) → dB.
 // makeMeter({ channels?:2, orientation?:'v'|'h', length?/height?, thickness?, segments?, segPx?,
 //             min?:-60, max?:+3, warn?:-18, hot?:-3, peakHold?:1500 | false, release?:40 (dB/sn),
 //             linear?, gr?, thresholds?, color?, aria? }) → { el, update(levels), reset(), levels }
@@ -3847,6 +3880,9 @@ function showModal(title, html, actions) {
 // lpBtn({ text?, icon?(LP_IC anahtarı: prev next caret undo redo power play pause stop loop copy),
 //         label?(aria), title?, variant?:'accent'|'danger'|'ghost', onClick }) → button.lp-btn (30 px)
 //   INIT (danger), KAYDET (accent), ↶ ↷ (icon), A→B. aria-disabled="true" iken onClick çalışmaz.
+// lpBtnSlot(btn, reserve, show): reserve false → [hidden] (yer yok); reserve true + show false → yeri korunur
+//   ama görünmez / odaklanamaz / erişilebilirlik ağacı dışı (.is-slot-off) — ör. yalnız kullanıcı presetinde
+//   görünen SİL düğmesi preset gezinirken başlık çubuğunu sarıp gövdeyi kaydırmasın.
 // makeReadout({ label, value?, variant?:'ro'|'lcd'|'inline', color?, live? }) → { el, set(v), setLabel(t), setColor(c) }
 //   ro: başlık çubuğu sütunu (VOICES / DSP ≈); lcd: 44 px ekran (POZİSYON, ZAMAN); inline: durum satırı.
 // makeDisplay({ height?, grid?:[sütun, satır], cls? }) → { el, grid } · .lp-disp koyu kuyu (+ SVG ızgara).
@@ -4085,6 +4121,15 @@ function labRefreshProgress() {
     if (m != null) labSetTaskCount(getDoneCount(m), (TASKS[m] || []).length);
     renderPath();
 }
+// Çıkışta modüllerin oturum ömürlü görev bayraklarını sıfırla: otomatik görev panelleri (M4/M5) tazelemede
+// canlı bayrağı kaydeder — sıfırlanmazsa önceki hesabın ilerlemesi sahipsiz yerel kayda, oradan sonraki hesaba geçer.
+let _m1TaskReset = null;         // açık Synth görünümünün yerel görev izleri (renderModule1 kurar)
+function labResetSessionTasks() {
+    m5Met.fill(false);
+    m4S.tplUsed = m4S.played = m4S.dirty = m4S.bdKick = false; m4S.cols.fill(false);
+    _m2Edited = false;
+    if (_m1TaskReset) { try { _m1TaskReset(); } catch (e) { console.warn('[lab] m1 task reset:', e); } }
+}
 // Gövde tazeleme kancası (LAB KABUK API: labOnRefresh)
 function labOnRefresh(el, fn) {
     if (typeof fn === 'function') el.refresh = fn;
@@ -4283,6 +4328,7 @@ function labShellLang() {
     document.querySelectorAll('#labMain [data-lab-where]').forEach(h => { h.textContent = whereTitle(h.dataset.labWhere); });
     document.querySelectorAll('#labMain .lab-fullmod[data-mod]').forEach(a => { a.setAttribute('aria-label', `${L('lab_mod_' + a.dataset.mod)} — ${L('lab_fullmod_aria')}`); });
     document.querySelectorAll('#labMain .lab-bigplay').forEach(b => setBigPlay(b, b.getAttribute('aria-pressed') === 'true'));
+    lpRelabel();                                    // PRO KİT metinleri önce; modül tazelemesi üstüne yazabilir
     _labRefreshers.filter(el => el.isConnected).forEach(el => { try { el.refresh(); } catch (e) { console.warn('[lab] refresh:', e); } });
     const old = document.querySelector('#labMain > .lab-modnav');
     if (old && state.currentModule != null) old.replaceWith(modNav(state.currentModule));
@@ -4310,6 +4356,9 @@ Object.assign(LAB_TXT, {
     lp_undo:         [`Geri al`, `Undo`],
     lp_redo:         [`Yinele`, `Redo`],
     lp_save:         [`KAYDET`, `SAVE`],
+    lp_del_preset:   [`Seçili kullanıcı presetini sil`, `Delete the selected user preset`],
+    lp_del_confirm:  [`"{name}" preseti silinsin mi? Bu geri alınamaz.`, `Delete the preset "{name}"? This cannot be undone.`],
+    lp_del_failed:   [`Preset silinemedi.`, `Could not delete the preset.`],
     lp_knob_tip:     [`Sürükle · Shift ince ayar · çift tık varsayılan · tekerlek adım`, `Drag · Shift fine · double-click default · wheel steps`],
     lp_fader_tip:    [`Sürükle · Shift ince ayar · çift tık varsayılan · tekerlek ±1 dB`, `Drag · Shift fine · double-click default · wheel ±1 dB`],
     lp_hiw_kicker:   [`ÇALIŞMA MANTIĞI`, `HOW IT WORKS`],
@@ -4365,8 +4414,42 @@ const LP_IC = {
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="currentColor"/></svg>',
     stop:  '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>',
     loop:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>',
+    del:   '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>',
     copy:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>',
 };
+
+// ── Dile bağlı metinler: canlı dil değişiminde (labShellLang → lpRelabel) yeniden yazılır ──
+// lpS(v): metin ya da () => metin. lpTr(el, attr, v): 'text' | öznitelik; şimdi yazar ve kaydeder —
+// dil değişince yalnız değer hâlâ kitin yazdığıysa (modül bu arada kendi metnini koymadıysa) yenilenir.
+// lpOnLang(el, fn): öğe bağlıyken dil değişiminde fn. Kayıtlar görünüm ömürlü (lpTeardown siler).
+// Görünüm içi yeniden kurulumlar (ör. Beat Sound Editor knobları) ölü kayıt bırakmasın diye her kayıttan
+// sonraki karede budanır: bir kez DOM'a bağlanmış (seen) ama artık kopuk öğeler düşer; henüz hiç
+// bağlanmamış öğe (sonradan eklenecek) 10 s korunur — aynı görevde kurulup hemen değiştirilen ara kopyalar da birikmez.
+let _lpLang = [], _lpPruneQ = 0;
+function _lpPrune() {
+    _lpPruneQ = 0;
+    const now = Date.now();
+    _lpLang = _lpLang.filter(x => { if (x.el.isConnected) { x.seen = true; return true; } return !x.seen && now - x.t < 10000; });
+}
+function _lpReg(el, run) {
+    _lpLang.push({ el, run, seen: false, t: Date.now() });
+    if (!_lpPruneQ) _lpPruneQ = requestAnimationFrame(_lpPrune);
+}
+const lpS = v => typeof v === 'function' ? v() : (v == null ? '' : String(v));
+function lpTr(el, attr, v) {
+    if (!el) return el;
+    const get = () => attr === 'text' ? el.textContent : el.getAttribute(attr);
+    let last = null;
+    const put = () => { const t = lpS(v); if (attr === 'text') el.textContent = t; else el.setAttribute(attr, t); last = get(); };
+    put();
+    _lpReg(el, () => { if (get() === last) put(); });
+    return el;
+}
+function lpOnLang(el, fn) { if (el && typeof fn === 'function') _lpReg(el, fn); return fn; }
+function lpRelabel() {
+    _lpLang = _lpLang.filter(x => x.el.isConnected);
+    _lpLang.slice().forEach(x => { try { x.run(); } catch (e) { console.warn('[lab] lp relabel:', e); } });
+}
 
 // ── Görünüm temizliği: sürüklemeler + açık menüler (teardownView → lpTeardown) ──
 const _lpDrags = new Set();      // aktif sürüklemenin bitirici fonksiyonları
@@ -4375,6 +4458,7 @@ function lpOnTeardown(fn) { if (typeof fn === 'function') _lpCleanups.push(fn); 
 function lpTeardown() {
     Array.from(_lpDrags).forEach(f => { try { f(); } catch (e) { console.warn('[lab] lp drag:', e); } });
     _lpDrags.clear();
+    _lpLang = []; cancelAnimationFrame(_lpPruneQ); _lpPruneQ = 0;
     const list = _lpCleanups; _lpCleanups = [];
     list.forEach(f => { try { f(); } catch (e) { console.warn('[lab] lp cleanup:', e); } });
 }
@@ -4445,8 +4529,8 @@ function makeKnob(o) {
     el.setAttribute('role', 'slider');
     el.setAttribute('aria-valuemin', String(min));
     el.setAttribute('aria-valuemax', String(max));
-    el.setAttribute('aria-label', o.aria || o.label || '');
-    el.title = o.tip ? `${o.tip} — ${L('lp_knob_tip')}` : L('lp_knob_tip');
+    lpTr(el, 'aria-label', o.aria || o.label || '');
+    lpTr(el, 'title', () => { const t = lpS(o.tip); return t ? `${t} — ${L('lp_knob_tip')}` : L('lp_knob_tip'); });
     if (o.color) el.style.setProperty('--lp-c', o.color);
     if (o.ringColor) el.style.setProperty('--lp-rc', o.ringColor);
     if (o.size) el.style.setProperty('--lp-ks', o.size + 'px');
@@ -4458,7 +4542,7 @@ function makeKnob(o) {
     const ptr = lpSvg('line', { class: 'lp-knob-ptr' }, svg);
     const txt = o.layout === 'side' ? mk('span', 'lp-knob-txt') : el;
     const val = mk('span', 'lp-knob-val');
-    const lbl = mk('span', 'lp-knob-lbl'); lbl.textContent = o.label || '';
+    const lbl = mk('span', 'lp-knob-lbl'); lbl.textContent = lpS(o.label);
     if (o.layout === 'above') el.insertBefore(lbl, svg), el.append(val);
     else if (o.layout === 'side') { txt.append(lbl, val); el.append(txt); }
     else el.append(val, lbl);
@@ -4566,7 +4650,7 @@ function makeKnob(o) {
 // Dikey (ya da yatay) fader. law 'console' (varsayılan): değer dB, konum = (lin^0.25)/(maxLin^0.25),
 // konum < 0.03 → −∞ (Mixing konsol yasası). law 'linear': min..max doğrusal (ör. 0..1 seviye).
 // Sürükleme göreli (kapak zıplamaz), Shift ×0.2, çift tık def, tekerlek ±wheelStep (Shift ×0.1),
-// oklar ±step (Shift ×10), PageUp/Down ±6 dB (linear: ±%10), Home = max, End = min/−∞.
+// oklar ±step (Shift ×10), PageUp/Down ±6 dB (linear: ±%10), Home = min/−∞, End = max (APG).
 function makeFader(o) {
     o = o || {};
     const law = o.law === 'linear' ? 'linear' : 'console';
@@ -4604,10 +4688,10 @@ function makeFader(o) {
     track.tabIndex = 0;
     track.setAttribute('role', 'slider');
     track.setAttribute('aria-orientation', horiz ? 'horizontal' : 'vertical');
-    track.setAttribute('aria-label', o.aria || o.label || '');
+    lpTr(track, 'aria-label', o.aria || o.label || '');
     track.setAttribute('aria-valuemin', String(law === 'console' ? Math.max(min, -144) : min));
     track.setAttribute('aria-valuemax', String(max));
-    track.title = law === 'console' ? L('lp_fader_tip') : L('lp_knob_tip');
+    lpTr(track, 'title', () => law === 'console' ? L('lp_fader_tip') : L('lp_knob_tip'));
     const cap = mk('span', 'lp-fader-cap'); cap.setAttribute('aria-hidden', 'true');
     track.append(cap);
     // dB ölçeği (console: +6 0 −6 −12 −24 −40 −∞)
@@ -4674,8 +4758,8 @@ function makeFader(o) {
         else if (k === 'ArrowDown' || k === 'ArrowLeft') fn = () => bump(-step * big);
         else if (k === 'PageUp') fn = () => bump(page);
         else if (k === 'PageDown') fn = () => bump(-page);
-        else if (k === 'Home') fn = () => commit(max);
-        else if (k === 'End') fn = () => commit(law === 'console' ? -Infinity : min);
+        else if (k === 'Home') fn = () => commit(law === 'console' ? -Infinity : min);
+        else if (k === 'End') fn = () => commit(max);
         if (!fn) return;
         e.preventDefault();
         if (!e.repeat) start();
@@ -4711,7 +4795,7 @@ function makeMeter(o) {
     el.style.setProperty('--lp-ml', len + 'px');
     if (o.thickness) el.style.setProperty('--lp-mt', o.thickness + 'px');
     if (o.color) el.style.setProperty('--lp-c', o.color);
-    if (o.aria) { el.setAttribute('role', 'img'); el.setAttribute('aria-label', o.aria); } else el.setAttribute('aria-hidden', 'true');
+    if (o.aria) { el.setAttribute('role', 'img'); lpTr(el, 'aria-label', o.aria); } else el.setAttribute('aria-hidden', 'true');
     const chans = [];
     for (let c = 0; c < ch; c++) {
         const col = mk('div', 'lp-mtr-ch');
@@ -4762,14 +4846,14 @@ function makeSeg(options, value, onPick, o) {
     o = o || {};
     const el = mk('div', 'lp-seg' + (o.size === 'md' ? ' lp-seg--md' : '') + (o.cls ? ' ' + o.cls : ''));
     el.setAttribute('role', 'group');
-    if (o.label) el.setAttribute('aria-label', o.label);
+    if (o.label) lpTr(el, 'aria-label', o.label);
     let cur = value;
     const btns = (options || []).map(op => {
         const it = Array.isArray(op) ? { value: op[0], label: op[1] } : op;
         const b = mk('button', 'lp-seg-b'); b.type = 'button';
-        if (it.html) b.innerHTML = it.html; else b.textContent = it.label;
-        if (it.title) b.title = it.title;
-        if (it.aria) b.setAttribute('aria-label', it.aria);
+        if (it.html) b.innerHTML = it.html; else lpTr(b, 'text', it.label);
+        if (it.title) lpTr(b, 'title', it.title);
+        if (it.aria) lpTr(b, 'aria-label', it.aria);
         b.addEventListener('click', () => {
             if (cur === it.value && !o.repick) return;
             set(it.value);
@@ -4795,7 +4879,7 @@ function makeSeg(options, value, onPick, o) {
 function makeLed(o) {
     o = o || {};
     const el = mk('span', 'lp-led' + (o.cls ? ' ' + o.cls : ''));
-    if (o.label) { el.setAttribute('role', 'img'); el.setAttribute('aria-label', o.label); } else el.setAttribute('aria-hidden', 'true');
+    if (o.label) { el.setAttribute('role', 'img'); lpTr(el, 'aria-label', o.label); } else el.setAttribute('aria-hidden', 'true');
     if (o.color) el.style.setProperty('--lp-c', o.color);
     const api = {
         el,
@@ -4810,8 +4894,8 @@ function makePowerBtn(o) {
     o = o || {};
     const el = mk('button', 'lp-pwr' + (o.size === 'sm' ? ' lp-pwr--sm' : '') + (o.cls ? ' ' + o.cls : ''), LP_IC.power);
     el.type = 'button';
-    el.setAttribute('aria-label', o.label || L('lp_power'));
-    if (o.title) el.title = o.title;
+    lpTr(el, 'aria-label', () => lpS(o.label) || L('lp_power'));
+    if (o.title) lpTr(el, 'title', o.title);
     if (o.color) el.style.setProperty('--lp-c', o.color);
     let on = o.on !== false;
     const set = b => { on = !!b; el.setAttribute('aria-pressed', String(on)); };
@@ -4826,10 +4910,19 @@ function lpBtn(o) {
     const b = mk('button', 'lp-btn' + (o.variant ? ' lp-btn--' + o.variant : '') + (o.icon && !o.text ? ' lp-btn--icon' : '') + (o.cls ? ' ' + o.cls : ''));
     b.type = 'button';
     if (o.icon) b.insertAdjacentHTML('beforeend', LP_IC[o.icon] || o.icon);
-    if (o.text) { const s = mk('span'); s.textContent = o.text; b.append(s); }
-    if (o.label) b.setAttribute('aria-label', o.label);
-    if (o.title) b.title = o.title;
+    if (o.text) { const s = mk('span'); lpTr(s, 'text', o.text); b.append(s); }
+    if (o.label) lpTr(b, 'aria-label', o.label);
+    if (o.title) lpTr(b, 'title', o.title);
     if (o.onClick) b.addEventListener('click', e => { if (b.getAttribute('aria-disabled') === 'true') return; o.onClick(e); });
+    return b;
+}
+function lpBtnSlot(b, reserve, show) {
+    if (!b) return b;
+    const off = !!reserve && !show;
+    b.hidden = !reserve;
+    b.classList.toggle('is-slot-off', off);
+    if (off) { b.setAttribute('aria-hidden', 'true'); b.tabIndex = -1; }
+    else { b.removeAttribute('aria-hidden'); b.removeAttribute('tabindex'); }
     return b;
 }
 // Açık/kapalı metin düğmesi (aria-pressed), isteğe bağlı LED: { text, label, title, on, led:true, color, onToggle }
@@ -4851,7 +4944,7 @@ function makeReadout(o) {
     o = o || {};
     const variant = o.variant || 'ro';
     const el = mk('div', 'lp-' + variant + (o.cls ? ' ' + o.cls : ''));
-    const lb = mk(variant === 'inline' ? 'span' : 'b', 'lp-ro-l'); lb.textContent = o.label || '';
+    const lb = mk(variant === 'inline' ? 'span' : 'b', 'lp-ro-l'); lpTr(lb, 'text', o.label || '');
     const vl = mk('span', 'lp-ro-v'); vl.textContent = o.value != null ? String(o.value) : '';
     el.append(lb, vl);
     if (o.color) el.style.setProperty('--lp-c', o.color);
@@ -4903,7 +4996,7 @@ function makePanel(o) {
         const b = mk('button', 'lp-ledb'); b.type = 'button';
         led = makeLed({ color: o.color, on: o.toggle.on !== false });
         b.append(led.el);
-        b.setAttribute('aria-label', o.toggle.label || o.title || '');
+        lpTr(b, 'aria-label', o.toggle.label || o.title || '');
         let on = o.toggle.on !== false;
         toggle = { el: b, set(x) { on = !!x; b.setAttribute('aria-pressed', String(on)); led.set(on); el.classList.toggle('is-off', !on); }, get: () => on };
         b.addEventListener('click', () => { toggle.set(!on); if (o.toggle.onToggle) o.toggle.onToggle(on); });
@@ -4914,7 +5007,7 @@ function makePanel(o) {
         head.append(led.el);
     }
     const title = mk(o.tag || 'h3', 'lp-pt' + (o.titleColor ? ' lp-pt--c' : ''));
-    title.textContent = o.title || '';
+    lpTr(title, 'text', o.title || '');
     const info = mk('span', 'lp-pinfo'); if (o.info) info.textContent = o.info; else info.hidden = true;
     const actions = mk('div', 'lp-pact');
     (o.actions || []).forEach(a => actions.append(a && a.el ? a.el : a));
@@ -4940,19 +5033,19 @@ function makePresetBrowser(o) {
     const el = mk('div', 'lp-pb' + (o.cls ? ' ' + o.cls : ''));
     if (o.width) el.style.setProperty('--lp-pbw', o.width + 'px');
     const grp = mk('div', 'lp-pb-grp');
-    const bPrev = mk('button', 'lp-pb-arrow', LP_IC.prev); bPrev.type = 'button'; bPrev.setAttribute('aria-label', o.prevLabel || L('lp_prev_preset'));
-    const bNext = mk('button', 'lp-pb-arrow', LP_IC.next); bNext.type = 'button'; bNext.setAttribute('aria-label', o.nextLabel || L('lp_next_preset'));
+    const bPrev = mk('button', 'lp-pb-arrow', LP_IC.prev); bPrev.type = 'button'; lpTr(bPrev, 'aria-label', () => lpS(o.prevLabel) || L('lp_prev_preset'));
+    const bNext = mk('button', 'lp-pb-arrow', LP_IC.next); bNext.type = 'button'; lpTr(bNext, 'aria-label', () => lpS(o.nextLabel) || L('lp_next_preset'));
     const trig = mk('button', 'lp-pb-name'); trig.type = 'button';
     const listId = lpId('lpPbList');
     trig.setAttribute('aria-haspopup', 'listbox'); trig.setAttribute('aria-expanded', 'false'); trig.setAttribute('aria-controls', listId);
     const tNo = mk('span', 'lp-pb-no'), tCap = mk('span', 'lp-pb-cap'), tCat = mk('span', 'lp-tag'), tName = mk('span', 'lp-pb-t'),
         tMod = mk('span', 'lp-pb-mod'), tAux = mk('span', 'lp-pb-aux'), tCaret = mk('span', 'lp-pb-caret', LP_IC.caret);
     tMod.setAttribute('aria-hidden', 'true'); tMod.textContent = '*';
-    if (o.capLabel) tCap.textContent = o.capLabel; else tCap.hidden = true;
+    if (o.capLabel) lpTr(tCap, 'text', o.capLabel); else tCap.hidden = true;
     trig.append(tCap, tNo, tCat, tName, tMod, tAux, tCaret);
     grp.append(bPrev, trig, bNext);
     const pop = mk('div', 'lp-pb-pop'); pop.hidden = true;
-    pop.id = listId; pop.setAttribute('role', 'listbox'); pop.setAttribute('aria-label', o.label || L('lp_presets'));
+    pop.id = listId; pop.setAttribute('role', 'listbox'); lpTr(pop, 'aria-label', () => lpS(o.label) || L('lp_presets'));
     el.append(grp, pop);
     let opts = [];
     const idx = () => items.findIndex(it => it.id === cur);
@@ -4964,7 +5057,7 @@ function makePresetBrowser(o) {
         tName.textContent = it ? it.name : '';
         tAux.textContent = it && it.aux ? it.aux : ''; tAux.hidden = !(it && it.aux);
         tMod.hidden = !modified;
-        trig.setAttribute('aria-label', `${o.label || L('lp_browser')}: ${it ? it.name : ''}${modified ? ' (' + L('lp_modified') + ')' : ''}`);
+        trig.setAttribute('aria-label', `${lpS(o.label) || L('lp_browser')}: ${it ? it.name : ''}${modified ? ' (' + L('lp_modified') + ')' : ''}`);
         opts.forEach(x => x.setAttribute('aria-selected', String(x._id === cur)));
     }
     function build() {
@@ -4974,7 +5067,7 @@ function makePresetBrowser(o) {
         groups.forEach(G => {
             const gid = lpId('lpPbG');
             const gw = mk('div', 'lp-pb-gw'); gw.setAttribute('role', 'group'); gw.setAttribute('aria-labelledby', gid);
-            const gh = mk('div', 'lp-pb-gh'); gh.id = gid; gh.setAttribute('role', 'presentation'); gh.textContent = groupLabel(G.g);
+            const gh = mk('div', 'lp-pb-gh'); gh.id = gid; gh.setAttribute('role', 'presentation'); gh.textContent = groupLabel(G.g); gh._g = G.g;
             const gl = mk('div', 'lp-pb-list');
             G.list.forEach(it => {
                 const op = mk('div', 'lp-pb-opt'); op.setAttribute('role', 'option'); op.tabIndex = -1; op.id = lpId('lpPbO'); op._id = it.id;
@@ -5036,6 +5129,8 @@ function makePresetBrowser(o) {
         else if (e.key === 'Tab') { close(false); return; }
         if (j >= 0) { e.preventDefault(); opts[j].focus(); }
     });
+    // Dil değişimi: grup başlıkları + tetik etiketi (öğe adlarını modül setItems ile verir)
+    lpOnLang(el, () => { pop.querySelectorAll('.lp-pb-gh').forEach(h => { h.textContent = groupLabel(h._g); }); paint(); });
     bPrev.addEventListener('click', () => { if (o.onPrev) o.onPrev(); else step(-1); });
     bNext.addEventListener('click', () => { if (o.onNext) o.onNext(); else step(1); });
     build();
@@ -5143,7 +5238,7 @@ function makeHistory(o) {
 function pluginWindow(o) {
     o = o || {};
     const root = mk('section', 'lp-win' + (o.cls ? ' ' + o.cls : ''));
-    root.setAttribute('aria-label', o.aria || `BE·${o.code || ''} ${o.num || ''}`.trim());
+    lpTr(root, 'aria-label', o.aria || `BE·${o.code || ''} ${o.num || ''}`.trim());
     const bar = mk('div', 'lp-bar');
     const screw = () => { const s = mk('span', 'lp-screw'); s.setAttribute('aria-hidden', 'true'); return s; };
     const brand = mk('div', 'lp-brand');
@@ -5154,7 +5249,7 @@ function pluginWindow(o) {
     nm.querySelector('.lp-brand-code').textContent = o.code || '';
     nm.querySelector('.lp-brand-num').textContent = o.num || '';
     bt.append(nm);
-    if (o.sub) { const sb = mk('span', 'lp-brand-sub'); sb.textContent = o.sub; bt.append(sb); }
+    if (o.sub) { const sb = mk('span', 'lp-brand-sub'); lpTr(sb, 'text', o.sub); bt.append(sb); }
     brand.append(bt);
     const left = mk('div', 'lp-bar-l'), center = mk('div', 'lp-bar-c'), right = mk('div', 'lp-bar-r');
     let power = null;
@@ -5163,7 +5258,7 @@ function pluginWindow(o) {
         root.classList.toggle('is-off', o.power.on === false);
         power.el.addEventListener('click', () => root.classList.toggle('is-off', !power.get()));
     }
-    if (o.screws !== false) bar.append(screw());
+    if (o.screws !== false) { bar.classList.add('lp-bar--screws'); bar.append(screw()); }
     if (power && o.power.pos === 'left') bar.append(power.el);
     bar.append(brand, left, center, right);
     if (power && o.power.pos !== 'left') { const pw = mk('div', 'lp-bar-pw'); pw.append(power.el); bar.append(pw); }
@@ -5189,7 +5284,8 @@ function flowDiagram(o) {
     const W = o.w || 900, H = o.h || 300;
     const wrap = mk('div', 'lp-flow');
     if (o.minWidth) wrap.style.setProperty('--lp-fmin', o.minWidth + 'px');
-    const svg = lpSvg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'lp-flow-svg', role: 'img', 'aria-label': o.aria || L('lp_flow_aria') }, wrap);
+    const svg = lpSvg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'lp-flow-svg', role: 'img' }, wrap);
+    lpTr(svg, 'aria-label', () => lpS(o.aria) || L('lp_flow_aria'));
     const defs = lpSvg('defs', null, svg);
     const pre = lpId('lpFm');
     const markers = new Map();
@@ -5441,7 +5537,10 @@ function navigate(mod, scroll, fromHistory) {
     const from = state.currentModule;
     // Beat yalnız Genel bakış ↔ Beat Maker arasında çalmaya devam eder
     const beatViews = v => v === null || v === 2;
-    if (from !== mod && beatViews(from) && !beatViews(mod)) stopBeat(false);
+    if (from !== mod && beatViews(from) && !beatViews(mod)) { stopBeat(false); if (mod !== 5) beatSuspendSoon(1000); }
+    // Synth yalnız Genel bakış kartında ve Synth görünümünde çalar; kartdan başka modüle geçince
+    // sesler söner ve 4 s sonra synthCtx askıya alınır (Synth görünümü kendi teardown'unda yapar)
+    if (from === null && mod !== null && mod !== 1) synthStopAll();
     teardownView();
     state.currentModule = mod;
     if (!fromHistory) {
@@ -5718,7 +5817,7 @@ function renderModule1() {
     const pbItems = () => SYNTH_PRESETS.map(p => ({ id: p.id, name: p.name, cat: p.cat, group: 'factory' }))
         .concat(userPresets.map(d => ({ id: 'u:' + d.id, name: d.name || '—', cat: L('lab_s1_cat_user'), group: 'user', data: d })));
     const isModified = () => !!ui.dirty || (ui.presetId != null && !String(ui.presetId).startsWith('u:') && state.activePreset !== ui.presetId);
-    const pb = makePresetBrowser({ items: pbItems(), value: ui.presetId, modified: isModified(), width: 250, label: L('lp_presets'),
+    const pb = makePresetBrowser({ items: pbItems(), value: ui.presetId, modified: isModified(), width: 250, label: () => L('lp_presets'),
         onPick: it => loadItem(it) });
     function loadItem(it) {
         histPush();
@@ -6259,21 +6358,26 @@ function renderModule1() {
 
     // ── Görevler: yapılanlar algılanınca kalıcı tamamlanır (elle de işaretlenebilir) ──
     // e6/e8/e9: o görevin kendi kontrolüne bu patch'te dokunuldu mu (preset, INIT, A/B, geri al → sıfırlanır)
+    // e1/e2/e4: OSC A dalga seçicisi / ATTACK / RELEASE kendin değişti mi (preset adımlamak görevi bitirmesin)
     const tk = { waves: new Set(), att0: false, from: ui.presetId && !String(ui.presetId).startsWith('u:') ? ui.presetId : null, hpLo: null, hpHi: null,
-        e6: false, e8: false, e9: false };
-    function tkReset() { tk.e6 = tk.e8 = tk.e9 = false; }
+        e1: false, e2: false, e4: false, e6: false, e8: false, e9: false };
+    function tkReset() { tk.e1 = tk.e2 = tk.e4 = tk.e6 = tk.e8 = tk.e9 = false; tk.att0 = false; }
+    _m1TaskReset = () => { tk.waves.clear(); tkReset(); };
     function tkMark(what) {
         const w = String(what || '');
+        if (w === 'osc1.wave') tk.e1 = true;
+        if (w === 'adsr.attack') tk.e2 = true;
+        if (w === 'adsr.release') tk.e4 = true;
         if (w.startsWith('osc2.')) tk.e6 = true;
         if (w === 'lfo.amount' || w === 'lfo.dest') tk.e8 = true;
         if (w === 'filterEnv.amount' || w === 'modEnv.decay') tk.e9 = true;
     }
     function checkTasks(what, ev) {
         const s = state, done = id => completeTask(1, id);
-        if (ev === 'note' && s.osc1.enabled !== false) { tk.waves.add(s.osc1.wave); if (tk.waves.size >= 4) done(1); }
-        if (s.adsr.attack <= 0.005) tk.att0 = true; else if (tk.att0 && s.adsr.attack >= 1.5) done(2);
+        if (ev === 'note' && tk.e1 && s.osc1.enabled !== false) { tk.waves.add(s.osc1.wave); if (tk.waves.size >= 4) done(1); }
+        if (tk.e2 && s.adsr.attack <= 0.005) tk.att0 = true; else if (tk.e2 && tk.att0 && s.adsr.attack >= 1.5) done(2);
         if (ev === 'note' && s.adsr.sustain <= 0.01 && s.adsr.decay >= 0.25 && s.adsr.decay <= 0.4) done(3);
-        if (ev === 'off' && s.adsr.release > 2) done(4);
+        if (ev === 'off' && tk.e4 && s.adsr.release > 2) done(4);
         if (tk.from === 'bass' && s.filter.cutoff <= 210) done(5);
         // 6, 8, 9: o görevin kontrolünü bu patch'te kendin değiştirip bir nota çalınca (preset yüklemek, başka düğme yetmez)
         const heard = ev === 'note';
@@ -6379,7 +6483,7 @@ function renderModule1() {
         if (mqPhone) { if (mqPhone.removeEventListener) mqPhone.removeEventListener('change', onPhone); else mqPhone.removeListener(onPhone); }
         if (io) io.disconnect();
         stopOsc();
-        _m1HeldChanged = null; _m1Update = null;
+        _m1HeldChanged = null; _m1Update = null; _m1TaskReset = null;   // renderModule1 kapsamı serbest kalsın
         synthStopAll();
         state.modWheel = 0;                 // LFO derinliği ilk notadaki applySynthParams ile tazelenir
         ui.power = true;                    // bypass yalnız bu görünümde; genel bakış kartı sessiz kalmasın
@@ -6748,8 +6852,8 @@ function renderModule2() {
 
     // ── Pencere ──
     const win = pluginWindow({
-        code: 'RHYTHM', num: '02', sub: L('lab_m2_win_sub'), aria: L('lab_m2_win_aria'),
-        power: { on: B.power, pos: 'left', label: L('lab_m2_power'), onToggle: on => { B.power = on; syncBeatBus(); } },
+        code: 'RHYTHM', num: '02', sub: L('lab_m2_win_sub'), aria: () => L('lab_m2_win_aria'),
+        power: { on: B.power, pos: 'left', label: () => L('lab_m2_power'), onToggle: on => { B.power = on; syncBeatBus(); } },
         transport: true, status: true,
     });
     win.root.classList.add('m2-win');
@@ -6767,21 +6871,21 @@ function renderModule2() {
         loadTpl(GENRE_TEMPLATES[j]);
     };
     const pb = makePresetBrowser({
-        items: pbItems(), value: B.preset || '__user', capLabel: L('lp_preset_cap'), width: 230, label: L('lab_m2_pb_aria'),
+        items: pbItems(), value: B.preset || '__user', capLabel: () => L('lp_preset_cap'), width: 230, label: () => L('lab_m2_pb_aria'),
         onPick: it => { if (it.id === '__user') { paintPreset(true); return; } const g = GENRE_TEMPLATES.find(x => x.name === it.id); if (g) loadTpl(g); },
         onPrev: () => tplStep(-1), onNext: () => tplStep(1),
     });
-    const bInit = lpBtn({ text: L('lp_init'), variant: 'danger', title: L('lab_m2_init_t'), onClick: () => {
+    const bInit = lpBtn({ text: () => L('lp_init'), variant: 'danger', title: () => L('lab_m2_init_t'), onClick: () => {
         push();
         B.slots[B.slot] = beatEmpty(B.len); beatBindActive();
         beatSetPreset(null); _m2UserName = null; _m2Edited = false;
         paintPreset(); paintGrid(); paintSlots();
     } });
-    const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: L('lp_ab_aria') });
-    ab.buttons.forEach(b => { b.title = L('lp_ab_aria'); });
-    const bUndo = lpBtn({ icon: 'undo', label: L('lp_undo'), title: L('lp_undo') });
-    const bRedo = lpBtn({ icon: 'redo', label: L('lp_redo'), title: L('lp_redo') });
-    const bSave = lpBtn({ text: L('lp_save'), variant: 'accent', title: L('lab_m2_save_t'), onClick: () => {
+    const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: () => L('lp_ab_aria') });
+    ab.buttons.forEach(b => { lpTr(b, 'title', () => L('lp_ab_aria')); });
+    const bUndo = lpBtn({ icon: 'undo', label: () => L('lp_undo'), title: () => L('lp_undo') });
+    const bRedo = lpBtn({ icon: 'redo', label: () => L('lp_redo'), title: () => L('lp_redo') });
+    const bSave = lpBtn({ text: () => L('lp_save'), variant: 'accent', title: () => L('lab_m2_save_t'), onClick: () => {
         if (!currentUser) toast(L('lab_m2_toast_signin'));
         const b = saved.querySelector('.lab-saved-head button'); if (b) b.click();
     } });
@@ -6792,7 +6896,7 @@ function renderModule2() {
     // Başlık çubuğu · sağ: SES n · LAT x ms, yatay L/R metre, tepe dB
     const roV = makeReadout({ label: L('lab_m2_voices'), value: '0', variant: 'inline' });
     const roL = makeReadout({ label: 'LAT', value: '—', variant: 'inline' });
-    const mH = makeMeter({ orientation: 'h', length: 110, thickness: 5, min: -48, max: 0, warn: -12, hot: -3, aria: L('lab_m2_out_aria') });
+    const mH = makeMeter({ orientation: 'h', length: 110, thickness: 5, min: -48, max: 0, warn: -12, hot: -3, aria: () => L('lab_m2_out_aria') });
     const pkEl = mk('span', 'm2-peak'); pkEl.textContent = '−∞ dB';
     const rBox = mk('div', 'm2-bar-r'); rBox.append(roV.el, roL.el, mH.el, pkEl);
     win.right.append(rBox);
@@ -6808,7 +6912,7 @@ function renderModule2() {
     bpmBox.tabIndex = 0; bpmBox.setAttribute('role', 'slider');
     bpmBox.setAttribute('aria-valuemin', String(M2_BPM_MIN)); bpmBox.setAttribute('aria-valuemax', String(M2_BPM_MAX));
     bpmBox.setAttribute('data-i18n-aria', 'lab_m2_bpm_aria'); bpmBox.setAttribute('aria-label', L('lab_m2_bpm_aria'));
-    bpmBox.title = L('lab_m2_bpm_aria');
+    lpTr(bpmBox, 'title', () => L('lab_m2_bpm_aria'));
     const bpmNum = mk('span', 'm2-bpm-n'); bpmNum.id = 'beat-bpm-span';
     const bpmU = mk('span', 'm2-bpm-u', 'BPM'); bpmU.setAttribute('aria-hidden', 'true');
     bpmBox.append(bpmNum, bpmU);
@@ -6842,7 +6946,7 @@ function renderModule2() {
         if (to == null) return;
         e.preventDefault(); if (!e.repeat) push(); setBpm(to);
     });
-    const bTap = lpBtn({ text: 'TAP', title: L('lab_m2_tap_t'), cls: 'm2-tap', onClick: () => {
+    const bTap = lpBtn({ text: 'TAP', title: () => L('lab_m2_tap_t'), cls: 'm2-tap', onClick: () => {
         const n = performance.now();
         if (tapT.length && n - tapT[tapT.length - 1] > 2000) tapT = [];
         tapT.push(n); if (tapT.length > 5) tapT.shift();
@@ -6850,22 +6954,22 @@ function renderModule2() {
         if (tapT.length >= 2) setBpm(60000 / ((tapT[tapT.length - 1] - tapT[0]) / (tapT.length - 1)));
         bTap.classList.remove('is-tap'); void bTap.offsetWidth; bTap.classList.add('is-tap');
     } });
-    bTap.setAttribute('aria-label', L('lab_m2_tap_t'));
+    lpTr(bTap, 'aria-label', () => L('lab_m2_tap_t'));
     const tRow = mk('div', 'm2-trow'); tRow.append(bpmBox, bTap);
     tCol.append(cap('lab_m2_tempo_cap'), tRow);
     // Swing 0–60 %
     const kSwing = makeKnob({ label: 'SWING', min: 0, max: 60, value: state.swing, def: 0, step: 1, size: 44, layout: 'above',
-        color: 'var(--ember-2)', aria: L('lab_m2_swing_aria'), fmt: v => Math.round(v) + '%',
+        color: 'var(--ember-2)', aria: () => L('lab_m2_swing_aria'), fmt: v => Math.round(v) + '%',
         onStart: push, onChange: v => { state.swing = v; paintStatus(); paintTimeline(); m2CheckTasks(); } });
     // Uzunluk 16 | 32 (+ 32'de sayfa 1–16 / 17–32)
     const lCol = mk('div', 'm2-tcol');
-    const segLen = makeSeg([[16, '16'], [32, '32']], B.len, n => setLen(n), { size: 'md', label: L('lab_m2_len_aria') });
-    const segPage = makeSeg([[0, '1–16'], [1, '17–32']], _m2Page, k => { _m2Page = k; paintGrid(); }, { label: L('lab_m2_page_aria'), cls: 'm2-pages' });
+    const segLen = makeSeg([[16, '16'], [32, '32']], B.len, n => setLen(n), { size: 'md', label: () => L('lab_m2_len_aria') });
+    const segPage = makeSeg([[0, '1–16'], [1, '17–32']], _m2Page, k => { _m2Page = k; paintGrid(); }, { label: () => L('lab_m2_page_aria'), cls: 'm2-pages' });
     lCol.append(cap('lab_m2_len_cap'), segLen.el, segPage.el);
     // Pattern A–D (bar sonunda değişir)
     const pCol = mk('div', 'm2-tcol');
     const segSlot = makeSeg(['A', 'B', 'C', 'D'].map((id, k) => ({ value: k, html: `<span>${id}</span><span class="m2-sled" aria-hidden="true"></span>` })),
-        B.slot, k => pickSlot(k), { label: L('lab_m2_pat_aria'), cls: 'm2-slots', repick: true });
+        B.slot, k => pickSlot(k), { label: () => L('lab_m2_pat_aria'), cls: 'm2-slots', repick: true });
     pCol.append(cap('lab_m2_pat_cap'), segSlot.el);
     // Pozisyon bar . vuruş . 16'lık
     const posCol = mk('div', 'm2-tcol');
@@ -6873,9 +6977,9 @@ function renderModule2() {
     posCol.append(cap('lab_m2_pos_cap'), pos);
     // Master (dB) + dikey L/R metre
     const kMaster = makeKnob({ label: 'MASTER', min: 0, max: 100, value: B.master, def: 80, step: 1, size: 44, layout: 'above',
-        aria: L('lab_m2_master_aria'), fmt: v => v <= 0 ? '−∞' : (20 * Math.log10(v / 100)).toFixed(1) + 'dB',
+        aria: () => L('lab_m2_master_aria'), fmt: v => v <= 0 ? '−∞' : (20 * Math.log10(v / 100)).toFixed(1) + 'dB',
         onStart: push, onChange: v => { B.master = v; syncBeatBus(); } });
-    const mV = makeMeter({ channels: 2, orientation: 'v', length: 62, thickness: 9, min: -48, max: 0, warn: -12, hot: -3, aria: L('lab_m2_out_aria') });
+    const mV = makeMeter({ channels: 2, orientation: 'v', length: 62, thickness: 9, min: -48, max: 0, warn: -12, hot: -3, aria: () => L('lab_m2_out_aria') });
     const scale = mk('div', 'm2-scale'); scale.setAttribute('aria-hidden', 'true');
     ['0', '-12', '-24', '-48'].forEach(t => scale.append(mk('span', '', t)));
     const mBox = mk('div', 'm2-mbox'); mBox.append(kMaster.el, scale, mV.el);
@@ -6997,27 +7101,28 @@ function renderModule2() {
     const edCap = cap('lab_m2_ed_cap'); edCap.classList.add('m2-cap--acc');
     edHead.append(edCap, edTrk);
     const segTab = makeSeg(BEAT_TRACKS.map((t, i) => ({ value: i, label: t.name })), B.sel, i => { B.sel = i; paintEditor(true); paintRows(); },
-        { label: L('lab_m2_ed_tabs'), cls: 'm2-tabs' });
+        { label: () => L('lab_m2_ed_tabs'), cls: 'm2-tabs' });
     segTab.buttons.forEach((b, i) => b.style.setProperty('--c', M2_COL[i]));
     const segSrc = makeSeg([['sample', 'SAMPLE'], ['synth', 'SYNTH']], B.tracks[B.sel].src, v => {
         push(); B.tracks[B.sel].src = v; paintEditor(); paintRows(); if (!beatPlaying) beatPreview(B.sel, 100);
-    }, { label: L('lab_m2_src_aria'), cls: 'm2-src' });
+    }, { label: () => L('lab_m2_src_aria'), cls: 'm2-src' });
     const well = mk('div', 'm2-well');
     const edName = mk('span', 'm2-edname'), edChain = mk('span', 'm2-edchain');
     well.append(edName, edChain);
-    const chk = makeToggle({ text: L('lab_m2_choke'), led: true, color: 'var(--lab-ohat)', cls: 'm2-choke', on: B.choke,
+    const chk = makeToggle({ text: () => L('lab_m2_choke'), led: true, color: 'var(--lab-ohat)', cls: 'm2-choke', on: B.choke,
         onToggle: on => { push(); B.choke = on; paintEditor(); } });
     const chkState = mk('span', 'm2-choke-st'); chk.el.append(chkState);
     edL.append(edHead, segTab.el, segSrc.el, well, chk.el);
     // Zarf ekranı (SVG 542×176): ms ızgarası, genlik zarfı dolgu + çizgi, pitch/cutoff eğrisi, değer etiketleri
     const disp = makeDisplay({ cls: 'm2-disp' });
-    const dsv = lpSvg('svg', { viewBox: '0 0 542 176', class: 'm2-dsvg', role: 'img', 'aria-label': L('lab_m2_disp_aria') }, disp.el);
+    const dsv = lpSvg('svg', { viewBox: '0 0 542 176', class: 'm2-dsvg', role: 'img' }, disp.el);
+    lpTr(dsv, 'aria-label', () => L('lab_m2_disp_aria'));
     const X0 = 34, W = 502, Y0 = 150, H = 140;
     const gV = lpSvg('g', null, dsv);
     const vgrid = [0, 1, 2, 3, 4].map(k => {
         const x = X0 + k * W / 4;
         lpSvg('line', { x1: x, y1: 8, x2: x, y2: 150, class: 'm2-dg' }, gV);
-        const t = lpSvg('text', { x, y: 166, class: 'm2-dt', 'text-anchor': 'middle' }, gV);
+        const t = lpSvg('text', { x, y: 166, class: 'm2-dt', 'text-anchor': k === 4 ? 'end' : 'middle' }, gV);   // son etiket (… ms) sağ kenarda kesilmesin
         return t;
     });
     lpSvg('line', { x1: 34, y1: 79, x2: 536, y2: 79, class: 'm2-dg' }, dsv);
@@ -7093,7 +7198,7 @@ function renderModule2() {
     const tStepsL = tlText(0, 148, '', 'm2-tlt m2-tlt--h'); tlText(0, 160, '1/16');
     lpSvg('line', { x1: 80, y1: 170, x2: 610, y2: 170, class: 'm2-tlaxis m2-tlaxis--b' }, tlSvg);
     const tlSteps = lpSvg('g', null, tlSvg);
-    [0, 100, 200, 300, 400, 500].forEach(m => tlText(tlX(m), 186, m + ' ms', 'm2-tlt m2-tlt--ax', 'middle'));
+    [0, 100, 200, 300, 400, 500].forEach(m => tlText(tlX(m), 186, m + ' ms', 'm2-tlt m2-tlt--ax', m === 500 ? 'end' : 'middle'));   // 500 ms eksen ucuna hizalı
     lpSvg('rect', { x: 80, y: 202, width: 10, height: 10, rx: 2, class: 'm2-tlk m2-tlk--even is-win' }, tlSvg);
     const tLeg1 = tlText(96, 211, '', 'm2-tlt m2-tlt--leg');
     lpSvg('rect', { x: 250, y: 202, width: 10, height: 10, rx: 2, class: 'm2-tlk m2-tlk--odd is-win' }, tlSvg);
@@ -7438,6 +7543,9 @@ function renderModule2() {
     _m2StopAudio = () => {
         beatUiHook = null;
         clearTimeout(toastT); clearTimeout(wheelT); wheelT = 0; tapT = [];
+        // Güç/bypass ve sıradaki slot yalnız bu görünümde: Genel bakış kartı ve Mastering kaynağı sessiz
+        // kalmasın; Genel bakış ızgarası görünmeyen slota geçip ses/ekran ters düşmesin
+        state.beat.power = true; state.beat.pendingSlot = null; syncBeatBus();
     };
 
     paintAll();
@@ -8470,17 +8578,25 @@ function m3Lbl(el, attr, fn) {
     return el;
 }
 function m3El(tag, cls, key) { const e = mk(tag, cls); if (key) { e.setAttribute('data-i18n', key); e.textContent = L(key); } return e; }
+// "Değiştirildi" bayrağı state.mix.mod'da yaşar (Genel bakış kartı da mixSet ile yazar → Mixing açılınca işaret doğru);
+// açık görünümde preset tarayıcısının işaretini de günceller
+function m3Mod(b) {
+    state.mix.mod = !!b;
+    if (m3Ui && m3Ui.pb) m3Ui.pb.setModified(!!b);
+}
 // Parametre yolu → state.mix + ses + boyama
 function mixSet(path, v) {
     mixPut(path, v);
     const m = /^ch\.(\d)\.(\w+)$/.exec(path);
     if (m && m[2] !== 'solo') mixSync(+m[1]); else mixSync();
-    if (m3Ui && m3Ui.pb && path !== 'bpm') m3Ui.pb.setModified(true);
+    if (path !== 'bpm') m3Mod(true);
     m3Dirty();
 }
+// Anlık görüntüyü yükle (undo / A-B / preset); preset seçimi (m3PickPreset) bayrağı sonra temizler
 function mixApplySnap(s) {
     const c = mixClean(s);
     ['ch', 'rev', 'dly', 'mst', 'sc', 'sendPre'].forEach(k => { state.mix[k] = c[k]; });
+    state.mix.mod = true;
     mixSync();
     m3Dirty();
 }
@@ -8511,6 +8627,7 @@ function m3PickPreset(it) {
     if (/^f\d$/.test(it.id)) mixApplySnap(mixPresetValues(+it.id.slice(1)));
     else { const p = m3UserPresets.find(x => 'u:' + x.id === it.id); if (p) mixApplySnap(p.mix); }
     state.mix.preset = it.id;
+    m3Mod(false);
 }
 async function loadMixPresets() {
     if (!currentUser || !_db) return [];
@@ -8526,13 +8643,45 @@ async function saveMixPreset(name) {
 function m3SyncUser(force) {
     const U = m3Ui; if (!U) return;
     const uid = currentUser ? currentUser.uid : null;
-    U.save.hidden = !uid;
-    if (!uid) { if (m3UserUid) { m3UserPresets = []; m3UserUid = null; U.pb.setItems(m3PresetItems(), state.mix.preset); } return; }
+    U.save.hidden = !uid; m3PaintDel(U);
+    if (!uid) { if (m3UserUid) { m3UserPresets = []; m3UserUid = null; U.pb.setItems(m3PresetItems(), state.mix.preset); m3PaintDel(U); } return; }
     if (!force && (m3UserUid === uid || m3UserBusy)) return;
     m3UserBusy = true;
     loadMixPresets().then(list => { m3UserPresets = list; m3UserUid = uid; })
         .catch(e => console.warn('[lab] m3 presets:', e))
-        .finally(() => { m3UserBusy = false; if (m3Ui) m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); });
+        .finally(() => { m3UserBusy = false; if (m3Ui) { m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3PaintDel(m3Ui); } });
+}
+async function deleteMixPreset(id) {
+    if (!currentUser || !_db) return;
+    await userDoc().collection('mixPresets').doc(id).delete();
+}
+// Seçili kullanıcı presetini sil (onayla); ses olduğu gibi kalır, seçim fabrika f0'a döner ve "değiştirildi" işaretlenir
+// Sil düğmesi yalnız kullanıcı presetinde görünür; girişli ve en az bir kullanıcı preseti varken yeri hep ayrılı
+// (fabrika ↔ kullanıcı preseti arasında gezinirken çubuk sarılıp gövde zıplamasın; preset yoksa yer de tutmaz)
+function m3PaintDel(U) {
+    if (!U || !U.del) return;
+    const id = String(state.mix.preset || ''), on = !!currentUser && m3UserPresets.length > 0;
+    lpBtnSlot(U.del, on, on && id.startsWith('u:') && m3UserPresets.some(x => 'u:' + x.id === id));
+}
+async function m3DeleteClick() {
+    const U = m3Ui; if (!U || U.deleting || !currentUser) return;
+    const id = String(state.mix.preset || '');
+    const p = id.startsWith('u:') ? m3UserPresets.find(x => 'u:' + x.id === id) : null;
+    if (!p || !confirm(Lf('lp_del_confirm', { name: p.name || '—' }))) return;
+    U.deleting = true;
+    try {
+        await deleteMixPreset(p.id);
+        m3UserPresets = m3UserPresets.filter(x => x !== p);
+        if (state.mix.preset === id) state.mix.preset = 'f0';
+        if (m3Ui) {
+            // Odak gizlenecek düğmeden preset tetiğine (body'ye düşmesin)
+            const back = m3Ui.del && (document.activeElement === m3Ui.del || document.activeElement === document.body);
+            m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3Mod(true);
+            if (back) m3Ui.pb.trigger.focus();
+            m3PaintDel(m3Ui); m3Dirty();
+        }
+    } catch (e) { console.warn('[lab] m3 delete:', e); alert(L('lp_del_failed')); }
+    U.deleting = false;
 }
 async function m3SaveClick() {
     const U = m3Ui; if (!U || U.saving) return;
@@ -8546,25 +8695,28 @@ async function m3SaveClick() {
         const id = await saveMixPreset(name.trim());
         m3UserPresets.unshift({ id, name: name.trim().slice(0, 60), mix: mixSnapshot() }); m3UserUid = currentUser.uid;
         state.mix.preset = 'u:' + id;
-        if (m3Ui) { m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3Ui.pb.setModified(false); }
+        m3Mod(false);
+        if (m3Ui) { m3Ui.pb.setItems(m3PresetItems(), state.mix.preset); m3PaintDel(m3Ui); }
         lbl.textContent = L('lab_saved_ok');
     } catch (e) { console.warn('[lab] m3 save:', e); lbl.textContent = L('lab_save_failed'); }
     setTimeout(() => { U.saving = false; U.save.removeAttribute('aria-busy'); lbl.textContent = L('lp_save'); }, 1400);
 }
 function m3BuildBar(win, U) {
     const S = state.mix;
-    U.pb = makePresetBrowser({ items: m3PresetItems(), value: S.preset, width: 240, capLabel: L('lp_preset_cap'), label: L('lab_m3_presets'), onPick: it => m3PickPreset(it) });
-    const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: L('lp_ab_aria') });
-    const un = lpBtn({ icon: 'undo', label: L('lp_undo'), title: L('lp_undo') }), re = lpBtn({ icon: 'redo', label: L('lp_redo'), title: L('lp_redo') });
-    U.hist = makeHistory({ get: mixSnapshot, apply: s => { mixApplySnap(s); if (m3Ui) m3Ui.pb.setModified(true); }, max: 40 });
+    U.pb = makePresetBrowser({ items: m3PresetItems(), value: S.preset, modified: !!S.mod, width: 240, capLabel: () => L('lp_preset_cap'), label: () => L('lab_m3_presets'), onPick: it => m3PickPreset(it) });
+    const ab = makeSeg([['A', 'A'], ['B', 'B']], 'A', null, { size: 'md', label: () => L('lp_ab_aria') });
+    const un = lpBtn({ icon: 'undo', label: () => L('lp_undo'), title: () => L('lp_undo') }), re = lpBtn({ icon: 'redo', label: () => L('lp_redo'), title: () => L('lp_redo') });
+    U.hist = makeHistory({ get: mixSnapshot, apply: s => { mixApplySnap(s); m3Mod(true); }, max: 40 });
     U.hist.bind({ undo: un, redo: re, ab, keys: win.root });
-    U.save = lpBtn({ text: L('lp_save'), variant: 'accent', onClick: m3SaveClick });
+    U.save = lpBtn({ text: () => L('lp_save'), variant: 'accent', onClick: m3SaveClick });
     m3Lbl(U.save, 'title', () => L('lab_m3_save_t'));
     m3Lbl(un, 'aria-label', () => L('lp_undo')); m3Lbl(un, 'title', () => L('lp_undo'));
     m3Lbl(re, 'aria-label', () => L('lp_redo')); m3Lbl(re, 'title', () => L('lp_redo'));
     m3Lbl(ab.el, 'aria-label', () => L('lp_ab_aria'));
     U.save.hidden = !currentUser;
-    win.left.append(U.pb.el, ab.el, un, re, U.save);
+    U.del = lpBtn({ icon: 'del', label: () => L('lp_del_preset'), title: () => L('lp_del_preset'), onClick: m3DeleteClick });
+    m3PaintDel(U);
+    win.left.append(U.pb.el, ab.el, un, re, U.save, U.del);
     // Sağ: DSP durumu · örnekleme hızı · çıkış metresi (L/R) + dB
     const dsp = mk('span', 'm3-dsp');
     U.dsp = dsp;
@@ -8693,8 +8845,8 @@ function m3BuildReturn(k, U) {
     const s2 = mk('div', 'm3-sec');
     const sl = m3El('span', 'm3-sl', rev ? 'lab_m3_space' : 'lab_m3_time');
     const seg = rev
-        ? makeSeg(M3_ROOMS.map((d, j) => [d, L('lab_m3_room' + j)]), S.rev.decay, v => { m3Push(); mixSet('rev.decay', v); }, { label: L('lab_m3_space'), cls: 'm3-seg2', repick: true })
-        : makeSeg(M3_DIV.map((d, j) => [j, d[0]]), S.dly.div, v => { m3Push(); mixSet('dly.div', v); }, { label: L('lab_m3_time'), cls: 'm3-seg2' });
+        ? makeSeg(M3_ROOMS.map((d, j) => [d, L('lab_m3_room' + j)]), S.rev.decay, v => { m3Push(); mixSet('rev.decay', v); }, { label: () => L('lab_m3_space'), cls: 'm3-seg2', repick: true })
+        : makeSeg(M3_DIV.map((d, j) => [j, d[0]]), S.dly.div, v => { m3Push(); mixSet('dly.div', v); }, { label: () => L('lab_m3_time'), cls: 'm3-seg2' });
     if (rev) seg.buttons.forEach((b, j) => b.setAttribute('data-i18n', 'lab_m3_room' + j));
     s2.append(sl, seg.el);
     const note = mk('p', 'm3-rnote');
@@ -8750,7 +8902,7 @@ function m3ResetBand(j) {
     m3Push();
     const i = state.mix.sel, d = m3BandDefaults(j);
     Object.keys(d).forEach(k => { state.mix.ch[i][k] = d[k]; });
-    mixSync(i); if (m3Ui) m3Ui.pb.setModified(true); m3Dirty();
+    mixSync(i); m3Mod(true); m3Dirty();
 }
 function m3SetBand(j) { if (state.mix.band === j) return; state.mix.band = j; m3BuildBandKnobs(); m3Dirty(); }
 // Seçili bandın FREQ / GAIN / Q knobları (aralık banda göre → band değişince yeniden kurulur)
@@ -8774,14 +8926,14 @@ function m3NodeMove(j, ev) {
     const px = lpClamp((ev.clientX - r.left) / r.width, 0, 1), py = lpClamp((ev.clientY - r.top) / r.height, 0, 1);
     x[B.f] = Math.round(lpClamp(20 * Math.pow(1000, px), B.rng[0], B.rng[1]));
     if (B.g) x[B.g] = lpClamp(Math.round((120 - py * 240) / (100 / 18) * 2) / 2, -15, 15);
-    mixSync(i); U.pb.setModified(true); m3Dirty();
+    mixSync(i); m3Mod(true); m3Dirty();
 }
 function m3NodeNudge(j, df, dg, dq) {
     const B = M3_BANDS[j], i = state.mix.sel, x = state.mix.ch[i];
     if (df) x[B.f] = Math.round(lpClamp(x[B.f] * Math.pow(1.06, df), B.rng[0], B.rng[1]));
     if (dg && B.g) x[B.g] = lpClamp(Math.round((x[B.g] + dg) * 2) / 2, -15, 15);
     if (dq && B.q) x.q = +lpClamp(x.q * Math.pow(1.1, dq), 0.3, 8).toFixed(2);
-    mixSync(i); if (m3Ui) m3Ui.pb.setModified(true); m3Dirty();
+    mixSync(i); m3Mod(true); m3Dirty();
 }
 function m3BuildDetail(U) {
     const wrap = mk('div', 'm3-detail');
@@ -9097,6 +9249,7 @@ function m3Paint() {
     U.binds.forEach(b => { const v = mixGet(b.p()); if (typeof v !== 'number') return; b.c.update(b.fader ? (v <= -60 ? -Infinity : v) : v); });
     if (U.bandKnobs) { if (!U.bandKnobs.B.g) m3Txt(U.bandKnobs.g.el.querySelector('.lp-knob-val'), '—'); if (!U.bandKnobs.B.q) m3Txt(U.bandKnobs.q.el.querySelector('.lp-knob-val'), '—'); }
     // Başlık / taşıma
+    m3PaintDel(U);
     if (U.power) U.power.set(!S.bypass);
     m3PlayBtnPaint(U.play);
     m3Txt(U.dsp, `${L('lab_m3_dsp')} ${L(run ? 'lab_m3_dsp_on' : 'lab_m3_dsp_ready')} · ${mixCtx ? (mixCtx.sampleRate / 1000).toFixed(1) : '48'} kHz · ${L('lab_m3_nodes')}`);
@@ -10069,8 +10222,8 @@ function m4PointInput(p, j) {
         else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') nv = v - big;
         else if (e.key === 'PageUp') nv = v + 0.1;
         else if (e.key === 'PageDown') nv = v - 0.1;
-        else if (e.key === 'Home') nv = 1;
-        else if (e.key === 'End') nv = 0;
+        else if (e.key === 'Home') nv = 0;
+        else if (e.key === 'End') nv = 1;
         if (nv == null) return;
         e.preventDefault();
         if (!e.repeat && _m4ui) _m4ui.hist.push();
@@ -10729,6 +10882,8 @@ function m5Sched(gen) {
     const R = m5R, E = m5E;
     if (!R || R.gen !== gen || !E) return;
     const spb = 60 / M5_VOICE_BPM / 4;
+    // Ana iş parçacığı takıldıysa kaçan 16'lıkları çalmadan atla (üst üste binen patlama yok)
+    if (R.nextT < E.ctx.currentTime - 0.05) { const n = Math.ceil((E.ctx.currentTime - R.nextT) / spb); R.step += n; R.nextT += n * spb; }
     while (R.nextT < E.ctx.currentTime + 0.12) { m5Voices(E.A, E.ctx, R.step, R.nextT); R.nextT += spb; R.step++; }
     R.timer = setTimeout(() => m5Sched(gen), 25);
 }
@@ -10840,6 +10995,7 @@ function m5Teardown() {
     document.removeEventListener('visibilitychange', m5OnVis);
     if (m5E) { m5Destroy(m5E); m5E = null; }
     m5U = null;
+    beatSuspendSoon(M5_ROUTE_MS + 700);      // rota varsayılana döndükten sonra; Beat yeniden çalıyorsa dokunmaz
 }
 function m5NoAudio() {
     if (!m5U) return;
@@ -10962,6 +11118,10 @@ async function saveMasterPreset(name, p) {
     if (!currentUser || !_db) return;
     await userDoc().collection('masterPresets').add({ name, v: 1, params: JSON.stringify(p), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
 }
+async function deleteMasterPreset(id) {
+    if (!currentUser || !_db) return;
+    await userDoc().collection('masterPresets').doc(id).delete();
+}
 async function loadMasterPresets() {
     if (!currentUser || !_db) return [];
     const snap = await userDoc().collection('masterPresets').orderBy('createdAt', 'desc').limit(10).get();
@@ -11061,6 +11221,7 @@ function m5BuildEq(u) {
         lpDrag(e, ev => { const [x] = m5SvgPt(svg, ev, u.eqW, H); setHpf(20 * Math.pow(1000, lpClamp(x, 0, u.eqW) / u.eqW)); });
     });
     hg.addEventListener('keydown', e => {
+        if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); m5PushOnce(u); setHpf(e.key === 'Home' ? 10 : 300); return; }
         const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
         if (!d) return;
         e.preventDefault(); m5PushOnce(u);
@@ -11131,7 +11292,7 @@ function m5HitSize() {
 function m5BuildMb(u) {
     const W = M5_MBW, H = M5_MBH;
     const svg = lpSvg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'm5-mbsvg', role: 'group' });
-    svg.setAttribute('aria-label', L('lab_m5_mb_aria'));
+    lpTr(svg, 'aria-label', () => L('lab_m5_mb_aria'));
     u.mbReg = ['LOW', 'MID', 'HIGH'].map((n, i) => {
         const g = lpSvg('g', { class: 'm5-reg' }, svg);
         g.style.setProperty('--c', M5_MBC[i]);
@@ -11162,6 +11323,7 @@ function m5BuildMb(u) {
             lpDrag(e, ev => { const [x] = m5SvgPt(svg, ev, W, H); set(20 * Math.pow(1000, lpClamp(x, 0, W) / W)); });
         });
         g.addEventListener('keydown', e => {
+            if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); m5PushOnce(u); set(e.key === 'Home' ? lo : hi); return; }
             const d = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
             if (!d) return;
             e.preventDefault(); m5PushOnce(u);
@@ -11357,16 +11519,18 @@ function renderModule5() {
     u.win = win;
     const vdiv = () => { const s = mk('span', 'm5-vdiv'); s.setAttribute('aria-hidden', 'true'); return s; };
     u.pb = makePresetBrowser({
-        items: m5PbItems(), value: m5V.pre, modified: m5V.mod, width: 180, label: L('lab_m5_pb_label'),
+        items: m5PbItems(), value: m5V.pre, modified: m5V.mod, width: 180, label: () => L('lab_m5_pb_label'),
         onPick: it => m5LoadPreset(it),
     });
-    const ab = makeSeg([['A', 'A'], ['B', 'B']], u.hist.ab.slot, null, { size: 'md', label: L('lp_ab_aria') });
-    const un = lpBtn({ icon: 'undo', label: L('lp_undo'), title: L('lp_undo') });
-    const re = lpBtn({ icon: 'redo', label: L('lp_redo'), title: L('lp_redo') });
+    const ab = makeSeg([['A', 'A'], ['B', 'B']], u.hist.ab.slot, null, { size: 'md', label: () => L('lp_ab_aria') });
+    const un = lpBtn({ icon: 'undo', label: () => L('lp_undo'), title: () => L('lp_undo') });
+    const re = lpBtn({ icon: 'redo', label: () => L('lp_redo'), title: () => L('lp_redo') });
     u.hist.bind({ undo: un, redo: re, ab, keys: win.root });
-    u.save = lpBtn({ text: L('lp_save'), variant: 'accent', title: L('lab_m5_save_t'), onClick: () => m5NameOpen() });
+    u.save = lpBtn({ text: () => L('lp_save'), variant: 'accent', title: () => L('lab_m5_save_t'), onClick: () => m5NameOpen() });
     u.save.setAttribute('aria-expanded', 'false'); u.save.setAttribute('aria-controls', 'm5NameIn');
-    win.left.append(vdiv(), u.pb.el, ab.el, un, re, u.save);
+    u.del = lpBtn({ icon: 'del', label: () => L('lp_del_preset'), title: () => L('lp_del_preset'), onClick: m5DeleteClick });
+    lpBtnSlot(u.del, false, false);          // m5PaintDel (giriş / preset listesi) belirler
+    win.left.append(vdiv(), u.pb.el, ab.el, un, re, u.save, u.del);
     u.ref = makeToggle({ text: L('lab_m5_ref'), led: true, color: 'var(--m5-eq)', title: L('lab_m5_ref_t'), on: m5V.ref,
         onToggle: b => { m5V.ref = b; if (m5R) m5R.refSince = b ? performance.now() : 0; m5Monitor(); } });
     u.byp = makeToggle({ text: L('lab_m5_byp'), color: 'var(--err-strong)', title: L('lab_m5_byp_t'), on: m5V.byp,
@@ -11465,7 +11629,7 @@ function renderModule5() {
     const gv = mk('div', 'm5-gluev');
     const nd = mk('div', 'lp-disp m5-needle');
     const nsvg = lpSvg('svg', { viewBox: '0 0 200 92', role: 'img' }, nd);
-    nsvg.setAttribute('aria-label', L('lab_m5_gr_aria'));
+    lpTr(nsvg, 'aria-label', () => L('lab_m5_gr_aria'));
     lpSvg('path', { class: 'm5-arc', d: 'M22 80 A 78 78 0 0 1 178 80' }, nsvg);
     [0, 1, 2, 3, 5, 7, 10].forEach(v => {
         const a = (55 - v / 10 * 110) * Math.PI / 180;
@@ -11478,7 +11642,7 @@ function renderModule5() {
     const gl = lpSvg('text', { x: 4, y: 90, class: 'm5-cap' }, nsvg); gl.textContent = 'GR dB';
     const xd = mk('div', 'lp-disp m5-xferd');
     const xsvg = lpSvg('svg', { viewBox: '0 0 100 100', role: 'img' }, xd);
-    xsvg.setAttribute('aria-label', L('lab_m5_xfer_aria'));
+    lpTr(xsvg, 'aria-label', () => L('lab_m5_xfer_aria'));
     lpSvg('line', { class: 'm5-diag', x1: 0, y1: 100, x2: 100, y2: 0 }, xsvg);
     u.xferT = lpSvg('line', { class: 'm5-thr', y1: 0, y2: 100 }, xsvg);
     u.xfer = lpSvg('path', { class: 'm5-xfer' }, xsvg);
@@ -11533,7 +11697,7 @@ function renderModule5() {
     u.limGr = mk('b'); u.limGr.textContent = '0.0';
     const limRo = mk('span', 'm5-gr m5-gr--lim'); limRo.append('GR ', u.limGr, ' dB');
     const lim = panel('lim', '05 · LIMITER', { actions: [limRo] });
-    u.tp = makeToggle({ text: 'TRUE PEAK · 4×', color: 'var(--err-strong)', title: L('lab_m5_tp_t'), on: m5P.lim.tp, cls: 'm5-tpb',
+    u.tp = makeToggle({ text: 'TRUE PEAK · 4×', color: 'var(--err-strong)', title: () => L('lab_m5_tp_t'), on: m5P.lim.tp, cls: 'm5-tpb',
         onToggle: b => { u.hist.push(); m5P.lim.tp = b; m5Changed(); } });
     lim.head.insertBefore(u.tp.el, lim.info);
     const lb = mk('div', 'm5-limb');
@@ -11543,7 +11707,7 @@ function renderModule5() {
     ].forEach(([path, label, o]) => lb.append(m5Knob(u, path, Object.assign({ label, aria: 'LIMITER ' + label, color: 'var(--err-strong)' }, o)).el));
     const gh = mk('div', 'lp-disp m5-grh');
     const ghs = lpSvg('svg', { viewBox: '0 0 360 84', preserveAspectRatio: 'none', role: 'img' }, gh);
-    ghs.setAttribute('aria-label', L('lab_m5_grh_aria'));
+    lpTr(ghs, 'aria-label', () => L('lab_m5_grh_aria'));
     lpSvg('line', { class: 'm5-gl', x1: 0, x2: 360, y1: 28, y2: 28 }, ghs);
     lpSvg('line', { class: 'm5-gl', x1: 0, x2: 360, y1: 56, y2: 56 }, ghs);
     u.grHist = lpSvg('polygon', { class: 'm5-grp', points: '' }, ghs);
@@ -11554,7 +11718,7 @@ function renderModule5() {
     rack.append(eq.el, row2, row3);
 
     // ── LOUDNESS paneli ──────────────────────────────────────────────
-    const rst = lpBtn({ text: L('lab_m5_reset'), title: L('lab_m5_reset_t'), variant: 'ghost', cls: 'm5-rst', onClick: () => {
+    const rst = lpBtn({ text: () => L('lab_m5_reset'), title: () => L('lab_m5_reset_t'), variant: 'ghost', cls: 'm5-rst', onClick: () => {
         m5M = m5NewMeas(m5E ? m5E.ctx.currentTime : 0);
         if (m5R) m5R.refSince = m5V.ref ? performance.now() : 0;
         m5PaintMeter();
@@ -11588,7 +11752,7 @@ function renderModule5() {
     });
     const hd = mk('div', 'lp-disp m5-lh');
     const hs = lpSvg('svg', { viewBox: '0 0 292 150', preserveAspectRatio: 'none', role: 'img' }, hd);
-    hs.setAttribute('aria-label', L('lab_m5_hist_aria'));
+    lpTr(hs, 'aria-label', () => L('lab_m5_hist_aria'));
     const lyv = v => lpClamp((-v - 4) / 32 * 150, 2, 148);
     [-8, -16, -24, -32].forEach(v => {
         lpSvg('line', { class: 'm5-gl', x1: 0, x2: 292, y1: lyv(v), y2: lyv(v) }, hs);
@@ -11716,19 +11880,48 @@ function m5LoadPreset(it) {
     m5P = p; m5V.pre = it.id; m5V.mod = false;
     m5Changed(true);
     u.pb.setModified(false);
+    m5PaintDel();
+}
+// Sil düğmesi yalnız bir kullanıcı preseti seçiliyken görünür; girişli ve en az bir kullanıcı preseti varken yeri
+// hep ayrılı (fabrika ↔ kullanıcı preseti arasında gezinirken çubuk sarılıp gövde zıplamasın)
+function m5PaintDel() {
+    const u = m5U; if (!u || !u.del) return;
+    const on = !!currentUser && m5UserPre.length > 0;
+    lpBtnSlot(u.del, on, on && String(m5V.pre || '').startsWith('u:') && m5UserPre.some(x => 'u:' + x.id === m5V.pre));
+}
+async function m5DeleteClick() {
+    const u = m5U; if (!u || u.deleting || !currentUser) return;
+    const id = String(m5V.pre || '');
+    const x = id.startsWith('u:') ? m5UserPre.find(y => 'u:' + y.id === id) : null;
+    if (!x || !confirm(Lf('lp_del_confirm', { name: x.name || '—' }))) return;
+    u.deleting = true;
+    try {
+        await deleteMasterPreset(x.id);
+        m5UserPre = m5UserPre.filter(y => y !== x);
+        if (m5V.pre === id) { m5V.pre = M5_PRE[0].id; m5V.mod = true; }
+        if (m5U) {
+            const back = m5U.del && (document.activeElement === m5U.del || document.activeElement === document.body);
+            m5U.pb.setItems(m5PbItems(), m5V.pre); m5U.pb.setModified(m5V.mod);
+            if (back) m5U.pb.trigger.focus();      // odak gizlenecek düğmeden preset tetiğine
+        }
+    } catch (e) { console.warn('[lab] m5 sil:', e); alert(L('lp_del_failed')); }
+    u.deleting = false;
+    m5PaintDel();
 }
 function m5LoadUser(force) {
     const uid = currentUser ? currentUser.uid : null;
     if (!uid) {
         if (m5UserUid !== null || m5UserPre.length) { m5UserUid = null; m5UserPre = []; if (m5U) m5U.pb.setItems(m5PbItems(), m5V.pre); }
+        m5PaintDel();
         return;
     }
-    if (!force && m5UserUid === uid) return;
+    if (!force && m5UserUid === uid) { m5PaintDel(); return; }
     m5UserUid = uid;
     loadMasterPresets().then(list => {
         if (m5UserUid !== uid) return;
         m5UserPre = list;
         if (m5U) m5U.pb.setItems(m5PbItems(), m5V.pre);
+        m5PaintDel();
     }).catch(e => console.warn('[lab] m5 presetler:', e));
 }
 function m5NameOpen() {
@@ -11822,7 +12015,7 @@ function m5HiwOpts() {
     return {
         kicker: false, aux: L('lab_m5_hiw_aux'), cls: 'm5-hiw',
         blocks: [
-            { flow: { w: 1260, h: 232, minWidth: 900, aria: L('lab_m5_hiw_flow'), nodes, edges, labels } },
+            { flow: { w: 1260, h: 232, minWidth: 1000, aria: L('lab_m5_hiw_flow'), nodes, edges, labels } },
             { row: [{ steps, cols: 2, cards: true }, { card: { cap: L('lab_m5_lufs_cap'), accent: true, body: [lufs] } }], cols: 'minmax(0,1.2fr) minmax(0,1fr)' },
             { row: [{ table: { rows: T1 } }, { table: { rows: T2 } }], cols: 'repeat(2, minmax(0,1fr))' },
         ],
@@ -11968,9 +12161,12 @@ function buildMixerCard() {
         const fad = mk('div','lab-strip-fad');
         const vu = mk('div','lab-vu'); vu.setAttribute('aria-hidden','true');
         const fill = mk('div','lab-vu-fill'); fill.dataset.ti = ti; vu.append(fill);
-        const val = mk('span','lab-strip-val', String(state.beatVolumes[ti]));
-        const sl = makeSlider({ min:0, max:100, step:1, value:state.beatVolumes[ti], vertical:true,
-            label:`${t.name} ${L('lab_level_word')}`, onChange: v => { state.beatVolumes[ti] = v; val.textContent = v; } });
+        // BE·CONSOLE 03 kanal fader'ı (state.mix.ch[ti].fader, dB) — Mixing modülüyle aynı değer
+        const fdb = v => v <= -60 ? `−∞` : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)} dB`;
+        const f0 = Math.max(-60, Math.min(6, Math.round(+state.mix.ch[ti].fader || 0)));
+        const val = mk('span','lab-strip-val', fdb(f0));
+        const sl = makeSlider({ min:-60, max:6, step:1, value:f0, vertical:true, fmt:fdb,
+            label:`${t.name} ${L('lab_level_word')}`, onChange: v => { mixSet(`ch.${ti}.fader`, v <= -60 ? -70 : v); val.textContent = fdb(v); } });
         fad.append(vu, sl);
         strip.append(fad, val, mk('span','lab-tag', t.short));
         mix.append(strip);
