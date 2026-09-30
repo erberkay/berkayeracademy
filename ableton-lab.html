@@ -1314,7 +1314,12 @@
         .lab-m2 .m2-rec { height:34px; min-width:72px; font-size:11px; font-weight:700; letter-spacing:.1em; }
         .lab-m2 .m2-rec[aria-pressed="true"] { background:var(--err-soft); border-color:var(--err-line); color:var(--err); }
         .lab-m2 .m2-rec.is-live .lp-led { animation:m2-blink 1s steps(1) infinite; }
-        .m2-pad-s { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+        /* Örnek adı: numara hep görünür. DOM [ad, paket] + row-reverse/wrap → sığmazsa paket öneki
+           ikinci satıra düşer ve kırpılır; ad tek başına da sığmazsa sondan üç nokta. */
+        .m2-pad-s { display:flex; flex-direction:row-reverse; flex-wrap:wrap; justify-content:flex-end; column-gap:.5ch; max-width:100%; height:1.25em; line-height:1.25; overflow:hidden; }
+        .m2-pad-s > span, .m2-pad-sb { min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .m2-pad-s > .m2-pad-sn { display:flex; column-gap:.5ch; }   /* "Closed H… 02": numara kısalmaz */
+        .m2-pad-sd { flex:none; }
         .m2-edm { display:flex; flex-direction:column; gap:12px; min-width:0; }
         .lab-m2 .m2-edm .m2-disp { align-self:stretch; }
         .m2-sbbox { min-width:0; }
@@ -1361,7 +1366,6 @@
             .m2-row { grid-template-columns:384px minmax(0,1fr); }
             .m2-strip { grid-template-columns:100px 30px 30px repeat(4, 50px); }
             .m2-cap--ch { white-space:normal; line-height:1.3; }
-            .m2-pad-pk { display:none; }
             .m2-ed { grid-template-columns:250px minmax(0,1fr); }
             .m2-edr { grid-column:1 / -1; }
         }
@@ -2366,8 +2370,8 @@ async function saveProgress() {
 // Beat kaydı (v:2). Firestore iç içe dizi kabul etmez → aktif slot {r0..r4} haritası (eski okuyucular
 // için) + her şey tek JSON metninde (4 slot, uzunluk, VOL, kanal/sentez ayarları — tracks[i].smp = kanalın
 // örnek kimliği (kit), master, choke). smp'siz eski kayıtlar Classic kit ile açılır (m2Tracks).
-async function saveBeat(name) {
-    if (!currentUser || !_db) return;
+async function saveBeat(name) {           // → true yalnız Firestore'a yazıldıysa
+    if (!currentUser || !_db) return false;
     const B = state.beat, act = state.beatPatterns, patterns = {};
     act.forEach((r, i) => { patterns['r' + i] = r.slice(); });
     await userDoc().collection('beats').add({
@@ -2378,6 +2382,7 @@ async function saveBeat(name) {
         data: JSON.stringify({ len: B.len, slots: B.slots, volumes: state.beatVolumes, tracks: B.tracks, synth: B.synth, master: B.master, choke: B.choke }),
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
+    return true;
 }
 
 // Kayıtlı beat pattern'i → 5 × len dizi. Okunan biçimler: {r0..r4} haritası (v:2), [{steps:[…]}] ve
@@ -9836,6 +9841,7 @@ Object.assign(LAB_TXT, {
     lab_m2_seq_aria:    [`Step sequencer — tık: 100 → 70 → 40 → kapalı · dikey sürükle: ince velocity · ↑↓ ±10`, `Step sequencer — click: 100 → 70 → 40 → off · drag vertically: fine velocity · ↑↓ ±10`],
     lab_m2_pad_t:       [`Önizle + sound editor'de aç`, `Preview + open in the sound editor`],
     lab_m2_pad_aria:    [`{name} — önizle ve düzenle`, `{name} — preview and edit`],
+    lab_m2_pad_aria_s:  [`{name} · {smp} — önizle ve düzenle`, `{name} · {smp} — preview and edit`],
     lab_m2_mute_aria:   [`{name} mute`, `{name} mute`],
     lab_m2_solo_aria:   [`{name} solo`, `{name} solo`],
     lab_m2_cell_on:     [`{name} adım {n}, velocity {v}`, `{name} step {n}, velocity {v}`],
@@ -9918,6 +9924,7 @@ Object.assign(LAB_TXT, {
     lab_m2_kit_t:       [`Kit: beş pad'e hazır örnek seti yükler — pattern değişmez`, `Kit: loads a ready sample set onto the five pads — the pattern stays`],
     lab_m2_kit_custom:  [`Kit: özel (pad'lere tek tek örnek yüklendi)`, `Kit: custom (samples loaded pad by pad)`],
     lab_m2_toast_kit:   [`{name} kiti yüklendi`, `{name} kit loaded`],
+    lab_m2_toast_kit_mx:[`{name} kiti yüklendi — Genel bakış ve Mastering bu kiti çalar; Mixing modülü şimdilik Classic seslerle çalışır`, `{name} kit loaded — Overview and Mastering play this kit; the Mixing module still uses the Classic sounds for now`],
     lab_m2_toast_smp:   [`{track} ← {name}`, `{track} ← {name}`],
     lab_m2_sb_aria:     [`{name} için örnek tarayıcı`, `Sample browser for {name}`],
     lab_m2_smp_load:    [`örnek yükleniyor…`, `loading sample…`],
@@ -9972,7 +9979,8 @@ Object.assign(LAB_TXT, {
     lab_m2_tut_9_b:     [`Sound editor'deki SAMPLE listesinde ▶ ile dinle, tıkla ya da Enter ile yükle. Kanal pad'inde yeni ad görünür; TUNE ve DECAY örneğe de uygulanır.`, `In the SAMPLE list of the sound editor, press ▶ to listen, click or press Enter to load. The channel pad shows the new name; TUNE and DECAY apply to the sample too.`],
     lab_m2_tut_9_a:     [`Pad'i seç → Browser'da örneğe çift tık ya da pad'e sürükle (Simpler açılır).`, `Select the pad → double-click the sample in the Browser or drag it onto the pad (Simpler opens).`],
     lab_m2_tut_10_t:    [`Kaydet`, `Save`],
-    lab_m2_tut_10_b:    [`KAYDET beat'i (4 slot, BPM, swing, kit ve kanal ayarları) hesabına yazar; preset tarayıcının KULLANICI grubundan geri yüklersin. Giriş yapmadıysan önce giriş penceresi açılır.`, `SAVE writes the beat (4 slots, BPM, swing, kit and channel settings) to your account; load it back from the USER group of the preset browser. If you are not signed in, the sign-in window opens first.`],
+    lab_m2_tut_10_b:    [`KAYDET beat'i (4 slot, BPM, swing, kit ve kanal ayarları) hesabına yazar; preset tarayıcının KULLANICI grubundan geri yüklersin. Adım, beat gerçekten kaydedilince tamamlanır.`, `SAVE writes the beat (4 slots, BPM, swing, kit and channel settings) to your account; load it back from the USER group of the preset browser. The step completes once the beat is actually saved.`],
+    lab_m2_tut_10_h:    [`Giriş yapmadın: önce sağ üstten giriş yap → sonra KAYDET.`, `You are not signed in: sign in at the top right first → then SAVE.`],
     lab_m2_tut_10_a:    [`Drum Rack başlığındaki disket → User Library'ye preset; set'i Ctrl/⌘+S ile kaydet.`, `The disk icon in the Drum Rack title → preset to the User Library; save the set with Ctrl/⌘+S.`],
 });
 // ─── Kitler (Drum Rack preset'i: beş pad'in örnekleri) ───
@@ -10011,7 +10019,7 @@ function m2TrackForNote(n) {
     return a != null ? a : -1;
 }
 // Öğretici / oturum sayaçları (sayfa ömürlü): örnek seçimi, kit, kayıt, canlı kayıt vuruşu
-const m2Stats = { picks: 0, kits: 0, saves: 0, saveTries: 0, recs: 0 };
+const m2Stats = { picks: 0, kits: 0, saves: 0, recs: 0 };
 let _m2Rec = false;                                       // REC (canlı kayıt) kurulu mu — görünüm değişse de kalır
 let _m2UserBeats = { uid: '', list: null };               // Beatlerim listesi (preset tarayıcı KULLANICI grubu)
 
@@ -10129,6 +10137,12 @@ function toggleBeat() {
 const M2_BPM_MIN = 60, M2_BPM_MAX = 200;
 const M2_COL = ['var(--lab-kick)', 'var(--lab-snare)', 'var(--lab-chat)', 'var(--lab-ohat)', 'var(--lab-bass)'];
 const M2_SUB = ['SINE · PITCH ENV', 'TRI + NOISE', 'NOISE · HP', 'NOISE · HP', 'SAW · LP ENV'];
+// Pad aria-label: kanal + yüklü ses ("Close Hat · Mersey · Closed Hat 02 — önizle ve düzenle")
+function m2PadAria(i) {
+    const t = (state.beat.tracks || [])[i] || {}, name = BEAT_TRACKS[i].name;
+    const smp = t.src === 'sample' ? m2SmpLabel(t.smp) : `SYNTH · ${M2_SUB[i]}`;
+    return Lf('lab_m2_pad_aria_s', { name, smp });
+}
 const M2_VOL_DEF = [90, 80, 60, 55, 75], M2_PAN_DEF = [0, 0, -15, 20, 0];
 const m2Hz = v => v >= 1000 ? (v / 1000).toFixed(1) + 'k' : String(Math.round(v));
 // Sound editor: iz başına sentez parametreleri (tasarım aralıkları; Hz knob'ları logaritmik)
@@ -10291,7 +10305,6 @@ function renderModule2() {
     const bUndo = lpBtn({ icon: 'undo', label: () => L('lp_undo'), title: () => L('lp_undo') });
     const bRedo = lpBtn({ icon: 'redo', label: () => L('lp_redo'), title: () => L('lp_redo') });
     const bSave = lpBtn({ text: () => L('lp_save'), variant: 'accent', title: () => L('lab_m2_save_t'), onClick: () => {
-        m2Stats.saveTries++;
         if (!currentUser) toast(L('lab_m2_toast_signin'));
         const b = saved.querySelector('.lab-saved-head button'); if (b) b.click();
     } });
@@ -10432,7 +10445,7 @@ function renderModule2() {
         row.style.setProperty('--c', M2_COL[ri]);
         const strip = mk('div', 'm2-strip');
         const pad = mk('button', 'm2-pad'); pad.type = 'button'; pad.title = L('lab_m2_pad_t');
-        pad.setAttribute('aria-label', Lf('lab_m2_pad_aria', { name: track.name }));
+        pad.setAttribute('aria-label', m2PadAria(ri));
         const pn = mk('span', 'm2-pad-n'); pn.textContent = track.name;
         const ps = mk('span', 'm2-pad-s');
         pad.append(pn, ps);
@@ -10762,7 +10775,7 @@ function renderModule2() {
         kind: 'beat', titleKey: 'lab_saved_beats', saveKey: 'lab_saved_beat_save',
         emptyKey: 'lab_m2_saved_empty', signinKey: 'lab_saved_signin_tr', promptKey: 'lab_m2_name_prompt',
         load: () => loadBeats().then(list => { _m2UserBeats = { uid: currentUser ? currentUser.uid : '', list }; paintPreset(true); return list; }),
-        save: name => saveBeat(name).then(() => { m2Stats.saves++; }),
+        save: name => saveBeat(name).then(ok => { if (ok) m2Stats.saves++; }),
         del: it => deleteBeat(it.id).then(() => { if (_m2UserId === it.id) _m2UserId = null; setTimeout(() => paintPreset(true), 0); }),
         apply: it => applySaved(it),
     });
@@ -10823,7 +10836,8 @@ function renderModule2() {
         getBeatCtx();
         beatEnsureSamples().then(() => { if (!beatPlaying) beatPreview(B.sel, 100); paintEditor(); });
         paintKit(); paintRows(); paintEditor();
-        toast(Lf('lab_m2_toast_kit', { name: k.name }));
+        // Mixing (mixCtx) BEAT_TRACKS[i].file'ı kendi çözer → Classic dışı kitte bunu söyle (modül 3'e devredildi)
+        toast(Lf(k.id === 'classic' ? 'lab_m2_toast_kit' : 'lab_m2_toast_kit_mx', { name: k.name }));
     }
     // Kayıtlı beat'i uygula (Beatlerim kartı ve preset tarayıcının KULLANICI grubu)
     function applySaved(it) {
@@ -10929,14 +10943,19 @@ function renderModule2() {
             R.row.classList.toggle('is-dim', t.mute || (solo && !t.solo));
             R.pad.classList.toggle('is-sel', B.sel === i);
             R.pad.setAttribute('aria-pressed', String(B.sel === i));
-            // SAMPLE: "Mersey · Kick 08" (≤1024 paket adı gizlenir, dar pad'de örnek adı okunsun)
+            // SAMPLE: "Mersey · Kick 08" — sığmazsa paket öneki düşer (CSS), ad kısalırsa numara yine görünür
             const sb = t.src === 'sample' ? m2SmpLabel(t.smp) : M2_SUB[i];
             if (R.ps.title !== sb) {
                 R.ps.title = sb;
                 const e = t.src === 'sample' ? labSample(t.smp) : null;
-                if (e) { const pk = mk('span', 'm2-pad-pk'); pk.textContent = `${(LAB_SAMPLE_PACKS[e.pack] || {}).name || e.pack} · `; R.ps.replaceChildren(pk, document.createTextNode(e.name)); }
-                else R.ps.textContent = sb;
+                const nm = mk('span', 'm2-pad-sn'), mm = e && /^(.*\S)\s+(\d+)$/.exec(e.name);
+                if (mm) { const sb2 = mk('span', 'm2-pad-sb'), sd = mk('span', 'm2-pad-sd'); sb2.textContent = mm[1]; sd.textContent = mm[2]; nm.append(sb2, sd); }
+                else nm.textContent = e ? e.name : sb;
+                if (e) { const pk = mk('span', 'm2-pad-pk'); pk.textContent = `${(LAB_SAMPLE_PACKS[e.pack] || {}).name || e.pack} ·`; R.ps.replaceChildren(nm, pk); }
+                else R.ps.replaceChildren(nm);
             }
+            const al = m2PadAria(i);
+            if (R.pad.getAttribute('aria-label') !== al) R.pad.setAttribute('aria-label', al);
         });
     }
     // Tek hücre: dolgu yüksekliği = velocity, sayı, çalan sütun, aria
@@ -11173,8 +11192,10 @@ function renderModule2() {
             { id: 'browse', target: () => sbBox, placement: 'right',
               onEnter: () => { tsnap.picks = m2Stats.picks; }, check: () => m2Stats.picks > (tsnap.picks || 0) },
             { id: 'save', target: () => bSave, placement: 'bottom',
-              onEnter: () => { tsnap.saves = m2Stats.saves; tsnap.tries = m2Stats.saveTries; },
-              check: () => m2Stats.saves > (tsnap.saves || 0) || (!currentUser && m2Stats.saveTries > (tsnap.tries || 0)) },
+              // Yalnız gerçek kayıt (Firestore yazımı) tamamlar; girişsiz öğrenciye ipucu "giriş yap → kaydet"
+              // (kart labOnRefresh ile boyanır → oturum açılınca ipucu kendiliğinden kalkar)
+              hint: () => currentUser ? '' : 'lab_m2_tut_10_h',
+              onEnter: () => { tsnap.saves = m2Stats.saves; }, check: () => m2Stats.saves > (tsnap.saves || 0) },
         ].map((st2, i) => Object.assign(st2, { title: `lab_m2_tut_${i + 1}_t`, body: `lab_m2_tut_${i + 1}_b`, ableton: `lab_m2_tut_${i + 1}_a` })),
     });
     const tutB = makeTutorialButton(tut);
@@ -11185,7 +11206,7 @@ function renderModule2() {
         const lg = labLang();
         if (lg !== hiwLang) { hiwLang = lg; hiw.rebuild(hiwOpts()); }
         roV.setLabel(L('lab_m2_voices')); roSw.setLabel(L('lab_m2_swoff'));
-        rows.forEach((R, i) => { R.pad.title = L('lab_m2_pad_t'); R.pad.setAttribute('aria-label', Lf('lab_m2_pad_aria', { name: BEAT_TRACKS[i].name })); });
+        rows.forEach((R, i) => { R.pad.title = L('lab_m2_pad_t'); R.pad.setAttribute('aria-label', m2PadAria(i)); });
         if (sb) {                                  // kitin tarayıcısı etiketini kurulurken sabitler
             const lb = Lf('lab_m2_sb_aria', { name: BEAT_TRACKS[B.sel].name });
             sb.el.setAttribute('aria-label', lb);
