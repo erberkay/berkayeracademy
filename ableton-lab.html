@@ -1036,6 +1036,14 @@
         }
         /* ═══ /LAB PRO KİT · MIDI ═══ */
 
+        /* ═══ LAB PRO KİT · LOOP WARP (makeWarpSeg — WARP | RE-PITCH seçici) ═══
+           Sözleşme: script'teki "LAB PRO KİT · LOOP WARP" yorum bloğu. Seçici .lp-seg (--md); gizleme [hidden]. */
+        .lp-warp[hidden] { display:none; }
+        .lp-warp.is-busy .lp-seg-b[aria-pressed="true"] { animation:lp-warp-busy 1s steps(2) infinite; }
+        @keyframes lp-warp-busy { 50% { color:var(--fg-3); } }
+        @media (prefers-reduced-motion: reduce) { .lp-warp.is-busy .lp-seg-b[aria-pressed="true"] { animation:none; } }
+        /* ═══ /LAB PRO KİT · LOOP WARP ═══ */
+
         /* ═══ LAB M1 · Synthesizer ═══ (Lab_Synth: BE·SYNTH 01 eklenti penceresi — PRO KİT parçalarıyla;
            altında Çalışma mantığı, yan panel kabuktan). Panel degradeleri düz token'a indirildi. */
         .lab-m1 {
@@ -1474,6 +1482,16 @@
             --m3-sc:#a855f7;               /* tasarım: sidechain moru (DUCK) */
             --m3-sc-fg:#e6d4ff;            /* tasarım: sidechain açıkken yazı */
         }
+        /* Eklenen kanal paleti (KANAL EKLE; tasarımda yok — yerleşik 6 renkten ayrışan tonlar, koyu zeminde ≥4.5:1).
+           .m3-roll: piyano rulosu penceresi body'ye taşınır (.lab-m3 dışında) → nota rengi orada da çözülsün. */
+        .lab-m3, .m3-roll {
+            --m3-x0:#ff7a59;               /* mercan */
+            --m3-x1:#22d3c5;               /* camgöbeği */
+            --m3-x2:#f472b6;               /* pembe */
+            --m3-x3:#a3e635;               /* limon */
+            --m3-x4:#818cf8;               /* çivit */
+            --m3-x5:#e2c290;               /* kum */
+        }
         .lab-m3 .lp-win { --lp-win-r:var(--r-18); --lp-bar-h:54px; }
         /* Başlık çubuğu: 1440'ta tek satır; daha darda sağ grup (DSP · metre) alt satıra iner, preset adı kırpılmaz */
         .lab-m3 .lp-bar { row-gap:8px; }
@@ -1511,7 +1529,8 @@
 
         /* ── Konsol: 6 kanal · 2 return · master (sığmazsa kendi kaydırıcısında) ── */
         .m3-console { overflow-x:auto; padding:14px; background:var(--surface-0); /* tasarım #0e0e11 + ince dikey çizgi dokusu */ }
-        .m3-cgrid { display:grid; grid-template-columns:repeat(6, minmax(118px,1fr)) repeat(2, minmax(100px,.84fr)) minmax(140px,1.2fr); gap:8px; }
+        /* --m3-n = kanal sayısı (6 + eklenen; çalışma anında): şeritler · + KANAL karosu · 2 return · master */
+        .m3-cgrid { display:grid; grid-template-columns:repeat(var(--m3-n, 6), minmax(118px,1fr)) 78px repeat(2, minmax(100px,.84fr)) minmax(140px,1.2fr); gap:8px; }
         .m3-strip { --c:var(--accent); display:flex; flex-direction:column; align-items:center; gap:7px; min-width:0; padding:8px 6px; border-radius:var(--r-10); background:var(--surface-hi-2); border:1px solid var(--line-2); transition:opacity var(--dur), border-color var(--dur); }
         .m3-strip.is-sel { border-color:color-mix(in srgb, var(--c) 60%, transparent); background:color-mix(in srgb, var(--c) 7%, var(--surface-hi-2)); }
         .m3-strip.is-off { opacity:.55; }
@@ -1706,6 +1725,70 @@
         .m3-mapping [data-m3p][data-m3cc] { outline:1px solid var(--m3-c5); }
         .m3-mapping [data-m3p].is-map-t { outline:2px solid var(--accent); }
 
+        /* ── KANAL EKLE: + KANAL karosu · eklenen şerit (CLIP / örnek düğmesi) · TON seçici ── */
+        .m3-add { display:flex; flex-direction:column; gap:8px; min-width:0; padding:8px 6px; border-radius:var(--r-10); border:1px dashed var(--line-3); background:var(--surface-1); }
+        .m3-addb { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; min-height:76px; padding:8px 2px; border:1px solid var(--line-3); border-radius:var(--r-6); background:var(--bg); color:var(--accent); font-family:var(--ff-mono); font-size:10px; font-weight:700; letter-spacing:.08em; cursor:pointer; }
+        .m3-addb svg { width:20px; height:20px; }
+        .m3-addb:hover, .m3-addi:hover { border-color:var(--accent-line-2); }
+        .m3-addb[aria-expanded="true"] { border-color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--bg)); }
+        .m3-addb[aria-disabled="true"] { color:var(--fg-3); cursor:not-allowed; }
+        .m3-addn { font-weight:400; font-size:9px; color:var(--fg-3); }
+        .m3-addm { display:flex; flex-direction:column; gap:6px; }
+        .m3-addm[hidden] { display:none; }
+        .m3-addi { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:44px; padding:4px 2px; border:1px solid var(--line-3); border-radius:var(--r-6); background:var(--bg); color:var(--fg); font-family:var(--ff-mono); font-size:10px; letter-spacing:.06em; cursor:pointer; }
+        .m3-addi b { font-weight:700; }
+        .m3-addi span { font-size:8px; color:var(--fg-3); }
+        .m3-strip--x { border-style:dashed; border-color:color-mix(in srgb, var(--c) 40%, var(--line-2)); }
+        .m3-strip--x.is-sel { border-style:solid; }
+        .m3-xb { position:relative; display:flex; align-items:center; justify-content:center; gap:5px; width:100%; height:24px; padding:0 4px; border-radius:var(--r-6); border:1px solid color-mix(in srgb, var(--c) 55%, transparent); background:var(--bg); color:var(--c); font-family:var(--ff-mono); font-size:9px; font-weight:700; letter-spacing:.08em; cursor:pointer; }
+        .m3-xb:hover, .m3-xb[aria-pressed="true"] { background:color-mix(in srgb, var(--c) 14%, var(--bg)); }
+        .m3-xbi { display:inline-flex; }
+        .m3-xbi svg { width:10px; height:10px; }
+        .m3-xbn { font-weight:400; color:var(--fg-soft); }
+        .m3-strip--x .m3-name { cursor:text; }
+        .m3-key { display:flex; align-items:center; gap:6px; }
+        .m3-ksel { height:30px; max-width:170px; padding:0 6px; border-radius:var(--r-6); border:1px solid var(--line-3); background:var(--bg); color:var(--fg); font-family:var(--ff-mono); font-size:11px; cursor:pointer; }
+        .m3-ksel:hover { border-color:var(--accent-line-2); }
+
+        /* ── Cihaz paneli (seçili eklenen kanal: enstrüman + MIDI klip / örnek + adımlar) ── */
+        .m3-dev { --c:var(--accent); display:flex; flex-direction:column; gap:12px; padding:14px; border-top:1px solid var(--line-div); background:var(--surface); }
+        .m3-dev[hidden] { display:none; }
+        .m3-devhd { display:flex; align-items:center; flex-wrap:wrap; gap:8px 10px; }
+        .m3-devdot { width:10px; height:10px; border-radius:50%; background:var(--c); flex-shrink:0; }
+        .m3-devnm { margin:0; font-family:var(--ff-mono); font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--fg); }
+        .m3-devtag { padding:2px 6px; border-radius:var(--r-6); border:1px solid color-mix(in srgb, var(--c) 50%, transparent); font-family:var(--ff-mono); font-size:9px; letter-spacing:.12em; color:var(--c); }
+        .m3-devact { display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; margin-left:auto; }
+        .m3-cols .lp-seg-b { display:inline-flex; align-items:center; justify-content:center; }
+        .m3-sw { display:block; width:12px; height:12px; border-radius:50%; background:var(--c); }
+        .m3-cols .lp-seg-b[aria-pressed="true"] .m3-sw { box-shadow:0 0 0 2px var(--fg); }
+        .m3-devbody { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:14px; }
+        .m3-inst { display:flex; flex-direction:column; gap:10px; min-width:0; }
+        .m3-insthd { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; }
+        .m3-wsel { display:flex; align-items:center; gap:6px; }
+        .m3-instk { display:grid; grid-template-columns:repeat(auto-fill, minmax(60px,1fr)); gap:8px 2px; justify-items:center; }
+        .m3-clipc { display:flex; flex-direction:column; gap:10px; min-width:0; padding-left:14px; border-left:1px solid var(--line-div); }
+        .m3-cliphd { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+        .m3-cprev { display:block; width:100%; height:64px; border-radius:var(--r-6); background:var(--bg-sunk); border:1px solid var(--line-div); }
+        .m3-cprev rect { fill:var(--c); }
+        .m3-clipi, .m3-linfo { margin:0; font-family:var(--ff-mono); font-size:10px; letter-spacing:.04em; color:var(--fg-soft); font-variant-numeric:tabular-nums; }
+        .m3-linfo { color:var(--c); }
+        .lab-m3 .m3-clipo { height:40px; }
+        .m3-clipn { margin:0; font-size:11px; line-height:1.45; color:var(--fg-3); }
+        .m3-lbox { display:flex; flex-direction:column; gap:8px; }
+        .m3-lbox[hidden] { display:none; }
+        .m3-pat { display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:4px; }
+        .m3-patb { position:relative; height:30px; min-width:0; padding:0; border-radius:var(--r-6); border:1px solid var(--line-3); background:var(--bg); cursor:pointer; }
+        .m3-patb:nth-child(4n+1) { border-color:var(--line-hi); }
+        .m3-patb:hover { border-color:var(--accent-line-2); }
+        .m3-patb[aria-pressed="true"] { background:var(--c); border-color:var(--c); }
+
+        /* ── Piyano rulosu kayıt şeridi (pencere body'de → .lab-m3 dışı seçiciler) ── */
+        .m3-rs { display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; padding:8px 14px; border-top:1px solid var(--line-div); background:var(--surface); }
+        .m3-rs.is-rec { border-top-color:var(--err-strong); }
+        .m3-rsn { font-family:var(--ff-mono); font-size:10px; letter-spacing:.08em; color:var(--lp-c, var(--accent)); }
+        .m3-rsi { font-family:var(--ff-mono); font-size:10px; color:var(--fg-3); }
+        .m3-rs.is-rec .m3-rsi { color:var(--err); }
+
         /* ── Dar masaüstü / tablet: dokunma alanları ≥44 px, detay tek sütun ── */
         @media (max-width:1024px) {
             .m3-srcbody { grid-template-columns:minmax(0,280px) minmax(0,1fr); }
@@ -1715,7 +1798,7 @@
             .m3-eqhd { row-gap:16px; }                                   /* sarılınca ⏻ (−10) ile KOPYALA (−8) isabet alanları çakışmasın */
             .m3-dbrow { margin-block:6px; }
             .lab-m3 .lp-pwr.lp-pwr--sm::after { inset:-10px; }        /* aşağıdaki genel -7px'i yener: dolgu kutusu 24 + 2×10 = 44 */
-            .m3-cgrid { grid-template-columns:repeat(6, minmax(152px,1fr)) repeat(2, minmax(124px,.84fr)) minmax(160px,1.2fr); }
+            .m3-cgrid { grid-template-columns:repeat(var(--m3-n, 6), minmax(152px,1fr)) 88px repeat(2, minmax(124px,.84fr)) minmax(160px,1.2fr); }
             .m3-strip .lp-knob { min-width:44px; }
             /* ::after dolgu kutusundan taşar (kenarlık hariç): 20 + 2×12 = 44 · 30 + 2×7 = 44 */
             .m3-selb::after { content:''; position:absolute; inset:-12px 0; }
@@ -1741,6 +1824,16 @@
             .m3-ctx { grid-column:1 / -1; }
             .m3-tabs { overflow-x:auto; }
             .m3-bypl { margin-left:0; }
+            .m3-xb { height:32px; margin-block:4px; }
+            .m3-xb::after { content:''; position:absolute; inset:-7px 0; }      /* 30 + 2×7 = 44 */
+            .m3-ksel { height:44px; }
+            .m3-devbody { grid-template-columns:minmax(0,1fr); }
+            .m3-clipc { padding:14px 0 0; border-left:0; border-top:1px solid var(--line-div); }
+            .lab-m3 .m3-clipo { height:44px; }
+            .m3-patb { height:44px; }
+            .m3-devact { margin-left:0; gap:14px 10px; }
+            .m3-insthd { row-gap:18px; }
+            .m3-rs { row-gap:16px; }
         }
         @media (max-width:600px) {
             .m3-srcbody { grid-template-columns:minmax(0,1fr); }
@@ -1757,6 +1850,10 @@
             .m3-cpanel { grid-template-columns:minmax(0,1fr); }
             .m3-cvis { overflow-x:auto; }
             .m3-csvg { min-width:520px; }
+            .m3-key { flex-wrap:wrap; }
+            .m3-ksel { max-width:none; flex:1 1 120px; }
+            .m3-devhd { align-items:flex-start; }
+            .m3-devact { width:100%; }
         }
         /* ═══ /LAB M3 ═══ */
 
@@ -6532,24 +6629,26 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   grafikte 0 dBFS'i aşabilir: bus'ta headroom bırakın.
 // labSample(id) → kayıt | null · labSamplesByKind(kind | [kind…]) → kayıt[] · labSampleUrl(id)
 // labSampleGain(id) → doğrusal kazanç (gainDb'den)
-// labLoopRate(id, bpm) → playbackRate = bpm / örnek bpm'i (loop değilse / bpm yoksa 1)
+// labLoopRate(id, bpm) → playbackRate = bpm / örnek bpm'i (loop değilse / bpm yoksa 1) — RE-PITCH: perde de kayar;
+//   perdesi sabit tempo eşleme için LOOP WARP bloğu (labLoopBuffer / labLoopRateFor).
 // labLoopDuration(id, bpm?) → sn: ölçü × 4 × 60 / (bpm ?? örnek bpm'i); one-shot'ta dosya süresi.
 // labSampleBuffer(ctx | null, id) → Promise<AudioBuffer | null>
 //   Genel çözülmüş önbellek (AudioBuffer bağlamlar arası kullanılır), aynı anda gelen istekler tek
 //   fetch'e bağlanır. ctx yoksa/kapalıysa paylaşılan OfflineAudioContext çözer (jest gerekmez — ön
 //   yükleme için kullanılabilir). Hata (ağ, HTML yanıtı, çözülemeyen biçim) → null + console.warn('[lab] …');
 //   çağıran sentez yedeğine düşer. Başarısız istek önbelleğe alınmaz (sonraki çağrı yeniden dener).
-// labSampleAudition(id, { ctx?, dest?, bpm?, maxSec?:16, onEnd? }) → Promise<bool>  Tek önizleme yolu
+// labSampleAudition(id, { ctx?, dest?, bpm?, warp?:true, maxSec?:16, onEnd? }) → Promise<bool>  Tek önizleme yolu
 //   (sayfada aynı anda tek ses): kaynak → kazanç (gainDb − 6 dB) → dest (AudioNode ya da onu veren
 //   fonksiyon, aynı ctx'ten; vars. / uyumsuzsa ctx.destination); bpm (sayı
-//   ya da fonksiyon) verilirse loop tempoya uyar. ctx: AudioContext ya da onu veren fonksiyon (() => getBeatCtx()).
+//   ya da fonksiyon) verilirse loop tempoya uyar — warp (bool ya da fonksiyon, vars. true) açıkken perdesi sabit
+//   (labLoopBuffer, LOOP WARP), false → Re-Pitch (labLoopRate). ctx: AudioContext ya da onu veren fonksiyon (() => getBeatCtx()).
 //   ctx verilmezse ilk çağrıda (kullanıcı jestinde) kendi küçük AudioContext'ini kurar; görünüm
 //   kapanınca durur ve o bağlam kapanır. labSampleAuditionStop() · labSampleAuditionId() → çalan id | null
 //   (tampon beklenirken de id döner). labSampleAuditionSubscribe(fn(id|null)) → unsub: her başlama / bitme /
 //   durdurma / hatada çağrılır (çağıran lpOnTeardown ile bırakır).
-// makeSampleBrowser({ kinds?, value?, onPick(sample), audition?:true, ctx?, dest?, bpm?, label?, height?:260,
+// makeSampleBrowser({ kinds?, value?, onPick(sample), audition?:true, ctx?, dest?, bpm?, warp?, label?, height?:260,
 //                     filter?, packs?, cls? }) → { el, set(id), get(), stop(), focus(), destroy() }
-//   ctx / dest / bpm labSampleAudition'a gider (ctx verilmezse önizleme kendi bağlamını ilk ▶ jestinde kurar;
+//   ctx / dest / bpm / warp labSampleAudition'a gider (ctx verilmezse önizleme kendi bağlamını ilk ▶ jestinde kurar;
 //   dest: modülün önizleme bus'ı → ölçer/master'dan geçer). Önizleme durumu geneldir: aynı örneği listeleyen
 //   bütün tarayıcılar ▶/■ ve DİNLE'yi birlikte günceller (abonelik görünüm kapanınca / destroy() ile biter).
 //   Pro tarayıcı (Ableton Browser gibi): başlıkta seçili örnek + ▶ DİNLE; liste pakete göre gruplu,
@@ -7307,12 +7406,13 @@ function labSampleAudition(id, o) {
     _lpAud = { id, token, pending: true, onEnd: o.onEnd, ctx, t: null, src: null, g: null };
     const pend = _lpAud;
     lpAudNotify();                                    // bekleyen önizleme de "çalıyor" sayılır (■ ile durdurulabilir)
-    return labSampleBuffer(ctx, id).then(buf => {
+    // LOOP WARP kancası: loop + bpm → labLoopBuffer (warp açıkken perde sabit gerilmiş tampon, hız 1)
+    const bpm0 = typeof o.bpm === 'function' ? o.bpm() : o.bpm, warp0 = (typeof o.warp === 'function' ? o.warp() : o.warp) !== false;
+    return (s.loop && bpm0 ? labLoopBuffer(ctx, id, bpm0, { warp: warp0 }) : labSampleBuffer(ctx, id)).then(buf => {
         if (_lpAud !== pend) return false;            // bu arada başka önizleme / durdurma
         if (!buf) { _lpAud = null; if (o.onEnd) o.onEnd(); lpAudNotify(); return false; }
         const src = ctx.createBufferSource(); src.buffer = buf;
-        const bpm = typeof o.bpm === 'function' ? o.bpm() : o.bpm;
-        if (s.loop && bpm) src.playbackRate.value = labLoopRate(id, bpm);
+        if (s.loop && bpm0) src.playbackRate.value = labLoopRateFor(id, bpm0, warp0);
         const g = ctx.createGain();
         const now = ctx.currentTime, lvl = lpLin((s.gainDb || 0) - 6);
         g.gain.setValueAtTime(0, now);
@@ -7441,7 +7541,7 @@ function makeSampleBrowser(o) {
         if (o.audition === false) return;
         if (labSampleAuditionId() === id) { labSampleAuditionStop(); paint(); return; }
         setBusy(id, true);
-        labSampleAudition(id, { ctx: o.ctx, dest: o.dest, bpm: o.bpm }).then(ok => {
+        labSampleAudition(id, { ctx: o.ctx, dest: o.dest, bpm: o.bpm, warp: o.warp }).then(ok => {
             setBusy(id, false, !ok && !_lpSBuf.has(id) && !_lpSReq.has(id));
             paint();
         });
@@ -9367,6 +9467,565 @@ function makeMidiButton(o) {
     return { el, button: b, refresh, open, close: () => close(true), destroy: sub.off };
 }
 if (/[?&]mididebug=1\b/.test(location.search)) window.__lpMidi = { labMidi, makeMidiButton };
+
+// ═══════════════════════════════════════════════════════════════════
+// LAB PRO KİT · LOOP WARP — tempo değişince perde sabit (Ableton'da clip Warp açık)
+// ═══════════════════════════════════════════════════════════════════
+// Sorun: loop'u tempoya uydurmak için playbackRate = bpm / örnek bpm'i perdeyi de kaydırır (RE-PITCH — plak /
+// teyp; Ableton'daki Re-Pitch warp modu). WARP (Ableton'da Tones / Complex gibi): zaman germe — WSOLA (SoundTouch tipi): giriş dizileri (sequence) çıkışa
+// kopyalanır, her dizinin başı önceki dizinin doğal devamına en çok benzeyen konumda (normalize çapraz ilişki,
+// önce 4× seyreltilmiş kaba arama, sonra ±4 örnek ince) aranır ve yükselen kosinüsle örtüştürülür. Dalga biçimi
+// yerel olarak korunduğundan perde değişmez; süre müzikal uzunluğa örnek-tam eşittir.
+//
+// labStretch(buffer, ratio, { mode?, length?, loop?:false, start?:0, end? }) → Promise<AudioBuffer | null>
+//   ratio = çıkış süresi / giriş süresi (> 1 yavaşlar). length (örnek) verilirse çıkış tam o uzunluktadır (ratio
+//   yok sayılır). start / end: giriş bölgesi (örnek; vars. tamamı). mode 'tones' (vars.: 60 ms dizi, 12 ms örtüşme,
+//   ±16 ms arama — melodik / pad / akor) | 'beats' (30 ms dizi, 6 ms örtüşme, ±6 ms arama + transient kilidi:
+//   algılanan vuruşun dizisi aramasız, vuruş tam müzikal konumuna gelecek ofsetle kopyalanır — davul loop'u).
+//   loop:true → giriş dairesel okunur, son dizi hem öncekine hem çıkışın başına hizalanır ve kuyruk başa örtüşür
+//   (döngü dikişi tıksız). Bütün kanallar AYNI ofsetlerle işlenir (hizalama L+R toplamından → stereo görüntü korunur).
+//   İş parçacığı: Blob URL'den tek Web Worker (sırayla; en yeni iş önce; bekleyen en çok 4 — taşan en eski null
+//   döner; 30 sn boşta kalınca kapanır). Worker kurulamaz / hata verirse ana iş parçacığında ≤ 8 ms'lik
+//   setTimeout dilimleriyle (uzun görev yok). Hata → null + console.warn('[lab] warp: …').
+// labStretchStats() → { ms, where: 'worker'|'main', inLen, outLen, sr, mode } | null  son germenin ölçümü.
+// labLoopNeedsWarp(id, bpm) → bool  loop + bpm'i var + |bpm − örnek bpm'i| ≥ 0.005.
+// labLoopRateFor(id, bpm, warp) → warp !== false → 1 (gerilmiş tampon kendi temposunda) · false → labLoopRate (Re-Pitch).
+// labLoopBuffer(ctx | null, id, bpm, { warp?:true, mode?, buffer? }) → Promise<AudioBuffer | null>
+//   Germe gerekmezse (warp:false, aynı tempo, one-shot) özgün tampon (buffer ya da labSampleBuffer(ctx, id)).
+//   Gerekirse: ölçü × 4 × 60 / bpm uzunluğunda (örnek-tam) gerilmiş döngü tamponu — döngü = tamponun tamamı
+//   (loopStart 0, loopEnd = duration; kuyruk yok), k. ölçünün ofseti k × 240 / bpm, playbackRate 1.
+//   buffer: modülün zaten çözdüğü özgün tampon (aynı dosya iki kez çözülmesin). mode vars.: davul türleri
+//   'beats', diğerleri 'tones'. Önbellek: id | bpm (0.01) | mode → en çok 8 tampon / 96 MB (LRU, görünümler arası
+//   sayfa ömrü; uçuştaki istek tek germeye bağlanır; başarısız / düşürülen istek önbellekte kalmaz).
+// labLoopBufferPeek(id, bpm, { mode? }) → AudioBuffer | null  eşzamanlı: hazır gerilmiş tampon (sıralayıcılar
+//   await edemez). Germe gerekmiyorsa da null — çağıran özgün tamponunu kullanır.
+// makeWarpSeg(value, onPick(bool), { size?:'md', cls? }) → makeSeg API'si { el, set, get, buttons } + setBusy(bool)
+//   WARP | RE-PITCH seçici (aria-pressed, TR/EN başlıklar canlı). Kök .lp-warp ([hidden] ile gizlenebilir);
+//   setBusy(true) → .is-busy + aria-busy (germe sürerken seçili düğme yavaşça yanıp söner, reduced-motion'da durur).
+// Geçiş kuralı (modüller): tempo değişince çalan tampon SÜRER (perdesi oynamaz); yeni tempo tamponu hazır olunca
+//   bir sonraki ölçü / loop başında ~4 ms'lik geçişle değiştirilir (boşluk yok, tık yok). Re-Pitch'te hız
+//   setTargetAtTime ile kayar. Davul one-shot'ları gerilmez; Beat Maker TUNE gibi bilinçli perde değişimi etkilenmez.
+// ═══════════════════════════════════════════════════════════════════
+Object.assign(LAB_TXT, {
+    lp_warp_aria:  [`Loop tempo eşleme: WARP ya da RE-PITCH`, `Loop tempo matching: WARP or RE-PITCH`],
+    lp_warp_on_t:  [`WARP: loop tempoya uyar, perdesi sabit kalır (Ableton'da clip Warp · Tones / Complex modu)`, `WARP: the loop follows the tempo and keeps its pitch (Ableton clip Warp · Tones / Complex mode)`],
+    lp_warp_off_t: [`RE-PITCH: loop hızlanır / yavaşlar, perdesi de kayar (plak, teyp — Ableton'daki Re-Pitch warp modu)`, `RE-PITCH: the loop speeds up / slows down and its pitch shifts too (vinyl, tape — Ableton's Re-Pitch warp mode)`],
+});
+// Saf WSOLA işleyici — Worker'a toString() ile gider: dış değişkene dokunmaz, yalnız ES5.
+// chs: Float32Array[] (giriş bölgesi), outLen: çıkış örneği. Döndürür { out, step(bütçe ms) → bitti mi }.
+function lpWsolaMake(chs, sr, outLen, o) {
+    'use strict';
+    o = o || {};
+    var nc = chs.length, inLen = chs[0].length, loop = !!o.loop, beats = o.mode === 'beats';
+    var out = [], tail = [], ch, i, j;
+    for (ch = 0; ch < nc; ch++) { out.push(new Float32Array(outLen)); tail.push(null); }
+    var ratio = outLen / inLen;
+    var ov = Math.max(16, Math.round(sr * (beats ? 0.006 : 0.012)));
+    var H0 = Math.max(ov, Math.round(sr * (beats ? 0.03 : 0.06)) - ov);        // çıkış adımı = dizi − örtüşme
+    var sk = Math.max(8, Math.round(sr * (beats ? 0.006 : 0.016)));            // arama yarıçapı
+    var K = Math.max(1, Math.round(outLen / H0));
+    var D = 4, ovD = Math.max(4, Math.ceil(ov / D)), skD = Math.max(1, Math.ceil(sk / D));
+    var mono = new Float32Array(inLen);
+    for (ch = 0; ch < nc; ch++) { var x0 = chs[ch]; for (i = 0; i < inLen; i++) mono[i] += x0[i]; }
+    var nd = Math.max(1, Math.floor(inLen / D)), md = new Float32Array(nd);
+    for (i = 0; i < nd; i++) { var s0 = 0; for (j = 0; j < D; j++) s0 += mono[i * D + j] || 0; md[i] = s0; }
+    var w = new Float32Array(ov);
+    for (j = 0; j < ov; j++) w[j] = 0.5 - 0.5 * Math.cos(Math.PI * (j + 0.5) / ov);
+    var segN = 2 * skD + 1 + ovD, fN = ov + 2 * D + 1;
+    var segD = new Float32Array(segN), segT = new Float32Array(segN), refD = new Float32Array(ovD), ref2D = new Float32Array(ovD);
+    var segF = new Float32Array(fN), segF2 = new Float32Array(fN), refF = new Float32Array(ov), ref2F = new Float32Array(ov);
+    function wrap(p, n) { p %= n; return p < 0 ? p + n : p; }
+    function grabD(p0, n, dst) {
+        for (var k = 0; k < n; k++) {
+            var p = p0 + k * D;
+            if (loop) p = wrap(p, inLen); else if (p < 0 || p >= inLen) { dst[k] = 0; continue; }
+            var q = (p / D) | 0; dst[k] = md[q < nd ? q : nd - 1];
+        }
+    }
+    function grabF(p0, n, dst) {
+        for (var k = 0; k < n; k++) {
+            var p = p0 + k;
+            if (loop) dst[k] = mono[p >= 0 && p < inLen ? p : wrap(p, inLen)];
+            else dst[k] = p >= 0 && p < inLen ? mono[p] : 0;
+        }
+    }
+    function ncc(a, ao, b, n) { var s = 0, e = 1e-9; for (var k = 0; k < n; k++) { var v = a[ao + k]; s += v * b[k]; e += v * v; } return s / Math.sqrt(e); }
+    // n: nominal başlangıç · pRef: önceki dizinin doğal devamı · tOff (döngünün son dizisi): kuyruğu başa da uysun
+    function search(n, pRef, tOff) {
+        var tl = tOff != null, base = n - skD * D, best = -Infinity, bd = 0, d, sc;
+        grabD(pRef, ovD, refD); grabD(base, segN, segD);
+        if (tl) { grabD(0, ovD, ref2D); grabD(base + tOff, segN, segT); }
+        for (d = 0; d <= 2 * skD; d++) { sc = ncc(segD, d, refD, ovD); if (tl) sc += ncc(segT, d, ref2D, ovD); if (sc > best) { best = sc; bd = d; } }
+        var q = base + bd * D - D;
+        grabF(pRef, ov, refF); grabF(q, fN, segF);
+        if (tl) { grabF(0, ov, ref2F); grabF(q + tOff, fN, segF2); }
+        best = -Infinity; bd = D;
+        for (d = 0; d <= 2 * D; d++) { sc = ncc(segF, d, refF, ov); if (tl) sc += ncc(segF2, d, ref2F, ov); if (sc > best) { best = sc; bd = d; } }
+        return q + bd;
+    }
+    // 'beats': 5 ms blok enerjisi, önceki 8 bloğun 4 katını aşan sıçrama = vuruş (en az 60 ms arayla)
+    var ons = [], oi = 0;
+    if (beats) {
+        var B = Math.max(64, Math.round(sr * 0.005)), nb = Math.floor(inLen / B), en = new Float32Array(nb), mx = 0, last = -1e9, gap = Math.round(sr * 0.06);
+        for (i = 0; i < nb; i++) { var e2 = 0; for (j = 0; j < B; j++) { var v2 = mono[i * B + j]; e2 += v2 * v2; } en[i] = e2; if (e2 > mx) mx = e2; }
+        for (i = 1; i < nb; i++) {
+            var a = 0, m = Math.min(8, i); for (j = 1; j <= m; j++) a += en[i - j]; a /= m;
+            if (en[i] > 4 * a + 1e-9 && en[i] > mx * 0.02 && i * B - last >= gap) { ons.push(i * B); last = i * B; }
+        }
+    }
+    function pos(k) { return Math.round(k * outLen / K); }
+    function put(k, c0) {
+        var op = pos(k), n = pos(k + 1) - op + ov;
+        for (var c = 0; c < nc; c++) {
+            var x = chs[c], y = out[c];
+            for (var jj = 0; jj < n; jj++) {
+                var p = c0 + jj, v;
+                if (loop) v = x[p >= 0 && p < inLen ? p : wrap(p, inLen)]; else v = p >= 0 && p < inLen ? x[p] : 0;
+                var oIx = op + jj;
+                if (oIx >= outLen) {
+                    if (loop && oIx - outLen < ov) { if (!tail[c]) tail[c] = new Float32Array(ov); tail[c][oIx - outLen] = v; }
+                    continue;
+                }
+                y[oIx] = jj < ov && k > 0 ? y[oIx] * (1 - w[jj]) + v * w[jj] : v;
+            }
+        }
+    }
+    var k = 0, prevC = 0, prevH = 0, fin = false;
+    function step(budget) {
+        var t0 = Date.now();
+        while (k < K) {
+            var op = pos(k), H = pos(k + 1) - op, c0 = 0;
+            if (k > 0) {
+                var lock = null;
+                if (beats) {
+                    while (oi < ons.length && Math.round(ons[oi] * ratio) < op + ov) oi++;
+                    if (oi < ons.length) { var T = Math.round(ons[oi] * ratio); if (T < op + H + ov) lock = ons[oi] - (T - op); }
+                }
+                c0 = lock != null ? lock : search(Math.round(op / ratio), prevC + prevH, loop && k === K - 1 ? H : null);
+            }
+            put(k, c0); prevC = c0; prevH = H; k++;
+            if (Date.now() - t0 >= budget) break;
+        }
+        if (k >= K && !fin) {
+            fin = true;
+            if (loop) for (var c = 0; c < nc; c++) {
+                var y = out[c], tt = tail[c]; if (!tt) continue;
+                for (var q = 0; q < ov && q < outLen; q++) y[q] = tt[q] * (1 - w[q]) + y[q] * w[q];
+            }
+        }
+        return fin;
+    }
+    return { out: out, step: step, K: K };
+}
+
+// ── İş kuyruğu: tek Worker (Blob URL) · yedek: ana iş parçacığında dilimli ─────────────
+let _lwWorker = null, _lwUrl = '', _lwDead = false, _lwBusy = null, _lwIdleT = 0, _lwStats = null;
+const _lwQ = [];
+const LW_QMAX = 4, LW_IDLE_MS = 30000;
+function lwWorkerSrc() {
+    return 'var lpWsolaMake = ' + lpWsolaMake.toString() + ';\n' +
+        'self.onmessage = function (e) { var d = e.data, t0 = Date.now(); try { var w = lpWsolaMake(d.chs, d.sr, d.outLen, d.o); w.step(1e12);' +
+        ' self.postMessage({ id: d.id, out: w.out, ms: Date.now() - t0 }, w.out.map(function (a) { return a.buffer; })); }' +
+        ' catch (err) { self.postMessage({ id: d.id, err: String(err && err.message || err) }); } };';
+}
+function lwKill() {
+    clearTimeout(_lwIdleT); _lwIdleT = 0;
+    if (_lwWorker) { try { _lwWorker.terminate(); } catch (_) {} _lwWorker = null; }
+    if (_lwUrl) { try { URL.revokeObjectURL(_lwUrl); } catch (_) {} _lwUrl = ''; }
+}
+function lwWorker() {
+    if (_lwWorker || _lwDead) return _lwWorker;
+    try {
+        if (typeof Worker !== 'function' || !window.Blob || !window.URL) throw new Error(`Worker yok`);
+        _lwUrl = URL.createObjectURL(new Blob([lwWorkerSrc()], { type: 'text/javascript' }));
+        const wk = new Worker(_lwUrl);
+        wk.onmessage = e => { if (wk === _lwWorker) lwDone(e.data); };
+        wk.onerror = e => {
+            if (e && e.preventDefault) e.preventDefault();
+            if (wk !== _lwWorker) return;
+            console.warn('[lab] warp worker:', e && e.message ? e.message : e);
+            _lwDead = true; lwKill();
+            const job = _lwBusy; _lwBusy = null;
+            if (job) lwRunMain(job); else lwPump();
+        };
+        _lwWorker = wk;
+    } catch (e) { _lwDead = true; lwKill(); console.warn('[lab] warp worker:', e && e.message ? e.message : e); }
+    return _lwWorker;
+}
+function lwChans(job) {
+    const b = job.buf, n = job.en - job.st, chs = [];
+    for (let c = 0; c < b.numberOfChannels; c++) {
+        const a = new Float32Array(n);
+        if (b.copyFromChannel) b.copyFromChannel(a, c, job.st); else a.set(b.getChannelData(c).subarray(job.st, job.en));
+        chs.push(a);
+    }
+    return chs;
+}
+function lwMakeBuf(chs, sr) {
+    let b = null;
+    try { b = new AudioBuffer({ length: chs[0].length, numberOfChannels: chs.length, sampleRate: sr }); }
+    catch (_) { const d = lpSampleDecoder(null); if (d) { try { b = d.createBuffer(chs.length, chs[0].length, sr); } catch (e) { b = null; } } }
+    if (!b) return null;
+    chs.forEach((a, i) => { if (b.copyToChannel) b.copyToChannel(a, i); else b.getChannelData(i).set(a); });
+    return b;
+}
+function lwFinish(job, chs, ms, where) {
+    const b = chs ? lwMakeBuf(chs, job.buf.sampleRate) : null;
+    if (b) _lwStats = { ms: Math.round(ms), where, inLen: job.en - job.st, outLen: job.outLen, sr: job.buf.sampleRate, mode: job.o.mode };
+    job.res(b);
+}
+function lwDone(d) {
+    const job = _lwBusy; _lwBusy = null;
+    if (job && d && d.id === job.id) {
+        if (d.err) { console.warn('[lab] warp:', d.err); job.res(null); }
+        else lwFinish(job, d.out, d.ms, 'worker');
+    }
+    lwPump();
+}
+// Ana iş parçacığı yedeği: 8 ms'lik dilimler (her dilimden sonra olay döngüsüne döner)
+function lwRunMain(job) {
+    _lwBusy = job;
+    const t0 = performance.now();
+    let w;
+    try { w = lpWsolaMake(lwChans(job), job.buf.sampleRate, job.outLen, job.o); }
+    catch (e) { console.warn('[lab] warp:', e); _lwBusy = null; job.res(null); lwPump(); return; }
+    const tick = () => {
+        let done;
+        try { done = w.step(8); } catch (e) { console.warn('[lab] warp:', e); _lwBusy = null; job.res(null); lwPump(); return; }
+        if (!done) { setTimeout(tick, 0); return; }
+        _lwBusy = null;
+        lwFinish(job, w.out, performance.now() - t0, 'main');
+        lwPump();
+    };
+    setTimeout(tick, 0);
+}
+let _lwSeq = 0;
+function lwPump() {
+    if (_lwBusy) return;
+    clearTimeout(_lwIdleT); _lwIdleT = 0;
+    if (!_lwQ.length) { if (_lwWorker) _lwIdleT = setTimeout(lwKill, LW_IDLE_MS); return; }
+    const job = _lwQ.pop();                                   // en yeni iş önce (sürüklenen tempo: son değer)
+    const wk = lwWorker();
+    if (!wk) { lwRunMain(job); return; }
+    _lwBusy = job;
+    try {
+        const chs = lwChans(job);
+        wk.postMessage({ id: job.id, chs, sr: job.buf.sampleRate, outLen: job.outLen, o: job.o }, chs.map(a => a.buffer));
+    } catch (e) {
+        console.warn('[lab] warp worker:', e && e.message ? e.message : e);
+        _lwDead = true; lwKill(); _lwBusy = null; lwRunMain(job);
+    }
+}
+function labStretch(buffer, ratio, o) {
+    o = o || {};
+    if (!buffer || !buffer.length) return Promise.resolve(null);
+    const st = Math.max(0, Math.min(buffer.length - 1, Math.round(+o.start || 0)));
+    const en = Math.max(st + 1, Math.min(buffer.length, Math.round(o.end != null ? +o.end : buffer.length)));
+    const outLen = o.length > 0 ? Math.round(o.length) : Math.round((en - st) * (ratio > 0 ? ratio : 1));
+    if (!(outLen >= 1)) return Promise.resolve(null);
+    return new Promise(res => {
+        _lwQ.push({ id: ++_lwSeq, buf: buffer, st, en, outLen, o: { mode: o.mode === 'beats' ? 'beats' : 'tones', loop: !!o.loop }, res });
+        while (_lwQ.length > LW_QMAX) _lwQ.shift().res(null);  // eski ara tempolar düşer (çağıran yeniden isteyebilir)
+        lwPump();
+    });
+}
+function labStretchStats() { return _lwStats ? Object.assign({}, _lwStats) : null; }
+
+// ── Loop tamponu: özgün ya da gerilmiş (LRU önbellek) ─────────────────
+const _lwCache = new Map();            // anahtar → { buf, bytes, p }
+const LW_MAX_N = 8, LW_MAX_BYTES = 96 * 1048576;
+const LW_BEAT_KINDS = ['kick', 'snare', 'clap', 'chat', 'ohat', 'ride'];
+const lwBpm = bpm => Math.round(bpm * 100) / 100;
+function lwMode(s, o) { return o && (o.mode === 'beats' || o.mode === 'tones') ? o.mode : (LW_BEAT_KINDS.indexOf(s.kind) >= 0 ? 'beats' : 'tones'); }
+function lwKey(id, bpm, mode) { return id + '|' + lwBpm(bpm).toFixed(2) + '|' + mode; }
+function lwTouch(k) { const e = _lwCache.get(k); if (e) { _lwCache.delete(k); _lwCache.set(k, e); } return e || null; }
+function lwTrim() {
+    let bytes = 0;
+    _lwCache.forEach(e => { bytes += e.bytes; });
+    for (const [k, e] of _lwCache) {
+        if (_lwCache.size <= LW_MAX_N && bytes <= LW_MAX_BYTES) break;
+        if (!e.buf) continue;                                   // uçuştaki istek düşmez
+        _lwCache.delete(k); bytes -= e.bytes;
+    }
+}
+function labLoopNeedsWarp(id, bpm) {
+    const s = labSample(id);
+    return !!(s && s.loop && s.bpm && bpm > 0 && Math.abs(bpm - s.bpm) >= 0.005);
+}
+function labLoopRateFor(id, bpm, warp) { return warp === false ? labLoopRate(id, bpm) : 1; }
+function labLoopBufferPeek(id, bpm, o) {
+    const s = labSample(id);
+    if (!s || !labLoopNeedsWarp(id, bpm)) return null;
+    const e = lwTouch(lwKey(id, bpm, lwMode(s, o)));
+    return e && e.buf ? e.buf : null;
+}
+function labLoopBuffer(ctx, id, bpm, o) {
+    o = o || {};
+    const s = labSample(id);
+    if (!s) return Promise.resolve(null);
+    const src = () => o.buffer ? Promise.resolve(o.buffer) : labSampleBuffer(ctx, id);
+    if (o.warp === false || !labLoopNeedsWarp(id, bpm)) return src();
+    const mode = lwMode(s, o), k = lwKey(id, bpm, mode), hit = lwTouch(k);
+    if (hit) return hit.buf ? Promise.resolve(hit.buf) : hit.p;
+    const b2 = lwBpm(bpm), ent = { buf: null, bytes: 0, p: null };
+    ent.p = src().then(buf => {
+        if (!buf) return null;
+        const sr = buf.sampleRate, bars = s.bars || Math.max(1, Math.round(buf.duration * s.bpm / 240));
+        const inLen = Math.min(buf.length, Math.round(bars * 240 / s.bpm * sr)), outLen = Math.round(bars * 240 / b2 * sr);
+        return labStretch(buf, outLen / inLen, { mode, loop: true, length: outLen, end: inLen });
+    }).then(b => {
+        if (!b) { if (_lwCache.get(k) === ent) _lwCache.delete(k); return null; }
+        if (_lwCache.get(k) === ent) { ent.buf = b; ent.bytes = b.length * b.numberOfChannels * 4; lwTrim(); }
+        return b;
+    }).catch(e => {
+        if (_lwCache.get(k) === ent) _lwCache.delete(k);
+        console.warn('[lab] warp:', id, e && e.message ? e.message : e);
+        return null;
+    });
+    _lwCache.set(k, ent); lwTrim();
+    return ent.p;
+}
+// WARP | RE-PITCH seçici (Ableton clip Warp düğmesi). Terimler iki dilde aynı; başlıklar TR/EN canlı.
+function makeWarpSeg(value, onPick, o) {
+    o = o || {};
+    const seg = makeSeg([
+        { value: true, label: 'WARP', title: () => L('lp_warp_on_t') },
+        { value: false, label: 'RE-PITCH', title: () => L('lp_warp_off_t') },
+    ], value !== false, v => { if (onPick) onPick(v); }, { size: o.size || 'md', label: () => L('lp_warp_aria'), cls: 'lp-warp' + (o.cls ? ' ' + o.cls : '') });
+    seg.buttons.forEach(b => { b.lang = 'en'; });
+    seg.setBusy = on => { seg.el.classList.toggle('is-busy', !!on); if (on) seg.el.setAttribute('aria-busy', 'true'); else seg.el.removeAttribute('aria-busy'); };
+    return seg;
+}
+if (/[?&]warpdebug=1\b/.test(location.search)) window.__lpWarp = { labStretch, labStretchStats, labLoopBuffer, labLoopBufferPeek, labLoopNeedsWarp, labLoopRateFor, labSampleBuffer, labSample, labLoopDuration };
+
+// ═══════════════════════════════════════════════════════════════════
+// LAB PRO KİT · MIDI ENSTRÜMANI — polifonik subtractive synth ("VST") + mono acid bas (labInstVoice)
+// ═══════════════════════════════════════════════════════════════════
+// Modülden bağımsız saf ses kodu (DOM yok, CSS yok): bağlam + hedef düğüm çağırandan gelir; her nota kendi kısa
+// zincirini kurar, bitince kendini söker. Bugün Mixing (BE·CONSOLE 03) SYNTH / BASS kanalları kullanır; başka modül
+// de aynı patch biçimiyle çalabilir. Merkezi LAB KABUK API bloğu değişmedi; sözleşme bu yorumdadır.
+//
+// LAB_INST_SPEC { synth:[…], bass:[…] } — parametre tanımları { k, lbl, def, min?, max?, step?, log?, opts?, bool? }
+//   (arayüz knob / seçici / anahtarı bunlardan kurar: opts'lu alan dalga seçicisi, bool alan anahtar, gerisi knob).
+//   synth: w1 OSC1 dalga · oct oktav (−2…+2) · uni unison (1–5 ses) · spr unison yayılımı (ct) · w2 OSC2 dalga ·
+//          det OSC2 detune (ct) · mix OSC2 seviyesi (0 = kapalı) · cut / res / env (LP 12 dB; env: amp attack'inde
+//          cut → cut·2^(env·6), decay ile geri) · a d s r (amp ADSR, sn) · glide (sn; mono'da) · mono · lvl
+//   bass:  wave (saw | square) · sub (−1 oktav sinüs, filtresiz) · cut / res (LP 24 dB = iki biquad) · env (env mod) ·
+//          dec (filtre + amp decay) · acc (accent: vel ≥ 0.8 → seviye ve env artar) · glide (slide) · drive · lvl
+// labInstDefaults(kind) → patch · labInstNorm(kind, p) → doğrulanmış tam patch (sayılar aralığa, bilinmeyen alan atılır)
+// labInstPresets(kind) → [{ id, name, cat, group?, p }] fabrika presetleri (önbellekte). synth: Pad · Pluck · Lead · Keys
+//   + BE·SYNTH 01'in fabrika presetleri ('s1:<id>', group 'BE·SYNTH 01'; SYNTH_PRESETS → synthPatchFrom eşlemesi:
+//   OSC1 dalga/oktav/unison, OSC2, filtre + env, ADSR, glide, mono). bass: Acid 303 · Deep Sub · Rolling.
+// labInstPreset(kind, id) → patch kopyası | null
+// labInstVoice(ctx, dest, kind, P, midi, t, dur, vel, mem) → voice | null
+//   t: ctx zamanı (start(t) — örnek-doğru) · dur sn (null → basılı; voice.release(at) bırakır) · vel 0..1 ·
+//   P: labInstNorm çıktısı. mem: enstrüman örneği başına {} (mono / glide / slide durumu burada).
+//   lvl UYGULANMAZ: çağıran kendi çıkış GainNode'una koyar (setTargetAtTime → canlı).
+//   synth mono:true ve bass: yeni nota önceki sesi 4 ms'de keser; glide > 0 → perde öncekinden kayar.
+//   bass slide (TB-303): önceki nota yeni notanın başından SONRAYA uzanıyorsa (üst üste — piyano rulosunda notayı
+//   sonrakinin içine uzat) zarf yeniden tetiklenmez, aynı ses perdeyi glide süresinde kaydırır; bitişik nota
+//   (bitiş = başlangıç) yeniden tetiklenir (glide 0 → hep yeniden tetikler).
+//   voice = { t0, end, until, release(at), kill(at), setCut(hz, res, at), onend } — onend(voice) ses bitince bir
+//   kez (düğümler sökülmüş olur). release birden çok çağrılabilir (sonuncusu geçerli: slide uzatması).
+// Performans: ses başına ≤ 9 düğüm; drive eğrisi 21 adımda önbellekte; zarflar AudioParam otomasyonu (JS döngüsü yok).
+// ═══════════════════════════════════════════════════════════════════
+const LAB_INST_WAVES = ['sawtooth', 'square', 'triangle', 'sine'];
+const LAB_INST_SPEC = {
+    synth: [
+        { k: 'w1', lbl: 'OSC 1', opts: LAB_INST_WAVES, def: 'sawtooth' },
+        { k: 'oct', lbl: 'OCT', min: -2, max: 2, def: 0, step: 1 },
+        { k: 'uni', lbl: 'UNISON', min: 1, max: 5, def: 1, step: 1 },
+        { k: 'spr', lbl: 'SPREAD', min: 0, max: 50, def: 12, step: 1 },
+        { k: 'w2', lbl: 'OSC 2', opts: LAB_INST_WAVES, def: 'sawtooth' },
+        { k: 'det', lbl: 'DETUNE', min: -50, max: 50, def: 7, step: 1 },
+        { k: 'mix', lbl: 'OSC2', min: 0, max: 1, def: 0.5, step: 0.01 },
+        { k: 'cut', lbl: 'CUTOFF', min: 60, max: 16000, def: 3200, log: true },
+        { k: 'res', lbl: 'RESO', min: 0.5, max: 15, def: 2, step: 0.1 },
+        { k: 'env', lbl: 'ENV', min: 0, max: 1, def: 0.3, step: 0.01 },
+        { k: 'a', lbl: 'ATTACK', min: 0.001, max: 2, def: 0.005, log: true },
+        { k: 'd', lbl: 'DECAY', min: 0.02, max: 3, def: 0.3, log: true },
+        { k: 's', lbl: 'SUSTAIN', min: 0, max: 1, def: 0.7, step: 0.01 },
+        { k: 'r', lbl: 'RELEASE', min: 0.01, max: 4, def: 0.3, log: true },
+        { k: 'glide', lbl: 'GLIDE', min: 0, max: 0.5, def: 0, step: 0.005 },
+        { k: 'mono', lbl: 'MONO', bool: true, def: false },
+        { k: 'lvl', lbl: 'LEVEL', min: 0, max: 1, def: 0.8, step: 0.01 },
+    ],
+    bass: [
+        { k: 'wave', lbl: 'WAVE', opts: ['sawtooth', 'square'], def: 'sawtooth' },
+        { k: 'sub', lbl: 'SUB', min: 0, max: 1, def: 0.3, step: 0.01 },
+        { k: 'cut', lbl: 'CUTOFF', min: 40, max: 4000, def: 320, log: true },
+        { k: 'res', lbl: 'RESO', min: 0.5, max: 20, def: 8, step: 0.1 },
+        { k: 'env', lbl: 'ENV MOD', min: 0, max: 1, def: 0.55, step: 0.01 },
+        { k: 'dec', lbl: 'DECAY', min: 0.05, max: 1.5, def: 0.28, log: true },
+        { k: 'acc', lbl: 'ACCENT', min: 0, max: 1, def: 0.5, step: 0.01 },
+        { k: 'glide', lbl: 'SLIDE', min: 0, max: 0.3, def: 0.06, step: 0.005 },
+        { k: 'drive', lbl: 'DRIVE', min: 0, max: 1, def: 0.2, step: 0.01 },
+        { k: 'lvl', lbl: 'LEVEL', min: 0, max: 1, def: 0.8, step: 0.01 },
+    ],
+};
+const LAB_INST_FACTORY = {
+    synth: [
+        { id: 'pad', name: 'Pad', cat: 'PAD', p: { w1: 'sawtooth', uni: 3, spr: 14, w2: 'triangle', det: 10, mix: 0.5, cut: 1800, res: 1.2, env: 0.1, a: 0.6, d: 0.8, s: 0.8, r: 1.4 } },
+        { id: 'pluck', name: 'Pluck', cat: 'PLUCK', p: { w1: 'sawtooth', w2: 'square', det: 5, mix: 0.3, cut: 900, res: 4, env: 0.7, a: 0.002, d: 0.22, s: 0, r: 0.25 } },
+        { id: 'lead', name: 'Lead', cat: 'LEAD', p: { w1: 'sawtooth', uni: 2, spr: 8, w2: 'sawtooth', det: 7, mix: 0.5, cut: 3800, res: 3, env: 0.25, a: 0.01, d: 0.25, s: 0.75, r: 0.25, mono: true, glide: 0.05 } },
+        { id: 'keys', name: 'Keys', cat: 'KEYS', p: { w1: 'triangle', w2: 'sine', det: 3, mix: 0.45, cut: 5000, res: 0.8, env: 0.2, a: 0.004, d: 1.1, s: 0.25, r: 0.6 } },
+    ],
+    bass: [
+        { id: 'acid', name: 'Acid 303', cat: 'BASS', p: { wave: 'sawtooth', sub: 0.1, cut: 260, res: 16, env: 0.8, dec: 0.22, acc: 0.8, glide: 0.07, drive: 0.35 } },
+        { id: 'deep', name: 'Deep Sub', cat: 'SUB', p: { wave: 'square', sub: 0.9, cut: 180, res: 2, env: 0.15, dec: 0.6, acc: 0.2, glide: 0.03, drive: 0.1 } },
+        { id: 'rolling', name: 'Rolling', cat: 'BASS', p: { wave: 'sawtooth', sub: 0.45, cut: 420, res: 6, env: 0.5, dec: 0.16, acc: 0.5, glide: 0.04, drive: 0.25 } },
+    ],
+};
+function labInstDefaults(kind) { const o = {}; (LAB_INST_SPEC[kind] || LAB_INST_SPEC.synth).forEach(d => { o[d.k] = d.def; }); return o; }
+function labInstNorm(kind, p) {
+    p = p && typeof p === 'object' ? p : {};
+    const o = {};
+    (LAB_INST_SPEC[kind] || LAB_INST_SPEC.synth).forEach(d => {
+        const v = p[d.k];
+        if (d.opts) o[d.k] = d.opts.indexOf(v) >= 0 ? v : d.def;
+        else if (d.bool) o[d.k] = typeof v === 'boolean' ? v : d.def;
+        else if (v == null || v === '' || !isFinite(+v)) o[d.k] = d.def;
+        else { const n = Math.max(d.min, Math.min(d.max, +v)); o[d.k] = d.step === 1 ? Math.round(n) : n; }
+    });
+    return o;
+}
+const _liPre = {};
+function labInstPresets(kind) {
+    if (_liPre[kind]) return _liPre[kind];
+    const k = LAB_INST_SPEC[kind] ? kind : 'synth';
+    let list = LAB_INST_FACTORY[k].map(x => ({ id: x.id, name: x.name, cat: x.cat, p: labInstNorm(k, x.p) }));
+    if (k === 'synth') {
+        const W = w => LAB_INST_WAVES.indexOf(w) >= 0 ? w : 'sawtooth';
+        list = list.concat(SYNTH_PRESETS.map(sp => {
+            const X = synthPatchFrom(sp);
+            return { id: 's1:' + sp.id, name: sp.name, cat: sp.cat, group: 'BE·SYNTH 01', p: labInstNorm('synth', {
+                w1: W(X.osc1.wave), oct: X.osc1.octave | 0, uni: X.osc1.unison || 1, spr: X.osc1.uniDetune || 0,
+                w2: W(X.osc2.wave), det: X.osc2.detune || 0, mix: X.osc2.enabled ? X.osc2.mix : 0,
+                cut: X.filter.cutoff, res: X.filter.resonance || 0.7, env: Math.max(0, X.filterEnv.amount) / 100,
+                a: X.adsr.attack, d: X.adsr.decay, s: X.adsr.sustain, r: X.adsr.release, glide: X.glide || 0, mono: X.poly === 'mono' }) };
+        }));
+    }
+    return (_liPre[k] = list);
+}
+function labInstPreset(kind, id) { const p = labInstPresets(kind).find(x => x.id === id); return p ? Object.assign({}, p.p) : null; }
+const _liHold = (p, at) => { if (p.cancelAndHoldAtTime) p.cancelAndHoldAtTime(at); else p.cancelScheduledValues(at); };
+const _liCurves = {};
+function _liDrive(dr) {
+    const k = Math.round(dr * 20);
+    if (_liCurves[k]) return _liCurves[k];
+    const n = 1025, c = new Float32Array(n), g = 1 + k * 0.45, nm = Math.tanh(g);
+    for (let i = 0; i < n; i++) c[i] = Math.tanh(g * (i / (n - 1) * 2 - 1)) / nm;
+    return (_liCurves[k] = c);
+}
+// Ortak ses kabuğu: bırak / kes / bitince sök (onended son osilatörde)
+function _liVoice(ctx, oscs, vca, nodes, relOf) {
+    const v = { oscs, vca, nodes, t0: 0, end: Infinity, until: Infinity, onend: null, done: false };
+    let left = oscs.length;
+    const fin = () => {
+        if (--left > 0 || v.done) return;
+        v.done = true;
+        nodes.concat([vca]).forEach(n => { try { n.disconnect(); } catch (_) {} });
+        if (v.onend) { try { v.onend(v); } catch (e) { console.warn('[lab] inst:', e); } }
+    };
+    oscs.forEach(o => { o.onended = fin; });
+    const stopAll = at => { oscs.forEach(o => { try { o.stop(at); } catch (_) {} }); v.end = at; };
+    v.release = at => {
+        at = Math.max(at, ctx.currentTime); v.until = at;
+        const r = Math.max(0.005, relOf());
+        _liHold(vca.gain, at); vca.gain.setTargetAtTime(0, at, r / 4); stopAll(at + r * 1.6 + 0.05);
+    };
+    v.kill = at => {
+        at = Math.max(at, ctx.currentTime); v.until = Math.min(v.until, at);
+        _liHold(vca.gain, at); vca.gain.setTargetAtTime(0, at, 0.004); stopAll(at + 0.04);
+    };
+    return v;
+}
+function labInstVoice(ctx, dest, kind, P, midi, t, dur, vel, mem) {
+    if (!ctx || !dest || !P) return null;
+    mem = mem || {};
+    t = Math.max(+t || 0, ctx.currentTime);
+    vel = Math.max(0, Math.min(1, +vel || 0));
+    try { return kind === 'bass' ? _liBass(ctx, dest, P, midi, t, dur, vel, mem) : _liSynth(ctx, dest, P, midi, t, dur, vel, mem); }
+    catch (e) { console.warn('[lab] inst voice:', e); return null; }
+}
+function _liSynth(ctx, dest, P, midi, t, dur, vel, mem) {
+    const hz = midiToHz(Math.max(0, Math.min(127, midi + 12 * (P.oct | 0))));
+    let h0 = hz;
+    const pv = mem.mono;
+    if (P.mono && pv && !pv.done && pv.until > t - 0.003) { if (P.glide > 0.001) h0 = pv.hz; pv.kill(t); }
+    const vca = ctx.createGain(); vca.gain.value = 0;
+    const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.Q.value = P.res;
+    flt.connect(vca); vca.connect(dest);
+    const oscs = [], nodes = [flt];
+    const add = (type, det, lvl) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = type; o.detune.value = det; g.gain.value = lvl;
+        o.frequency.setValueAtTime(h0, t);
+        if (h0 !== hz) o.frequency.exponentialRampToValueAtTime(hz, t + Math.max(0.005, P.glide));
+        o.connect(g); g.connect(flt); oscs.push(o); nodes.push(g);
+    };
+    const n = P.uni, m2 = P.mix;
+    for (let k = 0; k < n; k++) add(P.w1, n > 1 ? (k / (n - 1) * 2 - 1) * P.spr : 0, (1 - m2 * 0.4) / Math.sqrt(n));
+    if (m2 > 0.001) add(P.w2, P.det, m2 * 0.8);
+    const a = Math.max(0.001, P.a), d = Math.max(0.01, P.d), hold = dur == null ? Infinity : Math.max(0.01, dur), aE = Math.min(a, hold);
+    const fq = flt.frequency;
+    fq.setValueAtTime(P.cut, t);
+    if (P.env > 0.001) { const ta = t + Math.max(0.003, aE); fq.exponentialRampToValueAtTime(Math.min(18000, P.cut * Math.pow(2, P.env * 6)), ta); fq.setTargetAtTime(P.cut, ta, d / 3); }
+    const pk = 0.2 * (0.3 + 0.7 * vel * vel), gg = vca.gain;
+    gg.setValueAtTime(0, t); gg.linearRampToValueAtTime(pk * (aE / a), t + aE);
+    if (hold > aE) gg.setTargetAtTime(pk * P.s, t + aE, d / 3);
+    oscs.forEach(o => o.start(t));
+    const v = _liVoice(ctx, oscs, vca, nodes, () => P.r);
+    v.t0 = t; v.hz = hz;
+    v.setCut = (c, q, at) => { _liHold(fq, at); fq.setTargetAtTime(c, at, 0.02); flt.Q.setTargetAtTime(q, at, 0.02); };
+    if (hold !== Infinity) v.release(t + hold);
+    if (P.mono) mem.mono = v;
+    return v;
+}
+function _liBass(ctx, dest, P, midi, t, dur, vel, mem) {
+    const hz = midiToHz(Math.max(0, Math.min(127, midi)));
+    const hold = dur == null ? Infinity : Math.max(0.01, dur);
+    const pv = mem.bass;
+    if (pv && !pv.done && pv.until > t - 0.002) {
+        if (P.glide > 0.001 && pv.until > t + 0.002) {           // SLIDE: önceki nota bu notanın içine uzanıyor → aynı ses sürer, perde kayar
+            const tc = Math.max(0.002, P.glide / 3);
+            pv.oscs.forEach((o, i) => { _liHold(o.frequency, t); o.frequency.setTargetAtTime(i ? hz / 2 : hz, t, tc); });
+            _liHold(pv.vca.gain, t); pv.vca.gain.setTargetAtTime(pv.pk * 0.55, t, 0.01);
+            pv.until = Infinity; pv.hz = hz;
+            if (hold !== Infinity) pv.release(t + hold);
+            return pv;
+        }
+        pv.kill(t);
+    }
+    const acc = vel >= 0.8 ? P.acc : 0;
+    const vca = ctx.createGain(); vca.gain.value = 0;
+    const o = ctx.createOscillator(), og = ctx.createGain(), sub = ctx.createOscillator(), sg = ctx.createGain();
+    const f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter();
+    f1.type = f2.type = 'lowpass'; f1.Q.value = P.res; f2.Q.value = 0.7;
+    o.type = P.wave; o.frequency.setValueAtTime(hz, t); og.gain.value = 1 - P.sub * 0.3;
+    sub.type = 'sine'; sub.frequency.setValueAtTime(hz / 2, t); sg.gain.value = P.sub * 0.9;
+    o.connect(og); og.connect(f1); f1.connect(f2);
+    const nodes = [og, sg, f1, f2];
+    let tail = f2;
+    if (P.drive > 0.01) {
+        const sh = ctx.createWaveShaper(), dg = ctx.createGain();
+        sh.curve = _liDrive(P.drive); dg.gain.value = 1 / (1 + P.drive * 1.2);
+        f2.connect(sh); sh.connect(dg); tail = dg; nodes.push(sh, dg);
+    }
+    tail.connect(vca); sub.connect(sg); sg.connect(vca); vca.connect(dest);
+    const cut = P.cut, dec = Math.max(0.03, P.dec) * (acc ? 0.6 : 1);
+    const top = Math.min(12000, cut * Math.pow(2, P.env * (1 + acc * 0.8) * 5));
+    [f1, f2].forEach(f => { f.frequency.setValueAtTime(top, t); f.frequency.setTargetAtTime(cut, t + 0.002, dec / 3); });
+    const pk = 0.34 * (0.55 + 0.45 * vel) * (1 + acc * 0.5), gg = vca.gain;
+    gg.setValueAtTime(0, t); gg.linearRampToValueAtTime(pk, t + 0.003); gg.setTargetAtTime(pk * 0.55, t + 0.003, Math.max(0.05, P.dec));
+    o.start(t); sub.start(t);
+    const v = _liVoice(ctx, [o, sub], vca, nodes, () => 0.03);
+    v.t0 = t; v.hz = hz; v.pk = pk;
+    v.setCut = (c, q, at) => { [f1, f2].forEach(f => { _liHold(f.frequency, at); f.frequency.setTargetAtTime(c, at, 0.02); }); f1.Q.setTargetAtTime(q, at, 0.02); };
+    if (hold !== Infinity) v.release(t + hold);
+    mem.bass = v;
+    return v;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // NAVIGATION — hero listesi + modül sekmeleri + görünüm değişimi
@@ -12872,7 +13531,7 @@ const ARR_KEYS = [['lab_m4_k1','Tab'], ['lab_m4_k2','Ctrl/⌘ + D'], ['lab_m4_k3
 // ── Zaman çizelgesi: 8 bölüm × 2 bar = 16 bar = 256 on altılık adım; tempo = seçili loop setinin BPM'i ──────
 // Classic loop'lar 125 BPM (Lead Loop.wav 30.72 sn = 16 bar, Pad Loop.wav 7.68 sn = 4 bar), Cassianism 126 BPM
 // (8 bar = 15.238 sn) → aranjman temposu setin temposu olur, loop'lar perdesi bozulmadan (playbackRate 1),
-// şarkı zamanından ofsetle hizalı çalar. ARR_BPM / ARR_S16 yalnız m4ApplyBpm ile değişir.
+// şarkı zamanından ofsetle hizalı çalar (tempo loop'tan farklı olursa arrLoopBuf → LOOP WARP, perde yine sabit). ARR_BPM / ARR_S16 yalnız m4ApplyBpm ile değişir.
 let ARR_BPM = 125;
 const ARR_SECTION_BARS = 2;
 const ARR_SEC_STEPS = ARR_SECTION_BARS * 16;                 // 32
@@ -13109,6 +13768,15 @@ function arrLoopStep(tr, t, i, buf, v) {
     s.connect(g); s.start(a, off); s.stop(tEnd + ARR_XF);
     R.loops[tr] = arrKeep({ n: [s], g, tr, sec: i >> 5, st: a, end: tEnd + ARR_XF, to: secEnd });
 }
+// LOOP WARP: aranjman temposu loop'un kendi BPM'inden farklıysa (bugün set temposu = set loop'larının temposu; tempo
+// denetimi / set dışı loop gelirse) perdesi sabit gerilmiş tampon (labLoopBuffer). Hazır değilse iz o adımda susar
+// (istek Worker'da sürer, önbellek tek germeye bağlar) ve sonraki adımda ofsetle girer.
+function arrLoopBuf(id, buf) {
+    if (!labLoopNeedsWarp(id, m4S.bpm)) return buf;
+    const b = labLoopBufferPeek(id, m4S.bpm);
+    if (!b) labLoopBuffer(null, id, m4S.bpm, { buffer: buf });
+    return b;
+}
 // Örnek yüklenemezse (indirme/çözme hatası, 404) tasarımdaki sentez üreteci çalar — iz sessiz kalmaz
 function arrSynth(tr, t, i) {
     const ctx = arrCtx, s16 = i & 15, bar = i >> 4, sec = i >> 5;
@@ -13293,7 +13961,7 @@ function arrStep(i, t) {
         if (T.kind === 'loop') {
             const L = R.loops[tr];
             if (!on) { if (L) { if (L.to > i) arrFade(L, t); R.loops[tr] = null; } return; }
-            if (buf) { arrLoopStep(tr, t, i, buf, 0.34 * labSampleGain(id)); return; }
+            if (buf) { const lb = arrLoopBuf(id, buf); if (lb) arrLoopStep(tr, t, i, lb, 0.34 * labSampleGain(id)); return; }
         }
         if (!on || arrEff(tr) < 0.001) return;
         if (!buf && !arrFail[id]) return;      // örnek hâlâ yükleniyor: bu adımda iz susar (sentez yalnız gerçek hata için)
@@ -13431,11 +14099,25 @@ function arrCellOff(r, c) {
 // Temizlik: _m3StopAudio = m3StopAll (teardownView → çalma, zamanlayıcılar, rAF durur; bağlam askıya).
 // Görev kimlikleri 1–5 aynı anlamda (yalnız ifade tasarıma göre) → kayıtlı ilerleme korunur. Görev 6 (yeni): kaynak seçimi.
 // Tur 3 (DAW mantığı): KAYNAK paneli — davul kiti Classic / Mersey (LAB_SAMPLES), LEAD LOOP tarayıcısı (Classic 125 +
-// Cassianism 126 BPM; hız = labLoopRate), çalarken değişim sonraki ölçü başında (mixTrigger). Öğretici "Mix mantığı"
+// Cassianism 126 BPM; state.mix.warp: WARP = LOOP WARP gerilmiş tampon (perde sabit, vars.) | RE-PITCH = labLoopRate),
+// çalarken değişim (loop, tempo, mod) sonraki ölçü başında (mixTrigger). Öğretici "Mix mantığı"
 // (labTutorial mid 3 id 'mix', 9 adım; ilerleme 3-tut-mix-* → GÖREV sayacına girmez). Solo özel + solo-in-place (mute
 // fader'dan önce), kanal EQ / kompresör aç-kapa (eqOn / cpOn — anlık görüntüde), EQ+COMP kopyala/yapıştır, tepe tutma
 // düğmeleri (tıkla = sıfırla), Boşluk = çal/durdur, MIDI düğmesi + MAP (CC → knob/fader; localStorage 'lab_m3_midimap').
-// Kaynak seçimi (kit, lead) tempo gibi oturum ayarıdır: preset / undo anlık görüntüsüne girmez.
+// Kaynak seçimi (kit, lead, warp) tempo gibi oturum ayarıdır: preset / undo anlık görüntüsüne girmez.
+// Tur 4 (KANAL EKLE — Ableton "Insert Audio / MIDI Track"): konsoldaki "+ KANAL" → SES (LAB_SAMPLES'tan loop ya da
+// one-shot; loop'lar LOOP WARP ile konsol temposuna gerilir, one-shot'lar 16 adımlık desenle çalar) · SYNTH (polifonik
+// subtractive MIDI enstrümanı) · BASS (mono acid bas) — en çok M3_XMAX = 6 kanal. Enstrüman sesi kitteki
+// "LAB PRO KİT · MIDI ENSTRÜMANI" bloğundan (labInstVoice). Eklenen kanal = state.mix.xch[k] (tanım: u, t, nm, c, smp,
+// pat, inst, pre, auto, clip { len, notes }) + state.mix.ch[6 + k] (yerleşik kanallarla AYNI şerit parametreleri; ses
+// grafiğinde mixNodes.ch[6 + k], metre / tepe dizininde m3LvI(i) = 9 + k). MIDI klip = makePianoRoll (kit; tek pencere,
+// kanallar arası), konsol sıralayıcısında örnek-doğru çalınır; konsol tonu state.mix.key (vars. A minör — Cassianism
+// loop'ları) piyano rulosunun GAM'ıyla iki yönlü. Web MIDI: rulo açıkken kanal enstrümanını çalar, REC'te kaydeder
+// (dururken adım girişi, çalarken ızgaraya kuantize). xch / key anlık görüntüdedir (undo, A/B, kullanıcı presetleri;
+// Firestore'da xch JSON metni 'xchJ' — iç içe dizi yok). xch'i olmayan (eski / fabrika) preset eklenen kanalların
+// tanımına ve kliplerine dokunmaz; fabrika preseti yalnız onların şerit ayarlarını türe göre kurar. MIDI MAP yalnız
+// yerleşik 6 kanalda (eklenen kanal sırası değişebilir). Sidechain duck: BASS + LEAD LOOP + eklenen BASS kanalları.
+// Öğretici adımları 10–14 (yeni id): ses kanalı + pad loop → SYNTH → klibe tonda nota → BASS + bas hattı → fader dengesi.
 TASKS[3] = [1, 2, 3, 4, 5, 6].map(id => ({ id, get text() { return L('lab_m3_t' + id); } }));
 Object.assign(LAB_TXT, {
     // Modül 3 · Mixing metinleri: anahtar: [`TR`, `EN`],
@@ -13578,7 +14260,7 @@ Object.assign(LAB_TXT, {
     lab_m3_f_meter:     [`METRE`, `METER`],
     lab_m3_f_out:       [`ÇIKIŞ`, `OUTPUT`],
     lab_m3_fl1:         [`SC: kick tetiklenince DUCK.gain → 1−depth`, `SC: on a kick hit DUCK.gain → 1−depth`],
-    lab_m3_fl2:         [`Her kanal (×6) bu zinciri kullanır.`, `Every channel (×6) uses this chain.`],
+    lab_m3_fl2:         [`Her kanal (×6 + eklenenler) bu zinciri kullanır.`, `Every channel (×6 + added ones) uses this chain.`],
     lab_m3_fl3:         [`Send PRE = M/S çıkışı (fader öncesi) · POST = FADER çıkışı`, `Send PRE = M/S output (pre-fader) · POST = FADER output`],
     lab_m3_fl4:         [`Metre: kanal + 2 return + master (L/R ayrı)`, `Meters: channel + 2 returns + master (L/R apart)`],
     lab_m3_fl5:         [`Zamanlama: 25 ms setTimeout, 120 ms ileri planlama,`, `Timing: 25 ms setTimeout, 120 ms lookahead,`],
@@ -13617,9 +14299,9 @@ Object.assign(LAB_TXT, {
     lab_m3_w4:          [`<strong>SEND A/B</strong> → Return Track: Reverb, Delay`, `<strong>SEND A/B</strong> → Return Track: Reverb, Delay`],
     lab_m3_w5:          [`<strong>PAN · M · S</strong> → Kanal pan, Track Activator, Solo`, `<strong>PAN · M · S</strong> → Track pan, Track Activator, Solo`],
     lab_m3_w6:          [`<strong>LIMITER</strong> → Master kanalda Limiter`, `<strong>LIMITER</strong> → Limiter on the Master track`],
-    lab_m3_w7:          [`<strong>KAYNAK</strong> → Browser (Samples / Drums) · clip Warp: Re-Pitch, Seg. BPM`, `<strong>SOURCE</strong> → Browser (Samples / Drums) · clip Warp: Re-Pitch, Seg. BPM`],
+    lab_m3_w7:          [`<strong>KAYNAK</strong> → Browser (Samples / Drums) · clip Warp: Complex (perde sabit) ya da Re-Pitch, Seg. BPM`, `<strong>SOURCE</strong> → Browser (Samples / Drums) · clip Warp: Complex (pitch held) or Re-Pitch, Seg. BPM`],
     lab_m3_w8:          [`<strong>MAP</strong> → MIDI Map Mode (Ctrl/⌘+M)`, `<strong>MAP</strong> → MIDI Map Mode (Ctrl/⌘+M)`],
-    lab_m3_s10:         [`KAYNAK · WARP|Davul kanalları seçili kiti (Classic / Mersey) çalar; LEAD LOOP tarayıcıdan seçilir. Loop hızı = mixer BPM / loop BPM (Ableton'daki Re-Pitch warp: tempo ile perde birlikte kayar). Değişim çalarken bir sonraki ölçü başında, örnek-doğru zamanla yapılır; demo bas loop'un tonunu izler.`, `SOURCE · WARP|The drum channels play the selected kit (Classic / Mersey); LEAD LOOP is picked in the browser. Loop speed = mixer BPM / loop BPM (Ableton's Re-Pitch warp: tempo and pitch move together). While playing, a change lands sample-accurately at the start of the next bar; the demo bass follows the loop key.`],
+    lab_m3_s10:         [`KAYNAK · WARP|Davul kanalları seçili kiti (Classic / Mersey) çalar; LEAD LOOP tarayıcıdan seçilir. WARP (varsayılan): loop mixer temposuna gerilir, perdesi sabit kalır (Ableton'da Complex / Tones warp) — yeni tempo hesaplanırken eski tampon çalar, geçiş sonraki ölçüde. RE-PITCH: hız = mixer BPM / loop BPM, tempo ile perde birlikte kayar (plak / teyp). Değişim çalarken bir sonraki ölçü başında, örnek-doğru zamanla yapılır; demo bas loop'un tonunu izler.`, `SOURCE · WARP|The drum channels play the selected kit (Classic / Mersey); LEAD LOOP is picked in the browser. WARP (default): the loop is stretched to the mixer tempo and keeps its pitch (Ableton's Complex / Tones warp) — while the new tempo is computed the old buffer keeps playing and the swap lands on the next bar. RE-PITCH: speed = mixer BPM / loop BPM, tempo and pitch move together (vinyl / tape). While playing, a change lands sample-accurately at the start of the next bar; the demo bass follows the loop key.`],
     // Kaynak paneli (kit + loop tarayıcısı)
     lab_m3_srcp:        [`KAYNAK`, `SOURCE`],
     lab_m3_srcp_aria:   [`Kaynaklar — davul kiti ve lead loop`, `Sources — drum kit and lead loop`],
@@ -13630,7 +14312,9 @@ Object.assign(LAB_TXT, {
     lab_m3_kit_note:    [`Çalarken kit ve loop değişimi bir sonraki ölçü başında devreye girer (kesintisiz).`, `While playing, a kit or loop change kicks in at the start of the next bar (seamless).`],
     lab_m3_loop:        [`LEAD LOOP · TARAYICI`, `LEAD LOOP · BROWSER`],
     lab_m3_loop_aria:   [`LEAD LOOP kanalının loop tarayıcısı`, `Loop browser for the LEAD LOOP channel`],
-    lab_m3_warp:        [`KEY {key} · {sbpm} → {bpm} BPM · ×{rate}`, `KEY {key} · {sbpm} → {bpm} BPM · ×{rate}`],
+    lab_m3_warp:        [`KEY {key} · {sbpm} → {bpm} BPM · ×{rate} · {st} yarım ton`, `KEY {key} · {sbpm} → {bpm} BPM · ×{rate} · {st} st`],
+    lab_m3_warp_w:      [`KEY {key} · {sbpm} → {bpm} BPM · PERDE SABİT`, `KEY {key} · {sbpm} → {bpm} BPM · PITCH HELD`],
+    lab_m3_warping:     [`{name} {bpm} BPM'ye geriliyor (WARP)…`, `Warping {name} to {bpm} BPM…`],
     lab_m3_next:        [`Sırada: {name} — sonraki ölçüde`, `Queued: {name} — at the next bar`],
     lab_m3_loading:     [`{name} yükleniyor…`, `Loading {name}…`],
     lab_m3_load_err:    [`{name} yüklenemedi — önceki kaynak çalmaya devam ediyor`, `{name} could not load — the previous source keeps playing`],
@@ -13693,6 +14377,84 @@ Object.assign(LAB_TXT, {
     lab_m3_tut_9:       [`Master tepe −6…−3 dBFS`, `Master peak −6…−3 dBFS`],
     lab_m3_tut_9b:      [`Son kontrol: bütün kanallar açıkken (mute/solo yok) MASTER tepesi 2 saniye −6 ile −3 dBFS arasında kalsın. Seviyeyi master'dan değil kanal fader'larından ayarla — mastering için headroom kalır.`, `Final check: with every channel on (no mute/solo) keep the MASTER peak between −6 and −3 dBFS for 2 seconds. Set the level with the channel faders, not the master — that leaves headroom for mastering.`],
     lab_m3_tut_9a:      [`Master kanalın tepe göstergesi (tıkla = sıfırla). Limiter'ı mix'te değil mastering'de kullan.`, `The Master track's peak readout (click = reset). Save the Limiter for mastering, not the mix.`],
+    lab_m3_tut_10:      [`Ses kanalı ekle: pad loop`, `Add an audio channel: a pad loop`],
+    lab_m3_tut_10b:     [`Tek LEAD LOOP kanalı yetmez: konsoldaki + KANAL → SES ile yeni bir ses kanalı aç. Kanal bir pad loop'la gelir; konsolun altındaki cihaz panelinin tarayıcısından başka bir PAD de seçebilirsin. Loop konsol temposuna gerilir, perdesi sabit kalır.`, `One LEAD LOOP channel is not enough: use + CHANNEL → AUDIO on the console to open a new audio channel. It arrives with a pad loop; you can pick another PAD in the browser of the device panel under the console. The loop is stretched to the console tempo and keeps its pitch.`],
+    lab_m3_tut_10a:     [`Create → Insert Audio Track (Ctrl/⌘+T), sonra Browser'dan loop'u izin üstüne sürükle (Warp açık).`, `Create → Insert Audio Track (Ctrl/⌘+T), then drag the loop from the Browser onto the track (Warp on).`],
+    lab_m3_tut_11:      [`SYNTH kanalı ekle (MIDI)`, `Add a SYNTH channel (MIDI)`],
+    lab_m3_tut_11b:     [`+ KANAL → SYNTH: MIDI notalarını çalan bir enstrüman kanalı (2 osilatör, filtre, ADSR). Kanal konsol tonunda (TON) bir akor klibiyle gelir; ENSTRÜMAN presetlerinden Pad, Pluck, Lead ya da Keys seçebilirsin.`, `+ CHANNEL → SYNTH: an instrument channel that plays MIDI notes (2 oscillators, filter, ADSR). It arrives with a chord clip in the console key (KEY); you can choose Pad, Pluck, Lead or Keys from the INSTRUMENT presets.`],
+    lab_m3_tut_11a:     [`Create → Insert MIDI Track (Ctrl/⌘+Shift+T), sonra Instruments'tan bir synth (Wavetable, Analog) sürükle.`, `Create → Insert MIDI Track (Ctrl/⌘+Shift+T), then drag a synth (Wavetable, Analog) from Instruments.`],
+    lab_m3_tut_12:      [`Klibi aç, tonda nota yaz`, `Open the clip and write notes in the key`],
+    lab_m3_tut_12b:     [`SYNTH kanalındaki CLIP düğmesine bas: piyano rulosu açılır. GAM açıkken yalnız tondaki satırlar parlak — boş bir hücreye tıklayıp tonda en az bir yeni nota ekle; tondaki notalar loop'larla çatışmaz. ÇAL ile konsolla birlikte dinle.`, `Press CLIP on the SYNTH channel: the piano roll opens. With SCALE on only the in-key rows are bright — click an empty cell to add at least one new in-key note; in-key notes don't clash with the loops. Hear it with the console using PLAY.`],
+    lab_m3_tut_12a:     [`Session'da boş klip yuvasına çift tık → MIDI klip; Note Editor'da Draw modu (B), Scale düğmesi.`, `Double-click an empty clip slot in Session → MIDI clip; Draw mode (B) and the Scale button in the Note Editor.`],
+    lab_m3_tut_13:      [`BASS kanalı ekle, bas hattı yaz`, `Add a BASS channel and write a bassline`],
+    lab_m3_tut_13b:     [`+ KANAL → BASS: mono bir acid bas (SUB, CUTOFF, ENV MOD, ACCENT, SLIDE). CLIP'ini açıp bas hattını değiştir — nota ekle, taşı ya da sil (en az 2 nota kalsın). Bir notayı sonrakinin içine uzatırsan 303 gibi kayar (SLIDE).`, `+ CHANNEL → BASS: a mono acid bass (SUB, CUTOFF, ENV MOD, ACCENT, SLIDE). Open its CLIP and change the bassline — add, move or delete notes (keep at least 2). Stretch a note into the next one and it glides like a 303 (SLIDE).`],
+    lab_m3_tut_13a:     [`Insert MIDI Track + Operator / Analog bas preseti; slide için notaları üst üste bindir (legato), accent = yüksek velocity.`, `Insert MIDI Track + an Operator / Analog bass preset; overlap notes for slides (legato), accent = high velocity.`],
+    lab_m3_tut_14:      [`Yeni kanalları fader'la dengele`, `Balance the new channels with the faders`],
+    lab_m3_tut_14b:     [`Yeni kanallar da aynı şeridi kullanır: en az iki eklenen kanalın fader'ını oynatıp mix'e oturt, hiçbiri 0 dB'i geçmesin. Gerekirse low cut ve SEND A ile pad'i arkaya it.`, `The new channels use the same strip: move the faders of at least two added channels to sit them in the mix, none above 0 dB. If needed, push the pad back with low cut and SEND A.`],
+    lab_m3_tut_14a:     [`Mixer'da Track Volume; eklenen izler de Return'lere Send'le gider.`, `Track Volume in the Mixer; added tracks reach the Returns through Sends too.`],
+    // Kanal ekle (Ableton: Insert Audio / MIDI Track)
+    lab_m3_add:         [`KANAL`, `CHANNEL`],
+    lab_m3_add_t:       [`Kanal ekle — SES (loop / one-shot), SYNTH ya da BASS (MIDI)`, `Add a channel — AUDIO (loop / one-shot), SYNTH or BASS (MIDI)`],
+    lab_m3_add_aria:    [`Kanal ekle ({n}/{N})`, `Add channel ({n}/{N})`],
+    lab_m3_add_max:     [`En çok {N} kanal eklenebilir — önce birini sil`, `At most {N} channels can be added — delete one first`],
+    lab_m3_add_audio:   [`SES`, `AUDIO`],
+    lab_m3_add_synth:   [`SYNTH`, `SYNTH`],
+    lab_m3_add_bass:    [`BASS`, `BASS`],
+    lab_m3_add_audio_s: [`LOOP · ÖRNEK`, `LOOP · SAMPLE`],
+    lab_m3_add_midi_s:  [`MIDI`, `MIDI`],
+    lab_m3_add_menu:    [`Kanal türü`, `Channel type`],
+    lab_m3_x_added:     [`{name} kanalı eklendi`, `{name} channel added`],
+    lab_m3_x_deleted:   [`{name} kanalı silindi (Geri al ile döner)`, `{name} channel deleted (Undo brings it back)`],
+    lab_m3_x_del:       [`SİL`, `DELETE`],
+    lab_m3_x_del_t:     [`Kanalı sil (Geri al ile döner)`, `Delete the channel (Undo brings it back)`],
+    lab_m3_x_del_c:     [`{name} kanalı silinsin mi? Klip ve ayarları da gider (Geri al ile döner).`, `Delete the {name} channel? Its clip and settings go too (Undo brings them back).`],
+    lab_m3_x_ren:       [`ADI`, `RENAME`],
+    lab_m3_x_ren_t:     [`Kanalı yeniden adlandır`, `Rename the channel`],
+    lab_m3_x_ren_p:     [`Kanal adı:`, `Channel name:`],
+    lab_m3_x_left:      [`Kanalı sola taşı`, `Move the channel left`],
+    lab_m3_x_right:     [`Kanalı sağa taşı`, `Move the channel right`],
+    lab_m3_x_col:       [`Kanal rengi`, `Channel colour`],
+    lab_m3_x_col_n:     [`Renk {n}`, `Colour {n}`],
+    lab_m3_x_audio:     [`SES`, `AUDIO`],
+    lab_m3_x_midi:      [`MIDI · {t}`, `MIDI · {t}`],
+    lab_m3_x_moved:     [`{name} → kanal {n}`, `{name} → channel {n}`],
+    // Cihaz paneli (seçili eklenen kanal)
+    lab_m3_dev_aria:    [`{name} kanalının cihazları`, `Devices of the {name} channel`],
+    lab_m3_dev_inst:    [`ENSTRÜMAN`, `INSTRUMENT`],
+    lab_m3_dev_pre:     [`Enstrüman presetleri`, `Instrument presets`],
+    lab_m3_dev_wave:    [`{k} dalga biçimi`, `{k} waveform`],
+    lab_m3_dev_mono_t:  [`MONO: tek ses, GLIDE ile notalar arası kayar (lead)`, `MONO: one voice, GLIDE slides between notes (lead)`],
+    lab_m3_dev_clip:    [`MIDI KLİP`, `MIDI CLIP`],
+    lab_m3_dev_bars:    [`Klip uzunluğu (ölçü)`, `Clip length (bars)`],
+    lab_m3_dev_edit:    [`NOTALARI DÜZENLE`, `EDIT NOTES`],
+    lab_m3_dev_edit_t:  [`Piyano rulosunu aç (Ableton'da klibe çift tık) — konsolla senkron çalar`, `Open the piano roll (a clip double-click in Ableton) — plays in sync with the console`],
+    lab_m3_dev_notes:   [`{n} nota · {b} ölçü · TON {key}`, `{n} notes · {b} bar(s) · KEY {key}`],
+    lab_m3_dev_prev:    [`{name} klip önizlemesi: {n} nota`, `{name} clip preview: {n} notes`],
+    lab_m3_dev_midi:    [`MIDI klavye: rulo açıkken bu enstrümanı çalar; REC ile kaydeder (dururken adım adım, çalarken ızgaraya kuantize).`, `MIDI keyboard: plays this instrument while the roll is open; REC records (step by step when stopped, quantized to the grid while playing).`],
+    lab_m3_dev_smp:     [`ÖRNEK`, `SAMPLE`],
+    lab_m3_dev_smp_aria:[`{name} kanalının örneği`, `Sample for the {name} channel`],
+    lab_m3_dev_steps:   [`ADIMLAR · 1 ÖLÇÜ`, `STEPS · 1 BAR`],
+    lab_m3_dev_step:    [`Adım {n}`, `Step {n}`],
+    lab_m3_dev_steps_n: [`One-shot bu 16 adımlık desenle çalar (Beat Maker satırı gibi).`, `The one-shot plays this 16-step pattern (like a Beat Maker row).`],
+    lab_m3_dev_loop_w:  [`KEY {key} · {sbpm} → {bpm} BPM · PERDE SABİT (WARP)`, `KEY {key} · {sbpm} → {bpm} BPM · PITCH HELD (WARP)`],
+    lab_m3_dev_loop_r:  [`KEY {key} · {sbpm} → {bpm} BPM · ×{rate} (RE-PITCH)`, `KEY {key} · {sbpm} → {bpm} BPM · ×{rate} (RE-PITCH)`],
+    lab_m3_dev_loop_n:  [`Loop ölçü başında girer; WARP | RE-PITCH seçimi KAYNAK panelindeki LEAD LOOP ile ortaktır.`, `The loop enters at a bar start; the WARP | RE-PITCH choice is shared with LEAD LOOP in the SOURCE panel.`],
+    lab_m3_clip_b:      [`CLIP`, `CLIP`],
+    lab_m3_clip_aria:   [`{name} MIDI klibini aç — {n} nota`, `Open the {name} MIDI clip — {n} notes`],
+    lab_m3_smp_aria:    [`{name} örneği: {smp} — cihaz paneline al`, `{name} sample: {smp} — show in the device panel`],
+    lab_m3_ren_hint:    [`Çift tık: yeniden adlandır`, `Double-click: rename`],
+    // Konsol tonu
+    lab_m3_key:         [`TON`, `KEY`],
+    lab_m3_key_root:    [`Konsol tonu — kök nota`, `Console key — root note`],
+    lab_m3_key_type:    [`Konsol tonu — gam`, `Console key — scale`],
+    // Piyano rulosu kayıt şeridi
+    lab_m3_rs_aria:     [`MIDI kayıt şeridi`, `MIDI record strip`],
+    lab_m3_rs_rec_t:    [`MIDI kaydı: dururken adım girişi, çalarken ızgaraya kuantize gerçek zamanlı kayıt`, `MIDI recording: step input when stopped, quantized real-time recording while playing`],
+    lab_m3_rs_off:      [`REC kapalı — MIDI klavye yalnız çalar`, `REC off — the MIDI keyboard only plays`],
+    lab_m3_rs_live:     [`REC · çalarken kaydediyor · {g} kuantize`, `REC · recording while playing · {g} quantize`],
+    lab_m3_rs_step:     [`REC · adım girişi: {pos}`, `REC · step input: {pos}`],
+    lab_m3_s11:         [`KANAL EKLE · MIDI|+ KANAL yeni şerit açar (en çok 6): SES bir loop'u (LOOP WARP ile konsol temposunda, perde sabit) ya da one-shot'ı (16 adım) çalar; SYNTH ve BASS MIDI kanalıdır — CLIP piyano rulosunu açar, notalar 120 ms ileri planlamada örnek-doğru start(t) ile çalar. Her eklenen kanal aynı zinciri (GAIN → EQ → COMP → PAN → M/S → FADER, send A/B) kullanır; kanallar, enstrüman ayarları, klipler ve TON anlık görüntüye (undo, A/B, preset) girer.`, `ADD CHANNEL · MIDI|+ CHANNEL opens a new strip (up to 6): AUDIO plays a loop (stretched to the console tempo by LOOP WARP, pitch held) or a one-shot (16 steps); SYNTH and BASS are MIDI channels — CLIP opens the piano roll and notes play sample-accurately with start(t) in the 120 ms lookahead. Every added channel uses the same chain (GAIN → EQ → COMP → PAN → M/S → FADER, sends A/B); channels, instrument settings, clips and KEY go into the snapshot (undo, A/B, presets).`],
+    lab_m3_w9:          [`<strong>+ KANAL</strong> → Create › Insert Audio Track (Ctrl/⌘+T) / Insert MIDI Track (Ctrl/⌘+Shift+T) · klibe çift tık → Note Editor`, `<strong>+ CHANNEL</strong> → Create › Insert Audio Track (Ctrl/⌘+T) / Insert MIDI Track (Ctrl/⌘+Shift+T) · double-click a clip → Note Editor`],
 });
 
 // ── Sabitler ─────────────────────────────────────────────────────────
@@ -13734,6 +14496,16 @@ const M3_LEAD_DEF = 'classic-lead-loop';
 const M3_LOOP_KINDS = ['lead', 'pad', 'pluck'], M3_LOOP_PACKS = ['classic', 'cassianism'];
 // Tarayıcıda gösterilmeyen loop'lar: Classic Pad Loop (tonu belirsiz; bas eşlemesi yapılamaz, brifte yok)
 const M3_LOOP_HIDE = ['classic-pad-loop'];
+// Eklenen kanallar (KANAL EKLE): türler, renk paleti (modül CSS'inde --m3-x0…5), üst sınır
+const M3_XMAX = 6, M3_XTYPES = ['audio', 'synth', 'bass'];
+const M3_XCOL = [0, 1, 2, 3, 4, 5].map(j => `var(--m3-x${j})`);
+// One-shot varsayılan desenleri (tür → çalan adımlar, 1 ölçü = 16)
+const M3_XPAT = { kick: [0, 4, 8, 12], snare: [4, 12], clap: [4, 12], chat: [0, 2, 4, 6, 8, 10, 12, 14], ohat: [2, 6, 10, 14], ride: [2, 6, 10, 14], bass: [0, 3, 6, 10] };
+// Eklenen kanalın şerit varsayılanı (türe göre kaba mix: pad arkada + reverb, hat'ler yanda, bas merkezde)
+const M3_XMIX = { pad: { lc: 150, sa: 0.25, fader: -8 }, lead: { lc: 180, sa: 0.2, sb: 0.15, fader: -9 }, pluck: { lc: 180, sa: 0.2, sb: 0.15, fader: -9 },
+    ride: { lc: 300, pan: 0.25, fader: -12 }, chat: { lc: 300, pan: -0.25, fader: -12 }, ohat: { lc: 250, pan: 0.2, fader: -12 }, kick: { fader: -6 },
+    snare: { lc: 120, sa: 0.2, fader: -8 }, clap: { lc: 120, sa: 0.2, fader: -8 }, bass: { lc: 30, fader: -6 },
+    'x:synth': { lc: 120, sa: 0.25, fader: -8 }, 'x:bass': { lc: 30, thr: -20, ratio: 3, fader: -6 } };
 
 // ── Durum: state.mix (rehber §2.1) ───────────────────────────────────
 function mixChDef(o) {
@@ -13762,33 +14534,113 @@ if (!state.mix) state.mix = Object.assign({ sel: 4, band: 2, tab: 0, preset: 'f1
 if (!M3_KITS[state.mix.kit]) state.mix.kit = 'classic';
 if (!labSample(state.mix.lead) || M3_LOOP_KINDS.indexOf(labSample(state.mix.lead).kind) < 0 || M3_LOOP_HIDE.indexOf(state.mix.lead) >= 0) state.mix.lead = M3_LEAD_DEF;
 if (state.mix.srcOpen == null) state.mix.srcOpen = true;
+if (state.mix.warp == null) state.mix.warp = true;             // LOOP WARP: WARP (perde sabit) | RE-PITCH — kaynak gibi oturum ayarı
+if (!Array.isArray(state.mix.xch)) state.mix.xch = [];         // eklenen kanallar (anlık görüntüde; şeritleri ch[6…])
+if (!state.mix.key) state.mix.key = { root: 9, type: 'minor' };  // konsol tonu: A minör (Cassianism loop'ları)
 
 const m3Num = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
 // Anlık görüntü (undo / A-B / preset kaydı): yalnız ses parametreleri (seçim, sekme, tempo, bypass hariç)
+// Eklenen kanallar (xch) ve konsol tonu (key) da girer → kanal ekle/sil, klip, enstrüman geri alınabilir.
 function mixSnapshot() {
     const S = state.mix;
-    return JSON.parse(JSON.stringify({ ch: S.ch, rev: S.rev, dly: S.dly, mst: S.mst, sc: S.sc, sendPre: S.sendPre }));
+    return JSON.parse(JSON.stringify({ ch: S.ch, rev: S.rev, dly: S.dly, mst: S.mst, sc: S.sc, sendPre: S.sendPre, xch: S.xch, key: S.key }));
 }
-// Dışarıdan gelen (Firestore / undo) mix → doğrulanmış tam durum
+function mixCleanCh(x, d) {
+    x = x && typeof x === 'object' ? x : {};
+    const o = {};
+    Object.keys(M3_RNG).forEach(k => { o[k] = m3Num(x[k], M3_RNG[k][0], M3_RNG[k][1], d[k]); });
+    o.mute = !!x.mute; o.solo = !!x.solo;
+    o.eqOn = x.eqOn !== false; o.cpOn = x.cpOn !== false;               // cihaz aç/kapa (eski kayıtlarda yok → açık)
+    return o;
+}
+// Dışarıdan gelen (Firestore / undo) mix → doğrulanmış tam durum. xch: dizi ya da Firestore'daki JSON metni (xchJ);
+// ikisi de yoksa xch = null (eski / fabrika preset → eklenen kanallar olduğu gibi kalır). key yoksa null.
 function mixClean(s) {
     s = s && typeof s === 'object' ? s : {};
     const F = mixPresetValues(0), src = Array.isArray(s.ch) ? s.ch : [];
-    const ch = MIX_CH.map((_, i) => {
-        const x = src[i] && typeof src[i] === 'object' ? src[i] : {}, d = F.ch[i], o = {};
-        Object.keys(M3_RNG).forEach(k => { o[k] = m3Num(x[k], M3_RNG[k][0], M3_RNG[k][1], d[k]); });
-        o.mute = !!x.mute; o.solo = !!x.solo;
-        o.eqOn = x.eqOn !== false; o.cpOn = x.cpOn !== false;           // cihaz aç/kapa (eski kayıtlarda yok → açık)
-        return o;
-    });
+    const ch = MIX_CH.map((_, i) => mixCleanCh(src[i], F.ch[i]));
+    let xs = s.xch;
+    if (xs == null && typeof s.xchJ === 'string') { try { xs = JSON.parse(s.xchJ); } catch (_) { xs = null; } }
+    const xch = Array.isArray(xs) ? m3XClean(xs) : null;
+    if (xch) xch.forEach((x, k) => ch.push(mixCleanCh(src[6 + k], m3XChDef(x))));
     const r = s.rev || {}, dl = s.dly || {}, m = s.mst || {}, c = s.sc || {};
     return {
-        ch,
+        ch, xch, key: m3KeyClean(s.key),
         rev: { decay: m3Num(r.decay, 0.3, 6, 2.2), tone: m3Num(r.tone, 1000, 16000, 6000), ret: m3Num(r.ret, -70, 6, -6) },
         dly: { div: Math.round(m3Num(dl.div, 0, 3, 2)), fb: m3Num(dl.fb, 0, 0.9, 0.35), tone: m3Num(dl.tone, 800, 12000, 4000), ret: m3Num(dl.ret, -70, 6, -8) },
         mst: { fader: m3Num(m.fader, -70, 6, 0), lim: m.lim !== false, ceil: m3Num(m.ceil, -12, 0, -1) },
         sc: { on: !!c.on, depth: m3Num(c.depth, 0, 1, 0.6), rel: m3Num(c.rel, 50, 500, 180) },
         sendPre: !!s.sendPre,
     };
+}
+// ── Eklenen kanallar: doğrulama, varsayılanlar ─────────────────────────
+function m3KeyClean(k) {
+    if (!k || typeof k !== 'object' || !isFinite(+k.root)) return null;
+    return { root: ((Math.round(+k.root) % 12) + 12) % 12, type: LAB_SCALES[k.type] ? k.type : 'minor' };
+}
+// 'Am', 'C#m', 'F' — örnek kütüphanesinin key biçimi (minör = 3. derece küçük üçlü)
+function m3KeyShort(k) { k = k || state.mix.key; return noteName(k.root) + (labScaleIv(k.type)[2] === 3 ? 'm' : ''); }
+function m3XUid(taken) {
+    let u;
+    do { u = 'x' + Math.random().toString(36).slice(2, 9); } while ((taken && taken[u]) || (state.mix && Array.isArray(state.mix.xch) && state.mix.xch.some(x => x.u === u)));
+    return u;
+}
+// Tona uyan loop (vars. pad): konsol tonuyla aynı key → yoksa key'i olan ilk → ilk loop
+function m3XDefSample(kind) {
+    const want = m3KeyShort(), all = LAB_SAMPLES.filter(s => s.kind === (kind || 'pad') && s.loop && M3_LOOP_HIDE.indexOf(s.id) < 0);
+    return all.find(s => s.key === want) || all.find(s => s.key) || all[0] || LAB_SAMPLES.find(s => s.loop);
+}
+function m3XChDef(x) {
+    const k = x.t === 'audio' ? ((labSample(x.smp) || {}).kind || 'pad') : 'x:' + x.t;
+    return mixChDef(Object.assign({}, M3_XMIX[k] || {}));
+}
+function m3XPatFor(id) { const s = labSample(id), on = M3_XPAT[s && s.kind] || [0, 4, 8, 12]; return Array.from({ length: 16 }, (_, i) => on.indexOf(i) >= 0 ? 1 : 0); }
+function m3ClipClean(c) {
+    c = c && typeof c === 'object' ? c : {};
+    const notes = (Array.isArray(c.notes) ? c.notes : []).slice(0, 512).filter(n => n && typeof n === 'object').map(n => ({
+        p: Math.round(m3Num(n.p, 0, 127, 60)), s: +m3Num(n.s, 0, 63.99, 0).toFixed(4), l: +m3Num(n.l, 0.05, 64, 1).toFixed(4), v: Math.round(m3Num(n.v, 1, 127, 100)) }));
+    return { len: Math.round(m3Num(c.len, 1, 64, 16)), notes };
+}
+function m3XClean(arr) {
+    const seen = {}, out = [];
+    arr.forEach(x => {
+        if (out.length >= M3_XMAX || !x || typeof x !== 'object' || M3_XTYPES.indexOf(x.t) < 0) return;
+        const u = typeof x.u === 'string' && /^x[a-z0-9]{1,16}$/.test(x.u) && !seen[x.u] ? x.u : m3XUid(seen);
+        seen[u] = 1;
+        const o = { u, t: x.t, nm: String(x.nm || '').trim().slice(0, 16) || x.t.toUpperCase(), c: Math.max(0, Math.min(5, Math.round(+x.c) || 0)), auto: !!x.auto };
+        if (x.t === 'audio') {
+            const smp = labSample(x.smp);
+            o.smp = smp ? smp.id : m3XDefSample().id;
+            o.pat = Array.isArray(x.pat) ? Array.from({ length: 16 }, (_, i) => x.pat[i] ? 1 : 0) : m3XPatFor(o.smp);
+        } else {
+            o.inst = labInstNorm(x.t, x.inst);
+            o.pre = typeof x.pre === 'string' ? x.pre.slice(0, 24) : null;
+            o.clip = m3ClipClean(x.clip);
+        }
+        out.push(o);
+    });
+    return out;
+}
+// Varsayılan klipler (konsol tonunda): SYNTH = 4 ölçü akor (minörde i–VI–III–VII, majörde I–V–vi–IV; C3–C4 arasına
+// katlanmış üçlüler) · BASS = 2 ölçü "rolling" 16'lık (offbeat çiftleri; 2. ölçü VI → VII, accent = vel 120)
+function m3XDefClip(t) {
+    const k = state.mix.key, R = k.root, T = k.type, minorish = labScaleIv(T)[2] === 3;
+    if (t === 'synth') {
+        const notes = [];
+        (minorish ? [1, 6, 3, 7] : [1, 5, 6, 4]).forEach((deg, b) => chordOnDegree(R, T, deg, 3, 48).forEach(p => {
+            while (p > 72) p -= 12; while (p < 55) p += 12;
+            notes.push({ p, s: b * 16, l: 16, v: 88 });
+        }));
+        return { len: 64, notes };
+    }
+    const b = 36 + labPc(R), notes = [];
+    const deg = d => { let p = transposeInScale(b, d - 1, R, T); if (p - b > 6) p -= 12; return p; };
+    const RH = [[2, 0], [3, 0], [6, 0], [7, 12, 1], [10, 0], [11, 0], [14, 7], [15, 0]];
+    [0, 16].forEach(bar => RH.forEach(([s, o, acc]) => {
+        const root = !bar ? b : s < 8 ? deg(6) : deg(7);
+        notes.push({ p: root + o, s: bar + s, l: 1, v: acc ? 120 : 100 });
+    }));
+    return { len: 32, notes };
 }
 function mixGet(p) { let v = state.mix; p.split('.').forEach(k => { v = v == null ? v : v[k]; }); return v; }
 function mixPut(p, v) { const k = p.split('.'); let o = state.mix; for (let i = 0; i < k.length - 1; i++) o = o[k[i]]; o[k[k.length - 1]] = v; }
@@ -13877,6 +14729,7 @@ function m3Load(id) {
     m3Loading[id] = true; delete m3SBuf[id];
     labSampleBuffer(mixCtx && mixCtx.state !== 'closed' ? mixCtx : null, id).then(b => {
         delete m3Loading[id]; m3SBuf[id] = b || false; m3Dirty();
+        if (b && state.mix.xch.some(x => x.smp === id)) m3WarpPrep();      // eklenen kanal loop'u: gerilmiş tamponu hazırla
     });
     m3Dirty();
 }
@@ -13911,6 +14764,7 @@ function getMixCtx() {
         if (!AC) return null;
         try { mixCtx = new AC({ latencyHint: 'interactive' }); } catch (e) { console.warn('[lab] m3 ctx:', e); return null; }
         mixNodes = buildMixGraph(mixCtx);
+        m3XGraph(mixNodes);                                   // eklenen kanalların şeritleri (ch[6…])
         mixSync();
         mixDecodeAll(mixCtx);
     }
@@ -13946,19 +14800,40 @@ function buildMixGraph(c) {
     G.dt = tap(G.dRet);
     // Kanal ×6: in → hp → lo → mid → hi → comp → duck → pan → mute → fader → BUS (mute fader'dan önce: susturulan /
     // solo dışı kanalın PRE send'i de susar → solo-in-place; return'ler açık kalır)
-    G.ch = MIX_CH.map(() => {
-        const n = { in: gn(), hp: bq('highpass'), lo: bq('lowshelf'), mid: bq('peaking'), hi: bq('highshelf'), cp: c.createDynamicsCompressor(),
-            dk: gn(), pn: c.createStereoPanner(), fd: gn(), mu: gn(), sa: gn(0), sb: gn(0), sp: an(2048) };
-        n.hp.Q.value = -3.0103;                 // highpass Q dB cinsinden: −3 dB = 0.707 (Butterworth)
-        n.cp.knee.value = 6;
-        n.sp.minDecibels = -90; n.sp.maxDecibels = -10; n.sp.smoothingTimeConstant = 0.7;
-        [n.in, n.hp, n.lo, n.mid, n.hi, n.cp, n.dk, n.pn, n.mu, n.fd, G.bus].reduce((a, b) => { a.connect(b); return b; });
-        n.hi.connect(n.sp);                     // spektrum: EQ sonrası
-        n.sa.connect(G.rIn); n.sb.connect(G.dIn);
-        n.mt = tap(n.fd);                       // kanal metresi: fader sonrası
-        return n;
-    });
+    G.ch = MIX_CH.map(() => mixChNodes(G));
     return G;
+}
+// Tek kanal şeridi (yerleşik ve eklenen kanallar AYNI zincir). x: eklenen kanal → önünde enstrüman / kaynak kazancı
+// ig (MIDI: enstrüman LEVEL, canlı). Send'ler grafın o anki PRE/POST ucuna bağlanır (G.pre).
+function mixChNodes(G, x) {
+    const c = G.ctx, gn = v => { const g = c.createGain(); g.gain.value = v == null ? 1 : v; return g; };
+    const bq = t => { const b = c.createBiquadFilter(); b.type = t; return b; };
+    const an = () => { const a = c.createAnalyser(); a.fftSize = 2048; a.smoothingTimeConstant = 0.6; return a; };
+    const n = { in: gn(), hp: bq('highpass'), lo: bq('lowshelf'), mid: bq('peaking'), hi: bq('highshelf'), cp: c.createDynamicsCompressor(),
+        dk: gn(), pn: c.createStereoPanner(), fd: gn(), mu: gn(), sa: gn(0), sb: gn(0), sp: an() };
+    n.hp.Q.value = -3.0103;                 // highpass Q dB cinsinden: −3 dB = 0.707 (Butterworth)
+    n.cp.knee.value = 6;
+    n.sp.minDecibels = -90; n.sp.maxDecibels = -10; n.sp.smoothingTimeConstant = 0.7;
+    [n.in, n.hp, n.lo, n.mid, n.hi, n.cp, n.dk, n.pn, n.mu, n.fd, G.bus].reduce((a, b) => { a.connect(b); return b; });
+    if (x) { n.ig = gn(); n.ig.connect(n.in); }
+    n.hi.connect(n.sp);                     // spektrum: EQ sonrası
+    n.sa.connect(G.rIn); n.sb.connect(G.dIn);
+    n.spl = c.createChannelSplitter(2); n.fd.connect(n.spl);    // kanal metresi: fader sonrası
+    n.mt = [an(), an()]; n.spl.connect(n.mt[0], 0); n.spl.connect(n.mt[1], 1);
+    if (G.pre != null) { const s = G.pre ? n.mu : n.fd; s.connect(n.sa); s.connect(n.sb); }
+    return n;
+}
+function m3NodesFree(n) {
+    [n.ig, n.in, n.hp, n.lo, n.mid, n.hi, n.cp, n.dk, n.pn, n.mu, n.fd, n.sa, n.sb, n.sp, n.spl, n.mt[0], n.mt[1]].forEach(x => { if (x) { try { x.disconnect(); } catch (_) {} } });
+}
+// Grafı state.mix.xch'e eşle: gidenin düğümleri sökülür (sesi hemen susar), yenisi kurulur; G.ch = 6 yerleşik + eklenenler
+function m3XGraph(G) {
+    G = G || mixNodes; if (!G) return;
+    G.xn = G.xn || {};
+    const xs = state.mix.xch, want = {};
+    xs.forEach(x => { want[x.u] = 1; });
+    Object.keys(G.xn).forEach(u => { if (!want[u]) { m3XDrop(u); m3NodesFree(G.xn[u]); delete G.xn[u]; } });
+    G.ch = G.ch.slice(0, 6).concat(xs.map(x => G.xn[x.u] || (G.xn[x.u] = mixChNodes(G, true))));
 }
 const m3T = (p, v, t) => p.setTargetAtTime(v, t, 0.012);
 // DynamicsCompressor otomatik makeup kazancı uygular (spec: (1/curve(0 dBFS))^0.6). Fader kazancında geri alınır →
@@ -13970,7 +14845,9 @@ function mixSync(which, G) {
     const S = state.mix, t = G.ctx.currentTime, b = S.bypass, solo = S.ch.some(x => x.solo), one = typeof which === 'number';
     S.ch.forEach((x, i) => {
         if (one && which !== i) return;
-        const n = G.ch[i], eb = b || x.eqOn === false, cb = b || x.cpOn === false;     // global bypass ya da cihaz kapalı
+        const n = G.ch[i]; if (!n) return;
+        const eb = b || x.eqOn === false, cb = b || x.cpOn === false;     // global bypass ya da cihaz kapalı
+        if (n.ig) m3T(n.ig.gain, m3XLevel(S.xch[i - 6]), t);
         m3T(n.in.gain, m3Lin(x.gain), t);
         m3T(n.hp.frequency, eb ? 10 : x.lc, t);
         m3T(n.lo.frequency, x.loF, t); m3T(n.lo.gain, eb ? 0 : x.lo, t);
@@ -13991,8 +14868,9 @@ function mixSync(which, G) {
     m3T(G.lmk.gain, S.mst.lim ? Math.pow(10, 0.6 * S.mst.ceil * 19 / 20 / 20) : 1, t);
     const ck = S.mst.lim ? S.mst.ceil : null;
     if (G.clipK !== ck) { G.clipK = ck; G.clip.curve = ck == null ? null : m3ClipCurve(ck); }
-    if (!S.sc.on) [4, 5].forEach(i => { const p = G.ch[i].dk.gain; p.cancelScheduledValues(t); m3T(p, 1, t); });
-    if (mixRun && mixRun.lead && G === mixNodes) m3T(mixRun.lead.playbackRate, labLoopRate(mixRun.leadId, S.bpm), t);
+    if (!S.sc.on) m3DuckIdx().forEach(i => { if (!G.ch[i]) return; const p = G.ch[i].dk.gain; p.cancelScheduledValues(t); m3T(p, 1, t); });
+    if (mixRun && mixRun.lead && G === mixNodes && !mixRun.leadWarp) m3T(mixRun.lead.playbackRate, labLoopRate(mixRun.leadId, S.bpm), t);   // WARP: tampon kendi temposunda (hız 1)
+    if (mixRun && G === mixNodes) Object.keys(mixRun.xl).forEach(u => { const o = mixRun.xl[u]; if (!o.warp) m3T(o.s.playbackRate, labLoopRate(o.id, S.bpm), t); });
     mixWireSends(S.sendPre, G);
     if (G.ir !== S.rev.decay) {
         if (!G.ir) mixMakeIR(G, S.rev.decay);
@@ -14048,15 +14926,18 @@ function mixSynthLead(G, hz, t, run) {
     f.type = 'lowpass'; f.frequency.value = 3200; m3Env(g, 0.12, t, d); f.connect(g); g.connect(G.ch[5].in);
     [0, 9, -9].forEach(dt => { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz; o.detune.value = dt; o.connect(f); o.start(t); o.stop(t + d + 0.02); mixTrack(run, o, g); });
 }
-// LEAD LOOP: ölçü başında, döngüdeki doğru ölçüden (offset = ölçü mod loop ölçüsü) başlar; hız = mixer BPM / loop BPM
-// (Re-Pitch warp). Çalan loop varsa AYNI t anında ~4 ms'lik geçişle değişir (örnek-doğru, tık yok).
-function mixStartLead(G, run, t, bar, id) {
-    const buf = m3Buf(id), smp = labSample(id); if (!buf || !smp) return false;
+// LEAD LOOP: ölçü başında, döngüdeki doğru ölçüden (offset = ölçü mod loop ölçüsü) başlar. key = m3LeadWant():
+// 'id|w|bpm' → WARP (LOOP WARP gerilmiş tampon ya da aynı tempoda özgün tampon; hız 1, perde sabit) · 'id|rp' →
+// Re-Pitch (hız = mixer BPM / loop BPM, tempo ile kayar). Çalan loop varsa AYNI t anında ~4 ms'lik geçişle değişir
+// (örnek-doğru, tık yok) — tempo / mod değişimi de böyle: eski tampon ölçü sonuna kadar sürer.
+function mixStartLead(G, run, t, bar, id, buf, key) {
+    const smp = labSample(id); if (!buf || !smp) return false;
+    const kp = String(key || '').split('|'), wb = kp[1] === 'w';
     const c = G.ctx, s = c.createBufferSource(), g = c.createGain();
-    const barS = 240 / (smp.bpm || M3_LEAD_BPM), bars = smp.bars || Math.max(1, Math.round(buf.duration / barS));
+    const barS = 240 / (wb ? +kp[2] : (smp.bpm || M3_LEAD_BPM)), bars = smp.bars || Math.max(1, Math.round(buf.duration / barS));
     s.buffer = buf; s.loop = true;
     if (bars * barS < buf.duration - 0.005) { s.loopStart = 0; s.loopEnd = bars * barS; }   // kuyruklu dosya: tam ölçüde döngü
-    s.playbackRate.value = labLoopRate(id, state.mix.bpm);
+    s.playbackRate.value = wb ? 1 : labLoopRate(id, state.mix.bpm);
     g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(m3LeadLevel(id), t, 0.004);
     s.connect(g); g.connect(G.ch[5].in);
     s.start(t, ((bar % bars) * barS) % buf.duration);
@@ -14066,7 +14947,7 @@ function mixStartLead(G, run, t, bar, id) {
         try { o.stop(t + 0.06); } catch (_) {}
         o.onended = () => { try { og.disconnect(); } catch (_) {} };
     }
-    run.lead = s; run.leadG = g; run.leadId = id;
+    run.lead = s; run.leadG = g; run.leadId = id; run.leadKey = key; run.leadWarp = wb;
     return true;
 }
 // Bir adımı tetikle (gs: baştan beri adım sayacı). Kick'te sidechain zarfını planla.
@@ -14075,7 +14956,10 @@ function mixTrigger(G, run, gs, t) {
     let kick = false;
     // Kaynak değişimi yalnız ölçü başında (kesintisiz): kit tamponları hazırsa geçer, değilse eski kit sürer
     if (s16 === 0 && run.kit !== S.kit && m3KitReady(S.kit)) run.kit = S.kit;
-    if (s16 === 0 && run.leadId !== S.lead && m3Buf(S.lead)) mixStartLead(G, run, t, bar, S.lead);
+    if (s16 === 0) {                                              // lead / tempo (WARP) / mod değişimi: tampon hazırsa bu ölçüde
+        const want = m3LeadWant();
+        if (run.leadKey !== want) { const lb = m3LeadBuf(S.lead, S.bpm); if (lb) mixStartLead(G, run, t, bar, S.lead, lb, want); }
+    }
     for (let ti = 0; ti < 5; ti++) {
         let vel = 0;
         if (pat) { const row = pat[ti]; if (Array.isArray(row) && row.length) vel = +row[gs % row.length] || 0; }
@@ -14090,9 +14974,10 @@ function mixTrigger(G, run, gs, t) {
     }
     if (!pat && M3_BASS[s16]) mixSynthBass(G, M3_BASS[s16] * Math.pow(2, m3KeySemis(run.leadId || S.lead) / 12), t, run);
     if (!run.lead && m3LeadFailed(S.lead)) { const ln = M3_LEAD[(bar % 2) * 16 + s16]; if (ln) mixSynthLead(G, ln, t, run); }
+    m3XTrigger(G, run, gs, t);                                    // eklenen kanallar: loop / one-shot / MIDI klip notaları
     if (kick && S.sc.on) {
         const dp = 1 - S.sc.depth, r = S.sc.rel / 3000;
-        [4, 5].forEach(i => { const p = N[i].dk.gain; p.cancelScheduledValues(t); p.setTargetAtTime(dp, t, 0.004); p.setTargetAtTime(1, t + 0.03, r); });
+        m3DuckIdx().forEach(i => { if (!N[i]) return; const p = N[i].dk.gain; p.cancelScheduledValues(t); p.setTargetAtTime(dp, t, 0.004); p.setTargetAtTime(1, t + 0.03, r); });
     }
 }
 // Lookahead sıralayıcı: 25 ms'de bir, 120 ms ileriyi planlar; mixGen eski döngüleri geçersiz kılar
@@ -14107,7 +14992,7 @@ function mixSchedulerLoop(gen) {
     while (run.next < c.currentTime + 0.12) {
         if (run.gs % 16 === 0) run.pat = mixHasUserPattern() ? state.beatPatterns : null;
         mixTrigger(G, run, run.gs, run.next);
-        run.queue.push([run.gs % 16, run.next, Math.floor(run.gs / 16)]);
+        run.queue.push([run.gs % 16, run.next, Math.floor(run.gs / 16), run.gs]);
         if (run.queue.length > 64) run.queue.splice(0, run.queue.length - 64);
         run.next += dur(); run.gs++;
     }
@@ -14122,7 +15007,9 @@ function startMix() {
     mixGen++;
     const S = state.mix;
     m3Load(S.lead); if (S.kit !== 'classic') M3_KITS[S.kit].forEach(m3Load);
-    mixRun = { gen: mixGen, gs: 0, next: now + 0.06, queue: [], srcs: new Set(), lead: null, leadG: null, leadId: null, pat: null,
+    m3LeadBuf(S.lead, S.bpm);                               // WARP: gerilmiş tampon yoksa şimdi iste
+    S.xch.forEach(x => { if (x.t === 'audio') { m3Load(x.smp); m3LeadBuf(x.smp, S.bpm); } });
+    mixRun = { gen: mixGen, gs: 0, next: now + 0.06, queue: [], srcs: new Set(), lead: null, leadG: null, leadId: null, leadKey: '', leadWarp: false, pat: null, xl: {},
         kit: m3KitReady(S.kit) ? S.kit : 'classic',
         timer: 0, mTimer: 0, lv: null, hold: [], mpk: -Infinity, gr: [0, 0, 0, 0, 0, 0], limGr: 0, pos: null, hrT: 0, t63: 0 };
     m3Pk.fill(-Infinity);                                   // tepe tutma göstergeleri: yeni ölçüm
@@ -14139,6 +15026,9 @@ function stopMix() {
     G.out.gain.cancelScheduledValues(now); G.out.gain.setTargetAtTime(0, now, 0.02);
     run.srcs.forEach(s => { try { s.stop(now + 0.1); } catch (_) {} });
     if (run.lead) { const lg = run.leadG; try { lg.gain.cancelScheduledValues(now); lg.gain.setTargetAtTime(0, now, 0.02); run.lead.stop(now + 0.1); } catch (_) {} setTimeout(() => { try { lg.disconnect(); } catch (_) {} }, 300); }
+    Object.keys(run.xl).forEach(u => m3XFadeLoop(run.xl[u], now, 0.02));
+    m3Voices.forEach(v => v.kill(now)); m3LiveHeld.clear();
+    Object.keys(m3XMems).forEach(u => { delete m3XMems[u]; });
     G.ch.forEach(n => { n.dk.gain.cancelScheduledValues(now); m3T(n.dk.gain, 1, now); });
     m3Hr2s = false;
     m3MeterPaint(null);
@@ -14146,20 +15036,121 @@ function stopMix() {
 }
 function toggleMix() { if (mixRun) stopMix(); else startMix(); }
 
+// ── Eklenen kanallar: ses (loop / one-shot / MIDI klip → sıralayıcı; enstrüman = kit labInstVoice) ──
+const m3Voices = new Set();            // çalan enstrüman sesleri (v.u = kanal) — durdur / kanal sil bunları keser
+const m3LiveHeld = new Map();          // MIDI klavyede basılı: 'port:kanal:nota' → ses
+const m3XMems = {};                    // kanal → enstrüman belleği (mono / glide / slide)
+const m3XIdxC = new WeakMap();         // klip notaları → adım dizini (sıralayıcı her adımda O(1) bakar)
+let m3MonT = 0, m3Dbg = null;
+function m3XMem(u) { return m3XMems[u] || (m3XMems[u] = {}); }
+function m3XLevel(x) { return !x || x.t === 'audio' ? 1 : x.inst.lvl; }
+function m3XOf(u) { return state.mix.xch.find(x => x.u === u) || null; }
+function m3XAt(u) { return state.mix.xch.findIndex(x => x.u === u); }
+// Sidechain duck: BASS (4) + LEAD LOOP (5) + eklenen BASS kanalları
+function m3DuckIdx() { const o = [4, 5]; state.mix.xch.forEach((x, k) => { if (x.t === 'bass') o.push(6 + k); }); return o; }
+function m3XIdx(clip) {
+    let ix = m3XIdxC.get(clip.notes);
+    if (ix && ix.len === clip.len) return ix;
+    ix = { len: Math.max(1, clip.len | 0), at: {} };
+    clip.notes.forEach(n => { if (n.s < ix.len) { const k = Math.floor(n.s + 1e-6); (ix.at[k] || (ix.at[k] = [])).push(n); } });
+    m3XIdxC.set(clip.notes, ix);
+    return ix;
+}
+function m3XVoice(x, n, p, t, dur, vel) {
+    const v = labInstVoice(n.ig.context, n.ig, x.t, x.inst, p, t, dur, vel, m3XMem(x.u));
+    if (!v) return null;
+    v.u = x.u; m3Voices.add(v);
+    v.onend = vv => { m3Voices.delete(vv); };
+    if (m3Dbg) { m3Dbg.log.push({ u: x.u, p, t, dur, vel }); if (m3Dbg.log.length > 400) m3Dbg.log.shift(); }
+    return v;
+}
+// Bir adım (gs) için eklenen kanalları planla: t = adımın örnek-doğru zamanı (sıralayıcının ileri planlaması)
+function m3XTrigger(G, run, gs, t) {
+    const S = state.mix, d16 = 60 / S.bpm / 4, s16 = gs % 16, bar = Math.floor(gs / 16);
+    S.xch.forEach((x, k) => {
+        const n = G.ch[6 + k]; if (!n || !n.ig) return;
+        if (x.t === 'audio') {
+            const smp = labSample(x.smp); if (!smp) return;
+            const cur = run.xl[x.u];
+            if (smp.loop) {
+                if (s16 !== 0) return;                                   // loop değişimi / girişi yalnız ölçü başında
+                const want = m3LoopWant(x.smp);
+                if (!cur || cur.key !== want) { const b = m3LeadBuf(x.smp, S.bpm); if (b) m3XStartLoop(G, run, x, n, t, bar, b, want); }
+                return;
+            }
+            if (cur && s16 === 0) { m3XFadeLoop(cur, t); delete run.xl[x.u]; }      // loop → one-shot'a geçildi
+            if (x.pat[s16]) { const b = m3Buf(x.smp); if (b) mixPlayBuf(G, b, 0.7 * labSampleGain(x.smp), t, n.ig, run); }
+            return;
+        }
+        const ix = m3XIdx(x.clip), p = gs % ix.len, list = ix.at[p];
+        if (list) list.forEach(nt => m3XVoice(x, n, nt.p, t + (nt.s - p) * d16, nt.l * d16, nt.v / 127));
+    });
+}
+// Eklenen ses kanalının loop'u (mixStartLead'in eşi): ölçü başında, döngüdeki doğru ölçüden; eski loop aynı t'de ~4 ms'de söner
+function m3XStartLoop(G, run, x, n, t, bar, buf, key) {
+    const id = x.smp, smp = labSample(id), kp = String(key).split('|'), wb = kp[1] === 'w';
+    const c = G.ctx, s = c.createBufferSource(), g = c.createGain();
+    const barS = 240 / (wb ? +kp[2] : (smp.bpm || M3_LEAD_BPM)), bars = smp.bars || Math.max(1, Math.round(buf.duration / barS));
+    s.buffer = buf; s.loop = true;
+    if (bars * barS < buf.duration - 0.005) { s.loopStart = 0; s.loopEnd = bars * barS; }
+    s.playbackRate.value = wb ? 1 : labLoopRate(id, state.mix.bpm);
+    g.gain.setValueAtTime(0, t); g.gain.setTargetAtTime(m3LeadLevel(id), t, 0.004);
+    s.connect(g); g.connect(n.ig);
+    s.start(t, ((bar % bars) * barS) % buf.duration);
+    if (run.xl[x.u]) m3XFadeLoop(run.xl[x.u], t);
+    run.xl[x.u] = { s, g, id, key, warp: wb };
+}
+function m3XFadeLoop(o, t, tc) {
+    try { o.g.gain.cancelScheduledValues(t); o.g.gain.setTargetAtTime(0, t, tc || 0.004); o.s.stop(t + (tc ? tc * 8 : 0.06)); } catch (_) {}
+    o.s.onended = () => { try { o.g.disconnect(); } catch (_) {} };
+}
+// Kanal gitti (sil / undo / preset): sesleri, loop'u ve basılı notaları hemen sustur
+function m3XDrop(u) {
+    const now = mixCtx ? mixCtx.currentTime : 0;
+    m3Voices.forEach(v => { if (v.u === u) v.kill(now); });
+    m3LiveHeld.forEach((v, k) => { if (v.u === u) { v.kill(now); m3LiveHeld.delete(k); } });
+    const run = mixRun; if (run && run.xl[u]) { m3XFadeLoop(run.xl[u], now, 0.01); delete run.xl[u]; }
+    delete m3XMems[u];
+}
+// Dururken dinleme (piyano rulosu, MIDI klavye): çıkış kapısını aç, sessizlikten sonra kapat (MIX çalarken dokunmaz)
+function m3MonOpen(sec) {
+    const c = getMixCtx(); if (!c || !mixNodes) return null;
+    if (mixRun) return c;
+    const g = mixNodes.out.gain, now = c.currentTime;
+    g.cancelScheduledValues(now); g.setTargetAtTime(1, now, 0.005);
+    clearTimeout(m3MonT);
+    m3MonT = setTimeout(function close() {
+        m3MonT = 0;
+        if (mixRun || !mixNodes) return;
+        if (m3LiveHeld.size) { m3MonT = setTimeout(close, 1000); return; }
+        mixNodes.out.gain.setTargetAtTime(0, mixNodes.ctx.currentTime, 0.05);
+    }, (Math.max(0.2, sec) + 1.5) * 1000);
+    return c;
+}
+function m3XAudition(x, p, vel, d) {
+    const c = m3MonOpen(d + (x.inst ? x.inst.r || 0.3 : 0.3)); if (!c) return;
+    const n = mixNodes.ch[6 + m3XAt(x.u)]; if (!n || !n.ig) return;
+    m3XVoice(x, n, p, c.currentTime + 0.005, Math.max(0.05, d), vel);
+}
+
 // ── Metreler, GR, spektrum, pozisyon: TEK 50 ms döngü (20 fps) ─────────
 const m3TD = new Float32Array(2048), m3FB = new Uint8Array(1024);
 let m3Hr2s = false;
 // Tepe tutma göstergeleri (Ableton mixer'daki peak kutusu): 6 kanal + 2 return + master; tıklayınca / MIX başlayınca sıfır
 const m3Pk = new Array(9).fill(-Infinity);
+// Kanal sırası → metre / tepe dizini (yerleşik 0–5, return 6–7, master 8, eklenen 9…)
+const m3LvI = i => i < 6 ? i : i + 3;
 const m3Red = x => typeof x === 'number' ? x : (x && typeof x.value === 'number' ? x.value : 0);
 function mixMeterLoop(gen) {
     const run = mixRun; if (!run || gen !== mixGen) return;
     const G = mixNodes, c = G.ctx, now = performance.now();
     const pk = a => { a.getFloatTimeDomainData(m3TD); let m = 0; for (let i = 0; i < m3TD.length; i++) { const v = Math.abs(m3TD[i]); if (v > m) m = v; } return m > 1e-6 ? 20 * Math.log10(m) : -Infinity; };
-    const taps = G.ch.map(n => n.mt).concat([G.rt, G.dt, G.mt]);
+    // Sıra: 6 yerleşik kanal · 2 return · master (8) · eklenen kanallar (m3LvI)
+    const taps = G.ch.slice(0, 6).map(n => n.mt).concat([G.rt, G.dt, G.mt], G.ch.slice(6).map(n => n.mt));
     run.lv = taps.map((tp, i) => {
         const l = pk(tp[0]), r = pk(tp[1]), h = run.hold[i] || (run.hold[i] = { v: -Infinity, t: 0 }), x = Math.max(l, r);
         if (x >= h.v || now - h.t > 1200) { h.v = x; h.t = now; }       // peak-hold 1.2 s
+        if (!(m3Pk[i] >= -Infinity)) m3Pk[i] = -Infinity;
         if (x > m3Pk[i]) m3Pk[i] = x;                                   // tutulan tepe (tıklanana kadar)
         return [l, r];
     });
@@ -14191,7 +15182,7 @@ function m3Txt(el, t) { t = String(t); if (el.textContent !== t) el.textContent 
 // Dile bağlı öznitelik / metin: şimdi yaz + dil değişiminde yeniden yaz (m3Ui.i18n)
 function m3Lbl(el, attr, fn) {
     const f = () => { const v = fn(); if (attr === 'text') el.textContent = v; else el.setAttribute(attr, v); };
-    f(); if (m3Ui) m3Ui.i18n.push(f);
+    f(); if (m3Ui) { f._g = m3Ui.bgrp; m3Ui.i18n.push(f); }     // _g: eklenen şerit / cihaz paneli grubu (yeniden kurulumda atılır)
     return el;
 }
 function m3El(tag, cls, key) { const e = mk(tag, cls); if (key) { e.setAttribute('data-i18n', key); e.textContent = L(key); } return e; }
@@ -14204,17 +15195,22 @@ function m3Mod(b) {
 // Parametre yolu → state.mix + ses + boyama
 function mixSet(path, v) {
     mixPut(path, v);
-    const m = /^ch\.(\d)\.(\w+)$/.exec(path);
+    const m = /^ch\.(\d+)\.(\w+)$/.exec(path);
     if (m && m[2] !== 'solo') mixSync(+m[1]); else mixSync();
-    if (path !== 'bpm') m3Mod(true);
+    if (path !== 'bpm') m3Mod(true); else m3WarpPrep();
     m3Dirty();
 }
-// Anlık görüntüyü yükle (undo / A-B / preset); preset seçimi (m3PickPreset) bayrağı sonra temizler
-function mixApplySnap(s) {
-    const c = mixClean(s);
-    ['ch', 'rev', 'dly', 'mst', 'sc', 'sendPre'].forEach(k => { state.mix[k] = c[k]; });
-    state.mix.mod = true;
-    mixSync();
+// Anlık görüntüyü yükle (undo / A-B / preset); preset seçimi (m3PickPreset) bayrağı sonra temizler.
+// xch'li görüntü eklenen kanalları da değiştirir; xch'siz (eski kullanıcı / fabrika preseti) onlara dokunmaz —
+// fabrika (factory = preset sırası) yalnız eklenen şeritleri kurar: Düz (0) → düz şerit, diğerleri → türe göre mix.
+function mixApplySnap(s, factory) {
+    const c = mixClean(s), S = state.mix, keep = S.ch.slice(6);
+    ['rev', 'dly', 'mst', 'sc', 'sendPre'].forEach(k => { S[k] = c[k]; });
+    if (c.xch) { S.xch = c.xch; S.ch = c.ch; }
+    else S.ch = c.ch.concat(factory != null ? S.xch.map(x => factory === 0 ? mixChDef({}) : m3XChDef(x)) : keep);
+    if (c.key) S.key = c.key;
+    S.mod = true;
+    m3XChanged();
     m3TutRebase();
     m3Dirty();
 }
@@ -14223,16 +15219,18 @@ function m3Push() { if (m3Ui && m3Ui.hist) m3Ui.hist.push(); }
 function m3Knob(path, o) {
     const P = typeof path === 'function' ? path : () => path;
     const k = makeKnob(Object.assign({ layout: 'above', value: mixGet(P()), onStart: () => { if (!o.noHist) m3Push(); }, onChange: v => mixSet(P(), v) }, o));
-    m3Ui.binds.push({ c: k, p: P });
-    // MIDI MAP tanımı: yol (seçili kanala bağlı olabilir) + aralık + ad
+    m3Ui.binds.push({ c: k, p: P, g: m3Ui.bgrp });
+    // MIDI MAP tanımı: yol (seçili kanala bağlı olabilir) + aralık + ad. noMap: eklenen kanal (sırası değişebilir → eşlenmez)
+    if (o.noMap) return k;
     k.el._m3 = () => ({ p: P(), min: o.min, max: o.max, log: !!o.log, name: o.aria || o.label, noHist: !!o.noHist });
     k.el.setAttribute('data-m3p', '');
     return k;
 }
-function m3Fader(path, def, aria, color) {
+function m3Fader(path, def, aria, color, noMap) {
     const toUi = v => v <= -60 ? -Infinity : v;
     const f = makeFader({ value: toUi(mixGet(path)), def, aria, color, length: 176, onStart: () => m3Push(), onChange: v => mixSet(path, v === -Infinity ? -70 : v) });
-    m3Ui.binds.push({ c: f, p: () => path, fader: true });
+    m3Ui.binds.push({ c: f, p: () => path, fader: true, g: m3Ui.bgrp });
+    if (noMap) return f;
     f.el._m3 = () => ({ p: path, fader: true, name: f.track.getAttribute('aria-label') || aria });
     f.el.setAttribute('data-m3p', '');
     return f;
@@ -14247,7 +15245,7 @@ function m3PresetItems() {
 function m3PickPreset(it) {
     if (!it) return;
     m3Push();
-    if (/^f\d$/.test(it.id)) mixApplySnap(mixPresetValues(+it.id.slice(1)));
+    if (/^f\d$/.test(it.id)) mixApplySnap(mixPresetValues(+it.id.slice(1)), +it.id.slice(1));
     else { const p = m3UserPresets.find(x => 'u:' + x.id === it.id); if (p) mixApplySnap(p.mix); }
     state.mix.preset = it.id;
     m3Mod(false);
@@ -14259,8 +15257,16 @@ async function loadMixPresets() {
 }
 async function saveMixPreset(name) {
     if (!currentUser || !_db) return null;
-    const ref = await userDoc().collection('mixPresets').add({ name: name.slice(0, 60), v: 1, mix: mixSnapshot(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    const ref = await userDoc().collection('mixPresets').add({ name: name.slice(0, 60), v: 2, mix: m3FsMix(), createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     return ref.id;
+}
+// Firestore biçimi (iç içe dizi yok): eklenen kanallar (klip notaları dahil) JSON metni 'xchJ'; ch / key düz kalır.
+// mixClean ikisini de okur; v1 kayıtlarda xch yok → eklenen kanallara dokunulmaz.
+function m3FsMix(s) {
+    s = s || mixSnapshot();
+    const o = Object.assign({}, s);
+    delete o.xch; o.xchJ = JSON.stringify(s.xch || []);
+    return o;
 }
 // Giriş durumu değişince kullanıcı presetlerini yükle (uid başına bir kez)
 function m3SyncUser(force) {
@@ -14387,7 +15393,18 @@ function m3BuildTransport(tr, U) {
     U.mapSt = mk('span', 'm3-mapt'); U.mapSt.setAttribute('aria-live', 'polite');
     U.mapClr = lpBtn({ text: () => L('lab_m3_map_clear'), variant: 'danger', onClick: m3MapClear });
     U.mapBox.append(U.mapSt, U.mapClr);
-    tr.append(play, tempo.el, U.posR.el, steps, U.sc.el, tap, byp, U.mapBox);
+    // Konsol tonu (MIDI kanallarının varsayılan klipleri + piyano rulosu GAM'ı; iki yönlü)
+    const key = mk('div', 'm3-key');
+    const kr = mk('select', 'm3-ksel'), kt = mk('select', 'm3-ksel');
+    for (let r = 0; r < 12; r++) { const op = mk('option'); op.value = String(r); op.textContent = noteName(r); kr.append(op); }
+    LAB_SCALE_ORDER.forEach(t => { const op = mk('option'); op.value = t; op.textContent = scaleName(t); kt.append(op); });
+    m3Lbl(kr, 'aria-label', () => L('lab_m3_key_root')); m3Lbl(kt, 'aria-label', () => L('lab_m3_key_type'));
+    U.i18n.push(() => { Array.from(kt.options).forEach(op => { op.textContent = scaleName(op.value); }); });
+    kr.addEventListener('change', () => m3SetKey(+kr.value, state.mix.key.type));
+    kt.addEventListener('change', () => m3SetKey(state.mix.key.root, kt.value));
+    U.keyR = kr; U.keyT = kt;
+    key.append(m3El('span', 'm3-sl', 'lab_m3_key'), kr, kt);
+    tr.append(play, tempo.el, U.posR.el, steps, key, U.sc.el, tap, byp, U.mapBox);
 }
 
 // ── Kaynak paneli: davul kiti (Classic / Mersey) + LEAD LOOP tarayıcısı (Ableton Browser gibi) ──
@@ -14403,7 +15420,45 @@ function m3SetLead(smp) {
     state.mix.lead = smp.id;
     if (m3SBuf[smp.id] === false) delete m3SBuf[smp.id];           // yeniden seçildi → yeniden dene
     m3Load(smp.id);
+    m3WarpPrep();
     m3Dirty();
+}
+// ── LOOP WARP (kit: labLoopBuffer) — WARP: tempo değişince perde sabit; RE-PITCH: hız = BPM oranı, perde kayar ──
+function m3SetWarp(v) {
+    state.mix.warp = v !== false;
+    m3LeadBuf(state.mix.lead, state.mix.bpm);
+    m3WarpPrep();
+    m3Dirty();
+}
+// Hedef lead anahtarı: 'id|w|bpm' (WARP; aynı tempoda bpm = loop bpm'i → özgün tampon) · 'id|rp' (RE-PITCH)
+function m3LeadWant() { return m3LoopWant(state.mix.lead); }
+function m3LoopWant(id) {
+    const S = state.mix, smp = labSample(id);
+    if (S.warp === false || !smp) return id + '|rp';
+    return id + '|w|' + (labLoopNeedsWarp(id, S.bpm) ? S.bpm : (smp.bpm || M3_LEAD_BPM)).toFixed(2);
+}
+// Çalınabilir tampon: gerilmiş (WARP, tempo farklı) ya da özgün. Gerilmiş hazır değilse null + istek (Worker'da;
+// önbellek aynı isteği tekrar başlatmaz) — çalan tampon sürer, sıralayıcı sonraki ölçü başında yeniden bakar.
+function m3LeadBuf(id, bpm) {
+    const src = m3Buf(id); if (!src) return null;
+    if (state.mix.warp === false || !labLoopNeedsWarp(id, bpm)) return src;
+    const b = labLoopBufferPeek(id, bpm);
+    if (!b) labLoopBuffer(null, id, bpm, { buffer: src }).then(() => m3Dirty());
+    return b;
+}
+if (/[?&]warpdebug=1\b/.test(location.search)) window.__lpWarpM3 = () => (mixRun ? { leadKey: mixRun.leadKey, leadWarp: mixRun.leadWarp, rate: mixRun.lead ? mixRun.lead.playbackRate.value : null } : null);
+function m3WarpPending() {
+    const S = state.mix;
+    return S.warp !== false && labLoopNeedsWarp(S.lead, S.bpm) && !!m3Buf(S.lead) && !labLoopBufferPeek(S.lead, S.bpm);
+}
+// Tempo knob'u sürüklenirken ara değerler gerilmez: 160 ms durulunca (çalmıyorken de → ▶'da hazır)
+let m3WarpT = 0;
+function m3WarpPrep() {
+    clearTimeout(m3WarpT);
+    m3WarpT = setTimeout(() => {
+        m3WarpT = 0; m3LeadBuf(state.mix.lead, state.mix.bpm);
+        state.mix.xch.forEach(x => { if (x.t === 'audio') m3LeadBuf(x.smp, state.mix.bpm); });   // eklenen ses kanallarının loop'ları
+    }, 160);
 }
 // Kanal kaynağı (şerit altı + kit listesi): davul kanalları kitten, BASS demo/Beat Maker, LEAD LOOP tarayıcıdan
 function m3ChSource(i) {
@@ -14456,9 +15511,10 @@ function m3BuildSource(U) {
     const lc = mk('div', 'm3-loopcol');
     const lh = mk('div', 'm3-loophd');
     U.warp = mk('span', 'm3-warp');
-    lh.append(m3El('span', 'm3-sl', 'lab_m3_loop'), U.warp);
+    U.warpSeg = makeWarpSeg(S.warp, v => m3SetWarp(v));
+    lh.append(m3El('span', 'm3-sl', 'lab_m3_loop'), U.warpSeg.el, U.warp);
     U.sb = makeSampleBrowser({ kinds: M3_LOOP_KINDS, packs: M3_LOOP_PACKS, value: S.lead, filter: true, height: 172, cls: 'm3-sb',
-        label: L('lab_m3_loop_aria'), ctx: () => getMixCtx(), bpm: () => state.mix.bpm,
+        label: L('lab_m3_loop_aria'), ctx: () => getMixCtx(), bpm: () => state.mix.bpm, warp: () => state.mix.warp !== false,
         dest: () => (mixRun && mixNodes ? mixNodes.ch[5].in : null), onPick: smp => m3SetLead(smp) });
     m3PruneLoops(U.sb.el);
     lc.append(lh, U.sb.el);
@@ -14515,7 +15571,10 @@ function m3SrcPaint(U) {
         m3Txt(r.t, txt);
     });
     if (U.sb.get() !== S.lead) U.sb.set(S.lead);
-    m3Txt(U.warp, lead ? Lf('lab_m3_warp', { key: lead.key || '—', sbpm: lead.bpm, bpm: S.bpm, rate: labLoopRate(lead.id, S.bpm).toFixed(3) }) : '');
+    const wOn = S.warp !== false, wPend = m3WarpPending(), rt = lead ? labLoopRate(lead.id, S.bpm) : 1;
+    U.warpSeg.set(wOn); U.warpSeg.setBusy(wPend);
+    const st12 = 12 * Math.log2(rt), stT = (st12 > 0.005 ? '+' : st12 < -0.005 ? '−' : '±') + Math.abs(st12).toFixed(2);
+    m3Txt(U.warp, lead ? Lf(wOn ? 'lab_m3_warp_w' : 'lab_m3_warp', { key: lead.key || '—', sbpm: lead.bpm, bpm: S.bpm, rate: rt.toFixed(3), st: stT }) : '');
     m3Txt(U.srcSum, `${m3KitName(S.kit)} · ${lead ? lead.name : '—'}${lead && lead.key ? ' · ' + lead.key : ''} · ${lead ? lead.bpm : ''} BPM`);
     // Durum: yükleniyor / sırada (sonraki ölçü) / hata
     const kitIds = S.kit === 'classic' ? [] : M3_KITS[S.kit];
@@ -14525,11 +15584,13 @@ function m3SrcPaint(U) {
     else if (kitIds.some(id => m3SBuf[id] === false)) { st = Lf('lab_m3_load_err', { name: kitNm }); cls = 'is-err'; }
     else if (m3Loading[S.lead] && !m3Buf(S.lead)) st = Lf('lab_m3_loading', { name: leadNm });
     else if (kitIds.some(id => m3Loading[id])) st = Lf('lab_m3_loading', { name: kitNm });
+    else if (wPend) st = Lf('lab_m3_warping', { name: leadNm, bpm: S.bpm });
     else if (run && run.leadId && run.leadId !== S.lead) st = Lf('lab_m3_next', { name: leadNm });
     else if (run && run.kit !== S.kit) st = Lf('lab_m3_next', { name: kitNm });
     m3Txt(U.srcSt, st); U.srcSt.className = 'm3-srcst' + (cls ? ' ' + cls : '');
     // Şerit altı kaynak satırları
     U.strips.forEach((st2, i) => {
+        if (i >= 6) { m3XSrcPaint(st2, i); return; }
         const smp = m3ChSource(i);
         const t = smp ? smp.name + (i === 5 && smp.key ? ' · ' + smp.key : '') : (mixHasUserPattern() ? 'BEAT' : 'SYNTH');
         m3Txt(st2.srcn, t);
@@ -14557,9 +15618,13 @@ function m3FaderBlock(fd, meter) {
     w.append(fd.el, mw);
     return w;
 }
+function m3ChName(i) { return i < 6 ? MIX_CH[i][0] : ((state.mix.xch[i - 6] || {}).nm || '—'); }
+function m3ChCol(i) { return i < 6 ? MIX_CH[i][1] : M3_XCOL[(state.mix.xch[i - 6] || {}).c | 0]; }
+// Kanal şeridi — yerleşik (0–5) ve eklenen (6…) kanallar AYNI şerit; eklenen kanalda üstte CLIP / örnek düğmesi,
+// adında çift tık = yeniden adlandır, knob / fader MIDI MAP dışı (noMap).
 function m3BuildStrip(i, U) {
-    const [nm, col] = MIX_CH[i], P = k => `ch.${i}.${k}`, S = state.mix;
-    const el = mk('div', 'm3-strip');
+    const nm = m3ChName(i), col = m3ChCol(i), P = k => `ch.${i}.${k}`, S = state.mix, X = i >= 6 ? S.xch[i - 6] : null;
+    const el = mk('div', 'm3-strip' + (X ? ' m3-strip--x' : ''));
     el.style.setProperty('--c', col);
     el.setAttribute('role', 'group'); m3Lbl(el, 'aria-label', () => Lf('lab_m3_ch_aria', { name: nm }));
     const sel = mk('button', 'm3-selb'); sel.type = 'button'; m3Lbl(sel, 'title', () => L('lab_m3_sel_t'));
@@ -14569,7 +15634,20 @@ function m3BuildStrip(i, U) {
     const led = makeLed({ color: col, on: false });
     sel.append(no, selT, led.el);
     sel.addEventListener('click', () => { state.mix.sel = i; m3Dirty(); });
-    const ka = (lbl, o) => Object.assign({ label: lbl, aria: `${nm} ${lbl}`, size: 30 }, o);
+    let xb = null, xbn = null;
+    if (X) {
+        const u = X.u;
+        xb = mk('button', 'm3-xb'); xb.type = 'button';
+        xb.innerHTML = X.t === 'audio' ? '<span class="m3-xbi" aria-hidden="true">' + LP_IC.loop + '</span><span class="m3-xbt"></span>'
+            : '<span class="m3-xbi" aria-hidden="true">' + LP_IC.play + '</span><span class="m3-xbt"></span><span class="m3-xbn"></span>';
+        m3Txt(xb.children[1], X.t === 'audio' ? (labSample(X.smp) && labSample(X.smp).loop ? 'LOOP' : 'ONE-SHOT') : L('lab_m3_clip_b'));
+        xbn = xb.querySelector('.m3-xbn');
+        xb.addEventListener('click', () => {
+            if (X.t === 'audio') { const k = m3XAt(u); if (k >= 0) { state.mix.sel = 6 + k; m3Dirty(); requestAnimationFrame(() => { const f = m3Ui && m3Ui.dev && m3Ui.dev.querySelector('.lp-sb [role="option"][tabindex="0"]'); if (f) f.focus({ preventScroll: false }); }); } }
+            else m3OpenClip(u, xb);
+        });
+    }
+    const ka = (lbl, o) => Object.assign({ label: lbl, aria: `${nm} ${lbl}`, size: 30, noMap: !!X }, o);
     const eqo = (lbl, c) => ka(lbl, { min: -15, max: 15, def: 0, step: 0.5, bipolar: true, fmt: v => m3Sgn(v), color: c });
     const gain = m3Knob(P('gain'), ka('GAIN', { min: -12, max: 12, def: 0, step: 0.5, bipolar: true, fmt: v => m3Sgn(v), color: col, size: 34 }));
     const lo = m3Knob(P('lo'), eqo('LOW', 'var(--accent)')), mid = m3Knob(P('mid'), eqo('MID', 'var(--ember-2)')), hi = m3Knob(P('hi'), eqo('HIGH', 'var(--m3-c5)'));
@@ -14600,17 +15678,22 @@ function m3BuildStrip(i, U) {
     bM.addEventListener('click', () => { m3Push(); mixSet(P('mute'), !state.mix.ch[i].mute); });
     bS.addEventListener('click', e => m3Solo(i, e.ctrlKey || e.metaKey));
     ms.append(bM, bS);
-    const fd = m3Fader(P('fader'), 0, Lf('lab_m3_fader_aria', { name: nm }), col);
+    const fd = m3Fader(P('fader'), 0, Lf('lab_m3_fader_aria', { name: nm }), col, !!X);
     m3Lbl(fd.track, 'aria-label', () => Lf('lab_m3_fader_aria', { name: nm }));
     const mt = m3Meter(5);
     const fdr = m3FaderBlock(fd, mt);
-    const dr = m3DbRow(i, nm);
-    const name = mk('div', 'm3-name'); name.textContent = nm; name.lang = 'en';
+    const dr = m3DbRow(m3LvI(i), nm);
+    const name = mk('div', 'm3-name'); name.textContent = nm;
+    if (!X) name.lang = 'en';
+    else { const u = X.u; m3Lbl(name, 'title', () => L('lab_m3_ren_hint')); name.addEventListener('dblclick', () => m3XRename(u)); }
     const srcn = mk('span', 'm3-srcn');
-    el.append(sel, s0, s1, s2, s3, s4, ms, fdr, dr.el, name, srcn);
-    return { el, sel, selT, led, curve, gr, bM, bS, mt, db: dr.db, pkb: dr.pkb, ck: '', fdr, send: s3, pan, eqSec: s1, cpSec: s2, srcn };
+    el.append(sel);
+    if (xb) el.append(xb);
+    el.append(s0, s1, s2, s3, s4, ms, fdr, dr.el, name, srcn);
+    return { el, sel, selT, led, curve, gr, bM, bS, mt, db: dr.db, pkb: dr.pkb, ck: '', fdr, send: s3, pan, eqSec: s1, cpSec: s2, srcn, xb, xbn, u: X ? X.u : null };
 }
-// Fader dB okuması + tepe tutma düğmesi (Ableton mixer'daki peak kutusu: tıkla = sıfırla; 0 dBFS üstü kırmızı)
+// Fader dB okuması + tepe tutma düğmesi (Ableton mixer'daki peak kutusu: tıkla = sıfırla; 0 dBFS üstü kırmızı).
+// i = tepe dizini (m3LvI: yerleşik 0–5, return 6–7, master 8, eklenen 9…)
 function m3DbRow(i, nm) {
     const el = mk('div', 'm3-dbrow');
     const db = mk('span', 'm3-db');
@@ -14625,14 +15708,16 @@ function m3ResetPeak(i) {
     m3Pk[i] = -Infinity;
     if (mixRun && mixRun.hold[i]) mixRun.hold[i] = { v: -Infinity, t: 0 };
     const U = m3Ui; if (!U) return;
-    const m = i < 6 ? U.strips[i].mt : i < 8 ? U.rets[i - 6].mt : U.mst.mt;
-    m.reset(); if (i === 8) U.outM.reset();
+    const st = i < 6 ? U.strips[i] : i > 8 ? U.strips[i - 3] : null;
+    const m = st ? st.mt : i < 8 ? U.rets[i - 6].mt : U.mst.mt;
+    if (m) m.reset();
+    if (i === 8) U.outM.reset();
     m3PeakPaint(U);
 }
 function m3PeakPaint(U) {
-    const all = U.strips.map(s => s.pkb).concat([U.rets[0].pkb, U.rets[1].pkb, U.mst.pkb]);
-    all.forEach((b, i) => {
-        const v = m3Pk[i], t = isFinite(v) ? m3Sgn(v, 1) : '—', sig = t + labLang();
+    const all = U.strips.map((s, i) => [s.pkb, m3LvI(i)]).concat([[U.rets[0].pkb, 6], [U.rets[1].pkb, 7], [U.mst.pkb, 8]]);
+    all.forEach(([b, i]) => {
+        const v = m3Pk[i] >= -Infinity ? m3Pk[i] : -Infinity, t = isFinite(v) ? m3Sgn(v, 1) : '—', sig = t + labLang();
         b.classList.toggle('is-clip', v > -0.05);
         if (b.dataset.sig === sig) return;
         b.dataset.sig = sig; b.textContent = t;
@@ -14706,12 +15791,41 @@ function m3BuildMaster(U) {
 function m3BuildConsole(U) {
     const wrap = mk('div', 'm3-console');
     const grid = mk('div', 'm3-cgrid');
+    U.cgrid = grid;
     U.strips = MIX_CH.map((_, i) => m3BuildStrip(i, U));
+    U.add = m3BuildAdd(U);
     U.rets = [0, 1].map(k => m3BuildReturn(k, U));
     U.mst = m3BuildMaster(U);
-    U.strips.forEach(s => grid.append(s.el)); U.rets.forEach(r => grid.append(r.el)); grid.append(U.mst.el);
+    U.strips.forEach(s => grid.append(s.el)); grid.append(U.add.el); U.rets.forEach(r => grid.append(r.el)); grid.append(U.mst.el);
     wrap.append(grid);
+    U.xsig = null; m3XBuildStrips(U);
     return wrap;
+}
+// Eklenen şeritler: yalnız kanal kümesi / sırası / ad / renk değişince yeniden kurulur (boyamada DOM kurulmaz)
+function m3XSig() { return state.mix.xch.map(x => [x.u, x.t, x.nm, x.c].join(':')).join('|'); }
+function m3XBuildStrips(U) {
+    const sig = m3XSig(); if (U.xsig === sig) return false;
+    U.xsig = sig;
+    U.strips.slice(6).forEach(s => s.el.remove());
+    U.binds = U.binds.filter(b => b.g !== 'x'); U.i18n = U.i18n.filter(f => f._g !== 'x');
+    U.bgrp = 'x';
+    const xs = state.mix.xch.map((_, k) => m3BuildStrip(6 + k, U));
+    U.bgrp = null;
+    U.strips = U.strips.slice(0, 6).concat(xs);
+    xs.forEach(s => U.cgrid.insertBefore(s.el, U.add.el));
+    U.cgrid.style.setProperty('--m3-n', String(6 + xs.length));
+    if (U.chipsBox) m3BuildChips(U);
+    return true;
+}
+// Detay panelindeki kanal çipleri (yerleşik + eklenen)
+function m3BuildChips(U) {
+    U.chipsBox.replaceChildren();
+    U.chips = state.mix.ch.map((_, i) => {
+        const b = mk('button', 'm3-chip'); b.type = 'button'; b.textContent = m3ChName(i); b.style.setProperty('--c', m3ChCol(i));
+        if (i < 6) b.lang = 'en';
+        b.addEventListener('click', () => { state.mix.sel = i; m3Dirty(); });
+        U.chipsBox.append(b); return b;
+    });
 }
 
 // ── Detay paneli: parametrik EQ + kompresör ───────────────────────────
@@ -14759,16 +15873,12 @@ function m3BuildDetail(U) {
     const L1 = mk('div', 'm3-eqcol');
     const hd = mk('div', 'm3-eqhd');
     // Cihaz aç/kapa (EQ Eight / Compressor'daki ⏻): seçili kanalın eqOn / cpOn'u — undo'ya yazılır
-    const selNm = () => MIX_CH[state.mix.sel][0];
+    const selNm = () => m3ChName(state.mix.sel);
     U.eqPw = makePowerBtn({ size: 'sm', color: 'var(--accent)', on: state.mix.ch[state.mix.sel].eqOn !== false, label: () => Lf('lab_m3_eq_pw', { name: selNm() }),
         onToggle: on => { m3Push(); mixSet(`ch.${state.mix.sel}.eqOn`, on); } });
     hd.append(U.eqPw.el, m3El('span', 'm3-sl m3-sl--9', 'lab_m3_peq'));
     const chips = mk('div', 'm3-chips'); chips.setAttribute('role', 'group'); chips.setAttribute('data-i18n-aria', 'lab_m3_peq'); chips.setAttribute('aria-label', L('lab_m3_peq'));
-    U.chips = MIX_CH.map(([nm, col], i) => {
-        const b = mk('button', 'm3-chip'); b.type = 'button'; b.textContent = nm; b.lang = 'en'; b.style.setProperty('--c', col);
-        b.addEventListener('click', () => { state.mix.sel = i; m3Dirty(); });
-        chips.append(b); return b;
-    });
+    U.chipsBox = chips; m3BuildChips(U);
     // Kanal EQ + kompresörünü kopyala → başka kanala yapıştır (Ableton: cihazı Ctrl/⌘+C / Ctrl/⌘+V)
     const acts = mk('div', 'm3-eqact');
     U.copyB = lpBtn({ text: () => L('lab_m3_copy'), title: () => L('lab_m3_copy_t'), onClick: m3CopyEq });
@@ -14893,8 +16003,8 @@ let m3Clip = null;                    // { src: kanal adı, v: {…} } — oturu
 function m3CopyEq() {
     const i = state.mix.sel, x = state.mix.ch[i], v = {};
     M3_EQCP_KEYS.forEach(k => { v[k] = x[k]; });
-    m3Clip = { src: MIX_CH[i][0], v };
-    lpAnnounce(Lf('lab_m3_copied', { name: MIX_CH[i][0] }));
+    m3Clip = { src: m3ChName(i), v };
+    lpAnnounce(Lf('lab_m3_copied', { name: m3ChName(i) }));
     m3Dirty();
 }
 function m3PasteEq() {
@@ -14903,7 +16013,7 @@ function m3PasteEq() {
     const i = state.mix.sel;
     Object.assign(state.mix.ch[i], JSON.parse(JSON.stringify(m3Clip.v)));
     mixSync(i); m3TutRebase(); m3Mod(true); m3Dirty();
-    lpAnnounce(Lf('lab_m3_pasted', { src: m3Clip.src, name: MIX_CH[i][0] }));
+    lpAnnounce(Lf('lab_m3_pasted', { src: m3Clip.src, name: m3ChName(i) }));
 }
 
 // ── Kavramlar (sekmeler) — knoblar konsoldaki AYNI state'i değiştirir ──
@@ -15045,11 +16155,11 @@ function m3TabPaint() {
 // Canlı (metre döngüsü) sekme görseli + canlı metin
 function m3TabLive(run) {
     const U = m3Ui, T = U && U.tab; if (!T) return;
-    const S = state.mix, sel = S.sel, nm = MIX_CH[sel][0];
+    const S = state.mix, sel = S.sel, nm = m3ChName(sel);
     let live = null;
     if (T.j === 0) {
         T.bars.forEach((r, i) => r.setAttribute('height', lpClamp((run ? run.gr[i] : 0) * 5, 0, 110).toFixed(1)));
-        live = Lf('lab_m3_c0_live', { name: nm, v: (run ? run.gr[sel] : 0).toFixed(1) });
+        live = Lf('lab_m3_c0_live', { name: nm, v: (run && run.gr[sel] ? run.gr[sel] : 0).toFixed(1) });
     } else if (T.j === 1) live = S.sc.on ? Lf('lab_m3_c1_on', { v: (-20 * Math.log10(Math.max(0.01, 1 - S.sc.depth))).toFixed(1) }) : L('lab_m3_c1_off');
     else if (T.j === 2) live = `${Math.round(60 / S.bpm * M3_DIV[S.dly.div][1] * 1000)} ms · FB ${m3Pct(S.dly.fb)}`;
     else if (T.j === 4) {
@@ -15085,7 +16195,7 @@ function m3FlowSpec() {
     return { w: 1264, h: 266, minWidth: 980, aria: L('lab_m3_flow_aria'), nodes, edges, labels };
 }
 function m3HiwOpts(aside) {
-    const steps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => { const [t, d] = L('lab_m3_s' + n).split('|'); return { t, d }; });
+    const steps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(n => { const [t, d] = L('lab_m3_s' + n).split('|'); return { t, d }; });
     const rows = Array.from({ length: 19 }, (_, i) => { const p = L('lab_m3_p' + (i + 1)).split('|'); return p.length > 4 ? [p[0], p[1], p[2], p.slice(3).join('|')] : p; });
     return { title: L('lab_m3_hiw_h'), aux: L('lab_m3_hiw_aux'), cls: 'm3-hiw', blocks: [
         { flow: m3FlowSpec() },
@@ -15096,7 +16206,9 @@ function m3HiwOpts(aside) {
 // ── Boyama ────────────────────────────────────────────────────────────
 function m3Paint() {
     const U = m3Ui; if (!U) return;
-    const S = state.mix, run = mixRun, solo = S.ch.some(x => x.solo), sel = S.sel, X = S.ch[sel], selNm = MIX_CH[sel][0];
+    const S = state.mix;
+    if (!(S.sel >= 0 && S.sel < S.ch.length)) S.sel = Math.min(4, S.ch.length - 1);
+    const run = mixRun, solo = S.ch.some(x => x.solo), sel = S.sel, X = S.ch[sel], selNm = m3ChName(sel);
     U.binds.forEach(b => { const v = mixGet(b.p()); if (typeof v !== 'number') return; b.c.update(b.fader ? (v <= -60 ? -Infinity : v) : v); });
     if (U.bandKnobs) { if (!U.bandKnobs.B.g) m3Txt(U.bandKnobs.g.el.querySelector('.lp-knob-val'), '—'); if (!U.bandKnobs.B.q) m3Txt(U.bandKnobs.q.el.querySelector('.lp-knob-val'), '—'); }
     // Başlık / taşıma
@@ -15123,7 +16235,12 @@ function m3Paint() {
         st.eqSec.classList.toggle('is-byp', x.eqOn === false); st.cpSec.classList.toggle('is-byp', x.cpOn === false);
         const key = [x.lc, x.loF, x.lo, x.midF, x.mid, x.q, x.hiF, x.hi, S.bypass, x.eqOn].join();
         if (st.ck !== key) { st.ck = key; st.curve.setAttribute('d', m3MiniCurve(x)); }
+        if (st.xbn) { const X2 = S.xch[i - 6]; if (X2 && X2.clip) { const n = X2.clip.notes.length; m3Txt(st.xbn, String(n)); m3Lbl0(st.xb, 'aria-label', Lf('lab_m3_clip_aria', { name: X2.nm, n })); m3Lbl0(st.xb, 'aria-pressed', String(!!m3Ed && m3Ed.u === X2.u && m3RollOpen())); } }
     });
+    m3AddPaint(U);
+    m3KeyPaint(U);
+    m3DevBuild(U); m3DevPaint(U);
+    m3RollFrame(U);
     const [rA, rB] = U.rets;
     const ri = M3_ROOMS.indexOf(S.rev.decay); rA.seg.set(ri >= 0 ? M3_ROOMS[ri] : null);
     rB.seg.set(S.dly.div);
@@ -15134,7 +16251,7 @@ function m3Paint() {
     m3Txt(M.db, m3FdLbl(S.mst.fader));
     // Detay: kanal çipleri, EQ eğrisi, düğümler, bant çipleri, kompresör
     U.chips.forEach((b, i) => b.setAttribute('aria-pressed', String(i === sel)));
-    U.eqBox.style.setProperty('--c', MIX_CH[sel][1]);
+    U.eqBox.style.setProperty('--c', m3ChCol(sel));
     U.eqBox.setAttribute('aria-label', Lf('lab_m3_eq_aria', { name: selNm }));
     let ec = '';
     for (let x = 0; x <= 800; x += 5) { const f = 20 * Math.pow(1000, x / 800); ec += (x ? 'L' : 'M') + x + ' ' + (120 - lpClamp(eqResponseDb(X, f), -21, 21) * 100 / 18).toFixed(1) + ' '; }
@@ -15156,7 +16273,7 @@ function m3Paint() {
     for (let v = -60; v <= 0; v += 1.5) tc += (v > -60 ? 'L' : 'M') + ((v + 60) / 60 * 200).toFixed(1) + ' ' + (200 - (m3Transfer(v, th, r) + 60) / 60 * 200).toFixed(1) + ' ';
     U.tfCurve.setAttribute('d', tc);
     const tx = ((th + 60) / 60 * 200).toFixed(1); U.tfThr.setAttribute('x1', tx); U.tfThr.setAttribute('x2', tx);
-    U.tf.style.setProperty('--c', MIX_CH[sel][1]);
+    U.tf.style.setProperty('--c', m3ChCol(sel));
     m3Txt(U.tfOut, L('lab_m3_tf_out')); m3Txt(U.tfIn, L('lab_m3_tf_in'));
     m3Txt(U.cmpT, Lf('lab_m3_comp', { name: selNm }));
     U.cmpK.forEach(k => k.el.setAttribute('aria-label', `${selNm} ${k.el.querySelector('.lp-knob-lbl').textContent}`));
@@ -15172,9 +16289,12 @@ function m3Paint() {
 function m3MeterPaint(run) {
     const U = m3Ui; if (!U) return;
     const S = state.mix, lv = run && run.lv;
-    const all = U.strips.map(st => st.mt).concat([U.rets[0].mt, U.rets[1].mt, U.mst.mt]);
-    if (lv) { all.forEach((m, i) => m.update(lv[i])); U.outM.update(lv[8]); U.strips.forEach((st, i) => st.gr.update([run.gr[i]])); U.cmpGrM.update([run.gr[S.sel]]); U.metersLive = true; }
-    else if (U.metersLive !== false) { all.concat([U.outM, U.cmpGrM], U.strips.map(st => st.gr)).forEach(m => m.reset()); U.metersLive = false; }
+    const all = U.strips.map((st, i) => [st.mt, m3LvI(i)]).concat([[U.rets[0].mt, 6], [U.rets[1].mt, 7], [U.mst.mt, 8]]);
+    if (lv) {
+        all.forEach(([m, j]) => { if (lv[j]) m.update(lv[j]); });
+        U.outM.update(lv[8]); U.strips.forEach((st, i) => st.gr.update([run.gr[i] || 0])); U.cmpGrM.update([run.gr[S.sel] || 0]); U.metersLive = true;
+    }
+    else if (U.metersLive !== false) { all.map(a => a[0]).concat([U.outM, U.cmpGrM], U.strips.map(st => st.gr)).forEach(m => m.reset()); U.metersLive = false; }
     const pk = run ? run.mpk : -Infinity, hs = m3HrState(pk);
     m3Txt(U.mst.pk, pk > -80 ? m3Sgn(pk, 1) : '—');
     U.mst.s2.dataset.hr = hs; U.outDb.dataset.hr = hs;
@@ -15187,30 +16307,566 @@ function m3MeterPaint(run) {
     const oa = `${L('lab_m3_out_aria')}: ${pk > -80 ? m3Sgn(pk, 1) + ' dBFS' : M3_MINUS + '∞'}`;
     if (U.outBox.getAttribute('aria-label') !== oa) U.outBox.setAttribute('aria-label', oa);
     m3Txt(U.mst.gr, Lf('lab_m3_gr', { v: (run ? run.limGr : 0).toFixed(1) }));
-    const sel = S.sel, gr = run ? run.gr[sel] : 0;
+    const sel = S.sel, gr = run && run.gr[sel] ? run.gr[sel] : 0;
     m3Txt(U.cmpGr, Lf('lab_m3_gr', { v: gr.toFixed(1) }));
     // Transfer noktası: anlık giriş ≈ kanal tepe − fader + GR
     m3PeakPaint(U);
     const rk = run ? run.kit + '|' + run.leadId : '';
     if (U.rk !== rk) { U.rk = rk; m3SrcPaint(U); }                // ölçü başında kaynak değişti → "sırada" durumu
-    const X = S.ch[sel], ml = lv ? Math.max(lv[sel][0], lv[sel][1]) : -Infinity, cOff = S.bypass || X.cpOn === false, th = cOff ? 0 : X.thr, r = cOff ? 1 : X.ratio;
+    const X = S.ch[sel], lvs = lv && lv[m3LvI(sel)], ml = lvs ? Math.max(lvs[0], lvs[1]) : -Infinity, cOff = S.bypass || X.cpOn === false, th = cOff ? 0 : X.thr, r = cOff ? 1 : X.ratio;
     const inL = lpClamp(isFinite(ml) ? ml - (X.fader <= -60 ? 0 : X.fader) + gr : th + 6, -60, 0);
     U.tfDot.setAttribute('cx', ((inL + 60) / 60 * 200).toFixed(1)); U.tfDot.setAttribute('cy', (200 - (m3Transfer(inL, th, r) + 60) / 60 * 200).toFixed(1));
     // Spektrum (seçili kanal, EQ sonrası) — yalnız çalarken
-    if (run && mixNodes) {
+    if (run && mixNodes && mixNodes.ch[sel]) {
         const sp = mixNodes.ch[sel].sp, nyq = mixNodes.ctx.sampleRate / 2, B = m3FB.length;
         sp.getByteFrequencyData(m3FB);
         let d = 'M0 240';
         for (let x = 0; x <= 800; x += 8) { const k = Math.min(B - 2, Math.max(1, Math.round(20 * Math.pow(1000, x / 800) / nyq * B))); d += ' L' + x + ' ' + (240 - (m3FB[k - 1] + m3FB[k] + m3FB[k + 1]) / 765 * 220).toFixed(1); }
         U.spec.setAttribute('d', d + ' L800 240 Z');
     } else if (U.spec.getAttribute('d')) U.spec.setAttribute('d', '');
-    m3Txt(U.specLbl, run ? Lf('lab_m3_spec_live', { name: MIX_CH[sel][0] }) : L('lab_m3_spec_idle'));
+    m3Txt(U.specLbl, run ? Lf('lab_m3_spec_live', { name: m3ChName(sel) }) : L('lab_m3_spec_idle'));
     // Pozisyon (bar.beat.16th) + adım LED'i
     const p = run && run.pos;
     U.posR.set(p ? `${p[2] % 4 + 1}.${Math.floor(p[0] / 4) + 1}.${p[0] % 4 + 1}` : '—.—.—');
     const cur = p ? p[0] : -1;
     if (U.cur !== cur) { if (U.cur >= 0) U.steps[U.cur].classList.remove('is-on'); if (cur >= 0) U.steps[cur].classList.add('is-on'); U.cur = cur; }
     m3TabLive(run);
+}
+
+// ═══ KANAL EKLE (Ableton "Insert Audio / MIDI Track") · cihaz paneli · MIDI klip ═══════════════
+// Yapı değişimi (ekle / sil / taşı / ad / renk / undo / A-B / preset) → m3XChanged: ses grafı eşlenir, eklenen şeritler
+// ve çipler YALNIZ imza değişince yeniden kurulur; boyama / metre döngüsü DOM kurmaz (stil + metin).
+let m3XGsig = '';
+function m3XChanged() {
+    const S = state.mix;
+    if (!(S.sel >= 0 && S.sel < S.ch.length)) S.sel = Math.max(0, Math.min(S.sel, S.ch.length - 1));
+    const gsig = S.xch.map(x => x.u).join();
+    if (m3XGsig !== gsig) {                                     // kanal kümesi / sırası değişti: eklenen dizinlerin tepe tutması sıfır
+        m3XGsig = gsig; m3Pk.length = 9;
+        if (mixRun && mixRun.hold.length > 9) mixRun.hold.length = 9;
+    }
+    if (mixNodes) m3XGraph(mixNodes);
+    mixSync();
+    const U = m3Ui;
+    if (U) { m3XBuildStrips(U); m3RollSync(); }
+    m3Dirty();
+}
+function m3XAdd(t) {
+    const S = state.mix;
+    if (M3_XTYPES.indexOf(t) < 0) return null;
+    if (S.xch.length >= M3_XMAX) { lpAnnounce(Lf('lab_m3_add_max', { N: M3_XMAX })); return null; }
+    m3Push();
+    const used = S.xch.map(x => x.c), c = [0, 1, 2, 3, 4, 5].find(j => used.indexOf(j) < 0);
+    const x = { u: m3XUid(), t, c: c == null ? S.xch.length % 6 : c, auto: false };
+    if (t === 'audio') {
+        const smp = m3XDefSample('pad');
+        Object.assign(x, { smp: smp.id, nm: smp.name.toLocaleUpperCase('en-US').slice(0, 16), auto: true, pat: m3XPatFor(smp.id) });
+    } else {
+        const pre = t === 'synth' ? 'pad' : 'rolling', k = S.xch.filter(y => y.t === t).length + 1;
+        Object.assign(x, { inst: labInstNorm(t, labInstPreset(t, pre)), pre, pm: false, clip: m3XDefClip(t),
+            nm: (t === 'synth' ? 'SYNTH' : 'MIDI BASS') + (k > 1 ? ' ' + k : '') });
+    }
+    S.xch.push(x); S.ch.push(m3XChDef(x));
+    S.sel = S.ch.length - 1;
+    if (x.smp) { m3Load(x.smp); m3LeadBuf(x.smp, S.bpm); }
+    m3XChanged(); m3Mod(true);
+    lpAnnounce(Lf('lab_m3_x_added', { name: x.nm }));
+    return x;
+}
+function m3XDel(u) {
+    const S = state.mix, i = m3XAt(u); if (i < 0) return;
+    const x = S.xch[i];
+    if (!confirm(Lf('lab_m3_x_del_c', { name: x.nm }))) return;
+    m3Push();
+    if (m3Ed && m3Ed.u === u && m3RollOpen()) m3Ui.roll.close();
+    S.xch.splice(i, 1); S.ch.splice(6 + i, 1);
+    if (S.sel === 6 + i) S.sel = S.xch.length ? 6 + Math.min(i, S.xch.length - 1) : 5;
+    else if (S.sel > 6 + i) S.sel--;
+    m3XChanged(); m3Mod(true);
+    lpAnnounce(Lf('lab_m3_x_deleted', { name: x.nm }));
+    if (m3Ui && m3Ui.add) m3Ui.add.tg.focus();
+}
+function m3XMove(u, d) {
+    const S = state.mix, i = m3XAt(u), j = i + d;
+    if (i < 0 || j < 0 || j >= S.xch.length) return;
+    m3Push();
+    [S.xch[i], S.xch[j]] = [S.xch[j], S.xch[i]];
+    [S.ch[6 + i], S.ch[6 + j]] = [S.ch[6 + j], S.ch[6 + i]];
+    if (S.sel === 6 + i) S.sel = 6 + j; else if (S.sel === 6 + j) S.sel = 6 + i;
+    m3XChanged(); m3Mod(true);
+    lpAnnounce(Lf('lab_m3_x_moved', { name: S.xch[j].nm, n: 7 + j }));
+}
+function m3XRename(u) {
+    const x = m3XOf(u); if (!x) return;
+    const v = prompt(L('lab_m3_x_ren_p'), x.nm);
+    const nm = v == null ? '' : v.trim().slice(0, 16);
+    if (!nm || nm === x.nm) return;
+    m3Push(); x.nm = nm; x.auto = false;
+    m3XChanged(); m3Mod(true);
+}
+function m3XSetCol(u, c) {
+    const x = m3XOf(u); if (!x || x.c === c) return;
+    m3Push(); x.c = c;
+    m3XChanged(); m3Mod(true);
+}
+function m3XSetSample(u, smp) {
+    const x = m3XOf(u); if (!x || !smp || x.smp === smp.id) return;
+    m3Push();
+    const was = labSample(x.smp);
+    x.smp = smp.id;
+    if (x.auto) x.nm = smp.name.toLocaleUpperCase('en-US').slice(0, 16);
+    if (!smp.loop && (!was || was.loop || was.kind !== smp.kind)) x.pat = m3XPatFor(smp.id);   // yeni tür one-shot → tür deseni
+    if (m3SBuf[smp.id] === false) delete m3SBuf[smp.id];
+    m3Load(smp.id); m3WarpPrep();
+    m3XChanged(); m3Mod(true);
+}
+function m3XPatTog(u, j) {
+    const x = m3XOf(u); if (!x || !x.pat) return;
+    m3Push();
+    x.pat = x.pat.slice(); x.pat[j] = x.pat[j] ? 0 : 1;
+    m3Mod(true); m3Dirty();
+}
+function m3XPreset(u, id) {
+    const i = m3XAt(u), x = i >= 0 ? state.mix.xch[i] : null, p = x && labInstPreset(x.t, id);
+    if (!p) return;
+    m3Push();
+    p.lvl = x.inst.lvl;                                          // seviye kanalda kalır (preset tınıyı değiştirir)
+    x.inst = labInstNorm(x.t, p); x.pre = id; x.pm = false;
+    mixSync(6 + i); m3Mod(true); m3Dirty();
+}
+// Enstrüman parametresi (geçmiş çağıranda): LEVEL = kanal enstrüman kazancı, CUTOFF / RESO çalan seslere de (canlı)
+function m3XSetInst(u, k, v) {
+    const i = m3XAt(u); if (i < 0) return;
+    const x = state.mix.xch[i];
+    const o = Object.assign({}, x.inst); o[k] = v;
+    x.inst = labInstNorm(x.t, o); x.pm = true;
+    if (k === 'lvl') mixSync(6 + i);
+    if ((k === 'cut' || k === 'res') && mixCtx) { const now = mixCtx.currentTime; m3Voices.forEach(vv => { if (vv.u === u && vv.setCut && !vv.done) vv.setCut(x.inst.cut, x.inst.res, now); }); }
+    m3Mod(true); m3Dirty();
+}
+function m3XSetLen(u, len) {
+    const x = m3XOf(u); if (!x || !x.clip || x.clip.len === len) return;
+    m3Push();
+    x.clip = { len, notes: x.clip.notes };
+    m3XEd[u] = performance.now();
+    m3Mod(true); m3Dirty();
+}
+function m3XSrcPaint(st, i) {
+    const x = state.mix.xch[i - 6]; if (!x) return;
+    let t;
+    if (x.t === 'audio') {
+        const smp = labSample(x.smp);
+        t = smp ? smp.name + (smp.key ? ' · ' + smp.key : '') : '—';
+        if (st.xb) { m3Txt(st.xb.children[1], smp && smp.loop ? 'LOOP' : 'ONE-SHOT'); m3Lbl0(st.xb, 'aria-label', Lf('lab_m3_smp_aria', { name: x.nm, smp: t })); }
+    } else {
+        const p = labInstPresets(x.t).find(q => q.id === x.pre);
+        t = (p ? p.name : x.t.toUpperCase()) + (x.pm ? ' *' : '');
+    }
+    m3Txt(st.srcn, t);
+    m3Lbl0(st.srcn, 'title', Lf('lab_m3_src_ch', { name: x.nm, src: t }));
+}
+
+// ── + KANAL karosu (şeritlerle return'ler arasında): tık → SES · SYNTH · BASS ──
+function m3BuildAdd(U) {
+    const el = mk('div', 'm3-add'); el.setAttribute('role', 'group');
+    const tg = mk('button', 'm3-addb'); tg.type = 'button';
+    tg.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="m3-addl"></span><span class="m3-addn"></span>';
+    const menu = mk('div', 'm3-addm'); menu.id = lpId('m3Add'); menu.hidden = true; menu.setAttribute('role', 'group');
+    m3Lbl(menu, 'aria-label', () => L('lab_m3_add_menu'));
+    m3Lbl(el, 'aria-label', () => L('lab_m3_add_t'));
+    tg.setAttribute('aria-controls', menu.id); tg.setAttribute('aria-expanded', 'false');
+    const items = M3_XTYPES.map(t => {
+        const b = mk('button', 'm3-addi'); b.type = 'button'; b.dataset.t = t;
+        b.innerHTML = '<b></b><span></span>';
+        b.addEventListener('click', () => { m3AddMenu(false); m3XAdd(t); tg.focus(); });
+        menu.append(b); return b;
+    });
+    tg.addEventListener('click', () => {
+        if (tg.getAttribute('aria-disabled') === 'true') { lpAnnounce(Lf('lab_m3_add_max', { N: M3_XMAX })); return; }
+        m3AddMenu(menu.hidden);
+    });
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && !menu.hidden) { e.preventDefault(); e.stopPropagation(); m3AddMenu(false); tg.focus(); return; }
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && !menu.hidden) {
+            const j = items.indexOf(document.activeElement); if (j < 0) return;
+            e.preventDefault(); items[(j + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+        }
+    });
+    el.addEventListener('focusout', e => { if (!menu.hidden && !el.contains(e.relatedTarget)) m3AddMenu(false); });
+    el.append(tg, menu);
+    return { el, tg, menu, items, lbl: tg.querySelector('.m3-addl'), cnt: tg.querySelector('.m3-addn') };
+}
+function m3AddMenu(open) {
+    const A = m3Ui && m3Ui.add; if (!A) return;
+    A.menu.hidden = !open; A.tg.setAttribute('aria-expanded', String(!!open));
+    if (open) A.items[0].focus();
+}
+function m3AddPaint(U) {
+    const A = U.add; if (!A) return;
+    const n = state.mix.xch.length, full = n >= M3_XMAX;
+    m3Txt(A.lbl, L('lab_m3_add')); m3Txt(A.cnt, `${n}/${M3_XMAX}`);
+    m3Lbl0(A.tg, 'aria-label', Lf('lab_m3_add_aria', { n, N: M3_XMAX }));
+    m3Lbl0(A.tg, 'aria-disabled', String(full));
+    m3Lbl0(A.tg, 'title', full ? Lf('lab_m3_add_max', { N: M3_XMAX }) : L('lab_m3_add_t'));
+    if (full && !A.menu.hidden) m3AddMenu(false);
+    A.items.forEach(b => { const t = b.dataset.t; m3Txt(b.firstChild, L('lab_m3_add_' + t)); m3Txt(b.lastChild, L(t === 'audio' ? 'lab_m3_add_audio_s' : 'lab_m3_add_midi_s')); });
+}
+// ── Konsol tonu (TON): MIDI kanallarının varsayılan klipleri + piyano rulosu GAM'ı ──
+function m3SetKey(root, type) {
+    const k = state.mix.key; if (k.root === root && k.type === type) return;
+    m3Push(); state.mix.key = { root, type }; m3Mod(true);
+    m3RollSync(); m3Dirty();
+}
+function m3KeyPaint(U) {
+    if (!U.keyR) return;
+    const k = state.mix.key;
+    if (U.keyR.value !== String(k.root)) U.keyR.value = String(k.root);
+    if (U.keyT.value !== k.type) U.keyT.value = k.type;
+}
+
+// ── Cihaz paneli (Ableton Device View): seçili EKLENEN kanalın enstrümanı + klibi ya da örneği ──
+const M3_WAVE_LBL = { sawtooth: 'SAW', square: 'SQR', triangle: 'TRI', sine: 'SIN' };
+function m3InstFmt(k) {
+    if (k === 'cut') return v => m3Hz(v) + 'Hz';
+    if (k === 'a' || k === 'd' || k === 'r' || k === 'dec' || k === 'glide') return v => v < 1 ? Math.round(v * 1000) + 'ms' : v.toFixed(2) + 's';
+    if (k === 'det') return v => (m3Sgn(v, 0) || '0') + 'ct';
+    if (k === 'oct') return v => m3Sgn(v, 0) || '0';
+    if (k === 'spr') return v => Math.round(v) + 'ct';
+    if (k === 'uni') return v => String(Math.round(v));
+    if (k === 'res') return v => v.toFixed(1);
+    return m3Pct;
+}
+function m3BuildDev(U) { U.dev = mk('section', 'm3-dev'); U.dev.hidden = true; U.devSig = null; return U.dev; }
+// Seçim / kanal / dil değişince kurulur (imza); değerler m3DevPaint + binds ile
+function m3DevBuild(U) {
+    const S = state.mix, x = S.sel >= 6 ? S.xch[S.sel - 6] : null, sig = x ? [x.u, x.t, labLang()].join(':') : '';
+    if (U.devSig === sig) return;
+    U.devSig = sig;
+    const D = U.dev;
+    if (U.devP && U.devP.sb) { try { U.devP.sb.destroy(); } catch (_) {} }
+    U.binds = U.binds.filter(b => b.g !== 'dev'); U.i18n = U.i18n.filter(f => f._g !== 'dev');
+    D.replaceChildren(); U.devP = null;
+    D.hidden = !x;
+    if (!x) return;
+    U.bgrp = 'dev';
+    const u = x.u, col = M3_XCOL[x.c], P = { u, t: x.t };
+    D.style.setProperty('--c', col);
+    m3Lbl(D, 'aria-label', () => Lf('lab_m3_dev_aria', { name: (m3XOf(u) || x).nm }));
+    const hd = mk('div', 'm3-devhd');
+    const dot = mk('span', 'm3-devdot'); dot.setAttribute('aria-hidden', 'true');
+    P.nm = mk('h3', 'm3-devnm');
+    const tag = mk('span', 'm3-devtag'); tag.textContent = x.t === 'audio' ? L('lab_m3_x_audio') : Lf('lab_m3_x_midi', { t: x.t === 'synth' ? 'SYNTH' : 'BASS' });
+    const acts = mk('div', 'm3-devact');
+    const ren = lpBtn({ text: () => L('lab_m3_x_ren'), title: () => L('lab_m3_x_ren_t'), onClick: () => m3XRename(u) });
+    P.cols = makeSeg(M3_XCOL.map((c, j) => ({ value: j, html: '<span class="m3-sw" aria-hidden="true"></span>', aria: () => Lf('lab_m3_x_col_n', { n: j + 1 }) })),
+        x.c, v => m3XSetCol(u, v), { label: () => L('lab_m3_x_col'), cls: 'm3-cols' });
+    P.cols.buttons.forEach((b, j) => b.firstChild.style.setProperty('--c', M3_XCOL[j]));
+    P.lf = lpBtn({ icon: 'prev', label: () => L('lab_m3_x_left'), title: () => L('lab_m3_x_left'), onClick: () => m3XMove(u, -1) });
+    P.rt = lpBtn({ icon: 'next', label: () => L('lab_m3_x_right'), title: () => L('lab_m3_x_right'), onClick: () => m3XMove(u, 1) });
+    const del = lpBtn({ text: () => L('lab_m3_x_del'), title: () => L('lab_m3_x_del_t'), variant: 'danger', onClick: () => m3XDel(u) });
+    acts.append(ren, P.cols.el, P.lf, P.rt, del);
+    hd.append(dot, P.nm, tag, acts);
+    const body = mk('div', 'm3-devbody');
+    if (x.t === 'audio') {
+        const sc = mk('div', 'm3-inst');
+        P.sb = makeSampleBrowser({ value: x.smp, filter: true, height: 220, cls: 'm3-sb', label: Lf('lab_m3_dev_smp_aria', { name: x.nm }),
+            ctx: () => getMixCtx(), bpm: () => state.mix.bpm, warp: () => state.mix.warp !== false,
+            dest: () => { const k = m3XAt(u), n = mixRun && mixNodes && k >= 0 ? mixNodes.ch[6 + k] : null; return n && n.ig ? n.ig : null; },
+            onPick: smp => m3XSetSample(u, smp) });
+        sc.append(m3El('span', 'm3-sl', 'lab_m3_dev_smp'), P.sb.el);
+        const rc = mk('div', 'm3-clipc');
+        P.loopBox = mk('div', 'm3-lbox'); P.linfo = mk('p', 'm3-linfo');
+        P.loopBox.append(P.linfo, m3El('p', 'm3-clipn', 'lab_m3_dev_loop_n'));
+        P.patBox = mk('div', 'm3-lbox');
+        const pat = mk('div', 'm3-pat'); pat.setAttribute('role', 'group'); m3Lbl(pat, 'aria-label', () => L('lab_m3_dev_steps'));
+        P.pat = Array.from({ length: 16 }, (_, j) => {
+            const b = mk('button', 'm3-patb'); b.type = 'button';
+            m3Lbl(b, 'aria-label', () => Lf('lab_m3_dev_step', { n: j + 1 }));
+            b.addEventListener('click', () => m3XPatTog(u, j));
+            pat.append(b); return b;
+        });
+        P.patBox.append(m3El('span', 'm3-sl', 'lab_m3_dev_steps'), pat, m3El('p', 'm3-clipn', 'lab_m3_dev_steps_n'));
+        rc.append(P.loopBox, P.patBox);
+        body.append(sc, rc);
+    } else {
+        const inst = mk('div', 'm3-inst'), ih = mk('div', 'm3-insthd');
+        ih.append(m3El('span', 'm3-sl', 'lab_m3_dev_inst'));
+        P.pb = makePresetBrowser({ items: labInstPresets(x.t).map(p => ({ id: p.id, name: p.name, cat: p.cat, group: p.group || 'factory' })), value: x.pre || undefined,
+            modified: !!x.pm, width: 200, label: () => L('lab_m3_dev_pre'), capLabel: () => L('lp_preset_cap'), onPick: it => m3XPreset(u, it.id) });
+        ih.append(P.pb.el);
+        P.segs = []; P.tgs = [];
+        const kg = mk('div', 'm3-instk');
+        LAB_INST_SPEC[x.t].forEach(d => {
+            if (d.opts) {
+                const w = mk('div', 'm3-wsel'), lb = mk('span', 'm3-sl'); lb.textContent = d.lbl; lb.lang = 'en';
+                const sg = makeSeg(d.opts.map(o2 => [o2, M3_WAVE_LBL[o2]]), x.inst[d.k], v => { m3Push(); m3XSetInst(u, d.k, v); }, { label: () => Lf('lab_m3_dev_wave', { k: d.lbl }) });
+                sg.buttons.forEach(b => { b.lang = 'en'; });
+                w.append(lb, sg.el); ih.append(w); P.segs.push({ k: d.k, sg });
+                return;
+            }
+            if (d.bool) {
+                const tg = makeToggle({ text: d.lbl, led: true, color: col, on: !!x.inst[d.k], onToggle: on => { m3Push(); m3XSetInst(u, d.k, on); } });
+                m3Lbl(tg.el, 'title', () => L('lab_m3_dev_mono_t'));
+                ih.append(tg.el); P.tgs.push({ k: d.k, tg });
+                return;
+            }
+            const kn = makeKnob({ label: d.lbl, min: d.min, max: d.max, log: !!d.log, step: d.step, def: d.def, value: x.inst[d.k], size: 34, layout: 'above', color: col,
+                aria: `${x.nm} ${d.lbl}`, fmt: m3InstFmt(d.k), onStart: () => m3Push(), onChange: v => m3XSetInst(u, d.k, v) });
+            U.binds.push({ c: kn, p: () => { const k = m3XAt(u); return k < 0 ? '' : `xch.${k}.inst.${d.k}`; }, g: 'dev' });
+            kg.append(kn.el);
+        });
+        inst.append(ih, kg);
+        const cc = mk('div', 'm3-clipc'), ch2 = mk('div', 'm3-cliphd');
+        P.bars = makeSeg([[16, '1'], [32, '2'], [64, '4']], x.clip.len, v => m3XSetLen(u, v), { size: 'md', label: () => L('lab_m3_dev_bars') });
+        ch2.append(m3El('span', 'm3-sl', 'lab_m3_dev_clip'), P.bars.el);
+        P.prev = lpSvg('svg', { viewBox: '0 0 256 60', preserveAspectRatio: 'none', class: 'm3-cprev', role: 'img' });
+        P.prevG = lpSvg('g', {}, P.prev);
+        P.info = mk('p', 'm3-clipi');
+        P.ed = lpBtn({ text: () => L('lab_m3_dev_edit'), title: () => L('lab_m3_dev_edit_t'), variant: 'accent', cls: 'm3-clipo', onClick: () => m3OpenClip(u, P.ed) });
+        cc.append(ch2, P.prev, P.info, P.ed, m3El('p', 'm3-clipn', 'lab_m3_dev_midi'));
+        body.append(inst, cc);
+    }
+    D.append(hd, body);
+    U.bgrp = null;
+    U.devP = P;
+}
+function m3DevPaint(U) {
+    const P = U.devP; if (!P) return;
+    const k = m3XAt(P.u), x = k >= 0 ? state.mix.xch[k] : null; if (!x) return;
+    const col = M3_XCOL[x.c];
+    if (U.dev.style.getPropertyValue('--c') !== col) U.dev.style.setProperty('--c', col);
+    m3Txt(P.nm, x.nm);
+    P.cols.set(x.c);
+    P.lf.setAttribute('aria-disabled', String(k <= 0)); P.rt.setAttribute('aria-disabled', String(k >= state.mix.xch.length - 1));
+    if (x.t === 'audio') {
+        const smp = labSample(x.smp), loop = !!(smp && smp.loop), S = state.mix;
+        if (P.sb.get() !== x.smp) P.sb.set(x.smp);
+        P.loopBox.hidden = !loop; P.patBox.hidden = loop;
+        if (loop) m3Txt(P.linfo, Lf(S.warp !== false ? 'lab_m3_dev_loop_w' : 'lab_m3_dev_loop_r', { key: smp.key || '—', sbpm: smp.bpm, bpm: S.bpm, rate: labLoopRate(smp.id, S.bpm).toFixed(3) }));
+        else P.pat.forEach((b, j) => m3Lbl0(b, 'aria-pressed', String(!!x.pat[j])));
+        return;
+    }
+    if (x.pre && P.pb.get() !== x.pre) P.pb.set(x.pre);
+    if (P.pm !== !!x.pm) { P.pm = !!x.pm; P.pb.setModified(P.pm); }
+    P.segs.forEach(s => { if (s.sg.get() !== x.inst[s.k]) s.sg.set(x.inst[s.k]); });
+    P.tgs.forEach(t => { if (t.tg.get() !== !!x.inst[t.k]) t.tg.set(!!x.inst[t.k]); });
+    if (P.bars.get() !== x.clip.len) P.bars.set(x.clip.len);
+    if (P.prevN !== x.clip.notes || P.prevL !== x.clip.len) {            // önizleme yalnız klip değişince yeniden çizilir
+        P.prevN = x.clip.notes; P.prevL = x.clip.len;
+        const ns = x.clip.notes, len = x.clip.len;
+        let lo = ns.length ? Math.min.apply(null, ns.map(n => n.p)) : 48, hi = ns.length ? Math.max.apply(null, ns.map(n => n.p)) : 72;
+        if (hi - lo < 12) { const m = (hi + lo) / 2; lo = Math.floor(m - 6); hi = lo + 12; }
+        const rh = 60 / (hi - lo + 1);
+        P.prevG.replaceChildren();
+        ns.forEach(n => { if (n.s < len) lpSvg('rect', { x: (n.s / len * 256).toFixed(2), y: ((hi - n.p) * rh).toFixed(2), width: Math.max(1.5, n.l / len * 256 - 0.6).toFixed(2), height: Math.max(2, rh - 0.4).toFixed(2) }, P.prevG); });
+    }
+    m3Lbl0(P.prev, 'aria-label', Lf('lab_m3_dev_prev', { name: x.nm, n: x.clip.notes.length }));
+    m3Txt(P.info, Lf('lab_m3_dev_notes', { n: x.clip.notes.length, b: +(x.clip.len / 16).toFixed(2), key: m3KeyShort() }));
+}
+
+// ── MIDI klip düzenleyici (kit makePianoRoll — görünüm başına tek pencere, kanallar arası) + Web MIDI kayıt ──
+let m3Ed = null;                                              // { u } açık klibin kanalı
+const m3Rec = { on: false, cur: 0, down: 0, held: new Map(), grid: 1, gridLbl: '1/16' };
+function m3EdX() { return m3Ed ? m3XOf(m3Ed.u) : null; }
+function m3RollOpen() { const U = m3Ui; return !!(U && U.roll && U.roll.isOpen()); }
+function m3Roll() {
+    const U = m3Ui; if (!U) return null;
+    if (U.roll) return U.roll;
+    const k = state.mix.key;
+    const roll = makePianoRoll({ title: '', notes: [], length: 16, maxLength: 64, range: [43, 91], scale: { root: k.root, type: k.type, on: true }, cls: 'm3-roll',
+        colors: { note: 'var(--m3-x0)' },
+        onChange: (notes, m) => m3RollChange(notes, m),
+        onAction: (r, m) => m3RollAction(r, m),
+        onAudition: (p, v, d) => { const x = m3EdX(); if (x) m3XAudition(x, p, v / 127, d); },
+        onPlayToggle: on => { if (on) startMix(); else stopMix(); },
+        getPlayhead: () => m3RollPh(),
+        onClose: () => m3RollClosed() });
+    U.roll = roll; U.rs = m3RollStrip();
+    // Kit dil değişiminde pencereyi yeniden kurar (replaceChildren) → kayıt şeridini geri tak
+    const mo = new MutationObserver(() => { if (U.rs && U.roll === roll && !roll.el.contains(U.rs.el)) m3RollMount(U); });
+    mo.observe(roll.el, { childList: true });
+    lpOnTeardown(() => { mo.disconnect(); try { roll.destroy(); } catch (_) {} if (U.roll === roll) U.roll = null; });
+    m3RollMount(U);
+    return roll;
+}
+function m3RollMount(U) {
+    const st = U.roll.el.querySelector(':scope > .lp-status');
+    U.roll.el.insertBefore(U.rs.el, st || null);
+    m3RollPaint();
+    if (U.rs.midi) U.rs.midi.refresh();
+}
+function m3RollStrip() {
+    const el = mk('div', 'm3-rs'); el.setAttribute('role', 'group');
+    const rec = makeToggle({ text: 'REC', led: true, color: 'var(--err-strong)', on: m3Rec.on, onToggle: b => m3SetRec(b) });
+    const midi = makeMidiButton();
+    const name = mk('span', 'm3-rsn'), info = mk('span', 'm3-rsi'); info.setAttribute('aria-live', 'polite');
+    el.append(rec.el, midi.el, name, info);
+    // Şerit tuşları kitin pencere kısayollarına (Delete, B, +/−) gitmesin; Tab tuzağı ve Esc pencereye kalsın
+    el.addEventListener('keydown', e => { if (e.key !== 'Tab' && e.key !== 'Escape') e.stopPropagation(); });
+    return { el, rec, midi, name, info };
+}
+const m3RecPos = () => { const s = m3Rec.cur; return `${Math.floor(s / 16) + 1}.${Math.floor((s % 16) / 4) + 1}.${Math.round((s % 4 + 1) * 100) / 100}`; };
+function m3RollPaint() {
+    const U = m3Ui, R = U && U.rs; if (!R) return;
+    const x = m3EdX();
+    m3Lbl0(R.el, 'aria-label', L('lab_m3_rs_aria'));
+    m3Lbl0(R.rec.el, 'title', L('lab_m3_rs_rec_t')); m3Lbl0(R.rec.el, 'aria-label', L('lab_m3_rs_rec_t'));
+    R.rec.set(m3Rec.on);
+    m3Txt(R.name, x ? `${x.nm} · ${x.t === 'bass' ? 'BASS' : 'SYNTH'}` : '');
+    m3Txt(R.info, !m3Rec.on ? L('lab_m3_rs_off') : mixRun ? Lf('lab_m3_rs_live', { g: m3Rec.gridLbl }) : Lf('lab_m3_rs_step', { pos: m3RecPos() }));
+    R.el.classList.toggle('is-rec', m3Rec.on);
+}
+function m3OpenClip(u, opener) {
+    const U = m3Ui, i = m3XAt(u), x = i >= 0 ? state.mix.xch[i] : null;
+    if (!U || !x || x.t === 'audio') return;
+    state.mix.sel = 6 + i;
+    const roll = m3Roll(); if (!roll) return;
+    m3Ed = { u }; m3Rec.cur = 0; m3Rec.down = 0; m3Rec.held.clear();
+    getMixCtx();                                              // tık = jest: dinleme bağlamı hazır
+    m3RollLoad();
+    if (!roll.isOpen()) roll.open(opener || document.activeElement);
+    U.rollPlay = null;
+    if (!U.midiOff) U.midiOff = [labMidi.on('noteon', m3MidiOn), labMidi.on('noteoff', m3MidiOff)];
+    m3Dirty();
+}
+// Açık düzenleyiciyi m3Ed klibine yükle (başlık, renk, aralık, gam, uzunluk, notalar; rulo geçmişi sıfırlanır)
+function m3RollLoad() {
+    const U = m3Ui, roll = U && U.roll, x = m3EdX(); if (!roll || !x) return;
+    const k = state.mix.key;
+    roll.setTitle(`${x.nm} · CLIP`);
+    roll.el.style.setProperty('--lp-c', M3_XCOL[x.c]);
+    roll.setRange(x.t === 'bass' ? [24, 72] : [43, 91]);
+    roll.setScale({ root: k.root, type: k.type, on: roll.getScale().on !== false });
+    roll.setLength(x.clip.len);
+    roll.setNotes(x.clip.notes);
+    roll.clearHistory();
+    U.rollNotes = x.clip.notes; U.rollK = [x.nm, x.c, k.root, k.type].join('|');
+    m3RollPaint();
+}
+// Dış değişim (undo / A-B / preset / ton / kanal silindi) → açık rulo eşlenir
+function m3RollSync() {
+    const U = m3Ui, roll = U && U.roll; if (!roll || !m3Ed || !roll.isOpen()) return;
+    const x = m3EdX();
+    if (!x) { roll.close(); return; }
+    if (U.rollNotes !== x.clip.notes) { U.rollNotes = x.clip.notes; roll.setLength(x.clip.len); roll.setNotes(x.clip.notes); }
+    else if (roll.getLength() !== x.clip.len) roll.setLength(x.clip.len);
+    const k = state.mix.key, sig = [x.nm, x.c, k.root, k.type].join('|');
+    if (U.rollK !== sig) {
+        U.rollK = sig;
+        roll.setTitle(`${x.nm} · CLIP`); roll.el.style.setProperty('--lp-c', M3_XCOL[x.c]);
+        const sc = roll.getScale(); if (sc.root !== k.root || sc.type !== k.type) roll.setScale({ root: k.root, type: k.type, on: sc.on });
+        m3RollPaint();
+    }
+}
+// Boyamadan: taşıma durumu → ÇAL düğmesi / adım imleci; dış değişimler
+function m3RollFrame(U) {
+    if (!m3RollOpen()) { U.rollPlay = null; return; }
+    const on = !!mixRun;
+    if (U.rollPlay !== on) { U.rollPlay = on; U.roll.setPlaying(on); if (!on) U.roll.setPlayhead(m3Rec.on ? m3Rec.cur : null); m3RollPaint(); }
+    m3RollSync();
+}
+function m3RollChange(notes, meta) {
+    const x = m3EdX(), U = m3Ui; if (!x) return;
+    m3Push();                                                 // konsol geri alması klip düzenlemesini de kapsar
+    x.clip = { len: lpClamp(Math.round(meta.length || x.clip.len), 1, 64), notes: notes.map(n => ({ p: n.p, s: n.s, l: n.l, v: n.v })) };
+    if (U) U.rollNotes = x.clip.notes;
+    m3XEd[x.u] = performance.now();
+    m3Mod(true); m3Dirty();
+}
+function m3RollAction(reason, meta) {
+    if (reason === 'grid' || reason === 'open') {
+        const g = { '1/4': 4, '1/8': 2, '1/16': 1, '1/32': 0.5 }[meta.grid] || 1;
+        m3Rec.grid = g * (meta.triplet ? 2 / 3 : 1); m3Rec.gridLbl = meta.grid + (meta.triplet ? 'T' : '');
+        m3RollPaint();
+    }
+    if (reason === 'scale' && meta.scale) {                     // rulonun GAM'ı = konsol tonu (iki yönlü)
+        const sc = meta.scale, k = state.mix.key;
+        if (sc.root !== k.root || sc.type !== k.type) { m3Push(); state.mix.key = { root: sc.root, type: sc.type }; m3Mod(true); if (m3Ui) m3Ui.rollK = ''; m3Dirty(); }
+    }
+}
+// Çalma çizgisi: sıralayıcı kuyruğundaki son çalan adım + kesir → klip içi adım (döngü uzunluğu kadar sarar)
+function m3RollPh() {
+    const run = mixRun, x = m3EdX(); if (!run || !x || !mixCtx) return null;
+    const now = mixCtx.currentTime, q = run.queue;
+    let e = null;
+    for (let i = q.length - 1; i >= 0; i--) if (q[i][1] <= now) { e = q[i]; break; }
+    if (!e) return null;
+    const f = Math.min(0.999, (now - e[1]) / (60 / state.mix.bpm / 4));
+    return (e[3] + f) % Math.max(1, x.clip.len);
+}
+function m3RollClosed() {
+    m3Ed = null; m3Rec.down = 0; m3Rec.held.clear();
+    const now = mixCtx ? mixCtx.currentTime : 0;
+    m3LiveHeld.forEach(v => v.release(now)); m3LiveHeld.clear();
+    const U = m3Ui;
+    if (U && U.midiOff) { U.midiOff.forEach(f => f()); U.midiOff = null; }
+    m3Dirty();
+}
+function m3SetRec(b) {
+    m3Rec.on = !!b; m3Rec.down = 0; m3Rec.held.clear();
+    const U = m3Ui;
+    if (m3RollOpen() && !mixRun) U.roll.setPlayhead(m3Rec.on ? m3Rec.cur : null);
+    m3RollPaint();
+}
+// Web MIDI (yalnız rulo açıkken aboneyiz): kanal enstrümanını çal; REC → kayıt
+function m3MidiOn(e) {
+    const x = m3EdX(); if (!x || !m3RollOpen()) return;
+    const c = m3MonOpen(2); if (!c) return;
+    const n = mixNodes.ch[6 + m3XAt(x.u)]; if (!n || !n.ig) return;
+    const key = e.input + ':' + e.ch + ':' + e.note, old = m3LiveHeld.get(key);
+    if (old) old.release(c.currentTime);
+    const v = m3XVoice(x, n, e.note, c.currentTime + 0.003, null, Math.max(0.05, e.vel));
+    if (v) m3LiveHeld.set(key, v);
+    if (m3Rec.on) m3RecOn(x, e, key);
+}
+function m3MidiOff(e) {
+    const key = e.input + ':' + e.ch + ':' + e.note, v = m3LiveHeld.get(key);
+    if (v) { m3LiveHeld.delete(key); v.release(mixCtx ? mixCtx.currentTime : 0); m3MonOpen(1); }
+    const x = m3EdX(); if (x && m3Rec.on) m3RecOff(x, e, key);
+}
+// Adım kaydı (dururken): nota imlece ızgara boyunda yazılır; bütün tuşlar bırakılınca imleç ızgara kadar ilerler
+// (akor = aynı adım). Canlı kayıt (çalarken): basış konumu ve süresi ızgaraya kuantize edilir, bırakınca yazılır.
+function m3RecOn(x, e, key) {
+    const g = m3Rec.grid, v = lpClamp(Math.round(e.vel * 127), 1, 127), L0 = x.clip.len;
+    if (!mixRun) {
+        const s = lpClamp(m3Rec.cur, 0, Math.max(0, L0 - g));
+        m3Push();
+        const notes = x.clip.notes.filter(n => !(n.p === e.note && Math.abs(n.s - s) < 1e-6));
+        notes.push({ p: e.note, s, l: Math.min(g, L0 - s), v });
+        m3Rec.down++;
+        m3RecCommit(x, notes);
+        return;
+    }
+    const f = m3RollPh(); if (f == null) return;
+    m3Rec.held.set(key, { s: f, t: mixCtx.currentTime, v, p: e.note });
+}
+function m3RecOff(x, e, key) {
+    const g = m3Rec.grid, L0 = Math.max(1, x.clip.len);
+    if (!mixRun) {
+        m3Rec.down = Math.max(0, m3Rec.down - 1);
+        if (!m3Rec.down) {
+            m3Rec.cur = m3Rec.cur + g >= L0 - 1e-6 ? 0 : Math.round((m3Rec.cur + g) * 1000) / 1000;
+            if (m3RollOpen()) m3Ui.roll.setPlayhead(m3Rec.cur);
+            m3RollPaint();
+        }
+        return;
+    }
+    const h = m3Rec.held.get(key); if (!h) return;
+    m3Rec.held.delete(key);
+    let s = Math.round(h.s / g) * g; if (s >= L0 - 1e-6) s = 0;
+    const len = Math.max(g, Math.round(((mixCtx.currentTime - h.t) / (60 / state.mix.bpm / 4)) / g) * g);
+    m3Push();
+    const notes = x.clip.notes.filter(n => !(n.p === h.p && Math.abs(n.s - s) < 1e-6));
+    notes.push({ p: h.p, s: Math.round(s * 1000) / 1000, l: Math.min(len, L0 - s), v: h.v });
+    m3RecCommit(x, notes);
+}
+function m3RecCommit(x, notes) {
+    notes.sort((a, b) => a.s - b.s || a.p - b.p);
+    x.clip = { len: x.clip.len, notes };
+    const U = m3Ui;
+    if (U) { U.rollNotes = notes; if (m3RollOpen()) U.roll.setNotes(notes); }
+    m3XEd[x.u] = performance.now();
+    m3Mod(true); m3Dirty();
 }
 
 // ── MIDI MAP (Ableton MIDI Map Mode, Ctrl/⌘+M): kontrole tıkla → denetleyicide knob/fader oynat → CC eşlenir ──
@@ -15317,11 +16973,13 @@ function m3SpaceKey(e) {
 // diye ona göre karar verir (preset zaten sağlıyorsa kendiliğinden geçmesin).
 // Mix toplu değişince (preset, A/B, geri al / yinele, EQ yapıştır) görüntü yeniden alınır: toplu yükleme adımı
 // kendiliğinden geçirmez, yalnız öğrencinin sonraki elle değişikliği sayılır.
-let m3TE = null;
-function m3TutEnter() { m3TE = mixSnapshot(); }
+let m3TE = null, m3TET = 0;
+const m3XEd = {};                      // kanal → son klip düzenlemesi (performance.now; öğretici 12–13)
+function m3TutEnter() { m3TE = mixSnapshot(); m3TET = performance.now(); }
 function m3TutRebase() { if (m3TE) m3TE = mixSnapshot(); }
 function m3TutSteps() {
     const U = () => m3Ui, C = () => state.mix.ch, E = () => (m3TE || mixSnapshot()).ch;
+    const XE = () => { const o = {}; ((m3TE || mixSnapshot()).xch || []).forEach(x => { o[x.u] = 1; }); return o; };
     // 3–4: hedef kanal çiplerini de içeren EQ sütunu; kart sağda (kompresörün üstünde) durur → çipler ve
     // EQ düğümleri tıklanabilir kalır. ≤600 px'te kit kartı alta sabitler → hedef yalnız EQ ekranı (kartın üstüne sığar).
     const eqT = () => U() && (window.matchMedia && matchMedia('(max-width:600px)').matches ? U().eqBox : (U().eqCol || U().eqBox));
@@ -15330,7 +16988,7 @@ function m3TutSteps() {
         st(1, () => U() && U().play, () => !!mixRun),
         st(2, () => U() && U().strips[0].fdr, () => {
             const c = C(), e = E();
-            return c.some((x, i) => Math.abs(x.fader - e[i].fader) >= 1) && c[0].fader >= -9 && c[0].fader <= -3 && c.every(x => x.fader <= 0);
+            return c.some((x, i) => !!e[i] && Math.abs(x.fader - e[i].fader) >= 1) && c[0].fader >= -9 && c[0].fader <= -3 && c.every(x => x.fader <= 0);
         }),
         st(3, eqT, () => {
             const c = C(), e = E();
@@ -15348,11 +17006,11 @@ function m3TutSteps() {
         } }),
         st(5, () => U() && U().cmpWrap, () => {
             const c = C(), e = E(), r = mixRun;
-            return !!r && !state.mix.bypass && c.some((x, i) => x.ratio >= 2 && x.cpOn !== false && (x.thr !== e[i].thr || x.ratio !== e[i].ratio) && r.gr[i] >= 2);
+            return !!r && !state.mix.bypass && c.some((x, i) => !!e[i] && x.ratio >= 2 && x.cpOn !== false && (x.thr !== e[i].thr || x.ratio !== e[i].ratio) && r.gr[i] >= 2);
         }, { hint: 'lab_m3_tut_5h' }),
         st(6, () => U() && U().strips[1].send, () => {
             const c = C(), e = E(), S = state.mix;
-            return c.some((x, i) => x.sa - e[i].sa >= 0.095 || x.sb - e[i].sb >= 0.095) && (S.rev.ret > -40 || S.dly.ret > -40);
+            return c.some((x, i) => !!e[i] && (x.sa - e[i].sa >= 0.095 || x.sb - e[i].sb >= 0.095)) && (S.rev.ret > -40 || S.dly.ret > -40);
         }),
         st(7, () => U() && U().sc.el, () => {
             const S = state.mix, e = (m3TE || mixSnapshot()).sc;
@@ -15360,11 +17018,42 @@ function m3TutSteps() {
         }),
         st(8, () => U() && U().strips[2].pan.el, () => {
             const c = C(), e = E(), side = [1, 2, 3, 5];
-            return c.some((x, i) => x.pan !== e[i].pan) && Math.abs(c[0].pan) < 0.1 && Math.abs(c[4].pan) < 0.1
+            return c.some((x, i) => !!e[i] && x.pan !== e[i].pan) && Math.abs(c[0].pan) < 0.1 && Math.abs(c[4].pan) < 0.1
                 && side.some(i => c[i].pan <= -0.2) && side.some(i => c[i].pan >= 0.2);
         }),
         st(9, () => U() && U().mst.s2, () => { const r = mixRun; return !!r && !!r.t63 && performance.now() - r.t63 >= 2000; }),
+        // 10–14 (KANAL EKLE): "bu adımda yapıldı mı" — girişteki anlık görüntüde olmayan kanal / girişten sonraki klip düzenlemesi
+        st(10, () => U() && U().add.el, () => {
+            const had = XE();
+            return state.mix.xch.some(x => x.t === 'audio' && !had[x.u] && (labSample(x.smp) || {}).kind === 'pad');
+        }, { placement: 'left' }),
+        st(11, () => U() && U().add.el, () => { const had = XE(); return state.mix.xch.some(x => x.t === 'synth' && !had[x.u]); }, { placement: 'left' }),
+        st(12, () => m3TutClipT('synth'), () => {
+            const k = state.mix.key;
+            return state.mix.xch.some(x => x.t === 'synth' && (m3XEd[x.u] || 0) > m3TET && x.clip.notes.length > 0
+                && x.clip.notes.every(n => inScale(n.p, k.root, k.type)) && m3XNewNote(x, k));
+        }),
+        st(13, () => m3TutClipT('bass'), () => state.mix.xch.some(x => x.t === 'bass' && (m3XEd[x.u] || 0) > m3TET && x.clip.notes.length >= 2)),
+        st(14, () => { const u = U(); return u && u.strips[6] ? u.strips[6].fdr : u && u.add.el; }, () => {
+            const S = state.mix, T = m3TE || mixSnapshot(), ex = T.xch || [];
+            if (S.xch.length < 2) return false;
+            let moved = 0;
+            S.xch.forEach((x, k) => { const j = ex.findIndex(y => y.u === x.u); if (j >= 0 && T.ch[6 + j] && Math.abs(S.ch[6 + k].fader - T.ch[6 + j].fader) >= 1) moved++; });
+            return moved >= 2 && S.ch.slice(6).every(x => x.fader <= 0);
+        }),
     ];
+}
+// Öğretici 12–13 hedefi: rulo açıksa ızgara, değilse o türün ilk kanalındaki CLIP düğmesi, yoksa + KANAL
+function m3TutClipT(t) {
+    const U = m3Ui; if (!U) return null;
+    if (U.roll && m3RollOpen()) { const x = m3EdX(); if (x && x.t === t) return U.roll.el.querySelector('.lpr-scroll') || U.roll.el; }
+    const k = state.mix.xch.findIndex(x => x.t === t);
+    return k >= 0 && U.strips[6 + k] ? U.strips[6 + k].xb : U.add.el;
+}
+// Adım girişindeki klibe göre tonda YENİ bir nota var mı (varsayılan klip adımı kendiliğinden geçirmesin)
+function m3XNewNote(x, k) {
+    const e = m3TE && (m3TE.xch || []).find(y => y.u === x.u), old = new Set((e && e.clip ? e.clip.notes : []).map(n => n.p + ':' + n.s));
+    return x.clip.notes.some(n => !old.has(n.p + ':' + n.s) && inScale(n.p, k.root, k.type));
 }
 function m3MakeTutorial() {
     return labTutorial({ mid: 3, id: 'mix', title: 'lab_m3_tut_t', intro: 'lab_m3_tut_i', outro: 'lab_m3_tut_o', steps: m3TutSteps(),
@@ -15376,7 +17065,10 @@ function m3StopAll() {
     stopMix();
     m3TE = null;
     clearTimeout(mixIrTimer); mixIrTimer = 0;
-    if (m3Ui) { cancelAnimationFrame(m3Ui.raf); m3Ui.raf = 0; m3Ui = null; }
+    clearTimeout(m3WarpT); m3WarpT = 0;
+    clearTimeout(m3MonT); m3MonT = 0;
+    m3Ed = null; m3Rec.down = 0; m3Rec.held.clear();
+    if (m3Ui) { if (m3Ui.midiOff) m3Ui.midiOff.forEach(f => f()); cancelAnimationFrame(m3Ui.raf); m3Ui.raf = 0; m3Ui = null; }
     if (mixCtx && mixCtx.state === 'running') {
         if (mixNodes) mixNodes.stale = true;                       // askıdayken donan reverb kuyruğu dönüşte atılır
         const c = mixCtx;
@@ -15388,7 +17080,11 @@ function m3StopAll() {
 function renderModule3() {
     const { root, top, main } = modLayout(3);
     root.classList.add('lab-m3');
-    const U = m3Ui = { binds: [], i18n: [], raf: 0, cur: -1, lang: labLang(), root, mapping: false, mapT: null, mapDone: '', ccOff: null, learnOff: null };
+    const U = m3Ui = { binds: [], i18n: [], raf: 0, cur: -1, lang: labLang(), root, mapping: false, mapT: null, mapDone: '', ccOff: null, learnOff: null,
+        bgrp: null, roll: null, rs: null, midiOff: null };
+    m3XGsig = state.mix.xch.map(x => x.u).join();
+    if (mixNodes) m3XGraph(mixNodes);
+    state.mix.xch.forEach(x => { if (x.t === 'audio') m3Load(x.smp); });
     mixPrefetch();
     m3LoadClassicLead();
     // Seçili kaynakların tamponlarını önceden getir (jest gerekmez; paylaşılan çözücü)
@@ -15407,7 +17103,7 @@ function renderModule3() {
     U.mapBtn.setAttribute('aria-pressed', 'false');
     win.center.append(makeTutorialButton(tut).el, makeMidiButton().el, U.mapBtn);
     m3BuildTransport(win.transport, U);
-    win.body.append(m3BuildSource(U), m3BuildConsole(U), m3BuildDetail(U), m3BuildConcepts(U));
+    win.body.append(m3BuildSource(U), m3BuildConsole(U), m3BuildDev(U), m3BuildDetail(U), m3BuildConcepts(U));
     m3BuildBandKnobs();
     // MIDI MAP: eşleme modunda knob/fader'a tık (ya da klavyeyle odak) → hedef; değer değişmesin diye tık yutulur
     win.root.addEventListener('pointerdown', e => {
@@ -15430,7 +17126,7 @@ function renderModule3() {
     U.tasks = tasks; U.tlive = []; U.tsig = '';
     tasks.addEventListener('click', () => m3Dirty());               // elle işaret → etiketi tazele
     const aside = mk('div', 'm3-aside');
-    const where = whereCard({ mid: 3, items: ['lab_m3_w1', 'lab_m3_w2', 'lab_m3_w3', 'lab_m3_w4', 'lab_m3_w5', 'lab_m3_w6', 'lab_m3_w7', 'lab_m3_w8'] });
+    const where = whereCard({ mid: 3, items: ['lab_m3_w1', 'lab_m3_w2', 'lab_m3_w3', 'lab_m3_w4', 'lab_m3_w5', 'lab_m3_w6', 'lab_m3_w7', 'lab_m3_w8', 'lab_m3_w9'] });
     where.classList.add('m3-where');
     aside.append(tasks, where);
     const hiw = howItWorks(m3HiwOpts(aside));
@@ -15458,6 +17154,7 @@ function renderModule3() {
             U.mapDone = '';
             tasks.querySelectorAll('.lab-task-text').forEach((el, i) => { if (TASKS[3][i]) el.textContent = TASKS[3][i].text; });
             U.tsig = '';                                               // metin yenilendi → OTOMATİK etiketlerini yeniden kur
+            m3RollPaint();
         }
         m3SyncUser();
         m3Dirty();
@@ -15466,6 +17163,17 @@ function renderModule3() {
     _m3StopAudio = m3StopAll;
     m3Paint();
     return root;
+}
+// Tanılama (?m3debug=1): headless doğrulama — planlanan MIDI notaları __m3.log() (kanal, perde, zaman, süre, vel)
+if (/[?&]m3debug=1\b/.test(location.search)) {
+    m3Dbg = { log: [] };
+    window.__m3 = { S: () => state.mix, run: () => mixRun, G: () => mixNodes, ctx: () => mixCtx, log: () => m3Dbg.log, voices: () => m3Voices,
+        add: m3XAdd, del: m3XDel, move: m3XMove, openClip: m3OpenClip, roll: () => m3Ui && m3Ui.roll, setKey: m3SetKey, setSample: m3XSetSample,
+        snap: mixSnapshot, apply: mixApplySnap, fs: m3FsMix, clean: mixClean, save: saveMixPreset, pick: m3PickPreset, start: startMix, stop: stopMix,
+        set: mixSet, setInst: m3XSetInst, hist: () => m3Ui && m3Ui.hist, inst: { labInstVoice, labInstPresets, labInstNorm },
+        rollChange: m3RollChange, tut: () => m3Ui && m3Ui.tut,
+        // Firestore taklidi (yalnız tanılama): saveMixPreset'in yükünü yakalamak için _db / currentUser geçici değişir
+        stubFs: (db, user) => { const o = [_db, currentUser]; _db = db; currentUser = user; return () => { _db = o[0]; currentUser = o[1]; }; } };
 }
 // Görevler: elle işaretlenebilir (makeTaskPanel düğmeleri) + canlı koşul false→true olunca completeTask
 // (yalnız tamamlar, geri almaz). Koşul şu an sağlanıyor ve görev işaretliyse satırda "· OTOMATİK ✓" etiketi (tasarım).
@@ -18472,7 +20180,8 @@ function renderModule4() {
 // ═══════════════════════════════════════════════════════════════════
 // Tasarım: Lab_Mastering (eklenti penceresi + "Çalışma mantığı" + görev / Ableton / hata şeridi).
 // Ses: ortak beatCtx (getBeatCtx — yeni AudioContext açılmaz, kapatılmaz). KAYNAK seçici (m5V.src):
-// 'beat' = startBeat() + beatRouteTo(mixBus) (+ tempo uyarsa Lead/Pad Loop; pattern boşken seçilemez),
+// 'beat' = startBeat() + beatRouteTo(mixBus) (+ Lead/Pad Loop: WARP her tempoda perde sabit, RE-PITCH yalnız tempo
+// ±%6 içindeyse — m5V.warp, kaynak şeridindeki WARP | RE-PITCH; pattern boşken seçilemez),
 // 'demo' = dahili sentez loop (124 BPM), 'cass' = Cassianism Mix (Pad/Lead/Pluck loop'ları + Mersey
 // davulları, 126 BPM, modülün lookahead zamanlayıcısı; stem'ler labSampleBuffer). Kaynak kırpmaları
 // (M5_BEAT_TRIM / M5_CASS_TRIM) varsayılan zincirde Integrated'ı ≈ aynı LUFS'a getirir; Beat kaynağı ayrıca her
@@ -18743,8 +20452,9 @@ const M5_RNG = {
 };
 const M5_BRNG = [[20, 20000], [-15, 15], [0.3, 8]], M5_MBRNG = [[-40, 0], [-6, 6]];
 const M5_VOICE_BPM = 124;
-// Beat Maker kaynağında tempo uyarsa eklenen döngüler: [dosya, kazanç, ölçü sayısı @125 BPM]
-const M5_LOOPS = [['assets/audio/Pad Loop.wav', 0.18, 4], ['assets/audio/Lead Loop.wav', 0.12, 16]];
+// Beat Maker kaynağına eklenen döngüler: [dosya, kazanç, ölçü sayısı @125 BPM, LAB_SAMPLES id]. m5V.warp: WARP →
+// her Beat temposunda perdesi sabit (LOOP WARP gerilmiş tampon) · RE-PITCH → yalnız tempo ±%6 içindeyse, hız = bpm / 125.
+const M5_LOOPS = [['assets/audio/Pad Loop.wav', 0.18, 4, 'classic-pad-loop'], ['assets/audio/Lead Loop.wav', 0.12, 16, 'classic-lead-loop']];
 // Beat kaynağı seviye eşleme: başlangıç kırpması Beat Maker'ın varsayılan House şablonuna göre (kuru mix ≈ M5_DRY_REF).
 // Pattern / ses düzeyi değişebildiğinden her Beat başlangıcında ilk M5_CAL_S saniyenin kuru K-ağırlıklı seviyesi
 // ölçülür ve beatIn + loopIn tek seferde M5_DRY_REF'e kaydırılır (±M5_CAL_MAX dB). Sonuç imzaya göre saklanır:
@@ -18796,6 +20506,7 @@ function m5Sanitize(src) {
 let m5P = m5Clone(M5_DEF);                   // aktif parametreler
 const m5V = { plat: 0, ref: false, byp: false, sel: 1, pre: 'f0', tool: 0, mod: false,
     src: 'demo', srcPicked: false,   // KAYNAK; seçilmediyse her görünümde Beat pattern'i doluysa 'beat', değilse 'demo'
+    warp: true,                      // Beat kaynağındaki Lead / Pad loop'ları: WARP (perde sabit) | RE-PITCH — KAYNAK gibi oturum ayarı
     match: true,                     // GAIN MATCH (BYPASS ALL seviye eşli)
     solo: null,                      // modül solo: 'eq'|'glue'|'mb'|'st'|'lim' (oturum; preset/geçmiş dışı)
     band: null };                    // multiband LISTEN: 0|1|2
@@ -19188,23 +20899,31 @@ function m5LoadBuf(ctx, file) {
     }
     return m5Bufs[file];
 }
-// Lead / Pad Loop (125 BPM) — yalnız Beat temposu yakınsa, ölçü sınırına hizalı
+// Lead / Pad Loop (125 BPM) — ölçü sınırına hizalı. WARP (vars.): her tempoda, perdesi sabit (gerilmiş tamponun ölçüsü
+// 240 / bpm, hız 1; hesaplanırken Beat çalar, loop'lar hazır olunca sonraki ölçüde girer). RE-PITCH: yalnız tempo yakınsa.
 function m5StartLoops(gen) {
     const E = m5E, R = m5R; if (!E || !R) return;
-    const ctx = E.ctx, bpm = +state.bpm || 125, rate = bpm / 125;
-    // VARSAYIM: ±%6 (≈ ±1 yarım ton) dışında perde kayması rahatsız eder → yalnız beat çalar
-    if (Math.abs(rate - 1) > 0.06) return;
-    M5_LOOPS.forEach(([file, v, bars]) => {
-        m5LoadBuf(ctx, file).then(buf => {
+    const ctx = E.ctx, bpm = +state.bpm || 125, warp = m5V.warp !== false, rate = warp ? 1 : bpm / 125;
+    // VARSAYIM: ±%6 (≈ ±1 yarım ton) dışında perde kayması rahatsız eder → RE-PITCH'te yalnız beat çalar
+    if (!warp && Math.abs(rate - 1) > 0.06) return;
+    const lg = R.lgen = (R.lgen || 0) + 1;                  // mod değişimi (m5SetWarp) eski istekleri geçersiz kılar
+    R.warpPend = 0;
+    M5_LOOPS.forEach(([file, v, bars, id]) => {
+        const pend = warp && labLoopNeedsWarp(id, bpm) && !labLoopBufferPeek(id, bpm);
+        if (pend) { R.warpPend++; m5PaintSrc(); }
+        (warp ? labLoopBuffer(ctx, id, bpm) : m5LoadBuf(ctx, file)).then(buf => {
+            if (R.lgen !== lg) return;
+            if (pend) { R.warpPend--; m5PaintSrc(); }
             if (!buf || !m5R || m5R.gen !== gen || !m5E || m5E.ctx !== ctx) return;
             const bar = 240 / bpm, now = ctx.currentTime + 0.1;
             const k = Math.max(0, Math.ceil((now - m5R.beatT0) / bar));
-            const when = m5R.beatT0 + k * bar, off = ((k % bars) * 240 / 125) % buf.duration;
+            const when = m5R.beatT0 + k * bar, off = ((k % bars) * (warp ? bar : 240 / 125)) % buf.duration;
             const s = ctx.createBufferSource(), gn = ctx.createGain();
             s.buffer = buf; s.loop = true; s.playbackRate.value = rate; gn.gain.value = v;
             s.connect(gn); gn.connect(m5E.A.loopIn);
             s.onended = () => { try { gn.disconnect(); } catch {} };
             s.start(when, off);
+            s._m5g = gn;
             m5R.loops.push(s);
             // Döngüler kuru seviyeyi yükseltir → eşleme döngülerle birlikte (yeniden) ölçülsün
             if (when + 0.1 > m5R.calT0) { m5R.cal = false; m5R.calT0 = Math.max(when + 0.1, m5R.calGlide); m5R.calE = 0; m5R.calN = 0; }
@@ -19295,6 +21014,21 @@ function m5SetSource(v) {
     // Çalarken kaynak değişimi: durdur + yeni kaynakla başlat (ölçüm yeni malzeme için sıfırlanır)
     if (m5R) { m5Stop(); m5Start(); }
     m5PaintSrc(); m5PaintMeter();
+}
+// WARP | RE-PITCH (Beat kaynağının Lead / Pad loop'ları): çalarken eski loop'lar ~10 ms'de söner, yeni moddakiler
+// sonraki ölçü başında girer (Beat ve ölçüm kesilmez)
+function m5SetWarp(v) {
+    v = v !== false;
+    if (m5V.warp === v) return;
+    m5V.warp = v;
+    const R = m5R, E = m5E;
+    if (R && R.beat && E) {
+        const t = E.ctx.currentTime;
+        R.loops.forEach(s => { try { if (s._m5g) { s._m5g.gain.cancelScheduledValues(t); s._m5g.gain.setTargetAtTime(0, t, 0.01); } s.stop(t + 0.08); } catch {} });
+        R.loops = [];
+        m5StartLoops(R.gen);
+    }
+    m5PaintSrc();
 }
 function m5SetSolo(k) {
     m5V.solo = m5V.solo === k ? null : k;
@@ -20230,7 +21964,8 @@ function m5BuildSrcBar(u) {
     const sp = mk('span', 'm5-src-sp'); sp.setAttribute('aria-hidden', 'true');
     u.match = makeToggle({ text: () => L('lab_m5_match'), led: true, color: 'var(--m5-eq)', title: () => L('lab_m5_match_t'), on: m5V.match, cls: 'm5-match',
         onToggle: b => { m5V.match = b; m5Monitor(); } });
-    bar.append(cap, u.srcSeg.el, u.srcMeta, sp, u.match.el);
+    u.warp = makeWarpSeg(m5V.warp, v => m5SetWarp(v), { cls: 'm5-warp' });
+    bar.append(cap, u.srcSeg.el, u.srcMeta, u.warp.el, sp, u.match.el);
     return bar;
 }
 function m5PaintSrc() {
@@ -20242,6 +21977,7 @@ function m5PaintSrc() {
         if (off) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
         b.title = L(off ? 'lab_m5_src_t_boff' : v === 'beat' && !m5BeatHasPattern() ? 'lab_m5_src_t_bseed' : 'lab_m5_src_t_' + v);
     });
+    if (u.warp) { u.warp.el.hidden = cur !== 'beat'; u.warp.set(m5V.warp !== false); u.warp.setBusy(!!(m5R && m5R.warpPend > 0)); }
     u.srcMeta.textContent = m5R && m5R.loading ? L('lab_m5_src_load')
         : cur === 'beat' ? Lf('lab_m5_src_m_beat', { bpm: Math.round(+state.bpm || 125) }) : L('lab_m5_src_m_' + cur);
 }
