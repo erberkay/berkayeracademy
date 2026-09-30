@@ -13659,7 +13659,9 @@ function renderModule4() {
 // 'beat' = startBeat() + beatRouteTo(mixBus) (+ tempo uyarsa Lead/Pad Loop; pattern boşken seçilemez),
 // 'demo' = dahili sentez loop (124 BPM), 'cass' = Cassianism Mix (Pad/Lead/Pluck loop'ları + Mersey
 // davulları, 126 BPM, modülün lookahead zamanlayıcısı; stem'ler labSampleBuffer). Kaynak kırpmaları
-// (M5_BEAT_TRIM / M5_CASS_TRIM) varsayılan zincirde Integrated'ı ≈ aynı LUFS'a getirir. Seçilmediyse
+// (M5_BEAT_TRIM / M5_CASS_TRIM) varsayılan zincirde Integrated'ı ≈ aynı LUFS'a getirir; Beat kaynağı ayrıca her
+// başlangıçta kuru seviyesine göre bir kez eşlenir (m5BeatCalTick). Beat Maker hiç açılmadıysa BEAT MAKER seçilince
+// Modül 2'nin varsayılan House şablonu kendi loadGenreTemplate'iyle yüklenir (m5BeatSeed). Seçilmediyse
 // bugünkü davranış: pattern doluysa beat, değilse demo.
 // Pro: modül SOLO (m5On — diğerleri nötr, m5P değişmez), multiband bant LISTEN, GAIN MATCH'li BYPASS ALL
 // (kuru mix S-LUFS'a eşlenir + güvenlik limiteri), Boşluk = çal/durdur (m5SpaceKey), öğretici
@@ -13825,6 +13827,7 @@ Object.assign(LAB_TXT, {
     lab_m5_src_t_demo: [`Dahili sentez loop'u (kick, bas, hat, clap, akor) · 124 BPM`, `Built-in synth loop (kick, bass, hat, clap, chords) · 124 BPM`],
     lab_m5_src_t_beat: [`Beat Maker pattern'in — Beat çıkışı mastering zincirine yönlenir`, `Your Beat Maker pattern — the Beat output is routed into the mastering chain`],
     lab_m5_src_t_boff: [`Beat Maker pattern'in boş — önce Beat Maker'da birkaç adım yaz`, `Your Beat Maker pattern is empty — write a few steps in Beat Maker first`],
+    lab_m5_src_t_bseed: [`Beat Maker'ın varsayılan pattern'i (House, 125 BPM) yüklenir — Beat çıkışı mastering zincirine yönlenir`, `Loads the Beat Maker's default pattern (House, 125 BPM) — the Beat output is routed into the mastering chain`],
     lab_m5_src_t_cass: [`Sounds Mania Cassianism Pad + Lead + Pluck (Am) ve Mersey davulları · 126 BPM · kaba mix`, `Sounds Mania Cassianism Pad + Lead + Pluck (Am) with Mersey drums · 126 BPM · rough mix`],
     lab_m5_src_m_demo: [`124 BPM · SENTEZ`, `124 BPM · SYNTH`],
     lab_m5_src_m_beat: [`{bpm} BPM · PATTERN`, `{bpm} BPM · PATTERN`],
@@ -13865,15 +13868,16 @@ Object.assign(LAB_TXT, {
     lab_m5_tut4_b:     [`THRESH'i GR okuması 1–3 dB'de kalana kadar ayarla ve 2 saniye tut. Ratio 2:1, attack 10–30 ms transient'i korur; amaç ezmek değil, mix'i tek parça yapmak.`, `Set THRESH until the GR reading stays at 1–3 dB and hold it for 2 seconds. Ratio 2:1 and a 10–30 ms attack keep the transients; the goal is cohesion, not squashing.`],
     lab_m5_tut4_a:     [`Glue Compressor: Ratio 2, Attack 10/30 ms, Release Auto, GR iğnesi 1–3 dB.`, `Glue Compressor: Ratio 2, Attack 10/30 ms, Release Auto, GR needle 1–3 dB.`],
     lab_m5_tut5_h:     [`Multiband: sorunlu bandı evcilleştir`, `Multiband: tame the problem band`],
-    lab_m5_tut5_b:     [`Bir bandın kulaklık düğmesiyle LISTEN yap (sorunu kulakla bul), sonra o bandın THR'ini indir: ortalama GR 0.5–4 dB olsun. Yalnız sorunlu bant çalışır, gerisi dokunulmaz.`, `Press a band's headphone button to LISTEN (find the problem by ear), then lower that band's THR: average GR between 0.5 and 4 dB. Only the problem band works, the rest stays untouched.`],
+    lab_m5_tut5_b:     [`Bir bandın kulaklık düğmesiyle LISTEN yap (sorunu kulakla bul), sonra AYNI bandın THR'ini indir: o bandın ortalama GR'si 0.5–4 dB olsun. THR'i yükseltmek sıkıştırmayı azaltır — evcilleştirmek için aşağı.`, `Press a band's headphone button to LISTEN (find the problem by ear), then lower THAT band's THR: its average GR should land between 0.5 and 4 dB. Raising THR means less compression — to tame, go down.`],
     lab_m5_tut5_a:     [`Multiband Dynamics: bant Solo (S) düğmesi, Above Threshold, Amount %20–30.`, `Multiband Dynamics: the band Solo (S) button, Above threshold, Amount 20–30%.`],
-    lab_m5_tut5_n:     [`Koşul: bir bant dinlendi, Multiband açık, bir THR değişti, bir bantta ortalama GR 0.5–4 dB.`, `Condition: a band was listened to, Multiband on, a THR changed, one band averages 0.5–4 dB GR.`],
+    lab_m5_tut5_n:     [`Koşul: Multiband açık; dinlediğin bantta THR adıma girerkenkinden düşük ve o bantta ortalama GR 0.5–4 dB.`, `Condition: Multiband on; on the band you listened to, THR is below where it was when the step began and that band averages 0.5–4 dB GR.`],
     lab_m5_tut6_h:     [`Genişliği korelasyonla kontrol et`, `Check the width against correlation`],
     lab_m5_tut6_b:     [`WIDTH'i 80–140 % arasında değiştir ve KORELASYON'u izle: +0.3'ün üstünde kalmalı. Sıfıra yaklaşan ya da eksiye düşen korelasyon mono'da (kulüp, telefon) sesin kaybolması demek.`, `Change WIDTH within 80–140% and watch CORRELATION: it must stay above +0.3. Correlation near zero or negative means the sound collapses in mono (club, phone).`],
     lab_m5_tut6_a:     [`Utility: Width + Bass Mono (120 Hz); korelasyon için Spectrum/Correlation metre ya da üçüncü parti.`, `Utility: Width + Bass Mono (120 Hz); use a correlation meter to check.`],
     lab_m5_tut7_h:     [`Limiter tavanı −1 dBTP`, `Limiter ceiling −1 dBTP`],
-    lab_m5_tut7_b:     [`TRUE PEAK açık, CEILING ≤ −1.0 dB olsun ve 3 saniye boyunca ölçülen tepe −1 dBTP'yi aşmasın. Streaming kodlayıcıları (AAC/Ogg) örnekler arası tepeleri büyütür; 1 dB pay bozulmayı önler.`, `Keep TRUE PEAK on, CEILING ≤ −1.0 dB, and the measured peak must not exceed −1 dBTP for 3 seconds. Streaming encoders (AAC/Ogg) grow inter-sample peaks; 1 dB of margin prevents distortion.`],
+    lab_m5_tut7_b:     [`Önce hatayı gör: LIMITER DRIVE'ı limiter GR göstermeye başlayana kadar aç (≈ +6 dB), TRUE PEAK'i kapat ve CEILING'i −0.3 dB'ye çek — TP okuması −1 dBTP'nin üstüne çıkar. Sonra TRUE PEAK'i aç, CEILING'i −1.0 dB yap: 3 saniye boyunca ölçülen tepe −1 dBTP'yi aşmasın. Streaming kodlayıcıları (AAC/Ogg) örnekler arası tepeleri büyütür; 1 dB pay bozulmayı önler.`, `First see the mistake: raise LIMITER DRIVE until the limiter shows GR (≈ +6 dB), switch TRUE PEAK off and pull CEILING up to −0.3 dB — the TP readout climbs above −1 dBTP. Then switch TRUE PEAK on and set CEILING to −1.0 dB: the measured peak must stay at or below −1 dBTP for 3 seconds. Streaming encoders (AAC/Ogg) grow inter-sample peaks; 1 dB of margin prevents distortion.`],
     lab_m5_tut7_a:     [`Limiter: Ceiling −1 dB, True Peak açık (Live 12), Lookahead 3 ms.`, `Limiter: Ceiling −1 dB, True Peak on (Live 12), Lookahead 3 ms.`],
+    lab_m5_tut7_n:     [`Koşul: bu adımda tavan bir kez −1 dB'nin üstüne çıktı (ya da TRUE PEAK kapandı), şimdi TRUE PEAK açık, CEILING ≤ −1.0 dB ve 3 s boyunca TP ≤ −1 dBTP.`, `Condition: during this step the ceiling went above −1 dB once (or TRUE PEAK was off); now TRUE PEAK is on, CEILING ≤ −1.0 dB and TP ≤ −1 dBTP for 3 s.`],
     lab_m5_tut8_h:     [`Platform LUFS hedefini yakala`, `Hit the platform LUFS target`],
     lab_m5_tut8_b:     [`Hedef platformu seç, LIMITER DRIVE ile loudness'ı it ve LOUDNESS'ta RESET'e bas: Integrated 5 saniyede ±1 LU içinde otursun. Hedeften yüksek master platformda kısılır — fazlası kazanç değil kayıp.`, `Pick the target platform, push the loudness with LIMITER DRIVE and press RESET in LOUDNESS: Integrated must settle within ±1 LU in 5 seconds. A master above the target gets turned down — the extra is a loss, not a gain.`],
     lab_m5_tut8_a:     [`Limiter Gain ile it; ölçüm için Youlean Loudness Meter ya da Live 12'nin LUFS metresi.`, `Push with the Limiter's Gain; measure with Youlean Loudness Meter or Live 12's LUFS meter.`],
@@ -13881,10 +13885,11 @@ Object.assign(LAB_TXT, {
     lab_m5_tut9_h:     [`Referansla A/B`, `A/B with a reference`],
     lab_m5_tut9_b:     [`REF'i aç ve 2 saniye dinle: referans zinciri senin short-term LUFS'una eşlenir. Aynı yükseklikte bas, parlaklık ve punch'ı karşılaştır, sonra REF'i kapat.`, `Turn REF on and listen for 2 seconds: the reference is matched to your short-term LUFS. At the same loudness compare low end, brightness and punch, then switch REF off.`],
     lab_m5_tut9_a:     [`Referans parçayı ayrı bir kanala koy, Solo ile değiş; Utility ile LUFS eşle.`, `Put the reference track on its own track, switch with Solo; match LUFS with Utility.`],
+    lab_m5_tut9_n:     [`Koşul: REF en az 2 saniye açık kaldı, sonra kapatıldı.`, `Condition: REF stayed on for at least 2 seconds, then was switched off.`],
     lab_m5_tut10_h:    [`Master presetini kaydet`, `Save the master preset`],
     lab_m5_tut10_b:    [`KAYDET'e bas, bir ad ver ve kaydet: zincir hesabına yazılır, preset listesinde KULLANICI altında görünür (silmek için seçip çöp kutusu).`, `Press SAVE, give it a name and save: the chain is written to your account and shows under USER in the preset list (select it and use the bin to delete).`],
     lab_m5_tut10_a:    [`Rack'i gruplayıp (Ctrl/⌘+G) Browser'a kaydet: User Library → Presets → Audio Effects → Audio Effect Rack.`, `Group the chain (Ctrl/⌘+G) and save the Rack to the Browser: User Library → Presets → Audio Effects → Audio Effect Rack.`],
-    lab_m5_tut10_n:    [`Kaydetmek için giriş gerekir — KAYDET seni giriş penceresine götürür.`, `Saving needs sign-in — SAVE takes you to the sign-in window.`],
+    lab_m5_tut10_n:    [`KAYDET ad alanını açar; bir ad verip kaydet — giriş yapmadıysan giriş penceresi açılır.`, `SAVE opens the name field; give it a name and save — if you're not signed in, the sign-in window opens.`],
 });
 
 // ── Veri ─────────────────────────────────────────────────────────────
@@ -13924,8 +13929,12 @@ const M5_BRNG = [[20, 20000], [-15, 15], [0.3, 8]], M5_MBRNG = [[-40, 0], [-6, 6
 const M5_VOICE_BPM = 124;
 // Beat Maker kaynağında tempo uyarsa eklenen döngüler: [dosya, kazanç, ölçü sayısı @125 BPM]
 const M5_LOOPS = [['assets/audio/Pad Loop.wav', 0.18, 4], ['assets/audio/Lead Loop.wav', 0.12, 16]];
-// VARSAYIM: kaynak kalibrasyonu — varsayılan ayarda Integrated ≈ −15…−17 LUFS (başsız Chrome'da ölçüldü)
-const M5_BEAT_TRIM = 0.35;
+// Beat kaynağı seviye eşleme: başlangıç kırpması Beat Maker'ın varsayılan House şablonuna göre (kuru mix ≈ M5_DRY_REF).
+// Pattern / ses düzeyi değişebildiğinden her Beat başlangıcında ilk M5_CAL_S saniyenin kuru K-ağırlıklı seviyesi
+// ölçülür ve beatIn + loopIn tek seferde M5_DRY_REF'e kaydırılır (±M5_CAL_MAX dB). Sonuç imzaya göre saklanır:
+// aynı pattern'i yeniden çalınca doğrudan eşli başlar.
+// VARSAYIM: demo ≈ −26, Cassianism ≈ −28.5 LUFS kuru → varsayılan zincirde ≈ −15.5 / −15.9 Integrated (başsız Chrome'da ölçüldü)
+const M5_BEAT_TRIM = 0.58, M5_DRY_REF = -28.2, M5_CAL_S = 2.5, M5_CAL_MAX = 9;
 // Kaynaklar (KAYNAK seçici): demo (dahili sentez) · beat (Beat Maker, beatRouteTo) · cass (Cassianism Mix)
 const M5_SRCS = ['demo', 'beat', 'cass'];
 // Cassianism Mix: 126 BPM, Am. Loop'lar (8 ölçü, döngü) + Mersey one-shot'ları kendi lookahead zamanlayıcısıyla.
@@ -13975,8 +13984,10 @@ const m5V = { plat: 0, ref: false, byp: false, sel: 1, pre: 'f0', tool: 0, mod: 
     solo: null,                      // modül solo: 'eq'|'glue'|'mb'|'st'|'lim' (oturum; preset/geçmiş dışı)
     band: null };                    // multiband LISTEN: 0|1|2
 // Öğretici ("Mastering zinciri") oturum izleri — adımların check()'leri buradan okur (TASKS'a dokunmaz)
-const m5Tut = { bypN: 0, byp: false, eqSnap: '', mbSnap: '', bandHeard: false, wSnap: 0, corrEma: 0, corrN: 0,
-    tpS: -Infinity, tpN: 0, lufs: false, saved: false };
+// heard[i]: bu adımda i. bant LISTEN edildi · mbSnap[i]: adıma girerkenki THR · limBad: adımda tavan > −1 dB ya da
+// TRUE PEAK kapalı görüldü (öğrenci taşmayı görüp düzeltsin) · refHeard: REF ≥ 2 s dinlendi (sonra kapatılmalı)
+const m5Tut = { bypN: 0, byp: false, eqSnap: '', mbSnap: [0, 0, 0], heard: [false, false, false], wSnap: 0, corrEma: 0, corrN: 0,
+    tpS: -Infinity, tpN: 0, lufs: false, saved: false, limArm: false, limBad: false, refArm: false, refHeard: false };
 const m5Met = [false, false, false, false, false];   // TASKS[5] sırasıyla, oturumda sağlanan koşullar
 let m5E = null;            // ses motoru { ctx, A, clipKey }
 let m5R = null;            // çalma durumu (null = durmuş)
@@ -13986,6 +13997,7 @@ let m5M = null;            // ölçüm
 let m5DefT = null, m5TaskT = null;
 let m5Routed = false;      // beatOut şu an mixBus'ta mı
 let m5UserPre = [], m5UserUid = null;
+let m5BeatCal = { sig: '', db: 0 };   // son Beat seviye eşlemesi: imza → kırpmaya eklenen dB
 const m5Bufs = {};         // dosya → Promise<AudioBuffer|null>
 
 function m5TaskText(id) {
@@ -14297,6 +14309,55 @@ function m5BeatHasPattern() {
     catch { return false; }
 }
 function m5CanRouteBeat() { return typeof beatRouteTo === 'function' && typeof beatRouteDefault === 'function'; }
+// Beat Maker hiç açılmadıysa slotlar boştur: Modül 2 ilk açılışında House şablonunu yükler (renderModule2 → _m2Seeded).
+// Mastering'de BEAT MAKER seçilince aynı yol (Modül 2'nin kendi loadGenreTemplate'i) önceden işletilir; slotlar dolduğu
+// için Modül 2 sonradan yeniden yüklemez. Beat Maker açılıp pattern silindiyse tohumlanmaz (gerçekten boş).
+function m5BeatSeedable() {
+    try {
+        return typeof _m2Seeded === 'boolean' && !_m2Seeded && typeof loadGenreTemplate === 'function'
+            && Array.isArray(state.beat.slots) && state.beat.slots.every(sl => sl.every(r => r.every(v => !(v > 0))))
+            && GENRE_TEMPLATES.some(g => g.name === 'House');
+    } catch { return false; }
+}
+function m5BeatSeed() {
+    if (m5BeatHasPattern() || !m5BeatSeedable()) return;
+    try { loadGenreTemplate(GENRE_TEMPLATES.find(g => g.name === 'House')); }
+    catch (e) { console.warn('[lab] m5 beat şablonu:', e); }
+}
+// Beat seviye eşleme imzası: pattern + iz seviyeleri + tempo (değişince yeniden ölçülür)
+function m5BeatSig() {
+    try { return JSON.stringify([state.beatPatterns, state.beatVolumes, state.beat.master, state.beat.power, state.bpm]); }
+    catch { return ''; }
+}
+// Kaynak kırpması (beatIn = M5_BEAT_TRIM, loopIn = 1) × 10^(db/20)
+function m5BeatTrim(db, tau) {
+    const E = m5E; if (!E) return;
+    const t = E.ctx.currentTime, f = m5Db(db);
+    [[E.A.beatIn, M5_BEAT_TRIM * f], [E.A.loopIn, f]].forEach(([n, v]) => {
+        n.gain.cancelScheduledValues(t);
+        if (tau) n.gain.setTargetAtTime(v, t, tau); else n.gain.setValueAtTime(v, t);
+    });
+}
+// m5Meter'dan: Beat çalarken kuru mix'in ilk M5_CAL_S saniyesi → tek seferlik seviye eşleme
+function m5BeatCalTick(R, m, now, e) {
+    if (R.src !== 'beat' || !R.beat || R.cal || now < R.calT0) return;
+    if (e > 1e-7) { R.calE += e; R.calN++; }
+    if (now - R.calT0 < M5_CAL_S || R.calN < 8) return;
+    R.cal = true;
+    const dS = m5Lu(R.calE / R.calN);
+    if (!isFinite(dS)) return;
+    const prev = R.calDb, db = lpClamp(prev + M5_DRY_REF - dS, -M5_CAL_MAX, M5_CAL_MAX);
+    m5BeatCal = { sig: R.calSig, db };
+    if (Math.abs(db - prev) < 0.5) return;
+    R.calDb = db; R.calGlide = now + 1.2;    // kayma (τ 0.25 s) bitmeden yeniden ölçülmesin
+    m5BeatTrim(db, 0.25);
+    // Büyük düzeltme: seviye oturduktan sonra ölçüm (Integrated / LRA / TP) baştan — eşlenmemiş ilk saniyeler sayılmasın
+    if (Math.abs(db - prev) > 1) {
+        m.gates = []; m.sArr = []; m.tpMax = -Infinity; m.t0 = now + 1; m.glueOk = 0;
+        m5TutWin();
+    }
+}
+function m5BeatSelectable() { return (m5BeatHasPattern() || m5BeatSeedable()) && m5CanRouteBeat(); }
 function m5RouteDefault() {
     if (!m5Routed) return;
     m5Routed = false;
@@ -14329,6 +14390,8 @@ function m5StartLoops(gen) {
             s.onended = () => { try { gn.disconnect(); } catch {} };
             s.start(when, off);
             m5R.loops.push(s);
+            // Döngüler kuru seviyeyi yükseltir → eşleme döngülerle birlikte (yeniden) ölçülsün
+            if (when + 0.1 > m5R.calT0) { m5R.cal = false; m5R.calT0 = Math.max(when + 0.1, m5R.calGlide); m5R.calE = 0; m5R.calN = 0; }
         });
     });
 }
@@ -14346,17 +14409,23 @@ function m5Start() {
     const A = m5E.A, t = ctx.currentTime, gen = ++m5Gen;
     m5Apply();
     const src = m5SrcEff(), useBeat = src === 'beat';
+    if (useBeat) m5BeatSeed();
     m5R = { gen, src, timer: 0, meterT: 0, step: 0, nextT: t + 0.06, loops: [], pend: [], cass: null,
-        loading: false, fail: false, beat: false, beatT0: 0, refSince: m5V.ref ? performance.now() : 0 };
+        loading: false, fail: false, beat: false, beatT0: 0, refSince: m5V.ref ? performance.now() : 0,
+        cal: false, calT0: 0, calE: 0, calN: 0, calDb: 0, calSig: '', calGlide: 0 };
     m5M = m5NewMeas(t);
     m5TutWin();
     A.mon.gain.cancelScheduledValues(t); A.mon.gain.setTargetAtTime(1, t, 0.03);
     if (useBeat) {
         try {
+            const sig = m5BeatSig();
+            m5R.calSig = sig; m5R.calDb = sig && sig === m5BeatCal.sig ? m5BeatCal.db : 0;
+            m5BeatTrim(m5R.calDb, 0);
             beatRouteTo(A.beatIn); m5Routed = true;
             if (beatPlaying) stopBeat(false);
             startBeat();
             m5R.beat = true; m5R.beatT0 = ctx.currentTime + 0.05;   // startBeat: ilk adım currentTime + 0.05
+            m5R.calT0 = m5R.beatT0 + 0.1;
             m5StartLoops(gen);
         } catch (e) {
             console.warn('[lab] m5 beat:', e); m5RouteDefault();
@@ -14397,12 +14466,13 @@ function m5Stop() {
 }
 function m5Toggle() { if (m5R) m5Stop(); else m5Start(); }
 // ── Kaynak / SOLO / LISTEN ───────────────────────────────────────────
-function m5BeatOk() { return m5BeatHasPattern() && m5CanRouteBeat(); }
+function m5BeatOk() { return m5BeatSelectable(); }
 // Etkin kaynak: 'beat' seçili ama pattern boşsa demo (Beat Maker'da pattern silinmiş olabilir)
 function m5SrcEff() { return m5V.src === 'beat' && !m5BeatOk() ? 'demo' : m5V.src; }
 function m5SetSource(v) {
     if (M5_SRCS.indexOf(v) < 0) return;
     if (v === 'beat' && !m5BeatOk()) { m5PaintSrc(); lpAnnounce(L('lab_m5_src_t_boff')); return; }
+    if (v === 'beat') m5BeatSeed();
     m5V.srcPicked = true;
     if (m5V.src === v) return;
     m5V.src = v;
@@ -14416,11 +14486,13 @@ function m5SetSolo(k) {
 }
 function m5SetBand(i) {
     m5V.band = m5V.band === i ? null : i;
-    if (m5V.band != null && m5R) m5Tut.bandHeard = true;
+    if (m5V.band != null && m5R) m5Tut.heard[m5V.band] = true;
     m5Apply(); m5TutWin(); m5PaintSolo();
 }
 // Öğretici ölçüm pencerelerini sıfırla (parametre / kaynak değişince: "şimdiki ayarla" ölçülsün)
 function m5TutWin() { m5Tut.tpS = -Infinity; m5Tut.tpN = 0; m5Tut.corrN = 0; }
+// Öğretici 7. adım: tavan −1 dB'nin üstünde ya da TRUE PEAK kapalı görüldü mü (preset / geri al / knob — her yol)
+function m5TutLim() { const l = m5P.lim; if (m5Tut.limArm && (!l.on || !l.tp || l.ceil > -1 + 1e-6)) m5Tut.limBad = true; }
 function m5Destroy(E) {
     // Monitör rampası (30 ms) bitince bütün düğümleri ayır — tek seferlik, kendini bitiren zamanlayıcı
     setTimeout(() => E.A.all.forEach(n => { try { n.disconnect(); } catch {} }), 150);
@@ -14431,7 +14503,7 @@ function m5Teardown() {
     clearTimeout(m5TaskT); m5TaskT = null;
     document.removeEventListener('visibilitychange', m5OnVis);
     if (m5E) { m5Destroy(m5E); m5E = null; }
-    m5U = null;
+    m5U = null; m5PtrEl = null;
     beatSuspendSoon(M5_ROUTE_MS + 700);      // rota varsayılana döndükten sonra; Beat yeniden çalıyorsa dokunmaz
 }
 function m5NoAudio() {
@@ -14531,6 +14603,7 @@ function m5Meter(gen) {
     while (m.dryB.length && now - m.dryB[0][0] > 3) m.dryB.shift();
     const dS = m5Lu(avg(m.dryB, 3));
     if (isFinite(dS) && isFinite(m.S)) m.dryMatch = lpClamp(m.S - dS, -12, 18);
+    m5BeatCalTick(R, m, now, m.dryB[m.dryB.length - 1][1]);
     if (m5V.ref || (m5V.byp && m5V.match)) m5Monitor();
     // 10: görevler (TASKS[5] sırası: 1 hedef · 6 true peak · 7 glue · 8 REF · 4 limiter kapalı)
     const el = now - m.t0, tnow = performance.now();
@@ -14546,9 +14619,11 @@ function m5Meter(gen) {
     const T = m5Tut;
     T.lufs = onT;
     if (m5V.byp && m5V.match) T.bypN++;
-    else if (T.bypN >= 19) T.byp = true;          // ≥ 1.5 s seviye eşli bypass dinlendi, sonra kapatıldı
+    else if (T.bypN >= 25) T.byp = true;          // ≥ 2 s (25 × 80 ms) seviye eşli bypass dinlendi, sonra kapatıldı
     else T.bypN = 0;
-    if (m5V.band != null) T.bandHeard = true;
+    if (m5V.band != null) T.heard[m5V.band] = true;
+    m5TutLim();
+    if (T.refArm && m5V.ref && R.refSince && tnow - R.refSince > 2000) T.refHeard = true;
     T.corrEma += (m.corr - T.corrEma) * 0.15; T.corrN++;
     if (el > 0.5 && m5On('lim')) { T.tpS = Math.max(T.tpS, tL, tR); T.tpN++; }
     if (m5U) m5PaintMeter();
@@ -14623,6 +14698,7 @@ function m5GrabTouch(el) { el.addEventListener('touchstart', e => { if (e.cancel
 function m5Changed(quiet) {
     m5Apply();
     m5TutWin();
+    m5TutLim();
     if (!m5U) return;
     m5PaintParams();
     if (!quiet) { m5V.mod = true; m5U.pb.setModified(true); }
@@ -14971,7 +15047,7 @@ function renderModule5() {
     const { root, top, main } = modLayout(5);
     root.classList.add('lab-m5');
     const u = m5U = { knobs: [], panels: {}, pushT: 0, solos: {}, lis: [] };
-    if (!m5V.srcPicked) m5V.src = m5BeatOk() ? 'beat' : 'demo';   // seçilmediyse bugünkü davranış
+    if (!m5V.srcPicked) m5V.src = m5BeatHasPattern() && m5CanRouteBeat() ? 'beat' : 'demo';   // seçilmediyse bugünkü davranış
     u.hist = makeHistory({ get: () => m5P, apply: s => { m5P = m5Sanitize(s); m5Changed(); } });
 
     // ── Pencere + başlık çubuğu ──────────────────────────────────────
@@ -15313,6 +15389,9 @@ function renderModule5() {
     // Pencere tıklanınca odak ona geçsin diye tabindex −1 (Tab sırasına girmez).
     win.root.tabIndex = -1;
     root.addEventListener('keydown', m5SpaceKey);
+    m5PtrEl = null;
+    root.addEventListener('pointerdown', m5FocusTrack, true);
+    root.addEventListener('focusin', m5FocusTrack);
 
     m5PaintParams(); m5PaintPlay(); m5PaintPlat(); m5PaintTools(); m5PaintMeter(); m5PaintSrc(); m5PaintSolo();
     requestAnimationFrame(m5HitSize);
@@ -15345,7 +15424,7 @@ function m5PaintSrc() {
     u.srcSeg.buttons.forEach((b, i) => {
         const v = M5_SRCS[i], off = v === 'beat' && !ok;
         if (off) b.setAttribute('aria-disabled', 'true'); else b.removeAttribute('aria-disabled');
-        b.title = L(off ? 'lab_m5_src_t_boff' : 'lab_m5_src_t_' + v);
+        b.title = L(off ? 'lab_m5_src_t_boff' : v === 'beat' && !m5BeatHasPattern() ? 'lab_m5_src_t_bseed' : 'lab_m5_src_t_' + v);
     });
     u.srcMeta.textContent = m5R && m5R.loading ? L('lab_m5_src_load')
         : cur === 'beat' ? Lf('lab_m5_src_m_beat', { bpm: Math.round(+state.bpm || 125) }) : L('lab_m5_src_m_' + cur);
@@ -15358,11 +15437,24 @@ function m5PaintSolo() {
     });
     u.lis.forEach((b, i) => { b.setAttribute('aria-pressed', String(m5V.band === i)); b.closest('.m5-mbb').classList.toggle('is-listen', m5V.band === i); });
 }
-// Boşluk = transport (DAW): odak modülde, metin alanında değil, Boşluk'u kendisi kullanan denetimde değil
+// Boşluk = transport (DAW): odak modülde ve metin alanında değil. Fareyle odaklanmış düğme (Chrome tıklanan
+// düğmeye odak verir) Boşluk'u yutmaz → transport; klavyeyle (Tab / oklar) gelinmiş denetimde Boşluk denetimin
+// kendisini etkinleştirir (erişilebilirlik: Boşluk = bas). :focus-visible burada işe yaramaz — Chrome bir tuşa
+// basılınca odaktaki öğeyi keydown dinleyicilerinden ÖNCE focus-visible yapar; bu yüzden odağın nereden geldiği
+// kök üzerinde izlenir (m5FocusTrack: pointerdown'dan hemen sonraki focusin = fare odağı).
+let m5PtrT = 0, m5PtrEl = null;
+function m5FocusTrack(e) {
+    if (e.type === 'pointerdown') { m5PtrT = performance.now(); return; }
+    m5PtrEl = performance.now() - m5PtrT < 1000 ? e.target : null;
+}
+const M5_SP_TEXT = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+const M5_SP_CTL = 'button, a[href], summary, [role="option"], [role="listbox"], [role="checkbox"], [role="menuitem"], [role="switch"], [role="button"], [role="radio"], [role="tab"]';
 function m5SpaceKey(e) {
-    if (e.key !== ' ' || e.defaultPrevented || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    if (e.key !== ' ' || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
     const t = e.target;
-    if (!t || !t.closest || t.closest('input, textarea, select, [contenteditable], button, a[href], summary, [role="option"], [role="listbox"], [role="checkbox"], [role="menuitem"], [role="switch"], [role="button"]')) return;
+    if (!t || !t.closest || t.closest(M5_SP_TEXT)) return;
+    if (t !== m5PtrEl && t.closest(M5_SP_CTL)) return;
+    if (e.repeat) { e.preventDefault(); return; }   // basılı tutulan Boşluk fare-odaklı düğmeyi de tetiklemesin
     if (!(window.AudioContext || window.webkitAudioContext)) return;
     e.preventDefault();
     m5Toggle();
@@ -15491,7 +15583,6 @@ function m5MakeTutorial() {
     const K = (n, x) => `lab_m5_tut${n}_${x}`;
     const P = k => () => m5U && m5U.panels[k] ? m5U.panels[k].el : null;
     const st = (n, id, target, check, o) => Object.assign({ id, target, check, title: K(n, 'h'), body: K(n, 'b'), ableton: K(n, 'a') }, o);
-    const mbThr = () => JSON.stringify(m5P.mb.b.map(b => b[0]));
     return labTutorial({
         mid: 5, id: 'chain', title: 'lab_m5_tut_t', intro: 'lab_m5_tut_i', outro: 'lab_m5_tut_o',
         steps: [
@@ -15503,18 +15594,23 @@ function m5MakeTutorial() {
                 return e.on && e.hpf >= 20 && e.hpf <= 45 && JSON.stringify(e.b) !== m5Tut.eqSnap && e.b.every(b => Math.abs(b[1]) <= 3);
             }, { hint: K(3, 'n'), onEnter: () => { m5Tut.eqSnap = JSON.stringify(m5P.eq.b); } }),
             st(4, 'glue', P('glue'), () => !!m5R && m5On('glue') && m5M.glueOk > 25),
-            st(5, 'multiband', P('mb'), () => !!m5R && !!m5E && m5Tut.bandHeard && m5On('mb') && mbThr() !== m5Tut.mbSnap
-                && m5E.bS.some(v => v >= 0.5 && v <= 4),
-                { hint: K(5, 'n'), onEnter: () => { m5Tut.mbSnap = mbThr(); m5Tut.bandHeard = false; } }),
+            // Aynı bant: dinlendi + THR'i adıma girerkenkinden AŞAĞI indi + o bandın ortalama GR'si 0.5–4 dB
+            st(5, 'multiband', P('mb'), () => !!m5R && !!m5E && m5On('mb') && m5P.mb.b.some((b, i) =>
+                m5Tut.heard[i] && b[0] < m5Tut.mbSnap[i] - 0.05 && m5E.bS[i] >= 0.5 && m5E.bS[i] <= 4),
+                { hint: K(5, 'n'), onEnter: () => { m5Tut.mbSnap = m5P.mb.b.map(b => b[0]); m5Tut.heard = [false, false, false]; } }),
             st(6, 'width', P('st'), () => !!m5R && m5On('st') && m5P.st.w !== m5Tut.wSnap && m5P.st.w >= 80 && m5P.st.w <= 140
                 && m5Tut.corrN >= 19 && m5Tut.corrEma >= 0.3,
                 { onEnter: () => { m5Tut.wSnap = m5P.st.w; } }),
+            // Önce taşmayı gör (tavan > −1 dB ya da TRUE PEAK kapalı), sonra düzelt: −1 dBTP, 3 s boyunca aşılmasın.
+            // Varsayılan preset zaten −1'de olduğundan yalnız "şu an sağlanıyor" adımı kendiliğinden geçirirdi.
             st(7, 'ceiling', P('lim'), () => {
                 const l = m5P.lim;
-                return !!m5R && m5On('lim') && l.tp && l.ceil <= -1 + 1e-6 && m5Tut.tpN >= 38 && m5Tut.tpS <= -1;
-            }, { onEnter: () => m5TutWin() }),
+                return !!m5R && m5Tut.limBad && m5On('lim') && l.tp && l.ceil <= -1 + 1e-6 && m5Tut.tpN >= 38 && m5Tut.tpS <= -1;
+            }, { hint: K(7, 'n'), onEnter: () => { m5Tut.limArm = true; m5Tut.limBad = false; m5TutLim(); m5TutWin(); },
+                onLeave: () => { m5Tut.limArm = false; } }),
             st(8, 'lufs', () => m5U && m5U.loud, () => !!m5R && m5Tut.lufs, { hint: K(8, 'n'), placement: 'left' }),
-            st(9, 'ref', () => m5U && m5U.ref.el, () => !!m5R && m5V.ref && !!m5R.refSince && performance.now() - m5R.refSince > 2000),
+            st(9, 'ref', () => m5U && m5U.ref.el, () => m5Tut.refHeard && !m5V.ref,
+                { hint: K(9, 'n'), onEnter: () => { m5Tut.refArm = true; m5Tut.refHeard = false; }, onLeave: () => { m5Tut.refArm = false; } }),
             st(10, 'save', () => m5U && m5U.save, () => m5Tut.saved,
                 { hint: K(10, 'n'), onEnter: () => { m5Tut.saved = false; } }),
         ],
