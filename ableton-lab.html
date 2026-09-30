@@ -5448,11 +5448,14 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //          ya da () => metin (dil değişince yeniden okunur).
 //   steps  [{ id, target, title, body?, ableton?, hint?, check?, onEnter?, onLeave?, placement?, dim? }]
 //     id        adım kimliği (öğretici içinde tekil; anlamı değişirse YENİ id — görevlerdeki kural)
-//     target    () => Element | 'css seçici' | Element — her tikte yeniden çözülür (öğe DOM'dan
-//               düşerse, ör. labOnRefresh / modül yeniden kurulumu, yenisi bulunur). Yoksa/gizliyse
+//     target    () => Element | 'css seçici' | Element — hedef yokken, DOM'dan düşünce (labOnRefresh /
+//               modül yeniden kurulumu) ya da görünmezken (hidden panel, kapalı sekme) her tikte (~250 ms)
+//               yeniden çözülür; görünür olunca durum satırı yenilenir ve bir kez görünüme kaydırılır. Yoksa/gizliyse
 //               kart ortada (telefonda altta) durur, "Kontrol şu an görünmüyor" yazar.
 //     body      açıklama · ableton "Ableton'da:" satırı (Live'daki karşılığı) · hint dipnot
-//     check     () => boolean — true olunca adım KALICI tamamlanır ve ~0.7 sn sonra ilerler
+//     check     () => boolean — true olunca adım KALICI tamamlanır ve ~0.7 sn sonra ilerler. Açık adım
+//               varken İleri devre dışıdır (basılırsa "önce adımı yap" duyurulur); Atla yalnız başka açık
+//               adım varken görünür.
 //               (~250 ms yoklama + tık/girdi/tuş olaylarında hemen). check yoksa adım bilgi adımıdır:
 //               "İleri" tamamlar. Önceden tamamlanmış adıma geri dönülürse check'in yeniden
 //               false→true olması beklenir (Baştan başla'da kendiliğinden geçip gitmesin diye).
@@ -5483,10 +5486,12 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   completeTask burada bilerek çağrılmaz).
 // labTutorialProgress(mid, id) → { done, total }  (total: o öğretici bu oturumda tanımlandıysa adım
 //   sayısı; tanımlanmadıysa 0 ve done = kayıtlı adım anahtarı sayısı).
-// makeTutorialButton(tut, { text?, compact? }) → { el, refresh() }
+// makeTutorialButton(tut, { text?, compact? }) → { el, refresh(), destroy() }
+//   Düğme / çip tut'a abonedir; abonelik görünüm kapanınca (lpOnTeardown), öğe DOM'dan ayrılınca ya da
+//   destroy() ile biter (her çizimde yeni düğme kurmak sızıntı yapmaz).
 //   Başlık çubuğu düğmesi (lp-btn 30 px): kep ikonu + "ÖĞRETİCİ" + x/N (bitince ✓). aria-pressed =
 //   açık mı; tık açar/kapatır. compact:true → yalnız ikon + x/N. Örn. win.center.append(b.el).
-// makeTutorialChip(tut) → { el, refresh() }  küçük ilerleme çipi (çubuk + "x/N" ya da "TAMAM").
+// makeTutorialChip(tut) → { el, refresh(), destroy() }  küçük ilerleme çipi (çubuk + "x/N" ya da "TAMAM").
 //
 // Örnek:
 //   const tut = labTutorial({ mid: 1, id: 'osc', title: 'lab_s1_tut_t', intro: 'lab_s1_tut_i', steps: [
@@ -5502,7 +5507,7 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //               dur, sr, tags }]
 //   kind 'kick'|'snare'|'clap'|'chat'|'ohat'|'ride'|'bass'|'lead'|'pad'|'pluck'. file '/assets/audio/…'.
 //   loop: bpm + bars (Cassianism 126 BPM · 8 ölçü = 672000 örnek; Classic Lead Loop 125 · 16, Pad Loop
-//   125 · 4). key: 'Am', 'C#m' (bilinmiyorsa null — Classic loop'ların tonu belirsiz). root: ton taşıyan
+//   125 · 4). key: 'Am', 'C#m', 'Cm' (bilinmiyorsa null — Classic Pad Loop belirsiz). root: ton taşıyan
 //   one-shot'ın kök notası (MIDI; bass.wav ≈ C1 = 24).
 //   gainDb: seviye eşleme kırpması — loop'lar ~−14 LUFS entegreye (−12…+4 dB aralığında), one-shot'lar
 //   −1 dBFS tepeye. lufs / peakDb ham ölçümler (ffmpeg ebur128 / volumedetect). +dB alan dosyalar float
@@ -5517,13 +5522,18 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   yükleme için kullanılabilir). Hata (ağ, HTML yanıtı, çözülemeyen biçim) → null + console.warn('[lab] …');
 //   çağıran sentez yedeğine düşer. Başarısız istek önbelleğe alınmaz (sonraki çağrı yeniden dener).
 // labSampleAudition(id, { ctx?, dest?, bpm?, maxSec?:16, onEnd? }) → Promise<bool>  Tek önizleme yolu
-//   (sayfada aynı anda tek ses): kaynak → kazanç (gainDb − 6 dB) → dest (vars. ctx.destination); bpm (sayı
+//   (sayfada aynı anda tek ses): kaynak → kazanç (gainDb − 6 dB) → dest (AudioNode ya da onu veren
+//   fonksiyon, aynı ctx'ten; vars. / uyumsuzsa ctx.destination); bpm (sayı
 //   ya da fonksiyon) verilirse loop tempoya uyar. ctx: AudioContext ya da onu veren fonksiyon (() => getBeatCtx()).
 //   ctx verilmezse ilk çağrıda (kullanıcı jestinde) kendi küçük AudioContext'ini kurar; görünüm
-//   kapanınca durur ve o bağlam kapanır. labSampleAuditionStop() · labSampleAuditionId() → çalan id | null.
-// makeSampleBrowser({ kinds?, value?, onPick(sample), audition?:true, ctx?, bpm?, label?, height?:260,
-//                     filter?, packs?, cls? }) → { el, set(id), get(), stop(), focus() }
-//   ctx / bpm labSampleAudition'a gider (ctx verilmezse önizleme kendi bağlamını ilk ▶ jestinde kurar).
+//   kapanınca durur ve o bağlam kapanır. labSampleAuditionStop() · labSampleAuditionId() → çalan id | null
+//   (tampon beklenirken de id döner). labSampleAuditionSubscribe(fn(id|null)) → unsub: her başlama / bitme /
+//   durdurma / hatada çağrılır (çağıran lpOnTeardown ile bırakır).
+// makeSampleBrowser({ kinds?, value?, onPick(sample), audition?:true, ctx?, dest?, bpm?, label?, height?:260,
+//                     filter?, packs?, cls? }) → { el, set(id), get(), stop(), focus(), destroy() }
+//   ctx / dest / bpm labSampleAudition'a gider (ctx verilmezse önizleme kendi bağlamını ilk ▶ jestinde kurar;
+//   dest: modülün önizleme bus'ı → ölçer/master'dan geçer). Önizleme durumu geneldir: aynı örneği listeleyen
+//   bütün tarayıcılar ▶/■ ve DİNLE'yi birlikte günceller (abonelik görünüm kapanınca / destroy() ile biter).
 //   Pro tarayıcı (Ableton Browser gibi): başlıkta seçili örnek + ▶ DİNLE; liste pakete göre gruplu,
 //   satır = ▶ · ad · tür etiketi · BPM · ton · ölçü (one-shot'ta süre). listbox: ↑/↓ Home/End PageUp/Down
 //   gezer, Enter seçer (onPick), Boşluk dinler/durdurur, Esc önizlemeyi durdurur. Tık seçer, ▶ tık dinler.
@@ -5559,6 +5569,7 @@ Object.assign(LAB_TXT, {
     lp_tut_already:    [`Bu adımı daha önce yaptın — İleri ile geç ya da yeniden dene`, `You did this step before — press Next or try it again`],
     lp_tut_miss:       [`Kontrol şu an görünmüyor — ilgili bölümü aç`, `The control is not visible right now — open its section`],
     lp_tut_need:       [`Önce adımı yap ya da Atla`, `Do the step first, or Skip`],
+    lp_tut_need1:      [`Önce adımı yap — kalan tek adım bu`, `Do the step first — it is the only one left`],
     lp_tut_done_kick:  [`ÖĞRETİCİ · TAMAMLANDI`, `TUTORIAL · COMPLETE`],
     lp_tut_done_h:     [`Tamamlandı`, `Complete`],
     lp_tut_done_body:  [`Bütün adımları yaptın. Aynı akışı Ableton Live'da da uygulayabilirsin.`, `You did every step. You can follow the same flow in Ableton Live.`],
@@ -5647,11 +5658,13 @@ function labTutorial(o) {
     const isDone = s => !!(state.completedTasks || {})[lpTutKey(mid, tid, s.id)];
     const doneCount = () => steps.filter(isDone).length;
     const firstOpen = () => steps.findIndex(s => !isDone(s));
+    const canSkip = () => steps.some((x, j) => j !== cur && !isDone(x));   // atlanınca gidilecek açık adım var mı
     const subs = new Set();
     const emit = () => subs.forEach(f => { try { f(); } catch (e) { console.warn('[lab] tutorial sub:', e); } });
 
     let cur = -1, active = false, built = false;
     let tgt = null, lastOk = false, enteredDone = false, doneNow = false, advT = null, tick = null, raf = 0, ro = null, unreg = null;
+    let lastVis = null;          // paintState'in son boyadığı hedef görünürlüğü (null: adım yok)
     let returnFocus = null, allDoneSeen = doneCount() === N && N > 0, checkWarned = false;
     let card, ring, kick, nameEl, xBtn, prog, hEl, bodyEl, ablEl, ablT, hintEl, stEl, stLed, stTxt, gotoBtn, foot, bBack, bSkip, bNext, bAlt;
     const mq = window.matchMedia ? window.matchMedia('(max-width:600px)') : null;
@@ -5685,7 +5698,10 @@ function labTutorial(o) {
         bBack = lpBtn({ icon: 'prev', text: '', variant: 'ghost', onClick: () => api.prev() });
         bSkip = lpBtn({ text: '', variant: 'ghost', onClick: () => api.skip() });
         bAlt = lpBtn({ text: '', variant: 'ghost', onClick: () => onAlt() });
-        bNext = lpBtn({ text: '', variant: 'accent', cls: 'lp-tut-next', onClick: () => onPrimary() });
+        // onClick lpBtn'e verilmez: lpBtn aria-disabled iken tıkı yutar; onPrimary "önce adımı yap"ı
+        // kendisi duyurur (ekran okuyucu kullanıcısı devre dışı İleri'ye basınca da bilgi alır).
+        bNext = lpBtn({ text: '', variant: 'accent', cls: 'lp-tut-next' });
+        bNext.addEventListener('click', () => onPrimary());
         const sp = mk('span', 'lp-tut-sp');
         foot.append(bBack, bSkip, bAlt, sp, bNext);
         card.append(top, prog, hEl, bodyEl, ablEl, hintEl, stEl, foot);
@@ -5787,9 +5803,29 @@ function labTutorial(o) {
         lastOk = ok;
         if (ok && (!enteredDone || edge)) completeStep(true);
     }
+    // Hedef yok / DOM'dan düştü / görünmüyor (ör. panel `hidden` ile kapandı, sekme değişti) → her tikte
+    // yeniden çöz: seçici ya da fonksiyon artık başka (görünen) bir öğeyi verebilir.
+    function reResolve() {
+        if (cur < 0 || cur >= N) return;
+        if (!tgt || !tgt.isConnected || !visibleRect(tgt)) {
+            const t = resolve();
+            if (t !== tgt) { tgt = t; watch(); }
+        }
+    }
+    // Görünürlük son boyamadan beri değiştiyse durum satırını ("görünmüyor" / "Kontrole git") yenile.
+    // Döndürür: hedef az önce görünür olduysa true (çağıran bir kez görünüme kaydırır).
+    function syncVis() {
+        if (cur < 0 || cur >= N || !built) return false;
+        const vis = !!visibleRect(tgt);
+        if (vis === lastVis) return false;
+        const shown = vis && lastVis === false;
+        paintState();
+        return shown;
+    }
     function onTick() {
         if (!active || document.hidden) return;
-        if (!tgt || !tgt.isConnected) { const t = resolve(); if (t !== tgt) { tgt = t; watch(); paintState(); } }
+        reResolve();
+        if (syncVis()) { scrollToTarget(); }
         evalCheck();
         schedule();
     }
@@ -5838,10 +5874,11 @@ function labTutorial(o) {
     }
     function setBtn(b, text, show) { b.hidden = !show; if (show) lpBtnText(b, text); }
     function paintState() {
-        if (cur < 0 || cur >= N) { stEl.hidden = true; return; }
+        if (cur < 0 || cur >= N) { stEl.hidden = true; lastVis = null; return; }
         const s = steps[cur], d = isDone(s);
         stEl.hidden = false;
-        const missing = !!s.target && !visibleRect(tgt);
+        lastVis = !!visibleRect(tgt);
+        const missing = !!s.target && !lastVis;
         stEl.classList.toggle('is-ok', d); stEl.classList.toggle('is-miss', missing && !d);
         stLed.set(d || !!s.check);
         stLed.setColor(d ? 'var(--ok-strong)' : (missing ? 'var(--warn)' : null));
@@ -5849,8 +5886,9 @@ function labTutorial(o) {
         gotoBtn.hidden = !tgt || !visibleRect(tgt);
         const need = !!s.check && !d;
         bNext.setAttribute('aria-disabled', String(need));
-        bNext.title = need ? L('lp_tut_need') : '';
-        setBtn(bSkip, L('lp_tut_skip'), need);
+        bNext.title = need ? L(canSkip() ? 'lp_tut_need' : 'lp_tut_need1') : '';
+        // Atla yalnız başka açık adım varken: tek açık adım buysa atlayacak yer yok (ölü düğme olmasın)
+        setBtn(bSkip, L('lp_tut_skip'), need && canSkip());
     }
     function paint() {
         build();
@@ -5954,7 +5992,7 @@ function labTutorial(o) {
         let i = cur + 1;
         if (i >= N) {
             const f = firstOpen();
-            if (f === cur) { lpAnnounce(L('lp_tut_need')); return; }   // tek açık adım bu: yerinde kal
+            if (f === cur) return;          // tek açık adım bu (Atla gizli; programatik skip()): yerinde kal
             if (f >= 0) { i = f; lpAnnounce(L('lp_tut_left')); } else i = N;
         }
         enter(i);
@@ -5964,7 +6002,7 @@ function labTutorial(o) {
         if (cur < 0) { const f = firstOpen(); enter(f >= 0 ? f : 0); keepFocus(); return; }
         if (cur >= N) { api.stop(); return; }
         const s = steps[cur];
-        if (s.check && !isDone(s)) { lpAnnounce(L('lp_tut_need')); return; }
+        if (s.check && !isDone(s)) { lpAnnounce(L(canSkip() ? 'lp_tut_need' : 'lp_tut_need1')); return; }
         if (!s.check) completeStep(false); else forward(true);
     }
     function onAlt() {
@@ -6029,13 +6067,35 @@ function labTutorial(o) {
         },
         next() { if (active) onPrimary(); return api; },
         prev() { if (active && cur > 0) { enter(cur - 1); keepFocus(); } return api; },
-        skip() { if (active && cur >= 0 && cur < N) forward(true); return api; },
+        skip() { if (active && cur >= 0 && cur < N && canSkip()) forward(true); return api; },
         goTo(x) { const i = typeof x === 'number' ? x : steps.findIndex(s => s.id === String(x)); if (active && i >= -1 && i <= N) enter(i); return api; },
         restart() { if (!active) return api.start(0); enter(0); keepFocus(); return api; },
         refresh() { if (active) { tgt = resolve(); watch(); paint(); } emit(); return api; },
     };
     return api;
 }
+
+// Öğeye bağlı abonelik (öğretici düğmesi / çipi, örnek tarayıcı): görünüm kapanınca (lpOnTeardown),
+// destroy() ile ya da öğe DOM'a girip sonra ayrılınca (sonraki bildirimde) bırakılır — modül her çizimde
+// yeni düğme kursa da abone kümesi büyümez. Takılma, kurulumdan sonraki ilk karede de yoklanır (kuran kod
+// öğeyi genelde aynı görevde ekler). Ayrılmış öğe yeniden takılıp alive() çağrılırsa abonelik geri kurulur.
+// subscribe: () => unsub.  alive() → false: öğe ayrıldı, çağıran boyamayı atlasın.
+function lpElSub(el, subscribe) {
+    let un = null, seen = false;
+    const off = () => { if (un) { un(); un = null; } lpOffTeardown(off); };
+    const on = () => { if (!un) { un = subscribe(); lpOnTeardown(off); } };
+    on();
+    requestAnimationFrame(() => { if (el.isConnected) seen = true; });
+    return {
+        off,
+        alive() {
+            if (el.isConnected) { seen = true; on(); return true; }
+            if (seen) { off(); return false; }
+            return true;             // henüz takılmadı (kurulum anı): boya
+        },
+    };
+}
+const lpTutSub = (tut, el, fn) => lpElSub(el, () => tut.subscribe(fn));
 
 // Başlık çubuğu "ÖĞRETİCİ x/N" düğmesi
 function makeTutorialButton(tut, o) {
@@ -6044,6 +6104,7 @@ function makeTutorialButton(tut, o) {
     const n = mk('span', 'lp-tut-btn-n'); b.append(n);
     b.addEventListener('click', () => { if (tut.active) tut.stop(); else tut.start(); });
     function refresh() {
+        if (!sub.alive()) return;
         const p = tut.progress(), all = p.total > 0 && p.done === p.total;
         if (!o.compact && !o.text) lpBtnText(b, L('lp_tut_btn'));
         if (all) n.innerHTML = LP_TUT_IC.check; else n.textContent = `${p.done}/${p.total}`;
@@ -6052,10 +6113,10 @@ function makeTutorialButton(tut, o) {
         b.setAttribute('aria-label', Lf('lp_tut_chip_aria', { t: `${L('lp_tut_btn_aria')}: ${tut.title}`, d: p.done, N: p.total }));
         b.title = L('lp_tut_btn_t');
     }
-    tut.subscribe(refresh);
+    const sub = lpTutSub(tut, b, refresh);
     labOnRefresh(b, refresh);
     refresh();
-    return { el: b, refresh };
+    return { el: b, refresh, destroy: sub.off };
 }
 // Küçük ilerleme çipi
 function makeTutorialChip(tut) {
@@ -6063,16 +6124,17 @@ function makeTutorialChip(tut) {
     const bar = mk('span', 'lp-tut-chip-bar'); const t = mk('span', 'lp-tut-chip-t');
     bar.append(mk('span')); el.append(mk('span', 'lp-tut-chip-ic', LP_TUT_IC.cap), bar, t);
     function refresh() {
+        if (!sub.alive()) return;
         const p = tut.progress(), all = p.total > 0 && p.done === p.total;
         el.classList.toggle('is-done', all);
         el.style.setProperty('--p', p.total ? (p.done / p.total).toFixed(4) : '0');
         t.textContent = all ? L('lp_tut_chip_done') : `${p.done}/${p.total}`;
         el.setAttribute('aria-label', Lf('lp_tut_chip_aria', { t: tut.title, d: p.done, N: p.total }));
     }
-    tut.subscribe(refresh);
+    const sub = lpTutSub(tut, el, refresh);
     labOnRefresh(el, refresh);
     refresh();
-    return { el, refresh };
+    return { el, refresh, destroy: sub.off };
 }
 
 // ═══ 2) ÖRNEK KÜTÜPHANESİ ══════════════════════════════════════════
@@ -6085,7 +6147,8 @@ const LAB_SAMPLE_PACKS = {
 };
 // Ölçümler: ffmpeg ebur128 (lufs, entegre; < 0.4 sn dosyada ölçülemez → null) + volumedetect (peakDb, örnek tepe).
 // gainDb: loop → −14 LUFS'a (−12…+4 dB), one-shot → −1 dBFS tepeye.
-// Tonlar: Cassianism paket etiketi (Am / C#m) kroma analiziyle uyumlu; Classic loop'larda belirsiz → null.
+// Tonlar: Cassianism paket etiketi (Am / C#m) kroma analiziyle uyumlu. Classic Lead Loop = Cm (kroma: C %34,
+// G %17, D %12, D# %11; Krumhansl Cm 0.89 > C 0.78; bass.wav kökü C1 ile uyumlu). Pad Loop belirsiz (Dm ≈ D) → null.
 const _lpS = (id, file, name, pack, kind, x) => Object.assign({
     id, file, name, pack, kind, oneShot: true, loop: false, bpm: null, bars: null, key: null, gainDb: 0,
     peakDb: 0, lufs: null, dur: 0, sr: 44100, tags: [],
@@ -6097,7 +6160,7 @@ const LAB_SAMPLES = [
     _lpS('classic-chat',  '/assets/audio/Close Hat.wav',     'Closed Hat', 'classic', 'chat',  { gainDb: -1.0, peakDb: 0.0,  lufs: -14.0, dur: 0.735, sr: 48000, tags: ['drum', 'one-shot', 'hat'] }),
     _lpS('classic-ohat',  '/assets/audio/Open Hat (1).wav',  'Open Hat',   'classic', 'ohat',  { gainDb: -0.7, peakDb: -0.3, lufs: -13.9, dur: 1.0, tags: ['drum', 'one-shot', 'hat'] }),
     _lpS('classic-bass',  '/assets/audio/bass.wav',          'Bass',       'classic', 'bass',  { gainDb: -1.0, peakDb: 0.0,  dur: 0.125, sr: 48000, root: 24, tags: ['bass', 'one-shot', 'sub'] }),
-    _lpS('classic-lead-loop', '/assets/audio/Lead Loop.wav', 'Lead Loop',  'classic', 'lead',  { oneShot: false, loop: true, bpm: 125, bars: 16, gainDb: 2.0, peakDb: 0.0, lufs: -16.0, dur: 30.72, tags: ['loop', 'melodic'] }),
+    _lpS('classic-lead-loop', '/assets/audio/Lead Loop.wav', 'Lead Loop',  'classic', 'lead',  { oneShot: false, loop: true, bpm: 125, bars: 16, key: 'Cm', gainDb: 2.0, peakDb: 0.0, lufs: -16.0, dur: 30.72, tags: ['loop', 'melodic', 'c-minor'] }),
     _lpS('classic-pad-loop',  '/assets/audio/Pad Loop.wav',  'Pad Loop',   'classic', 'pad',   { oneShot: false, loop: true, bpm: 125, bars: 4,  gainDb: 3.4, peakDb: -2.0, lufs: -17.4, dur: 7.68, tags: ['loop', 'chords'] }),
     // Mersey · Sounds Mania (davul one-shot)
     _lpS('mersey-kick-02',       '/assets/audio/lab/mersey-kick-02.flac',       'Kick 02',       'mersey', 'kick',  { gainDb: -0.9, peakDb: -0.1, dur: 0.480, tags: ['drum', 'one-shot', 'house'] }),
@@ -6150,7 +6213,7 @@ function lpSampleDecoder(ctx) {
 }
 function labSampleBuffer(ctx, id) {
     const s = labSample(id);
-    if (!s) { console.warn('[lab] sample: bilinmeyen id', id); return Promise.resolve(null); }
+    if (!s) { console.warn(`[lab] sample: bilinmeyen id`, id); return Promise.resolve(null); }
     if (_lpSBuf.has(id)) return Promise.resolve(_lpSBuf.get(id));
     if (_lpSReq.has(id)) return _lpSReq.get(id);
     const dec = lpSampleDecoder(ctx);
@@ -6158,11 +6221,11 @@ function labSampleBuffer(ctx, id) {
         .then(r => {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             const ct = (r.headers.get('content-type') || '').toLowerCase();
-            if (ct.indexOf('text/html') >= 0) throw new Error('HTML yanıtı (dosya yok)');
+            if (ct.indexOf('text/html') >= 0) throw new Error(`HTML yanıtı (dosya yok)`);
             return r.arrayBuffer();
         })
         .then(ab => {
-            if (!dec) throw new Error('çözücü yok');
+            if (!dec) throw new Error(`çözücü yok`);
             // decodeAudioData: vaat + eski geri çağırmalı (webkit) biçimi birlikte
             return new Promise((res, rej) => { const q = dec.decodeAudioData(ab, res, rej); if (q && q.then) q.then(res, rej); });
         })
@@ -6176,6 +6239,14 @@ function labSampleBuffer(ctx, id) {
 let _lpAudCtx = null;          // kendi önizleme bağlamımız (ctx verilmediyse; ilk jestte kurulur)
 let _lpAud = null;             // { id, src, g, ctx, onEnd, t }
 let _lpAudUnreg = null;
+// Önizleme dinleyicileri: başlama / bitme / durdurma / hata anında haber alır — aynı örneği listeleyen
+// birden çok tarayıcı (ör. kanal başına seçici) ▶/■ durumunu birlikte boyar.
+const _lpAudSubs = new Set();
+function labSampleAuditionSubscribe(fn) { _lpAudSubs.add(fn); return () => { _lpAudSubs.delete(fn); }; }
+function lpAudNotify() {
+    const id = labSampleAuditionId();
+    Array.from(_lpAudSubs).forEach(f => { try { f(id); } catch (e) { console.warn('[lab] audition sub:', e); } });
+}
 function labSampleAuditionId() { return _lpAud ? _lpAud.id : null; }
 function labSampleAuditionStop() {
     const a = _lpAud;
@@ -6190,6 +6261,7 @@ function labSampleAuditionStop() {
     } catch (_) {}
     setTimeout(() => { try { a.src.disconnect(); a.g.disconnect(); } catch (_) {} }, 150);
     if (a.onEnd) { try { a.onEnd(); } catch (e) { console.warn('[lab] audition onEnd:', e); } }
+    lpAudNotify();
 }
 function lpAudTeardown() {
     labSampleAuditionStop();
@@ -6216,9 +6288,10 @@ function labSampleAudition(id, o) {
     const token = {};
     _lpAud = { id, token, pending: true, onEnd: o.onEnd, ctx, t: null, src: null, g: null };
     const pend = _lpAud;
+    lpAudNotify();                                    // bekleyen önizleme de "çalıyor" sayılır (■ ile durdurulabilir)
     return labSampleBuffer(ctx, id).then(buf => {
         if (_lpAud !== pend) return false;            // bu arada başka önizleme / durdurma
-        if (!buf) { _lpAud = null; if (o.onEnd) o.onEnd(); return false; }
+        if (!buf) { _lpAud = null; if (o.onEnd) o.onEnd(); lpAudNotify(); return false; }
         const src = ctx.createBufferSource(); src.buffer = buf;
         const bpm = typeof o.bpm === 'function' ? o.bpm() : o.bpm;
         if (s.loop && bpm) src.playbackRate.value = labLoopRate(id, bpm);
@@ -6226,8 +6299,13 @@ function labSampleAudition(id, o) {
         const now = ctx.currentTime, lvl = lpLin((s.gainDb || 0) - 6);
         g.gain.setValueAtTime(0, now);
         g.gain.setTargetAtTime(lvl, now, 0.004);
-        src.connect(g); g.connect(o.dest || ctx.destination);
-        src.onended = () => { if (_lpAud && _lpAud.src === src) { _lpAud = null; try { src.disconnect(); g.disconnect(); } catch (_) {} if (pend.onEnd) pend.onEnd(); } };
+        // dest: AudioNode ya da onu veren fonksiyon (modülün önizleme / master bus'ı, ölçer önünde).
+        // Başka bağlamın düğümü verilirse bağlanamaz → uyarı + ctx.destination.
+        let dest = null;
+        try { dest = typeof o.dest === 'function' ? o.dest() : o.dest; } catch (e) { console.warn('[lab] audition dest:', e); }
+        if (dest && dest.context !== ctx) { console.warn(`[lab] audition dest: farklı AudioContext, hoparlöre yönlendirildi`); dest = null; }
+        src.connect(g); g.connect(dest || ctx.destination);
+        src.onended = () => { if (_lpAud && _lpAud.src === src) { _lpAud = null; try { src.disconnect(); g.disconnect(); } catch (_) {} if (pend.onEnd) pend.onEnd(); lpAudNotify(); } };
         src.start(now);
         pend.src = src; pend.g = g; pend.pending = false;
         const maxSec = o.maxSec > 0 ? o.maxSec : 16;
@@ -6345,7 +6423,7 @@ function makeSampleBrowser(o) {
         if (o.audition === false) return;
         if (labSampleAuditionId() === id) { labSampleAuditionStop(); paint(); return; }
         setBusy(id, true);
-        labSampleAudition(id, { ctx: o.ctx, bpm: o.bpm, onEnd: () => paint() }).then(ok => {
+        labSampleAudition(id, { ctx: o.ctx, dest: o.dest, bpm: o.bpm }).then(ok => {
             setBusy(id, false, !ok && !_lpSBuf.has(id) && !_lpSReq.has(id));
             paint();
         });
@@ -6367,7 +6445,11 @@ function makeSampleBrowser(o) {
         if (j >= 0) { e.preventDefault(); opts[i].tabIndex = -1; opts[j].tabIndex = 0; opts[j].focus(); opts[j].scrollIntoView({ block: 'nearest' }); }
     });
     list.addEventListener('focusout', () => { requestAnimationFrame(() => { if (!list.contains(document.activeElement)) paint(); }); });
-    // Görünüm kapanınca: önizleme durur (lpAudTeardown kaydı labSampleAudition'da)
+    // Görünüm kapanınca: önizleme durur (lpAudTeardown kaydı labSampleAudition'da).
+    // Genel önizleme durumu: hangi tarayıcı başlatırsa başlatsın bütün tarayıcılar ▶/■ ve DİNLE'yi boyar.
+    // Görünüm kapanınca ya da öğe DOM'a girip ayrılınca bırakılır.
+    const audSub = lpElSub(el, () => labSampleAuditionSubscribe(() => { if (audSub.alive()) paint(); }));
+    const audOff = audSub.off;
     build();
     labOnRefresh(el, () => {
         cap.textContent = L('lp_smp_cap');
@@ -6380,6 +6462,7 @@ function makeSampleBrowser(o) {
         get: () => cur,
         set(id) { cur = id; paint(); },
         stop() { labSampleAuditionStop(); paint(); },
+        destroy: audOff,
         focus() { const f = opts.find(x => x._sid === cur) || opts[0]; if (f) f.focus(); },
     };
 }
