@@ -788,6 +788,10 @@
             color:var(--fg-soft); font-family:var(--ff-mono); font-size:11px; letter-spacing:.04em; color-scheme:dark; appearance:none; -webkit-appearance:none; cursor:pointer; transition:border-color var(--dur-fast); }
         .lpr-sel:hover { border-color:var(--accent-line-2); }
         .lpr-sel option { background:var(--surface-1); color:var(--fg); }
+        /* Telefon şeridinin "devamı var" düğmesi (yalnız ≤600 görünür; sarmalayıcı düz dikdörtgen maske) */
+        .lpr-tb-end { display:none; }
+        .lpr-tb-more svg { width:14px; height:14px; transition:transform var(--dur-fast); }
+        .lpr-tb-more.is-end svg { transform:scaleX(-1); }
 
         /* ── Izgara alanı (tek kaydırıcı; cetvel/tuşlar/velocity yapışkan) ─ */
         .lpr .lpr-body { position:relative; flex:1 1 auto; min-height:0; padding:0; gap:0; }
@@ -873,13 +877,23 @@
             .lpr .lp-bar-r { order:0; width:auto; margin-left:0; }
             .lpr-close span { display:none; }
             .lpr-title { max-width:20ch; }
-            .lpr-tb { flex-direction:row; gap:18px; overflow-x:auto; overscroll-behavior-x:contain; padding:12px; }
-            .lpr-row { flex-wrap:nowrap; flex-shrink:0; }
-            .lpr-hint { display:none; }
+            .lpr-tb { flex-direction:row; align-items:center; gap:18px; overflow-x:auto; overscroll-behavior-x:contain; padding:12px; }
+            /* Satırlar çözülür → gruplar tek şeritte sıralanır: en sık kullanılanlar (çal, çiz/seç, çoğalt/sil) önde */
+            .lpr-row { display:contents; }
+            .lpr-grp--play { order:-3; }
+            .lpr-grp--mode { order:-2; }
+            .lpr-grp--edit { order:-1; }
+            /* Sağ kenarda yapışkan ileri düğmesi. Sarmalayıcı şeridin tüm yüksekliğini ve iç boşluğunu kaplayan
+               düz bir dikdörtgen (degrade değil): arkadan kayan öğeler görünmez; eksi margin → sonda sıçramaz */
+            .lpr-tb-end { display:flex; align-items:center; order:99; position:sticky; right:-12px; flex-shrink:0; align-self:stretch;
+                margin:-12px -12px -12px 0; padding:12px 12px 12px 10px; background:var(--surface-block); border-left:1px solid var(--line-2); }
+            /* Dokunma ipucu gizlenmez: durum satırında kendi satırında durur */
+            .lpr-hint { flex-basis:100%; margin-left:0; line-height:1.5; }
             .lpr .lp-status { padding:8px 12px; gap:4px 12px; }
         }
         @media (prefers-reduced-motion: reduce) {
             .lpr-ov .lpr { animation:none; }
+            .lpr-tb-more svg { transition:none; }
         }
         /* ═══ /LAB PİYANO RULOSU ═══ */
 
@@ -5499,13 +5513,16 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   Adım = 1/16 nota (vuruş başına 4). 1/32 ve triyole ızgarada s/l kesirli olabilir (0.5, 0.6667…).
 // opts: {
 //   title?     pencere başlığı (vars. L('lpr_title_def')) · notes? · length? adım (vars. 16; 1..maxLength)
-//   maxLength? (vars. 64 = 4 ölçü) · range? [lo, hi] MIDI (vars. [36, 96] = C1..C6)
+//   maxLength? (vars. 64 = 4 ölçü) · range? [lo, hi] MIDI (vars. [36, 96] = C1..C6). Aralık dışındaki notalar
+//       KIRPILMAZ: görünen aralık onları kapsayacak kadar genişler (perde yalnız 0..127'ye sıkışır)
 //   scale? { root:0..11, type:'minor', on:bool, fold:bool } · grid? '1/4'|'1/8'|'1/16'|'1/32' · triplet?
 //   accidentals? 'sharp' | 'flat' (nota adlarında ♯/♭ tercihi; vars. 'sharp')
 //   zoom? 0..6 (vars. fare 3, dokunmatik 6 = 44 px satır). Yatayda klip en az görünür genişliği doldurur
 //       (ResizeObserver, yalnız açıkken); zoom 4–6 bunun 1.25/1.5/2 katı · bpm? (dahili önizleme; vars. 120)
 //   colors? { note:'var(--lab-c-osc2)', sel:'var(--fg)' } (CSS rengi/var())
 //   readOnly? (düzenleme kapalı: dinleme, gezinme, çal, gam görünümü kalır) · cls? · mode? 'dialog'|'inline'
+//   passKeys? (vars. false) — pencere modunda tuş olayları (keydown/keyup/keypress) pencereden dışarı
+//       kabarcıklanmaz; arkadaki modülün window kısayolları (synth klavyesi, Boşluk) tetiklenmez. true → geçer.
 //   onChange(notes, meta)  YALNIZ nota düzenlemelerinden sonra (bırakınca / tuşta; sürükleme sırasında
 //       değil): meta.reason = add | delete | move | resize | velocity | quantize | duplicate | transpose |
 //       clear | length | undo | redo. notes = getNotes() kopyası (sel alanı yok).
@@ -5519,9 +5536,12 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   onClose()  pencere kapanınca (Esc, KAPAT, lpTeardown)
 // }
 // Döndürür { el, overlay, open(opener?), close(), isOpen(), setNotes(notes), getNotes(), setScale(sc),
-//            getScale(), setLength(steps), getLength(), setPlayhead(step|null), setPlaying(bool),
-//            setTitle(t), clearHistory(), relabel(), destroy() }
-//   el = section.lp-win.lpr (dialog: role=dialog aria-modal, aria-labelledby = başlık h2).
+//            getScale(), setLength(steps), getLength(), setRange([lo, hi]), getRange(), setPlayhead(step|null),
+//            setPlaying(bool), setTitle(t), clearHistory(), relabel(), destroy() }
+//   el = section.lp-win.lpr (dialog: role=dialog aria-modal, aria-labelledby = gizli "MIDI nota düzenleyici"
+//     + başlık h2 → "MIDI nota düzenleyici Lead · Klip 1, iletişim kutusu").
+//   setRange: taban aralığı değiştirir, satırları yeniden kurar (klipteki notalar yine kapsanır); getRange →
+//     görünen [lo, hi].
 //   open(opener?): overlay body'ye eklenir, sayfa kaydırması kilitlenir, odak ızgaraya; kapanınca odak
 //     opener'a (vars. açılıştaki document.activeElement) döner. lpOnTeardown ile gezinmede kendiliğinden kapanır.
 //   setNotes: aynı içerikse bir şey yapmaz, değilse geri alınabilir değişiklik (onChange ÇAĞRILMAZ —
@@ -5530,7 +5550,12 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //     pencere başlattıysa durdurur (onPlayToggle(false)).
 // Kontroller: başlık çubuğu ↶ ↷ · KAPAT; araç çubuğu ÇAL · DÖNGÜ 1/2/4 ölçü · POZİSYON (ölçü.vuruş.16'lık)
 //   · ÇİZ/SEÇ (B) · IZGARA 1/4 1/8 1/16 1/32 + triyole · KUANTİZE (güç %) · GAM (aç/kapa, kök, tür) ·
-//   KATLA · TRANSPOZE −12 −1 +1 +12 · GAM İÇİ ∨ ∧ · ÇOĞALT · TEMİZLE · ZOOM − +.
+//   KATLA · TRANSPOZE −12 −1 +1 +12 · GAM İÇİ ∨ ∧ · ÇOĞALT · SİL (seçim yoksa pasif) · TEMİZLE · ZOOM − +.
+//   ≤600 px: tek kayan şerit, sıra ÇAL · ÇİZ/SEÇ · ÇOĞALT/SİL/TEMİZLE · …; sağda yapışkan ileri düğmesi.
+// Çakışma (Ableton gibi): taşınan / boyu değişen / çizilen / çoğaltılan / transpoze edilen nota aynı perdede
+//   başka notanın başlangıcını örterse o nota silinir, içeri uzanan önceki nota kısaltılır (aynı geri alma
+//   adımı). GAM oturtması tık/Enter'ı var olan notaya düşürürse ikinci nota eklenmez: o nota seçilir
+//   (fare: sürükleme onu taşır) / imleç ona gider.
 // Fare: Çiz modunda boş hücreye tık = nota (ızgara boyu; sürükle uzat), notayı sürükle = taşı (ızgaraya
 //   oturur, Alt/Option serbest), sağ kenarı sürükle = boy, çift tık = sil (Seç modunda boşa çift tık = ekle).
 //   Seç modunda boş alanda sürükle = seçim çerçevesi (Shift ekler), Shift+tık = seçime ekle/çıkar.
@@ -5544,7 +5569,7 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 // Klavye (ızgara odaklıyken; role=application): oklar imleci taşır (Shift: oktav / ölçü), Enter imleçte
 //   nota ekler/siler, Shift+Enter imleçteki notayı seçer, Boşluk çal/durdur, Home/End. Seçim varken
 //   ↑↓ notaları taşır (GAM açıksa gam içinde, Shift oktav), ←→ ızgara kadar (Shift ölçü), Alt+↑↓
-//   velocity ±8 (Shift ±1), Esc seçimi kaldırır. Pencerenin her yerinde: Ctrl/⌘+A hepsini seç, Ctrl/⌘+D
+//   velocity ±8 (Shift ±1), Alt+←→ boy ± ızgara (Shift ölçü; seçim yoksa imleçteki nota), Esc seçimi kaldırır. Pencerenin her yerinde: Ctrl/⌘+A hepsini seç, Ctrl/⌘+D
 //   çoğalt (seçim yoksa klibi iki katına), Ctrl/⌘+U kuantize, Ctrl/⌘+Z / Shift+Z / Y geri al–yinele,
 //   Delete/Backspace sil, B çiz/seç, + / − zoom, Tab odak tuzağı, Esc kapat. İmleç değişince aria-live
 //   okur: "C3 · adım 5 · uzunluk 1/16".
@@ -5605,6 +5630,10 @@ Object.assign(LAB_TXT, {
     lpr_deg_up:     [`Gam içinde bir derece yukarı`, `One scale degree up`],
     lpr_dup:        [`ÇOĞALT`, `DUPLICATE`],
     lpr_dup_t:      [`Seçimi çoğalt; seçim yoksa klibi iki katına çıkar · Ctrl/⌘+D`, `Duplicate the selection; with nothing selected, double the clip · Ctrl/⌘+D`],
+    lpr_del:        [`SİL`, `DELETE`],
+    lpr_del_t:      [`Seçili notaları sil · Delete`, `Delete the selected notes · Delete`],
+    lpr_tb_more:    [`Araç çubuğunda ileri kaydır`, `Scroll the toolbar forward`],
+    lpr_tb_back:    [`Araç çubuğunun başına dön`, `Back to the start of the toolbar`],
     lpr_clear:      [`TEMİZLE`, `CLEAR`],
     lpr_clear_t:    [`Klipteki bütün notaları sil (geri alınabilir)`, `Delete every note in the clip (undoable)`],
     lpr_zoom:       [`ZOOM`, `ZOOM`],
@@ -5612,8 +5641,8 @@ Object.assign(LAB_TXT, {
     lpr_zoom_out:   [`Uzaklaştır (−)`, `Zoom out (−)`],
     lpr_keys_t:     [`Tuşa bas: notayı dinle · C3 = MIDI 60 (Ableton adlandırması)`, `Press a key to hear it · C3 = MIDI 60 (Ableton naming)`],
     lpr_grid_lbl:   [`Nota ızgarası`, `Note grid`],
-    lpr_grid_help:  [`Oklar imleci taşır, Enter imleçte nota ekler ya da siler, Shift+Enter notayı seçer, Boşluk çalar. Seçim varken oklar notaları taşır, Alt+yukarı/aşağı velocity değiştirir, Esc seçimi kaldırır. Ctrl+D çoğalt, Ctrl+U kuantize, Delete sil, B çiz/seç modu.`,
-                     `Arrows move the cursor, Enter adds or removes a note at the cursor, Shift+Enter selects it, Space plays. With a selection the arrows move the notes, Alt+Up/Down changes velocity, Esc clears the selection. Ctrl+D duplicate, Ctrl+U quantize, Delete removes, B toggles draw/select.`],
+    lpr_grid_help:  [`Oklar imleci taşır, Enter imleçte nota ekler ya da siler, Shift+Enter notayı seçer, Boşluk çalar. Seçim varken oklar notaları taşır, Alt+yukarı/aşağı velocity değiştirir, Alt+sol/sağ notayı kısaltır/uzatır (seçim yoksa imleçteki notayı; Shift ile bir ölçü), Esc seçimi kaldırır. Ctrl+D çoğalt, Ctrl+U kuantize, Delete sil, B çiz/seç modu.`,
+                     `Arrows move the cursor, Enter adds or removes a note at the cursor, Shift+Enter selects it, Space plays. With a selection the arrows move the notes, Alt+Up/Down changes velocity, Alt+Left/Right shortens/lengthens the note (the note at the cursor when nothing is selected; with Shift by one bar), Esc clears the selection. Ctrl+D duplicate, Ctrl+U quantize, Delete removes, B toggles draw/select.`],
     lpr_vel:        [`VEL`, `VEL`],
     lpr_vel_t:      [`Velocity: çubuğu sürükle (Shift ince ayar)`, `Velocity: drag a bar (Shift for fine)`],
     lpr_off:        [`KAPALI`, `OFF`],
@@ -5621,8 +5650,8 @@ Object.assign(LAB_TXT, {
     lpr_st_notes:   [`NOTA`, `NOTES`],
     lpr_st_sel:     [`SEÇİLİ`, `SELECTED`],
     lpr_st_key:     [`TON`, `KEY`],
-    lpr_hint:       [`B çiz/seç · Alt serbest · Shift ince · Ctrl/⌘+D çoğalt · Ctrl/⌘+U kuantize · Del sil`, `B draw/select · Alt free · Shift fine · Ctrl/⌘+D duplicate · Ctrl/⌘+U quantize · Del delete`],
-    lpr_hint_touch: [`Dokun: ekle · sürükle: taşı · basılı tut: sil · boşlukta sürükle: kaydır`, `Tap: add · drag: move · hold: delete · drag empty space: scroll`],
+    lpr_hint:       [`B çiz/seç · Alt serbest · Shift ince · Alt+←/→ boy · Ctrl/⌘+D çoğalt · Ctrl/⌘+U kuantize · Del sil`, `B draw/select · Alt free · Shift fine · Alt+←/→ length · Ctrl/⌘+D duplicate · Ctrl/⌘+U quantize · Del delete`],
+    lpr_hint_touch: [`Dokun: ekle · notaya dokun: seç, SİL ile sil · sürükle: taşı · basılı tut: sil · boşlukta sürükle: kaydır`, `Tap: add · tap a note: select, DELETE removes it · drag: move · hold: delete · drag empty space: scroll`],
     lpr_a_cursor:   [`{note} · adım {step} · uzunluk {len}`, `{note} · step {step} · length {len}`],
     lpr_a_note:     [`nota var, velocity {v}`, `note here, velocity {v}`],
     lpr_a_out:      [`gam dışı`, `out of key`],
@@ -5631,6 +5660,7 @@ Object.assign(LAB_TXT, {
     lpr_a_sel:      [`{n} nota seçili`, `{n} note(s) selected`],
     lpr_a_desel:    [`Seçim kaldırıldı`, `Selection cleared`],
     lpr_a_empty:    [`İmleçte nota yok`, `No note at the cursor`],
+    lpr_a_exists:   [`Gamda burada zaten nota var: {note} · adım {step}`, `A note is already here in the scale: {note} · step {step}`],
     lpr_a_move:     [`{note} · adım {step}`, `{note} · step {step}`],
     lpr_a_len:      [`Uzunluk {len}`, `Length {len}`],
     lpr_a_tr:       [`{n} nota taşındı · {note}`, `{n} note(s) moved · {note}`],
@@ -5747,6 +5777,7 @@ const LPR_IC = {
     zin:  '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8M7.5 10.5h6M10.5 7.5v6"/></svg>',
     zout: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8M7.5 10.5h6"/></svg>',
     up:   '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+    right:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
     down: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
 };
 
@@ -5754,8 +5785,17 @@ function makePianoRoll(opts) {
     const o = opts || {};
     const inline = o.mode === 'inline';
     const ro = !!o.readOnly;
-    const rg = Array.isArray(o.range) && o.range.length === 2 ? o.range.map(x => lpClamp(Math.round(+x || 0), 0, 127)) : [36, 96];
-    const LO = Math.min(rg[0], rg[1]), HI = Math.max(rg[0], rg[1]);
+    // Görünen perde aralığı: taban (opts.range / setRange) ∪ klipteki notalar. Aralık dışındaki notalar
+    // KIRPILMAZ (veri bozulmasın) — aralık onları kapsayacak kadar genişler (widenRange, yalnız genişler).
+    let baseLo = 36, baseHi = 96;
+    const parseRange = r => {
+        if (!Array.isArray(r) || r.length !== 2) return false;
+        const a = r.map(x => lpClamp(Math.round(+x || 0), 0, 127));
+        baseLo = Math.min(a[0], a[1]); baseHi = Math.max(a[0], a[1]);
+        return true;
+    };
+    parseRange(o.range);
+    let LO = baseLo, HI = baseHi;
     const maxLen = lpClamp(Math.round(o.maxLength || 64), 1, 256);
     const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     const KW = coarse ? 60 : 52, RH = coarse ? 28 : 24, VH = coarse ? 76 : 60;
@@ -5769,6 +5809,7 @@ function makePianoRoll(opts) {
     };
     mergeScale(o.scale);
     S.notes = normNotes(o.notes);
+    widenRange(S.notes);
 
     // Görünüm durumu (build/renderAll yeniden kurar)
     let rh = 20, sw = 28, rows = [], rowOf = new Map();
@@ -5782,6 +5823,12 @@ function makePianoRoll(opts) {
     if (!inline) {
         ov = mk('div', 'lpr-ov'); ov.hidden = true; ov.append(el);
         el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
+        // Modal: tuş olayları arkadaki modülün pencere kısayollarına (synth klavyesi, Boşluk = taşıma…)
+        // SIZMAZ. Hedef aşamasında (dlgKey'den sonra) kabarcıklanma durdurulur; yakalama aşamasındaki
+        // dinleyicilere dokunulmaz. opts.passKeys:true → modül arkada birlikte çalabilsin diye geçirir.
+        if (!o.passKeys) ['keydown', 'keyup', 'keypress'].forEach(t => el.addEventListener(t, e => e.stopPropagation()));
+        // Arka plana tıklamak odağı body'ye kaçırmasın (tuşlar yine pencereye gelsin)
+        ov.addEventListener('mousedown', e => { if (e.target === ov) e.preventDefault(); });
     }
     if (o.colors && o.colors.note) el.style.setProperty('--lp-c', o.colors.note);
     if (o.colors && o.colors.sel) el.style.setProperty('--lpr-sc', o.colors.sel);
@@ -5791,7 +5838,7 @@ function makePianoRoll(opts) {
         get: () => ({ n: S.notes.map(n => [n.p, n.s, n.l, n.v]), len: S.len }),
         apply: snap => {
             S.notes = snap.n.map(a => ({ p: a[0], s: a[1], l: a[2], v: a[3], sel: false }));
-            S.len = snap.len;
+            S.len = snap.len; widenRange(S.notes);
             renderAll(); syncUi();
             announce(L(histReason === 'redo' ? 'lpr_a_redo' : 'lpr_a_undo'));
             emit(histReason);
@@ -5807,11 +5854,16 @@ function makePianoRoll(opts) {
         if (sc.on != null) S.scale.on = !!sc.on;
         if (sc.fold != null) S.scale.fold = !!sc.fold;
     }
+    // Perde yalnız MIDI alanına (0..127) sıkıştırılır; görünen aralığa DEĞİL (bkz. widenRange)
     function normNotes(list) {
         return (Array.isArray(list) ? list : []).filter(n => n && isFinite(n.p) && isFinite(n.s)).map(n => ({
-            p: lpClamp(Math.round(n.p), LO, HI), s: lprR(Math.max(0, +n.s)),
+            p: lpClamp(Math.round(n.p), 0, 127), s: lprR(Math.max(0, +n.s)),
             l: lprR(Math.max(0.125, isFinite(n.l) ? +n.l : 1)), v: lpClamp(Math.round(isFinite(n.v) ? +n.v : 100), 1, 127), sel: !!n.sel,
         }));
+    }
+    // Aralığı gelen notaları kapsayacak kadar genişletir (daraltmaz; daraltma yalnız setRange ile)
+    function widenRange(list) {
+        list.forEach(n => { if (n.p < LO) LO = n.p; if (n.p > HI) HI = n.p; });
     }
     const plain = n => ({ p: n.p, s: n.s, l: n.l, v: n.v });
     function getNotes() { return S.notes.slice().sort((a, b) => a.s - b.s || a.p - b.p).map(plain); }
@@ -5867,10 +5919,12 @@ function makePianoRoll(opts) {
         builtLang = labLang();
         const w = pluginWindow({ code: 'CLIP', num: 'MIDI', status: true, aria: L('lpr_editor') });
         el.replaceChildren(...Array.from(w.root.childNodes));
-        const tid = lpId('lprT');
+        const tid = lpId('lprT'), eid = lpId('lprE');
         const title = mk('h2', 'lp-brand-sub lpr-title'); title.id = tid; title.textContent = S.title || L('lpr_title_def');
-        w.brand.querySelector('.lp-brand-txt').append(title);
-        el.setAttribute('aria-labelledby', tid);
+        // Erişilebilir ad = "MIDI nota düzenleyici" + klip başlığı (yalnız başlık, ne penceresi olduğunu söylemez)
+        const ename = mk('span', 'sr-only'); ename.id = eid; ename.textContent = L('lpr_editor');
+        w.brand.querySelector('.lp-brand-txt').append(ename, title);
+        el.setAttribute('aria-labelledby', `${eid} ${tid}`);
         U.title = title;
         // Başlık çubuğu: ↶ ↷ · KAPAT
         U.undo = lpBtn({ icon: 'undo', label: L('lp_undo'), title: `${L('lp_undo')} (Ctrl/⌘+Z)`, onClick: doUndo });
@@ -5884,7 +5938,7 @@ function makePianoRoll(opts) {
         tb.append(r1, r2);
         U.play = lpBtn({ icon: 'play', label: L('lpr_play'), title: L('lpr_play_t'), cls: 'lpr-play', onClick: togglePlay });
         U.play.setAttribute('aria-pressed', 'false');
-        toolGroup(r1, null, [U.play]);
+        toolGroup(r1, null, [U.play]).classList.add('lpr-grp--play');
         U.loop = makeSeg([16, 32, 64].filter(x => x <= maxLen).map(x => ({ value: x, label: String(x / 16), aria: Lf('lpr_bars', { n: x / 16 }) })), S.len, v => setLength(v, true), { size: 'md', label: L('lpr_loop_aria') });
         if (!ro) toolGroup(r1, L('lpr_loop'), [U.loop]);
         U.pos = makeReadout({ label: L('lpr_pos'), value: pos(0), variant: 'lcd' });
@@ -5893,7 +5947,7 @@ function makePianoRoll(opts) {
             { value: 'draw', html: `${LPR_IC.pen}<span>${L('lpr_draw')}</span>`, title: L('lpr_draw_t') },
             { value: 'select', html: `${LPR_IC.ptr}<span>${L('lpr_select')}</span>`, title: L('lpr_select_t') },
         ], S.mode, v => setMode(v), { size: 'md', label: L('lpr_mode_aria'), cls: 'lpr-mode' });
-        if (!ro) toolGroup(r1, null, [U.mode]);
+        if (!ro) toolGroup(r1, null, [U.mode]).classList.add('lpr-grp--mode');
         U.grid = makeSeg(LPR_GRIDS.map(g => [g[0], g[0]]), S.grid, v => { S.grid = v; gridChanged(); }, { size: 'md', label: L('lpr_grid_aria') });
         U.trip = makeToggle({ text: '3', label: L('lpr_trip'), title: L('lpr_trip'), on: S.trip, onToggle: b => { S.trip = b; gridChanged(); } });
         toolGroup(r1, L('lpr_grid'), [U.grid, U.trip]);
@@ -5917,14 +5971,33 @@ function makePianoRoll(opts) {
                 lpBtn({ icon: LPR_IC.down, label: L('lpr_deg_dn'), title: L('lpr_deg_dn'), onClick: () => transpose(-1, 'deg') }),
                 lpBtn({ icon: LPR_IC.up, label: L('lpr_deg_up'), title: L('lpr_deg_up'), onClick: () => transpose(1, 'deg') }),
             ]);
+            U.del = lpBtn({ text: L('lpr_del'), title: L('lpr_del_t'), onClick: deleteSel });
             toolGroup(r2, null, [
                 lpBtn({ text: L('lpr_dup'), title: L('lpr_dup_t'), onClick: duplicate }),
+                U.del,
                 lpBtn({ text: L('lpr_clear'), title: L('lpr_clear_t'), variant: 'danger', onClick: clearAll }),
-            ]);
+            ]).classList.add('lpr-grp--edit');
         }
         U.zOut = lpBtn({ icon: LPR_IC.zout, label: L('lpr_zoom_out'), title: L('lpr_zoom_out'), onClick: () => zoomBy(-1) });
         U.zIn = lpBtn({ icon: LPR_IC.zin, label: L('lpr_zoom_in'), title: L('lpr_zoom_in'), onClick: () => zoomBy(1) });
         toolGroup(r2, L('lpr_zoom'), [U.zOut, U.zIn]);
+        // ≤600 px: araç çubuğu tek yatay kayan şerit → sağ kenarda yapışkan "devamı var" düğmesi (CSS'te
+        // yalnız telefonda görünür). Sona gelince yön değiştirip başa döndürür.
+        const more = lpBtn({ icon: LPR_IC.right, label: L('lpr_tb_more'), title: L('lpr_tb_more'), cls: 'lpr-tb-more',
+            onClick: () => {
+                const end = tb.scrollLeft + tb.clientWidth >= tb.scrollWidth - 4;
+                tb.scrollTo({ left: end ? 0 : tb.scrollLeft + Math.round(tb.clientWidth * 0.7), behavior: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+            } });
+        const syncMore = () => {
+            const end = tb.scrollWidth > tb.clientWidth + 4 && tb.scrollLeft + tb.clientWidth >= tb.scrollWidth - 4;
+            more.classList.toggle('is-end', end);
+            const t = L(end ? 'lpr_tb_back' : 'lpr_tb_more');
+            more.setAttribute('aria-label', t); more.title = t;
+        };
+        const moreWrap = mk('div', 'lpr-tb-end'); moreWrap.append(more);
+        tb.append(moreWrap);
+        tb.addEventListener('scroll', syncMore, { passive: true });
+        U.syncMore = syncMore;
         w.bar.after(tb);
 
         // Izgara alanı: köşe · cetvel / tuşlar · notalar / VEL · velocity şeridi (tek kaydırıcı, yapışkan kenarlar)
@@ -6008,6 +6081,7 @@ function makePianoRoll(opts) {
         if (!on || !U.sc || typeof ResizeObserver !== 'function') { if (rsz) { rsz.disconnect(); rsz = null; } return; }
         if (!rsz) rsz = new ResizeObserver(() => {
             if (!built || destroyed) return;
+            U.syncMore();
             if (Math.abs(Math.max(LPR_ZOOM[S.zoom][1], fitSw() * LPR_ZFIT[S.zoom]) - sw) > 0.5) renderAll();
         });
         rsz.disconnect(); rsz.observe(U.sc);
@@ -6119,6 +6193,7 @@ function makePianoRoll(opts) {
         U.stCur.set(`${nm(S.cur.p)} · ${pos(S.cur.s)}`);
         U.stNotes.set(String(S.notes.length));
         U.stSel.set(sel.length === 1 ? `${sel.length} · ${nm(sel[0].p)} · v${sel[0].v}` : String(sel.length));
+        if (U.del) U.del.setAttribute('aria-disabled', String(!sel.length));
         U.stKey.set(S.scale.on ? `${noteName(S.scale.root, { flat: S.flat })} ${scaleName(S.scale.type)}` : L('lpr_off'));
         if (!S.playing) U.pos.set(pos(S.cur.s));
     }
@@ -6138,8 +6213,7 @@ function makePianoRoll(opts) {
     function syncPlay() {
         if (!U.play) return;
         U.play.innerHTML = S.playing ? LP_IC.stop : LP_IC.play;
-        U.play.setAttribute('aria-pressed', String(S.playing));
-        U.play.setAttribute('aria-label', L(S.playing ? 'lpr_stop' : 'lpr_play'));
+        U.play.setAttribute('aria-pressed', String(S.playing));   // ad sabit (lpr_play); durum yalnız aria-pressed
     }
     function setPh(step) {
         if (!U.ph) return;
@@ -6209,6 +6283,23 @@ function makePianoRoll(opts) {
         if (rowOf.has(p) && !S.scale.fold) addNoteEl(n); else renderAll();
         return n;
     }
+    // Ableton gibi: düzenlenen notalar (moved) aynı perdedeki başka notanın üstüne binerse, başlangıcı
+    // örtülen nota silinir, öncesinde başlayıp içeri uzanan nota kısaltılır. Aynı geri alma adımında çalışır
+    // (çağıran hist.push yapmış olmalı). Döndürür: silinen nota sayısı.
+    function resolveOverlaps(moved) {
+        if (!moved || !moved.length) return 0;
+        const set = new Set(moved), kill = [];
+        moved.forEach(m => {
+            const m1 = m.s + m.l;
+            S.notes.forEach(n => {
+                if (set.has(n) || n.p !== m.p || kill.indexOf(n) >= 0) return;
+                if (n.s >= m.s - LPR_EPS && n.s < m1 - LPR_EPS) kill.push(n);
+                else if (n.s < m.s - LPR_EPS && n.s + n.l > m.s + LPR_EPS) { n.l = lprR(Math.max(0.125, m.s - n.s)); updateNote(n); }
+            });
+        });
+        if (kill.length) removeNotes(kill);
+        return kill.length;
+    }
     function deleteSel() {
         if (ro) return;
         let list = selected();
@@ -6225,9 +6316,17 @@ function makePianoRoll(opts) {
     function toggleNoteAtCursor() {
         const s = S.cur.s; if (s >= S.len) return;
         const hitN = noteAt(S.cur.p, s);
-        hist.push();
-        if (hitN) { removeNotes([hitN]); announce(Lf('lpr_a_del', { n: 1 })); emit('delete'); return; }
+        if (hitN) { hist.push(); removeNotes([hitN]); announce(Lf('lpr_a_del', { n: 1 })); emit('delete'); return; }
         const p = snapIn(S.cur.p), g = gs();
+        // GAM açıkken gam dışı satırda Enter en yakın gam notasına yazar; orada zaten nota varsa üst üste
+        // ikinci nota EKLENMEZ — imleç o notaya gider ve durum okunur (bir Enter daha = sil)
+        const there = p !== S.cur.p ? noteAt(p, s) : null;
+        if (there) {
+            setCursor(p, s, true); revealCursor(); audition(p, there.v);
+            announce(Lf('lpr_a_exists', { note: nm(p), step: lprNum(there.s + 1) }));
+            return;
+        }
+        hist.push();
         addNote(p, s, Math.min(g, S.len - s), 100);
         audition(p, 100);
         if (p !== S.cur.p) setCursor(p, s, true);
@@ -6247,6 +6346,7 @@ function makePianoRoll(opts) {
         if (np.some(p => p < LO || p > HI)) { announce(L('lpr_a_range')); return; }
         hist.push();
         t.forEach((n, i) => { n.p = np[i]; });
+        resolveOverlaps(t);
         if (S.scale.fold || np.some(p => !rowOf.has(p))) renderAll(); else t.forEach(updateNote);
         const lead = t.slice().sort((a, b) => a.s - b.s || b.p - a.p)[0];
         audition(lead.p, lead.v);
@@ -6262,9 +6362,25 @@ function makePianoRoll(opts) {
         if (Math.abs(dd) < LPR_EPS || (d > 0 && maxS + d >= S.len)) { announce(L('lpr_a_edge')); return; }
         hist.push();
         t.forEach(n => { n.s = lprR(n.s + dd); updateNote(n); });
+        resolveOverlaps(t);
         const lead = t.slice().sort((a, b) => a.s - b.s || b.p - a.p)[0];
         revealLead(lead);
         announce(Lf('lpr_a_move', { note: nm(lead.p), step: lprNum(lead.s + 1) })); emit('move');
+    }
+    // Klavyeyle boy: seçili notalar (seçim yoksa imleçteki nota) d adım uzar/kısalır; boy ≥ bir ızgara
+    // adımı (nota zaten daha kısaysa kendi boyu) ve klip sonunu aşmaz. Alt+←/→ ızgara, Alt+Shift ölçü.
+    function resizeBy(d) {
+        let t = selected();
+        if (!t.length) { const n = noteAt(S.cur.p, S.cur.s); if (n) t = [n]; }
+        if (!t.length) { announce(L('lpr_a_empty')); return; }
+        const g = gs();
+        const nl = t.map(n => { const mn = Math.min(g, n.l); return lprR(lpClamp(n.l + d, mn, Math.max(mn, S.len - n.s))); });
+        if (t.every((n, i) => Math.abs(nl[i] - n.l) < LPR_EPS)) { announce(L('lpr_a_edge')); return; }
+        hist.push();
+        t.forEach((n, i) => { n.l = nl[i]; updateNote(n); });
+        resolveOverlaps(t);
+        updateStatus();
+        announce(Lf('lpr_a_len', { len: `${lprNum(t[0].l)} × 1/16` })); emit('resize');
     }
     function velBy(d) {
         const t = selected(); if (!t.length || ro) return;
@@ -6299,7 +6415,9 @@ function makePianoRoll(opts) {
             if (!copies.length) { announce(L('lpr_a_dup_none')); return; }
             hist.push();
             deselectAll();
-            copies.forEach(c => S.notes.push({ p: c.p, s: c.s, l: c.l, v: c.v, sel: true }));
+            const made = copies.map(c => ({ p: c.p, s: c.s, l: c.l, v: c.v, sel: true }));
+            S.notes.push(...made);
+            resolveOverlaps(made);
             const grew = newLen !== S.len;
             S.len = newLen;
             renderAll(); syncUi();
@@ -6427,7 +6545,7 @@ function makePianoRoll(opts) {
             if (e.shiftKey) {
                 setSel(h.n, !h.n.sel); updateStatus(); emit('select');
                 if (!h.n.sel) return;
-            } else if (!h.n.sel) selectOnly(h.n);
+            } else if (!h.n.sel) { selectOnly(h.n); updateStatus(); }   // SEÇİLİ + SİL düğmesi hemen güncellenir
             audition(h.n.p, h.n.v);
             ses = noteDrag(P, h.n, h.edge ? 'resize' : 'move');
         } else if (S.mode === 'draw') ses = drawNote(P);
@@ -6464,15 +6582,32 @@ function makePianoRoll(opts) {
             },
             end() {
                 U.gw.classList.remove('is-drag');
-                if (!moved) return;
+                if (!moved) return false;
+                resolveOverlaps(orig.map(q => q.x));
                 if (S.scale.fold) renderAll();
                 announce(kind === 'move' ? Lf('lpr_a_move', { note: nm(n.p), step: lprNum(n.s + 1) }) : Lf('lpr_a_len', { len: `${lprNum(n.l)} × 1/16` }));
                 emit(kind);
+                return true;
             },
         };
     }
     function drawNote(P) {
         const c = cellAt(P), g = gs(), p = snapIn(c.p);
+        // GAM oturtması notayı var olan bir notanın üstüne düşürüyorsa ikinci nota eklenmez: o nota seçilir
+        // ve sürükleme onu taşır / (sağ kenardan) boyunu değiştirir
+        const there = p !== c.p ? noteAt(p, c.s) : null;
+        if (there) {
+            selectOnly(there); setCursor(there.p, there.s, true); audition(there.p, there.v);
+            const x1 = Math.min(S.len, there.s + there.l) * sw;
+            const ses = noteDrag(P, there, P.x >= x1 - Math.min(7, (x1 - there.s * sw) * 0.4) ? 'resize' : 'move');
+            return {
+                move: ses.move,
+                end(ev) {
+                    if (ses.end(ev)) return;
+                    updateStatus(); announce(Lf('lpr_a_exists', { note: nm(there.p), step: lprNum(there.s + 1) })); emit('select');
+                },
+            };
+        }
         hist.push();
         deselectAll();
         const n = addNote(p, c.s, Math.min(g, S.len - c.s), 100);
@@ -6486,7 +6621,7 @@ function makePianoRoll(opts) {
                 const l = lprR(lpClamp(end - n.s, free ? 0.125 : g, Math.max(free ? 0.125 : g, S.len - n.s)));
                 if (l !== n.l) { n.l = l; updateNote(n); updateStatus(); }
             },
-            end() { announce(Lf('lpr_a_add', { note: nm(n.p), step: lprNum(n.s + 1) })); emit('add'); },
+            end() { resolveOverlaps([n]); updateStatus(); announce(Lf('lpr_a_add', { note: nm(n.p), step: lprNum(n.s + 1) })); emit('add'); },
         };
     }
     function marquee(P, add) {
@@ -6617,7 +6752,8 @@ function makePianoRoll(opts) {
             else moveCursorV(d, e.shiftKey);
         } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
             const d = (k === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? LPR_BAR : g);
-            if (sel.length && !ro) shiftSel(d);
+            if (e.altKey) { if (!ro) resizeBy(d); }
+            else if (sel.length && !ro) shiftSel(d);
             else setCursor(S.cur.p, lpClamp(Math.round((S.cur.s + d) / g) * g, 0, Math.max(0, S.len - g)));
         } else if (k === 'Home') setCursor(S.cur.p, 0);
         else if (k === 'End') setCursor(S.cur.p, Math.max(0, Math.floor((S.len - LPR_EPS) / g) * g));
@@ -6679,7 +6815,7 @@ function makePianoRoll(opts) {
         document.addEventListener('focusin', onFocusIn);
         unreg = lpOnTeardown(() => { unreg = null; close(false); });
         labOnRefresh(ov, relabel);
-        renderAll(); syncUi(); centerView(); watchSize(true);
+        renderAll(); syncUi(); centerView(); watchSize(true); U.syncMore();
         try { U.gw.focus({ preventScroll: true }); } catch (_) {}
         if (S.playing && !S.own) loop();
         emit('open');
@@ -6711,7 +6847,7 @@ function makePianoRoll(opts) {
         const had = el.contains(document.activeElement);
         build(); renderAll();
         if (rsz) watchSize(true);                              // yeni kaydırıcıyı gözle
-        U.sc.scrollLeft = sl; U.sc.scrollTop = st;
+        U.sc.scrollLeft = sl; U.sc.scrollTop = st; U.syncMore();
         if (had) { try { U.gw.focus({ preventScroll: true }); } catch (_) {} }
     }
 
@@ -6722,8 +6858,16 @@ function makePianoRoll(opts) {
         setNotes(list) {
             const nn = normNotes(list), key = a => JSON.stringify(a.map(plain));
             if (key(nn) === key(S.notes)) return;
-            hist.push(); S.notes = nn; renderAll();
+            hist.push(); S.notes = nn; widenRange(nn); renderAll();
         },
+        // Taban aralığı değiştirir (başka bir izin aralığı); klipteki notalar yine görünür kalır
+        setRange(r) {
+            if (!parseRange(r)) return;
+            LO = baseLo; HI = baseHi; widenRange(S.notes);
+            S.cur.p = lpClamp(S.cur.p, LO, HI);
+            renderAll();
+        },
+        getRange: () => [LO, HI],
         getScale: () => Object.assign({}, S.scale),
         setScale(sc) { mergeScale(sc); renderAll(); syncUi(); },
         getLength: () => S.len,
