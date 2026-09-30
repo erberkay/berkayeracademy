@@ -1629,9 +1629,10 @@
             .m3-srcbody { grid-template-columns:minmax(0,280px) minmax(0,1fr); }
             .m3-srctg { height:44px; }
             .m3-kitb { height:44px; }
-            .m3-pkb::after { content:''; position:absolute; inset:-12px -1px; }
+            .m3-pkb::after { content:''; position:absolute; inset:-13px -3px; }   /* dolgu kutusu 18 + 2×13 = 44 · ≥40 + 2×3 ≥ 44 */
+            .m3-eqhd { row-gap:16px; }                                   /* sarılınca ⏻ (−10) ile KOPYALA (−8) isabet alanları çakışmasın */
             .m3-dbrow { margin-block:6px; }
-            .lab-m3 .lp-pwr--sm::after { inset:-9px; }
+            .lab-m3 .lp-pwr.lp-pwr--sm::after { inset:-10px; }        /* aşağıdaki genel -7px'i yener: dolgu kutusu 24 + 2×10 = 44 */
             .m3-cgrid { grid-template-columns:repeat(6, minmax(152px,1fr)) repeat(2, minmax(124px,.84fr)) minmax(160px,1.2fr); }
             .m3-strip .lp-knob { min-width:44px; }
             /* ::after dolgu kutusundan taşar (kenarlık hariç): 20 + 2×12 = 44 · 30 + 2×7 = 44 */
@@ -11467,7 +11468,7 @@ Object.assign(LAB_TXT, {
     lab_m3_tut_3b:      [`SNARE, hat'ler ve LEAD'de 100 Hz altı yalnız uğultudur ve kick/bass'ın yerini doldurur. Çiplerden bu kanallardan birini seç, LC düğümünü sağa sürükle (≥100 Hz). KICK ve BASS'ı kesme (≤60 Hz).`, `Below 100 Hz the SNARE, hats and LEAD only add rumble that crowds the kick and bass. Pick one of those channels from the chips and drag the LC node right (≥100 Hz). Leave KICK and BASS uncut (≤60 Hz).`],
     lab_m3_tut_3a:      [`EQ Eight → 1. bandın filtre tipi Low Cut (12 ya da 48 dB/okt); frekansı sürükle.`, `EQ Eight → set band 1 to Low Cut (12 or 48 dB/oct) and drag its frequency.`],
     lab_m3_tut_4:       [`Çakışan frekansı EQ ile aç`, `Carve out a frequency clash`],
-    lab_m3_tut_4b:      [`Kick ve bass alt-ortada (150 Hz–1 kHz) çakışınca mix çamurlaşır. Birinde PEAK bandını bu aralığa getirip en az 3 dB kıs; genişletmek için Q'yu düşür. Eğrinin arkasındaki canlı spektrumu izle.`, `When kick and bass clash in the low mids (150 Hz–1 kHz) the mix turns muddy. On one of them move the PEAK band into that range and cut at least 3 dB; lower the Q to widen it. Watch the live spectrum behind the curve.`],
+    lab_m3_tut_4b:      [`Kick ve bass alt-ortada (150 Hz–1 kHz) çakışınca mix çamurlaşır. Birinde PEAK bandını bu aralığa getirip en az 3 dB kıs; genişletmek için Q'yu düşür. Eğrinin arkasındaki canlı spektrumu izle. Adım BASS'ı ve PEAK bandını seçili açar.`, `When kick and bass clash in the low mids (150 Hz–1 kHz) the mix turns muddy. On one of them move the PEAK band into that range and cut at least 3 dB; lower the Q to widen it. Watch the live spectrum behind the curve. The step opens with BASS and the PEAK band selected.`],
     lab_m3_tut_4a:      [`EQ Eight → Bell bandı, Gain eksi; iki kanalı Spectrum ile karşılaştır. Önce kes, sonra artır.`, `EQ Eight → a Bell band with negative Gain; compare both tracks with Spectrum. Cut before you boost.`],
     lab_m3_tut_5:       [`Kompresör: threshold + ratio, GR'yi izle`, `Compressor: threshold + ratio, watch the GR`],
     lab_m3_tut_5b:      [`Bir kanalda RATIO'yu en az 2:1 yap ve THRESHOLD'u sinyal eşiği aşana kadar indir — çalarken GR (kazanç azaltma) 2 dB'i geçsin. Transfer eğrisindeki nokta eşiği aştıkça eğri yatıklaşır.`, `On one channel set RATIO to at least 2:1 and lower THRESHOLD until the signal crosses it — while playing, GR (gain reduction) should pass 2 dB. As the dot on the transfer curve crosses the threshold, the curve flattens.`],
@@ -11524,6 +11525,8 @@ const M3_KITS = {
 };
 const M3_LEAD_DEF = 'classic-lead-loop';
 const M3_LOOP_KINDS = ['lead', 'pad', 'pluck'], M3_LOOP_PACKS = ['classic', 'cassianism'];
+// Tarayıcıda gösterilmeyen loop'lar: Classic Pad Loop (tonu belirsiz; bas eşlemesi yapılamaz, brifte yok)
+const M3_LOOP_HIDE = ['classic-pad-loop'];
 
 // ── Durum: state.mix (rehber §2.1) ───────────────────────────────────
 function mixChDef(o) {
@@ -11550,7 +11553,7 @@ function mixPresetValues(i) {
 if (!state.mix) state.mix = Object.assign({ sel: 4, band: 2, tab: 0, preset: 'f1', bypass: false, bpm: 125 }, mixPresetValues(1));
 // Kaynak seçimi (oturum boyu; preset / undo anlık görüntüsüne girmez — tempo gibi oturum ayarı)
 if (!M3_KITS[state.mix.kit]) state.mix.kit = 'classic';
-if (!labSample(state.mix.lead) || M3_LOOP_KINDS.indexOf(labSample(state.mix.lead).kind) < 0) state.mix.lead = M3_LEAD_DEF;
+if (!labSample(state.mix.lead) || M3_LOOP_KINDS.indexOf(labSample(state.mix.lead).kind) < 0 || M3_LOOP_HIDE.indexOf(state.mix.lead) >= 0) state.mix.lead = M3_LEAD_DEF;
 if (state.mix.srcOpen == null) state.mix.srcOpen = true;
 
 const m3Num = (v, lo, hi, d) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d; };
@@ -11657,7 +11660,7 @@ function mixDecodeAll(c) {
 const m3SBuf = {}, m3Loading = {};
 function m3IsClassic(id) { return id === M3_LEAD_DEF || M3_KITS.classic.indexOf(id) >= 0; }
 function m3Buf(id) {
-    if (id === M3_LEAD_DEF) return mixBuffers[M3_LEAD_FILE] || null;
+    if (id === M3_LEAD_DEF) return mixBuffers[M3_LEAD_FILE] || m3SBuf[M3_LEAD_DEF] || null;
     const ci = M3_KITS.classic.indexOf(id);
     if (ci >= 0) return mixBuffers[BEAT_TRACKS[ci].file] || null;
     return m3SBuf[id] || null;
@@ -11671,6 +11674,17 @@ function m3Load(id) {
     m3Dirty();
 }
 // Kit çalınabilir mi (Classic hep: dosya yoksa synthDrum yedeği) · loop çalınabilir mi (Classic Lead: yedek sentez lead)
+// Classic Lead Loop'u da paylaşılan çözücüden önceden getir (jest gerekmez) → ilk MIX'te loop 1. ölçüden başlar;
+// mixBuffers (bağlam kurulunca çözülür) hazır olunca o kullanılır. Başarısızsa sessizce mixBuffers yoluna kalır.
+function m3LoadClassicLead() {
+    if (mixBuffers[M3_LEAD_FILE] || m3SBuf[M3_LEAD_DEF] || m3Loading[M3_LEAD_DEF]) return;
+    m3Loading[M3_LEAD_DEF] = true;
+    labSampleBuffer(mixCtx && mixCtx.state !== 'closed' ? mixCtx : null, M3_LEAD_DEF).then(b => {
+        delete m3Loading[M3_LEAD_DEF];
+        if (b) m3SBuf[M3_LEAD_DEF] = b;
+        m3Dirty();
+    });
+}
 function m3KitReady(k) { return k === 'classic' || (M3_KITS[k] || []).every(id => !!m3Buf(id)); }
 function m3LeadFailed(id) { return id === M3_LEAD_DEF ? mixLeadFailed : m3SBuf[id] === false; }
 // Loop seviyesi: Classic Lead Loop'a göre ayarlı M3_SRC[5] × loudness eşlemesi (gainDb farkı)
@@ -11994,6 +12008,7 @@ function mixApplySnap(s) {
     ['ch', 'rev', 'dly', 'mst', 'sc', 'sendPre'].forEach(k => { state.mix[k] = c[k]; });
     state.mix.mod = true;
     mixSync();
+    m3TutRebase();
     m3Dirty();
 }
 function m3Push() { if (m3Ui && m3Ui.hist) m3Ui.hist.push(); }
@@ -12238,12 +12253,41 @@ function m3BuildSource(U) {
     U.sb = makeSampleBrowser({ kinds: M3_LOOP_KINDS, packs: M3_LOOP_PACKS, value: S.lead, filter: true, height: 172, cls: 'm3-sb',
         label: L('lab_m3_loop_aria'), ctx: () => getMixCtx(), bpm: () => state.mix.bpm,
         dest: () => (mixRun && mixNodes ? mixNodes.ch[5].in : null), onPick: smp => m3SetLead(smp) });
+    m3PruneLoops(U.sb.el);
     lc.append(lh, U.sb.el);
     body.append(kc, lc);
     el.append(hd, body);
     // Önizleme çalarken kit satırındaki ▶/■ (genel önizleme durumu; görünüm kapanınca bırakılır)
     lpOnTeardown(labSampleAuditionSubscribe(() => m3Dirty()));
     return el;
+}
+// Kit tarayıcısında kimlik süzgeci yok → M3_LOOP_HIDE satırları her yeniden kurulumda (tür süzgeci, dil) DOM'dan
+// çıkarılır ve grup sayısı düzeltilir; ok / Home / End / Page tuşları yalnız görünen satırlarda gezer (kitin opts
+// dizisi çıkarılan satırı da tuttuğu için gezinmeyi burada, yakalama evresinde üstleniriz). Enter / Boşluk / Esc kitte kalır.
+function m3PruneLoops(el) {
+    const list = el.querySelector('.lp-sb-list'); if (!list) return;
+    const prune = () => {
+        list.querySelectorAll('[role="option"]').forEach(op => { if (M3_LOOP_HIDE.indexOf(op._sid) >= 0) op.remove(); });
+        list.querySelectorAll('.lp-sb-gw').forEach(gw => {
+            const n = gw.querySelectorAll('[role="option"]').length, gh = gw.querySelector('.lp-sb-gh');
+            if (!n) { gw.remove(); return; }
+            if (gh) { const t = gh.textContent.replace(/·\s*\d+$/, '· ' + n); if (t !== gh.textContent) gh.textContent = t; }
+        });
+        if (!list.querySelector('[role="option"][tabindex="0"]')) { const f = list.querySelector('[aria-selected="true"]') || list.querySelector('[role="option"]'); if (f) f.tabIndex = 0; }
+    };
+    prune();
+    const mo = new MutationObserver(prune);
+    mo.observe(list, { childList: true, subtree: true });
+    lpOnTeardown(() => mo.disconnect());
+    const NAV = { ArrowDown: 1, ArrowUp: -1, PageDown: 8, PageUp: -8, Home: -1e3, End: 1e3 };
+    el.addEventListener('keydown', e => {
+        if (!NAV[e.key] || e.altKey || e.ctrlKey || e.metaKey) return;
+        const ops = Array.from(list.querySelectorAll('[role="option"]')), i = ops.indexOf(document.activeElement);
+        if (i < 0) return;
+        const j = lpClamp(i + NAV[e.key], 0, ops.length - 1);
+        e.preventDefault(); e.stopPropagation();
+        ops[i].tabIndex = -1; ops[j].tabIndex = 0; ops[j].focus(); ops[j].scrollIntoView({ block: 'nearest' });
+    }, true);
 }
 function m3SrcPaint(U) {
     const S = state.mix, run = mixRun, lead = labSample(S.lead), open = !!S.srcOpen;
@@ -12272,7 +12316,7 @@ function m3SrcPaint(U) {
     const leadNm = lead ? lead.name : '', kitNm = m3KitName(S.kit);
     if (m3SBuf[S.lead] === false) { st = Lf('lab_m3_load_err', { name: leadNm }); cls = 'is-err'; }
     else if (kitIds.some(id => m3SBuf[id] === false)) { st = Lf('lab_m3_load_err', { name: kitNm }); cls = 'is-err'; }
-    else if (m3Loading[S.lead]) st = Lf('lab_m3_loading', { name: leadNm });
+    else if (m3Loading[S.lead] && !m3Buf(S.lead)) st = Lf('lab_m3_loading', { name: leadNm });
     else if (kitIds.some(id => m3Loading[id])) st = Lf('lab_m3_loading', { name: kitNm });
     else if (run && run.leadId && run.leadId !== S.lead) st = Lf('lab_m3_next', { name: leadNm });
     else if (run && run.kit !== S.kit) st = Lf('lab_m3_next', { name: kitNm });
@@ -12593,6 +12637,7 @@ function m3BuildDetail(U) {
     U.bandK = mk('div', 'm3-bandk');
     brow.append(U.bandK);
     L1.append(hd, box, brow);
+    U.eqCol = L1;
     // Sağ: kompresör
     const R = mk('div', 'm3-cmp');
     U.cmpWrap = R;
@@ -12650,7 +12695,7 @@ function m3PasteEq() {
     m3Push();
     const i = state.mix.sel;
     Object.assign(state.mix.ch[i], JSON.parse(JSON.stringify(m3Clip.v)));
-    mixSync(i); m3Mod(true); m3Dirty();
+    mixSync(i); m3TutRebase(); m3Mod(true); m3Dirty();
     lpAnnounce(Lf('lab_m3_pasted', { src: m3Clip.src, name: MIX_CH[i][0] }));
 }
 
@@ -13063,10 +13108,16 @@ function m3SpaceKey(e) {
 // ── Öğretici: "Mix mantığı" (seviye → low cut → EQ çakışması → kompresör → send → sidechain → pan → master) ──
 // Adım girişinde mix'in anlık görüntüsü alınır (m3TE); çoğu check "öğrenci bu adımda gerçekten değiştirdi mi"
 // diye ona göre karar verir (preset zaten sağlıyorsa kendiliğinden geçmesin).
+// Mix toplu değişince (preset, A/B, geri al / yinele, EQ yapıştır) görüntü yeniden alınır: toplu yükleme adımı
+// kendiliğinden geçirmez, yalnız öğrencinin sonraki elle değişikliği sayılır.
 let m3TE = null;
 function m3TutEnter() { m3TE = mixSnapshot(); }
+function m3TutRebase() { if (m3TE) m3TE = mixSnapshot(); }
 function m3TutSteps() {
     const U = () => m3Ui, C = () => state.mix.ch, E = () => (m3TE || mixSnapshot()).ch;
+    // 3–4: hedef kanal çiplerini de içeren EQ sütunu; kart sağda (kompresörün üstünde) durur → çipler ve
+    // EQ düğümleri tıklanabilir kalır. ≤600 px'te kit kartı alta sabitler → hedef yalnız EQ ekranı (kartın üstüne sığar).
+    const eqT = () => U() && (window.matchMedia && matchMedia('(max-width:600px)').matches ? U().eqBox : (U().eqCol || U().eqBox));
     const st = (id, target, check, extra) => Object.assign({ id, target, check, title: `lab_m3_tut_${id}`, body: `lab_m3_tut_${id}b`, ableton: `lab_m3_tut_${id}a`, onEnter: m3TutEnter }, extra || {});
     return [
         st(1, () => U() && U().play, () => !!mixRun),
@@ -13074,14 +13125,20 @@ function m3TutSteps() {
             const c = C(), e = E();
             return c.some((x, i) => Math.abs(x.fader - e[i].fader) >= 1) && c[0].fader >= -9 && c[0].fader <= -3 && c.every(x => x.fader <= 0);
         }),
-        st(3, () => U() && U().eqBox, () => {
+        st(3, eqT, () => {
             const c = C(), e = E();
             return [1, 2, 3, 5].some(i => c[i].lc >= 100 && c[i].lc !== e[i].lc) && c[0].lc <= 60 && c[4].lc <= 60;
-        }),
-        st(4, () => U() && U().bchips[2].b, () => {
+        }, { placement: 'right' }),
+        // Çakışma yalnız KICK (0) / BASS (4) arasında: başka kanalda kesmek adımı geçirmez. Girişte BASS + PEAK seçili gelir.
+        st(4, eqT, () => {
             const c = C(), e = E();
-            return c.some((x, i) => x.mid <= -3 && x.midF >= 150 && x.midF <= 1000 && (x.mid !== e[i].mid || x.midF !== e[i].midF) && x.eqOn !== false);
-        }),
+            return [0, 4].some(i => { const x = c[i]; return x.mid <= -3 && x.midF >= 150 && x.midF <= 1000 && (x.mid !== e[i].mid || x.midF !== e[i].midF) && x.eqOn !== false; });
+        }, { placement: 'right', onEnter: () => {
+            m3TutEnter();
+            if (state.mix.sel !== 0 && state.mix.sel !== 4) state.mix.sel = 4;
+            if (m3Ui) m3SetBand(2);
+            m3Dirty();
+        } }),
         st(5, () => U() && U().cmpWrap, () => {
             const c = C(), e = E(), r = mixRun;
             return !!r && !state.mix.bypass && c.some((x, i) => x.ratio >= 2 && x.cpOn !== false && (x.thr !== e[i].thr || x.ratio !== e[i].ratio) && r.gr[i] >= 2);
@@ -13126,6 +13183,7 @@ function renderModule3() {
     root.classList.add('lab-m3');
     const U = m3Ui = { binds: [], i18n: [], raf: 0, cur: -1, lang: labLang(), root, mapping: false, mapT: null, mapDone: '', ccOff: null, learnOff: null };
     mixPrefetch();
+    m3LoadClassicLead();
     // Seçili kaynakların tamponlarını önceden getir (jest gerekmez; paylaşılan çözücü)
     m3Load(state.mix.lead); if (state.mix.kit !== 'classic') M3_KITS[state.mix.kit].forEach(m3Load);
     const win = pluginWindow({ code: 'CONSOLE', num: '03', sub: 'MIXING CONSOLE · 6 CH + 2 RTN + MASTER', aria: L('lab_m3_win_aria'), transport: true,
@@ -13188,6 +13246,7 @@ function renderModule3() {
             // Kit eksiği: tarayıcının TÜMÜ / tür süzgeci (makeSeg) dil değişiminde çevrilmiyor → modül içi yeniden yaz
             const fk = ['all'].concat(M3_LOOP_KINDS.filter(k => LAB_SAMPLES.some(x => x.kind === k)));
             U.sb.el.querySelectorAll('.lp-sb-filter .lp-seg-b').forEach((b, j) => { if (fk[j]) b.textContent = L(j ? 'lp_smp_k_' + fk[j] : 'lp_smp_all'); });
+            const sbf = U.sb.el.querySelector('.lp-sb-filter [aria-label]'); if (sbf) sbf.setAttribute('aria-label', L('lp_smp_filter'));
             [U.rets[0].pkb, U.rets[1].pkb, U.mst.pkb].concat(U.strips.map(x => x.pkb)).forEach(b => { b.dataset.sig = ''; });
             U.mapDone = '';
             tasks.querySelectorAll('.lab-task-text').forEach((el, i) => { if (TASKS[3][i]) el.textContent = TASKS[3][i].text; });
