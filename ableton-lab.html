@@ -477,7 +477,7 @@
         .lab-task-hint { display:block; margin-top:3px; font-size:12px; line-height:1.45; color:var(--fg-3); }
         .lab-task--auto.is-new .lab-task-check { animation:lab-task-pop .6s var(--ease-out); }
         /* Görev tamamlandı tostu (labTaskDone) — ui.css .toast-wrap / .toast.ok üstüne; aria-hidden (duyuru lpAnnounce'ta) */
-        .lab-task-toast { display:flex; align-items:flex-start; gap:10px; }
+        .lab-task-toast { display:flex; align-items:flex-start; gap:10px; pointer-events:none; }   /* bilgi amaçlı, aria-hidden: altındaki öğretici / kontrol dokunuşlarını yutmasın */
         .lab-task-toast > .icon { flex-shrink:0; width:18px; height:18px; margin-top:2px; color:var(--ok); }
         .lab-task-toast-x { display:flex; flex-direction:column; gap:2px; min-width:0; }
         .lab-task-toast-h { font-size:var(--fs-ui); font-weight:700; color:var(--fg); }
@@ -5059,8 +5059,17 @@ function labTaskDone(mid, tids) {
 }
 function _labToastHide() {
     clearTimeout(_labToastT); _labToastT = 0;
-    if (_labToastWrap) _labToastWrap.replaceChildren();
+    if (_labToastWrap) { _labToastWrap.replaceChildren(); _labToastWrap.style.bottom = ''; }
     if (_labToastOff) { lpOffTeardown(_labToastOff); _labToastOff = null; }
+}
+// Açık öğretici kartı (telefonda altta yapışık, tablette yüzen) tostun alanına biniyorsa tost kartın üstüne
+// taşınır (çalışma anı `bottom`) — kartın durum satırı ve Geri / Atla / İleri görünür kalsın
+function _labToastAvoidTut() {
+    const card = document.querySelector('.lp-tut-card:not([hidden])');
+    if (!_labToastWrap || !card || !card.getClientRects().length) return;
+    const c = card.getBoundingClientRect(), t = _labToastWrap.getBoundingClientRect();
+    if (c.bottom <= t.top || c.top >= t.bottom || c.right <= t.left || c.left >= t.right) return;
+    _labToastWrap.style.bottom = Math.max(8, Math.round(window.innerHeight - c.top + 8)) + 'px';
 }
 function _labTaskFlush() {
     _labDoneRaf = 0;
@@ -5087,7 +5096,9 @@ function _labTaskFlush() {
     // Görünür satır kısa: görev metninin " — " öncesi (ayrıntı duyuruda tam okunur)
     const b = mk('span', 'lab-task-toast-t'); b.textContent = mine.map(x => x.text.split(' — ')[0]).join(' · ');
     tx.append(h, b); el.append(tx);
+    _labToastWrap.style.bottom = '';
     _labToastWrap.replaceChildren(el);
+    _labToastAvoidTut();
     clearTimeout(_labToastT); _labToastT = setTimeout(_labToastHide, 3200);
     if (!_labToastOff) _labToastOff = lpOnTeardown(() => { _labToastOff = null; _labToastHide(); });
 }
@@ -7441,6 +7452,24 @@ function flowDiagram(o) {
         // role=img + etkileşimli çocuklar bir arada olmaz: kutular düğme olduğunda kap gruptur
         svg.setAttribute('role', 'group');
     }
+    // Dikey kenar parçaları [x, y0, y1] (viewBox birimi) — fitText'te büyüyen serbest etiket bağlantı çizgisine binmesin.
+    // Yalnız mutlak M/L/H/V okunur; eğri ya da göreli komutlu yol (modülün elle verdiği e.d) o noktada bırakılır.
+    const vSegs = [];
+    const vSegsOf = d => {
+        const tk = String(d || '').match(/[A-Za-z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) || [];
+        let i = 0, cmd = '', x = 0, y = 0;
+        const num = () => parseFloat(tk[i++]);
+        while (i < tk.length) {
+            if (/[A-Za-z]/.test(tk[i])) cmd = tk[i++];
+            if (cmd === 'M' || cmd === 'L') {
+                const nx = num(), ny = num();
+                if (cmd === 'L' && Math.abs(nx - x) < 0.5) vSegs.push([x, Math.min(y, ny), Math.max(y, ny)]);
+                x = nx; y = ny; if (cmd === 'M') cmd = 'L';
+            } else if (cmd === 'H') x = num();
+            else if (cmd === 'V') { const ny = num(); vSegs.push([x, Math.min(y, ny), Math.max(y, ny)]); y = ny; }
+            else return;
+        }
+    };
     const anchor = (n, side) => side === 'l' ? [n.x, n.y + n.h / 2] : side === 't' ? [n.x + n.w / 2, n.y] : side === 'b' ? [n.x + n.w / 2, n.y + n.h] : [n.x + n.w, n.y + n.h / 2];
     (o.edges || []).forEach(e => {
         let d = e.d;
@@ -7456,6 +7485,7 @@ function flowDiagram(o) {
             else if (hz(fs)) d = `M${x1} ${y1}H${x2}V${y2}`;
             else d = `M${x1} ${y1}V${y2}H${x2}`;
         }
+        vSegsOf(d);
         const p = lpSvg('path', { d, class: 'lp-fe' + (e.dash === 'dot' ? ' lp-fe--dot' : e.dash ? ' lp-fe--dash' : ''), 'marker-end': `url(#${marker(e.c)})` }, gE);
         if (e.c) p.style.stroke = e.c;
         if (e.label) { const t = lpSvg('text', { x: e.lx, y: e.ly, class: 'lp-fl' }, gL); t.textContent = e.label; if (e.c) t.style.fill = e.c; }
@@ -7487,7 +7517,8 @@ function flowDiagram(o) {
     // k = çizim genişliği / W; k·font < 11 olan yazı 11/k birime büyür (satır içi stil = çalışma anı durumu; modül
     // CSS'i daha büyük verdiyse dokunulmaz). Büyüyen kutu yazısı kutuya sığmazsa textLength ile sıkışır; numara rozeti
     // de aynı oranda büyür ve kutu yazısıyla çakışıyorsa (rozet modül CSS'iyle köşeye taşınmış olsa da — ekran
-    // kutularıyla ölçülür) yazı rozetin sağına kayar. Grup / serbest etiketler grup kutusuna / viewBox'a sığdırılır.
+    // kutularıyla ölçülür) yazı rozetin sağına kayar. Grup / serbest etiketler grup kutusuna / viewBox'a sığdırılır; büyüyen
+    // serbest etiket yeni değdiği bağlantı çizgisinden / kutudan uzağa kayar.
     // Boyut değişince (ResizeObserver) ve yazı tipleri yüklenince yeniden; her geçiş önce eski ayarı geri alır.
     let fitRaf = 0;
     const tx0 = el => {                              // ilk değerleri bir kez sakla, sonra geri yükle
@@ -7505,7 +7536,8 @@ function flowDiagram(o) {
         if (!(k > 0) || !sr.height) return;
         const texts = Array.from(svg.querySelectorAll('text')), circles = Array.from(svg.querySelectorAll('.lp-fn-nb circle'));
         texts.forEach(tx0); circles.forEach(tx0);
-        const grow = {};
+        const fls = Array.from(svg.querySelectorAll('.lp-fls text'));
+        fls.forEach(t => { try { t._lpB0 = t.getBBox(); } catch (_) { t._lpB0 = null; } });   // büyümeden önceki kutu
         texts.forEach(t => {
             const fs = parseFloat(getComputedStyle(t).fontSize) || 0;
             if (fs && fs * k < LP_FLOW_MIN - 0.05) { const f = LP_FLOW_MIN / k; t.style.fontSize = f.toFixed(2) + 'px'; t._lpG = f / fs; } else t._lpG = 1;
@@ -7533,9 +7565,31 @@ function flowDiagram(o) {
             });
         });
         fitGroups.forEach(({ t, w }) => squeeze(t, w));
-        svg.querySelectorAll('.lp-fls text').forEach(t => {
-            const x = parseFloat(t.getAttribute('x')) || 0, a = t.getAttribute('text-anchor') || 'start';
-            const av = a === 'middle' ? 2 * Math.min(x - 2, W - 2 - x) : a === 'end' ? x - 2 : W - 2 - x;
+        // Serbest / kenar etiketleri: viewBox'a sığsın. Büyüyen etiket, ilk kutusunun DIŞINDA kalan bir dikey bağlantı
+        // çizgisine ya da kutu kenarına uzandıysa o çizgiler arasındaki boş aralığa kaydırılır (sığmazsa sıkışır).
+        fls.forEach(t => {
+            const x = parseFloat(t.getAttribute('x')) || 0, a = t.getAttribute('text-anchor') || 'start', b0 = t._lpB0;
+            let lo = 2, hi = W - 2;
+            if (t._lpG > 1 && b0 && b0.width) {
+                let b = null; try { b = t.getBBox(); } catch (_) {}
+                if (b) {
+                    const y0 = Math.min(b.y, b0.y), y1 = Math.max(b.y + b.height, b0.y + b0.height), xs = [];
+                    vSegs.forEach(([sx, sa, sb]) => { if (sa < y1 && sb > y0) xs.push(sx); });
+                    (o.nodes || []).forEach(n => { if (n.y < y1 && n.y + n.h > y0) xs.push(n.x, n.x + n.w); });
+                    xs.forEach(ox => {
+                        if (ox <= b0.x) lo = Math.max(lo, ox + 3);
+                        else if (ox >= b0.x + b0.width) hi = Math.min(hi, ox - 3);
+                    });
+                }
+            }
+            if (lo === 2 && hi === W - 2) {
+                const av = a === 'middle' ? 2 * Math.min(x - 2, W - 2 - x) : a === 'end' ? x - 2 : W - 2 - x;
+                squeeze(t, av); return;
+            }
+            const w = t.getComputedTextLength(), av = hi - lo, ww = Math.min(w, av);
+            const L0 = a === 'middle' ? x - w / 2 : a === 'end' ? x - w : x;
+            const L1 = w > av ? lo : lpClamp(L0, lo, hi - w);
+            if (Math.abs(L1 - L0) > 0.01) t.setAttribute('x', (a === 'middle' ? L1 + ww / 2 : a === 'end' ? L1 + ww : L1).toFixed(2));
             squeeze(t, av);
         });
     }
@@ -8434,6 +8488,9 @@ function labTutorial(o) {
         }
         scrollToTarget(force);
         place();
+        // Hiçbir konum halkayı boş bırakmıyor (ör. kaydırılamayan sabit pencere içindeki hedef — piyano rulosu VEL
+        // şeridi): kart bu adım için kendiliğinden küçülür (öğrenci büyütebilir — userMax)
+        if (small() && hit && !isMin() && !userMax) { autoMin = true; paintMin(); place(); }
     }
 
     // ── konumlandırma (yalnız transform; genişlik/yükseklik çalışma anı durumu) ─────
@@ -8560,14 +8617,19 @@ function labTutorial(o) {
         }
     }
     // Düğmeyle adım değişince: basılan düğme hâlâ kullanılabiliyorsa odak orada kalır, yoksa karta
+    // Odaklanabilir mi: `hidden` değil, devre dışı değil ve CSS ile gizli değil (küçük kart .is-min / hap .is-pill
+    // alt düğmeleri display:none ile saklar — focus() orada sessizce boşa düşer, F6 karta dönemezdi)
+    const canFocus = x => !!x && !x.hidden && x.getAttribute('aria-disabled') !== 'true' && x.getClientRects().length > 0;
     function keepFocus() {
         const a = document.activeElement;
-        if (card.contains(a) && a !== card && !a.hidden && a.getAttribute('aria-disabled') !== 'true') return;
+        if (card.contains(a) && a !== card && canFocus(a)) return;
         try { card.focus({ preventScroll: true }); } catch (_) {}
     }
     function focusCard() {
-        const b = [bNext, bAlt, bSkip, bBack].find(x => x && !x.hidden && x.getAttribute('aria-disabled') !== 'true');
+        // Küçükken alt düğmeler gizli → büyüt düğmesi (Enter kartı açar), o da yoksa kartın kendisi
+        const b = [bNext, bAlt, bSkip, bBack, minBtn].find(canFocus);
         try { (b || card).focus({ preventScroll: true }); } catch (_) {}
+        if (!card.contains(document.activeElement)) { try { card.focus({ preventScroll: true }); } catch (_) {} }
     }
     function listen(on) {
         const f = on ? 'addEventListener' : 'removeEventListener';
