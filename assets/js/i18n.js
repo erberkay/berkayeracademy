@@ -296,7 +296,7 @@
     bk_rejected_title: { tr: 'Talep Reddedildi',            en: 'Request Rejected' },
     bk_paid:          { tr: '✓ Ödendi',                      en: '✓ Paid' },
     bk_this_month:    { tr: 'Bu ay',                         en: 'This month' },
-    bk_lessons:       { tr: 'ders',                          en: 'lesson' },
+    bk_lessons: { tr: `ders`, en: `lessons` },
     bk_cancel:        { tr: 'İptal',                         en: 'Cancel' },
     bk_reschedule:    { tr: '↺ Ertele',                      en: '↺ Reschedule' },
     bk_zoom_join:     { tr: 'Derse Katıl',                   en: 'Join Lesson' },
@@ -363,8 +363,8 @@
     bk_status_cancel_req:  { tr: 'İptal Talep Edildi',  en: 'Cancel Requested' },
     bk_status_frozen:      { tr: 'Donduruldu',       en: 'Frozen' },
     bk_past_lessons:       { tr: 'Geçmiş Dersler',      en: 'Past Lessons' },
-    bk_frozen_reminder: { tr: 'Yeni tarihler belirlendiğinde bildirim alacaksınız. Sorularınız için eğitmeninizle iletişime geçebilirsiniz.', en: 'You will be notified when new dates are set. Contact your instructor for any questions.' },
-    bk_frozen_banner:      { tr: 'Ders planınız dondurulmuştur.', en: 'Your lesson plan is frozen.' },
+    bk_frozen_reminder: { tr: `Yeni tarihler belirlenince bildirim alacaksın. Sorun olursa Berkay Er’e yaz.`, en: `You’ll be notified when new dates are set. Write to Berkay Er if you have questions.` },
+    bk_frozen_banner: { tr: `Ders planın donduruldu.`, en: `Your lesson plan is frozen.` },
     bk_frozen_note:        { tr: 'Ders donduruldu — Yeni tarih:', en: 'Lesson frozen — New date:' },
     bk_no_upcoming:        { tr: 'Yaklaşan ders yok.',  en: 'No upcoming lessons.' },
     bk_no_requests:        { tr: 'Bekleyen talep yok.', en: 'No pending requests.' },
@@ -376,18 +376,18 @@
     bk_rules_title:        { tr: 'Ders Kuralları',      en: 'Lesson Rules' },
     bk_note_hint:          { tr: 'tercih / istek bırak', en: 'leave a preference / request' },
     bk_qa_hint:            { tr: 'Berkay Er yanıtlar',  en: 'Berkay Er replies' },
-    bk_rule_reschedule_desc: { tr: 'Paketteki her ay için 1 erteleme hakkı vardır (1 aylık paket = 1 hak, 2 aylık = 2 hak). Dersler sonraki aya sarksa bile hak sayısı değişmez. Ek hak 500 TL ödeme ile alınır.', en: 'You get 1 reschedule credit per package month (1-month package = 1 credit, 2 months = 2 credits). Lessons spilling into the next month do not change this. Extra credits can be purchased for 500 TL.' },
-    bk_rule_notice_desc:   { tr: 'En az 24 saat öncesinden talep edilmelidir. Ertelenen ders aynı ay içinde yapılmalıdır.', en: 'Must be requested at least 24 hours in advance. The rescheduled lesson must take place within the same month.' },
-    bk_rule_limit_desc:    { tr: 'Süresinde kullanılmazsa hak yanar.', en: 'If not used in time, the right is forfeited.' },
+    bk_rule_reschedule_desc: { tr: `Paketin kaç aylıksa o kadar erteleme hakkın olur (1 ay = 1 hak, 3 ay = 3 hak); hakları paket süresince istediğin derste kullanabilirsin. Ertele dersi 1 hafta ileri alır ve Berkay Er onaylayınca 1 hak düşer. Aynı hafta içinde saat değiştirmek (Saati değiştir) ücretsizdir, hak düşmez. Ek hak 500 TL.`, en: `You get as many reschedule credits as your package has months (1 month = 1, 3 months = 3); use them on any lesson during the package. Reschedule moves a lesson one week later and uses 1 credit once Berkay Er approves. Changing the time within the same week (Change time) is free. Extra credits cost 500 TL.` },
+    bk_rule_notice_desc: { tr: `Erteleme en az 24 saat önceden talep edilir; ders 1 hafta ileri alınır.`, en: `A reschedule must be requested at least 24 hours ahead; the lesson moves one week later.` },
+    bk_rule_limit_desc: { tr: `Kullanılmayan haklar paket bitince sona erer.`, en: `Unused credits expire when the package ends.` },
     bk_rule_late:          { tr: 'Derse Geç Kalma',     en: 'Late Arrival' },
     bk_rule_late_desc:     { tr: 'Derse 10 dakika içinde girilmezse ders yapılmış sayılır.', en: 'If you do not join within 10 minutes the lesson is counted as completed.' },
     bk_rule_absence:       { tr: 'Devamsızlık',         en: 'Absence' },
-    bk_rule_absence_desc:  { tr: 'Haber vermeden derse katılmazsanız, ders yapılmış sayılır ve yeniden planlanmaz.', en: 'If you do not attend without notice, the lesson is counted as completed and will not be rescheduled.' },
+    bk_rule_absence_desc: { tr: `Haber vermeden derse katılmazsan ders yapılmış sayılır ve yeniden planlanmaz.`, en: `If you miss a lesson without notice, it counts as held and is not rescheduled.` },
     bk_rule_copyright:     { tr: 'Telif Hakkı',          en: 'Copyright' },
     bk_rule_copyright_desc:{ tr: "Berkay Er'in derste paylaştığı ve yaptığı parçalar/içerikler kendisine aittir. Hiçbir şekilde paylaşılamaz veya dağıtılamaz.", en: "Tracks and content created or shared by Berkay Er during lessons belong to him; they cannot be shared or distributed in any way." },
     bk_rule_cancel_desc:   { tr: 'Alınan dersler iptal edilemez ve başka bir kişiye devir edilemez.', en: 'Purchased lessons cannot be cancelled or transferred to another person.' },
-    bk_rule_footer:        { tr: 'Bu kurallar derslerin düzenli ve etkili yapılmasına yardımcı olacaktır. Aylık ders saatlerini ve günlerini belirlemeyen arkadaşlar için ders yapılamayacaktır.', en: 'These rules help ensure lessons are conducted regularly and effectively. Lessons cannot be held for those who do not set their monthly lesson hours and days.' },
-    bk_rule_footer2:       { tr: 'Sorularınız olursa bana ulaşmaktan çekinmeyin. Anlayışınız ve işbirliğiniz için teşekkür ederim.', en: 'Do not hesitate to contact me if you have questions. Thank you for your understanding and cooperation.' },
+    bk_rule_footer: { tr: `Bu kurallar derslerin düzenli ve etkili yapılmasına yardımcı olur. Ders gün ve saatlerini belirlemeyen öğrenci için ders yapılamaz.`, en: `These rules keep lessons regular and effective. Lessons can’t be held for students who haven’t set their lesson days and times.` },
+    bk_rule_footer2: { tr: `Sorun olursa bana yazmaktan çekinme. Anlayışın ve işbirliğin için teşekkür ederim.`, en: `If you have questions, don’t hesitate to write to me. Thank you for your understanding.` },
     bk_single_note:        { tr: 'Paket alan öğrencilerin ders saati değişiklikleri ile çakıştığında <strong>paket alan öğrencilerin öncelikleri vardır</strong>. Bu nedenle seçtiğiniz saat iptal edilebilir.', en: 'When conflicting with schedule changes of package students, <strong>package students have priority</strong>. Your selected slot may be cancelled.' },
     bk_slot_single_hint:   { tr: 'Gün & Saat Seç <span class="hint-sub">(bir saat seç)</span>', en: 'Select Day & Time <span class="hint-sub">(pick one slot)</span>' },
     bk_err_no_slot:        { tr: 'En az bir ders saati seçmelisin.', en: 'You must select at least one slot.' },
@@ -395,21 +395,21 @@
     bk_err_min_lessons:    { tr: 'En az 3 ders seçilmelidir.', en: 'At least 3 lessons must be selected.' },
     bk_submitting:         { tr: 'Gönderiliyor…',       en: 'Submitting…' },
     bk_pending_status:     { tr: 'Talep Beklemede',      en: 'Request Pending' },
-    bk_pending_desc:       { tr: 'Berkay Er talebinizi inceleyecek ve onaylayacak.<br>Onaylandıktan sonra ders takviminiz burada görünecek.', en: "Berkay Er will review and approve your request.<br>Once approved, your lesson schedule will appear here." },
-    bk_rejected_desc:      { tr: 'Talebiniz şu an için uygun görülmedi.<br>Yeni bir talep oluşturabilirsiniz.', en: 'Your request was not approved at this time.<br>You can create a new request.' },
+    bk_pending_desc: { tr: `Berkay Er talebini inceleyip onaylayacak.<br>Onaylanınca ders takvimin burada görünür.`, en: `Berkay Er will review and approve your request.<br>Once approved, your lesson schedule appears here.` },
+    bk_rejected_desc: { tr: `Talebin şu an için uygun görülmedi.<br>Yeni bir talep oluşturabilirsin.`, en: `Your request wasn’t approved this time.<br>You can create a new request.` },
     bk_retry_btn:          { tr: '↺ Yeniden Dene',      en: '↺ Try Again' },
     bk_new_request_btn:    { tr: '+ Yeni Talep Oluştur', en: '+ Create New Request' },
     bk_lab_before:         { tr: 'Derse başlamadan önce Ableton Lab\'ı tamamla', en: 'Complete Ableton Lab before your lessons' },
-    bk_reschedule_no_credit: { tr: 'Erteleme hakkınız kalmadı.', en: 'You have no reschedule credits left.' },
-    bk_resched_req_note:   { tr: "Talebin Berkay Er'e iletilir — onaylayınca takvimin güncellenir ve sana bildirim gelir.", en: 'Your request is sent to Berkay Er — once approved, your schedule updates and you get notified.' },
-    bk_resched_req_btn:    { tr: '→ Talep Gönder', en: '→ Send Request' },
-    bk_resched_req_sent:   { tr: '✓ Erteleme talebi gönderildi — onaylanınca takvimin güncellenir.', en: '✓ Reschedule request sent — your schedule updates once approved.' },
+    bk_reschedule_no_credit: { tr: `Erteleme hakkın kalmadı.`, en: `You have no reschedule credits left.` },
+    bk_resched_req_note: { tr: `Talebin Berkay Er’e iletilir — onaylayınca takvimin güncellenir ve sana bildirim gelir.`, en: `Your request goes to Berkay Er — once approved, your schedule updates and you get notified.` },
+    bk_resched_req_btn: { tr: `Erteleme talebi gönder`, en: `Send reschedule request` },
+    bk_resched_req_sent: { tr: `✓ Erteleme talebin gönderildi — Berkay Er onaylayınca takvimin güncellenir.`, en: `✓ Reschedule request sent — your schedule updates once Berkay Er approves.` },
     bk_resched_pending:    { tr: 'Erteleme onayı bekliyor', en: 'Reschedule pending approval' },
-    bk_reschedule_24h:     { tr: 'Erteleme en az 24 saat önceden yapılmalıdır.', en: 'Reschedule must be requested at least 24 hours in advance.' },
-    bk_reschedule_modal_title: { tr: '↺ Ders Ertele', en: '↺ Reschedule Lesson' },
-    bk_reschedule_current: { tr: 'MEVCUT', en: 'CURRENT' },
-    bk_reschedule_next_week: { tr: '→ 1 HAFTA SONRA', en: '→ 1 WEEK LATER' },
-    bk_req_submitted:      { tr: '✓ Talebiniz gönderildi!', en: '✓ Your request has been submitted!' },
+    bk_reschedule_24h: { tr: `Erteleme en az 24 saat önceden talep edilmelidir.`, en: `A reschedule must be requested at least 24 hours in advance.` },
+    bk_reschedule_modal_title: { tr: `Dersi ertele`, en: `Reschedule lesson` },
+    bk_reschedule_current: { tr: `Mevcut`, en: `Current` },
+    bk_reschedule_next_week: { tr: `Yeni tarih (1 hafta sonra)`, en: `New date (1 week later)` },
+    bk_req_submitted: { tr: `✓ Talebin gönderildi!`, en: `✓ Your request has been sent!` },
     bk_refresh_status:     { tr: '↺ Durumu Yenile', en: '↺ Refresh Status' },
     bk_student_fallback:   { tr: 'Öğrenci', en: 'Student' },
     bk_trial_label:        { tr: 'Deneme Dersi', en: 'Trial Lesson' },
@@ -419,27 +419,27 @@
     bk_stat_completed:     { tr: 'Tamamlanan', en: 'Completed' },
     bk_stat_total:         { tr: 'Toplam', en: 'Total' },
     bk_payment_label:      { tr: 'Toplam Ücret', en: 'Total Fee' },
-    bk_pay_btn:            { tr: '₺ Ödeme Yaptım', en: '₺ I Made a Payment' },
-    bk_pay_confirm:        { tr: 'Ödeme yaptığını onaylıyor musun?', en: 'Are you sure you made a payment?' },
-    bk_pay_request_sent:   { tr: 'Ödeme talebiniz gönderildi, onay bekleniyor.', en: 'Your payment request has been sent, awaiting approval.' },
-    bk_pending_approval:   { tr: 'Onay Bekliyor', en: 'Awaiting Approval' },
+    bk_pay_btn: { tr: `Ödemeyi yaptım`, en: `I’ve paid` },
+    bk_pay_confirm: { tr: `Havaleyi yaptın mı?`, en: `Have you made the transfer?` },
+    bk_pay_request_sent: { tr: `Ödeme bildirimin gönderildi — Berkay Er onaylayınca derslerin açılır.`, en: `Payment notice sent — your lessons open once Berkay Er confirms.` },
+    bk_pending_approval: { tr: `Onay bekleniyor`, en: `Awaiting approval` },
     bk_pay_info_title:     { tr: 'Ödeme Bilgileri', en: 'Payment Info' },
     bk_pay_bank:           { tr: 'Banka', en: 'Bank' },
     bk_pay_name_label:     { tr: 'İsim', en: 'Name' },
     bk_pay_iban:           { tr: 'IBAN', en: 'IBAN' },
     bk_pay_copy:           { tr: 'Kopyala', en: 'Copy' },
-    bk_pay_warn:           { tr: 'Lütfen açıklama kısmına <strong>hiçbir şey yazmayınız.</strong>', en: 'Please do <strong>not write anything</strong> in the payment description.' },
+    bk_pay_warn: { tr: `Açıklama kısmına <strong>hiçbir şey yazma.</strong>`, en: `Please do <strong>not write anything</strong> in the payment description.` },
     bk_frozen:             { tr: 'Plan donduruldu — ek ders talep edilemez', en: 'Plan frozen — extra lessons cannot be requested' },
     bk_extra_lesson:       { tr: 'Ek Ders Satın Al', en: 'Purchase Extra Lesson' },
     bk_extra_lesson_title: { tr: 'Ek Ders Talebi', en: 'Extra Lesson Request' },
     bk_time_label:         { tr: 'SAAT', en: 'TIME' },
     bk_slot_full_label:    { tr: '(dolu)', en: '(full)' },
     bk_slot_too_soon: { tr: '(24 saatten az)', en: '(under 24h)' },
-    bk_reschedule_disabled: { tr: 'Ödeme yapılmadan ders ertelenemez.', en: 'Cannot reschedule without payment.' },
+    bk_reschedule_disabled: { tr: `Ödemen onaylanınca saat değiştirme ve erteleme açılır.`, en: `Changing and rescheduling lessons opens once your payment is confirmed.` },
 
     // ── Ders saatini kendin değiştir (onaysız) ──
     bk_sc_btn:             { tr: `Saati değiştir`, en: `Change time` },
-    bk_sc_locked:          { tr: `Kilitli · 5 saatten az`, en: `Locked · under 5 hours` },
+    bk_sc_locked: { tr: `Saat değişikliği kapandı`, en: `Time change closed` },
     bk_sc_pay:             { tr: `Ödeme onaylanmadan ders saati değiştirilemez.`, en: `You can't change the time before payment is confirmed.` },
     bk_sc_title:           { tr: `Ders saatini değiştir`, en: `Change your lesson time` },
     bk_sc_current:         { tr: `Şu anki dersin`, en: `Your current lesson` },
@@ -473,7 +473,7 @@
     bk_wk_dur_online:      { tr: `60 dk · Online`, en: `60 min · Online` },
     bk_wk_left:            { tr: `{d} kaldı`, en: `{d} left` },
     bk_wk_past:            { tr: `Ders zamanı geçti`, en: `Lesson time has passed` },
-    bk_wk_lock_in:         { tr: `kilide {d}`, en: `locks in {d}` },
+    bk_wk_lock_in: { tr: `Saat değişikliği {d} daha açık`, en: `time change open for {d}` },
     bk_wk_zero:            { tr: `0 dk`, en: `0 min` },
     bk_wk_badge_ok:        { tr: `Değiştirilebilir`, en: `Changeable` },
     bk_wk_badge_soon:      { tr: `Son dakikalar`, en: `Locking soon` },
@@ -485,7 +485,7 @@
     bk_wk_btn_open:        { tr: `Seçim açık`, en: `Picker open` },
     bk_wk_btn_moved:       { tr: `Bir kez taşındı`, en: `Already moved once` },
     bk_wk_pick_label:      { tr: `Yeni saat seç · 7 gün × 24 saat`, en: `Pick a new time · 7 days × 24 hours` },
-    bk_wk_cell_now:        { tr: `Şu an`, en: `Now` },
+    bk_wk_cell_now: { tr: `Mevcut`, en: `Current` },
     bk_wk_cell_soon:       { tr: `5 saatten yakın veya geçmiş`, en: `Within 5 hours or past` },
     bk_wk_sum_label:       { tr: `Değişiklik özeti`, en: `Change summary` },
     bk_wk_new_ph:          { tr: `Takvimden seç`, en: `Pick from the calendar` },
@@ -503,7 +503,7 @@
     bk_wk_done:            { tr: `Dersin {from} → {to} olarak taşındı. Berkay Er'e bildirim gönderildi — onay gerekmez.`,
                              en: `Your lesson moved from {from} to {to}. Berkay Er has been notified — no approval needed.` },
     bk_wk_done_m:          { tr: `Dersin {from} → {to} taşındı. Berkay Er'e bildirim gitti — onay gerekmez.`, en: `Lesson moved {from} → {to}. Berkay Er was notified — no approval needed.` },
-    bk_wk_link:            { tr: `Saat değiştir`, en: `Change time` },
+    bk_wk_link: { tr: `Saati değiştir`, en: `Change time` },
     bk_wk_help:            { tr: `Bu haftaki derslerin sayfanın en üstünde — saatini oradan değiştirebilirsin.`, en: `This week's lessons are at the top of the page — you can change their time there.` },
     bk_wk_empty:           { tr: `Bu hafta planlanmış dersin yok.`, en: `You have no lessons scheduled this week.` },
     bk_wk_all:             { tr: `Tüm derslerim`, en: `All my lessons` },
@@ -538,20 +538,20 @@
     bk_rule_selfchange_desc: { tr: `dersine 5 saatten fazla varsa onaysız ve anında; yeni saat de en az 5 saat sonra olmalı. Aynı hafta içinde, her ders için bir kez; erteleme hakkı düşmez.`,
                              en: `if your lesson is more than 5 hours away, it happens instantly without approval; the new time must also be at least 5 hours away. Within the same week, once per lesson; no reschedule credit is used.` },
     bk_avail_load_err:     { tr: 'Müsaitlik yüklenemedi:', en: 'Could not load availability:' },
-    bk_welcome_title:      { tr: 'Ders Panelinize Hoş Geldiniz', en: 'Welcome to Your Lesson Panel' },
+    bk_welcome_title: { tr: `Ders paneline hoş geldin`, en: `Welcome to your lesson panel` },
     bk_welcome_subtitle:   { tr: 'Birkaç önemli bilgi:', en: 'A few important notes:' },
-    bk_welcome_zoom_title: { tr: 'Derse Katıl Butonu', en: 'Join Lesson Button' },
+    bk_welcome_zoom_title: { tr: `Derse katılma`, en: `Joining a lesson` },
     bk_welcome_zoom_desc:  { tr: 'Ödeme onaylandıktan sonra aktifleşir. Ödeme yapılmadığı sürece <strong class="text-err">Ödeme Yapılmadı</strong> olarak görünür ve derse katılamazsınız.', en: 'Activates after payment is confirmed. Until payment is made it shows as <strong class="text-err">Payment Not Made</strong> and you cannot join.' },
-    bk_welcome_pay_title:  { tr: 'Ödeme Nasıl Yapılır?', en: 'How to Make a Payment?' },
+    bk_welcome_pay_title: { tr: `Önce ödeme`, en: `Payment first` },
     bk_welcome_pay_desc:   { tr: `Garanti Bankası IBAN'ına havale yapın, ardından paneldeki <strong class="text-accent">₺ Ödeme Yaptım</strong> butonuna basın. Admin onaylayınca ödeme durumu <strong class="text-ok">Ödendi</strong> olur.`, en: 'Transfer to the Garanti Bank IBAN, then press <strong class="text-accent">₺ I Made a Payment</strong> in your panel. Once the admin confirms, the status changes to <strong class="text-ok">Paid</strong>.' },
-    bk_welcome_resch_title: { tr: 'Ders Erteleme', en: 'Reschedule' },
-    bk_welcome_resch_desc: { tr: 'Dersinizi <strong class="text-info">en az 24 saat öncesinden</strong> erteleyebilirsiniz. Ders satırındaki <strong class="text-info">Ertele</strong> butonu dersi bir hafta sonrasına taşıma talebini admin onayına gönderir.', en: 'You can reschedule <strong class="text-info">at least 24 hours in advance</strong>. The <strong class="text-info">Reschedule</strong> button on a lesson row sends a request to move it one week later for admin approval.' },
+    bk_welcome_resch_title: { tr: `Ertele — hak kullanır`, en: `Reschedule — uses a credit` },
+    bk_welcome_resch_desc: { tr: `Ertele dersi 1 hafta ileri alır. En az 24 saat önce talep edilir; Berkay Er onaylayınca <strong>1 erteleme hakkı</strong> düşer. Paketin kaç aylıksa o kadar hakkın var.`, en: `Reschedule moves a lesson one week later. Request it at least 24 hours ahead; <strong>1 credit</strong> is used once Berkay Er approves. You get one credit per package month.` },
     bk_welcome_qa_title:   { tr: 'Soru & Cevap', en: 'Q&A' },
-    bk_welcome_qa_desc:    { tr: 'Paneldeki <strong class="text-accent">Soru Sor</strong> kartından doğrudan mesaj atabilirsiniz. Ders dışı sorular, teknik konular — her şey için kullanabilirsiniz.', en: 'Send direct messages from the <strong class="text-accent">Ask a Question</strong> card in your panel. Questions, technical topics — use it for anything.' },
+    bk_welcome_qa_desc: { tr: `Paneldeki <strong class="text-accent">Soru Sor</strong> kartından Berkay Er’e doğrudan yazabilirsin.`, en: `Use the <strong class="text-accent">Ask a Question</strong> card to write to Berkay Er directly.` },
     bk_welcome_lab_title:  { tr: 'Ableton Lab & Forum', en: 'Ableton Lab & Forum' },
     bk_welcome_lab_desc:   { tr: `Ders dışında da öğrenmeye devam edin — <strong class="text-accent">Ableton Lab</strong>'da interaktif synthesizer, beat maker ve mixer araçları var. <strong class="text-accent">Forum</strong>'da diğer öğrencilerle fikir paylaşın.`, en: 'Keep learning outside of lessons — <strong class="text-accent">Ableton Lab</strong> has interactive synthesizer, beat maker and mixer tools. Share ideas with other students in the <strong class="text-accent">Forum</strong>.' },
-    bk_welcome_ok:         { tr: 'Anladım →', en: 'Got it →' },
-    bk_qa_no_questions:    { tr: 'Henüz soru sormadınız.', en: 'You have not asked any questions yet.' },
+    bk_welcome_ok: { tr: `Anladım`, en: `Got it` },
+    bk_qa_no_questions: { tr: `Henüz soru sormadın.`, en: `You haven’t asked any questions yet.` },
     bk_qa_my_question:     { tr: 'Sorum', en: 'My Question' },
     bk_qa_solved:          { tr: '✓ Çözüldü', en: '✓ Solved' },
     bk_qa_open:            { tr: 'Açık', en: 'Open' },
@@ -559,7 +559,7 @@
     bk_qa_delete:          { tr: '✕ Soruyu Sil', en: '✕ Delete Question' },
     bk_qa_no_answers:      { tr: 'Henüz yanıt yok.', en: 'No answers yet.' },
     bk_qa_me:              { tr: 'Sen', en: 'You' },
-    bk_qa_sent:            { tr: '✓ Sorunuz gönderildi!', en: '✓ Your question has been sent!' },
+    bk_qa_sent: { tr: `✓ Sorun gönderildi!`, en: `✓ Your question was sent!` },
     bk_qa_delete_confirm:  { tr: 'Bu soruyu silmek istediğine emin misin?', en: 'Are you sure you want to delete this question?' },
     bk_qa_deleted:         { tr: 'Soru silindi.', en: 'Question deleted.' },
     bk_qa_followup_ph:     { tr: 'Takip sorusu ekle…', en: 'Add a follow-up…' },
@@ -569,14 +569,14 @@
     bk_zoom_join_btn:      { tr: 'Derse Katıl', en: 'Join Lesson' },
     bk_zoom_join_active:   { tr: 'Derse Katıl', en: 'Join Lesson' },
     bk_zoom_no_pay:        { tr: 'Ödeme Yapılmadı', en: 'Payment Not Made' },
-    bk_zoom_pay_pending:   { tr: '⏳ Ödeme Onayı Bekleniyor', en: '⏳ Payment Approval Pending' },
+    bk_zoom_pay_pending: { tr: `Ödeme onayı bekleniyor`, en: `Payment approval pending` },
     bk_zoom_pay_pend_desc: { tr: 'Ödemen alındı, admin onayını bekliyor', en: 'Payment received, awaiting admin confirmation' },
     bk_zoom_no_pay_desc:   { tr: 'Derse katılmak için ödemenin onaylanması gerekli', en: 'Payment must be confirmed to join the lesson' },
-    bk_zoom_awaiting:      { tr: '⏳ Onay Bekliyor', en: '⏳ Awaiting Approval' },
+    bk_zoom_awaiting: { tr: `Onay bekleniyor`, en: `Awaiting approval` },
     bk_zoom_left:          { tr: 'kaldı', en: 'remaining' },
     bk_zoom_in_progress_s: { tr: 'Ders devam ediyor', en: 'Lesson in progress' },
-    bk_note_ph:            { tr: 'Tercihleriniz, sorularınız veya eklemek istediğiniz herhangi bir şey…', en: 'Your preferences, questions or anything else…' },
-    bk_req_note_ph:        { tr: 'Tercihleriniz, sorularınız veya eklemek istediğiniz herhangi bir şey…', en: 'Your preferences, questions or anything else…' },
+    bk_note_ph: { tr: `Tercihlerin, soruların ya da eklemek istediğin her şey…`, en: `Your preferences, questions or anything else…` },
+    bk_req_note_ph: { tr: `Tercihlerin, soruların ya da eklemek istediğin her şey…`, en: `Your preferences, questions or anything else…` },
     bk_samples_title:      { tr: 'Sample & Serum Presetleri', en: 'Samples & Serum Presets' },
     bk_samples_desc:       { tr: 'Derslerde kullanılan tüm sample paketleri ve Serum presetleri bu klasörde bulunmaktadır. Mac kullanıcıları için VST dosyaları da hazır şekilde eklenmiştir.', en: 'All sample packages and Serum presets used in lessons are in this folder. VST files for Mac users are also included.' },
     bk_samples_warn:       { tr: 'Ders başlamadan önce sample ve presetlerin kurulumu yapılmalıdır.', en: 'Before lessons start, samples and presets must be installed.' },
@@ -585,7 +585,7 @@
     bk_plugins_desc:       { tr: 'Derslerde kullanılan tüm VST plugin\'lerin listesine aşağıdan ulaşabilirsiniz. Hangi araçların gerekli olduğunu görmek ve kurulum planlaması yapmak için listeyi inceleyin.', en: 'You can find the full list of VST plugins used in lessons below. Review it to see which tools you need and plan your installation.' },
     bk_plugins_btn:        { tr: 'Plugin Listesini Gör →', en: 'View Plugin List →' },
     bk_qa_title:           { tr: 'Soru Sor', en: 'Ask a Question' },
-    bk_qa_input_ph:        { tr: 'Sorunuzu yazın…', en: 'Write your question…' },
+    bk_qa_input_ph: { tr: `Sorunu yaz…`, en: `Write your question…` },
     bk_req_sub:            { tr: 'Tercihlerini belirt, Berkay Er inceleyip onaylayacak.', en: 'Set your preferences, Berkay Er will review and approve.' },
 
     // ── Ders paketleri (booking.html — rakamlar PACKAGES'tan, burada yalnız metin) ──
@@ -617,7 +617,7 @@
                              en: `A single lesson is {single}. In a package an hour starts at {start} and drops to {bestPrice} with {best} — up to {max} off.` },
     bk_pkg_discount_badge: { tr: `{pct} indirim`, en: `{pct} off` },
     bk_pkg_pay_save:       { tr: `{pct} indirim · {save} kazancın`, en: `{pct} off · you save {save}` },
-    bk_pkg_pay_extra:      { tr: `{pkg} paket + {n} ek ders · {price} (paket dışı)`, en: `{pkg} package + {n} extra lesson(s) · {price} (not in package)` },
+    bk_pkg_pay_extra: { tr: `{pkg} paket + {n} ek ders · {price} (paket dışı)`, en: `{pkg} package + extra lessons: {n} · {price} (not in package)` },
     bk_pkg_extra_note:     { tr: `Ek ders paketine dahil değildir: {price} toplam ücretine eklenir.`, en: `Extra lessons are not part of your package: {price} is added to your total.` },
     bk_pkg_of_hours:       { tr: `({h} saatlik paket)`, en: `({h}-hour package)` },
     bk_pkg_weekly:         { tr: `Haftada {n} ders saati`, en: `{n} lesson hour{s} a week` },
@@ -638,8 +638,6 @@
     bk_pt_saving:          { tr: `Kaydediliyor…`, en: `Saving…` },
     bk_pt_save_err:        { tr: `Sınav kaydedilemedi`, en: `Could not save the test` },
     bk_pt_later:           { tr: `Daha sonra`, en: `Later` },
-    bk_pt_later_hint:      { tr: `Sınav zorunlu — en kısa sürede çözmeni öneririz, dersin buna göre planlanıyor.`,
-                             en: `The test is required — please take it soon, your lessons are planned around it.` },
     bk_pt_result_title:    { tr: `Sonucun`, en: `Your result` },
     bk_pt_result_prefix:   { tr: `Seviyen:`, en: `Your level:` },
     bk_pt_result_desc:     { tr: `Sonucu eğitmenin görecek, ilk dersin buna göre planlanacak.`,
@@ -654,19 +652,19 @@
     bk_avail_sel:          { tr: 'Seçili', en: 'Selected' },
     bk_avail_loading:      { tr: 'Müsaitlik yükleniyor…', en: 'Loading availability…' },
     bk_note_label:         { tr: 'Not', en: 'Note' },
-    bk_your_request:       { tr: 'Talebiniz', en: 'Your Request' },
-    bk_access_intro:       { tr: 'Ders almak için aşağıdaki seçeneklerden birini tercih edin.', en: 'Choose one of the options below to start lessons.' },
+    bk_your_request: { tr: `Talebin`, en: `Your request` },
+    bk_access_intro: { tr: `Ders almak için aşağıdaki seçeneklerden birini seç.`, en: `Choose one of the options below to start lessons.` },
     bk_access_trial_title: { tr: 'Deneme Dersi', en: 'Trial Lesson' },
     bk_access_trial_desc:  { tr: 'Ücretsiz deneme dersi için tarih ve saat seç. Onay sonrası derse başlarsın.', en: 'Select a date and time for a free trial lesson. You will start after approval.' },
     bk_access_date_lbl:    { tr: 'TARİH', en: 'DATE' },
     bk_access_time_lbl:    { tr: 'SAAT SEÇ', en: 'SELECT TIME' },
     bk_access_sel_time:    { tr: 'Seçilen saat:', en: 'Selected time:' },
     bk_access_msg_lbl:     { tr: 'MESAJINIZ', en: 'YOUR MESSAGE' },
-    bk_access_note_ph:     { tr: 'Seviyeniz, ne öğrenmek istiyorsunuz…', en: 'Your level, what you want to learn…' },
+    bk_access_note_ph: { tr: `Seviyen, ne öğrenmek istiyorsun…`, en: `Your level, what you want to learn…` },
     bk_access_msg_ph:      { tr: 'Kendinizden kısaca bahsedin, ne öğrenmek istiyorsunuz…', en: 'Briefly introduce yourself, what do you want to learn…' },
     bk_access_trial_btn:   { tr: 'Deneme Dersi İste →', en: 'Request Trial Lesson →' },
-    bk_err_no_date:        { tr: 'Lütfen bir tarih seçin.', en: 'Please select a date.' },
-    bk_err_no_time:        { tr: 'Lütfen bir saat seçin.', en: 'Please select a time.' },
+    bk_err_no_date: { tr: `Lütfen bir tarih seç.`, en: `Please pick a date.` },
+    bk_err_no_time: { tr: `Lütfen bir saat seç.`, en: `Please pick a time.` },
     bk_access_pending_title: { tr: 'Talep İnceleniyor', en: 'Request Under Review' },
     bk_access_pending_desc: { tr: 'Erişim talebiniz alındı. Berkay Er inceledikten sonra bu sayfa otomatik olarak güncellenecek.', en: 'Your access request has been received. This page will update automatically after Berkay Er reviews it.' },
     bk_access_cancel_btn:  { tr: 'Talebi İptal Et', en: 'Cancel Request' },
@@ -1322,7 +1320,7 @@
     bks_access_pkg_desc:     { tr: 'Kampanyalı paketlerden birini seç, haftalık gün ve saatlerini belirle. Berkay Er onaylayınca takvimine işlenir.', en: 'Choose a campaign package and set your weekly days and times. Once Berkay Er approves, it goes into your schedule.' },
     bks_access_pkg_go:       { tr: 'Paketleri gör →', en: 'See packages →' },
     bks_access_pkg_btn:      { tr: 'Paket ve saat seçimine geç →', en: 'Continue to packages & times →' },
-    bks_access_upto:         { tr: '{pct} avantaj', en: 'Save up to {pct}' },
+    bks_access_upto: { tr: `En fazla {pct} indirim`, en: `Save up to {pct}` },
     bks_req_title:           { tr: 'Ders talebi oluştur', en: 'Create a lesson request' },
     bks_type_aria:           { tr: 'Plan türü', en: 'Plan type' },
     bks_tab_camp:            { tr: 'Kampanyalı paket', en: 'Campaign package' },
@@ -1334,7 +1332,7 @@
     bks_col_hours_s:         { tr: 'Saat', en: 'Hours' },
     bks_col_list_s:          { tr: 'Liste', en: 'List' },
     bks_hours_unit:          { tr: 'saat', en: 'hrs' },
-    bks_start:               { tr: 'Başlangıç', en: 'Start' },
+    bks_start: { tr: `İlk ders tarihi`, en: `First lesson date` },
     bks_see_pkgs:            { tr: 'Paketleri gör', en: 'See packages' },
     bks_jump_aria:           { tr: 'Saat aralığına git', en: 'Jump to time range' },
     bks_jump_night:          { tr: 'Gece 00–06', en: 'Night 00–06' },
@@ -1345,14 +1343,14 @@
     bks_jump_noon_s:         { tr: 'Öğle', en: 'Afternoon' },
     bks_jump_evening:        { tr: 'Akşam 18–24', en: 'Evening 18–24' },
     bks_jump_evening_s:      { tr: 'Akşam', en: 'Evening' },
-    bks_sel_count:           { tr: '{n} saat seçili', en: '{n} slot(s) selected' },
+    bks_sel_count: { tr: `{n} saat seçili`, en: `Selected: {n}` },
     bks_pick_slots:          { tr: 'Gün & saat seç', en: 'Pick day & time' },
     bks_resched_title:       { tr: 'Erteleme hakkı — önemli', en: 'Reschedule right — important' },
-    bks_resched_body:        { tr: 'Her ay <strong>1 ders erteleme hakkın</strong> var. Erteleme talebi en az <strong>24 saat önceden</strong> yapılmalı; o ayın hakkın bittiğinde aynı ay içinde bir daha erteleyemezsin — ders <strong class="text-err">o tarihte yapılmazsa hakkın yanar</strong>.', en: `You have <strong>1 reschedule per month</strong>. Requests must be made at least <strong>24 hours in advance</strong>; once that month's right is used you can't reschedule again in the same month — <strong class="text-err">if the lesson isn't held on that date, the right is lost</strong>.` },
-    bks_resched_body2:       { tr: 'Ek hak almak istersen <strong class="text-accent">500 TL</strong> ödeme ile +1 erteleme hakkı tanımlanır. Detay için iletişime geçebilirsin.', en: 'Need more? Each extra reschedule right costs <strong class="text-accent">500 TL</strong>. Get in touch for details.' },
+    bks_resched_body: { tr: `Paketin kaç aylıksa o kadar <strong>erteleme hakkın</strong> olur (1 ay = 1 hak, 3 ay = 3 hak); hakları paket süresince istediğin derste kullanabilirsin. <strong>Ertele</strong> dersi 1 hafta ileri alır, en az <strong>24 saat önce</strong> talep edilir ve Berkay Er onaylayınca 1 hak düşer. Aynı hafta içinde saat değiştirmek (<strong>Saati değiştir</strong>) ücretsizdir, hak düşmez.`, en: `You get as many <strong>reschedule credits</strong> as your package has months (1 month = 1, 3 months = 3); use them on any lesson during the package. <strong>Reschedule</strong> moves a lesson one week later, must be requested at least <strong>24 hours ahead</strong>, and uses 1 credit once Berkay Er approves. Moving a lesson within the same week (<strong>Change time</strong>) is free and uses no credit.` },
+    bks_resched_body2: { tr: `Ek hak istersen <strong class="text-accent">500 TL</strong> ödeme ile +1 erteleme hakkı tanımlanır.`, en: `Need more? Each extra reschedule credit costs <strong class="text-accent">500 TL</strong>.` },
     bks_wa_label:            { tr: 'WhatsApp numarası', en: 'WhatsApp number' },
     bks_required:            { tr: '* Zorunlu', en: '* Required' },
-    bks_phone_help:          { tr: 'Ders hatırlatmaları ve önemli bildirimler bu numaraya WhatsApp ile gönderilir. Yurt dışındaysan numaranı <strong>+</strong> ile ülke koduyla yaz (örn. <strong>+1 617 388 4403</strong>).', en: "Lesson reminders and important notices are sent to this number on WhatsApp. If you're abroad, write it with <strong>+</strong> and your country code (e.g. <strong>+1 617 388 4403</strong>)." },
+    bks_phone_help: { tr: `Ders hatırlatmaları bu numaraya WhatsApp ile gelir. Yurt dışındaysan <strong>+</strong> ve ülke koduyla yaz (örn. +1 617 388 4403).`, en: `Lesson reminders come to this number on WhatsApp. If you’re abroad, write it with <strong>+</strong> and your country code (e.g. +1 617 388 4403).` },
     bks_phone_help_wa:       { tr: 'Talebi gönderdikten sonra <strong>WhatsApp ile mesaj at</strong> butonuna basıp hazır metni göndermen gerekiyor — yoksa WhatsApp bilgilendirme botumuz sana ulaşamaz :(', en: "After sending the request, tap <strong>Message on WhatsApp</strong> and send the prepared text — otherwise our WhatsApp bot can't reach you :(" },
     bks_your_req:            { tr: 'Talebin', en: 'Your request' },
     bks_price_aria:          { tr: 'Fiyat özeti', en: 'Price summary' },
@@ -1693,15 +1691,15 @@
     adm_lesson_lc_one: { tr: 'ders', en: 'lesson' },   // booking-admin.json
     bks_rules_ack: { tr: 'Okudum, onaylıyorum', en: 'I have read and accept' },   // booking-ogrenci.json
     bks_rules_modal_title: { tr: 'Ders Kuralları — Onay Gerekli', en: 'Lesson rules — confirmation required' },   // booking-ogrenci.json
-    bks_rules_modal_body: { tr: 'Devam etmeden önce her kuralı tek tek okuyup ayrı ayrı onaylaman gerekiyor.', en: 'Before you continue, read each rule and confirm them one by one.' },   // booking-ogrenci.json
+    bks_rules_modal_body: { tr: `Talebin gönderilmeden önce her kuralı okuyup yanındaki kutuyu işaretle.`, en: `Before your request is sent, read each rule and tick the box next to it.` },   // booking-ogrenci.json
     bks_rules_progress: { tr: '{n}/{m} onaylandı', en: '{n}/{m} confirmed' },   // booking-ogrenci.json
     bks_rules_missing: { tr: 'Eksik onay: {list}', en: 'Not confirmed yet: {list}' },   // booking-ogrenci.json
     bks_rules_accept: { tr: 'Onaylıyorum ve devam et', en: 'I accept, continue' },   // booking-ogrenci.json
-    bks_rc_reschedule: { tr: 'Her ay 1 ders erteleme hakkı vardır. Ek hak <strong class="text-accent">500 TL</strong> ödeme ile alınır.', en: 'You get 1 lesson reschedule per month. Extra credits cost <strong class="text-accent">500 TL</strong>.' },   // booking-ogrenci.json
-    bks_rc_notice: { tr: 'En az 24 saat öncesinden talep edilmelidir. Ertelenen ders aynı ay içinde yapılmalıdır.', en: 'Must be requested at least 24 hours in advance. The rescheduled lesson must take place within the same month.' },   // booking-ogrenci.json
-    bks_rc_limit: { tr: 'Süresinde kullanılmazsa hak yanar.', en: 'If not used in time, the credit is lost.' },   // booking-ogrenci.json
+    bks_rc_reschedule: { tr: `Paketin kaç aylıksa o kadar erteleme hakkın olur (1 ay = 1 hak, 3 ay = 3 hak); hakları paket süresince istediğin derste kullanabilirsin. Berkay Er erteleme talebini onaylayınca 1 hak düşer. Aynı hafta içinde saat değiştirmek ücretsizdir. Ek hak <strong class="text-accent">500 TL</strong>.`, en: `You get as many reschedule credits as your package has months (1 month = 1, 3 months = 3); use them on any lesson during the package. A credit is used when Berkay Er approves a reschedule. Changing the time within the same week is free. Extra credits cost <strong class="text-accent">500 TL</strong>.` },   // booking-ogrenci.json
+    bks_rc_notice: { tr: `Erteleme en az 24 saat önceden talep edilir; ders 1 hafta ileri alınır.`, en: `A reschedule must be requested at least 24 hours ahead; the lesson moves one week later.` },   // booking-ogrenci.json
+    bks_rc_limit: { tr: `Kullanılmayan haklar paket bitince sona erer.`, en: `Unused credits expire when the package ends.` },   // booking-ogrenci.json
     bks_rc_late: { tr: '10 dakika içinde girilmezse ders yapılmış sayılır.', en: 'If you do not join within 10 minutes, the lesson counts as held.' },   // booking-ogrenci.json
-    bks_rc_absence: { tr: 'Haber vermeden katılmama → ders yapılmış sayılır, yeniden planlanmaz.', en: 'Not attending without notice → the lesson counts as held and is not rescheduled.' },   // booking-ogrenci.json
+    bks_rc_absence: { tr: `Haber vermeden katılmazsan ders yapılmış sayılır, yeniden planlanmaz.`, en: `If you miss a lesson without notice, it counts as held and is not rescheduled.` },   // booking-ogrenci.json
     bks_rc_copyright: { tr: `<strong class="text-accent">Berkay Er'in</strong> derste paylaştığı ve yaptığı parçalar/içerikler kendisine aittir; hiçbir şekilde paylaşılamaz veya dağıtılamaz.`, en: 'Tracks and content that <strong class="text-accent">Berkay Er</strong> shares and makes in lessons belong to him; they may not be shared or distributed in any way.' },   // booking-ogrenci.json
     bks_rc_cancel: { tr: 'Alınan dersler iptal edilemez, başka kişiye devredilemez.', en: 'Purchased lessons cannot be cancelled or transferred to another person.' },   // booking-ogrenci.json
     bks_ec_title: { tr: 'Ek Erteleme Hakkı Al', en: 'Buy extra reschedule credits' },   // booking-ogrenci.json
@@ -1720,7 +1718,7 @@
     bks_credit_title: { tr: 'Erteleme Hakkı', en: 'Reschedule credits' },   // booking-ogrenci.json
     bks_credit_left_html: { tr: '<strong class="text-ok">{n} hak</strong> kaldı', en: '<strong class="text-ok">{n} left</strong>' },   // booking-ogrenci.json
     bks_credit_none_html: { tr: '<strong class="text-err">hak kalmadı</strong>', en: '<strong class="text-err">none left</strong>' },   // booking-ogrenci.json
-    bks_credit_pkg_html: { tr: 'Paketin: <strong>{m} aylık</strong> → toplam <strong>{m} erteleme hakkı</strong> · Kalan: <strong class="{cls}">{n}</strong>', en: 'Your package: <strong>{m} month(s)</strong> → <strong>{m} reschedule credit(s)</strong> in total · Left: <strong class="{cls}">{n}</strong>' },   // booking-ogrenci.json
+    bks_credit_pkg_html: { tr: `Paketin: <strong>{m} aylık</strong> → toplam <strong>{m} erteleme hakkı</strong> · Kalan: <strong class="{cls}">{n}</strong>`, en: `Your package: <strong>{m}-month</strong> → reschedule credits in total: <strong>{m}</strong> · Left: <strong class="{cls}">{n}</strong>` },   // booking-ogrenci.json
     bks_credit_note_html: { tr: 'Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong>{n}</strong>.', en: 'Credits are per package — lessons spilling into the next month do not change them. Total lessons: <strong>{n}</strong>.' },   // booking-ogrenci.json
     bks_credit_buy: { tr: '+ Ek Hak Al (500 TL)', en: '+ Buy extra credit (500 TL)' },   // booking-ogrenci.json
     bks_wa_first_title: { tr: 'Önemli — WhatsApp iletişimini sen başlatmalısın', en: 'Important — you need to start the WhatsApp chat' },   // booking-ogrenci.json
@@ -1730,6 +1728,98 @@
     bks_trial_phone_err: { tr: 'Geçerli bir cep telefonu numarası gir (TR: 05XX XXX XX XX · Uluslararası: +ülke kodu ile başlat, örn +1 617 388 4403).', en: 'Enter a valid mobile number (TR: 05XX XXX XX XX · International: start with + and the country code, e.g. +1 617 388 4403).' },   // booking-ogrenci.json
     bks_strip_cheapest: { tr: 'En ucuz saat başı', en: 'Lowest hourly rate' },   // booking-ogrenci.json
     idx2_reviews_more: { tr: 'Tümünü gör', en: 'See all' },   // index.json
+    bks_start_help: { tr: `Boş bırakırsan en yakın uygun haftadan başlar.`, en: `Leave it empty to start from the nearest available week.` },   // booking-ogrenci (başlangıç dostu)
+    bks_rules_back: { tr: `Geri dön, talebimi düzenle`, en: `Go back and edit my request` },   // booking-ogrenci (başlangıç dostu)
+    bk_pt_later_hint: { tr: `Tamam — sınav kartı bu sayfada duruyor, hazır olunca çöz.`, en: `OK — the test card stays on this page; take it when you’re ready.` },   // booking-ogrenci (başlangıç dostu)
+    bk_pt_later_btn: { tr: `Daha sonra çözeceğim`, en: `I’ll take it later` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_lock_closed: { tr: `Saat değişikliği kapandı`, en: `Time change closed` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_badge_near: { tr: `Yaklaşıyor`, en: `Coming up` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_badge_join: { tr: `Başlıyor`, en: `Starting` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_badge_live: { tr: `Ders sürüyor`, en: `In progress` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_live: { tr: `Ders şu an sürüyor`, en: `The lesson is on now` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_join_soon: { tr: `Derse Katıl · 15 dk önce açılır`, en: `Join · opens 15 min before` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_join_unpaid: { tr: `Derse katılmak için ödeme onayı gerekli`, en: `Payment must be confirmed to join` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_join_nolink: { tr: `Zoom bağlantısı bekleniyor`, en: `Waiting for the Zoom link` },   // booking-ogrenci (başlangıç dostu)
+    bk_wk_btn_resched: { tr: `Erteleme talebin bekliyor — saat değiştirilemez`, en: `Reschedule pending — time can’t be changed` },   // booking-ogrenci (başlangıç dostu)
+    bk_sc_err_net: { tr: `Bağlantı sorunu — saat değiştirilemedi. Seçimin duruyor, tekrar dene.`, en: `Connection problem — the time wasn’t changed. Your pick is kept; try again.` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_why_24h: { tr: `Derse 24 saatten az kaldı`, en: `Less than 24 hours to go` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_why_pending: { tr: `Hakkın bekleyen talepte`, en: `Your credit is in a pending request` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_why_none: { tr: `Erteleme hakkın kalmadı`, en: `No reschedule credits left` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_hint_pending: { tr: `Erteleme hakkın bekleyen talepte — Berkay Er yanıtlayınca yeniden erteleyebilirsin.`, en: `Your reschedule credit is in a pending request — you can reschedule again after Berkay Er replies.` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_hint_none: { tr: `Erteleme hakkın kalmadı. Aynı hafta içinde saati yine ücretsiz değiştirebilirsin.`, en: `You have no reschedule credits left. You can still change the time within the same week for free.` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_uses: { tr: `Bu talep onaylanınca <strong>1 erteleme hakkı</strong> kullanılır (kalan: {a} → {b}).`, en: `Once approved, this uses <strong>1 reschedule credit</strong> (left: {a} → {b}).` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_cascade: { tr: `Yeni tarihte zaten bir dersin var; bu yüzden {n} dersin daha birer hafta ileri kayar.`, en: `You already have a lesson on the new date, so {n} more of your lessons move one week later too.` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_end: { tr: `Paketinin son dersi {old} yerine <strong>{new}</strong> olur.`, en: `Your package’s last lesson becomes <strong>{new}</strong> instead of {old}.` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_taken: { tr: `Bu saat takvimde dolu görünüyor; talebini yine gönderebilirsin, Berkay Er onaylarken uygun çözümü bulur.`, en: `This time looks taken; you can still send the request — Berkay Er will sort it out when approving.` },   // booking-ogrenci (başlangıç dostu)
+    bk_resch_err: { tr: `Erteleme talebi gönderilemedi`, en: `Couldn’t send the reschedule request` },   // booking-ogrenci (başlangıç dostu)
+    bk_pay_confirm_body: { tr: `Berkay Er’e ödeme bildirimi gider; o havaleyi kontrol edip onaylar. Henüz ödemediysen önce havaleyi yap.`, en: `Berkay Er gets a payment notice and checks the transfer. If you haven’t paid yet, make the transfer first.` },   // booking-ogrenci (başlangıç dostu)
+    bk_pay_confirm_ok: { tr: `Evet, ödemeyi yaptım`, en: `Yes, I’ve paid` },   // booking-ogrenci (başlangıç dostu)
+    bk_pay_copied: { tr: `Kopyalandı ✓`, en: `Copied ✓` },   // booking-ogrenci (başlangıç dostu)
+    bk_zoom_chip_pending: { tr: `Derse Katıl · ödeme onayı bekleniyor`, en: `Join · payment approval pending` },   // booking-ogrenci (başlangıç dostu)
+    bk_zoom_chip_unpaid: { tr: `Derse Katıl · ödeme onaylanınca açılır`, en: `Join · opens once payment is confirmed` },   // booking-ogrenci (başlangıç dostu)
+    bk_zoom_opens_at: { tr: `{when} · 15 dk önce açılır`, en: `{when} · opens 15 min before` },   // booking-ogrenci (başlangıç dostu)
+    bk_today: { tr: `Bugün`, en: `Today` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_kicker: { tr: `Yapman gereken`, en: `Your next step` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_title: { tr: `Ödemeni yap, derslerin açılsın`, en: `Make your payment to unlock your lessons` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_pending_title: { tr: `Ödeme bildirimin alındı`, en: `We got your payment notice` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_pending_body: { tr: `Berkay Er havaleyi kontrol edip onaylayacak (genelde 24 saat içinde). Onaylanınca bu kart kaybolur; derse katılma, saat değiştirme ve erteleme açılır.`, en: `Berkay Er will check the transfer and confirm it (usually within 24 hours). Then this card disappears and joining, changing and rescheduling lessons open up.` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_s1: { tr: `Aşağıdaki IBAN’a {total} havale et.`, en: `Transfer {total} to the IBAN below.` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_bank_again: { tr: `Ödeme bilgilerini tekrar gör`, en: `Show payment details again` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_s2: { tr: `Havaleyi yaptıktan sonra bu düğmeye bas:`, en: `After the transfer, press this button:` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_s2_done: { tr: `"Ödemeyi yaptım" dedin — bildirim Berkay Er’e gitti.`, en: `You pressed "I’ve paid" — Berkay Er has been notified.` },   // booking-ogrenci (başlangıç dostu)
+    bks_todo_s3: { tr: `Berkay Er ödemeyi onaylayınca derse katılma, saat değiştirme ve erteleme açılır.`, en: `Once Berkay Er confirms the payment, joining, changing and rescheduling lessons open up.` },   // booking-ogrenci (başlangıç dostu)
+    bk_lesson_one: { tr: `ders`, en: `lesson` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_pend_html: { tr: `<strong class="{cls}">{n} hak</strong> · {p} tanesi bekleyen talepte`, en: `<strong class="{cls}">{n} left</strong> · {p} in a pending request` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_pend_line: { tr: `Bekleyen erteleme talebin: {p} — Berkay Er onaylayınca haktan düşer.`, en: `Pending reschedule requests: {p} — a credit is used once Berkay Er approves.` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_howto_html: { tr: `Kullanmak için ders satırındaki <strong>Ertele</strong>’ye bas (en az 24 saat önce). Ders 1 hafta ileri alınır; Berkay Er onaylayınca 1 hak düşer. Aynı hafta içinde saat değiştirmek ücretsizdir.`, en: `To use one, press <strong>Reschedule</strong> on a lesson row (at least 24 hours ahead). The lesson moves one week later and 1 credit is used once Berkay Er approves. Changing the time within the same week is free.` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_hist: { tr: `Geçmiş`, en: `History` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_used: { tr: `Kullanıldı: {date} dersi ertelendi`, en: `Used: the {date} lesson was rescheduled` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_revoked: { tr: `Berkay Er tarafından {n} hak sonlandırıldı ({at})`, en: `Berkay Er ended {n} credit(s) ({at})` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_added: { tr: `Berkay Er {n} hak ekledi ({at})`, en: `Berkay Er added {n} credit(s) ({at})` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_moved: { tr: `Ertelenen ders → yeni tarih {date}`, en: `Rescheduled lesson → new date {date}` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_admin: { tr: `{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp’tan yaz.`, en: `{n} credit(s) were adjusted by Berkay Er — message on WhatsApp if something looks wrong.` },   // booking-ogrenci (başlangıç dostu)
+    bk_welcome_pay_desc2: { tr: `Panelin en üstündeki <strong class="text-accent">Yapman gereken</strong> kartında IBAN ve tutar var. Havaleyi yap, <strong class="text-accent">Ödemeyi yaptım</strong> de; Berkay Er onaylayınca derslerin açılır.`, en: `The <strong class="text-accent">Your next step</strong> card at the top has the IBAN and the amount. Make the transfer, press <strong class="text-accent">I’ve paid</strong>; your lessons open once Berkay Er confirms.` },   // booking-ogrenci (başlangıç dostu)
+    bk_welcome_zoom_desc2: { tr: `Her dersten <strong>15 dakika önce</strong> ders kartında yeşil <strong class="text-ok">Derse Katıl</strong> düğmesi açılır; Zoom’u açar.`, en: `<strong>15 minutes before</strong> each lesson a green <strong class="text-ok">Join</strong> button appears on the lesson card; it opens Zoom.` },   // booking-ogrenci (başlangıç dostu)
+    bk_welcome_change_title: { tr: `Saati değiştir — ücretsiz`, en: `Change time — free` },   // booking-ogrenci (başlangıç dostu)
+    bk_welcome_change_desc: { tr: `Dersine 5 saatten fazla varsa aynı hafta içinde başka bir saate kendin taşıyabilirsin; onay gerekmez, <strong>erteleme hakkı düşmez</strong>.`, en: `If your lesson is more than 5 hours away you can move it yourself within the same week; no approval needed and <strong>no credit is used</strong>.` },   // booking-ogrenci (başlangıç dostu)
+    bk_access_sel_full: { tr: `Seçimin: {day} · {time}`, en: `Your pick: {day} · {time}` },   // booking-ogrenci (başlangıç dostu)
+    bks_trial_tz: { tr: `Saatler Türkiye saatidir (UTC+3) · deneme dersi 60 dk, Zoom üzerinden.`, en: `Times are Turkey time (UTC+3) · the trial lesson is 60 min on Zoom.` },   // booking-ogrenci (başlangıç dostu)
+    bk_trial_open_days: { tr: `Ders günleri: {days}`, en: `Lesson days: {days}` },   // booking-ogrenci (başlangıç dostu)
+    bk_trial_day_closed: { tr: `{day} günleri ders verilmiyor — başka bir gün seç.`, en: `No lessons on {day}s — pick another day.` },   // booking-ogrenci (başlangıç dostu)
+    bk_trial_day_empty: { tr: `Bu günde boş saat kalmadı — başka bir gün seç.`, en: `No free times left on this day — pick another day.` },   // booking-ogrenci (başlangıç dostu)
+    bk_avail_closed_day: { tr: `Bu gün ders verilmiyor`, en: `No lessons on this day` },   // booking-ogrenci (başlangıç dostu)
+    bk_ok: { tr: `Tamam`, en: `OK` },   // booking-ogrenci (başlangıç dostu)
+    bks_back_choices: { tr: `Seçeneklere dön (ücretsiz deneme dersi)`, en: `Back to options (free trial lesson)` },   // booking-ogrenci (başlangıç dostu)
+    bks_first_line: { tr: `İlk dersin: <strong>{first}</strong> · son ders: <strong>{last}</strong>`, en: `First lesson: <strong>{first}</strong> · last lesson: <strong>{last}</strong>` },   // booking-ogrenci (başlangıç dostu)
+    bks_first_single: { tr: `Dersin: <strong>{first}</strong>`, en: `Your lesson: <strong>{first}</strong>` },   // booking-ogrenci (başlangıç dostu)
+    bks_first_skipped: { tr: `24 saatten az kaldığı için bu hafta atlandı.`, en: `This week was skipped because it’s less than 24 hours away.` },   // booking-ogrenci (başlangıç dostu)
+    bks_first_final: { tr: `Kesin tarihler Berkay Er onaylayınca takvimine işlenir.`, en: `Final dates go into your schedule once Berkay Er approves.` },   // booking-ogrenci (başlangıç dostu)
+    bks_first_short: { tr: `İlk ders: {first}`, en: `First lesson: {first}` },   // booking-ogrenci (başlangıç dostu)
+    bks_ended_title: { tr: `Paketin tamamlandı`, en: `Your package is complete` },   // booking-ogrenci (başlangıç dostu)
+    bks_ended_body: { tr: `{done}/{total} ders · son ders {last}. Devam etmek için aşağıdan yeni paket seç — önceki gün ve saatlerini senin için seçtik.`, en: `{done}/{total} lessons · last lesson {last}. To continue, pick a new package below — we’ve pre-selected your previous days and times.` },   // booking-ogrenci (başlangıç dostu)
+    bks_ended_cancel_title: { tr: `Planındaki dersler iptal edildi`, en: `The lessons in your plan were cancelled` },   // booking-ogrenci (başlangıç dostu)
+    bks_ended_cancel_body: { tr: `Şu an planlanmış dersin yok. Yeniden başlamak için aşağıdan paket ve saat seç; bir sorun olduğunu düşünüyorsan Berkay Er’e WhatsApp’tan yaz.`, en: `You have no scheduled lessons right now. To start again, pick a package and times below; if you think something is wrong, message Berkay Er on WhatsApp.` },   // booking-ogrenci (başlangıç dostu)
+    bks_ended_past: { tr: `Geçmiş derslerim ({n})`, en: `My past lessons ({n})` },   // booking-ogrenci (başlangıç dostu)
+    bks_pend_start: { tr: `Başlangıç tarihi`, en: `Start date` },   // booking-ogrenci (başlangıç dostu)
+    bks_pend_start_asap: { tr: `En yakın uygun hafta`, en: `Nearest available week` },   // booking-ogrenci (başlangıç dostu)
+    bks_pend_first: { tr: `İlk ders`, en: `First lesson` },   // booking-ogrenci (başlangıç dostu)
+    bks_pend_first_note: { tr: `tahmini — Berkay Er onaylayınca kesinleşir`, en: `estimate — final once Berkay Er approves` },   // booking-ogrenci (başlangıç dostu)
+    bks_next_title: { tr: `Sırada ne var?`, en: `What happens next?` },   // booking-ogrenci (başlangıç dostu)
+    bks_next_1: { tr: `Berkay Er talebini inceler ve onaylar — onaylanınca bu sayfa kendiliğinden güncellenir.`, en: `Berkay Er reviews and approves your request — this page updates by itself once approved.` },   // booking-ogrenci (başlangıç dostu)
+    bks_next_2: { tr: `Onaydan sonra ödeme bilgileri (IBAN ve tutar) bu panelde görünür; havaleyi yapıp "Ödemeyi yaptım" dersin.`, en: `After approval the payment details (IBAN and amount) appear in this panel; make the transfer and press "I’ve paid".` },   // booking-ogrenci (başlangıç dostu)
+    bks_next_3: { tr: `Derslerin takvimine işlenir; her dersten 15 dakika önce burada Derse Katıl (Zoom) düğmesi açılır.`, en: `Your lessons go into your schedule; 15 minutes before each lesson a Join (Zoom) button appears here.` },   // booking-ogrenci (başlangıç dostu)
+    bks_next_3_trial: { tr: `Dersin takvimine işlenir; ders saatinden 15 dakika önce burada Derse Katıl (Zoom) düğmesi açılır.`, en: `Your lesson goes into your schedule; 15 minutes before it a Join (Zoom) button appears here.` },   // booking-ogrenci (başlangıç dostu)
+    bks_withdraw: { tr: `Talebi geri çek`, en: `Withdraw request` },   // booking-ogrenci (başlangıç dostu)
+    bks_withdraw_q: { tr: `Talebi geri çekmek istiyor musun?`, en: `Withdraw your request?` },   // booking-ogrenci (başlangıç dostu)
+    bks_withdraw_body: { tr: `Talebin silinir ve Berkay Er onu artık görmez. İstersen hemen yeni bir talep oluşturabilirsin.`, en: `Your request is deleted and Berkay Er will no longer see it. You can create a new one right away.` },   // booking-ogrenci (başlangıç dostu)
+    bks_withdraw_ok: { tr: `Evet, geri çek`, en: `Yes, withdraw` },   // booking-ogrenci (başlangıç dostu)
+    bks_withdrawn: { tr: `Talebin geri çekildi. Yeni bir talep oluşturabilirsin.`, en: `Your request was withdrawn. You can create a new one.` },   // booking-ogrenci (başlangıç dostu)
+    bks_withdraw_err: { tr: `Talep geri çekilemedi`, en: `Couldn’t withdraw the request` },   // booking-ogrenci (başlangıç dostu)
+    bk_months_n: { tr: `{m} Ay`, en: `{m} mo` },   // booking-ogrenci (başlangıç dostu)
+    bk_month_one: { tr: `{n} aylık`, en: `{n}-month` },   // booking-ogrenci (başlangıç dostu)
+    bk_months: { tr: `{n} aylık`, en: `{n}-month` },   // booking-ogrenci (başlangıç dostu)
+    bk_lpm_one: { tr: `{n} ders/ay`, en: `{n} lesson/month` },   // booking-ogrenci (başlangıç dostu)
+    bk_lpm: { tr: `{n} ders/ay`, en: `{n} lessons/month` },   // booking-ogrenci (başlangıç dostu)
     idx2_reviews_less: { tr: 'Daha az göster', en: 'Show less' },   // index.json
   };
 
