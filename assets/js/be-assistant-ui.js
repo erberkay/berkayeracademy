@@ -480,8 +480,10 @@
       conv.last = { intent: r.intent };
       return;
     }
-    // Sorunun çoğu tanınmadı: tahmin yerine seçenek + Berkay'a ilet
-    if (r.intent) { suggest(r.alternatives.slice(0, 3), ctx, l, q); return; }
+    // Sorunun çoğu tanınmadı: tahmin yerine yalnız soruyla gerçekten örtüşen seçenekler + Berkay'a ilet;
+    // örtüşen yoksa alakasız düğme göstermeden "bilmiyorum"
+    var sug = r.suggestions || r.alternatives.slice(0, 3);
+    if (r.intent && sug.length) { suggest(sug, ctx, l, q); return; }
     unknown(q, ctx, l);
   }
   function exampleLabel(it, l) {
@@ -499,6 +501,10 @@
       addActions(m0, [{ do: 'signin', label: { tr: `Giriş yap`, en: `Sign in` } }], ctx, l, q);
       return;
     }
+    // Soruya bağlı bayrak: prodüksiyon sorusu (mix, kick…) → "Soru Sor"a yönlendiren varyant
+    var qa = q ? A.analyze(q, kbAll) : null;
+    ctx.flags.qProd = !!(qa && qa.tokens.indexOf('@produksiyon') >= 0);
+    ctx.flags.qOneri = !!(qa && (qa.flags || []).indexOf('@oneri') >= 0);   // "en iyi …", "marka öner"
     var out = A.render(it, ctx, l);
     var m = addMsg('bot', md(out.text), { learned: !!it.learned });
     addActions(m, out.actions, ctx, l, q);
