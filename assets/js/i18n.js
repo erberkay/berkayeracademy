@@ -579,10 +579,10 @@
     bk_req_note_ph: { tr: `Tercihlerin, soruların ya da eklemek istediğin her şey…`, en: `Your preferences, questions or anything else…` },
     bk_samples_title:      { tr: 'Sample & Serum Presetleri', en: 'Samples & Serum Presets' },
     bk_samples_desc:       { tr: 'Derslerde kullanılan tüm sample paketleri ve Serum presetleri bu klasörde bulunmaktadır. Mac kullanıcıları için VST dosyaları da hazır şekilde eklenmiştir.', en: 'All sample packages and Serum presets used in lessons are in this folder. VST files for Mac users are also included.' },
-    bk_samples_warn:       { tr: 'Ders başlamadan önce sample ve presetlerin kurulumu yapılmalıdır.', en: 'Before lessons start, samples and presets must be installed.' },
+    bk_samples_warn:       { tr: `Derse başlamadan önce sample ve presetleri kur.`, en: `Install the samples and presets before your first lesson.` },
     bk_samples_btn:        { tr: 'Drive\'ı Aç →', en: 'Open Drive →' },
     bk_plugins_title:      { tr: 'Plugin Listesi', en: 'Plugin List' },
-    bk_plugins_desc:       { tr: 'Derslerde kullanılan tüm VST plugin\'lerin listesine aşağıdan ulaşabilirsiniz. Hangi araçların gerekli olduğunu görmek ve kurulum planlaması yapmak için listeyi inceleyin.', en: 'You can find the full list of VST plugins used in lessons below. Review it to see which tools you need and plan your installation.' },
+    bk_plugins_desc:       { tr: `Derslerde kullanılan tüm VST plugin’lerin listesi aşağıda. Hangi araçlara ihtiyacın olduğunu görmek ve kurulumu planlamak için listeyi incele.`, en: `The full list of VST plugins used in lessons is below. Check it to see which tools you need and plan your installation.` },
     bk_plugins_btn:        { tr: 'Plugin Listesini Gör →', en: 'View Plugin List →' },
     bk_qa_title:           { tr: 'Soru Sor', en: 'Ask a Question' },
     bk_qa_input_ph: { tr: `Sorunu yaz…`, en: `Write your question…` },
@@ -1314,7 +1314,7 @@
     bks_step1:               { tr: 'Google ya da e-posta ile giriş yap.', en: 'Sign in with Google or email.' },
     bks_step2:               { tr: 'Ücretsiz deneme dersi ya da kampanyalı bir paket seç.', en: 'Pick a free trial lesson or a campaign package.' },
     bks_step3:               { tr: 'Berkay Er onaylayınca takvimin ve Zoom bağlantın burada.', en: 'Once Berkay Er approves, your schedule and Zoom link appear here.' },
-    bks_access_kicker:       { tr: 'Başlangıç', en: 'Get started' },
+    bks_access_kicker:       { tr: `İlk adım`, en: `First step` },
     bks_access_title:        { tr: 'Nasıl başlamak istersin?', en: 'How would you like to start?' },
     bks_access_trial_go:     { tr: 'Tarih ve saat seç →', en: 'Pick a date and time →' },
     bks_access_pkg_desc:     { tr: 'Kampanyalı paketlerden birini seç, haftalık gün ve saatlerini belirle. Berkay Er onaylayınca takvimine işlenir.', en: 'Choose a campaign package and set your weekly days and times. Once Berkay Er approves, it goes into your schedule.' },
@@ -1718,7 +1718,9 @@
     bks_credit_title: { tr: 'Erteleme Hakkı', en: 'Reschedule credits' },   // booking-ogrenci.json
     bks_credit_left_html: { tr: '<strong class="text-ok">{n} hak</strong> kaldı', en: '<strong class="text-ok">{n} left</strong>' },   // booking-ogrenci.json
     bks_credit_none_html: { tr: '<strong class="text-err">hak kalmadı</strong>', en: '<strong class="text-err">none left</strong>' },   // booking-ogrenci.json
-    bks_credit_pkg_html: { tr: `Paketin: <strong>{m} aylık</strong> → toplam <strong>{m} erteleme hakkı</strong> · Kalan: <strong class="{cls}">{n}</strong>`, en: `Your package: <strong>{m}-month</strong> → reschedule credits in total: <strong>{m}</strong> · Left: <strong class="{cls}">{n}</strong>` },   // booking-ogrenci.json
+    bks_credit_pkg_html: { tr: `Paketin: <strong>{m} aylık</strong> → <strong>{m} erteleme hakkı</strong>{extra} · Kalan: <strong class="{cls}">{n}</strong>`, en: `Your package: <strong>{m}-month</strong> → <strong>{m} reschedule credits</strong>{extra} · Left: <strong class="{cls}">{n}</strong>` },   // booking-ogrenci.json
+    bks_credit_pkg_one_html: { tr: `Paketin: <strong>{m} aylık</strong> → <strong>{m} erteleme hakkı</strong>{extra} · Kalan: <strong class="{cls}">{n}</strong>`, en: `Your package: <strong>{m}-month</strong> → <strong>{m} reschedule credit</strong>{extra} · Left: <strong class="{cls}">{n}</strong>` },
+    bks_credit_pkg_extra_html: { tr: ` + Berkay Er’in eklediği <strong>{x}</strong>`, en: ` + <strong>{x}</strong> added by Berkay Er` },   // booking-ogrenci.json
     bks_credit_note_html: { tr: 'Hak paket bazlıdır — derslerin sonraki aya sarkması hakkını değiştirmez. Toplam ders: <strong>{n}</strong>.', en: 'Credits are per package — lessons spilling into the next month do not change them. Total lessons: <strong>{n}</strong>.' },   // booking-ogrenci.json
     bks_credit_buy: { tr: '+ Ek Hak Al (500 TL)', en: '+ Buy extra credit (500 TL)' },   // booking-ogrenci.json
     bks_wa_first_title: { tr: 'Önemli — WhatsApp iletişimini sen başlatmalısın', en: 'Important — you need to start the WhatsApp chat' },   // booking-ogrenci.json
@@ -1771,13 +1773,21 @@
     bk_lesson_one: { tr: `ders`, en: `lesson` },   // booking-ogrenci (başlangıç dostu)
     bks_credit_pend_html: { tr: `<strong class="{cls}">{n} hak</strong> · {p} tanesi bekleyen talepte`, en: `<strong class="{cls}">{n} left</strong> · {p} in a pending request` },   // booking-ogrenci (başlangıç dostu)
     bks_credit_pend_line: { tr: `Bekleyen erteleme talebin: {p} — Berkay Er onaylayınca haktan düşer.`, en: `Pending reschedule requests: {p} — a credit is used once Berkay Er approves.` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_pend_line_none: { tr: `Bekleyen erteleme talebin Berkay Er’in onayında — hakkın kalmadığı için onaylanırsa hak düşmez.`, en: `Your pending reschedule request is waiting for Berkay Er — you have no credits left, so none is used if it’s approved.` },
     bks_credit_howto_html: { tr: `Kullanmak için ders satırındaki <strong>Ertele</strong>’ye bas (en az 24 saat önce). Ders 1 hafta ileri alınır; Berkay Er onaylayınca 1 hak düşer. Aynı hafta içinde saat değiştirmek ücretsizdir.`, en: `To use one, press <strong>Reschedule</strong> on a lesson row (at least 24 hours ahead). The lesson moves one week later and 1 credit is used once Berkay Er approves. Changing the time within the same week is free.` },   // booking-ogrenci (başlangıç dostu)
     bks_credit_hist: { tr: `Geçmiş`, en: `History` },   // booking-ogrenci (başlangıç dostu)
     bks_credit_h_used: { tr: `Kullanıldı: {date} dersi ertelendi`, en: `Used: the {date} lesson was rescheduled` },   // booking-ogrenci (başlangıç dostu)
-    bks_credit_h_revoked: { tr: `Berkay Er tarafından {n} hak sonlandırıldı ({at})`, en: `Berkay Er ended {n} credit(s) ({at})` },   // booking-ogrenci (başlangıç dostu)
-    bks_credit_h_added: { tr: `Berkay Er {n} hak ekledi ({at})`, en: `Berkay Er added {n} credit(s) ({at})` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_revoked: { tr: `Berkay Er tarafından {n} hak sonlandırıldı ({at})`, en: `Berkay Er ended {n} credits ({at})` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_revoked_one: { tr: `Berkay Er tarafından {n} hak sonlandırıldı ({at})`, en: `Berkay Er ended {n} credit ({at})` },
+    bks_credit_h_added: { tr: `Berkay Er {n} hak ekledi ({at})`, en: `Berkay Er added {n} credits ({at})` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_added_one: { tr: `Berkay Er {n} hak ekledi ({at})`, en: `Berkay Er added {n} credit ({at})` },
+    bks_credit_h_undo_up: { tr: `Düzeltme: {n} hak geri verildi ({at})`, en: `Correction: {n} credits given back ({at})` },
+    bks_credit_h_undo_up_one: { tr: `Düzeltme: {n} hak geri verildi ({at})`, en: `Correction: {n} credit given back ({at})` },
+    bks_credit_h_undo_down: { tr: `Düzeltme: {n} hak geri alındı ({at})`, en: `Correction: {n} credits taken back ({at})` },
+    bks_credit_h_undo_down_one: { tr: `Düzeltme: {n} hak geri alındı ({at})`, en: `Correction: {n} credit taken back ({at})` },
     bks_credit_h_moved: { tr: `Ertelenen ders → yeni tarih {date}`, en: `Rescheduled lesson → new date {date}` },   // booking-ogrenci (başlangıç dostu)
-    bks_credit_h_admin: { tr: `{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp’tan yaz.`, en: `{n} credit(s) were adjusted by Berkay Er — message on WhatsApp if something looks wrong.` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_admin: { tr: `{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp’tan yaz.`, en: `{n} credits were adjusted by Berkay Er — message on WhatsApp if something looks wrong.` },   // booking-ogrenci (başlangıç dostu)
+    bks_credit_h_admin_one: { tr: `{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp’tan yaz.`, en: `{n} credit was adjusted by Berkay Er — message on WhatsApp if something looks wrong.` },
     bk_welcome_pay_desc2: { tr: `Panelin en üstündeki <strong class="text-accent">Yapman gereken</strong> kartında IBAN ve tutar var. Havaleyi yap, <strong class="text-accent">Ödemeyi yaptım</strong> de; Berkay Er onaylayınca derslerin açılır.`, en: `The <strong class="text-accent">Your next step</strong> card at the top has the IBAN and the amount. Make the transfer, press <strong class="text-accent">I’ve paid</strong>; your lessons open once Berkay Er confirms.` },   // booking-ogrenci (başlangıç dostu)
     bk_welcome_zoom_desc2: { tr: `Her dersten <strong>15 dakika önce</strong> ders kartında yeşil <strong class="text-ok">Derse Katıl</strong> düğmesi açılır; Zoom’u açar.`, en: `<strong>15 minutes before</strong> each lesson a green <strong class="text-ok">Join</strong> button appears on the lesson card; it opens Zoom.` },   // booking-ogrenci (başlangıç dostu)
     bk_welcome_change_title: { tr: `Saati değiştir — ücretsiz`, en: `Change time — free` },   // booking-ogrenci (başlangıç dostu)
@@ -1792,7 +1802,12 @@
     bks_back_choices: { tr: `Seçeneklere dön (ücretsiz deneme dersi)`, en: `Back to options (free trial lesson)` },   // booking-ogrenci (başlangıç dostu)
     bks_first_line: { tr: `İlk dersin: <strong>{first}</strong> · son ders: <strong>{last}</strong>`, en: `First lesson: <strong>{first}</strong> · last lesson: <strong>{last}</strong>` },   // booking-ogrenci (başlangıç dostu)
     bks_first_single: { tr: `Dersin: <strong>{first}</strong>`, en: `Your lesson: <strong>{first}</strong>` },   // booking-ogrenci (başlangıç dostu)
-    bks_first_skipped: { tr: `24 saatten az kaldığı için bu hafta atlandı.`, en: `This week was skipped because it’s less than 24 hours away.` },   // booking-ogrenci (başlangıç dostu)
+    bks_first_skip_one: { tr: `{slot} dersine 24 saatten az kaldı — o gün bir hafta sonra başlar.`, en: `Less than 24 hours until {slot} — that day starts a week later.` },   // booking-ogrenci (başlangıç dostu)
+    bks_first_skip_one_past: { tr: `{slot} saati geçti — o gün bir hafta sonra başlar.`, en: `{slot} has already passed — that day starts a week later.` },
+    bks_first_skip_many: { tr: `{slot} derslerine 24 saatten az kaldı — bu günler bir hafta sonra başlar.`, en: `Less than 24 hours until {slot} — those days start a week later.` },
+    bks_first_skip_many_past: { tr: `{slot} saatleri geçti — bu günler bir hafta sonra başlar.`, en: `{slot} have already passed — those days start a week later.` },
+    bks_first_skip_single: { tr: `{slot} dersine 24 saatten az kaldı — ders bir hafta sonraya alındı.`, en: `Less than 24 hours until {slot} — the lesson moves a week later.` },
+    bks_first_skip_single_past: { tr: `{slot} saati geçti — ders bir hafta sonraya alındı.`, en: `{slot} has already passed — the lesson moves a week later.` },
     bks_first_final: { tr: `Kesin tarihler Berkay Er onaylayınca takvimine işlenir.`, en: `Final dates go into your schedule once Berkay Er approves.` },   // booking-ogrenci (başlangıç dostu)
     bks_first_short: { tr: `İlk ders: {first}`, en: `First lesson: {first}` },   // booking-ogrenci (başlangıç dostu)
     bks_ended_title: { tr: `Paketin tamamlandı`, en: `Your package is complete` },   // booking-ogrenci (başlangıç dostu)
@@ -1800,7 +1815,7 @@
     bks_ended_cancel_title: { tr: `Planındaki dersler iptal edildi`, en: `The lessons in your plan were cancelled` },   // booking-ogrenci (başlangıç dostu)
     bks_ended_cancel_body: { tr: `Şu an planlanmış dersin yok. Yeniden başlamak için aşağıdan paket ve saat seç; bir sorun olduğunu düşünüyorsan Berkay Er’e WhatsApp’tan yaz.`, en: `You have no scheduled lessons right now. To start again, pick a package and times below; if you think something is wrong, message Berkay Er on WhatsApp.` },   // booking-ogrenci (başlangıç dostu)
     bks_ended_past: { tr: `Geçmiş derslerim ({n})`, en: `My past lessons ({n})` },   // booking-ogrenci (başlangıç dostu)
-    bks_pend_start: { tr: `Başlangıç tarihi`, en: `Start date` },   // booking-ogrenci (başlangıç dostu)
+    bks_pend_start: { tr: `İstediğin ilk ders tarihi`, en: `Requested first-lesson date` },   // booking-ogrenci (başlangıç dostu)
     bks_pend_start_asap: { tr: `En yakın uygun hafta`, en: `Nearest available week` },   // booking-ogrenci (başlangıç dostu)
     bks_pend_first: { tr: `İlk ders`, en: `First lesson` },   // booking-ogrenci (başlangıç dostu)
     bks_pend_first_note: { tr: `tahmini — Berkay Er onaylayınca kesinleşir`, en: `estimate — final once Berkay Er approves` },   // booking-ogrenci (başlangıç dostu)
@@ -1840,7 +1855,8 @@
     adm_promo_ok: { tr: `~{n} kişiye gönder`, en: `Send to ~{n} people` },   // booking-admin (erteleme hakları + admin onayları)
     adm_rq_cr: { tr: `Erteleme hakkı: {a} → {b} olacak`, en: `Reschedule credits: {a} → {b}` },   // booking-admin (erteleme hakları + admin onayları)
     adm_rq_cr_none: { tr: `Hak yok — onaylarsan hak düşmez`, en: `No credits — approving will not deduct one` },   // booking-admin (erteleme hakları + admin onayları)
-    adm_rq_cascade: { tr: `+{n} ders da 1 hafta kayar`, en: `+{n} more lessons shift 1 week` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_rq_cascade: { tr: `+{n} ders de 1 hafta kayar`, en: `+{n} more lessons shift 1 week` },
+    adm_rq_cascade_one: { tr: `+{n} ders de 1 hafta kayar`, en: `+{n} more lesson shifts 1 week` },   // booking-admin (erteleme hakları + admin onayları)
     adm_rq_nolesson: { tr: `Ders bulunamadı (taşınmış ya da iptal)`, en: `Lesson not found (moved or cancelled)` },   // booking-admin (erteleme hakları + admin onayları)
     adm_rq_asked: { tr: `Talep edilen: {date}`, en: `Requested: {date}` },   // booking-admin (erteleme hakları + admin onayları)
     adm_reject_reason: { tr: `Reddetme sebebi`, en: `Reason for rejection` },   // booking-admin (erteleme hakları + admin onayları)
@@ -1965,7 +1981,10 @@
     adm_add_date: { tr: `Tarih`, en: `Date` },   // booking-admin (erteleme hakları + admin onayları)
     adm_add_ok: { tr: `Ekle`, en: `Add` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_nores: { tr: `Rezervasyon bulunamadı.`, en: `Reservation not found.` },   // booking-admin (erteleme hakları + admin onayları)
-    adm_cr_undo_reason: { tr: `Son değişiklik geri alındı`, en: `Last change undone` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_cr_h_undo: { tr: `Geri alındı`, en: `Undone` },
+    adm_cr_h_undo_added: { tr: `Geri alındı — verilen hak iptal`, en: `Undone — given credit taken back` },
+    adm_cr_h_undo_used: { tr: `Geri alındı — düşülen hak iade`, en: `Undone — deducted credit returned` },
+    adm_cr_h_undo_revoked: { tr: `Geri alındı — sonlandırılan haklar iade`, en: `Undone — ended credits returned` },
     adm_cr_undone: { tr: `↺ Geri alındı — kalan {n}`, en: `↺ Undone — {n} left` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_none_left: { tr: `Bu öğrencinin düşülecek hakkı yok.`, en: `This student has no credits to deduct.` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_eyebrow: { tr: `Erteleme hakkı`, en: `Reschedule credits` },   // booking-admin (erteleme hakları + admin onayları)
@@ -1988,13 +2007,17 @@
     adm_cr_end_2: { tr: `Dersler, ödeme ve plan değişmez.`, en: `Lessons, payment and plan do not change.` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_end_3: { tr: `Gerekirse "+1 hak ver" ile yeniden hak verebilirsin.`, en: `You can give credits again with "Give +1 credit" if needed.` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_end_ph: { tr: `Ör. Paket süresi doldu`, en: `E.g. Package period ended` },   // booking-admin (erteleme hakları + admin onayları)
-    adm_cr_end_ok: { tr: `{n} hakkı sıfırla`, en: `Reset {n} credits` },   // booking-admin (erteleme hakları + admin onayları)
-    adm_cr_ended_toast: { tr: `✓ {n} hak sıfırlandı — kalan 0`, en: `✓ {n} credits reset — 0 left` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_cr_end_ok: { tr: `{n} hakkı sıfırla`, en: `Reset {n} credits` },
+    adm_cr_end_ok_one: { tr: `{n} hakkı sıfırla`, en: `Reset {n} credit` },
+    adm_cr_end_b_one: { tr: `{who} {n} erteleme hakkı sıfırlanacak.`, en: `{who} {n} reschedule credit will be set to zero.` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_cr_ended_toast: { tr: `✓ {n} hak sıfırlandı — kalan 0`, en: `✓ {n} credits reset — 0 left` },
+    adm_cr_ended_toast_one: { tr: `✓ {n} hak sıfırlandı — kalan 0`, en: `✓ {n} credit reset — 0 left` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_h_used_l: { tr: `Kullanıldı — {date} dersi ertelendi`, en: `Used — {date} lesson postponed` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_h_used: { tr: `Kullanıldı (elle düşüldü)`, en: `Used (deducted by hand)` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_h_added: { tr: `Hak verildi`, en: `Credit given` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_h_revoked: { tr: `Haklar sonlandırıldı`, en: `Credits ended` },   // booking-admin (erteleme hakları + admin onayları)
-    adm_cr_f_pkg: { tr: `Paket: {m} aylık → {m} hak`, en: `Package: {m}-month → {m} credits` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_cr_f_pkg: { tr: `Paket: {m} aylık → {m} hak`, en: `Package: {m}-month → {m} credits` },
+    adm_cr_f_pkg_one: { tr: `Paket: {m} aylık → {m} hak`, en: `Package: {m}-month → {m} credit` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_f_used: { tr: `Kullanılan: {n}`, en: `Used: {n}` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_f_added: { tr: `Verilen: +{n}`, en: `Given: +{n}` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_f_revoked: { tr: `Sonlandırılan: −{n}`, en: `Ended: −{n}` },   // booking-admin (erteleme hakları + admin onayları)
@@ -2002,7 +2025,10 @@
     adm_cr_use_short: { tr: `−1 kullandır`, en: `−1 use` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_left_one: { tr: `erteleme hakkı kaldı`, en: `reschedule credit left` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_left_many: { tr: `erteleme hakkı kaldı`, en: `reschedule credits left` },   // booking-admin (erteleme hakları + admin onayları)
-    adm_cr_pend: { tr: `{n} talep onay bekliyor`, en: `{n} requests waiting` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_cr_pend: { tr: `{n} talep onay bekliyor`, en: `{n} requests waiting` },
+    adm_cr_pend_one: { tr: `{n} talep onay bekliyor`, en: `{n} request waiting` },
+    adm_ps_sr_paid: { tr: `ödendi`, en: `paid` },
+    adm_ps_sr_unpaid: { tr: `ödenmedi`, en: `unpaid` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_what: { tr: `Erteleme hakkı, öğrencinin bir dersini 1 hafta ileri aldırabilmesidir. Paket kaç aylıksa o kadar hak verir (1 ay = 1 hak); hangi derste kullanıldığı önemli değildir. Erteleme talebini onaylayınca 1 hak kendiliğinden düşer. Hak 0 olunca öğrenci erteleme talebi gönderemez.`, en: `A reschedule credit lets the student move one lesson 1 week later. A package gives as many credits as it has months (1 month = 1 credit); it does not matter which lesson it is used on. Approving a reschedule request deducts 1 credit automatically. At 0 credits the student cannot send reschedule requests.` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_use_btn: { tr: `−1 hakkı kullandır`, en: `−1 use a credit` },   // booking-admin (erteleme hakları + admin onayları)
     adm_cr_add_btn: { tr: `+1 hak ver`, en: `+1 give credit` },   // booking-admin (erteleme hakları + admin onayları)

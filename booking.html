@@ -416,9 +416,9 @@
     .bk-wk-time { font-family:var(--ff-disp); font-size:48px; line-height:.9; color:var(--fg); }
     .bk-wk-dur { font-size:12px; color:var(--fg-3); }
     .bk-wk-metawrap { display:flex; flex-direction:column; gap:6px; }
-    .bk-wk-meta { display:flex; justify-content:space-between; flex-wrap:wrap; gap:2px 8px; font-size:12px; font-variant-numeric:tabular-nums; }
+    .bk-wk-meta { display:flex; justify-content:space-between; flex-wrap:wrap; gap:2px 8px; min-width:0; font-size:12px; font-variant-numeric:tabular-nums; }
     .bk-wk-left { color:var(--fg-muted); white-space:nowrap; }
-    .bk-wk-lock { font-family:var(--ff-mono); color:var(--fg-3); white-space:nowrap; }
+    .bk-wk-lock { font-family:var(--ff-mono); color:var(--fg-3); min-width:0; overflow-wrap:anywhere; }
     .bk-wk-card.is-soon .bk-wk-lock { color:var(--warn); }
     .bk-wk-card.is-locked .bk-wk-lock { color:var(--err); }
     .bk-wk-bar { height:6px; border-radius:var(--r-pill); background:var(--track-2); overflow:hidden; }
@@ -1736,7 +1736,7 @@
     html .bk-back:hover { color:var(--accent); }
     .bk-back:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
     .bk-start-help { flex-basis:100%; margin:0; }
-    .bk-first { margin:12px 0 0; padding:12px 16px; border-radius:var(--r-12); background:var(--accent-wash); border:1px solid var(--accent-line); font-size:var(--fs-small); line-height:1.6; color:var(--fg-muted); }
+    .bk-first { grid-column:1 / -1; margin:12px 0 0; padding:12px 16px; border-radius:var(--r-12); background:var(--accent-wash); border:1px solid var(--accent-line); font-size:var(--fs-small); line-height:1.6; color:var(--fg-muted); }
     .bk-first strong { color:var(--fg); }
     .bk-first-note { display:block; color:var(--fg-3); }
     .bk-sum-first { font-size:var(--fs-small); color:var(--accent); }
@@ -2102,7 +2102,7 @@
         <summary><span class="bk-res-title" data-i18n="bk_samples_title">Sample & Serum Presetleri</span><span class="badge err bk-res-badge" data-i18n="bks_setup_req">Kurulum gerekli</span><svg class="icon bk-chev" aria-hidden="true"><use href="/assets/img/icons.svg#i-chevron-down"/></svg></summary>
         <div class="bk-res-body">
           <p data-i18n="bk_samples_desc">Derslerde kullanılan tüm sample paketleri ve Serum presetleri bu klasörde bulunmaktadır. Mac kullanıcıları için VST dosyaları da hazır şekilde eklenmiştir.</p>
-          <p class="bk-res-warn" data-i18n="bk_samples_warn">Ders başlamadan önce sample ve presetlerin kurulumu yapılmalıdır.</p>
+          <p class="bk-res-warn" data-i18n="bk_samples_warn">Derse başlamadan önce sample ve presetleri kur.</p>
           <a href="https://drive.google.com/drive/folders/1TtDljp-lnzl8GOoTafiFfQlwPWZ2CrJX" target="_blank" rel="noopener" class="bk-res-link" data-i18n="bk_samples_btn">Drive'ı Aç →</a>
         </div>
       </details>
@@ -2110,7 +2110,7 @@
       <details class="bk-res bk-res--link" data-bk-res open>
         <summary><span class="bk-res-title" data-i18n="bk_plugins_title">Plugin Listesi</span><svg class="icon bk-chev" aria-hidden="true"><use href="/assets/img/icons.svg#i-chevron-down"/></svg></summary>
         <div class="bk-res-body">
-          <p data-i18n="bk_plugins_desc">Derslerde kullanılan tüm VST plugin'lerin listesine aşağıdan ulaşabilirsiniz. Hangi araçların gerekli olduğunu görmek ve kurulum planlaması yapmak için listeyi inceleyin.</p>
+          <p data-i18n="bk_plugins_desc">Derslerde kullanılan tüm VST plugin’lerin listesi aşağıda. Hangi araçlara ihtiyacın olduğunu görmek ve kurulumu planlamak için listeyi incele.</p>
           <a href="https://docs.google.com/document/d/1RtBM2GeM00sl8dCz6kSep6nBsxqZ6-g9YFr8jG-p4U8/edit" target="_blank" rel="noopener" class="bk-res-link" data-i18n="bk_plugins_btn">Plugin Listesini Gör →</a>
         </div>
       </details>
@@ -3004,7 +3004,8 @@ function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDa
 }
 
 // Talep formu / bekleme ekranı için ilk ve son ders: calculateLessonDates'in aynısı.
-// skipped: 24 saat kuralı yüzünden en az bir seçili günün ilk haftası atlandıysa true.
+// skipped: 24 saat kuralı yüzünden en az bir seçili günün ilk haftası atlandıysa true;
+// skippedSlots: atlanan yuvalar [{ date, time, past }] (past: saati çoktan geçmiş).
 // Tek derste (single) ders onay anında belirlenir; buradaki tarih "şu an onaylansa" tarihidir.
 function bkFirstLessonInfo(schedule, months, lpm, startDate, isSingle) {
   if (!Array.isArray(schedule) || !schedule.length) return null;
@@ -3015,12 +3016,33 @@ function bkFirstLessonInfo(schedule, months, lpm, startDate, isSingle) {
   if (!dates.length) return null;
   const base = startDate && !isSingle ? new Date(startDate + 'T00:00:00') : new Date(now);
   base.setHours(0, 0, 0, 0);
-  const skipped = (isSingle ? schedule.slice(0, 1) : schedule).some(sl => {
+  const skippedSlots = [];
+  (isSingle ? schedule.slice(0, 1) : schedule).forEach(sl => {
     const d = new Date(base);
     while (d.getDay() !== sl.dayIndex) d.setDate(d.getDate() + 1);
-    return slotStartsTooSoon(d, sl.time, now);
+    if (slotStartsTooSoon(d, sl.time, now)) skippedSlots.push({ date: toDateStr(d), time: sl.time, past: slotStartsTooSoon(d, sl.time, new Date(now.getTime() - MIN_LEAD_MS)) });
   });
-  return { first: dates[0], last: dates[dates.length - 1], count: dates.length, skipped };
+  skippedSlots.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  return { first: dates[0], last: dates[dates.length - 1], count: dates.length, skipped: skippedSlots.length > 0, skippedSlots };
+}
+// "Pzt 5 Eki 19:00 dersine 24 saatten az kaldı — o gün bir hafta sonra başlar." (atlanan yuvayı adıyla söyler;
+// ilk ders aynı haftanın başka günündeyse "bu hafta atlandı" yanıltırdı)
+function bkFirstSkippedText(slots, isSingle) {
+  if (!slots || !slots.length) return '';
+  const names = slots.map(x => bkDateTimeShort(x)).join(', ');
+  const past = slots.every(x => x.past);
+  const key = isSingle ? (past ? 'bks_first_skip_single_past' : 'bks_first_skip_single')
+    : slots.length > 1 ? (past ? 'bks_first_skip_many_past' : 'bks_first_skip_many')
+    : (past ? 'bks_first_skip_one_past' : 'bks_first_skip_one');
+  const fb = {
+    bks_first_skip_one: '{slot} dersine 24 saatten az kaldı — o gün bir hafta sonra başlar.',
+    bks_first_skip_one_past: '{slot} saati geçti — o gün bir hafta sonra başlar.',
+    bks_first_skip_many: '{slot} derslerine 24 saatten az kaldı — bu günler bir hafta sonra başlar.',
+    bks_first_skip_many_past: '{slot} saatleri geçti — bu günler bir hafta sonra başlar.',
+    bks_first_skip_single: '{slot} dersine 24 saatten az kaldı — ders bir hafta sonraya alındı.',
+    bks_first_skip_single_past: '{slot} saati geçti — ders bir hafta sonraya alındı.',
+  }[key];
+  return bkT(key, fb).replace('{slot}', names);
 }
 // Açık ders günleri (0=Paz … 6=Cmt) → "Pzt–Cmt" (Pzt'den başlayan ardışık dizi) ya da "Pzt, Çar, Cum"
 function bkDaysRange(days) {
@@ -3741,7 +3763,7 @@ function bkWkLabels(s, compact) {
   } else {
     left = leftTxt(s.left);
     lock = (s.kind === 'locked' || s.kind === 'join') ? bkT('bk_wk_lock_closed', `Saat değişikliği kapandı`)
-      : (s.kind === 'frozen' || s.kind === 'cancelreq') ? `—`
+      : (s.kind === 'frozen' || s.kind === 'cancelreq' || s.kind === 'resched') ? `—`   // bekleyen ertelemede saat değişmez: "açık" yazmak düğmeyle çelişir
       : bkT('bk_wk_lock_in', `Saat değişikliği {d} daha açık`).replace('{d}', bkDurLive(s.toLock, compact));
   }
   const p = (s.kind === 'locked' || s.kind === 'join' || s.kind === 'live' || s.kind === 'done' || s.kind === 'past') ? 1 : Math.max(.04, Math.min(1, s.toLock / (48 * 3600e3)));
@@ -5003,7 +5025,7 @@ function updateSlotSummary() {
       let html = _reqType === 'single'
         ? bkT('bks_first_single', 'Dersin: <strong>{first}</strong>').replace('{first}', escHtml(firstTxt))
         : bkT('bks_first_line', 'İlk dersin: <strong>{first}</strong> · son ders: <strong>{last}</strong>').replace('{first}', escHtml(firstTxt)).replace('{last}', escHtml(bkDateTimeShort(fi.last)));
-      if (fi.skipped) html += ` <span class="bk-first-note">${bkT('bks_first_skipped', '24 saatten az kaldığı için bu hafta atlandı.')}</span>`;
+      if (fi.skipped) html += ` <span class="bk-first-note">${escHtml(bkFirstSkippedText(fi.skippedSlots, _reqType === 'single'))}</span>`;
       html += ` <span class="bk-first-note">${bkT('bks_first_final', 'Kesin tarihler Berkay Er onaylayınca takvimine işlenir.')}</span>`;
       firstLine.innerHTML = html;
       firstLine.hidden = false;
@@ -5637,7 +5659,8 @@ async function renderPendingView(reqData) {
         ${_pk ? _row(pkgT('bk_pkg_col_pkg', 'Paket'), `${pkgName(_pk)} · ${pkgPlanText(_pk)}`)
               : _row(_isEn2?'Duration':'Süre', isSinglePending ? (_isEn2?'Single Lesson':'Tek Ders') : (reqData.duration_months || 0) + (_isEn2?' Months':' Ay'))}
         ${_row(_isEn2?'Days':'Günler', daysText || '—')}
-        ${!isSinglePending ? _row(bkT('bks_pend_start', 'Başlangıç tarihi'), reqData.preferred_start_date ? escHtml(bkDayLong(reqData.preferred_start_date, false)) : escHtml(bkT('bks_pend_start_asap', 'En yakın uygun hafta'))) : ''}
+        ${/* İstenen tarih yalnız seçildiyse; seçilmediyse aşağıdaki "İlk ders" tahmini zaten söyler (iki benzer satır olmasın) */
+          !isSinglePending && (reqData.preferred_start_date || !_fi) ? _row(bkT('bks_pend_start', 'İstediğin ilk ders tarihi'), reqData.preferred_start_date ? escHtml(bkDayLong(reqData.preferred_start_date, false)) : escHtml(bkT('bks_pend_start_asap', 'En yakın uygun hafta'))) : ''}
         ${_fi ? _row(bkT('bks_pend_first', 'İlk ders'), `${escHtml(bkDateTimeShort(_fi.first))} <span class="bk-dl-note">${escHtml(bkT('bks_pend_first_note', 'tahmini — Berkay Er onaylayınca kesinleşir'))}</span>`) : ''}
         ${_pk && _pk.discount ? _row(pkgT('bk_pkg_col_list', 'Liste fiyatı'), `<s>${tlFmt(_pkP.list)}</s> · ${pkgT('bk_pkg_col_save', 'Kazancın')}: <span class="be-accent">${tlFmt(_pkP.save)}</span>`) : ''}
         ${reqData.note ? _row(_isEn2?'Note':'Not', _esc(reqData.note)) : ''}
@@ -6214,16 +6237,32 @@ async function renderDashboard() {
     const why = x.reason ? ` — “${x.reason}”` : '';
     if (x.kind === 'used' && !x.lesson_date) return bkT('bks_credit_h_used_admin', 'Kullanıldı: Berkay Er 1 hak düştü ({at})').replace('{at}', _fmtAt(x.at)) + why;
     if (x.kind === 'used') return bkT('bks_credit_h_used', 'Kullanıldı: {date} dersi ertelendi').replace('{date}', formatDateStr(x.lesson_date)) + why;
-    if (x.kind === 'revoked') return bkT('bks_credit_h_revoked', 'Berkay Er tarafından {n} hak sonlandırıldı ({at})').replace('{n}', n).replace('{at}', _fmtAt(x.at)) + why;
-    if (x.kind === 'added') return bkT('bks_credit_h_added', 'Berkay Er {n} hak ekledi ({at})').replace('{n}', n).replace('{at}', _fmtAt(x.at)) + why;
+    if (x.kind === 'revoked') return (n === 1 ? bkT('bks_credit_h_revoked_one', 'Berkay Er tarafından {n} hak sonlandırıldı ({at})') : bkT('bks_credit_h_revoked', 'Berkay Er tarafından {n} hak sonlandırıldı ({at})')).replace('{n}', n).replace('{at}', _fmtAt(x.at)) + why;
+    if (x.kind === 'added') return (n === 1 ? bkT('bks_credit_h_added_one', 'Berkay Er {n} hak ekledi ({at})') : bkT('bks_credit_h_added', 'Berkay Er {n} hak ekledi ({at})')).replace('{n}', n).replace('{at}', _fmtAt(x.at)) + why;
+    // "Geri al" kaydı: Berkay Er'in kendi düzeltmesi — yön (up) yeterli, not yazılmaz
+    if (x.kind === 'undo') return (x.up
+      ? (n === 1 ? bkT('bks_credit_h_undo_up_one', 'Düzeltme: {n} hak geri verildi ({at})') : bkT('bks_credit_h_undo_up', 'Düzeltme: {n} hak geri verildi ({at})'))
+      : (n === 1 ? bkT('bks_credit_h_undo_down_one', 'Düzeltme: {n} hak geri alındı ({at})') : bkT('bks_credit_h_undo_down', 'Düzeltme: {n} hak geri alındı ({at})'))).replace('{n}', n).replace('{at}', _fmtAt(x.at));
     return '';
   }).filter(Boolean);
   if (!_log.length) {
     const _moved = dedupLessons(lessons).filter(l => l.status === 'rescheduled');
     _hist = _moved.map(l => bkT('bks_credit_h_moved', 'Ertelenen ders → yeni tarih {date}').replace('{date}', formatDateStr(l.date)));
     const _unexplained = _pkgMonths - _moved.length - _remaining;
-    if (_unexplained > 0) _hist.push(bkT('bks_credit_h_admin', '{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp\'tan yaz.').replace('{n}', _unexplained));
+    if (_unexplained > 0) _hist.push((_unexplained === 1 ? bkT('bks_credit_h_admin_one', '{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp\'tan yaz.') : bkT('bks_credit_h_admin', '{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp\'tan yaz.')).replace('{n}', _unexplained));
   }
+  // Paket hakkının üstüne Berkay Er'in eklediği net hak (geri alınanlar düşülür): "Kalan" paketten
+  // büyükse kutu kendisiyle çelişmesin diye "+N Berkay Er'in eklediği" olarak gösterilir.
+  const _logSum = (k, of) => _log.filter(x => x.kind === k && (!of || x.of === of)).reduce((a, x) => a + Math.max(1, x.n || 1), 0);
+  let _extraAdded = Math.max(0, _logSum('added') - _logSum('undo', 'added'));
+  if (!_extraAdded && _remaining > _pkgMonths) _extraAdded = _remaining - _pkgMonths;
+  const _pkgLine = (_pkgMonths === 1 ? bkT('bks_credit_pkg_one_html', 'Paketin: <strong>{m} aylık</strong> → <strong>{m} erteleme hakkı</strong>{extra} · Kalan: <strong class="{cls}">{n}</strong>') : bkT('bks_credit_pkg_html', 'Paketin: <strong>{m} aylık</strong> → <strong>{m} erteleme hakkı</strong>{extra} · Kalan: <strong class="{cls}">{n}</strong>'))
+    .replace(/\{m\}/g, _pkgMonths).replace('{n}', _remaining).replace('{cls}', _remaining > 0 ? 'text-ok' : 'text-err')
+    .replace('{extra}', _extraAdded ? bkT('bks_credit_pkg_extra_html', ' + Berkay Er’in eklediği <strong>{x}</strong>').replace('{x}', _extraAdded) : '');
+  // Hak 0 iken bekleyen talep onaylanırsa hak düşmez (admin yalnız "Hak düşmeden ertele" görür)
+  const _pendLine = !_pendCount ? '' : _remaining <= 0
+    ? bkT('bks_credit_pend_line_none', 'Bekleyen erteleme talebin Berkay Er’in onayında — hakkın kalmadığı için onaylanırsa hak düşmez.')
+    : bkT('bks_credit_pend_line', 'Bekleyen erteleme talebin: {p} — Berkay Er onaylayınca haktan düşer.').replace('{p}', _pendCount);
   document.getElementById('creditBadge').innerHTML = `
     <details class="bk-credit">
       <summary>
@@ -6232,9 +6271,8 @@ async function renderDashboard() {
         <svg class="icon bk-chev" aria-hidden="true"><use href="/assets/img/icons.svg#i-chevron-down"/></svg>
       </summary>
       <div class="bk-credit-body">
-        <p>${bkT('bks_credit_pkg_html', 'Paketin: <strong>{m} aylık</strong> → toplam <strong>{m} erteleme hakkı</strong> · Kalan: <strong class="{cls}">{n}</strong>')
-          .replace(/\{m\}/g, _pkgMonths).replace('{n}', _remaining).replace('{cls}', _remaining > 0 ? 'text-ok' : 'text-err')}</p>
-        ${_pendCount ? `<p>${bkT('bks_credit_pend_line', 'Bekleyen erteleme talebin: {p} — Berkay Er onaylayınca haktan düşer.').replace('{p}', _pendCount)}</p>` : ''}
+        <p>${_pkgLine}</p>
+        ${_pendLine ? `<p>${_pendLine}</p>` : ''}
         <p>${bkT('bks_credit_howto_html', 'Kullanmak için ders satırındaki <strong>Ertele</strong>\'ye bas (en az 24 saat önce). Ders 1 hafta ileri alınır; Berkay Er onaylayınca 1 hak düşer. Aynı hafta içinde saat değiştirmek ücretsizdir.')}</p>
         ${_hist.length ? `<div class="bk-credit-hist"><span class="bk-credit-note">${bkT('bks_credit_hist', 'Geçmiş')}</span><ul>${_hist.map(h => `<li>${escHtml(h)}</li>`).join('')}</ul></div>` : ''}
         <button type="button" class="btn btn-sm btn-dashed" onclick="window._openExtraCreditModal()">${bkT('bks_credit_buy', '+ Ek Hak Al (500 TL)')}</button>
@@ -7200,7 +7238,7 @@ function renderAdminRequests(reqSnap) {
       if (cr !== null) tags.push(cr > 0
         ? `<span class="adm-tag adm-tag--gold">${escHtml(bkT('adm_rq_cr', 'Erteleme hakkı: {a} → {b} olacak').replace('{a}', cr).replace('{b}', cr - 1))}</span>`
         : `<span class="adm-tag adm-tag--err">${escHtml(bkT('adm_rq_cr_none', 'Hak yok — onaylarsan hak düşmez'))}</span>`);
-      if (plan && plan.moves.length > 1) tags.push(`<span class="adm-tag">${escHtml(bkT('adm_rq_cascade', '+{n} ders da 1 hafta kayar').replace('{n}', plan.moves.length - 1))}</span>`);
+      if (plan && plan.moves.length > 1) tags.push(`<span class="adm-tag">${escHtml((plan.moves.length === 2 ? bkT('adm_rq_cascade_one', '+{n} ders de 1 hafta kayar') : bkT('adm_rq_cascade', '+{n} ders de 1 hafta kayar')).replace('{n}', plan.moves.length - 1))}</span>`);
       if (stu && sIdx < 0) tags.push(`<span class="adm-tag adm-tag--err">${escHtml(bkT('adm_rq_nolesson', 'Ders bulunamadı (taşınmış ya da iptal)'))}</span>`);
       if (plan && r.new_date && r.new_date !== newDate) tags.push(`<span class="adm-tag">${escHtml(bkT('adm_rq_asked', 'Talep edilen: {date}').replace('{date}', formatDateStr(r.new_date)))}</span>`);
       const row = admReqRow({ name: who, photo: r.from_photo, chip: bkT('adm_rq_resched', 'Erteleme talebi'), tone: 'accent',
@@ -7634,7 +7672,7 @@ function admRenderStats() {
   _admStatsDrawn = true;
   box.innerHTML = st.per.slice().sort((a, b) => b.total - a.total).map(p => `
     <div class="adm-ps${p.paid ? '' : ' is-unpaid'}">
-      <span class="adm-ps-name">${escHtml(p.name)} <b class="${p.paid ? 'adm-ok' : 'adm-err'}" aria-hidden="true">${p.paid ? '✓' : '•'}</b><span class="sr-only">${p.paid ? 'ödendi' : 'ödenmedi'}</span></span>
+      <span class="adm-ps-name">${escHtml(p.name)} <b class="${p.paid ? 'adm-ok' : 'adm-err'}" aria-hidden="true">${p.paid ? '✓' : '•'}</b><span class="sr-only">${escHtml(p.paid ? bkT('adm_ps_sr_paid', 'ödendi') : bkT('adm_ps_sr_unpaid', 'ödenmedi'))}</span></span>
       <span class="adm-ps-bar" aria-hidden="true"><span${grow} style="--w:${Math.round(p.total / max * 100)}%"></span></span>
       <span class="adm-ps-amt${p.counted ? '' : ' is-muted'}">${tlNum(p.total)} ₺</span>
       <span class="adm-ps-meta">${escHtml(bkT('adm_ps_month', 'Bu ay'))}: ${p.lessons} ${escHtml(admLessonsLc(p.lessons))} · ${escHtml(bkT('adm_ps_total', 'Toplam'))}: ${p.totalLessons} ${escHtml(admLessonsLc(p.totalLessons))}${p.pkg ? `<span class="adm-chip adm-chip--accent">${escHtml(p.pkg)}</span>` : ''}
@@ -9233,8 +9271,8 @@ async function adminAddLessonNote(studentUid, lessonIdx, allLessons, lesson) {
 // Hak PAKET havuzudur (totalRescheduleCredits): N aylık paket = N hak; öğrencinin erteleme talebi
 // onaylanınca 1 hak düşer. reschedule_credits {'YYYY-MM': n} ay anahtarları korunur (havuzun
 // iç kaydı) ama öğretmene yalnız "Ay bazında ayrıntı"da insan diliyle gösterilir. Toplamı değiştiren
-// her yazım reservations.reschedule_log'a { at, kind: 'used'|'added'|'revoked', n, by: 'admin',
-// reason? } ekler; öğrenci paneli (onSnapshot) yeni sayıyı ve "Geçmiş" satırını anında gösterir.
+// her yazım reservations.reschedule_log'a { at, kind: 'used'|'added'|'revoked'|'undo', n, by: 'admin',
+// reason?, of?, up? } ekler (undo: of = geri alınan kayıt türü, up = toplam arttı mı); öğrenci paneli (onSnapshot) yeni sayıyı ve "Geçmiş" satırını anında gösterir.
 function admCreditLog(res) { return Array.isArray(res && res.reschedule_log) ? res.reschedule_log.filter(x => x && x.kind) : []; }
 // Havuza 1 hak ekler: en son ay anahtarına (yoksa bu aya) — toplam aynı mantıkla artar
 function admCreditAdd(credits) {
@@ -9259,17 +9297,29 @@ async function admCreditApply(uid, mutate, entry) {
     if (delta) {
       const e = { at: new Date().toISOString(), by: 'admin', n: Math.abs(delta), kind: (entry && entry.kind) || (delta > 0 ? 'added' : 'revoked') };
       if (entry && entry.reason) e.reason = String(entry.reason).slice(0, 200);
+      if (e.kind === 'undo') { e.up = delta > 0; if (entry.of) e.of = entry.of; }
       upd.reschedule_log = admCreditLog(res).concat([e]).slice(-50);
     }
     tx.update(ref, upd);
-    return { before, after, prev };
+    // diff: bu yazımın ay anahtarı başına değişimi — "Geri al" yalnız bunu tersine çevirir
+    const diff = {};
+    new Set(Object.keys(prev).concat(Object.keys(credits))).forEach(k => {
+      const d = Math.max(0, credits[k] || 0) - Math.max(0, prev[k] || 0);
+      if (d) diff[k] = d;
+    });
+    return { before, after, prev, diff };
   });
 }
-// Toast + "Geri al": önceki haritaya döner (geçmişe "geri alındı" notuyla yazılır)
-function admCreditToast(uid, r, msg) {
+// Toast + "Geri al": YALNIZ bu değişikliği tersine çevirir (delta), arada yapılan diğer değişikliklere
+// dokunmaz — iki "+1"den ilkini geri almak toplamı 1 düşürür. Geçmişe kind:'undo' (çevrilir) yazılır.
+function admCreditToast(uid, r, msg, of) {
+  if (!r || !Object.keys(r.diff || {}).length) { toast(msg); return; }
   admToastUndo(msg, async () => {
     try {
-      const u = await admCreditApply(uid, () => ({ ...r.prev }), { reason: bkT('adm_cr_undo_reason', 'Son değişiklik geri alındı') });
+      const u = await admCreditApply(uid, credits => {
+        Object.keys(r.diff).forEach(k => { credits[k] = Math.max(0, (credits[k] || 0) - r.diff[k]); });
+        return credits;
+      }, { kind: 'undo', of });
       toast(bkT('adm_cr_undone', '↺ Geri alındı — kalan {n}').replace('{n}', u.after));
     } catch (e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); }
   });
@@ -9294,7 +9344,7 @@ async function admCreditUse(uid, res, key) {
       if (key) { credits[key] = Math.max(0, (credits[key] || 0) - 1); return credits; }
       return consumeRescheduleCredit({ reschedule_credits: credits }, toDateStr(new Date()));
     }, { kind: 'used', reason: a.text });
-    admCreditToast(uid, r, bkT('adm_cr_used_toast', '✓ 1 hak düşüldü — kalan {n}').replace('{n}', r.after));
+    admCreditToast(uid, r, bkT('adm_cr_used_toast', '✓ 1 hak düşüldü — kalan {n}').replace('{n}', r.after), 'used');
   } catch (e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); }
 }
 async function admCreditGive(uid, res) {
@@ -9310,7 +9360,7 @@ async function admCreditGive(uid, res) {
   if (!a) return;
   try {
     const r = await admCreditApply(uid, credits => admCreditAdd(credits), { kind: 'added', reason: a.text });
-    admCreditToast(uid, r, bkT('adm_cr_added_toast', '✓ 1 hak eklendi — kalan {n}').replace('{n}', r.after));
+    admCreditToast(uid, r, bkT('adm_cr_added_toast', '✓ 1 hak eklendi — kalan {n}').replace('{n}', r.after), 'added');
   } catch (e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); }
 }
 async function admCreditEnd(uid, res) {
@@ -9321,7 +9371,7 @@ async function admCreditEnd(uid, res) {
     eyebrow: bkT('adm_cr_eyebrow', 'Erteleme hakkı'),
     title: bkT('adm_cr_end_t', 'Tüm hakları bitir'),
     danger: true,
-    body: `<p><strong>${escHtml(bkT('adm_cr_end_b', '{who} {n} erteleme hakkı sıfırlanacak.').replace('{who}', admPoss(name)).replace('{n}', total))}</strong></p>
+    body: `<p><strong>${escHtml((total === 1 ? bkT('adm_cr_end_b_one', '{who} {n} erteleme hakkı sıfırlanacak.') : bkT('adm_cr_end_b', '{who} {n} erteleme hakkı sıfırlanacak.')).replace('{who}', admPoss(name)).replace('{n}', total))}</strong></p>
       <p class="adm-ask-big">${escHtml(bkT('adm_cr_left', 'Kalan'))}: <strong>${total}</strong> → <strong class="text-err">0</strong></p>
       <ul class="adm-ask-list">
         <li>${escHtml(bkT('adm_cr_end_1', 'Öğrenci artık erteleme talebi gönderemez (panelinde "hak kalmadı" görünür).'))}</li>
@@ -9329,23 +9379,29 @@ async function admCreditEnd(uid, res) {
         <li>${escHtml(bkT('adm_cr_end_3', 'Gerekirse "+1 hak ver" ile yeniden hak verebilirsin.'))}</li>
       </ul>`,
     input: { label: bkT('adm_cr_reason_l', 'Not (isteğe bağlı · öğrenci de görür)'), placeholder: bkT('adm_cr_end_ph', 'Ör. Paket süresi doldu') },
-    ok: bkT('adm_cr_end_ok', '{n} hakkı sıfırla').replace('{n}', total),
+    ok: (total === 1 ? bkT('adm_cr_end_ok_one', '{n} hakkı sıfırla') : bkT('adm_cr_end_ok', '{n} hakkı sıfırla')).replace('{n}', total),
   });
   if (!a) return;
   try {
     const r = await admCreditApply(uid, credits => { Object.keys(credits).forEach(k => { credits[k] = 0; }); return credits; }, { kind: 'revoked', reason: a.text });
-    admCreditToast(uid, r, bkT('adm_cr_ended_toast', '✓ {n} hak sıfırlandı — kalan 0').replace('{n}', r.before));
+    admCreditToast(uid, r, (r.before === 1 ? bkT('adm_cr_ended_toast_one', '✓ {n} hak sıfırlandı — kalan 0') : bkT('adm_cr_ended_toast', '✓ {n} hak sıfırlandı — kalan 0')).replace('{n}', r.before), 'revoked');
   } catch (e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); }
 }
 // Geçmiş satırı (admin): "−1 · Kullanıldı — 06 Eki dersi ertelendi"
 function admCreditLogLine(x) {
   const n = Math.max(1, x.n || 1);
   const when = admWhen(x.at);
-  const sign = x.kind === 'added' ? `+${n}` : `−${n}`;
+  const plus = x.kind === 'added' || (x.kind === 'undo' && x.up);
+  const sign = plus ? `+${n}` : `−${n}`;
   const txt = x.kind === 'used'
     ? (x.lesson_date ? bkT('adm_cr_h_used_l', 'Kullanıldı — {date} dersi ertelendi').replace('{date}', formatDateStr(x.lesson_date)) : bkT('adm_cr_h_used', 'Kullanıldı (elle düşüldü)'))
-    : x.kind === 'added' ? bkT('adm_cr_h_added', 'Hak verildi') : bkT('adm_cr_h_revoked', 'Haklar sonlandırıldı');
-  return `<li class="adm-cr-li"><span class="adm-cr-sign ${x.kind === 'added' ? 'is-plus' : 'is-minus'}">${sign}</span>
+    : x.kind === 'added' ? bkT('adm_cr_h_added', 'Hak verildi')
+    : x.kind === 'undo' ? (x.of === 'added' ? bkT('adm_cr_h_undo_added', 'Geri alındı — verilen hak iptal')
+      : x.of === 'used' ? bkT('adm_cr_h_undo_used', 'Geri alındı — düşülen hak iade')
+      : x.of === 'revoked' ? bkT('adm_cr_h_undo_revoked', 'Geri alındı — sonlandırılan haklar iade')
+      : bkT('adm_cr_h_undo', 'Geri alındı'))
+    : bkT('adm_cr_h_revoked', 'Haklar sonlandırıldı');
+  return `<li class="adm-cr-li"><span class="adm-cr-sign ${plus ? 'is-plus' : 'is-minus'}">${sign}</span>
     <span class="adm-cr-lt">${escHtml(txt)}${x.reason ? ` <span class="adm-cr-why">“${escHtml(x.reason)}”</span>` : ''}</span>
     <span class="adm-cr-when">${escHtml(when)}</span></li>`;
 }
@@ -9373,12 +9429,14 @@ async function adminGrantRescheduleCredit(studentUid, resDataInit) {
     const total = totalRescheduleCredits(resData);
     const pkgM = resData.duration_months || 0;
     const log = admCreditLog(resData);
-    const sum = k => log.filter(x => x.kind === k).reduce((a, x) => a + Math.max(1, x.n || 1), 0);
+    // Geri alınan kayıtlar kendi türünün toplamından düşer ("+1, +1, ilkini geri al" → Verilen: +1)
+    const sum = k => Math.max(0, log.filter(x => x.kind === k).reduce((a, x) => a + Math.max(1, x.n || 1), 0)
+      - log.filter(x => x.kind === 'undo' && x.of === k).reduce((a, x) => a + Math.max(1, x.n || 1), 0));
     const used = log.length ? sum('used') : dedupLessons(resData.lessons || []).filter(l => l.status === 'rescheduled').length;
     const added = sum('added'), revoked = sum('revoked');
     const pendCount = (_admLastReqSnap ? _admLastReqSnap.docs.map(d => d.data()) : []).filter(r => r.type === 'reschedule_request' && r.from_uid === studentUid).length;
     const facts = [
-      pkgM ? bkT('adm_cr_f_pkg', 'Paket: {m} aylık → {m} hak').replace(/\{m\}/g, pkgM) : '',
+      pkgM ? (pkgM === 1 ? bkT('adm_cr_f_pkg_one', 'Paket: {m} aylık → {m} hak') : bkT('adm_cr_f_pkg', 'Paket: {m} aylık → {m} hak')).replace(/\{m\}/g, pkgM) : '',
       bkT('adm_cr_f_used', 'Kullanılan: {n}').replace('{n}', used),
       added ? bkT('adm_cr_f_added', 'Verilen: +{n}').replace('{n}', added) : '',
       revoked ? bkT('adm_cr_f_revoked', 'Sonlandırılan: −{n}').replace('{n}', revoked) : '',
@@ -9395,7 +9453,7 @@ async function adminGrantRescheduleCredit(studentUid, resDataInit) {
       <button type="button" class="modal-close" data-cr="close" aria-label="${escHtml(bkT('bk_pt_close', 'Kapat'))}">✕</button>
       <div class="adm-cr-hero">
         <span class="adm-cr-num ${total > 0 ? 'is-on' : 'is-zero'}">${total}</span>
-        <span class="adm-cr-lbl">${escHtml(total === 1 ? bkT('adm_cr_left_one', 'erteleme hakkı kaldı') : bkT('adm_cr_left_many', 'erteleme hakkı kaldı'))}${pendCount ? `<span class="adm-chip adm-chip--warn">${escHtml(bkT('adm_cr_pend', '{n} talep onay bekliyor').replace('{n}', pendCount))}</span>` : ''}</span>
+        <span class="adm-cr-lbl">${escHtml(total === 1 ? bkT('adm_cr_left_one', 'erteleme hakkı kaldı') : bkT('adm_cr_left_many', 'erteleme hakkı kaldı'))}${pendCount ? `<span class="adm-chip adm-chip--warn">${escHtml((pendCount === 1 ? bkT('adm_cr_pend_one', '{n} talep onay bekliyor') : bkT('adm_cr_pend', '{n} talep onay bekliyor')).replace('{n}', pendCount))}</span>` : ''}</span>
       </div>
       <p class="adm-cr-facts">${facts.map(escHtml).join(' · ')}</p>
       <p class="adm-cr-what">${escHtml(bkT('adm_cr_what', 'Erteleme hakkı, öğrencinin bir dersini 1 hafta ileri aldırabilmesidir. Paket kaç aylıksa o kadar hak verir (1 ay = 1 hak); hangi derste kullanıldığı önemli değildir. Erteleme talebini onaylayınca 1 hak kendiliğinden düşer. Hak 0 olunca öğrenci erteleme talebi gönderemez.'))}</p>
@@ -10709,7 +10767,7 @@ function renderAccessView(user, state, rejectReason) {
     const _av = window._i18n;
     card.innerHTML = `
       <div class="bk-form-titles">
-        <span class="bk-kicker bk-kicker--gold">${bkT('bks_access_kicker', 'Başlangıç')}</span>
+        <span class="bk-kicker bk-kicker--gold">${bkT('bks_access_kicker', 'İlk adım')}</span>
         <h2 class="bk-h2">${bkT('bks_access_title', 'Nasıl başlamak istersin?')}</h2>
         <p class="bk-sub">${bkT('bk_access_intro', 'Ders almak için aşağıdaki seçeneklerden birini seç.')}</p>
       </div>
