@@ -546,6 +546,9 @@
     .bk-cfm-list .bk-cfm { height:100%; background:var(--bg); }
     .bk-l-proof { grid-column:2 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; margin-top:4px; }
     .bk-l-proof .bk-cfm-zoom { color:var(--fg-3); }
+    .bk-l-note { font-size:var(--fs-small); line-height:1.5; color:var(--fg-muted); }
+    .bk-l-note.is-disputed { color:var(--err); }
+    .bk-recent-h { margin:20px 0 8px; font-family:var(--ff-mono); font-size:var(--fs-label); font-weight:400; letter-spacing:var(--tr-label); text-transform:uppercase; color:var(--fg-3); }
     html .bk-cfm-go { position:relative; min-height:var(--ctl-sm); font-size:var(--fs-small); }
     .bk-cfm-count { margin-top:6px; text-align:right; font-family:var(--ff-mono); font-size:var(--fs-micro); color:var(--fg-3); font-variant-numeric:tabular-nums; }
     .bk-cfm-dlg textarea { resize:vertical; }
@@ -3574,13 +3577,30 @@ function bkCfmDisputeDialog(l, panel) {
   };
 }
 // Ana listedeki satır: Zoom satırı + karar rozeti; açık pencerede panele götüren bağlantı
+// Bitmiş dersin satır etiketi: [rozet sınıfı, i18n anahtarı, TR yedek] | null (henüz bitmedi / iptal)
+function bkLessonEndState(l, now) {
+  if (!l || !l.date || !l.time || !BK_CFM_STATUSES.includes(l.status) || bkLessonEndMs(l) > now) return null;
+  const st = bkCfmState(l, now);
+  if (st === 'open') return ['warn', 'bk_l_open', `Bitti · onayın bekleniyor`];
+  if (st === 'disputed') return ['err', 'bk_l_disputed', `İtiraz ettin · inceleniyor`];
+  if (st === 'resolved') return ['info', 'bk_l_resolved', `İtiraz çözüldü`];
+  return ['ok', 'bk_l_done', `Yapıldı ✓`];   // onaylandı / otomatik onay / eski tamamlanmış ders
+}
 function bkCfmRowProof(l, now) {
   const st = bkCfmState(l, now);
   const zoom = bkLessonEndMs(l) <= now ? bkAttLine(l) : '';
   if (!st && !zoom) return null;
+  const c = l.confirmation || {};
   const wrap = document.createElement('div');
   wrap.className = 'bk-l-proof';
-  if (st) wrap.insertAdjacentHTML('beforeend', bkCfmBadgeHtml(st));
+  // Satır rozeti sonucu zaten söylüyor; burada nasıl karara varıldığı
+  const note = {
+    confirmed: bkT('bk_l_note_confirmed', `Dersin yapıldığını onayladın.`),
+    auto: bkT('bk_l_note_auto', `48 saat içinde itiraz edilmedi — otomatik onaylandı.`),
+    disputed: bkT('bk_l_note_disputed', `Gerekçen: “{r}” · Berkay Er inceleyip sana dönecek.`).replace('{r}', c.reason || '—'),
+    resolved: c.resolved_note ? bkT('bk_l_note_resolved', `Berkay Er'in notu: {n}`).replace('{n}', c.resolved_note) : '',
+  }[st] || '';
+  if (note) wrap.insertAdjacentHTML('beforeend', `<span class="bk-l-note${st === 'disputed' ? ' is-disputed' : ''}">${escHtml(note)}</span>`);
   if (zoom) wrap.insertAdjacentHTML('beforeend', `<span class="bk-cfm-zoom">${escHtml(zoom)}</span>`);
   if (st === 'open') {
     const go = document.createElement('button');
@@ -6508,8 +6528,12 @@ async function renderDashboard() {
       const item = document.createElement('div');
       item.className = 'bk-lesson' + (isPast ? ' past' : '');
       item.setAttribute('role', 'listitem');
-      const sc = {scheduled:'info',completed:'ok',rescheduled:'accent',cancelled:'err',cancel_requested:'err',frozen:''}[l.status] ?? 'info';
-      const _i = window._i18n; const statusLabel = {scheduled: _i?.t('bk_status_scheduled')||'Planlandı',completed: _i?.t('bk_status_completed')||'Tamamlandı',rescheduled: _i?.t('bk_status_rescheduled')||'Ertelendi',cancelled: _i?.t('bk_status_cancelled')||'İptal',cancel_requested: _i?.t('bk_status_cancel_req')||'İptal Talep Edildi',frozen: _i?.t('bk_status_frozen')||'Donduruldu'}[l.status]||l.status;
+      let sc = {scheduled:'info',completed:'ok',rescheduled:'accent',cancelled:'err',cancel_requested:'err',frozen:''}[l.status] ?? 'info';
+      const _i = window._i18n; let statusLabel = {scheduled: _i?.t('bk_status_scheduled')||'Planlandı',completed: _i?.t('bk_status_completed')||'Tamamlandı',rescheduled: _i?.t('bk_status_rescheduled')||'Ertelendi',cancelled: _i?.t('bk_status_cancelled')||'İptal',cancel_requested: _i?.t('bk_status_cancel_req')||'İptal Talep Edildi',frozen: _i?.t('bk_status_frozen')||'Donduruldu'}[l.status]||l.status;
+      // Bitmiş ders: "Planlandı" yerine sonucu yazar (yapıldı / onay bekleniyor / itiraz) — öğrenci kendi
+      // dersinin durumunu listede görür; ayrıntı (Zoom, itiraz gerekçesi) satırın altında
+      const _lst = bkLessonEndState(l, Date.now());
+      if (_lst) { sc = _lst[0]; statusLabel = bkT(_lst[1], _lst[2]); }
       item.innerHTML = `
         <div class="bk-l-date" aria-hidden="true">
           <span class="bk-l-day">${d.getDate()}</span>
@@ -6619,6 +6643,24 @@ async function renderDashboard() {
       list.append(hint);
     }
 
+    // Son 14 gün + kararı bekleyen / itirazlı dersler açıkta: öğrenci dersinin yapıldığını ya da
+    // itirazının durumunu listeyi açmadan görür. Daha eskiler kapalı "Geçmiş Dersler"de.
+    const _cut = new Date(Date.now() + 3 * 3600e3 - 14 * 864e5).toISOString().slice(0, 10);
+    const _keep = l => l.date >= _cut || ['open', 'disputed'].includes(bkCfmState(l, Date.now()));
+    const recentPast = pastItems.filter(l => l.status !== 'cancelled' && _keep(l));
+    if (recentPast.length) {
+      const rh = document.createElement('h4');
+      rh.className = 'bk-recent-h';
+      rh.textContent = bkT('bk_recent_lessons', `Son derslerin`);
+      const rl = document.createElement('div');
+      rl.className = 'bk-lessons bk-lessons--recent';
+      rl.setAttribute('role', 'list');
+      rl.setAttribute('aria-label', bkT('bk_recent_lessons', `Son derslerin`));
+      recentPast.slice().reverse().forEach(l => rl.append(renderLesson(l, sorted.indexOf(l))));
+      list.append(rh, rl);
+    }
+    const _olderPast = pastItems.filter(l => !recentPast.includes(l));
+    pastItems.length = 0; _olderPast.forEach(l => pastItems.push(l));
     if (pastItems.length > 0) {
       const pastToggle = document.createElement('button');
       pastToggle.type = 'button';
