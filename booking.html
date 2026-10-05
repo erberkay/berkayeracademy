@@ -15,14 +15,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202610071400">
-  <script src="assets/js/theme-init.js?v=202610071400"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202610071400">
-  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202610071400">
-  <script src="assets/js/auth-ui.js?v=202610071400"></script>
-  <script src="assets/js/trial-intro.js?v=202610071400" defer></script>
-  <script src="assets/js/placement-quiz.js?v=202610071400"></script>
-  <script src="assets/js/be-tour.js?v=202610071400"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202610071500">
+  <script src="assets/js/theme-init.js?v=202610071500"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202610071500">
+  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202610071500">
+  <script src="assets/js/auth-ui.js?v=202610071500"></script>
+  <script src="assets/js/trial-intro.js?v=202610071500" defer></script>
+  <script src="assets/js/placement-quiz.js?v=202610071500"></script>
+  <script src="assets/js/be-tour.js?v=202610071500"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -943,6 +943,8 @@
     /* Öğrenci görünümü önizlemesi (admin) */
     html:not(.bk-admin-preview) .bk-preview-bar { display:none; }
     .bk-preview-bar { position:sticky; top:var(--be-sticky-top); z-index:40; background:var(--glass-header); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border-bottom:1px solid var(--err-line); }
+    .bk-prev-demo { display:flex; flex-wrap:wrap; gap:8px; }
+    .bk-prev-demo[hidden] { display:none; }
     .bk-preview-in { display:flex; align-items:center; gap:12px 16px; flex-wrap:wrap; padding-top:12px; padding-bottom:12px; font-size:var(--fs-small); color:var(--fg-muted); }
     .bk-preview-in .btn { margin-left:auto; }
 
@@ -1831,8 +1833,8 @@
       .bk-todo-n { width:28px; height:28px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202610071400"></script>
-<script src="assets/js/trial-nav.js?v=202610071400"></script>
+<script src="assets/js/i18n.js?v=202610071500"></script>
+<script src="assets/js/trial-nav.js?v=202610071500"></script>
 </head>
 <body data-be-intro-first>
 <header class="be-header" id="beHeader" data-be-page="booking" data-be-cta="off"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -1846,7 +1848,9 @@
   <div class="bk-preview-bar">
     <div class="be-wrap bk-preview-in">
       <span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span>
-      <span data-i18n="adm_prev_text">Öğrenci görünümü · önizleme — buradan talep gönderilemez.</span>
+      <span data-i18n="adm_prev_text">Öğrenci görünümü · önizleme — hiçbir şey kaydedilmez; gönderdiğin talep öğrencinin göreceği ekranlarla demo olarak ilerler.</span>
+      <!-- Demo adımları (bkPrevDemoBar): onaylanınca paneli göster · ödeme onaylı/bekliyor · baştan başla -->
+      <span class="bk-prev-demo" id="bkPrevDemo" hidden></span>
       <button type="button" class="btn btn-sm btn-light" id="admExitPreview" data-i18n="adm_prev_exit">Admin paneline dön</button>
     </div>
   </div>
@@ -4308,7 +4312,8 @@ function bkWkPaintSide(r, now) {
 function bkWkRender(res, ctx) {
   const sec = document.getElementById('derslerim');
   if (!sec) return;
-  if (!_user || _user.email === ADMIN_EMAIL || _bkAdminPreview) { bkWkStop(); return; }
+  const _demo = _bkAdminPreview && !!_bkDemoRes;
+  if (!_user || (!_demo && (_user.email === ADMIN_EMAIL || _bkAdminPreview))) { bkWkStop(); return; }
   _bkWkCtx = { res, isPaid: !!ctx.isPaid, isTrial: !!ctx.isTrial, pendingSet: ctx.pendingSet || new Set() };
   const lessons = bkWkLessons(res);
   const compact = bkWkCompact();
@@ -5585,7 +5590,6 @@ function phoneHelpText() { return bkT('bks_phone_fmt', 'TR: 05XX XXX XX XX · Yu
 
 // ─── Submit Request ───────────────────────────────────────
 async function submitRequest() {
-  if (_bkAdminPreview) { toast(bkT('adm_prev_nosubmit', 'Önizleme: admin olarak talep gönderilemez.')); return; }
   const btn = document.getElementById('submitRequestBtn');
   const errEl = document.getElementById('reqError');
   errEl.style.display = 'none';
@@ -5653,6 +5657,14 @@ async function submitRequest() {
   // "Geri dön" / × / Esc → null: form olduğu gibi kalır, öğrenci seçimini düzenleyebilir.
   const rulesConsent = await showRulesAcceptanceModal({ dismissible: true });
   if (!rulesConsent) { btn.focus(); return; }
+
+  // Önizleme: hiçbir şey kaydedilmez — öğrencinin göreceği bekleme ekranı demo olarak açılır
+  if (_bkAdminPreview) {
+    bkDemoPending({ from_phone: phoneE164, lesson_type: isSingle ? 'single' : 'monthly', duration_months: duration,
+      lessons_per_month: lessonsPerMonth, preferred_start_date: preferredStartDate, schedule, note, ...pkgFields,
+      rules_accepted_detail: rulesConsent.items, rules_version: rulesConsent.version });
+    return;
+  }
 
   btn.disabled = true; bkSetSubmitLabel(true);
   try {
@@ -6286,7 +6298,7 @@ function initRequestForm(opts) {
   const errBox = document.getElementById('reqError');
   if (errBox) errBox.style.display = 'none';
   const _back = document.getElementById('reqBackBtn');
-  if (_back) { _back.hidden = _bkAdminPreview; _back.onclick = () => renderAccessView(_user, 'none'); }
+  if (_back) { _back.hidden = false; _back.onclick = () => renderAccessView(_user, 'none'); }
   const _rsn = document.getElementById('reqReschNote'); if (_rsn) _rsn.hidden = false;
   bkRenderEndedCallout(o.endedRes || null, o.reason || 'ended');
   // Paketi biten öğrenci: önceki gün/saatler seçili gelir (ızgara dolu/kapalı olanları düşürür)
@@ -6359,8 +6371,7 @@ async function renderDashboard() {
   if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   showView('view-dashboard');
   initLessonAnnouncements(false);
-  _dashResUnsub = db.collection('reservations').doc(_user.uid)
-    .onSnapshot(async (snap) => {
+  const _onRes = async (snap) => {
   if (!snap || !snap.exists) { initRequestForm(); return; }
   const res = snap.data();
 
@@ -7131,7 +7142,10 @@ async function renderDashboard() {
   }
   // Panel turu: ödemesi onaylı / onaysız / deneme dersi (ilk ziyaret pencerelerinden sonra bir kez)
   bkTourSetState(isTrial ? 'trial' : isPaid ? 'active' : 'unpaid');
-  }, e => {
+  };
+  // Önizleme demosu: rezervasyon bellekte (bkDemoApprove) — okunmaz, dinlenmez, yazılmaz
+  if (_bkAdminPreview && _bkDemoRes) { _onRes({ exists: true, id: _user.uid, data: () => _bkDemoRes }); return; }
+  _dashResUnsub = db.collection('reservations').doc(_user.uid).onSnapshot(_onRes, e => {
     // permission-denied is usually a transient auth token refresh — Firebase auto-retries
     if (e.code === 'permission-denied') return;
     const c=errId(); toast(`${window._i18n?.getLang()==='en'?'Reservation load failed':'Rezervasyon yüklenemedi'} (${c}): `+(e.message||e.code), true);
@@ -7159,7 +7173,10 @@ var _admCalLessons = [];
 var _admLessonSlots = new Set(); // 'dow_HH:MM' — önümüzdeki 90 günde dersi olan saatler
 var _admTab = 'talepler';        // ≤1024 bölüm sekmesi
 var _admChromeBound = false;
-var _bkAdminPreview = false;     // admin "öğrenci görünümü" önizlemesinde
+var _bkAdminPreview = false;
+var _bkDemoReq = null;           // önizlemede "gönderilen" talep — hiçbir yere yazılmaz
+var _bkDemoRes = null;           // önizleme demosu: renderDashboard Firestore yerine bunu okur
+var _bkWriteGuard = null;        // önizlemede yazma kilidi (bkPreviewGuard) — geri alma fonksiyonu     // admin "öğrenci görünümü" önizlemesinde
 const _admDesktopMq = window.matchMedia('(min-width:1025px)');
 const _admNarrowMq = window.matchMedia('(max-width:1279px)');
 
@@ -7338,6 +7355,8 @@ function admStopListeners() {
   _admCamp = { list: [], dirty: false };
   _admAvail = { days: null, blocked: {}, saved: null, dirty: false, loaded: false };
   _bkAdminPreview = false;
+  _bkDemoReq = _bkDemoRes = null;
+  bkPreviewGuard(false);
   document.documentElement.classList.remove('bk-admin-preview');
 }
 
@@ -7360,6 +7379,9 @@ async function renderAdminPanel() {
   if (_adminReqUnsub) { _adminReqUnsub(); _adminReqUnsub = null; }
   if (_adminStudUnsub) { _adminStudUnsub(); _adminStudUnsub = null; }
   _bkAdminPreview = false;
+  _bkDemoReq = _bkDemoRes = null;
+  bkPreviewGuard(false);
+  bkPrevDemoBar();
   document.documentElement.classList.remove('bk-admin-preview');
   showView('view-admin');
   admInitChrome();
@@ -7610,21 +7632,148 @@ function admUpdateCounts() {
   admSet('admMStudents', _admActiveStuCount);
 }
 
-// ── Öğrenci görünümü önizlemesi: talep formu (yayındaki kampanyalarla), gönderim kapalı ──
+// ── Öğrenci görünümü önizlemesi (demo) ──
+// Yeni öğrencinin ilk ekranından (deneme dersi / kampanyalı paket) başlar, yayındaki kampanyalarla.
+// Önizleme boyunca hiçbir şey kaydedilmez (bkPreviewGuard). Gönderilen talep öğrencinin göreceği
+// ekranlarla demo olarak ilerler: bekleme ekranı → (Onaylanınca) panel → ödeme onaylı/bekliyor.
+// Çıkınca demo silinir; bir sonraki önizleme yine seçim ekranından başlar.
 function admStudentPreview() {
   if (!_user || _user.email !== ADMIN_EMAIL) return;
   if (_admCamp.dirty) toast(bkT('adm_prev_dirty', 'Önizleme yayındaki kampanyaları gösterir — değişikliklerin henüz yayınlanmadı.'));
   _bkAdminPreview = true;
+  bkPreviewGuard(true);
+  bkDemoReset();
   document.documentElement.classList.add('bk-admin-preview');
-  initRequestForm();
+  renderAccessView(_user, 'none');
   window.scrollTo({ top: 0, behavior: 'instant' });
   setTimeout(() => document.getElementById('admExitPreview')?.focus({ preventScroll: true }), 60);
 }
 function admExitPreview() {
+  bkStopStudentListeners();
+  bkDemoReset();
+  bkPreviewGuard(false);
   _bkAdminPreview = false;
   document.documentElement.classList.remove('bk-admin-preview');
   renderAdminPanel();
   window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// Önizleme boyunca Firestore yazmaları ve Cloud Functions çağrıları sunucuya gitmez: öğrenci
+// ekranındaki her eylem (kural onayı, not, saat değiştirme, erteleme, ödeme bildirimi, soru,
+// sınav…) demo olarak kalır. Çıkışta (admExitPreview / renderAdminPanel / oturum kapanışı) geri alınır.
+function bkPreviewGuard(on) {
+  if (!on === !_bkWriteGuard) return;
+  if (!on) { const undo = _bkWriteGuard; _bkWriteGuard = null; undo(); return; }
+  const F = firebase.firestore, saved = [];
+  let lastToast = 0;
+  const blocked = function () {
+    const msg = bkT('adm_prev_blocked', 'Önizleme: bu işlem kaydedilmedi.');
+    if (Date.now() - lastToast > 2500) { lastToast = Date.now(); toast(msg); }
+    const e = new Error(msg); e.code = 'preview';
+    return Promise.reject(e);
+  };
+  const patch = (o, name, fn) => {
+    if (!o || typeof o[name] !== 'function') return;
+    const own = Object.prototype.hasOwnProperty.call(o, name);
+    saved.push([o, name, own ? o[name] : null, own]);
+    o[name] = fn;
+  };
+  const proto = c => c && c.prototype;
+  patch(proto(F.DocumentReference), 'set', blocked);
+  patch(proto(F.DocumentReference), 'update', blocked);
+  patch(proto(F.DocumentReference), 'delete', blocked);
+  patch(proto(F.CollectionReference), 'add', blocked);
+  patch(proto(F.WriteBatch), 'commit', blocked);
+  patch(proto(F.Firestore), 'runTransaction', blocked);
+  try { patch(firebase.app().functions('europe-west1'), 'httpsCallable', () => blocked); } catch (_) {}
+  _bkWriteGuard = () => saved.reverse().forEach(([o, name, v, own]) => { if (own) o[name] = v; else delete o[name]; });
+}
+
+function bkDemoReset() {
+  _bkDemoReq = _bkDemoRes = null;
+  bkWkStop();
+  bkPrevDemoBar();
+}
+
+// Demo talebi "gönderildi": öğrencinin göreceği bekleme ekranı (id '_' → dinleyici kurulmaz)
+async function bkDemoPending(req) {
+  if (!_bkAdminPreview) return;
+  _bkDemoRes = null;
+  _bkDemoReq = Object.assign({ from_uid: _user.uid, from_name: _user.displayName || '', from_email: _user.email || '',
+    from_photo: _user.photoURL || '', status: 'pending', id: '_' }, req);
+  toast(bkT('adm_prev_sent', 'Önizleme: talep kaydedilmedi — öğrencinin göreceği bekleme ekranı açıldı.'));
+  await renderPendingView(_bkDemoReq);
+  bkPrevDemoBar();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// Admin onaylasaydı oluşacak rezervasyon (acceptRequest / acceptTrialRequest ile aynı alanlar), yalnız bellekte
+function bkDemoApprove() {
+  const r = _bkDemoReq;
+  if (!_bkAdminPreview || !r) return;
+  const now = firebase.firestore.Timestamp.now();
+  const who = { student_uid: r.from_uid, student_name: r.from_name, student_email: r.from_email,
+    student_phone: r.from_phone || '', student_photo: r.from_photo || '', note: r.note || '', created_at: now };
+  let res;
+  if (r.lesson_type === 'trial') {
+    res = Object.assign(who, { duration_months: 0, schedule: [], start_date: r.trial_date, end_date: r.trial_date,
+      lessons: [{ date: r.trial_date, time: r.trial_time, status: 'scheduled' }], reschedule_credits: {},
+      lesson_type: 'trial', payment_confirmed: true });
+  } else {
+    const isSingle = r.lesson_type === 'single';
+    const lessons = calculateLessonDates(r.schedule, isSingle ? 1 : r.duration_months, isSingle ? 1 : (r.lessons_per_month || 4),
+      isSingle ? toDateStr(new Date()) : r.preferred_start_date);
+    const credits = {}, t = new Date();
+    for (let i = 0; i < r.duration_months; i++) {
+      const d = new Date(t.getFullYear(), t.getMonth() + i, 1);
+      credits[`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`] = 1;
+    }
+    const price = reservationPriceFields(r, lessons.length, null, () => undefined, { keepAdminPrice: true });
+    Object.keys(price).forEach(k => { if (price[k] === undefined) delete price[k]; });
+    res = Object.assign(who, { lesson_type: r.lesson_type || 'monthly', duration_months: r.duration_months,
+      lessons_per_month: r.lessons_per_month || 4, preferred_start_date: r.preferred_start_date || '', schedule: r.schedule,
+      start_date: r.preferred_start_date || toDateStr(new Date()), end_date: lessons.length ? lessons[lessons.length - 1].date : '',
+      lessons, reschedule_credits: credits, payment_confirmed: false, payment_pending: false,
+      rules_accepted_at: now, rules_accepted_detail: r.rules_accepted_detail || null, rules_version: r.rules_version || RULES_CONSENT_VERSION }, price);
+  }
+  _bkDemoRes = res;
+  renderDashboard();
+  bkPrevDemoBar();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+function bkDemoPaid(on) {
+  if (!_bkAdminPreview || !_bkDemoRes) return;
+  _bkDemoRes = Object.assign({}, _bkDemoRes, { payment_confirmed: on, payment_pending: false });
+  renderDashboard();
+  bkPrevDemoBar();
+}
+
+// Önizleme çubuğundaki demo adımları
+function bkPrevDemoBar() {
+  const bar = document.getElementById('bkPrevDemo');
+  if (!bar) return;
+  bar.innerHTML = '';
+  if (!_bkAdminPreview || !_bkDemoReq) { bar.hidden = true; return; }
+  const add = (key, fb, fn, primary) => {
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'btn btn-sm ' + (primary ? 'btn-primary' : 'btn-ghost');
+    x.textContent = bkT(key, fb);
+    x.onclick = fn;
+    bar.append(x);
+  };
+  if (!_bkDemoRes) add('adm_prev_approve', 'Onaylanınca: paneli göster', bkDemoApprove, true);
+  else if (_bkDemoRes.lesson_type !== 'trial') {
+    if (_bkDemoRes.payment_confirmed) add('adm_prev_unpaid', 'Ödeme bekliyor hâli', () => bkDemoPaid(false));
+    else add('adm_prev_paid', 'Ödeme onaylanınca', () => bkDemoPaid(true), true);
+  }
+  add('adm_prev_restart', 'Baştan başla', () => {
+    bkStopStudentListeners();
+    bkDemoReset();
+    renderAccessView(_user, 'none');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+  bar.hidden = false;
 }
 
 // ── Gelen talepler ──
@@ -11432,6 +11581,8 @@ function renderAccessView(user, state, rejectReason) {
         phoneE164 = '+' + phoneDigits;
       }
       errEl.style.display = 'none';
+      // Önizleme: uygunluk denetimi ve kayıt yok — demo bekleme ekranı
+      if (_bkAdminPreview) { bkDemoPending({ lesson_type: 'trial', trial_date: date, trial_time: time, note, from_phone: phoneE164 }); return; }
       btn.disabled = true; btn.textContent = window._i18n?.t('bk_submitting')||'Gönderiliyor…';
       try {
         // Anti-abuse: deneme dersi sadece bir kere. Email + telefon + IP
@@ -12064,9 +12215,9 @@ auth.onAuthStateChanged(user => {
 });
 </script>
 <!-- Site içi asistan: motor + bilgi tabanı + arayüz (window.beAssistant) -->
-<script src="assets/js/be-assistant.js?v=202610071400"></script>
-<script src="assets/js/be-assistant-kb.js?v=202610071400"></script>
-<script src="assets/js/be-assistant-ui.js?v=202610071400"></script>
+<script src="assets/js/be-assistant.js?v=202610071500"></script>
+<script src="assets/js/be-assistant-kb.js?v=202610071500"></script>
+<script src="assets/js/be-assistant-ui.js?v=202610071500"></script>
 <script>(function(){
   // Dil değişince JS'in ürettiği metinler (paket tablosu, slot ipucu, tek ders notu) yeniden çizilir
   function init(){

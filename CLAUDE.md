@@ -113,6 +113,10 @@ Rules for page CSS (replaces the old flat rules): tokens only; radius from the `
 
 Many pages still have `type="module"` on some script blocks. Before adding shared state, verify the target script block is a plain `<script>`. Also: an unescaped apostrophe inside a single-quoted JS string (e.g. `'Wet'i'`) silently breaks the whole module. Prefer template literals for any Turkish UI strings.
 
+## Tools
+
+`tools/demo-uyeler.cjs` (hosting'e yüklenmez, `firebase.json` ignore `tools/**`): `node tools/demo-uyeler.cjs ekle|sil` — deneme amaçlı 180 boş üye profili (`users/{id}`: `displayName`, `joinedAt`, gizli `seedBatch: 'demo-2026-10-05'`). Firebase CLI oturumunu kullanır. `members.html` `users`'ı `limit(500)` ile okur.
+
 ## Firestore Collections
 
 | Collection | Notes |
@@ -171,6 +175,8 @@ Because of this, the student "↺ Ertele" button does **not** write lessons dire
 - **24h rule:** `calculateLessonDates()` pushes a weekday series one week forward while its first slot starts less than 24h from now (or is already past), so a request made Sunday 11:00 for Monday 10:00 begins with the other selected day. The extra-lesson picker disables such days/times via `slotStartsTooSoon()`; the same function feeds the request preview, the min-lesson check and admin `acceptRequest`.
 
 - **Seviye belirleme sınavı:** ödemesi onaylı aktif öğrenci dışında herkese zorunlu olarak açılır — talebi bekleyenler, ödemesi onaylanmamış aktif öğrenciler, paketi bitenler ve deneme dersi isteyenler dahil. `initPlacementTest(slotId, nag, autoOpen)` dört yuvaya basar: bekleme ekranı (`#ptSlotPending`), panel (`#ptSlotDash`, sadece `payment_confirmed` değilken), talep formu (`#ptSlotRequest`) ve seçim ekranı (`#ptSlotAccess` — kart görünür ama modal kendiliğinden açılmaz, ilk kayıt akışını kesmesin diye). Modal sayfa başına bir kez kendiliğinden açılır; öğrenci erteleyebilir ama kart ve hatırlatma kalır. Admin tarafında sonuç, talep ve öğrenci satırlarındaki `[data-pt-uid]` rozetinde görünür (canlı dinlenir), rozete tıklayınca soru bazlı detay ve "Sınavı Sıfırla" açılır.
+
+- **Admin öğrenci önizlemesi (demo):** "Öğrenci görünümü" (`[data-adm-preview]` → `admStudentPreview`) yeni öğrencinin ilk ekranından (deneme dersi / kampanyalı paket) başlar. Önizleme boyunca `bkPreviewGuard` Firestore yazmalarını (`set/update/delete/add`, `batch.commit`, `runTransaction`) ve `httpsCallable`'ı kilitler; hiçbir şey kaydedilmez. Gönderilen talep `bkDemoPending` ile bekleme ekranına, önizleme çubuğundaki "Onaylanınca: paneli göster" (`bkDemoApprove`, acceptRequest/acceptTrialRequest ile aynı alanlar, yalnız bellekte `_bkDemoRes`) ile panele, "Ödeme onaylanınca" ile ödemesi onaylı hâline geçer. Çıkışta (`admExitPreview` / `renderAdminPanel`) kilit kalkar, demo silinir.
 
 These flows live almost entirely inside `booking.html` (~8700 lines) — single source of truth for the panel UX. Admin UI (AdminPaneli design): `#admRoot` (`.adm-*`), own sidebar on desktop (shell header/footer hidden via `beShell.hide`, `html.bk-admin`), section tabs `#admRoot[data-tab]` at ≤1024; "Öğrenci görünümü" opens the request form as a read-only preview (`_bkAdminPreview`: submit and placement test disabled).
 
