@@ -140,6 +140,14 @@
     return l === 'en' ? m + 'm' : m + ' dk';
   }
   function tl(n) { var f = pf('tlFmt'); return f ? f(n) : Math.round(n).toLocaleString('tr-TR') + ' TL'; }
+  // booking.html'deki BK_BANK ({ bank, name, iban, ibanRaw }); eksik/boşsa null
+  function bankInfo() {
+    var b = pv('BK_BANK');
+    if (!b || typeof b !== 'object') return null;
+    var iban = String(b.iban || '').trim();
+    if (!/^[A-Z]{2}\d{2}[A-Z0-9 ]{10,}$/.test(iban)) return null;
+    return { iban: iban, ibanRaw: String(b.ibanRaw || iban).replace(/\s+/g, ''), bank: String(b.bank || '').trim() || '—', name: String(b.name || '').trim() || '—' };
+  }
   function num(name, fb) { var v = pv(name); return typeof v === 'number' ? v : fb; }
 
   var cache = { pt: undefined, ptFor: null, days: undefined, pend: undefined, pendFor: null };
@@ -177,8 +185,12 @@
     var vars = {
       name: first, name_comma: first ? ', ' + first : '',
       self_h: selfH, resch_h: reschH, join_min: joinMin, cfm_h: cfmH, lesson_min: F.lessonMin, late_min: F.lateMin, trial_days: F.trialMinDays,
-      extra_price: tl(F.extraCreditPrice), iban: F.iban, bank: F.bank, iban_name: F.ibanName, wa_display: F.waDisplay,
+      extra_price: tl(F.extraCreditPrice), wa_display: F.waDisplay,
     };
+    // Banka / IBAN tek kaynaktan: booking.html → var BK_BANK. Yoksa IBAN'lı varyantlar atlanır
+    // (yer tutucu dolmaz), cevap ödeme kartına yönlendirir; boş IBAN asla yazılmaz.
+    var bank = bankInfo();
+    if (bank) { vars.iban = bank.iban; vars.bank = bank.bank; vars.iban_name = bank.name; flags.bankInfo = true; }
     var price = pv('LESSON_PRICE'), single = pv('LESSON_PRICE_SINGLE');
     if (typeof price === 'number') vars.price = tl(price);
     if (typeof single === 'number') vars.price_single = tl(single);
@@ -328,7 +340,7 @@
   }
 
   // ── Öğrenilen cevaplar (assistant_faq) ───────────────────────
-  var faqDocs = [], kbAll = { intents: KB.intents, synonyms: KB.synonyms, facts: KB.facts }, faqUnsub = null;
+  var faqDocs = [], kbAll = { intents: KB.intents, synonyms: KB.synonyms, combos: KB.combos, facts: KB.facts }, faqUnsub = null;
   function faqToIntent(id, d) {
     var q = Array.isArray(d.q) ? d.q : (d.q ? [String(d.q)] : []);
     q = q.map(function (s) { return String(s).trim(); }).filter(Boolean).slice(0, 30);
@@ -339,7 +351,7 @@
   }
   function rebuildKb() {
     var extra = faqDocs.map(function (x) { return faqToIntent(x.id, x.d); }).filter(Boolean);
-    kbAll = { intents: KB.intents.concat(extra), synonyms: KB.synonyms, facts: KB.facts };
+    kbAll = { intents: KB.intents.concat(extra), synonyms: KB.synonyms, combos: KB.combos, facts: KB.facts };
   }
   function watchFaq() {
     if (faqUnsub || !W.firebase || !curUser()) return;
@@ -677,7 +689,8 @@
         return say(S.notHere);
       }
       case 'copyIban': {
-        try { navigator.clipboard.writeText(KB.facts.ibanRaw); } catch (_) {}
+        var bk = bankInfo(); if (!bk) return say(S.notHere);
+        try { navigator.clipboard.writeText(bk.ibanRaw); } catch (_) {}
         btn.textContent = t(S.copied); return;
       }
       case 'wa': {

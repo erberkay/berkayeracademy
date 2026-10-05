@@ -5,7 +5,8 @@
    - erteleme: N aylık paket = N hak (havuz), ≥24 sa önce (MIN_LEAD_MS), Berkay Er onaylar, ek hak 500 TL
    - Derse Katıl: 15 dk önce (BK_JOIN_MS) · ders 60 dk · onay/itiraz penceresi 48 sa (BK_CFM_WINDOW_MS)
    - kurallar: RULES_CONSENT_ITEMS (geç kalma 10 dk, devamsızlık, telif, iptal/devir yok)
-   - IBAN / banka: "Yapman gereken" kartı ve showExtraCreditModal ile aynı
+   - IBAN / banka: burada TUTULMAZ — arayüz booking.html'deki var BK_BANK'ı okur ({iban} {bank}
+     {iban_name}, bayrak bankInfo). BK_BANK yoksa IBAN'lı varyant atlanır, cevap ödeme kartını gösterir.
    Niyet alanları:
      id      benzersiz kimlik            ex  { tr:[…], en:[…] } örnek sorular (her biri en az 8)
      a       cevap şablonu: { tr, en } ya da varyant dizisi [{ if:'bayrak !bayrak', tr, en }]
@@ -15,7 +16,7 @@
      topic   takip sorularında ("peki kaç tane?") taşınan konu belirteçleri   follow  tercih edilen sonraki niyetler
      kw      ek anahtar kelimeler
      need    bu kavram/köklerden en az biri soruda yoksa puan ve kapsam düşer ("talebim onaylandı mı"da
-             "ertele" yok → erteleme durumu değil)
+             "ertele" yok → erteleme durumu değil). Dizi dizisi [['@a'], ['@b', '@c']] ise her grup ayrı koşul
      avoid   bunlardan biri soruda varsa başka konudur, puan ve kapsam düşer ("talebimi iptal" → iptal politikası değil)
      strong  bu kavram geçerse niyet kesin konu (korsan yazılım isteği her zaman reddedilir); geçmezse
              niyet "Bunu mu demek istedin?" seçeneklerine girmez
@@ -24,16 +25,19 @@
    yalnız o biçimle başlayan kelimeyle, "=kelime$" tam olarak o kelimeyle eşlenir (kökü başka fiillerle
    çakışanlar için). Satırın üçüncü alanı 'flag' ise kavram eşleşmede belirteç olmaz, yalnız need/avoid
    ve cevap bayrağı için işaret olur (@oneri → "en iyi kulaklık" "en iyi paket" örneğine benzemesin).
-   Soruya bağlı cevap bayrakları (arayüz koyar): qProd (prodüksiyon sorusu), qOneri (marka/model önerisi).
+   "~kelime" etkisiz kelime de olsa metinde (ekli) aranır. Motor @ben (birinci tekil), @sahip (isim iyeliği:
+   "paketimin", "aldığım"), @olumsuz kavramlarını kendisi koyar.
+   Bileşik kavramlar (COMBOS): komşu niyetleri ayıran soru KALIPLARI — "toplam/ödeyeceğim + ne kadar" → @borc
+   (fiyat listesi değil kendi tutarı), "katıl/ertele + çalışmıyor/gri/olumsuz fiil" → @engelli, "hak + bitti +
+   ama/lazım" → @hakbitti. Ayrım örnek cümle ezberiyle değil kavram + need/avoid ile yapılır; değerlendirme
+   cümleleri örneklere kopyalanmaz (bağımsız yazılmış bir set bunu ölçer).
+   Soruya bağlı cevap bayrakları (arayüz koyar): qProd (prodüksiyon sorusu), qOneri (marka/model önerisi);
+   bankInfo (booking.html → BK_BANK okundu).
    Metin işaretlemesi: **kalın**, satır başı "- " madde, boş satır paragraf (arayüz güvenli çizer). */
 (function (root) {
   'use strict';
 
   var FACTS = {
-    bank: `Garanti Bankası`,
-    ibanName: `Muhammet Berkay Er`,
-    iban: `TR35 0006 2000 6870 0006 8982 06`,
-    ibanRaw: `TR350006200068700006898206`,
     wa: `905523070067`,          // .wa-fab ile aynı (arayüz önce sayfadaki bağlantıyı okur)
     waDisplay: `+90 552 307 00 67`,
     extraCreditPrice: 500,
@@ -45,14 +49,14 @@
   // kökü başka fiillerle çakışanlar için ("=yazıyor" → "yaz-" fiilinin her biçimi değil).
   var SYN = [
     ['zoom', [`zoom`, `link`, `linki`, `bağlantı`, `toplantı`, `meeting`, `görüşme linki`, `ders linki`, `zum`]],
-    ['katil', [`katıl`, `katılmak`, `derse gir`, `derse gire`, `derse bağlan`, `join`, `derse katıl`, `zoom gir`, `linke gir`, `linke tıkla`, `önce gir`, `ders gir`]],
+    ['katil', [`katıl`, `katılmak`, `derse gir`, `derse gire`, `derse bağlan`, `join`, `derse katıl`, `zoom gir`, `linke gir`, `linke tıkla`, `önce gir`, `ders gir`, `=bağlan`, `connect`, `get into`, `nereden gir`, `enter`, `get in`]],
     ['ertele', [`ertele`, `erteleme`, `ertelemek`, `ötele`, `kaydır`, `hafta ileri`, `hafta sonraya`, `sonraya al`, `başka hafta`, `diğer hafta`, `öbür hafta`, `haftaya al`, `haftaya at`, `haftaya kaydır`, `haftaya ertele`, `postpone`, `reschedule`, `push back`]],
-    ['degis', [`çek`, `çekmek`, `öne al`, `değiştir`, `değiştirmek`, `değişiklik`, `taşı`, `taşımak`, `başka saate`, `başka güne`, `saatini değiştir`, `saat değiştir`, `saat ileri`, `saat geri`, `saat öne`, `oynat`,
+    ['degis', [`çek`, `çekmek`, `öne al`, `değiştir`, `değiştirmek`, `değişiklik`, `taşı`, `taşımak`, `başka saate`, `başka güne`, `saatini değiştir`, `saat değiştir`, `=güncelle`, `update`, `düzelt`, `=düzenle`, `edit`, `saat ileri`, `saat geri`, `saat öne`, `oynat`,
       `pazartesiye al`, `salıya al`, `çarşambaya al`, `perşembeye al`, `cumaya al`, `cumartesiye al`, `pazara al`, `akşama al`, `sabaha al`, `öğlene al`, `güne al`, `saate al`, `change`, `move`, `switch`]],
     ['hak', [`hak`, `hakkı`, `hakkım`, `haklarım`, `kredi`, `credit`, `credits`, `erteleme hakkı`]],
     ['odeme', [`ödeme`, `öde`, `ödemek`, `ödedim`, `ödeyeceğim`, `pay`, `payment`, `paid`, `ödemeyi yaptım`, `para gönder`, `parayı gönder`, `para at`, `parayı at`, `para yatır`, `parayı yatır`, `parayı yolla`, `=yatır`, `havale yap`, `havale at`, `havaleyi yap`, `eft yap`, `eft at`]],
     ['iban', [`iban`, `havale`, `eft`, `hesap numarası`, `banka`, `hesap bilgisi`, `bank`, `transfer`]],
-    ['fiyat', [`fiyat`, `ücret`, `ücreti`, `kaç para`, `kaç tl`, `kaç lira`, `ne kadar tutar`, `tl`, `lira`, `price`, `cost`, `fee`, `tutar`, `pahalı`, `=ücretli`, `=paralı`]],
+    ['fiyat', [`fiyat`, `ücret`, `ücreti`, `kaç para`, `kaç tl`, `kaç lira`, `ne kadar tutar`, `tl`, `lira`, `price`, `prices`, `pricing`, `how much`, `expensive`, `rate`, `rates`, `cost`, `costs`, `fee`, `fees`, `tutar`, `pahalı`, `=ücretli`, `=paralı`]],
     ['satinal', [`satın al`, `satın alma`, `para ver`, `para öde`, `parasını öde`, `ücretini öde`, `=parayla`, `=parası`, `=ücretli`, `buy`, `purchase`]],
     ['indirim', [`indirim`, `indirimli`, `kampanya`, `kampanyalı`, `discount`, `ucuz`, `avantajlı`, `uygun fiyat`, `en uygun`]],
     ['paket', [`paket`, `kampanya`, `package`, `bundle`, `aylık plan`, `plan`, `=aylık`]],
@@ -92,20 +96,100 @@
     ['yakin', [`saat kaldı`, `saat var`, `saat kala`, `son dakika`, `az kaldı`, `birkaç saat`, `hours left`, `last minute`, `bugünkü ders`, `bu akşamki`, `bu akşam ders`, `bugün akşam`]],
     ['hatirlat', [`hatırlat`, `hatırlatma`, `hatırlatıcı`, `bildirim`, `reminder`, `notification`, `uyarı mesajı`]],
     ['saatdilimi', [`istanbul saati`, `saat dilimi`, `türkiye saati`, `timezone`, `time zone`, `yurt dışı`, `yurtdışı`, `utc`]],
-    ['kapali', [`kırmızı`, `kapalı`, `=dolu`, `seçilemiyor`, `seçemiyorum`, `seçilmiyor`, `seçemedim`, `müsait değil`, `boş saat yok`]],
+    ['kapali', [`kırmızı`, `kapalı`, `=dolu$`, `seçilemiyor`, `seçemiyorum`, `seçilmiyor`, `seçemedim`, `müsait değil`, `boş saat yok`]],
     ['site', [`sayfa`, `site`, `web sitesi`, `tarayıcı`, `browser`, `safari`, `chrome`, `mobil`, `=telefondan`, `=telefonda`, `page`, `website`]],
-    ['bozuk', [`bozuk`, `=bozul`, `hata`, `error`, `=çöktü`, `=donuyor`, `=dondu`, `=donmuş`, `yuklen`, `açılmıyor`, `=açılmadı`, `=kayıyor`, `beyaz ekran`, `bembeyaz`, `=takılıyor`, `=takıldı`, `yavaş`, `düzgün görünmüyor`, `düzgün gözükmüyor`, `crash`, `broken`, `loading`]],
+    ['bozuk', [`bozuk`, `=bozul`, `hata`, `error`, `=çöktü`, `=donuyor`, `=dondu`, `=donmuş`, `yuklen`, `=açılmıyor`, `=açılmadı`, `=kayıyor`, `beyaz ekran`, `bembeyaz`, `=takılıyor`, `=takıldı`, `yavaş`, `düzgün görünmüyor`, `düzgün gözükmüyor`, `crash`, `broken`, `loading`]],
     ['yaziyor', [`=yazıyor`, `=diyor`, `=gözüküyor`, `=görünüyor`, `=gösteriyor`, `=çıkıyor`, `says`, `shows`]],
     ['yanlislik', [`yanlışlıkla`, `kazara`, `sehven`, `by mistake`, `accidentally`]],
-    ['kilit', [`kilitli`, `kilit`, `pasif`, `basamıyorum`, `tıklanmıyor`, `açılmadı`, `locked`, `disabled`]],
-    ['kacir', [`kaçır`, `kaçırdım`, `=gelmezsem`, `=katılmazsam`, `=girmezsem`, `=gelemedim`, `=giremedim`, `=katılamadım`, `=unuttum`, `=unutmuşum`, `no show`, `missed`, `miss`]],
+    ['kilit', [`kilitli`, `kilit`, `pasif`, `=basamıyorum`, `=tıklanmıyor`, `=açılmadı`, `locked`, `disabled`]],
+    ['kacir', [`kaçır`, `kaçırdım`, `=gelmezsem`, `=katılmazsam`, `=girmezsem`, `=gelemedi`, `=giremedi`, `=katılamadı`, `=katılmadı`, `=kaçırdı`, `=girmediğim`, `=katılmadığım`, `=gelmediğim`, `=unuttum`, `=unutmuşum`, `no show`, `missed`, `miss`]],
     ['gun', [`pazartesi`, `salı`, `çarşamba`, `perşembe`, `cuma`, `cumartesi`, `pazar`, `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, `sunday`]],
     ['gecmis', [`geçmiş`, `=geçen`, `önceki`, `=eski`, `biten`, `bitmiş`, `past`, `previous`]],
     ['gunvakti', [`sabah`, `öğlen`, `öğleden sonra`, `akşam`, `gece`, `morning`, `evening`, `night`]],
     ['oneri', [`en iyi`, `en iyisi`, `tavsiye`, `öneri`, `önerir misin`, `önerirsin`, `hangi marka`, `marka`, `model öner`, `recommend`, `best`], 'flag'],
     ['korsan', [`crack`, `=crackli`, `=cracked`, `korsan`, `warez`, `keygen`, `torrent`, `kırık program`, `=kırık`, `bedava indir`, `ücretsiz indir`, `full indir`]],
+    // ── Ayrıştırıcı kavramlar: komşu niyetleri soru kalıbıyla ayırır (need/avoid ve combos) ──
+    // kendi ödeme yükümlülüğü: "ödeyeceğim", "ödemem lazım", "I owe"
+    ['odeyecek', [`=ödeyece`, `=ödice`, `=ödiyece`, `=ödiycem`, `=ödemeliyim`, `ödemem gerek`, `ödemem lazım`, `ödemem gereken`, `yatırmam gerek`, `yatırmam lazım`, `=yatıraca`, `göndermem gerek`, `göndermem lazım`, `=göndereceğim`,
+      `borç`, `borcum`, `owe`, `owed`, `ödeme yapmam`, `=ödenecek`, `ödenmesi gereken`, `=göndermeliyim`, `=yatırmalıyım`, `do i pay`, `do i have to pay`, `should i pay`, `i need to pay`, `i have to pay`, `need to pay`, `have to pay`, `still owe`, `left to pay`, `amount due`, `is due`, `due`, `kalan ödeme`, `bana çıkan`, `bana düşen`]],
+    ['toplam', [`toplam`, `toplamda`, `total`, `overall`, `in total`, `tamamı`, `hepsi ne kadar`, `hepsi kaç`]],
+    ['sahip', [], 'flag'],   // motor koyar: isim iyeliği ("paketimin", "ücretim") ya da benim/bana/my
+    // bozuk / pasif kontrol: "çalışmıyor", "hiçbir şey olmuyor", "gri", "greyed out"
+    ['arizali', [`=çalışmıyor`, `=çalışmıyo`, `=çalışmadı`, `=olmuyor`, `=olmuyo`, `=olmadı$`, `bir şey olmuyor`, `bir şey olmadı`, `tepki vermiyor`, `=tepkisiz`, `=basılmıyor`, `=basamıyorum`, `=basamadım`, `=tıklanmıyor`, `=tıklayamıyorum`,
+      `=açılmıyor`, `=gri`, `=griye`, `=grimsi`, `=soluk`, `=silik`, `=pasif`, `devre dışı`, `aktif değil`, `=görünmüyor`, `=gözükmüyor`, `=çıkmıyor`, `=çıkmadı`,
+      `greyed`, `grayed`, `grey`, `gray`, `disabled`, `inactive`, `not working`, `doesn't work`, `does nothing`, `nothing happens`, `not clickable`, `can't click`, `unclickable`, `won't open`, `not showing`, `doesn't show`, `missing`, `dead`,
+      `won't work`, `isn't working`, `not respond`, `no response`, `can't press`, `won't let me`, `not appear`, `doesn't appear`, `won't load`]],
+    // son süre: "en geç", "kaç saat öncesine kadar", "deadline"
+    ['sonsure', [`ne kadar vakit`, `ne kadar vaktim`, `ne kadar zaman kal`, `kaç saat kal`, `how much time`, `time left`, `değiştirme süresi`, `değişiklik süresi`, `erteleme süresi`, `ne zaman kapan`, `when does it close`, `en geç`, `en son ne zaman`, `en son kaç`, `son saat`, `son gün`, `son tarih`, `son süre`, `son ana kadar`, `kaç saat önce`, `kaç saat öncesine`, `saat öncesine kadar`, `kaç gün önce`, `ne zamana kadar`, `ne zamana dek`,
+      `deadline`, `until when`, `how late`, `latest`, `at the latest`, `how many hours before`, `how long before`, `cutoff`, `cut off`]],
+    // tükendi: "bitti", "kalmadı", "used up"
+    ['tukendi', [`=bitti`, `=bitmiş`, `=kalmadı`, `=kalmamış`, `=tükendi`, `=tükenmiş`, `=yok$`, `=sıfır`, `hiç yok`, `out of`, `=kullandım`, `hepsini kullan`, `tümünü kullan`, `bütün hak`, `all my credits`, `have no`, `got no`, `do nt have`, `zero`, `none`, `used up`, `used all`, `ran out`, `run out`, `none left`, `no more`, `all gone`, `no credits left`], 'flag'],
+    // kullanılmayan haklar / devir: "kullanmadığım", "artan", "sonraki pakete geçer mi"
+    ['kullanilmayan', [`=kullanmad`, `=kullanılmay`, `=kullanılmam`, `=kullanmaz`, `=kullanamad`, `=artan`, `=artakal`, `=devreder`, `=devrol`, `=aktarıl`, `sonraki pakete`, `sonraki aya`, `yeni pakete`, `=birikir`, `=birikiyor`, `boşa gider`,
+      `unused`, `don't use`, `didn't use`, `leftover`, `left over`, `carry over`, `roll over`, `rollover`]],
+    // seviye sınavı sonucu: "puanım", "kaç aldım", "hangi seviye çıktı"
+    ['paketsonu', [`paket bitince`, `paket bittiğinde`, `paket bitti mi`, `paket sona er`, `paketin sonunda`, `paket süresi dol`, `when the package ends`, `after the package`, `end of the package`], 'flag'],
+    ['eser', [`=şarkı$`, `=şarkının`, `=şarkıyı`, `=şarkılar`, `=şarkım`, `parça`, `song`, `songs`, `track`, `tracks`, `beat`, `beatler`, `müzik`, `music`], 'flag'],
+    // kaydolmak / başvurmak
+    ['kaydol', [`kayıt ol`, `=kaydol`, `derse yazıl`, `derslere yazıl`, `kursa yazıl`, `deneme dersine yazıl`, `=başvur`, `sign up`, `register`, `enroll`, `apply`]],
+    ['sonuc', [`sonuç`, `sonucum`, `puan`, `puanım`, `skor`, `score`, `result`, `results`, `kaç aldım`, `kaç almışım`, `ne çıktı`, `ne çıkmış`, `hangi seviye çık`, `hangi seviyede`, `=seviyem`, `=seviyemi`, `=seviyemin`, `=seviyedeyim`,
+      `my level`, `level am i`, `grade`, `how did i do`, `how i did`]],
+    // tekrar / bir daha: "bir daha", "ikinci kez", "again", "another"
+    ['tekrar', [`tekrar`, `=yeniden`, `bir daha`, `bir kez daha`, `bir kere daha`, `ikinci kez`, `ikinci defa`, `ikinci kere`, `ikinci bir`, `=baştan`, `again`, `retake`, `redo`, `another`, `one more`, `second time`, `second trial`]],
+    // bugün: "bu akşam", "bugünkü", "tonight"
+    ['bugun', [`bugün`, `bugünkü`, `=bugüne`, `bu akşam`, `bu akşamki`, `bu gece`, `bu geceki`, `bu sabah`, `bu sabahki`, `bu öğlen`, `today`, `tonight`, `this evening`, `this morning`, `this afternoon`]],
+    // ders yandı / boşa gitti
+    ['yanma', [`=yandı`, `=yanar$`, `=yanıyor`, `=yanacak`, `=yanmış`, `=yanmaz`, `=boşa`, `forfeit`, `forfeited`, `wasted`, `lose the lesson`, `lost the lesson`]],
+    // Soru Sor kartı
+    ['sorusor', [`soru sor`, `soru sorma`, `ask a question`, `ask question`, `questions card`, `soru cevap`]],
+    // telif / sahiplik: "haklar kimde", "kime ait", "who owns"
+    ['telif', [`telif`, `copyright`, `kime ait`, `=sahibi`, `=sahipli`, `own`, `owns`, `owner`, `ownership`, `rights to`, `the rights`, `=yayınla`, `spotify`, `release`]],
+    ['numara', [`numara`, `numaram`, `number`, `telefon numara`, `phone number`, `=telefonum`, `my phone`, `gsm`]],
+    // devam / yenileme: "devam etmek", "bir ay daha", "şimdiden"
+    ['devam', [`devam`, `=yenile`, `=uzat`, `continue`, `renew`, `extend`, `yeni paket`, `bir ay daha`, `sonraki paket`, `gelecek ay`, `=şimdiden`, `next month`, `in advance`, `=erkenden`]],
+    // tekrar tekrar açılan pencere
+    ['popup', [`pencere`, `popup`, `pop up`, `açılır pencere`, `her girdiğimde`, `her seferinde`, `her açtığımda`, `her girişte`, `=sürekli`, `karşıma çık`, `tekrar tekrar`, `=kapanmıyor`, `keeps popping`, `keeps showing`, `every time`, `again and again`, `pops up`]],
+    // zaman sorusu (deneme dersim kaçta?)
+    ['zamansoru', [`=kaçta`, `saat kaç`, `ne zaman`, `hangi gün`, `hangi tarih`, `=tarihi`, `when`, `what time`, `which day`], 'flag'],
     ['produksiyon', [`kick`, `bass`, `snare`, `hihat`, `hi hat`, `sidechain`, `kompresör`, `compressor`, `eq`, `ekolayzır`, `equalizer`, `limiter`, `reverb`, `delay efekti`, `mix`, `mixing`, `miks`, `master`, `mastering`,
       `supersaw`, `wavetable`, `sound design`, `ses tasarımı`, `melodi`, `akor`, `groove`, `drop`, `arpej`, `otomasyon`, `automation`, `vokal`, `vocal`, `distortion`, `saturation`, `lfo`, `filtre`, `=parçamı`, `=parçam`, `=projemi`, `=projem`, `=şarkımı`]],
+  ];
+
+  // Bileşik kavramlar: [kavram, [grup, …]] — her grubun ("|" = ya da) en az bir öğesi soruda geçerse
+  // kavram eklenir; "!" ile başlayan grupta hiçbiri geçmemeli. "@x" kavram, "~x" etkisiz kelime de olabilen
+  // metin kelimesi, düz kelime kök. Sırayla değerlendirilir. Örnek cümle değil, soru KALIBI tanımlar.
+  var COMBOS = [
+    // kendi toplam tutarı / borcu: (toplam | ödeyeceğim | paketimin…) + (ne kadar | kaç tl | tutuyor) + ödeme/fiyat
+    ['borc', [`@toplam|@odeyecek|@sahip`, `kadar|much|kac|tl|lira|@fiyat|tut|tutar|~ediyor|~eder|amount`, `@odeme|@fiyat|@toplam|@odeyecek|@satinal|tut|tutar|amount|@paket`, `!@hak|@ekders|@ek|@deneme`]],
+    // ödeme yaptım ama kilitli: ödeme onayı bekleyen öğrencinin kapalı düğmeleri
+    ['odemekilit', [`@odeme|@iban`, `@kilit|@arizali|@engelli|@kapali`]],
+    // hak bitti ama gerekiyor: ek hak
+    ['hakbitti', [`@hak`, `@tukendi|@bitis`, `@gerekli|@satinal|@ek|yeni|~yine|~gene|~ama|~fakat|~but|~still|~again|~ne yap|~napa|~what can|~what now|~what do`]],
+    // eylem engelli: (değiştir | ertele | katıl | düğme) + (olumsuz | bozuk | kilitli) — geçmişte kaçırma değil
+    // düğme / bağlantı yok: "katıl butonu yok", "link yok"
+    ['arizali', [`buton|dugme|~tus|button|butt|@zoom|@katil`, `~yok$|~yoktu$|~yokmus$`]],
+    // derse girmek (araya kelime girse de): "ders başladı ama giremiyorum"
+    ['katil', [`ders|@zoom|lesson|class|toplanti`, `~girem|~gireme|~girebil|~girece|~gireyim|~girmek|~giriyor|~girdi|~girme|~girer`, `!@seviye|@sifre`]],
+    // derse / kursa yazılmak = kaydolmak ("numara nereye yazılır" değil)
+    ['kaydol', [`ders|@deneme|kurs|egitim|lesson|class`, `~yazil`]],
+    ['borc', [`@odeyecek`, `owe|borc|tutar|miktar|amount|@toplam|kadar|much|kac|@fiyat`, `!@hak|@ekders|@ek|@deneme`]],
+    ['engelli', [`@degis|@ertele|@katil|@ekders|buton|dugme|~tus|button|butt`, `@kilit|@arizali|@kapali|~not|~nt|~cannot|~never|-@degis|-@ertele|-@katil|-@ekders|-gir|-bas|-tikla|-calis|-acilis|-bagla`, `!@kacir|@yanma|@hakbitti|@tukendi`]],
+    ['kullanilmayan', [`@hak`, `~expir|~valid|~gecerli|~son kullanma|~sona er|~yanar|~yaniyor|~yanacak`]],
+    // hakkın hesabı / nedeni: "neden 1 hakkım var", "neye göre"
+    ['hakkural', [`@hak`, `~neden|~niye|~nicin|~why|hesap|~gore|~how come|~calculat|@paket`]],
+    // derste yapılan parçanın hakları
+    ['telif', [`@hak`, `~kimde|~kime|~kimin|~ait|@eser|proje|@produksiyon`]],
+    // kalan / artan hakların akıbeti
+    ['kullanilmayan', [`@hak`, `@paketsonu|~kalan|~artan`, `~ne ol|~noluyor|~what happen|~gider|~gecer|~yanar|~kaybol|~silin|@bitis|@paketsonu|~sonra|~ileri|~later`]],
+    // deneme + daha → bir deneme daha
+    ['tekrar', [`@deneme`, `~daha`, `!~daha sonra`]],
+    // numaramı değiştir / başka numaraya
+    ['numaradegis', [`telefon|phone`, `~baska|yeni|~eski|~farkli|~different|other|new`, `!@sifre|@site|@bozuk|@oneri`]],
+    ['numaradegis', [`@numara`, `~baska|yeni|~eski|yanlis|@degis|~guncel|other|~different|~farkli|new|wrong|old|@gecmis`]],
+    // kaçırılan ders düşer / sayılır mı
+    ['yanma', [`@kacir`, `~duser|~dustu|~dusuyor|~dusecek|~sayil|~gider|~gitti`]],
+    // derste nereye tıklayacağım → derse giriş
+    ['katil', [`ders|lesson|class|@zoom`, `~tikla|~click|~basaca|~basmam`, `~nere|~where|~hangi`, `!@degis|@ertele|@iptal|@odeme|@talep|@deneme|@hak`]],
   ];
 
   var A = function (tr, en, cond) { var o = { tr: tr, en: en }; if (cond) o.if = cond; return o; };
@@ -120,7 +204,7 @@
     extraLesson: { do: 'extraLesson', label: L(`Ek ders talep et`, `Request an extra lesson`), if: 'dash !st_trial !frozen' },
     zoom: { do: 'scroll', target: '#zoomJoinBox', label: L(`Derse Katıl alanı`, `Join area`), if: 'dash' },
     pay: { do: 'scroll', target: '#payTodo', label: L(`Ödeme kartını göster`, `Show the payment card`), if: 'st_unpaid' },
-    copyIban: { do: 'copyIban', label: L(`IBAN'ı kopyala`, `Copy IBAN`) },
+    copyIban: { do: 'copyIban', label: L(`IBAN'ı kopyala`, `Copy IBAN`), if: 'bankInfo' },
     rules: { do: 'rules', label: L(`Ders kurallarını aç`, `Open lesson rules`) },
     wa: { do: 'wa', label: L(`WhatsApp'tan yaz`, `Message on WhatsApp`) },
     qa: { do: 'qa', label: L(`Soru Sor kartı`, `Ask a question card`), if: 'signedIn' },
@@ -157,9 +241,9 @@
     ],
     actions: [ACT.week, ACT.signin] });
 
-  add({ id: 'today_lesson', states: ['active', 'unpaid', 'trial'], topic: ['bugun', 'ders'], follow: ['next_lesson', 'join_zoom'], avoid: ['@ertele', '@degis', '@hasta'],
-    ex: { tr: [`Bugün dersim var mı?`, `bugün ders var mı`, `bu akşam dersim var mı`, `bugünkü ders saat kaçta`, `bugün kaçta dersim var`, `bugün derse girecek miyim`, `bugün ders yapacak mıyız`, `today ders var mı`],
-      en: [`Do I have a lesson today?`, `is there class today`, `today's lesson time`] },
+  add({ id: 'today_lesson', need: ['@bugun'], states: ['active', 'unpaid', 'trial'], topic: ['bugun', 'ders'], follow: ['next_lesson', 'join_zoom'], avoid: ['@ertele', '@degis', '@hasta', '@kacir', '@yanma', '@zoom', '@katil'],
+    ex: { tr: [`bu akşamki dersim ne zaman`, `Bugün dersim var mı?`, `bugün ders var mı`, `bu akşam dersim var mı`, `bugünkü ders saat kaçta`, `bugün kaçta dersim var`, `bugün derse girecek miyim`, `bugün ders yapacak mıyız`, `today ders var mı`],
+      en: [`do I have a lesson tonight`, `Do I have a lesson today?`, `is there class today`, `today's lesson time`] },
     a: [
       A(`Evet, bugün dersin var: **{next}** — **{next_in}** sonra.`, `Yes, you have a lesson today: **{next}** — in **{next_in}**.`, 'nextToday'),
       A(`Bugün dersin yok. Sıradaki dersin **{next}**.`, `No lesson today. Your next lesson is **{next}**.`, 'hasNext'),
@@ -198,7 +282,7 @@
     ],
     actions: [ACT.list] });
 
-  add({ id: 'package_end', states: ['active', 'unpaid'], topic: ['@paket', '@bitis'], follow: ['renew'],
+  add({ id: 'package_end', avoid: ['@devam'], states: ['active', 'unpaid'], topic: ['@paket', '@bitis'], follow: ['renew'],
     ex: { tr: [`Paketim ne zaman bitiyor?`, `son dersim ne zaman`, `paketin bitiş tarihi`, `dersler ne zaman bitecek`, `paketim bitti mi`, `planım ne zamana kadar`, `paket süresi ne zaman doluyor`, `en son ders hangi tarihte`, `derslerim bitti görünüyor ama bir dersim vardı`],
       en: [`When does my package end?`, `when is my last lesson`, `package end date`] },
     a: [
@@ -225,7 +309,7 @@
         `All times in the panel are **Istanbul time (UTC+3)**. If you're abroad, convert lesson times to your local time.`),
     ] });
 
-  add({ id: 'lesson_days', pub: true, topic: ['gun', 'saat'], avoid: ['@ertele', '@degis', '@paket'], need: ['@gun', '@kapali', 'saat', 'gun', 'hafta', 'aksam', 'sabah', 'gece', 'musait', 'takvim'],
+  add({ id: 'lesson_days', pub: true, topic: ['gun', 'saat'], avoid: ['@ertele', '@degis', '@paket', '@bugun'], need: ['@gun', '@kapali', 'saat', 'gun', 'hafta', 'aksam', 'sabah', 'gece', 'musait', 'takvim'],
     kw: [`cumartesi`, `pazar`, `pazartesi`, `salı`, `çarşamba`, `perşembe`, `cuma`, `hafta sonu`], ex: { tr: [`cumartesi ders var mı`, `hafta sonları ders veriyor musunuz`, `Hangi günler ders veriliyor?`, `hafta sonu ders var mı`, `ders saatleri ne`, `hangi saatlerde ders alabilirim`, `pazar günü ders olur mu`, `gece ders olur mu`, `müsait saatler neler`, `akşam ders var mı`, `sabah ders olur mu`, `bazı saatler neden kırmızı`, `kapalı saatler ne demek`, `takvimde dolu saatleri seçemiyorum`, `neden bazı günler seçilmiyor`],
       en: [`Which days do you teach?`, `are there weekend lessons`, `available hours`] },
     a: [
@@ -237,7 +321,7 @@
     actions: [ACT.pkgs] });
 
   // ───────────────────────── Saat değiştirme ─────────────────────────
-  add({ id: 'self_change', states: ['active', 'trial'], topic: ['@degis', 'saat'], follow: ['self_change_until', 'change_vs_resched'],
+  add({ id: 'self_change', avoid: ['@sonsure', '@yakin', '@talep', '@engelli'], states: ['active', 'trial'], topic: ['@degis', 'saat'], follow: ['self_change_until', 'change_vs_resched'],
     ex: { tr: [`salı dersini perşembeye alabilir miyim`, `aynı hafta içinde başka güne almak`, `Ders saatimi değiştirebilir miyim?`, `dersin saatini nasıl değiştiririm`, `dersimi başka saate alabilir miyim`, `saat değiştirmek istiyorum`, `dersimi aynı hafta başka güne taşıyabilir miyim`, `derse başka saatte girmek istiyorum`, `saati kaydırmak istiyorum`, `dersin saatini öne alabilir miyim`, `bu haftaki dersin saatini değiştir`, `saat değişikliği nasıl yapılır`, `dersi akşama çekebilir miyim`, `dersi sabaha almak istiyorum`, `cumartesi dersimi pazara alabilir miyim`, `dersin saatini 2 saat ileri almak`, `saat 19'daki dersi 21'e çekmek`, `saati kendim değiştirebiliyor muyum`, `saati değiştir butonu nerede`],
       en: [`Can I change my lesson time?`, `how do I move my lesson to another time`, `change the hour of my class`] },
     a: [
@@ -262,9 +346,9 @@
     ],
     actions: [ACT.selfchange, ACT.week] });
 
-  add({ id: 'self_change_until', states: ['active', 'trial'], topic: ['@degis', 'saat', 'kadar'],
-    ex: { tr: [`Saat değişikliği ne zamana kadar açık?`, `en son ne zaman saat değiştirebilirim`, `saat değiştirmek için son saat`, `kaç saat öncesine kadar değiştirebilirim`, `değişiklik süresi ne kadar kaldı`, `saati değiştirmek için geç mi kaldım`, `derse 3 saat kala değiştirebilir miyim`, `saat değiştirme kapanıyor mu`, `dersime birkaç saat var saatini değiştirebilir miyim`],
-      en: [`Until when can I change the time?`, `how many hours before can I change my lesson`, `is it too late to change the time`] },
+  add({ id: 'self_change_until', avoid: ['@talep', '@ertele'], states: ['active', 'trial'], topic: ['@degis', 'saat', 'kadar'],
+    ex: { tr: [`saat değişikliği için son süre`, `saati en geç ne zaman değiştirebilirim`, `Saat değişikliği ne zamana kadar açık?`, `en son ne zaman saat değiştirebilirim`, `saat değiştirmek için son saat`, `kaç saat öncesine kadar değiştirebilirim`, `değişiklik süresi ne kadar kaldı`, `saati değiştirmek için geç mi kaldım`, `derse 3 saat kala değiştirebilir miyim`, `saat değiştirme kapanıyor mu`, `dersime birkaç saat var saatini değiştirebilir miyim`],
+      en: [`what's the latest I can change the time`, `Until when can I change the time?`, `how many hours before can I change my lesson`, `is it too late to change the time`] },
     a: [
       A(`Sıradaki dersin (**{next}**) için seçim **{change_until}**'e kadar açık — **{change_left}** kaldı. Ders saatinden {self_h} saat önce kapanır.`,
         `For your next lesson (**{next}**) changes are open until **{change_until}** — **{change_left}** left. It closes {self_h} hours before the lesson.`, 'canChange'),
@@ -275,14 +359,14 @@
     ],
     actions: [ACT.selfchange, ACT.week] });
 
-  add({ id: 'self_change_once', topic: ['@degis', 'bir kez'],
+  add({ id: 'self_change_once', avoid: ['@talep', '@sonsure'], topic: ['@degis', 'bir kez'],
     kw: [`yanlış`, `iki kez`, `tekrar`], ex: { tr: [`yanlış saate aldım`, `Aynı dersi iki kez taşıyabilir miyim?`, `saatini değiştirdiğim dersi tekrar değiştirebilir miyim`, `bir kez taşındı ne demek`, `ikinci kez saat değiştirmek`, `taşıdığım dersi geri alabilir miyim`, `saat değiştirme hakkım kaç`, `kaç kere saat değiştirebilirim`, `yanlış saate taşıdım düzeltebilir miyim`],
       en: [`Can I move the same lesson twice?`, `I moved it to the wrong time`, `how many times can I change the time`] },
     a: [A(`Her ders **bir kez** taşınabilir; taşınan derste **Bir kez taşındı** yazar ve tekrar değiştirilemez. Saat değiştirmenin sayı sınırı yok — her ders için ayrı bir kez hakkın var.\n\nYanlış saate taşıdıysan Berkay Er'e yaz; o düzeltebilir.`,
       `Each lesson can be moved **once**; a moved lesson shows **Moved once** and can't be changed again. There's no overall limit — every lesson gets its own one change.\n\nIf you moved it to the wrong time, message Berkay Er; he can fix it.`)],
     actions: [ACT.wa] });
 
-  add({ id: 'change_vs_resched', pub: true, topic: ['@degis', '@ertele'],
+  add({ id: 'change_vs_resched', need: ['@degis', '@ertele'], pub: true, topic: ['@degis', '@ertele'],
     ex: { tr: [`Saat değiştirmek ile ertelemek arasındaki fark ne?`, `ertele mi saati değiştir mi`, `hangisi hak kullanır`, `saat değiştirme hak düşer mi`, `ertelemek ücretli mi`, `saat değiştirince erteleme hakkım gider mi`, `ertele ile saati değiştir farkı`, `başka haftaya mı almalıyım aynı haftada mı`, `saat değişikliği ücretli mi`, `başka haftaya taşıyabilir miyim`],
       en: [`What's the difference between changing the time and rescheduling?`, `does changing the time use a credit`] },
     a: [A(`İki ayrı şey:\n- **Saati değiştir**: aynı hafta içinde başka saate, kendin ve anında; derse {self_h} saatten fazla olmalı, her ders için bir kez, **hak düşmez**.\n- **Ertele**: dersi **1 hafta ileri** alır; en az {resch_h} saat önce talep edilir, Berkay Er onaylayınca **1 erteleme hakkı** düşer.`,
@@ -290,7 +374,7 @@
     actions: [ACT.selfchange, ACT.resch] });
 
   // ───────────────────────── Erteleme ─────────────────────────
-  add({ id: 'reschedule_how', states: ['active'], topic: ['@ertele'], follow: ['credits_left', 'resched_24h'], need: ['@ertele'], avoid: ['@yakin'],
+  add({ id: 'reschedule_how', states: ['active'], topic: ['@ertele'], follow: ['credits_left', 'resched_24h'], need: ['@ertele'], avoid: ['@yakin', '@sonsure', '@engelli', '@arizali', '@kilit'],
     ex: { tr: [`Dersimi nasıl ertelerim?`, `dersi ertelemek istiyorum`, `dersimi gelecek haftaya alabilir miyim`, `ertele butonu nerede`, `dersi bir hafta ileri almak`, `erteleme nasıl yapılıyor`, `dersimi kaydırmak istiyorum`, `bu dersi erteleyebilir miyim`, `dersi sonraya almak istiyorum`, `ertelemek için ne yapmalıyım`],
       en: [`How do I reschedule my lesson?`, `postpone my class to next week`, `where is the reschedule button`] },
     a: [
@@ -309,7 +393,7 @@
     ],
     actions: [ACT.resch, ACT.list, ACT.extraCredit] });
 
-  add({ id: 'credits_left', states: ['active', 'unpaid'], topic: ['@hak', '@ertele'], follow: ['credits_rule', 'extra_credit'], need: ['@hak', '@ertele'], avoid: ['@satinal', '@fiyat', '@ek'],
+  add({ id: 'credits_left', states: ['active', 'unpaid'], topic: ['@hak', '@ertele'], follow: ['credits_rule', 'extra_credit'], need: ['@hak', '@ertele'], avoid: ['@satinal', '@fiyat', '@ek', '@hakbitti', '@kullanilmayan', '@hakkural', '@telif'],
     ex: { tr: [`Kaç erteleme hakkım kaldı?`, `erteleme hakkım var mı`, `kaç hakkım var`, `kalan hak sayım`, `hakkım bitti mi`, `erteleme kredim kaç`, `kaç kere erteleyebilirim`, `kalan erteleme sayısı`, `hak durumum ne`, `kaç tane erteleme hakkım var`],
       en: [`How many reschedule credits do I have left?`, `do I have any credits`, `remaining credits`] },
     a: [
@@ -327,22 +411,22 @@
     ],
     actions: [ACT.credits, ACT.extraCredit] });
 
-  add({ id: 'credits_rule', pub: true, topic: ['@hak', '@paket'], follow: ['credits_left'], need: ['@hak', '@ertele'], avoid: ['@satinal', '@ek', '@fiyat', '@indirim'],
-    ex: { tr: [`Erteleme hakkı nasıl hesaplanıyor?`, `paketimde kaç erteleme hakkı var`, `1 aylık pakette kaç hak var`, `3 aylık paket kaç hak verir`, `hak her ay yenileniyor mu`, `erteleme hakkı neye göre`, `haklar ay ay mı`, `ayda kaç erteleme hakkı`],
-      en: [`How are reschedule credits calculated?`, `how many credits does a 3-month package give`] },
+  add({ id: 'credits_rule', pub: true, topic: ['@hak', '@paket'], follow: ['credits_left'], need: ['@hak', '@ertele'], avoid: ['@satinal', '@ek', '@fiyat', '@indirim', '@hakbitti', '@kullanilmayan', '@telif'],
+    ex: { tr: [`neden bu kadar az hakkım var`, `Erteleme hakkı nasıl hesaplanıyor?`, `paketimde kaç erteleme hakkı var`, `1 aylık pakette kaç hak var`, `3 aylık paket kaç hak verir`, `hak her ay yenileniyor mu`, `erteleme hakkı neye göre`, `haklar ay ay mı`, `ayda kaç erteleme hakkı`],
+      en: [`why do I only have one credit`, `How are reschedule credits calculated?`, `how many credits does a 3-month package give`] },
     a: [A(`Erteleme hakkı **paket bazlı bir havuzdur**: paketin kaç aylıksa o kadar hakkın olur (1 ay = 1 hak, 3 ay = 3 hak). Haklar ay ay yenilenmez; paket süresince istediğin derste kullanırsın. Berkay Er erteleme talebini onaylayınca 1 hak düşer.`,
       `Reschedule credits are a **per-package pool**: one credit per package month (1 month = 1, 3 months = 3). They don't renew monthly; use them on any lesson during the package. 1 credit is used when Berkay Er approves a request.`)],
     actions: [ACT.credits] });
 
-  add({ id: 'credits_expire', pub: true, topic: ['@hak', '@bitis'], need: ['@hak', '@ertele'],
-    ex: { tr: [`Kullanmadığım haklar ne olur?`, `erteleme hakları devreder mi`, `haklarım yanar mı`, `hakkı sonraki pakete aktarabilir miyim`, `paket bitince haklar gider mi`, `kullanılmayan erteleme hakkı`, `haklar birikir mi`, `hak sonraki aya geçer mi`],
-      en: [`What happens to unused credits?`, `do credits carry over`] },
+  add({ id: 'credits_expire', avoid: ['@telif'], pub: true, topic: ['@hak', '@bitis'], need: ['@hak', '@ertele'],
+    ex: { tr: [`kullanılmayan hak bir sonraki pakete aktarılır mı`, `Kullanmadığım haklar ne olur?`, `erteleme hakları devreder mi`, `haklarım yanar mı`, `hakkı sonraki pakete aktarabilir miyim`, `paket bitince haklar gider mi`, `kullanılmayan erteleme hakkı`, `haklar birikir mi`, `hak sonraki aya geçer mi`],
+      en: [`are unused credits lost`, `What happens to unused credits?`, `do credits carry over`] },
     a: [A(`Kullanılmayan erteleme hakları **paket bitince sona erer**; sonraki pakete aktarılmaz.`, `Unused credits **expire when the package ends**; they don't carry over to the next package.`)],
     actions: [ACT.rules] });
 
-  add({ id: 'resched_24h', pub: true, topic: ['@ertele', '24 saat'], need: ['@ertele', '@yakin'],
-    ex: { tr: [`ertele butonu basılmıyor`, `ertele düğmesi neden çalışmıyor`, `Derse 24 saatten az kaldı erteleyebilir miyim?`, `son dakika erteleme olur mu`, `yarınki dersi erteleyebilir miyim`, `ertele butonu pasif neden`, `ertelemek için kaç saat önce haber vermeliyim`, `derse birkaç saat kaldı ertelemek istiyorum`, `ertele gri görünüyor`, `24 saat kuralı ne`, `bugünkü dersimi erteleyebilir miyim`, `bu akşamki dersi ertelemek istiyorum`, `dersime birkaç saat var ertelenir mi`],
-      en: [`Can I reschedule with less than 24 hours left?`, `why is the reschedule button disabled`, `24 hour rule`] },
+  add({ id: 'resched_24h', avoid: ['@odeme'], pub: true, topic: ['@ertele', '24 saat'], need: [['@ertele'], ['@yakin', '@sonsure', '@engelli', '@arizali', '@kilit', '@olumsuz', 'nn', 'saat', 'kural']],
+    ex: { tr: [`ertelemeyi en geç ne zaman yapmalıyım`, `ertele düğmesi soluk duruyor`, `ertele butonu basılmıyor`, `ertele düğmesi neden çalışmıyor`, `Derse 24 saatten az kaldı erteleyebilir miyim?`, `son dakika erteleme olur mu`, `yarınki dersi erteleyebilir miyim`, `ertele butonu pasif neden`, `ertelemek için kaç saat önce haber vermeliyim`, `derse birkaç saat kaldı ertelemek istiyorum`, `ertele gri görünüyor`, `24 saat kuralı ne`, `bugünkü dersimi erteleyebilir miyim`, `bu akşamki dersi ertelemek istiyorum`, `dersime birkaç saat var ertelenir mi`],
+      en: [`the reschedule button is disabled`, `Can I reschedule with less than 24 hours left?`, `why is the reschedule button disabled`, `24 hour rule`] },
     a: [
       A(`Erteleme en az **{resch_h} saat önce** talep edilir. Sıradaki dersine ({next}) {resch_h} saatten az kaldığı için o ders ertelenemez. Aynı hafta içinde saat değiştirme de dersten {self_h} saat önce kapanır.\n\nAcil bir durum varsa WhatsApp'tan Berkay Er'e yaz.`,
         `Rescheduling must be requested at least **{resch_h} hours ahead**. Your next lesson ({next}) is less than {resch_h} hours away, so it can't be rescheduled. Same-week time changes close {self_h} hours before.\n\nIf it's an emergency, message Berkay Er on WhatsApp.`, 'reschTooSoon'),
@@ -364,9 +448,9 @@
     ],
     actions: [ACT.list, ACT.wa] });
 
-  add({ id: 'extra_credit', pub: true, topic: ['@hak', 'ek', '@fiyat'], need: ['@hak', '@ek', '@satinal', '@fiyat'], avoid: ['@ekders'],
-    ex: { tr: [`Ek erteleme hakkı nasıl alırım?`, `ekstra hak almak istiyorum`, `hak satın almak`, `ek hak kaç para`, `erteleme hakkı satın al`, `hakkım bitti yeni hak alabilir miyim`, `fazladan erteleme hakkı`, `ek hak al`, `erteleme hakkı kaç TL`, `bir erteleme hakkının ücreti ne`, `hak satın alınabiliyor mu`, `parasını ödeyip erteleme yapabilir miyim`, `ücretli erteleme var mı`, `bir tane daha hak almak`, `hakkım kalmadıysa satın alarak erteleyebilir miyim`],
-      en: [`How do I buy an extra reschedule credit?`, `extra credit price`] },
+  add({ id: 'extra_credit', pub: true, topic: ['@hak', 'ek', '@fiyat'], need: [['@hak', '@ek', '@satinal'], ['@hak', '@ertele']], avoid: ['@kullanilmayan', '@telif'],
+    ex: { tr: [`hakkım kalmadı ne yapabilirim`, `Ek erteleme hakkı nasıl alırım?`, `ekstra hak almak istiyorum`, `hak satın almak`, `ek hak kaç para`, `erteleme hakkı satın al`, `hakkım bitti yeni hak alabilir miyim`, `fazladan erteleme hakkı`, `ek hak al`, `erteleme hakkı kaç TL`, `bir erteleme hakkının ücreti ne`, `hak satın alınabiliyor mu`, `parasını ödeyip erteleme yapabilir miyim`, `ücretli erteleme var mı`, `bir tane daha hak almak`, `hakkım kalmadıysa satın alarak erteleyebilir miyim`],
+      en: [`I have no credits left, what can I do`, `How do I buy an extra reschedule credit?`, `extra credit price`] },
     a: [A(`Her ek erteleme hakkı **{extra_price}**. Erteleme Hakkı kutusundaki **+ Ek Hak Al**'a bas, adet seç, IBAN'a havale et ve **Ödedim — WhatsApp ile bildir** de; Berkay Er hakkı hesabına tanımlar.`,
       `Each extra credit is **{extra_price}**. Press **+ Buy extra credit** in the Reschedule credits box, pick a quantity, transfer to the IBAN and tap **Paid — notify on WhatsApp**; Berkay Er adds it to your account.`)],
     actions: [ACT.extraCredit, ACT.credits] });
@@ -384,9 +468,9 @@
     actions: [ACT.extraLesson] });
 
   // ───────────────────────── Derse katılma / Zoom ─────────────────────────
-  add({ id: 'join_zoom', pub: true, states: ['active', 'trial', 'unpaid'], topic: ['@zoom', '@katil'], follow: ['zoom_no_button'],
-    ex: { tr: [`derse nasıl girerim`, `Derse nasıl katılırım?`, `zoom linki nerede`, `derse nereden gireceğim`, `zoom bağlantısı`, `derse katıl butonu`, `ders linkini bulamıyorum`, `zoom'a nasıl girerim`, `toplantı linki ne`, `derse girmek için ne yapmalıyım`, `ders linki gelecek mi`, `derse kaç dakika önce girebilirim`, `katıl butonu ne zaman açılıyor`, `zoom'u indirmem gerekiyor mu`],
-      en: [`How do I join the lesson?`, `where is the zoom link`, `join button`] },
+  add({ id: 'join_zoom', avoid: ['@engelli', '@arizali'], pub: true, states: ['active', 'trial', 'unpaid'], topic: ['@zoom', '@katil'], follow: ['zoom_no_button'],
+    ex: { tr: [`derse nereden bağlanılıyor`, `zoom'a nasıl bağlanırım`, `derse nasıl girerim`, `Derse nasıl katılırım?`, `zoom linki nerede`, `derse nereden gireceğim`, `zoom bağlantısı`, `derse katıl butonu`, `ders linkini bulamıyorum`, `zoom'a nasıl girerim`, `toplantı linki ne`, `derse girmek için ne yapmalıyım`, `ders linki gelecek mi`, `derse kaç dakika önce girebilirim`, `katıl butonu ne zaman açılıyor`, `zoom'u indirmem gerekiyor mu`],
+      en: [`where is the lesson link`, `how do I connect to the class`, `How do I join the lesson?`, `where is the zoom link`, `join button`] },
     a: [
       A(`Dersin şu an açık: ders kartındaki yeşil **Derse Katıl** düğmesi Zoom'u açar. İyi dersler!`, `Your lesson is open now: the green **Join** button on the lesson card opens Zoom. Enjoy!`, 'joinOpen paidOrTrial'),
       A(`Her dersten **{join_min} dakika önce** ders kartında yeşil **Derse Katıl** düğmesi açılır; Zoom'u açar, ayrı link beklemene gerek yok. Sıradaki dersin **{next}** ({next_in} sonra).`,
@@ -398,9 +482,9 @@
     ],
     actions: [ACT.zoom, ACT.week] });
 
-  add({ id: 'zoom_no_button', states: ['active', 'trial'], topic: ['@zoom', '@katil', 'yok'],
-    kw: [`buton`, `düğme`, `görünmüyor`, `çıkmıyor`], ex: { tr: [`katıl butonu çalışmıyor`, `Derse katıl butonu çıkmıyor`, `zoom butonu görünmüyor`, `derse giremiyorum link yok`, `katıl düğmesi pasif`, `zoom bağlantısı bekleniyor yazıyor`, `butona basınca zoom açılmıyor`, `derse katıl çalışmıyor`, `ders başladı ama giremiyorum`, `ders saati geldi katıl butonu yok`],
-      en: [`The join button doesn't appear`, `zoom link not working`, `can't join the lesson`] },
+  add({ id: 'zoom_no_button', avoid: ['@odeme', '@kacir', '@yanma'], need: [['@zoom', '@katil'], ['@arizali', '@engelli', '@kilit', '@olumsuz']], states: ['active', 'trial'], topic: ['@zoom', '@katil', 'yok'],
+    kw: [`buton`, `düğme`, `görünmüyor`, `çıkmıyor`], ex: { tr: [`katıl butonuna basınca tepki yok`, `derse katıl düğmesi gri`, `katıl butonu çalışmıyor`, `Derse katıl butonu çıkmıyor`, `zoom butonu görünmüyor`, `derse giremiyorum link yok`, `katıl düğmesi pasif`, `zoom bağlantısı bekleniyor yazıyor`, `butona basınca zoom açılmıyor`, `derse katıl çalışmıyor`, `ders başladı ama giremiyorum`, `ders saati geldi katıl butonu yok`],
+      en: [`the join button is not working`, `join button disabled`, `The join button doesn't appear`, `zoom link not working`, `can't join the lesson`] },
     a: [
       A(`Düğme dersten **{join_min} dakika önce** açılır; sıradaki dersin **{next}** ({next_in} sonra). Sayfa uzun süre açık kaldıysa yenile.\n\nDüğmede **Zoom bağlantısı bekleniyor** yazıyorsa ya da Zoom açılmıyorsa hemen WhatsApp'tan Berkay Er'e yaz.`,
         `The button opens **{join_min} minutes before** the lesson; your next lesson is **{next}** (in {next_in}). If the page has been open a long time, refresh it.\n\nIf it says **Waiting for the Zoom link** or Zoom won't open, message Berkay Er on WhatsApp right away.`, 'hasNext paidOrTrial'),
@@ -410,16 +494,16 @@
     ],
     actions: [ACT.zoom, ACT.wa] });
 
-  add({ id: 'late', pub: true, topic: ['@gec'],
+  add({ id: 'late', avoid: ['@sonsure', '@degis', '@ertele'], pub: true, topic: ['@gec'],
     ex: { tr: [`Derse geç kalırsam ne olur?`, `10 dakika geç kalacağım`, `derse geç girersem ders iptal mi`, `geç kalma kuralı`, `biraz gecikeceğim`, `derse 15 dakika geç kalsam`, `trafikteyim geç kalacağım`, `geç kalırsam ders uzar mı`],
       en: [`What if I'm late to the lesson?`, `I'll be 10 minutes late`] },
     a: [A(`Kural: derse **{late_min} dakika içinde** girilmezse ders yapılmış sayılır. Geç kalınan süre için dersin uzatılması kurallarda yok; geç kalacaksan hemen WhatsApp'tan Berkay Er'e haber ver.`,
       `Rule: if you don't join within **{late_min} minutes**, the lesson counts as done. The rules don't extend a lesson for late arrival; if you'll be late, let Berkay Er know on WhatsApp right away.`)],
     actions: [ACT.wa, ACT.rules] });
 
-  add({ id: 'missed', pub: true, topic: ['katil', 'kacir'], avoid: ['@sifre', '@produksiyon', '@site', '@odeme'], need: ['@olumsuz', '@kacir'],
-    kw: [`kaçırdım`, `giremedim`, `katılamadım`], ex: { tr: [`derse giremedim`, `dün dersi kaçırdım`, `Derse katılamadım ne olacak?`, `dersi kaçırdım`, `derse giremedim unuttum`, `derse gelmezsem ne olur`, `dersi unuttum telafi var mı`, `katılmadığım ders yanar mı`, `haber vermeden katılmasam`, `dersi kaçırırsam telafi edilir mi`],
-      en: [`I missed my lesson`, `what if I don't show up`] },
+  add({ id: 'missed', pub: true, topic: ['katil', 'kacir'], avoid: ['@sifre', '@produksiyon', '@site', '@odeme'], need: ['@olumsuz', '@kacir', '@yanma'],
+    kw: [`kaçırdım`, `giremedim`, `katılamadım`], ex: { tr: [`gelemediğim ders boşa mı gider`, `derse giremedim`, `dün dersi kaçırdım`, `Derse katılamadım ne olacak?`, `dersi kaçırdım`, `derse giremedim unuttum`, `derse gelmezsem ne olur`, `dersi unuttum telafi var mı`, `katılmadığım ders yanar mı`, `haber vermeden katılmasam`, `dersi kaçırırsam telafi edilir mi`],
+      en: [`is a missed lesson forfeited`, `I missed my lesson`, `what if I don't show up`] },
     a: [A(`Kural: haber vermeden derse katılmazsan ders **yapılmış sayılır ve yeniden planlanmaz**. Önceden biliyorsan en az {resch_h} saat önce **Ertele**'yi kullan ya da aynı hafta içinde saati değiştir.\n\nBir sorun olduysa WhatsApp'tan Berkay Er'e yaz.`,
       `Rule: if you miss a lesson without notice it **counts as done and isn't rebooked**. If you know in advance, use **Reschedule** at least {resch_h} hours ahead or change the time within the same week.\n\nIf something went wrong, message Berkay Er on WhatsApp.`)],
     actions: [ACT.wa, ACT.rules] });
@@ -436,7 +520,7 @@
     actions: [ACT.selfchange, ACT.resch, ACT.wa] });
 
   // ───────────────────────── Onay / itiraz ─────────────────────────
-  add({ id: 'lesson_confirm', states: ['active', 'trial'], topic: ['@onay', 'ders yapildi'], follow: ['dispute'],
+  add({ id: 'lesson_confirm', avoid: ['@odeme', '@engelli'], states: ['active', 'trial'], topic: ['@onay', 'ders yapildi'], follow: ['dispute'],
     ex: { tr: [`Dersin tamamlandı onayı ne?`, `evet ders yapıldı butonu ne işe yarıyor`, `dersi onaylamam gerekiyor mu`, `ders bitince ne yapmalıyım`, `ders onayı nedir`, `onay bekleniyor yazıyor`, `dersi onaylamazsam ne olur`, `otomatik onay nedir`, `yapıldı yazıyor ne demek`, `ders bitince çıkan kutu ne`],
       en: [`What is the lesson confirmation?`, `do I have to confirm the lesson`, `awaiting confirmation`] },
     a: [
@@ -455,7 +539,7 @@
     actions: [ACT.list, ACT.wa] });
 
   // ───────────────────────── Ödeme ─────────────────────────
-  add({ id: 'payment_how', states: ['unpaid'], topic: ['@odeme', '@iban'], follow: ['iban', 'payment_wait'],
+  add({ id: 'payment_how', avoid: ['@engelli', '@arizali', '@kilit'], states: ['unpaid'], topic: ['@odeme', '@iban'], follow: ['iban', 'payment_wait'],
     ex: { tr: [`Nasıl ödeme yaparım?`, `ödemeyi nereye yapacağım`, `ödeme adımları neler`, `parayı nasıl göndereceğim`, `ödeme nasıl yapılıyor`, `ödemeyi yaptım ne yapmalıyım`, `ödemeyi yaptım butonu`, `havale yaptım ama butona basmadım`, `havale yaptım bildirmem lazım mı`, `ödeme yöntemi ne`],
       en: [`How do I pay?`, `payment steps`, `I paid, what now`] },
     a: [
@@ -463,6 +547,8 @@
         `Your payment notice was received — Berkay Er will check the transfer and confirm (usually within 24 hours). Then joining, changing times and rescheduling unlock.`, 'payPending'),
       A(`Panelin en üstündeki **Yapman gereken** kartında 3 adım var:\n- **{total}** tutarını IBAN'a havale/EFT et (açıklamaya **hiçbir şey yazma**)\n- **Ödemeyi yaptım** düğmesine bas — bildirim Berkay Er'e gider\n- Berkay Er onaylayınca derse katılma, saat değiştirme ve erteleme açılır\n\nIBAN: **{iban}** · {bank} · {iban_name}`,
         `The **To do** card at the top of the panel has 3 steps:\n- Transfer **{total}** to the IBAN (leave the description **empty**)\n- Press **I've paid** — Berkay Er gets notified\n- Once he confirms, joining, changing times and rescheduling unlock\n\nIBAN: **{iban}** · {bank} · {iban_name}`, 'st_unpaid'),
+      A(`Panelin en üstündeki **Yapman gereken** kartında 3 adım var:\n- **{total}** tutarını karttaki IBAN'a havale/EFT et (açıklamaya **hiçbir şey yazma**)\n- **Ödemeyi yaptım** düğmesine bas — bildirim Berkay Er'e gider\n- Berkay Er onaylayınca derse katılma, saat değiştirme ve erteleme açılır`,
+        `The **To do** card at the top of the panel has 3 steps:\n- Transfer **{total}** to the IBAN shown on the card (leave the description **empty**)\n- Press **I've paid** — Berkay Er gets notified\n- Once he confirms, joining, changing times and rescheduling unlock`, 'st_unpaid'),
       A(`Ödemen onaylanmış görünüyor, yapman gereken bir şey yok.`, `Your payment is already confirmed; nothing to do.`, 'paid'),
       A(`Ödeme havale/EFT ile yapılır. Talebin onaylanınca IBAN ve tutar bu panelde görünür; havaleyi yapıp **Ödemeyi yaptım** dersin, Berkay Er onaylar.`,
         `Payment is by bank transfer. Once your request is approved, the IBAN and amount appear in this panel; transfer, press **I've paid**, and Berkay Er confirms.`),
@@ -476,6 +562,10 @@
       A(`Banka: **{bank}**\nAlıcı: **{iban_name}**\nIBAN: **{iban}**\n\nAçıklama kısmına **hiçbir şey yazma**. Tutarın: **{total}**.`,
         `Bank: **{bank}**\nRecipient: **{iban_name}**\nIBAN: **{iban}**\n\nLeave the description **empty**. Your amount: **{total}**.`, 'st_unpaid'),
       A(`Banka: **{bank}**\nAlıcı: **{iban_name}**\nIBAN: **{iban}**\n\nAçıklama kısmına **hiçbir şey yazma**.`, `Bank: **{bank}**\nRecipient: **{iban_name}**\nIBAN: **{iban}**\n\nLeave the description **empty**.`, 'signedIn'),
+      A(`Banka, alıcı adı ve IBAN panelin en üstündeki **Yapman gereken** kartında yazıyor; **Kopyala** düğmesiyle IBAN'ı alabilirsin. Açıklama kısmına **hiçbir şey yazma**. Tutarın: **{total}**.`,
+        `The bank, recipient and IBAN are on the **To do** card at the top of the panel; use its **Copy** button for the IBAN. Leave the description **empty**. Your amount: **{total}**.`, 'st_unpaid'),
+      A(`Ödeme bilgileri (banka, alıcı, IBAN) ödemen beklenirken panelin en üstündeki **Yapman gereken** kartında görünür.`,
+        `Payment details (bank, recipient, IBAN) appear on the **To do** card at the top of the panel while a payment is due.`, 'signedIn'),
       A(`Ödeme bilgileri giriş yapan öğrencinin panelinde görünür.`, `Payment details are shown in a signed-in student's panel.`),
     ],
     actions: [ACT.copyIban, ACT.pay] });
@@ -486,8 +576,8 @@
     a: [A(`Açıklama kısmına **hiçbir şey yazma** — boş bırak. Havaleden sonra paneldeki **Ödemeyi yaptım** düğmesine basman yeterli.`, `Leave the description **empty** — write nothing. After the transfer just press **I've paid** in the panel.`)],
     actions: [ACT.pay] });
 
-  add({ id: 'payment_wait', states: ['unpaid'], topic: ['@odeme', '@onay', '@bekle'], follow: ['payment_how'],
-    ex: { tr: [`Ödemem ne zaman onaylanır?`, `ödeme onayı ne kadar sürer`, `ödeme yaptım hala onaylanmadı`, `ödemem görüldü mü`, `ödeme bildirimim gitti mi`, `ödemeyi yaptım ama dersler açılmadı`, `ödeme onaylandı mı`, `ödeme onayı bekliyor`, `panelde hala ödeme bekleniyor yazıyor`, `parayı gönderdim hala onay yok`, `havaleyi yaptım ne zaman onaylanır`, `ödeme onayı kaç gün sürer`, `ödeme yaptım ama dersler hâlâ kilitli`],
+  add({ id: 'payment_wait', avoid: ['@engelli', '@arizali', '@kilit'], states: ['unpaid'], topic: ['@odeme', '@onay', '@bekle'], follow: ['payment_how'],
+    ex: { tr: [`Ödemem ne zaman onaylanır?`, `ödeme onayı ne kadar sürer`, `ödeme yaptım hala onaylanmadı`, `ödemem görüldü mü`, `ödeme bildirimim gitti mi`, `ödeme onaylandı mı`, `ödeme onayı bekliyor`, `panelde hala ödeme bekleniyor yazıyor`, `parayı gönderdim hala onay yok`, `havaleyi yaptım ne zaman onaylanır`, `ödeme onayı kaç gün sürer`],
       en: [`When will my payment be confirmed?`, `I paid but it's not confirmed yet`] },
     a: [
       A(`Ödeme bildirimin alındı. Berkay Er havaleyi kontrol edip onaylar — genelde **24 saat içinde**. Onaylanınca bu kart kaybolur; derse katılma, saat değiştirme ve erteleme açılır. Uzarsa WhatsApp'tan yaz.`,
@@ -499,9 +589,9 @@
     ],
     actions: [ACT.pay, ACT.wa] });
 
-  add({ id: 'payment_amount', states: ['unpaid', 'active'], topic: ['@odeme', '@fiyat', 'toplam'], need: ['toplam', 'borc', 'tutar', 'miktar', 'odenecek', '@fiyat', 'kadar'],
-    ex: { tr: [`ne kadar ödeme yapmam lazım`, `ne kadar ödemeliyim`, `ödemem gereken tutar ne kadar`, `Ne kadar ödeyeceğim?`, `toplam ücretim ne kadar`, `borcum ne kadar`, `ödeyeceğim tutar`, `paketimin fiyatı ne kadar`, `toplam kaç tl`, `ne kadar para göndermeliyim`, `ödenecek miktar`],
-      en: [`How much do I have to pay?`, `my total price`] },
+  add({ id: 'payment_amount', strong: ['@borc'], states: ['unpaid', 'active'], topic: ['@odeme', '@fiyat', 'toplam'], need: ['@borc'],
+    ex: { tr: [`toplam borcum ne kadar`, `paketimin toplamı kaç tl ediyor`, `ne kadar yatırmam gerekiyor`, `ne kadar ödeme yapmam lazım`, `ne kadar ödemeliyim`, `ödemem gereken tutar ne kadar`, `Ne kadar ödeyeceğim?`, `toplam ücretim ne kadar`, `borcum ne kadar`, `ödeyeceğim tutar`, `paketimin fiyatı ne kadar`, `toplam kaç tl`, `ne kadar para göndermeliyim`, `ödenecek miktar`],
+      en: [`What do I owe?`, `what's my total amount`, `how much is my package in total`, `How much do I have to pay?`, `my total price`] },
     a: [
       A(`Toplam ücretin **{total}** ({plan}).`, `Your total is **{total}** ({plan}).`, 'dash !st_trial'),
       A(`Deneme dersi ücretsiz.`, `The trial lesson is free.`, 'st_trial'),
@@ -516,9 +606,9 @@
       `The panel takes payment by **bank transfer**; it has no info on cards, installments or other methods. Ask Berkay Er on WhatsApp.`)],
     actions: [ACT.wa] });
 
-  add({ id: 'unpaid_locked', states: ['unpaid'], topic: ['pasif', '@odeme'],
-    ex: { tr: [`Neden saat değiştiremiyorum?`, `butonlar neden pasif`, `ertele gri neden`, `derse katıl kapalı neden`, `hiçbir şeye basamıyorum`, `saati değiştir çalışmıyor`, `neden kilitli`, `düğmeler çalışmıyor`],
-      en: [`Why can't I change the time?`, `why are the buttons disabled`] },
+  add({ id: 'unpaid_locked', need: ['@engelli', '@kilit', '@arizali', '@olumsuz', '@kapali'], states: ['unpaid'], topic: ['pasif', '@odeme'],
+    ex: { tr: [`ödemeyi yaptım ama dersler açılmadı`, `ödeme yaptım ama dersler hâlâ kilitli`, `havale yaptım düğmeler hâlâ gri`, `Neden saat değiştiremiyorum?`, `butonlar neden pasif`, `ertele gri neden`, `derse katıl kapalı neden`, `hiçbir şeye basamıyorum`, `saati değiştir çalışmıyor`, `neden kilitli`, `düğmeler çalışmıyor`],
+      en: [`I paid but the buttons are still disabled`, `Why can't I change the time?`, `why are the buttons disabled`] },
     a: [
       A(`Ödemen henüz onaylanmadığı için derse katılma, saat değiştirme ve erteleme kapalı. Havaleyi yapıp **Ödemeyi yaptım** dersin; Berkay Er onaylayınca hepsi açılır.`,
         `Your payment isn't confirmed yet, so joining, changing times and rescheduling are locked. Transfer and press **I've paid**; once Berkay Er confirms, they all unlock.`, 'st_unpaid'),
@@ -528,9 +618,9 @@
     actions: [ACT.pay] });
 
   // ───────────────────────── Fiyat / paket ─────────────────────────
-  add({ id: 'prices', pub: true, topic: ['@fiyat', '@paket'], follow: ['package_choose', 'single_vs_package'],
-    ex: { tr: [`paketler neler`, `Ders fiyatları ne kadar?`, `ücretler nedir`, `paketler ve fiyatlar`, `bir ders kaç para`, `aylık ücret ne kadar`, `ders ücreti`, `kampanyalar neler`, `fiyat listesi`, `ne kadar tutuyor`, `paket fiyatları`, `3 aylık paket ne kadar`, `aylık paket kaç para`, `indirim var mı`, `uzun pakette indirim oluyor mu`, `öğrenci indirimi var mı`, `haftada iki ders olursa fiyat ne`],
-      en: [`How much are the lessons?`, `prices and packages`, `what does a lesson cost`] },
+  add({ id: 'prices', avoid: ['@borc'], pub: true, topic: ['@fiyat', '@paket'], follow: ['package_choose', 'single_vs_package'],
+    ex: { tr: [`kayıt olmadan önce ücretleri öğrenmek istiyorum`, `öğrenci değilim ders ücretleri neler`, `paketler neler`, `Ders fiyatları ne kadar?`, `ücretler nedir`, `paketler ve fiyatlar`, `bir ders kaç para`, `aylık ücret ne kadar`, `ders ücreti`, `kampanyalar neler`, `fiyat listesi`, `ne kadar tutuyor`, `paket fiyatları`, `3 aylık paket ne kadar`, `aylık paket kaç para`, `indirim var mı`, `uzun pakette indirim oluyor mu`, `öğrenci indirimi var mı`, `haftada iki ders olursa fiyat ne`],
+      en: [`how much is the monthly package`, `package prices`, `what are your fees`, `how much do lessons cost`, `How much are the lessons?`, `prices and packages`, `what does a lesson cost`] },
     a: [
       A(`Paketlerde ders saati liste fiyatı **{price}**, tek ders **{price_single}**. Kampanyalı paketler:\n{packages}\n\nDeneme dersi ücretsiz.`,
         `The list price is **{price}** per lesson hour in packages; a single lesson is **{price_single}**. Packages:\n{packages}\n\nThe trial lesson is free.`, 'packages'),
@@ -539,9 +629,9 @@
     ],
     actions: [ACT.pkgs] });
 
-  add({ id: 'package_choose', pub: true, topic: ['@paket', 'hangi'], follow: ['prices'], need: ['@paket', '@fiyat', '@indirim', 'ders'],
+  add({ id: 'package_choose', avoid: ['@borc', '@devam', '@fiyat'], pub: true, topic: ['@paket', 'hangi'], follow: ['prices'], need: ['@paket', '@fiyat', '@indirim', 'ders'],
     ex: { tr: [`paketleri karşılaştır`, `hangi paketi almalıyım`, `Hangi paketi seçmeliyim?`, `paketler arasındaki fark ne`, `en avantajlı paket hangisi`, `en ucuz paket`, `haftada iki ders mi bir ders mi`, `yeni başlayan için hangi paket`, `profesyonel paket nedir`, `paket önerin`, `en iyi paket`, `ayda kaç ders oluyor`, `pakette ayda kaç ders var`, `haftada kaç ders yapılıyor`, `paketlerde kaç ders var`],
-      en: [`Which package should I choose?`, `what's the best value package`] },
+      en: [`which package should I pick`, `which package is right for me`, `Which package should I choose?`, `what's the best value package`] },
     a: [
       A(`Paketler süre ve haftalık ders saatine göre değişir (haftada 1 ders = ayda 4 ders); uzadıkça indirim artar:\n{packages}\n\nDers başı en avantajlısı **{cheapest}**. Emin değilsen 1 aylık paketle başlayıp devam edebilir ya da deneme dersinde Berkay Er'e sorabilirsin.`,
         `Packages differ by length and weekly hours (1 lesson a week = 4 a month); discounts grow with length:\n{packages}\n\nBest value per lesson: **{cheapest}**. If unsure, start with 1 month and continue, or ask Berkay Er in the trial lesson.`, 'packages'),
@@ -557,9 +647,9 @@
       `A single lesson is **{price_single}**; in packages a lesson hour is **{price}** and discounted. Package students also get **priority** when times clash. The request form has a **Single lesson** option.`)],
     actions: [ACT.pkgs] });
 
-  add({ id: 'renew', states: ['ended', 'active'], topic: ['@paket', 'yenile'], follow: ['prices'],
-    ex: { tr: [`Paketimi nasıl yenilerim?`, `devam etmek istiyorum yeni paket`, `paketim bitti ne yapmalıyım`, `yeni paket almak istiyorum`, `paketi uzatmak`, `bir ay daha devam etmek istiyorum`, `paket yenileme`, `derslere devam`, `paket bitince yeniden talep mi oluşturacağım`, `devam etmek için tekrar talep göndermem gerekiyor mu`, `aynı gün ve saatlerle devam etmek`, `paket otomatik yenileniyor mu`, `paketim bitti görünüyor ama dersim kalmıştı`],
-      en: [`How do I renew my package?`, `I want to continue with a new package`] },
+  add({ id: 'renew', avoid: ['@borc'], states: ['ended', 'active'], topic: ['@paket', 'yenile'], follow: ['prices'],
+    ex: { tr: [`paketimi şimdiden uzatabilir miyim`, `sonraki ayın paketini erkenden almak`, `Paketimi nasıl yenilerim?`, `devam etmek istiyorum yeni paket`, `paketim bitti ne yapmalıyım`, `yeni paket almak istiyorum`, `paketi uzatmak`, `bir ay daha devam etmek istiyorum`, `paket yenileme`, `derslere devam`, `paket bitince yeniden talep mi oluşturacağım`, `devam etmek için tekrar talep göndermem gerekiyor mu`, `aynı gün ve saatlerle devam etmek`, `paket otomatik yenileniyor mu`, `paketim bitti görünüyor ama dersim kalmıştı`],
+      en: [`can I extend my package`, `How do I renew my package?`, `I want to continue with a new package`] },
     a: [
       A(`Paketin bitti; bu ekrandaki formdan yeni paketini ve haftalık gün-saatlerini seçip talep gönder (aynı gün-saatleri yeniden seçebilirsin). Berkay Er onaylayınca takvimine işlenir. Bitmemiş bir dersin olduğunu düşünüyorsan WhatsApp'tan yaz.`,
         `Your package has ended; pick a new package and weekly times in the form on this screen and send the request (you can pick the same times again). Once Berkay Er approves, it's added to your calendar. If you think a lesson is missing, message him on WhatsApp.`, 'st_ended'),
@@ -594,16 +684,16 @@
     actions: [ACT.wa] });
 
   // ───────────────────────── Deneme dersi ─────────────────────────
-  add({ id: 'trial_what', pub: true, topic: ['@deneme'], follow: ['trial_book', 'trial_after'],
+  add({ id: 'trial_what', avoid: ['@zamansoru', '@tekrar', '@kaydol'], pub: true, topic: ['@deneme'], follow: ['trial_book', 'trial_after'],
     ex: { tr: [`ücretsiz ders ne demek`, `ücretsiz ders nedir`, `Deneme dersi nedir?`, `deneme dersi ücretsiz mi`, `bedava ders var mı`, `deneme dersinde ne yapılıyor`, `ilk ders ücretli mi`, `tanışma dersi`, `deneme dersi kaç dakika`, `deneme dersi ne işe yarar`],
       en: [`What is the trial lesson?`, `is the trial free`] },
     a: [A(`Deneme dersi **ücretsiz** ve {lesson_min} dakika, Zoom üzerinden. Seviyeni, hedeflerini ve hangi türde üretim yapmak istediğini konuşursunuz; hiçbir yükümlülük yok. Kişi başı **bir kez** alınabilir.`,
       `The trial lesson is **free** and {lesson_min} minutes on Zoom. You talk about your level, goals and the styles you want to produce; no obligation. It can be taken **once** per person.`)],
     actions: [ACT.trial, ACT.signin] });
 
-  add({ id: 'trial_book', pub: true, states: ['new'], topic: ['@deneme', 'al'],
-    ex: { tr: [`Deneme dersi nasıl alırım?`, `deneme dersi almak istiyorum`, `ücretsiz derse nasıl kayıt olurum`, `deneme dersi için tarih seçmek`, `deneme dersi rezervasyonu`, `deneme dersi istiyorum`, `deneme dersine başvurmak`, `deneme için gün saat seçimi`],
-      en: [`How do I book a trial lesson?`, `I want a free trial`] },
+  add({ id: 'trial_book', avoid: ['@tekrar', '@zamansoru'], need: ['@deneme'], pub: true, states: ['new'], topic: ['@deneme', 'al'],
+    ex: { tr: [`ücretsiz tanışma dersine nasıl kaydolurum`, `deneme dersi için nereye basmalıyım`, `Deneme dersi nasıl alırım?`, `deneme dersi almak istiyorum`, `ücretsiz derse nasıl kayıt olurum`, `deneme dersi için tarih seçmek`, `deneme dersi rezervasyonu`, `deneme dersi istiyorum`, `deneme dersine başvurmak`, `deneme için gün saat seçimi`],
+      en: [`how do I sign up for the free trial`, `How do I book a trial lesson?`, `I want a free trial`] },
     a: [
       A(`Bu ekranda **Deneme Dersi** kartına bas: tarih (en erken {trial_days} gün sonrası) ve boş bir saat seç, WhatsApp numaranı yaz, **Deneme Dersi İste**'ye bas. Berkay Er onaylayınca derse başlarsın.`,
         `On this screen tap the **Trial lesson** card: pick a date (at least {trial_days} days ahead) and a free time, enter your WhatsApp number and press **Request trial**. Once Berkay Er approves, you're set.`, 'st_new'),
@@ -614,7 +704,7 @@
     ],
     actions: [ACT.trial, ACT.signin] });
 
-  add({ id: 'trial_when', states: ['trial'], topic: ['@deneme', 'ne zaman'],
+  add({ id: 'trial_when', avoid: ['@tekrar'], states: ['trial'], topic: ['@deneme', 'ne zaman'],
     ex: { tr: [`Deneme dersim ne zaman?`, `deneme dersim saat kaçta`, `deneme dersi hangi gün`, `deneme dersim onaylandı mı`, `deneme dersimin tarihi`, `ücretsiz dersim ne zaman`, `deneme dersine ne kadar kaldı`, `deneme dersi bugün mü`],
       en: [`When is my trial lesson?`, `trial lesson time`] },
     a: [
@@ -633,9 +723,9 @@
       `After the trial you send a **package** or **single lesson** request from this panel: pick your package and weekly times, Berkay Er approves, then payment details appear in the panel.`)],
     actions: [ACT.pkgs] });
 
-  add({ id: 'trial_again', pub: true, topic: ['@deneme', 'tekrar'],
-    ex: { tr: [`İkinci kez deneme dersi alabilir miyim?`, `tekrar deneme dersi`, `deneme dersi daha önce alınmış diyor`, `başka hesapla deneme dersi`, `deneme dersini tekrar almak`, `bir deneme daha`, `deneme hakkım bitti mi`, `deneme dersi kaç kere alınır`],
-      en: [`Can I take another trial lesson?`, `trial already used`] },
+  add({ id: 'trial_again', need: ['@tekrar'], pub: true, topic: ['@deneme', 'tekrar'],
+    ex: { tr: [`deneme dersini yeniden alabilir miyim`, `İkinci kez deneme dersi alabilir miyim?`, `tekrar deneme dersi`, `deneme dersi daha önce alınmış diyor`, `başka hesapla deneme dersi`, `deneme dersini tekrar almak`, `bir deneme daha`, `deneme hakkım bitti mi`, `deneme dersi kaç kere alınır`],
+      en: [`can I do a second trial`, `one more trial please`, `Can I take another trial lesson?`, `trial already used`] },
     a: [A(`Deneme dersi kişi başı **yalnızca bir kez** alınabilir (e-posta, telefon ve bağlantı ayrı ayrı kontrol edilir). Devam etmek için paket ya da tek ders seçebilirsin.`,
       `The trial is **once per person** (email, phone and connection are each checked). To continue, pick a package or a single lesson.`)],
     actions: [ACT.pkgs, ACT.wa] });
@@ -656,9 +746,9 @@
     ],
     actions: [ACT.pending, ACT.wa] });
 
-  add({ id: 'request_edit', states: ['pending'], topic: ['@talep', '@degis'],
-    ex: { tr: [`Talebimi değiştirebilir miyim?`, `yanlış saat seçtim talebi düzeltmek`, `talebi geri çekmek istiyorum`, `talebimi iptal etmek`, `başka paket seçmek istiyorum talep gönderdim`, `talebi silmek`, `gönderdiğim talebi düzenlemek`, `talebimde hata var`],
-      en: [`Can I edit my request?`, `withdraw my request`] },
+  add({ id: 'request_edit', need: ['@degis', '@tekrar', '@iptal', 'geri', 'sil', 'yanlis', 'hata', 'duzenle', 'baska', '@ertele'], states: ['pending'], topic: ['@talep', '@degis'],
+    ex: { tr: [`talebimdeki gün ve saatleri değiştirmek`, `formu yeniden doldurmam mı gerekiyor`, `Talebimi değiştirebilir miyim?`, `yanlış saat seçtim talebi düzeltmek`, `talebi geri çekmek istiyorum`, `talebimi iptal etmek`, `başka paket seçmek istiyorum talep gönderdim`, `talebi silmek`, `gönderdiğim talebi düzenlemek`, `talebimde hata var`],
+      en: [`change the times in my request`, `Can I edit my request?`, `withdraw my request`] },
     a: [
       A(`Talebin onaylanıp paketin başladığı için artık geri çekilemez; kurallara göre alınan dersler iptal edilemez. (Bekleyen bir talep **Talebi geri çek** ile silinebilir.) Tek tek dersler için **Ertele** ya da aynı hafta içinde **saati değiştir** kullanabilirsin; özel durum için WhatsApp'tan Berkay Er'e yaz.`,
         `Your request is approved and the package has started, so it can't be withdrawn now; under the rules purchased lessons can't be cancelled. (A pending request can be deleted with **Withdraw request**.) For single lessons use **Reschedule** or **change the time** within the same week; for special cases message Berkay Er on WhatsApp.`, 'dash'),
@@ -674,9 +764,9 @@
       `The rejection reason is shown on the request screen (Berkay Er's note). Use **New request** to try other times or a different package; for questions message him on WhatsApp.`)],
     actions: [ACT.wa] });
 
-  add({ id: 'how_request', pub: true, states: ['new', 'request'], topic: ['@talep', '@paket'],
-    ex: { tr: [`Ders talebi nasıl oluştururum?`, `paket nasıl alınır`, `derslere nasıl kayıt olurum`, `gün ve saat nasıl seçilir`, `talep formu nasıl doldurulur`, `haftalık saat seçimi`, `kayıt olmak istiyorum`, `nasıl başlarım`, `derse başlamak istiyorum`],
-      en: [`How do I request lessons?`, `how do I sign up for lessons`, `how to pick days and times`] },
+  add({ id: 'how_request', avoid: ['@fiyat', '@borc'], pub: true, states: ['new', 'request'], topic: ['@talep', '@paket'],
+    ex: { tr: [`talebimi nasıl gönderirim`, `ders talep formunu nerede bulurum`, `ders almak için başvuru nereden yapılıyor`, `paket için nereden başvurulur`, `Ders talebi nasıl oluştururum?`, `paket nasıl alınır`, `derslere nasıl kayıt olurum`, `gün ve saat nasıl seçilir`, `talep formu nasıl doldurulur`, `haftalık saat seçimi`, `kayıt olmak istiyorum`, `nasıl başlarım`, `derse başlamak istiyorum`],
+      en: [`how do I send a lesson request`, `where do I apply for lessons`, `How do I request lessons?`, `how do I sign up for lessons`, `how to pick days and times`] },
     a: [
       A(`Talep formunda:\n- Bir **kampanyalı paket** (ya da **Tek ders**) seç\n- Gün-saat tablosundan paketin haftalık ders sayısı kadar saat seç (saatler İstanbul saati)\n- İstersen başlangıç tarihi seç (boşsa en yakın uygun hafta)\n- WhatsApp numaranı yaz ve gönder\n\nBerkay Er onaylayınca IBAN ve tutar panelde görünür.`,
         `In the request form:\n- Pick a **package** (or **Single lesson**)\n- Select as many weekly hours as the package has in the day/time grid (Istanbul time)\n- Optionally pick a start date (empty = nearest available week)\n- Enter your WhatsApp number and send\n\nOnce Berkay Er approves, the IBAN and amount appear in the panel.`, 'signedIn'),
@@ -685,14 +775,14 @@
     ],
     actions: [ACT.pkgs, ACT.signin] });
 
-  add({ id: 'wait_whatsapp', states: ['pending'], topic: ['@whatsapp', 'mesaj'],
+  add({ id: 'wait_whatsapp', avoid: ['@numara'], states: ['pending'], topic: ['@whatsapp', 'mesaj'],
     ex: { tr: [`Neden WhatsApp'tan mesaj atmam gerekiyor?`, `whatsapp mesajı zorunlu mu`, `önce benim mi yazmam lazım`, `whatsapp iletişimini başlatmak`, `bana neden whatsapp'tan dönülmüyor`, `whatsapp'tan mesaj gelmedi`, `whatsapp bildirimi`],
       en: [`Why do I need to message on WhatsApp first?`, `I don't get WhatsApp messages`] },
     a: [A(`WhatsApp politikası gereği sana mesaj gönderilebilmesi için **önce senin kısa bir mesaj atman** gerekiyor; yoksa bildirimler ve hatırlatmalar ulaşmaz. Ekrandaki **WhatsApp ile mesaj at** düğmesi mesajı hazır açar, sadece **Gönder**'e bas.`,
       `Due to WhatsApp policy, **you need to send a short message first** so notices and reminders can reach you. The **Message on WhatsApp** button opens a ready message — just press **Send**.`)],
     actions: [ACT.pending, ACT.wa] });
 
-  add({ id: 'reminders', pub: true, topic: ['hatirlat', '@whatsapp'],
+  add({ id: 'reminders', avoid: ['@numaradegis'], pub: true, topic: ['hatirlat', '@whatsapp'],
     ex: { tr: [`Ders hatırlatması gelecek mi?`, `dersten önce bildirim geliyor mu`, `hatırlatma mesajı ne zaman gelir`, `whatsapp hatırlatma`, `e-posta hatırlatması`, `dersi unutmamak için bildirim`, `hatırlatma gelmiyor`, `bir saat önce mesaj geliyor mu`],
       en: [`Will I get lesson reminders?`, `reminder messages`] },
     a: [
@@ -703,9 +793,9 @@
     ],
     actions: [ACT.phone, ACT.wa] });
 
-  add({ id: 'phone', topic: ['telefon', 'numara'], avoid: ['@site', '@bozuk', '@oneri'],
-    kw: [`numara`, `numaram`], ex: { tr: [`whatsapp numaram yanlış yazılmış`, `numaramı değiştirmek istiyorum`, `numaram yanlış kayıtlı`, `Telefon numaramı nasıl değiştiririm?`, `numaramı yanlış yazdım`, `whatsapp numaramı güncellemek`, `numara eklemek`, `telefon numarası nereye yazılır`, `yeni numaram var`, `yurt dışı numara olur mu`, `numaramı kaydetmek`],
-      en: [`How do I change my phone number?`, `update my WhatsApp number`] },
+  add({ id: 'phone', topic: ['telefon', 'numara'], avoid: ['@site', '@bozuk', '@oneri', '@kaydol'],
+    kw: [`numara`, `numaram`], ex: { tr: [`hatırlatmaları yeni numarama almak istiyorum`, `whatsapp numaram yanlış yazılmış`, `numaramı değiştirmek istiyorum`, `numaram yanlış kayıtlı`, `Telefon numaramı nasıl değiştiririm?`, `numaramı yanlış yazdım`, `whatsapp numaramı güncellemek`, `numara eklemek`, `telefon numarası nereye yazılır`, `yeni numaram var`, `yurt dışı numara olur mu`, `numaramı kaydetmek`],
+      en: [`use another phone number for WhatsApp`, `How do I change my phone number?`, `update my WhatsApp number`] },
     a: [
       A(`Panelde **WhatsApp numaran** kutusu var; numaranı oraya yazıp **Kaydet**'e bas, sonra WhatsApp'tan bir kez mesaj at.`, `There's a **WhatsApp number** box in the panel; enter it, press **Save**, then send one WhatsApp message.`, 'needPhone'),
       A(`Numaran kayıtlı. Değiştirmek için panelde düğme yok; yeni numaranı WhatsApp'tan Berkay Er'e yaz. Yurt dışı numarayı **+** ve ülke koduyla yazabilirsin.`,
@@ -714,9 +804,9 @@
     actions: [ACT.phone, ACT.wa] });
 
   // ───────────────────────── Seviye sınavı ─────────────────────────
-  add({ id: 'placement', pub: true, topic: ['@seviye'], follow: ['placement_result'],
-    ex: { tr: [`Seviye belirleme sınavı nedir?`, `sınav zorunlu mu`, `seviye sınavı kaç soru`, `sınavı nereden çözerim`, `seviye testi`, `sınava başla`, `sınav ne kadar sürüyor`, `seviye belirleme neden gerekli`, `sınavı daha sonra çözebilir miyim`, `sınava girmeli miyim`, `hiç bilgim yok sınavı çözeyim mi`, `sınavı çözmeden derse başlayabilir miyim`, `sınav ingilizce var mı`],
-      en: [`What is the placement test?`, `is the level test mandatory`] },
+  add({ id: 'placement', avoid: ['@sonuc', '@tekrar'], pub: true, topic: ['@seviye'], follow: ['placement_result'],
+    ex: { tr: [`seviye sınavı kaç dakika sürer`, `Seviye belirleme sınavı nedir?`, `sınav zorunlu mu`, `seviye sınavı kaç soru`, `sınavı nereden çözerim`, `seviye testi`, `sınava başla`, `sınav ne kadar sürüyor`, `seviye belirleme neden gerekli`, `sınavı daha sonra çözebilir miyim`, `sınava girmeli miyim`, `hiç bilgim yok sınavı çözeyim mi`, `sınavı çözmeden derse başlayabilir miyim`, `sınav ingilizce var mı`],
+      en: [`why do I need to take the placement test`, `how long does the level test take`, `What is the placement test?`, `is the level test mandatory`] },
     a: [
       A(`Seviye belirleme sınavı dersin sana göre kurgulanması için: **{pt_n} soru, yaklaşık 8 dakika**. Ödemesi onaylı aktif öğrenci dışında herkese zorunlu; hiç bilgin olmasa da çöz — bilmediğin soruyu boş geçmen sorun değil. Henüz çözmedin — kart panelde duruyor; istersen şimdi açabilirsin. Sayfa dili **EN** ise sorular İngilizce gelir.`,
         `The placement test tailors the lessons to you: **{pt_n} questions, about 8 minutes**. It's required for everyone except active, paid students; take it even as a complete beginner. You haven't taken it yet — the card is in the panel; open it now if you like. With the page set to **EN** the questions are in English.`, 'ptMissing'),
@@ -727,9 +817,9 @@
     ],
     actions: [ACT.placement, ACT.ptCard] });
 
-  add({ id: 'placement_result', topic: ['@seviye', 'sonuc'],
+  add({ id: 'placement_result', avoid: ['@popup', '@tekrar'], need: ['@sonuc'], topic: ['@seviye', 'sonuc'],
     kw: [`puan`, `sonuç`, `kaç aldım`], ex: { tr: [`sınav puanım ne`, `Seviyem ne?`, `sınav sonucum ne`, `kaç puan aldım`, `seviye sonucumu görmek`, `sınavdan ne çıktı`, `seviyemi öğrenmek istiyorum`, `hangi seviyedeyim`, `test sonucu`],
-      en: [`What's my level?`, `my test result`] },
+      en: [`what score did I get on the level test`, `my placement result`, `What's my level?`, `my test result`] },
     a: [
       A(`Seviyen **{level}**{score_txt}. Berkay Er dersleri buna göre planlar.`, `Your level is **{level}**{score_txt}. Berkay Er plans the lessons accordingly.`, 'ptDone'),
       A(`Henüz seviye belirleme sınavını çözmedin. {pt_n} soru, yaklaşık 8 dakika.`, `You haven't taken the placement test yet. {pt_n} questions, about 8 minutes.`, 'ptMissing'),
@@ -737,7 +827,7 @@
     ],
     actions: [ACT.placement, ACT.ptCard] });
 
-  add({ id: 'placement_retake', topic: ['@seviye', 'tekrar'],
+  add({ id: 'placement_retake', need: ['@tekrar', 'sifirla', 'yanlis', 'hata', 'kotu'], topic: ['@seviye', 'tekrar'],
     kw: [`yeniden`, `tekrar`, `sıfırla`, `baştan`], ex: { tr: [`sınavı yeniden yapmak`, `Sınavı tekrar çözebilir miyim?`, `seviye sınavını yeniden yapmak`, `sınavı yanlış çözdüm`, `testi baştan almak`, `sınavı sıfırlamak`, `sınavda hata yaptım`, `ikinci kez sınav`, `sonucu değiştirmek`],
       en: [`Can I retake the placement test?`] },
     a: [A(`Sınav bir kez çözülür; tekrar çözebilmen için Berkay Er'in sonucunu sıfırlaması gerekiyor. İstersen WhatsApp'tan yaz ya da asistan üzerinden ona ilet.`,
@@ -745,7 +835,7 @@
     actions: [ACT.wa, ACT.forward] });
 
   // ───────────────────────── Kurallar ─────────────────────────
-  add({ id: 'rules', pub: true, topic: ['@kural'],
+  add({ id: 'rules', avoid: ['@popup'], pub: true, topic: ['@kural'],
     ex: { tr: [`Ders kuralları neler?`, `kurallar nerede`, `kuralları görmek istiyorum`, `ders politikası`, `şartlar neler`, `kuralları oku`, `hangi kurallar var`, `ders kuralları özet`],
       en: [`What are the lesson rules?`, `show the rules`] },
     a: [A(`Özetle:\n- **Saat değiştirme**: {self_h} saatten fazla varsa aynı hafta içinde, ders başına bir kez, ücretsiz\n- **Erteleme**: N aylık paket = N hak, en az {resch_h} saat önce, ders 1 hafta ileri; ek hak {extra_price}\n- Kullanılmayan haklar paket bitince sona erer\n- **{late_min} dakika** içinde girilmeyen ders yapılmış sayılır\n- Haber vermeden katılmamak: ders yapılmış sayılır\n- Dersler iptal edilemez, devredilemez\n- Ders içerikleri Berkay Er'e aittir, paylaşılamaz\n- {cfm_h} saat içinde itiraz edilmeyen ders yapılmış sayılır`,
@@ -760,8 +850,8 @@
     actions: [ACT.rules] });
 
   add({ id: 'copyright', pub: true, topic: ['telif', 'paylas'],
-    ex: { tr: [`Derste yapılan parçayı paylaşabilir miyim?`, `ders içeriklerini paylaşmak`, `telif hakkı kuralı`, `derste yaptığımız projeyi yayınlayabilir miyim`, `ders videosunu paylaşabilir miyim`, `berkay'ın parçasını kullanmak`, `ders dosyalarını arkadaşıma atmak`, `içerikleri dağıtmak`],
-      en: [`Can I share the track made in the lesson?`, `copyright rule`] },
+    ex: { tr: [`derslerde yapılan parçaların telif hakkı kimde`, `Derste yapılan parçayı paylaşabilir miyim?`, `ders içeriklerini paylaşmak`, `telif hakkı kuralı`, `derste yaptığımız projeyi yayınlayabilir miyim`, `ders videosunu paylaşabilir miyim`, `berkay'ın parçasını kullanmak`, `ders dosyalarını arkadaşıma atmak`, `içerikleri dağıtmak`],
+      en: [`who owns the music made in lessons`, `Can I share the track made in the lesson?`, `copyright rule`] },
     a: [A(`Kural: Berkay Er'in derste paylaştığı ve yaptığı parçalar/içerikler **kendisine aittir**; hiçbir şekilde paylaşılamaz veya dağıtılamaz. Kendi ürettiğin müzik için emin olmadığın bir durum varsa Berkay Er'e sor.`,
       `Rule: tracks and content Berkay Er shares or makes in lessons **belong to him**; they can't be shared or distributed. If you're unsure about your own music, ask Berkay Er.`)],
     actions: [ACT.rules] });
@@ -834,7 +924,7 @@
     actions: [ACT.qa, ACT.wa] });
 
   // ───────────────────────── Hesap / site ─────────────────────────
-  add({ id: 'login', pub: true, topic: ['@sifre'],
+  add({ id: 'login', avoid: ['@zoom', '@katil'], pub: true, topic: ['@sifre'],
     ex: { tr: [`Giriş yapamıyorum`, `şifremi unuttum`, `nasıl giriş yaparım`, `hesaba giremiyorum`, `şifre sıfırlama`, `google ile giriş`, `kayıt olmak istiyorum hesap aç`, `instagram'dan açınca giriş olmuyor`, `e-posta ile giriş`, `google ile giriş yapamıyorum`, `hesabıma giremiyorum`, `siteye giremiyorum`],
       en: [`I can't sign in`, `forgot my password`, `how do I log in`] },
     a: [
@@ -858,7 +948,7 @@
     a: [A(`Sayfanın üstündeki **TR | EN** anahtarıyla dili değiştirebilirsin; asistan da aynı dilde cevap verir. Derslerin hangi dilde yapılacağını Berkay Er'e sorabilirsin.`, `Use the **TR | EN** switch at the top to change the language; the assistant answers in that language too. Ask Berkay Er about the language of the lessons themselves.`)],
     actions: [ACT.langEn, ACT.langTr] });
 
-  add({ id: 'contact', pub: true, topic: ['@iletisim', '@whatsapp'],
+  add({ id: 'contact', avoid: ['@numaradegis'], pub: true, topic: ['@iletisim', '@whatsapp'],
     ex: { tr: [`Berkay'a nasıl ulaşırım?`, `iletişim numarası`, `whatsapp numarası ne`, `hocaya mesaj atmak istiyorum`, `destek almak istiyorum`, `berkay er ile konuşmak`, `yardım lazım`, `canlı destek`, `gerçek biriyle konuşmak istiyorum`],
       en: [`How do I contact Berkay?`, `whatsapp number`, `talk to a human`] },
     a: [A(`En hızlısı **WhatsApp**: {wa_display} (sağ alttaki WhatsApp düğmesi). Panelle ilgili yazılı sorular için **Soru Sor** kartını da kullanabilirsin; Berkay Er yanıtlar.`,
@@ -866,7 +956,7 @@
     actions: [ACT.wa, ACT.qa] });
 
   add({ id: 'ask_question', topic: ['soru', 'cevap'],
-    ex: { tr: [`Soru Sor kartı ne işe yarıyor?`, `berkay'a yazılı soru sormak`, `sorumu nereye yazayım`, `sorduğum soru yanıtlandı mı`, `soru cevap bölümü`, `soruma cevap gelmedi`, `prodüksiyon sorusu sormak`, `teknik soru sormak istiyorum`,
+    ex: { tr: [`soru sor kartına yazdığımı kimler görebilir`, `Soru Sor kartı ne işe yarıyor?`, `berkay'a yazılı soru sormak`, `sorumu nereye yazayım`, `sorduğum soru yanıtlandı mı`, `soru cevap bölümü`, `soruma cevap gelmedi`, `prodüksiyon sorusu sormak`, `teknik soru sormak istiyorum`,
       `kick nasıl yapılır`, `mix nasıl yapılır`, `sidechain nasıl yapılır`, `bass sesi nasıl kalın olur`, `reverb ayarı nasıl olmalı`, `parçamı dinleyip yorum yapar mısın`, `derste anlatılan konuyu unuttum tekrar sorabilir miyim`, `melodi nasıl yazılır`, `soru sor kartına yazdım cevap yok`],
       en: [`Where can I ask Berkay a question?`, `Q&A card`, `how do I make a kick`, `how do I mix my track`] },
     a: [
@@ -877,8 +967,8 @@
     ],
     actions: [ACT.qa] });
 
-  add({ id: 'note', states: ['active', 'unpaid'], topic: ['notum'],
-    kw: [`notum`], ex: { tr: [`Notum kartı ne işe yarar?`, `notum bölümüne ne yazmalıyım`, `tercihlerimi nereye yazayım`, `berkay'a not bırakmak`, `not kaydetmek`, `dersle ilgili isteğimi bırakmak`, `notumu kaydettim görünüyor mu`, `notumu kim görüyor`],
+  add({ id: 'note', avoid: ['@kaydol'], states: ['active', 'unpaid'], topic: ['notum'],
+    kw: [`notum`], ex: { tr: [`notum alanına ne yazılır`, `Notum kartı ne işe yarar?`, `notum bölümüne ne yazmalıyım`, `tercihlerimi nereye yazayım`, `berkay'a not bırakmak`, `not kaydetmek`, `dersle ilgili isteğimi bırakmak`, `notumu kaydettim görünüyor mu`, `notumu kim görüyor`],
       en: [`What is the My note card for?`, `leave a note for Berkay`] },
     a: [A(`**Notum** kartına tercihlerini ve isteklerini yazıp **Kaydet**'e basarsın; Berkay Er öğrenci listesinde görür. Hızlı cevap gereken sorular için WhatsApp ya da **Soru Sor** daha uygun.`,
       `Write your preferences and wishes in **My note** and press **Save**; Berkay Er sees it in his student list. For questions needing a quick answer, WhatsApp or **Ask a question** is better.`)],
@@ -899,7 +989,7 @@
     actions: [ACT.zoom, ACT.wa] });
 
   // ───────────────────────── Eğitim / genel ─────────────────────────
-  add({ id: 'how_lessons', pub: true, topic: ['ders', 'nasil'], avoid: ['@itiraz', '@produksiyon', '@olumsuz', '@kamera'],
+  add({ id: 'how_lessons', pub: true, topic: ['ders', 'nasil'], avoid: ['@itiraz', '@produksiyon', '@olumsuz', '@kamera', '@ertele', '@degis', '@yakin', '@hak', '@odeme'],
     ex: { tr: [`Dersler nasıl yapılıyor?`, `dersler online mı`, `yüz yüze ders var mı`, `ders formatı nasıl`, `birebir mi grup mu`, `derslerde ne öğreniyoruz`, `ekran paylaşımı ile mi`, `dersler canlı mı`],
       en: [`How are the lessons held?`, `are lessons online`, `one-to-one or group`] },
     a: [A(`Bu paneldeki Ableton prodüksiyon dersleri **Zoom üzerinden, birebir ve online**. Ekran paylaşımıyla kendi Ableton projen ya da sıfırdan yaptığınız bir parça üzerinde çalışırsınız; anlık geri bildirim alırsın. Her ders {lesson_min} dakika. (Yüz yüze olan DJ eğitimi Kuşadası stüdyosunda; ayrıntısı **Eğitim** sayfasında.)`,
@@ -984,11 +1074,11 @@
       en: [`thanks`, `thank you`, `great, thanks`] },
     a: [A(`Rica ederim! Başka bir sorun olursa buradayım.`, `You're welcome! I'm here if anything else comes up.`)] });
 
-  add({ id: 'who', pub: true, topic: [],
+  add({ id: 'who', avoid: ['@sorusor'], pub: true, topic: [],
     ex: { tr: [`gerçek biri misin`, `sen kimsin`, `yapay zeka mısın`, `chatgpt misin`, `bot musun`, `gerçek kişi misin`, `bu asistan nasıl çalışıyor`, `sorularımı kim görüyor`, `yazdıklarımı kim okuyor`],
       en: [`who are you`, `are you an AI`, `is this a bot`] },
     a: [A(`Ben Ders Paneli'nin site içi asistanıyım — dış bir yapay zekâ değil; panelin kurallarından ve senin ders bilgilerinden cevap veririm. Yazdıkların bir yere gönderilmez; yalnız **Berkay'a ilet** dersen soru ona gider.`,
       `I'm the Lesson panel's built-in assistant — not an external AI; I answer from the panel's rules and your lesson data. What you type isn't sent anywhere; only if you press **Forward to Berkay** does the question go to him.`)] });
 
-  root.beAssistantKB = { version: 1, facts: FACTS, synonyms: SYN, intents: I };
+  root.beAssistantKB = { version: 1, facts: FACTS, synonyms: SYN, combos: COMBOS, intents: I };
 })(typeof window !== 'undefined' ? window : globalThis);

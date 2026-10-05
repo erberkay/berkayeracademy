@@ -4,7 +4,8 @@
    ve karakter-üçlü (trigram) benzerliği. Kökler önek olarak da aranır ("onaylandı" → "onay"),
    konuşma dili ("diyo", "yapcam", "20'ye") yazı diline çevrilir, sayılar tek belirteç olur. Kapsam
    (sorunun ne kadarının karşılandığı) niyetin tüm örneklerinin birleşimine göre ölçülür; niyetteki
-   need/avoid/strong kavramları puanı ve kapsamı ayarlar (ayrıntı be-assistant-kb.js başında). Bilgi tabanı be-assistant-kb.js'te (window.beAssistantKB),
+   need/avoid/strong kavramları puanı ve kapsamı ayarlar; KB.combos bileşik kavramlar ekler ("toplam" +
+   "ne kadar" → @borc), olumsuz çekimli kelimenin kavramı ayrıca izlenir ("değiştiremiyorum" → -@degis) (ayrıntı be-assistant-kb.js başında). Bilgi tabanı be-assistant-kb.js'te (window.beAssistantKB),
    arayüz be-assistant-ui.js'te. Node'da test için: vm ile yüklenir, globalThis.beAssistant okunur.
 
    API (window.beAssistant):
@@ -49,8 +50,11 @@
   }
   // Sayıya bitişik ya da ayrı yazılmış ek: "20ye", "18'deki", "18 deki" → "20", "18"
   var NUM_SFX = /\b(\d+) (deki|daki|teki|taki|de|da|te|ta|ye|ya|e|a|den|dan|ten|tan|yi|yu|i|u|inci|nci|uncu|ncu|lik|luk|lu|li|er|ar|sar|ser)\b/g;
+  // İngilizce olumsuz kısaltma ayrı belirteç olur: "can't click" → "ca nt click" (kesme işareti eki
+  // olarak atılmasın; Türkçe "not" ile karışmasın diye "not" değil "nt")
   function normalize(s) {
     return fold(s)
+      .replace(/\b([a-z]+)n[’'`´]t\b/g, '$1 nt')
       .replace(/(\d)[’'`´]\s*[a-z]+/g, '$1')
       .replace(/[’'`´]\s*[a-z]+/g, '')
       .replace(/(\d+)([a-z]{1,6})\b/g, '$1')
@@ -72,7 +76,7 @@
    'kendim kendin kendi kendimiz simdiye simdilik suana suan tamamen ' +
    'ler lar leri lari lerin larin yi yu ye ya e u nin nun den dan ten tan te ta ' +
    'the a an is are am i me my mine to of in on at for do does did can could would should will be it this that ' +
-   'please there you your yours we us our so and or but if with about').split(' ').forEach(function (w) { if (w) STOP[w] = 1; });
+   'please there you your yours we us our so and or but if with about just still yet already also really now even any some everything anything something hey ok').split(' ').forEach(function (w) { if (w) STOP[w] = 1; });
   // Takip sorusu işaretleri ("peki kaç tane?", "ya sonra?", "what about…")
   var FOLLOW_MARK = /^(peki|ya|o zaman|ayrica|bir de|and|what about|how about|so)\b/;
   // Yalnız bu genel soru kelimelerinden oluşan kısa soru ("ne zamana kadar?", "kaç tane?", "ne kadar
@@ -112,7 +116,7 @@
    'bugun yarin aksam sabah gece neden sayfa site kirmizi kapali baska hangi google tane once sonra ' +
    'ogrenci gecen ayni bazi push studio logic cubase reaper bitwig garageband crack korsan kulaklik ' +
    'sidechain reverb limiter kompresor mastering supersaw synth vokal melodi akor ' +
-   'yanlislik telif yayin parca proje panel buton dugme ekran uygulama tarayici indirme lisans lazim gerek instagram tiktok zaman paylas zorunlu zorunda tamamla gercek').split(' ').forEach(function (w) { if (w) ROOTS[w] = 1; });
+   'yanlislik yanki telif yayin parca proje form format toplam borc puan sonuc skor panel buton dugme ekran uygulama tarayici indirme lisans lazim gerek instagram tiktok zaman paylas zorunlu zorunda tamamla gercek').split(' ').forEach(function (w) { if (w) ROOTS[w] = 1; });
   // Önek olarak aranmayacak kelimeler (kendi anlamı olan türevler)
   var NOSTEM = {};
   ('surekli surec ogrenci gecen ayni bazi acilen sonraki yarim hatirla paragraf planet listen ' +
@@ -248,10 +252,10 @@
       if (row[2] === 'flag') idx.flags[concept] = 1;
       (row[1] || []).forEach(function (p) {
         p = String(p);
-        var exact = p.charAt(0) === '=', whole = p.slice(-1) === '$';
-        var n = normalize(p.replace(/^=|\$$/g, ''));
+        var exact = p.charAt(0) === '=', whole = p.slice(-1) === '$', raw = p.charAt(0) === '~';
+        var n = normalize(p.replace(/^[=~]|\$$/g, ''));
         if (!n) return;
-        if (n.indexOf(' ') >= 0) { idx.phrases.push({ re: new RegExp('(^| )' + n.replace(/ /g, '[a-z]* ') + (whole ? '' : '[a-z]*') + '( |$)'), c: concept }); return; }
+        if (n.indexOf(' ') >= 0 || raw) { idx.phrases.push({ re: new RegExp('(^| )' + n.replace(/ /g, '[a-z]* ') + (whole ? '' : '[a-z]*') + '( |$)'), c: concept }); return; }
         var k = stem(n);
         if (exact || whole || (k !== n && k.length <= 3)) { idx.surface.push({ w: n, c: concept, whole: whole }); return; }
         (idx.words[k] = idx.words[k] || []).push(concept);
@@ -261,6 +265,28 @@
     if (_synCache) _synCache.set(list, idx);
     return idx;
   }
+  // KB.combos: [['kavram', ['@a|kök|~kelime', '!@b', …]], …] — grup içinde "|" = ya da; grup başında
+  // "!" = bu gruptan hiçbiri geçmemeli. "@x" kavram, "~x" etkisiz kelime dahil metindeki kelime (ekli),
+  // "-x" / "-@x" olumsuz çekimli kelimenin kökü / kavramı ("değiştiremiyorum" → -@degis), düz kelime köküyle.
+  // "~x$": ek almamış tam kelime ("~yok$" "yoksa"yı tutmaz).
+  var _cbCache = typeof WeakMap === 'function' ? new WeakMap() : null;
+  function comboIndex(kb) {
+    var list = kb.combos || [];
+    if (_cbCache && _cbCache.has(list)) return _cbCache.get(list);
+    var out = list.map(function (row) {
+      return { c: '@' + row[0], groups: row[1].map(function (g) {
+        var not = g.charAt(0) === '!';
+        return { not: not, terms: (not ? g.slice(1) : g).split('|').filter(Boolean).map(function (x) {
+          if (x.charAt(0) === '-') return { n: x.charAt(1) === '@' ? x : '-' + stem(normalize(x.slice(1))) };
+          if (x.charAt(0) === '@') return { c: x };
+          if (x.charAt(0) === '~') { var whole = x.slice(-1) === '$'; return { re: new RegExp('(^| )' + normalize(x.slice(1).replace(/\$$/, '')).replace(/ /g, '[a-z]* ') + (whole ? '' : '[a-z]*') + '( |$)') }; }
+          return { w: stem(normalize(x)) };
+        }) };
+      }) };
+    });
+    if (_cbCache) _cbCache.set(list, out);
+    return out;
+  }
   function surfaceHit(w, sw) {
     // kısa ifadeler (≤3 harf) tam eşleşir, uzunlar kelimenin başıyla ("alanı" → "alanına")
     return w === sw || (sw.length >= 4 && w.indexOf(sw) === 0);
@@ -268,10 +294,14 @@
 
   var DAYS = '(pazartesi|sali|carsamba|persembe|cuma|cumartesi|pazar)';
   var LIGHT = /^(et|ed)(mek|mem|me|ebil|er|eri|eyim|elim|sem|sek|tim|tik|ti|tin|il|iyor|iyo|ecek|ece|emi|eme|in|iniz)[a-z]*$/;
-  var NEG_TR = /[a-z](m[ai]yor|m[ai]d[iu]|[ae]m[ae]d[iu]|[ae]m[ai]yor|m[ai]y[ae]c[ae][kg]|m[ae]z\b|m[ae]zs[ae]|m[ae]d[ae]n\b|y[ae]m[ae]d|m[ai]yo\b)/;
+  // -mıyor/-miyor/-muyor/-müyor (katlanınca miyor/muyor), -madı/-medi/-medim, -amıyor, -mayacak, -maz…
+  var NEG_TR = /[a-z](m[aiu]yor|m[ae]d[iu]|[ae]m[ae]d[iu]|[ae]m[aiu]yor|m[aiu]y[ae]c[ae][kg]|m[ae]z\b|m[ae]zs[ae]|m[ae]d[ae]n\b|y[ae]m[ae]d|m[aiu]yo\b)/;
   var NEG_EN = /\b(not|never|cannot|can'?t|don'?t|doesn'?t|won'?t|isn'?t|didn'?t)\b/;
   var ME_WORDS = { ben: 1, benim: 1, bende: 1, bana: 1, beni: 1, bendeki: 1, my: 1, mine: 1, me: 1, i: 1 };
   var ME_RE = /(?:[^aeiou](?:im|um|imi|umu|imin|umun|imde|umda|imden|umdan|ime|uma|imiz|umuz|imizi|imle|umla|imdeki)|[aeiou]m(?:i|u|in|un|de|da|den|dan|e|a)?|yim|yum|dim|dum|tim|tum)$/;
+  var POSS = /^(lar|ler)?[iu]?m([iu]n?|[iu]z[iu]?|de|da|den|dan|e|a|deki|daki|le|la)?$/;
+  var POSS_WORDS = { benim: 1, bana: 1, my: 1, mine: 1 };
+  var PART1 = /^[a-z]{2,}[dt][iu]g[iu]m(iz)?$/;
   var REQ = {};
   ('goster gosterir anlat anlatir acikla aciklar soyle soyler bilgi hakkinda detay detayli ozetle bak kontrol ' +
    'explain tell show info information').split(' ').forEach(function (w) { if (w) REQ[w] = 1; });
@@ -291,8 +321,9 @@
     // "anladım teşekkürler", "tamam sağ ol": sohbet + yalnız dolgu kelimesi → sohbet belirteci
     if (social.length && raw.every(function (w) { return STOP[w] || FILLER[w]; })) raw = [];
     var words = [], surf = [];
-    var mine = false;
+    var mine = false, poss = false, negs = [];
     raw.forEach(function (w) {
+      if (POSS_WORDS[w]) poss = true;
       // birinci tekil kişi ("dersim", "hakkım", "ödemem", "benim", "my"): kişisel soru işareti
       if (ME_WORDS[w]) mine = true;
       if (!w || STOP[w] || FILLER[w]) return;
@@ -303,7 +334,10 @@
       var m = w.match(/^(.{3,}?)(mi|mu|misin|miyim|musun|muyum|miyiz|misiniz)$/);
       if (m && !isRoot(w) && !rootPrefix(w)) w = m[1];   // "zoomu", "dersimi" soru eki değil
       var sw = stem(w);
-      if (REQ[sw]) return;   // "göster", "anlat", "açıkla": isteğin kendisi, konu değil
+      if (REQ[sw] || REQ[w]) return;
+      if (NEG_TR.test(w)) negs.push([w, sw]);   // olumsuz çekimli kelime ("değiştiremiyorum" → -degis)
+      if (ROOTS[sw] && sw.length >= 4 && w.length > sw.length && POSS.test(w.slice(sw.length))) poss = true;
+      if (PART1.test(w)) poss = true;   // "aldığım paket", "ödediğim tutar": 1. tekil ortaç da sahiplik   // "göster", "anlat", "açıkla": isteğin kendisi, konu değil
       words.push(sw);
       surf.push(w);
     });
@@ -327,6 +361,28 @@
     // Olumsuzluk ("giremedim", "çalışmıyor", "can't"): ek ayıklanınca kaybolur, ayrı belirteç olur
     if (NEG_TR.test(core) || NEG_EN.test(fold(text))) concepts['@olumsuz'] = 1;
     if (mine && words.length) concepts['@ben'] = 1;
+    // @sahip: ismin iyeliği ("paketimin fiyatı", "ücretim", "benim", "my") — "kayıt olmadım"daki fiil
+    // çekimi değil; KB'de 'flag' satırıyla işaret olarak tanımlanır
+    if (poss && kb) concepts['@sahip'] = 1;
+    // Bileşik kavramlar (KB.combos): her grubun en az bir öğesi soruda geçerse kavram eklenir
+    // ("toplam" + fiyat/ödeme → @borc). Sırayla işlenir; önceki bileşik kavram sonrakinde kullanılabilir.
+    // Olumsuz çekimli kelimelerin kök ve kavramları "-kök" / "-@kavram" olarak (yalnız combos için)
+    var neg = {};
+    if (kb && kb.combos && negs.length) {
+      var si2 = synIndex(kb);
+      negs.forEach(function (p) {
+        neg['-' + p[1]] = 1;
+        (si2.words[p[1]] || []).concat(si2.words[p[0]] || []).forEach(function (c) { neg['-' + c] = 1; });
+        si2.surface.forEach(function (sf) { if (sf.whole ? p[0] === sf.w : surfaceHit(p[0], sf.w)) neg['-' + sf.c] = 1; });
+      });
+    }
+    if (kb && kb.combos) comboIndex(kb).forEach(function (cb) {
+      var hit = cb.groups.every(function (g) {
+        var any = g.terms.some(function (x) { return x.n ? neg[x.n] : x.c ? concepts[x.c] : x.re ? x.re.test(norm) : words.indexOf(x.w) >= 0; });
+        return g.not ? !any : any;
+      });
+      if (hit) concepts[cb.c] = 1;
+    });
     var flags = [];
     Object.keys(concepts).forEach(function (c) { if (kb && synIndex(kb).flags[c]) flags.push(c); else tokens.push(c); });
     if (!tokens.length) tokens = social.slice();
@@ -407,7 +463,9 @@
         return { tokens: a.tokens, tri: trigrams(a.words.join(' ')) };
       });
       var kw = (it.kw || []).length ? analyze(it.kw.join(' '), kb).tokens : [];
-      var need = (it.need || []).map(function (t) { return t.charAt(0) === '@' ? t : stem(normalize(t)); });
+      // need: tek grup ['@a', 'kök'] ya da gruplar [['@a'], ['@b', '@c']] — her grup ayrı koşul
+      var nk = function (t) { return t.charAt(0) === '@' ? t : stem(normalize(t)); };
+      var need = (it.need || []).length && Array.isArray(it.need[0]) ? it.need.map(function (g) { return g.map(nk); }) : ((it.need || []).length ? [it.need.map(nk)] : []);
       var avoid = (it.avoid || []).map(function (t) { return t.charAt(0) === '@' ? t : stem(normalize(t)); });
       var strong = it.strong || [];
       var bag = {};
@@ -502,7 +560,7 @@
       }
       // need: niyetin olmazsa olmaz kavramlarından biri soruda yoksa ("talebim onaylandı mı"da
       // "ertele" yok → erteleme durumu değil); avoid: soruda varsa başka bir konudur
-      if (L.need.length && !L.need.some(function (t) { return has[t]; })) { sc *= 0.85; cov *= 0.85; }
+      L.need.forEach(function (g) { if (!g.some(function (t) { return has[t]; })) { sc *= 0.85; cov *= 0.85; } });
       if (L.avoid.length && L.avoid.some(function (t) { return has[t]; })) { sc *= 0.72; cov *= 0.75; }
       // strong: bu kavram geçiyorsa niyet kesin konu (korsan yazılım isteği her zaman reddedilir)
       var strongMiss = false;
@@ -510,7 +568,7 @@
       else if (L.strong.length) { strongMiss = true; sc *= 0.75; cov *= 0.75; }   // kavram yoksa bu konu değil
       // öğrencinin durumuna uyan niyet hafif öne çıkar (aynı soru farklı durumda farklı cevap)
       if (st && L.it.states) sc *= L.it.states.indexOf(st) >= 0 ? 1.06 : 0.98;
-      return { id: L.it.id, it: L.it, score: Math.min(1, sc), cov: cov, strongMiss: strongMiss };
+      return { id: L.it.id, it: L.it, bag: L.bag, score: Math.min(1, sc), cov: cov, strongMiss: strongMiss };
     }).sort(function (a, b) { return b.score - a.score; });
   }
 
@@ -525,8 +583,17 @@
     return qa.words.every(function (w) { var c = GEN_CLASS[w]; return !c || have[c]; });
   }
 
+  // Sorunun niyetle birebir paylaştığı konu belirteci sayısı (soru kelimesi, sayı, @ben/@olumsuz hariç):
+  // "bugün hava nasıl" (1–2) ile "join button greyed out" (≥3) ayrışır
+  var WEAK_T = { '@ben': 1, '@olumsuz': 1, '@sahip': 1, nn: 1 };
+  function clearHits(qa, top) {
+    var n = 0, bag = {};
+    (top.bag || []).forEach(function (t) { bag[t] = 1; });
+    qa.tokens.forEach(function (t) { if (bag[t] && !WEAK_T[t] && !qwStem()[t]) n++; });
+    return n;
+  }
   // Eşikler (Node değerlendirmesiyle ayarlandı)
-  var T_HI = 0.40, T_LO = 0.24, T_GAP = 0.025, T_COV = 0.5;
+  var T_HI = 0.40, T_LO = 0.24, T_GAP = 0.025, T_COV = 0.5, T_CLEAR = 0.15, T_COV2 = 0.33;
 
   function intentsOf(kb) { return Array.isArray(kb) ? kb : ((kb && kb.intents) || []); }
 
@@ -608,6 +675,10 @@
     // kelimesi ağır basan soru — "gitar dersi veriyor musunuz" — öneriye düşer)
     res.coverage = +(top.cov || 0).toFixed(3);
     res.confident = top.score >= T_HI && (top.score - second.score >= T_GAP || top.score >= T_HI + 0.2) && (top.cov || 0) >= T_COV;
+    // Açık ara önde ve sorunun en azından üçte biri karşılanmış: tanınmayan dolgu kelimeleri ("greyed",
+    // "everything") yüzünden doğru tek adayı seçenek listesine düşürme
+    if (!res.confident && top.score >= T_HI + 0.1 && top.score - second.score >= T_CLEAR && (top.cov || 0) >= T_COV2 &&
+        clearHits(qa, top) >= 3) res.confident = true;
     // konu taşımayan takip sorusu önceki konunun içinde kaldıysa belirsizlik yok
     if (res.sameTopic && top.score >= T_LO) { res.confident = true; res.coverage = Math.max(res.coverage, T_COV); }
     return res;
