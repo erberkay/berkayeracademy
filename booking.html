@@ -15,11 +15,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202610061500">
-  <script src="assets/js/theme-init.js?v=202610061500"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202610061500">
-  <script src="assets/js/auth-ui.js?v=202610061500"></script>
-  <script src="assets/js/placement-quiz.js?v=202610061500"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202610062000">
+  <script src="assets/js/theme-init.js?v=202610062000"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202610062000">
+  <script src="assets/js/auth-ui.js?v=202610062000"></script>
+  <script src="assets/js/placement-quiz.js?v=202610062000"></script>
+  <script src="assets/js/be-tour.js?v=202610062000"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -1776,6 +1777,11 @@
     .rules-accept.is-off { opacity:.6; }
     .welcome-foot { position:sticky; bottom:-32px; margin:0 -32px -32px; padding:14px 32px 24px; background:var(--surface); border-top:1px solid var(--line); }
     .welcome-list { margin-bottom:16px; }
+    .welcome-acts { display:flex; gap:10px; }
+    .welcome-acts .btn { flex:1 1 0; }
+    /* Panel turu düğmesi (h1 altında; durum yokken hidden) */
+    .bk-tour-btn { align-self:flex-start; }
+    .bk-tour-btn .icon { color:var(--accent); }
     /* Ödeme: numaralı "Yapman gereken" kartı */
     .bk-paytodo[hidden] { display:none; }
     .bk-todo { display:flex; flex-direction:column; gap:12px; border-color:var(--accent-line); }
@@ -1809,6 +1815,8 @@
     @media (max-width:600px) {
       .rules-foot, .welcome-foot { bottom:-24px; margin:0 -20px -24px; padding:12px 20px 18px; }
       .rules-foot-btns .btn { width:100%; }
+      .welcome-acts { flex-direction:column-reverse; }
+      .welcome-acts .btn { flex:none; width:100%; }
       /* Gönder çubuğu: plan metni gizli, seçilen gün/saat tam görünür (kesilmez) */
       .bk-submitbar .bk-sum-plan { display:none; }
       html .bk-submitbar .bk-sum-line { white-space:normal; overflow:visible; text-overflow:clip; font-size:11px; color:var(--fg); }
@@ -1818,8 +1826,8 @@
       .bk-todo-n { width:28px; height:28px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202610061500"></script>
-<script src="assets/js/trial-nav.js?v=202610061500"></script>
+<script src="assets/js/i18n.js?v=202610062000"></script>
+<script src="assets/js/trial-nav.js?v=202610062000"></script>
 </head>
 <body>
 <header class="be-header" id="beHeader" data-be-page="booking" data-be-cta="off"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -1843,6 +1851,8 @@
       <div class="bk-hero-text">
         <span class="bk-eyebrow be-rv" data-i18n="bks_eyebrow">Ders paneli</span>
         <h1 class="bk-h1 be-rv be-d1" id="bkH1"><span data-i18n="bks_h1_a">Ders</span> <em data-i18n="bks_h1_b">rezervasyonu</em></h1>
+        <!-- Panel turu: öğrencinin o anki durumu için turu yeniden başlatır (bkTourSetState gösterir) -->
+        <button type="button" class="btn btn-ghost bk-tour-btn" id="bkTourBtn" hidden><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg><span data-i18n="bk_tour_btn">Panel turu</span></button>
       </div>
       <!-- Derslerim · bu hafta (DersPaneli #derslerim): yalnız panel görünümünde; bkWkRender doldurur.
            Kartlar canlı sayaçlı; "Saati değiştir" >1024'te altta satır içi seçiciyi, ≤1024'te alt sayfayı açar. -->
@@ -2513,6 +2523,7 @@ function showView(id) {
   // Admin görünümü: masaüstünde kabuk başlığı/footer gizli, yan panel (admShell)
   admShell(id === 'view-admin');
   bkOnView(id);
+  bkTourOnView(id);
 }
 
 // ─── Öğrenci kabuğu yardımcıları ──────────────────────────
@@ -2548,6 +2559,7 @@ function bkStopStudentListeners() {
   if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
   if (_lessonAnnUnsub) { _lessonAnnUnsub(); _lessonAnnUnsub = null; }
   bkWkStop();
+  bkTourStop();
   _bkCfmEndedRes = null; bkCfmHideEnded();
   const qa = document.getElementById('studentQACard'); if (qa) qa.style.display = 'none';
 }
@@ -2718,6 +2730,330 @@ function bkQueueModal(open) {
   _bkModalChain = p;
   return p;
 }
+
+// ─── Panel turu (assets/js/be-tour.js) ─────────────────────
+// Öğrencinin o anki durumuna göre kısa bir panel turu (5–9 adım) kurar. İz ekran genişliğine göre seçilir:
+// ≤1024 mobil/tablet (yana kayan ders kartları + alt sayfa, akordeonlar, alt menü, kart altta) ·
+// >1024 masaüstü (satır içi seçici, yan sütun kartları, başlıktaki dil/hesap).
+// Durumlar: new (seçim ekranı) · form (talep formu — yalnız düğmeyle) · ended (paketi biten) · pending ·
+// rejected (yalnız düğmeyle) · unpaid · active · trial. Ekranı çizen kod bkTourSetState(durum) çağırır.
+// Kendiliğinden açılış: her uid + durum için bir kez, ilk ziyaret pencereleri (kurallar / kural güncellemesi /
+// seviye sınavı / hoş geldin) kapandıktan sonra (bkQueueModal sırası + açık pencere yokken). Görüldü bilgisi
+// localStorage['bk_tour_seen_<uid>'] + userSettings/{uid}.panel_tours.<durum> (başka cihazda da tekrar açılmaz).
+// Admin önizlemesinde kendiliğinden açılmaz ve kaydedilmez. "Panel turu" düğmesi (#bkTourBtn) turu her an açar.
+// Metinler i18n.js'teki bk_tour_* anahtarları; aşağıdaki tablo Türkçe yedek (ikisi birlikte değişir).
+var BK_TOUR_TR = {
+  bk_tour_btn: `Panel turu`,
+  bk_tour_welcome_btn: `Turu başlat`,
+  bk_tour_lab_t: `Ableton Lab`,
+  bk_tour_lab_b: `Derse başlamadan önce Lab'daki etkileşimli modüllere göz at; temel kavramları orada deneyerek öğrenirsin.`,
+  bk_tour_pt_t: `Seviye belirleme sınavı`,
+  bk_tour_pt_b: `20 soru, yaklaşık 8 dakika. Dersler seviyene göre hazırlanır; “Sınava Başla” ile istediğin an çözebilirsin.`,
+  bk_tour_qa_t: `Soru sor`,
+  bk_tour_qa_b: `Aklına takılanı buraya yaz; Berkay Er yanıtlar ve cevabı burada görürsün.`,
+  bk_tour_qa_bm: `“Soru Sor” başlığına dokun ve sorunu yaz; Berkay Er yanıtlar, cevabı burada görürsün.`,
+  bk_tour_qanote_t: `Soru sor, not bırak`,
+  bk_tour_qanote_b: `“Soru Sor”dan Berkay Er'e yazabilir, cevabı burada görürsün. Ders tercihlerini ya da isteklerini de “Notum” kartına bırakabilirsin.`,
+  bk_tour_qanote_bm: `Sayfanın altındaki “Soru Sor” ve “Notum” başlıklarına dokunarak aç: Berkay Er’e soru sorabilir, ders tercihlerini not olarak bırakabilirsin.`,
+  bk_tour_res_t: `Kurman gerekenler`,
+  bk_tour_res_b: `Sağ sütunda derslerde kullanılan Sample & Serum presetleri ve plugin listesi var. İlk dersten önce kur.`,
+  bk_tour_res_bm: `Bu başlıklarda derslerde kullanılan Sample & Serum presetleri ve plugin listesi var; dokununca açılır. İlk dersten önce kur.`,
+  bk_tour_acct_t: `Dil ve hesabın`,
+  bk_tour_acct_b: `Sağ üstten dili (TR / EN) değiştirebilir, profiline gidebilir ya da çıkış yapabilirsin.`,
+  bk_tour_nav_t: `Alt menü`,
+  bk_tour_nav_b: `Buradan Eğitim, Forum, Lab ve Profil'e geçersin; “Dersler” seni hep bu panele getirir. Dil (TR / EN) ve hesap ayarları sağ üstteki menüde.`,
+  bk_tour_wa_t: `Takıldın mı?`,
+  bk_tour_wa_b: `WhatsApp düğmesinden Berkay Er'e yazabilirsin. Bu turu da istediğin zaman üstteki “Panel turu” düğmesiyle yeniden açarsın.`,
+  bk_tour_new_choice_t: `İki yoldan biriyle başla`,
+  bk_tour_new_choice_b: `Ücretsiz bir deneme dersiyle tanışabilir ya da doğrudan kampanyalı bir paketle başlayabilirsin. Emin değilsen deneme dersini seç.`,
+  bk_tour_new_trial_t: `Deneme dersi — ücretsiz`,
+  bk_tour_new_trial_b: `Karta tıkla, uygun gün ve saati seç, WhatsApp numaranı yaz ve gönder. Tek seferlik, 60 dakikalık online bir ders.`,
+  bk_tour_new_trial_bm: `Karta dokun, uygun gün ve saati seç, WhatsApp numaranı yaz ve gönder. Tek seferlik, 60 dakikalık online bir ders.`,
+  bk_tour_new_pkg_t: `Kampanyalı paket`,
+  bk_tour_new_pkg_b: `Bir paket seç, haftalık gün ve saatlerini işaretle. Paket uzadıkça indirim artar; paketin her ayı için bir erteleme hakkın olur.`,
+  bk_tour_new_after_t: `Gönderince ne olur?`,
+  bk_tour_new_after_b: `Talebin Berkay Er'e gider, bu sayfa bekleme ekranına geçer. Onaylanınca derslerin burada, takviminde görünür; pakette önce ödeme bilgileri çıkar.`,
+  bk_tour_form_type_t: `Paket mi, tek ders mi?`,
+  bk_tour_form_type_b: `Kampanyalı paket her hafta düzenli dersler içindir; tek ders bir seferlik. Pakette ders başı ücret daha düşük.`,
+  bk_tour_form_pkg_t: `Paketini seç`,
+  bk_tour_form_pkg_b: `Her satırda süre, toplam saat, indirim ve ödeyeceğin tutar var. Bir satıra tıkla, seçili olsun.`,
+  bk_tour_form_pkg_bm: `Her kartta süre, toplam saat, indirim ve ödeyeceğin tutar var. Bir karta dokun, seçili olsun.`,
+  bk_tour_form_slots_t: `Gün ve saat seç`,
+  bk_tour_form_slots_b: `Paketinde haftada kaç ders varsa o kadar saat işaretle. Dolu ya da kapalı saatler seçilemez; üstteki düğmelerle sabaha ya da akşama atlayabilirsin.`,
+  bk_tour_form_slots_bm: `Paketinde haftada kaç ders varsa o kadar saat işaretle; dolu ya da kapalı saatler seçilemez. Tabloyu yana kaydırarak diğer günleri görürsün.`,
+  bk_tour_form_start_t: `Başlangıç tarihi`,
+  bk_tour_form_start_b: `İstersen bir başlangıç tarihi seç; boş bırakırsan en yakın uygun haftadan başlar. İlk ders en az 24 saat sonraya düşer.`,
+  bk_tour_form_phone_t: `WhatsApp numaran`,
+  bk_tour_form_phone_b: `Ders hatırlatmaları ve Berkay Er'in mesajları bu numaraya WhatsApp ile gelir. Yurt dışındaysan + ve ülke koduyla yaz.`,
+  bk_tour_form_send_t: `Kontrol et ve gönder`,
+  bk_tour_form_send_b: `Seçtiğin plan, saatler ve toplam ücret burada. Gönderince talebin Berkay Er'e gider; ödeme onaydan sonra yapılır.`,
+  bk_tour_form_back_t: `Önce denemek ister misin?`,
+  bk_tour_form_back_b: `Buradan seçeneklere dönüp ücretsiz deneme dersi isteyebilirsin.`,
+  bk_tour_end_done_t: `Paketin tamamlandı`,
+  bk_tour_end_done_b: `Tebrikler! Devam etmek için yeni bir paket seçmen yeterli; önceki gün ve saatlerin senin için seçili geldi.`,
+  bk_tour_end_cfm_t: `Son derslerini onayla`,
+  bk_tour_end_cfm_b: `Ders yapıldıysa “Evet, ders yapıldı” de; bir sorun olduysa 48 saat içinde “Sorun bildir”. İtiraz edilmeyen ders yapılmış sayılır.`,
+  bk_tour_end_pkg_t: `Yeni paketini seç`,
+  bk_tour_end_pkg_b: `Aynı paketle devam edebilir ya da başka birine geçebilirsin; tutar ve indirim her satırda yazıyor.`,
+  bk_tour_end_slots_t: `Saatlerini kontrol et`,
+  bk_tour_end_slots_b: `Önceki saatlerin işaretli geldi. Biri artık doluysa ya da değiştirmek istersen yenisini seç.`,
+  bk_tour_pend_status_t: `Talebin sırada`,
+  bk_tour_pend_status_b: `Berkay Er talebini inceliyor. Onaylanınca bu sayfa kendiliğinden güncellenir; yenilemene gerek yok.`,
+  bk_tour_pend_sum_t: `Talebinin özeti`,
+  bk_tour_pend_sum_b: `Seçtiğin plan, gün ve saatler burada. Bir şeyi yanlış seçtiysen aşağıdan geri çekip yenisini gönderebilirsin.`,
+  bk_tour_pend_next_t: `Sırada ne var?`,
+  bk_tour_pend_next_b: `Onaydan sonraki adımlar burada sırayla yazıyor; her biri bu panelde karşına çıkacak.`,
+  bk_tour_pend_wa_t: `İlk WhatsApp mesajını sen at`,
+  bk_tour_pend_wa_b: `WhatsApp kuralları gereği sana yazabilmemiz için önce senin kısa bir mesaj göndermen gerekiyor. Düğmeye bas, mesaj hazır; sadece “Gönder”e dokun.`,
+  bk_tour_pend_wd_t: `Talebi geri çek`,
+  bk_tour_pend_wd_b: `Yanlış gün ya da saat seçtiysen talebini geri çekip hemen yenisini oluşturabilirsin.`,
+  bk_tour_rej_status_t: `Talebin onaylanmadı`,
+  bk_tour_rej_status_b: `Nedeni burada yazıyor. Uygun bir gün ve saatle yeniden talep oluşturabilirsin.`,
+  bk_tour_rej_new_t: `Yeniden dene`,
+  bk_tour_rej_new_b: `Bu düğme seni yeniden talep ekranına götürür.`,
+  bk_tour_pay_todo_t: `Önce ödeme`,
+  bk_tour_pay_todo_b: `Paketin onaylandı! Ödemen onaylanınca derse katılma, saat değiştirme ve erteleme açılır. Ödeyeceğin tutar burada.`,
+  bk_tour_pay_wait_t: `Ödeme bildirimin alındı`,
+  bk_tour_pay_wait_b: `Berkay Er havaleyi kontrol edip onaylayacak (genelde 24 saat içinde). Onaylanınca bu kart kaybolur ve her şey açılır.`,
+  bk_tour_pay_iban_t: `1. IBAN'a havale et`,
+  bk_tour_pay_iban_b: `“Kopyala” ile IBAN'ı al ve tutarı havale et. Açıklama kısmına hiçbir şey yazma.`,
+  bk_tour_pay_done_t: `2. “Ödemeyi yaptım” de`,
+  bk_tour_pay_done_b: `Havaleden sonra bu düğmeye bas; Berkay Er'e bildirim gider ve ödemeni onaylar.`,
+  bk_tour_pay_lessons_t: `Planlanan derslerin`,
+  bk_tour_pay_lessons_b: `Derslerin takvimine işlendi. Ödeme onaylanınca her ders için “Saati değiştir” ve “Ertele” kullanılabilir.`,
+  bk_tour_join_t: `Derse nasıl katılırım?`,
+  bk_tour_join_b: `Her dersten 15 dakika önce burada ve ders kartında yeşil “Derse Katıl” düğmesi belirir; tıklayınca Zoom açılır.`,
+  bk_tour_act_week_t: `Bu haftanın dersleri`,
+  bk_tour_act_week_b: `Bu haftaki derslerin canlı geri sayımla burada; kartın üstündeki etiket dersin durumunu gösterir. Sağdaki “Ders Takvimim” aynı listeyi özetler.`,
+  bk_tour_act_week_bm: `Bu haftaki derslerin canlı geri sayımla burada. Kartları yana kaydırarak hepsini gör; etiket dersin durumunu gösterir.`,
+  bk_tour_act_change_t: `Saati kendin değiştir`,
+  bk_tour_act_change_b: `Dersine en az 5 saat varsa “Saati değiştir” ile onu aynı hafta içinde başka bir saate taşırsın; onay beklemezsin. Yeni saat de en az 5 saat sonra olmalı. Her ders bir kez değişir, erteleme hakkın düşmez. Seçici kartların altında açılır.`,
+  bk_tour_act_change_bm: `Dersine en az 5 saat varsa “Saati değiştir” ile onu aynı hafta içinde başka bir saate taşırsın; onay beklemezsin. Yeni saat de en az 5 saat sonra olmalı; her ders bir kez değişir, erteleme hakkın düşmez. Dokununca alttan bir pencere açılır: günü, sonra saati seç.`,
+  bk_tour_act_join_t: `Derse Katıl`,
+  bk_tour_act_join_b: `Dersten 15 dakika önce burada ve ders kartında yeşil “Derse Katıl” düğmesi belirir; Zoom’u açar. Derse 10 dakika içinde girmezsen ders yapılmış sayılır.`,
+  bk_tour_act_list_t: `Tüm derslerim`,
+  bk_tour_act_list_b: `Planlanan tüm derslerin sırayla burada; sonraki haftaların saatini de buradan değiştirebilir ya da “Ertele” diyebilirsin. Biten dersler en altta, “Son derslerin” altında “Yapıldı ✓” ile görünür.`,
+  bk_tour_act_cfm_t: `Dersini onayla`,
+  bk_tour_act_cfm_b: `Ders bitince “Evet, ders yapıldı” ile onayla; bir sorun olduysa 48 saat içinde “Sorun bildir”. İtiraz edilmeyen ders 48 saat sonra yapılmış sayılır.`,
+  bk_tour_act_credit_t: `Erteleme hakkı ve ek ders`,
+  bk_tour_act_credit_b: `“Ertele” dersi 1 hafta ileri alır: en az 24 saat önce iste, Berkay Er onaylayınca 1 hak düşer. Paketin kaç aylıksa o kadar hakkın var; ek hak 500 TL. Ek ders istersen yandaki düğmeyi kullan.`,
+  bk_tour_act_credit_bm: `“Ertele” dersi 1 hafta ileri alır: en az 24 saat önce iste, Berkay Er onaylayınca 1 hak düşer. Paketin kaç aylıksa o kadar hakkın var; ek hak 500 TL. Ek ders istersen alttaki düğmeyi kullan.`,
+  bk_tour_tr_week_t: `Deneme dersin`,
+  bk_tour_tr_week_b: `Deneme dersin burada, canlı geri sayımla. Dersine 5 saatten fazla varsa saatini aynı hafta içinde “Saati değiştir” ile kendin değiştirebilirsin.`,
+  bk_tour_tr_next_t: `Sonra ne olacak?`,
+  bk_tour_tr_next_b: `Ders bittiğinde bu panel seni seçim ekranına götürür: beğendiysen kampanyalı bir paket seçip haftalık saatlerini belirlersin.`
+};
+function bkTourT(key) { return bkT(key, BK_TOUR_TR[key] || ''); }
+// Masaüstü / mobil gövde: '<anahtar>m' varsa ≤1024'te o kullanılır (bk_tour_x_b → bk_tour_x_bm)
+function bkTourTx(key) { return () => bkTourT(_bkMobileMq.matches && BK_TOUR_TR[key + 'm'] !== undefined ? key + 'm' : key); }
+function bkTourTk(key) { return () => bkTourT(key); }
+var BK_TOUR_AUTO = { new: 1, ended: 1, pending: 1, unpaid: 1, active: 1, trial: 1 };
+var _bkTourState = null;        // geçerli durum (null → tur yok, düğme gizli)
+var _bkTourView = null;         // durumun ait olduğu görünüm (görünüm değişince tur kapanır)
+var _bkTourInst = null;         // açık tur (beTour.create)
+var _bkTourAutoT = null;        // kendiliğinden açılış zamanlayıcısı
+var _bkTourQueued = false;      // bkQueueModal sırasında bekleyen bir açılış var mı
+var _bkTourRemote = { uid: null, p: null, seen: {} };
+var _ptBusy = 0;                // initPlacementTest sürerken > 0 (sınav penceresi sıraya girmeden tur sıraya girmez)
+
+function bkTourQ(sel) { return document.querySelector(sel); }
+function bkTourVis(el) { return !!(el && el.getClientRects().length); }
+// "Tüm derslerim" başı: başlık + ay özeti + ilk ders satırı
+function bkTourLessonsHead() {
+  return [bkTourQ('#view-dashboard .bk-sched-head'), bkTourQ('#lessonList .bk-month'), bkTourQ('#lessonList .bk-lessons .bk-lesson')].filter(Boolean);
+}
+// Onay penceresi açık bir ders (bu haftanın kartında ya da "Onay bekleyen dersler" grubunda)
+function bkTourOpenCfm() {
+  const p = [...document.querySelectorAll('#view-dashboard .bk-cfm[data-cfm-key], #derslerim .bk-cfm[data-cfm-key]')].find(bkTourVis);
+  return p ? (p.closest('.bk-cfm-group') || p) : null;
+}
+function bkTourWeek() { return bkTourQ('#bkWkGrid .bk-wk-card') ? bkTourQ('#bkWkGrid') : null; }
+
+// Adımlar: ortak parçalar + duruma özel olanlar. Hedefi olmayan / görünmeyen adım tur başlarken düşer.
+function bkTourSteps(state) {
+  const step = (id, target, t, b, extra) => Object.assign({ id, target, title: bkTourTk(t), body: bkTourTx(b) }, extra || {});
+  const pt = slot => step('pt', () => bkTourQ(`#${slot} .bk-pt.be-callout--accent`), 'bk_tour_pt_t', 'bk_tour_pt_b');
+  const lab = step('lab', '.bk-labcard', 'bk_tour_lab_t', 'bk_tour_lab_b');
+  const qa = step('qa', '#studentQACard', 'bk_tour_qa_t', 'bk_tour_qa_b', { placement: 'left' });
+  const qanote = step('qanote', '#studentQACard', 'bk_tour_qanote_t', 'bk_tour_qanote_b', { placement: 'left' });
+  const res = step('res', () => [...document.querySelectorAll('#bkSide .bk-res--link')], 'bk_tour_res_t', 'bk_tour_res_b', { placement: 'left' });
+  const acct = step('acct', '#beHeader .be-actions', 'bk_tour_acct_t', 'bk_tour_acct_b', { desktopOnly: true });
+  const nav = step('nav', '.be-tabbar', 'bk_tour_nav_t', 'bk_tour_nav_b', { mobileOnly: true });
+  const wa = step('wa', '.wa-fab', 'bk_tour_wa_t', 'bk_tour_wa_b');
+  const send = step('send', '#view-request .bk-submitbar', 'bk_tour_form_send_t', 'bk_tour_form_send_b');
+  const slots = (t, b) => step('slots', '#view-request .bk-gbox', t, b);
+  const pkg = (t, b) => step('pkg', '#pkgTable', t, b);
+  const join = (t, b) => step('join', '#zoomJoinBox', t, b);
+  switch (state) {
+    case 'new': return [
+      step('choice', '#accessOptions', 'bk_tour_new_choice_t', 'bk_tour_new_choice_b'),
+      step('trial', '#trialPanel', 'bk_tour_new_trial_t', 'bk_tour_new_trial_b'),
+      step('pkg', '#packagePanel', 'bk_tour_new_pkg_t', 'bk_tour_new_pkg_b'),
+      pt('ptSlotAccess'),
+      step('after', '#bkSide .bk-sched-empty', 'bk_tour_new_after_t', 'bk_tour_new_after_b', { placement: 'left' }),
+      qa, lab, acct, nav, wa];
+    case 'form': return [
+      step('type', '#reqTypeSeg', 'bk_tour_form_type_t', 'bk_tour_form_type_b'),
+      pkg('bk_tour_form_pkg_t', 'bk_tour_form_pkg_b'),
+      slots('bk_tour_form_slots_t', 'bk_tour_form_slots_b'),
+      step('start', '#startDateField', 'bk_tour_form_start_t', 'bk_tour_form_start_b'),
+      step('phone', () => bkTourQ('#reqPhone')?.closest('.field'), 'bk_tour_form_phone_t', 'bk_tour_form_phone_b'),
+      send,
+      step('back', '#reqBackBtn', 'bk_tour_form_back_t', 'bk_tour_form_back_b'),
+      wa];
+    case 'ended': return [
+      step('done', '#reqEndedSlot', 'bk_tour_end_done_t', 'bk_tour_end_done_b'),
+      step('cfm', '#bkCfmEnded', 'bk_tour_end_cfm_t', 'bk_tour_end_cfm_b'),
+      pkg('bk_tour_end_pkg_t', 'bk_tour_end_pkg_b'),
+      slots('bk_tour_end_slots_t', 'bk_tour_end_slots_b'),
+      send, qa, acct, nav, wa];
+    case 'pending': return [
+      step('status', '#pendingStatusBox', 'bk_tour_pend_status_t', 'bk_tour_pend_status_b'),
+      step('sum', '#pendingReqCard', 'bk_tour_pend_sum_t', 'bk_tour_pend_sum_b'),
+      pt('ptSlotPending'),
+      step('next', '#pendingActions .bk-next', 'bk_tour_pend_next_t', 'bk_tour_pend_next_b'),
+      step('wa1', '#pendingActions .bk-wa', 'bk_tour_pend_wa_t', 'bk_tour_pend_wa_b'),
+      step('withdraw', '#pendingActions .bk-withdraw', 'bk_tour_pend_wd_t', 'bk_tour_pend_wd_b'),
+      qa, nav, wa];
+    case 'rejected': return [
+      step('status', '#pendingStatusBox', 'bk_tour_rej_status_t', 'bk_tour_rej_status_b'),
+      step('again', '#pendingActions .btn-primary', 'bk_tour_rej_new_t', 'bk_tour_rej_new_b'),
+      qa, acct, nav, wa];
+    case 'unpaid': {
+      const waiting = () => !!bkTourQ('#payTodo .bk-todo.is-pending');
+      return [
+        { id: 'todo', target: () => ['#payTodo .bk-kicker', '#payTodo .bk-todo-h', '#payTodo .bk-todo-lead', '#payTodo .bk-todo-sum'].map(bkTourQ).filter(Boolean),
+          title: () => bkTourT(waiting() ? 'bk_tour_pay_wait_t' : 'bk_tour_pay_todo_t'),
+          body: () => bkTourT(waiting() ? 'bk_tour_pay_wait_b' : 'bk_tour_pay_todo_b') },
+        step('iban', '#payTodo .bk-todo-bank', 'bk_tour_pay_iban_t', 'bk_tour_pay_iban_b'),
+        step('paid', '#payDoneBtn', 'bk_tour_pay_done_t', 'bk_tour_pay_done_b'),
+        pt('ptSlotDash'),
+        step('lessons', bkTourLessonsHead, 'bk_tour_pay_lessons_t', 'bk_tour_pay_lessons_b'),
+        join('bk_tour_join_t', 'bk_tour_join_b'),
+        qanote, acct, nav, wa];
+    }
+    case 'active': return [
+      step('week', bkTourWeek, 'bk_tour_act_week_t', 'bk_tour_act_week_b'),
+      step('change', () => [...document.querySelectorAll('#bkWkGrid .bk-wk-btn')].find(b => !b.disabled && bkTourVis(b))
+        || [...document.querySelectorAll('#lessonList .bk-selfresch')].find(b => !b.disabled && bkTourVis(b)), 'bk_tour_act_change_t', 'bk_tour_act_change_b'),
+      join('bk_tour_act_join_t', 'bk_tour_act_join_b'),
+      { id: 'lessons', target: () => bkTourOpenCfm() || bkTourLessonsHead(),
+        title: () => bkTourT(bkTourOpenCfm() ? 'bk_tour_act_cfm_t' : 'bk_tour_act_list_t'),
+        body: () => bkTourT(bkTourOpenCfm() ? 'bk_tour_act_cfm_b' : 'bk_tour_act_list_b') },
+      step('credit', () => [bkTourQ('#creditBadge'), bkTourQ('#extraLessonBox')].filter(Boolean), 'bk_tour_act_credit_t', 'bk_tour_act_credit_b'),
+      qanote, res, acct, nav, wa];
+    case 'trial': return [
+      step('week', () => bkTourWeek() || bkTourLessonsHead(), 'bk_tour_tr_week_t', 'bk_tour_tr_week_b'),
+      join('bk_tour_join_t', 'bk_tour_join_b'),
+      step('next', '#view-dashboard .bk-dash-head', 'bk_tour_tr_next_t', 'bk_tour_tr_next_b'),
+      pt('ptSlotDash'),
+      lab, qanote, res, acct, nav, wa];
+  }
+  return [];
+}
+
+function bkTourSeenLocal(uid) {
+  try { return JSON.parse(localStorage.getItem('bk_tour_seen_' + uid) || '{}') || {}; } catch (_) { return {}; }
+}
+function bkTourSeenLocalSet(uid, state) {
+  try { const m = bkTourSeenLocal(uid); m[state] = 1; localStorage.setItem('bk_tour_seen_' + uid, JSON.stringify(m)); } catch (_) {}
+}
+function bkTourRemoteSeen(uid) {
+  if (_bkTourRemote.uid !== uid) _bkTourRemote = { uid, p: null, seen: {} };
+  const r = _bkTourRemote;
+  if (!r.p) {
+    r.p = db.collection('userSettings').doc(uid).get()
+      .then(s => { const t = (s.exists && s.data().panel_tours) || {}; Object.keys(t).forEach(k => { r.seen[k] = true; }); return r.seen; })
+      .catch(() => r.seen);
+  }
+  return r.p;
+}
+function bkTourMarkSeen(state) {
+  if (!_user || _bkAdminPreview || _user.email === ADMIN_EMAIL) return;
+  const uid = _user.uid;
+  const known = _bkTourRemote.uid === uid && _bkTourRemote.seen[state];
+  bkTourSeenLocalSet(uid, state);
+  if (known) return; // userSettings'te zaten var — her elle açılışta yeniden yazılmaz
+  if (_bkTourRemote.uid === uid) _bkTourRemote.seen[state] = true;
+  db.collection('userSettings').doc(uid).set({ panel_tours: { [state]: firebase.firestore.FieldValue.serverTimestamp() } }, { merge: true })
+    .catch(e => console.warn('[tour]', e && (e.code || e.message)));
+}
+
+// Ekranı çizen kod çağırır: düğmeyi gösterir, gerekiyorsa kendiliğinden açılışı planlar
+function bkTourSetState(state) {
+  const next = state && _user && (_user.email !== ADMIN_EMAIL || _bkAdminPreview) ? state : null;
+  if (_bkTourInst && _bkTourInst.active && _bkTourState !== next) _bkTourInst.stop('state');
+  _bkTourState = next;
+  _bkTourView = next ? (document.getElementById('bkMain')?.dataset.view || null) : null;
+  const b = document.getElementById('bkTourBtn');
+  if (b) b.hidden = !next || !window.beTour;
+  clearTimeout(_bkTourAutoT);
+  if (next && BK_TOUR_AUTO[next] && !_bkAdminPreview) _bkTourAutoT = setTimeout(bkTourMaybeAuto, 1200);
+}
+// showView'dan: görünüm değişince açık tur kapanır, düğme yeni durum gelene kadar gizlenir
+function bkTourOnView(id) {
+  if (id === _bkTourView) return;
+  if (_bkTourInst && _bkTourInst.active) _bkTourInst.stop('view');
+  clearTimeout(_bkTourAutoT);
+  _bkTourState = null; _bkTourView = null;
+  const b = document.getElementById('bkTourBtn'); if (b) b.hidden = true;
+}
+function bkTourStop() { clearTimeout(_bkTourAutoT); if (_bkTourInst && _bkTourInst.active) _bkTourInst.stop('signout'); }
+function bkTourRefresh() { if (_bkTourInst && _bkTourInst.active) _bkTourInst.refresh(); }
+
+function bkTourSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+// Açık pencere (kurallar, sınav, hoş geldin, onay, alt sayfa), açık çekmece ya da gizli sekme yokken çözülür;
+// bu arada durum / kullanıcı değişirse false
+async function bkTourWaitClear(state, u) {
+  let calm = 0;
+  for (;;) {
+    if (_bkTourState !== state || _user !== u || _bkAdminPreview) return false;
+    const busy = _ptBusy > 0 || document.hidden || document.documentElement.classList.contains('be-drawer-open')
+      || !!document.querySelector('body > .modal-overlay, body > .input-modal-overlay, .bk-sheet-wrap, #ptOverlay, [aria-modal="true"]');
+    calm = busy ? 0 : calm + 1;
+    if (calm >= 3) return true;
+    await bkTourSleep(300);
+  }
+}
+async function bkTourMaybeAuto() {
+  const state = _bkTourState, u = _user;
+  if (!state || !u || !window.beTour || _bkAdminPreview || !BK_TOUR_AUTO[state] || _bkTourQueued || (_bkTourInst && _bkTourInst.active)) return;
+  if (bkTourSeenLocal(u.uid)[state]) return;
+  const seen = await bkTourRemoteSeen(u.uid);
+  if (seen[state]) { bkTourSeenLocalSet(u.uid, state); return; }
+  // Seviye sınavı penceresi kendini sıraya koyana kadar bekle (tur ondan sonra açılsın)
+  for (let i = 0; _ptBusy > 0 && i < 50; i++) await bkTourSleep(200);
+  if (_bkTourState !== state || _user !== u || _bkAdminPreview || _bkTourQueued) return;
+  _bkTourQueued = true;
+  bkQueueModal(async () => {
+    try {
+      if (!(await bkTourWaitClear(state, u))) return;
+      if (bkTourSeenLocal(u.uid)[state] || _bkTourRemote.seen[state] || (_bkTourInst && _bkTourInst.active)) return;
+      await bkTourStart();
+    } finally { _bkTourQueued = false; }
+  });
+}
+// Turu geçerli durum + iz için başlatır; tur bitince çözülen Promise (bkQueueModal sırası için)
+function bkTourStart() {
+  if (!window.beTour || !_bkTourState) return Promise.resolve(false);
+  if (_bkTourInst && _bkTourInst.active) _bkTourInst.stop('restart');
+  const state = _bkTourState;
+  return new Promise(resolve => {
+    const inst = window.beTour.create({
+      id: 'bk-' + state,
+      steps: bkTourSteps(state),
+      mobileQuery: '(max-width:1024px)',
+      returnFocus: () => document.getElementById('bkTourBtn'),
+      onEnd: () => { if (_bkTourInst === inst) _bkTourInst = null; resolve(true); },
+    });
+    _bkTourInst = inst;
+    if (!inst.start()) { _bkTourInst = null; resolve(false); return; }
+    bkTourMarkSeen(state);
+  });
+}
+document.addEventListener('click', e => {
+  if (e.target.closest && e.target.closest('#bkTourBtn')) bkTourStart();
+});
 
 // Bump this whenever the rule text/set below changes, so old acceptances
 // (stored with a prior version tag) aren't confused with new ones.
@@ -5442,7 +5778,12 @@ async function ptLoadOwn() {
   } catch(e) { console.warn('[placement]', e); return null; }
 }
 
+// Sürerken _ptBusy > 0: panel turu, sınav penceresi kendini sıraya koymadan kendiliğinden açılmaz
 async function initPlacementTest(slotId, nagIfMissing, autoOpen) {
+  _ptBusy++;
+  try { return await ptInitSlot(slotId, nagIfMissing, autoOpen); } finally { _ptBusy--; }
+}
+async function ptInitSlot(slotId, nagIfMissing, autoOpen) {
   if (autoOpen === undefined) autoOpen = true;
   const slot = document.getElementById(slotId);
   if (!slot || !_user || !window.bkQuiz) return;
@@ -5783,6 +6124,7 @@ async function renderPendingView(reqData) {
 
   // Seviye belirleme sınavı — talep beklerken zorunlu
   initPlacementTest('ptSlotPending', true);
+  bkTourSetState(isPending ? 'pending' : isRejected ? 'rejected' : null);
 
   // Auto-refresh: watch lesson_request status
   if (_pendingListenUnsub) { _pendingListenUnsub(); _pendingListenUnsub = null; }
@@ -5939,6 +6281,7 @@ function initRequestForm(opts) {
     }).catch(() => {});
   }
   showView('view-request');
+  bkTourSetState(o.endedRes ? 'ended' : 'form');
   loadAndRenderAvailGrid();
 }
 
@@ -6711,7 +7054,10 @@ async function renderDashboard() {
             ${item('welcome-info', bkT('bk_welcome_resch_title', 'Ertele — hak kullanır'), bkT('bk_welcome_resch_desc', 'Ertele dersi 1 hafta ileri alır. En az 24 saat önce talep edilir; Berkay Er onaylayınca <strong>1 erteleme hakkı</strong> düşer. Paketin kaç aylıksa o kadar hakkın var.'))}
             ${item('welcome-accent', bkT('bk_welcome_qa_title', 'Soru & Cevap'), bkT('bk_welcome_qa_desc', 'Paneldeki <strong class="text-accent">Soru Sor</strong> kartından Berkay Er\'e doğrudan yazabilirsin.'))}
           </div>
-          <div class="welcome-foot"><button type="button" class="btn btn-primary btn-block welcome-done">${bkT('bk_welcome_ok', 'Anladım')}</button></div>
+          <div class="welcome-foot"><div class="welcome-acts">
+            <button type="button" class="btn btn-ghost welcome-tour"><svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-help"/></svg>${escHtml(bkTourT('bk_tour_welcome_btn'))}</button>
+            <button type="button" class="btn btn-primary welcome-done">${bkT('bk_welcome_ok', 'Anladım')}</button>
+          </div></div>
         </div>`;
       document.body.append(ov);
       const closeW = bkDialog(ov, ov.querySelector('.welcome-modal'), { title: '.modal-title', focus: '.welcome-done', escape: () => closeWelcome() });
@@ -6719,8 +7065,12 @@ async function renderDashboard() {
       ov.onclick = e => { if (e.target === ov) closeWelcome(); };
       ov.querySelector('.modal-close').onclick = closeWelcome;
       ov.querySelector('.welcome-done').onclick = closeWelcome;
+      // "Turu başlat": pencere kapanır, panel turu hemen açılır (sıradaki kendiliğinden açılış bunu görüp atlar)
+      ov.querySelector('.welcome-tour').onclick = () => { closeWelcome(); bkTourStart(); };
     }, 700)));
   }
+  // Panel turu: ödemesi onaylı / onaysız / deneme dersi (ilk ziyaret pencerelerinden sonra bir kez)
+  bkTourSetState(isTrial ? 'trial' : isPaid ? 'active' : 'unpaid');
   }, e => {
     // permission-denied is usually a transient auth token refresh — Firebase auto-retries
     if (e.code === 'permission-denied') return;
@@ -10799,6 +11149,7 @@ async function loadUserState(user) {
 // ─── Booking Access View ───────────────────────────────────
 function renderAccessView(user, state, rejectReason) {
   showView('view-access');
+  bkTourSetState(state === 'none' ? 'new' : null);
   // Kart burada da dursun (deneme dersi biten / aboneliği olmayan öğrenci),
   // ama ilk ekranda modalı zorla açmıyoruz.
   initPlacementTest('ptSlotAccess', true, false);
@@ -11662,6 +12013,7 @@ auth.onAuthStateChanged(user => {
         if(typeof updateSlotSummary==='function') updateSlotSummary();
         if(typeof renderSingleUpsell==='function') renderSingleUpsell();
         if(typeof updateAuthBar==='function') updateAuthBar(typeof _user!=='undefined'?_user:null);
+        if(typeof bkTourRefresh==='function') bkTourRefresh();
         if(typeof _qaFor!=='undefined') _qaFor=null; // Soru-Cevap listesi de yeni dilde yeniden çizilsin
         if(typeof loadUserState==='function' && typeof _user!=='undefined' && _user) loadUserState(_user);
       };
