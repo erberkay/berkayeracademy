@@ -1341,7 +1341,8 @@ async function collectAttendance(items) {
     accountId: process.env.Z_ACCOUNT_ID,
     clientId: process.env.Z_CLIENT_ID,
     clientSecret: process.env.Z_CLIENT_SECRET,
-    hostUser: process.env.Z_HOST_USER || "me",
+    // Rapor uç noktaları S2S uygulamada "me"yi kabul etmiyor (1001 User does not exist: me) → Zoom hesabının e-postası
+    hostUser: process.env.Z_HOST_USER || ADMIN_EMAIL,
   });
   const hostEmails = [process.env.Z_HOST_EMAIL, ADMIN_EMAIL];
   const fetchedAt = new Date().toISOString();
