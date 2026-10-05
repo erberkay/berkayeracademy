@@ -284,6 +284,29 @@ service cloud.firestore {
         isAdmin();
     }
 
+    // Site içi asistan: öğrencinin "Berkay'a ilet" dediği soru — öğrenci yalnız kendi adına,
+    // yanıtlanmamış olarak oluşturur ve yalnız kendininkini okur; admin hepsini okur, yanıtlar, siler.
+    match /assistant_questions/{qId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.uid ||
+        isAdmin()
+      );
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.answered == false &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 500 &&
+        request.resource.data.keys().hasOnly(['uid', 'name', 'text', 'state', 'lang', 'answered', 'created_at']);
+      allow update, delete: if isAdmin();
+    }
+
+    // Asistanın öğrendiği cevaplar (admin yazar, giriş yapmış herkes okur; asistan canlı birleştirir)
+    match /assistant_faq/{faqId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
     match /lesson_questions/{qId} {
       allow read: if request.auth != null && (
         request.auth.uid == resource.data.uid ||
