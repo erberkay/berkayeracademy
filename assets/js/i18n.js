@@ -437,7 +437,7 @@
     bk_slot_too_soon: { tr: '(24 saatten az)', en: '(under 24h)' },
     bk_reschedule_disabled: { tr: `Ödemen onaylanınca saat değiştirme ve erteleme açılır.`, en: `Changing and rescheduling lessons opens once your payment is confirmed.` },
 
-    // ── Ders saatini kendin değiştir (onaysız) ──
+    // ── Ders saati değişikliği talebi (Berkay Er onaylar, hak düşmez) ──
     bk_sc_btn:             { tr: `Saati değiştir`, en: `Change time` },
     bk_sc_locked: { tr: `Saat değişikliği kapandı`, en: `Time change closed` },
     bk_sc_pay:             { tr: `Ödeme onaylanmadan ders saati değiştirilemez.`, en: `You can't change the time before payment is confirmed.` },
@@ -453,18 +453,16 @@
     bk_sc_chk_free:        { tr: `Seçilen saat müsait`, en: `The selected time is free` },
     bk_sc_chk_week:        { tr: `Aynı hafta içinde · bu dersin tek değişikliği`, en: `Same week · this lesson's only change` },
     bk_sc_cancel:          { tr: `Vazgeç`, en: `Cancel` },
-    bk_sc_confirm:         { tr: `Değişikliği onayla — anında uygulanır`, en: `Confirm — applies instantly` },
-    bk_sc_foot:            { tr: `Berkay Er'e otomatik WhatsApp + e-posta bildirimi gider; onay gerekmez. Dersine 5 saatten az kaldıysa değişiklik kilitlenir — o durumda erteleme kuralları geçerlidir.`,
-                             en: `Berkay Er gets an automatic WhatsApp + email; no approval needed. Within 5 hours of the lesson the time is locked — the rescheduling rules apply then.` },
-    bk_sc_saving:          { tr: `Kaydediliyor…`, en: `Saving…` },
-    bk_sc_err:             { tr: `Saat değiştirilemedi`, en: `Couldn't change the time` },
+    bk_sc_confirm: { tr: `Saat değişikliği talebi gönder`, en: `Send time change request` },
+    bk_sc_foot: { tr: `Talebin Berkay Er'e WhatsApp + e-posta ile gider; onaylayınca ders yeni saate taşınır, erteleme hakkın düşmez. Dersine 5 saatten az kaldıysa saat değişikliği kapanır — o durumda erteleme kuralları geçerlidir.`, en: `Your request goes to Berkay Er by WhatsApp + email; once he approves, the lesson moves to the new time and no reschedule credit is used. Within 5 hours of the lesson time changes close — the rescheduling rules apply then.` },
+    bk_sc_saving: { tr: `Gönderiliyor…`, en: `Sending…` },
+    bk_sc_err: { tr: `Talep gönderilemedi`, en: `Couldn't send the request` },
     // ── Derslerim · bu hafta (DersPaneli #derslerim): kartlar, canlı sayaç, seçici, alt sayfa ──
     bk_wk_eyebrow:         { tr: `Derslerim · Bu hafta`, en: `My lessons · This week` },
     bk_wk_eyebrow_m:       { tr: `Derslerim · Saat değiştir`, en: `My lessons · Change time` },
-    bk_wk_title:           { tr: `Ders saatini kendin değiştir`, en: `Change your lesson time yourself` },
-    bk_wk_lead_html:       { tr: `Onay beklemeden, anında. Tek şart: dersine <strong>en az 5 saat</strong> olmalı ve yeni saat de en az 5 saat sonra olmalı.`,
-                             en: `Instantly, no approval needed. The only condition: your lesson must be <strong>at least 5 hours</strong> away, and the new time must also be at least 5 hours away.` },
-    bk_wk_lead_m_html:     { tr: `Onay beklemeden değiştir — dersine <strong>en az 5 saat</strong> olmalı.`, en: `Change it without approval — your lesson must be <strong>at least 5 hours</strong> away.` },
+    bk_wk_title: { tr: `Ders saatini değiştir`, en: `Change your lesson time` },
+    bk_wk_lead_html: { tr: `Yeni saati seç, talebin Berkay Er'e gitsin; onaylanınca dersin taşınır, <strong>erteleme hakkın düşmez</strong>. Şart: dersine <strong>en az 5 saat</strong> olmalı ve yeni saat de en az 5 saat sonra olmalı.`, en: `Pick a new time and your request goes to Berkay Er; once approved the lesson moves and <strong>no reschedule credit is used</strong>. Condition: your lesson must be <strong>at least 5 hours</strong> away, and the new time must also be at least 5 hours away.` },
+    bk_wk_lead_m_html: { tr: `Talep gönder — onaylanınca taşınır, hak düşmez. Dersine <strong>en az 5 saat</strong> olmalı.`, en: `Send a request — moves once approved, no credit used. Your lesson must be <strong>at least 5 hours</strong> away.` },
     bk_wk_now:             { tr: `Şimdi`, en: `Now` },
     bk_wk_tz:              { tr: `İstanbul saati`, en: `Istanbul time` },
     bk_wk_tz_short:        { tr: `TSİ`, en: `TRT` },
@@ -482,6 +480,9 @@
     bk_wk_badge_done:      { tr: `Tamamlandı`, en: `Completed` },
     bk_wk_badge_unpaid:    { tr: `Ödeme bekleniyor`, en: `Awaiting payment` },
     bk_wk_badge_resched:   { tr: `Erteleme bekliyor`, en: `Reschedule pending` },
+    bk_wk_badge_tcreq:     { tr: `Saat talebi bekliyor`, en: `Time change pending` },
+    bk_wk_btn_tcreq:       { tr: `Talebin Berkay Er'de`, en: `Request with Berkay Er` },
+    bk_tc_new:             { tr: `İstenen`, en: `Requested` },
     bk_wk_btn_open:        { tr: `Seçim açık`, en: `Picker open` },
     bk_wk_btn_moved:       { tr: `Bir kez taşındı`, en: `Already moved once` },
     bk_wk_pick_label:      { tr: `Yeni saat seç · 7 gün × 24 saat`, en: `Pick a new time · 7 days × 24 hours` },
@@ -496,13 +497,12 @@
     bk_wk_chk_new_m:       { tr: `Yeni saat {d} sonra (min. 5 sa)`, en: `New time in {d} (min. 5h)` },
     bk_wk_chk_new_empty_m: { tr: `Yeni saat en az 5 saat sonra`, en: `New time at least 5 hours away` },
     bk_wk_chk_week_m:      { tr: `Aynı hafta · bu dersin tek değişikliği`, en: `Same week · this lesson's only change` },
-    bk_wk_ready:           { tr: `Değişiklik onaylanabilir.`, en: `Ready to confirm.` },
-    bk_wk_confirm_m:       { tr: `Onayla — anında uygulanır`, en: `Confirm — applies instantly` },
-    bk_wk_foot_m:          { tr: `Berkay Er'e otomatik bildirim gider, onay gerekmez.`, en: `Berkay Er is notified automatically; no approval needed.` },
+    bk_wk_ready: { tr: `Talep gönderilebilir.`, en: `Ready to send.` },
+    bk_wk_confirm_m: { tr: `Talebi gönder`, en: `Send request` },
+    bk_wk_foot_m: { tr: `Talebin Berkay Er'e gider; onaylayınca ders taşınır, erteleme hakkın düşmez.`, en: `Your request goes to Berkay Er; once approved the lesson moves and no credit is used.` },
     bk_wk_sheet_title:     { tr: `Yeni saat seç`, en: `Pick a new time` },
-    bk_wk_done:            { tr: `Dersin {from} → {to} olarak taşındı. Berkay Er'e bildirim gönderildi — onay gerekmez.`,
-                             en: `Your lesson moved from {from} to {to}. Berkay Er has been notified — no approval needed.` },
-    bk_wk_done_m:          { tr: `Dersin {from} → {to} taşındı. Berkay Er'e bildirim gitti — onay gerekmez.`, en: `Lesson moved {from} → {to}. Berkay Er was notified — no approval needed.` },
+    bk_wk_done: { tr: `Saat değişikliği talebin Berkay Er'e iletildi: {from} → {to}. Onaylanınca dersin yeni saate taşınır; erteleme hakkın düşmez.`, en: `Your time change request was sent to Berkay Er: {from} → {to}. Once approved the lesson moves to the new time; no reschedule credit is used.` },
+    bk_wk_done_m: { tr: `Talebin iletildi: {from} → {to}. Onaylanınca taşınır, hak düşmez.`, en: `Request sent: {from} → {to}. Moves once approved, no credit used.` },
     bk_wk_link: { tr: `Saati değiştir`, en: `Change time` },
     bk_wk_help:            { tr: `Bu haftaki derslerin sayfanın en üstünde — saatini oradan değiştirebilirsin.`, en: `This week's lessons are at the top of the page — you can change their time there.` },
     bk_wk_empty:           { tr: `Bu hafta planlanmış dersin yok.`, en: `You have no lessons scheduled this week.` },
@@ -544,8 +544,7 @@
     bk_rule_proof_desc:    { tr: `Ders bitiminden sonra 48 saat içinde itiraz edilmeyen ders yapılmış sayılır. Zoom katılım kaydı (giriş/çıkış saatleri) ders kanıtı olarak saklanır.`, en: `A lesson not disputed within 48 hours after it ends counts as held. The Zoom attendance record (join/leave times) is kept as proof of the lesson.` },
     bks_rc_proof:          { tr: `Ders bitiminden sonra 48 saat içinde itiraz edilmeyen ders yapılmış sayılır. Zoom katılım kaydı (giriş/çıkış saatleri) ders kanıtı olarak saklanır.`, en: `A lesson not disputed within 48 hours after it ends counts as held. The Zoom attendance record (join/leave times) is kept as proof of the lesson.` },
     bk_rule_selfchange:    { tr: `Saat Değişikliği`, en: `Time Change` },
-    bk_rule_selfchange_desc: { tr: `dersine 5 saatten fazla varsa onaysız ve anında; yeni saat de en az 5 saat sonra olmalı. Aynı hafta içinde, her ders için bir kez; erteleme hakkı düşmez.`,
-                             en: `if your lesson is more than 5 hours away, it happens instantly without approval; the new time must also be at least 5 hours away. Within the same week, once per lesson; no reschedule credit is used.` },
+    bk_rule_selfchange_desc: { tr: `dersine 5 saatten fazla varsa aynı hafta içinde yeni bir saat için talep gönderirsin; Berkay Er onaylayınca ders taşınır. Yeni saat de en az 5 saat sonra olmalı; her ders için bir kez; erteleme hakkı düşmez.`, en: `if your lesson is more than 5 hours away you can request a new time within the same week; the lesson moves once Berkay Er approves. The new time must also be at least 5 hours away; once per lesson; no reschedule credit is used.` },
     bk_avail_load_err:     { tr: 'Müsaitlik yüklenemedi:', en: 'Could not load availability:' },
     bk_welcome_title: { tr: `Ders paneline hoş geldin`, en: `Welcome to your lesson panel` },
     bk_welcome_subtitle:   { tr: 'Birkaç önemli bilgi:', en: 'A few important notes:' },
@@ -1477,11 +1476,11 @@
     bk_tour_act_week_t: { tr: `Bu haftanın dersleri`, en: `This week’s lessons` },
     bk_tour_act_week_b: { tr: `Bu haftaki derslerin canlı geri sayımla burada; kartın üstündeki etiket dersin durumunu gösterir.`, en: `This week’s lessons with a live countdown; the tag on each card shows its status.` },
     bk_tour_act_week_bm: { tr: `Bu haftaki derslerin canlı geri sayımla burada; kartları yana kaydırarak hepsini görürsün.`, en: `This week’s lessons with a live countdown — swipe the cards to see them all.` },
-    bk_tour_act_change_t: { tr: `Saati kendin değiştir`, en: `Change the time yourself` },
-    bk_tour_act_change_b: { tr: `Dersine 5 saatten fazla varsa “Saati değiştir” ile onu aynı hafta başka bir saate taşı; onay beklemezsin.`, en: `More than 5 hours before your lesson, “Change time” moves it to another slot in the same week — no approval needed.` },
-    bk_tour_act_change_bm: { tr: `Dersine 5 saatten fazla varsa “Saati değiştir”e dokun ve aynı hafta içinde yeni saati seç; onay beklemezsin.`, en: `More than 5 hours before your lesson, tap “Change time” and pick a new slot in the same week — no approval needed.` },
+    bk_tour_act_change_t: { tr: `Saat değişikliği iste`, en: `Request a time change` },
+    bk_tour_act_change_b: { tr: `Dersine 5 saatten fazla varsa “Saati değiştir” ile aynı hafta içinde yeni saati seç ve talep gönder; Berkay Er onaylayınca taşınır, erteleme hakkın düşmez.`, en: `More than 5 hours before your lesson, use “Change time” to pick a new slot in the same week and send a request; it moves once Berkay Er approves and no credit is used.` },
+    bk_tour_act_change_bm: { tr: `Dersine 5 saatten fazla varsa “Saati değiştir”e dokun, aynı hafta içinde yeni saati seç ve talep gönder; onaylanınca taşınır, hak düşmez.`, en: `More than 5 hours before your lesson, tap “Change time”, pick a new slot in the same week and send a request; it moves once approved, no credit used.` },
     bk_tour_act_pick_t: { tr: `Yeni saatini seç`, en: `Pick your new time` },
-    bk_tour_act_pick_b: { tr: `Tablodan boş bir saat seç, “Değişiklik özeti”ni kontrol edip onayla. Vazgeçersen “Vazgeç”e bas.`, en: `Pick a free slot in the table, check the “Change summary” and confirm. Changed your mind? Press “Cancel”.` },
+    bk_tour_act_pick_b: { tr: `Tablodan boş bir saat seç, “Değişiklik özeti”ni kontrol edip talebi gönder. Vazgeçersen “Vazgeç”e bas.`, en: `Pick a free slot in the table, check the “Change summary” and send the request. Press “Cancel” to back out.` },
     bk_tour_act_join_t: { tr: `Derse Katıl`, en: `Join the lesson` },
     bk_tour_act_join_b: { tr: `Dersten 15 dakika önce burada yeşil “Derse Katıl” düğmesi belirir ve Zoom’u açar. 10 dakika içinde girmezsen ders yapılmış sayılır.`, en: `15 minutes before the lesson a green “Join Lesson” button appears here and opens Zoom. If you don’t join within 10 minutes, the lesson counts as held.` },
     bk_tour_act_list_t: { tr: `Tüm derslerim`, en: `All my lessons` },
@@ -1491,7 +1490,7 @@
     bk_tour_act_credit_t: { tr: `Erteleme hakkı ve ek ders`, en: `Reschedule credits and extra lessons` },
     bk_tour_act_credit_b: { tr: `“Ertele” dersi 1 hafta ileri alır; en az 24 saat önce iste. Ek ders istersen “Ek Ders Satın Al”ı kullan.`, en: `“Reschedule” moves a lesson one week later — ask at least 24 hours ahead. For an extra lesson, use “Purchase Extra Lesson”.` },
     bk_tour_tr_week_t: { tr: `Deneme dersin`, en: `Your trial lesson` },
-    bk_tour_tr_week_b: { tr: `Deneme dersin burada, canlı geri sayımla. Dersine 5 saatten fazla varsa saatini aynı hafta içinde “Saati değiştir” ile kendin değiştirebilirsin.`, en: `Your trial lesson is here with a live countdown. If it’s more than 5 hours away, you can move it within the same week with “Change time”.` },
+    bk_tour_tr_week_b: { tr: `Deneme dersin burada, canlı geri sayımla. Dersine 5 saatten fazla varsa “Saati değiştir” ile aynı hafta içinde yeni saat için talep gönderebilirsin.`, en: `Your trial lesson is here with a live countdown. More than 5 hours before it, use “Change time” to request a new slot in the same week.` },
     bk_tour_tr_next_t: { tr: `Sonra ne olacak?`, en: `What comes next?` },
     bk_tour_tr_next_b: { tr: `Ders bittiğinde bu panel seni seçim ekranına götürür: beğendiysen kampanyalı bir paket seçip haftalık saatlerini belirlersin.`, en: `When the lesson is over, this panel takes you to the options screen: if you liked it, pick a discounted package and set your weekly times.` },
 
@@ -1919,8 +1918,8 @@
     bks_credit_h_admin_one: { tr: `{n} hak Berkay Er tarafından düzenlendi — sorun için WhatsApp’tan yaz.`, en: `{n} credit was adjusted by Berkay Er — message on WhatsApp if something looks wrong.` },
     bk_welcome_pay_desc2: { tr: `Panelin en üstündeki <strong class="text-accent">Yapman gereken</strong> kartında IBAN ve tutar var. Havaleyi yap, <strong class="text-accent">Ödemeyi yaptım</strong> de; Berkay Er onaylayınca derslerin açılır.`, en: `The <strong class="text-accent">Your next step</strong> card at the top has the IBAN and the amount. Make the transfer, press <strong class="text-accent">I’ve paid</strong>; your lessons open once Berkay Er confirms.` },   // booking-ogrenci (başlangıç dostu)
     bk_welcome_zoom_desc2: { tr: `Her dersten <strong>15 dakika önce</strong> ders kartında yeşil <strong class="text-ok">Derse Katıl</strong> düğmesi açılır; Zoom’u açar.`, en: `<strong>15 minutes before</strong> each lesson a green <strong class="text-ok">Join</strong> button appears on the lesson card; it opens Zoom.` },   // booking-ogrenci (başlangıç dostu)
-    bk_welcome_change_title: { tr: `Saati değiştir — ücretsiz`, en: `Change time — free` },   // booking-ogrenci (başlangıç dostu)
-    bk_welcome_change_desc: { tr: `Dersine 5 saatten fazla varsa aynı hafta içinde başka bir saate kendin taşıyabilirsin; onay gerekmez, <strong>erteleme hakkı düşmez</strong>.`, en: `If your lesson is more than 5 hours away you can move it yourself within the same week; no approval needed and <strong>no credit is used</strong>.` },   // booking-ogrenci (başlangıç dostu)
+    bk_welcome_change_title: { tr: `Saat değişikliği — ücretsiz`, en: `Time change — free` },   // booking-ogrenci (başlangıç dostu)
+    bk_welcome_change_desc: { tr: `Dersine 5 saatten fazla varsa aynı hafta içinde yeni bir saat için talep gönderebilirsin; Berkay Er onaylayınca dersin taşınır, <strong>erteleme hakkı düşmez</strong>.`, en: `If your lesson is more than 5 hours away you can request a new time within the same week; once Berkay Er approves the lesson moves and <strong>no credit is used</strong>.` },   // booking-ogrenci (başlangıç dostu)
     bk_access_sel_full: { tr: `Seçimin: {day} · {time}`, en: `Your pick: {day} · {time}` },   // booking-ogrenci (başlangıç dostu)
     bks_trial_tz: { tr: `Saatler Türkiye saatidir (UTC+3) · deneme dersi 60 dk, Zoom üzerinden.`, en: `Times are Turkey time (UTC+3) · the trial lesson is 60 min on Zoom.` },   // booking-ogrenci (başlangıç dostu)
     bk_trial_open_days: { tr: `Ders günleri: {days}`, en: `Lesson days: {days}` },   // booking-ogrenci (başlangıç dostu)
@@ -2032,6 +2031,14 @@
     adm_m_date: { tr: `Günü değiştir (hak düşmez)`, en: `Change day (no credit used)` },   // booking-admin (erteleme hakları + admin onayları)
     adm_m_cancel: { tr: `Dersi iptal et`, en: `Cancel lesson` },   // booking-admin (erteleme hakları + admin onayları)
     adm_l_pend_rs: { tr: `Erteleme talebi bekliyor → Talepler`, en: `Reschedule request waiting → Requests` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_l_pend_tc: { tr: `Saat değişikliği talebi bekliyor → Talepler`, en: `Time change request waiting → Requests` },
+    adm_rq_tc:     { tr: `Saat değişikliği talebi`, en: `Time change request` },
+    adm_rq_tc_ok:  { tr: `Onayla & taşı`, en: `Approve & move` },
+    adm_rq_tc_nocredit: { tr: `Erteleme hakkı düşmez`, en: `No reschedule credit used` },
+    adm_rq_tc_done: { tr: `Ders yeni saate taşındı — öğrenciye WhatsApp ile bildirildi.`, en: `Lesson moved to the new time — the student was notified on WhatsApp.` },
+    adm_rq_tc_rejected: { tr: `Saat değişikliği talebi reddedildi — ders eski saatinde kaldı, öğrenciye bildirildi.`, en: `Time change request rejected — the lesson stays at its old time; the student was notified.` },
+    adm_rq_tc_clash: { tr: `Yeni saat artık dolu ya da başka bir dersle çakışıyor. Yine de taşınsın mı?`, en: `The new time is now taken or clashes with another lesson. Move it anyway?` },
+    adm_rq_nores:  { tr: `Rezervasyon bulunamadı.`, en: `Reservation not found.` },
     adm_l_pend_cx: { tr: `İptal talebi bekliyor → Talepler`, en: `Cancel request waiting → Requests` },   // booking-admin (erteleme hakları + admin onayları)
     adm_complete_all_t: { tr: `İptal edilenleri tamamlandı say`, en: `Mark cancelled lessons as done` },   // booking-admin (erteleme hakları + admin onayları)
     adm_complete_all_b: { tr: `{n} iptal edilmiş ders "Tamamlandı" olarak işaretlenecek; öğrencinin ilerlemesi buna göre artar.`, en: `{n} cancelled lessons will be marked "Done"; the student's progress goes up accordingly.` },   // booking-admin (erteleme hakları + admin onayları)
