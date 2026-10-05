@@ -23,6 +23,31 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Admin: tek hesap, e-postası doğrulanmış olmalı (firestore.rules isAdmin() ile aynı).
+// Bu e-postayla doğrulamadan açılmış bir e-posta/şifre hesabı admin sayılmaz.
+const ADMIN_EMAIL = "berkayer032@gmail.com";
+function isAdminAuth(auth) {
+  return !!(auth && auth.token &&
+    auth.token.email === ADMIN_EMAIL &&
+    auth.token.email_verified === true);
+}
+
+// HTML e-posta şablonlarına giren kullanıcı verisi (ad, saat, mesaj) kaçışlanır
+function escHtml(v) {
+  return String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;",
+  })[c]);
+}
+
+// Zoom linki settings/zoom'da (yalnız admin + ödemesi onaylı / deneme öğrencisi okur).
+// Geçiş (bir sürüm): orada yoksa eski settings/global.zoom_link okunur.
+async function getZoomLink(db) {
+  const z = await db.collection("settings").doc("zoom").get();
+  if (z.exists && z.data().zoom_link) return z.data().zoom_link;
+  const g = await db.collection("settings").doc("global").get();
+  return g.exists ? (g.data().zoom_link || "") : "";
+}
+
 /**
  * Builds anti-spam mail options for payment reminder.
  * - Neutral subject (no warning symbols)
@@ -74,10 +99,10 @@ berkayeracademy.com`,
           <div style="font-size:11px;color:rgba(238,235,230,.5);letter-spacing:3px;margin-top:4px;">ABLETON ÖZEL DERS</div>
         </td></tr>
         <tr><td style="padding:32px;">
-          <p style="margin:0 0 16px;font-size:15px;color:#222;">Merhaba <strong>${name}</strong>,</p>
+          <p style="margin:0 0 16px;font-size:15px;color:#222;">Merhaba <strong>${escHtml(name)}</strong>,</p>
           <div style="background:#f9f6f0;border:1px solid #ddd;border-radius:6px;padding:16px 20px;margin-bottom:24px;">
             <p style="margin:0;font-size:14px;color:#555;">Ders ödemenizin henüz gerçekleşmediğini fark ettik.</p>
-            ${nextLesson ? `<p style="margin:8px 0 0;font-size:13px;color:#666;">Yaklaşan dersiniz: <strong style="color:#333;">${nextDateFormatted} – ${nextLesson.time}</strong></p>` : ""}
+            ${nextLesson ? `<p style="margin:8px 0 0;font-size:13px;color:#666;">Yaklaşan dersiniz: <strong style="color:#333;">${escHtml(nextDateFormatted)} – ${escHtml(nextLesson.time)}</strong></p>` : ""}
           </div>
           <p style="margin:0 0 12px;font-size:14px;color:#444;line-height:1.6;">Lütfen ödemenizi aşağıdaki hesaba yapınız:</p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f8f8;border-radius:6px;padding:16px;margin-bottom:24px;">
@@ -304,8 +329,7 @@ exports.lessonReminder24h = onSchedule(
     {schedule: "0 6 * * *", timeZone: "Europe/Istanbul"},
     async () => {
       const db = getFirestore();
-      const settings = await db.collection("settings").doc("global").get();
-      const zoomLink = settings.exists ? (settings.data().zoom_link || "") : "";
+      const zoomLink = await getZoomLink(db);
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowStr = toDateStr(tomorrow);
@@ -346,8 +370,7 @@ exports.lessonReminder1h = onSchedule(
     {schedule: "0 * * * *", timeZone: "Europe/Istanbul"},
     async () => {
       const db = getFirestore();
-      const settings = await db.collection("settings").doc("global").get();
-      const zoomLink = settings.exists ? (settings.data().zoom_link || "") : "";
+      const zoomLink = await getZoomLink(db);
 
       // 1 hour from now in Istanbul TZ — schedule runs at minute 0 so target is HH+1:00
       const now = new Date();
@@ -737,7 +760,7 @@ exports.twilioWhatsAppWebhook = onRequest(
 exports.sendWhatsAppAdmin = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const {toPhone, body} = request.data || {};
@@ -754,7 +777,7 @@ exports.sendWhatsAppAdmin = onCall(
 exports.markWhatsAppConvoRead = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const {phone} = request.data || {};
@@ -769,8 +792,8 @@ exports.markWhatsAppConvoRead = onCall(
 // ── Helper: branded template for custom admin messages ──
 function buildCustomMailOptions(toName, toEmail, subject, message) {
   const safeSubject = (subject || "").replace(/[\r\n]/g, " ").slice(0, 200);
-  const safeName = (toName || "").replace(/[\r\n<>]/g, "").slice(0, 100);
-  const safeMessage = message.replace(/\n/g, "<br>");
+  const safeName = escHtml((toName || "").replace(/[\r\n]/g, " ").slice(0, 100));
+  const safeMessage = escHtml(message).replace(/\n/g, "<br>");
   return {
     from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
     replyTo: "berkayer032@gmail.com",
@@ -809,11 +832,10 @@ function buildCustomMailOptions(toName, toEmail, subject, message) {
 }
 
 // Manual trigger: admin clicks "Email Gönder" in admin panel
-const ADMIN_EMAIL = "berkayer032@gmail.com";
 exports.sendPaymentRemindersManual = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new Error("Unauthorized");
       }
       const db = getFirestore();
@@ -838,7 +860,7 @@ exports.sendPaymentRemindersManual = onCall(
 exports.sendCustomEmail = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new Error("Unauthorized");
       }
       const {toEmail, toName, subject, message} = request.data;
@@ -853,7 +875,7 @@ exports.sendCustomEmail = onCall(
 exports.createZoomMeeting = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
 
@@ -908,12 +930,16 @@ exports.createZoomMeeting = onCall(
         throw new HttpsError("failed-precondition", "Toplantı oluşturulamadı: " + JSON.stringify(meetingData));
       }
 
-      // 3. Save to Firestore
+      // 3. Save to Firestore — settings/zoom (kısıtlı okuma); eski alan global'den silinir
       const db = getFirestore();
-      await db.collection("settings").doc("global").set(
-          {zoom_link: meetingData.join_url},
-          {merge: true},
-      );
+      const batch = db.batch();
+      batch.set(db.collection("settings").doc("zoom"),
+          {zoom_link: meetingData.join_url, updated_at: FieldValue.serverTimestamp()},
+          {merge: true});
+      batch.set(db.collection("settings").doc("global"),
+          {zoom_link: FieldValue.delete()},
+          {merge: true});
+      await batch.commit();
 
       return {join_url: meetingData.join_url, meeting_id: meetingData.id};
     },
@@ -975,7 +1001,7 @@ function buildWelcomeMailOptions(name, toEmail) {
           <div style="font-size:11px;color:rgba(238,235,230,.5);letter-spacing:3px;margin-top:4px;">ABLETON ÖZEL DERS</div>
         </td></tr>
         <tr><td style="padding:32px;">
-          <p style="margin:0 0 8px;font-size:15px;color:#222;">Merhaba <strong>${name}</strong>,</p>
+          <p style="margin:0 0 8px;font-size:15px;color:#222;">Merhaba <strong>${escHtml(name)}</strong>,</p>
           <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">Ders talebini aldık — çok yakında seninle iletişime geçeceğiz. Seni neler beklediğine bir göz at:</p>
 
           <div style="background:#060609;border-radius:6px;padding:14px 18px;margin-bottom:24px;">
@@ -1009,7 +1035,7 @@ function buildWelcomeMailOptions(name, toEmail) {
 exports.sendWelcomeEmail = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const {toEmail, toName} = request.data;
@@ -1112,7 +1138,7 @@ function buildPromoMailOptions(name, toEmail) {
 exports.sendPromoEmailAll = onCall(
     {region: "europe-west1", timeoutSeconds: 300},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const db = getFirestore();
@@ -1137,7 +1163,7 @@ exports.sendPromoEmailAll = onCall(
 exports.sendPromoEmailSingle = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const {toEmail, toName} = request.data;
@@ -1154,7 +1180,7 @@ exports.sendPromoEmailSingle = onCall(
 exports.sendWhatsAppMessage = onCall(
     {region: "europe-west1"},
     async (request) => {
-      if (!request.auth || request.auth.token.email !== ADMIN_EMAIL) {
+      if (!isAdminAuth(request.auth)) {
         throw new HttpsError("permission-denied", "Yetkisiz erişim");
       }
       const {toPhone, body} = request.data || {};

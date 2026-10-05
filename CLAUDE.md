@@ -56,7 +56,7 @@ Env vars in use: `GMAIL_PASS`, `Z_ACCOUNT_ID` / `Z_CLIENT_ID` / `Z_CLIENT_SECRET
 
 **Callable (`onCall`):**
 - `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle` — email blasts (admin)
-- `createZoomMeeting` — admin only, writes `settings/global.zoom_link`
+- `createZoomMeeting` — admin only, writes `settings/zoom.zoom_link` (and deletes the legacy `settings/global.zoom_link`)
 - `sendWhatsAppMessage`, `sendWhatsAppAdmin` — WhatsApp send (template or freeform)
 - `markWhatsAppConvoRead` — clears unread count on admin panel
 - `confirmLesson` — student "Evet, ders yapıldı" / "Sorun bildir" (`{date,time,action,reason}`): own ended lesson, not cancelled/frozen, no decision yet, dispute ≤48 h after end → `lessons[i].confirmation = {status:'confirmed'|'disputed', at, by:'student', reason?}`; dispute → admin WhatsApp + e-mail. Admin closes a dispute in the panel (`status:'resolved', resolved_at, resolved_note`)
@@ -127,7 +127,8 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 | `booked_slots` | Student-booked trial-lesson slots |
 | `lesson_requests` | Initial lesson request submissions |
 | `lesson_questions/{qId}/answers` | Q&A threads, admin or student replies |
-| `settings/global` | Site-wide settings (e.g. `zoom_link`) |
+| `settings/global` | Site-wide settings (availability). Readable by every signed-in user — never put secrets here |
+| `settings/zoom` | `zoom_link` — readable only by admin and students whose `reservations/{uid}` is `payment_confirmed` or `lesson_type: 'trial'`. Crons/booking fall back to the legacy `settings/global.zoom_link` for one release; the admin panel migrates it on load |
 | `settings/campaigns` | Kampanyalı paketler `{items:[{id,name,months,weekly,discount,active,best}], updated_at}` (admin yazar, girişli okur). Yoksa/boşsa `PACKAGES` varsayılanı. |
 | `notifications/{uid}/items` | Per-user notifications |
 | `chats/{chatId}/messages` | DM threads (chatId = sorted uid pair). Collab requests use `type: 'collab_request'` with status update flow. |
