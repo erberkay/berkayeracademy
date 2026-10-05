@@ -16,7 +16,7 @@
      compile(intents, kb?)         → arama dizini (önbelleklenir)
      match(text, kb, ctx?)         → { intent, score, coverage, confident, alternatives:[{id,score,cov}],
                                        suggestions (soruyla örtüşen seçenekler), followup, tokens }
-     render(intent, ctx, lang)     → { text, actions }  (şablon doldurma; varyant seçimi)
+     render(intent, ctx, lang)     → { text, actions }  (şablon doldurma; varyant seçimi; intent.raw → doldurma yok)
      detectLang(text)              → 'tr' | 'en' | null
 */
 (function (root) {
@@ -505,11 +505,24 @@
       if (L.need.length && !L.need.some(function (t) { return has[t]; })) { sc *= 0.85; cov *= 0.85; }
       if (L.avoid.length && L.avoid.some(function (t) { return has[t]; })) { sc *= 0.72; cov *= 0.75; }
       // strong: bu kavram geçiyorsa niyet kesin konu (korsan yazılım isteği her zaman reddedilir)
+      var strongMiss = false;
       if (L.strong.length && L.strong.some(function (t) { return has[t]; })) { sc += 0.15; cov = Math.max(cov, T_COV); }
+      else if (L.strong.length) { strongMiss = true; sc *= 0.75; cov *= 0.75; }   // kavram yoksa bu konu değil
       // öğrencinin durumuna uyan niyet hafif öne çıkar (aynı soru farklı durumda farklı cevap)
       if (st && L.it.states) sc *= L.it.states.indexOf(st) >= 0 ? 1.06 : 0.98;
-      return { id: L.it.id, it: L.it, score: Math.min(1, sc), cov: cov };
+      return { id: L.it.id, it: L.it, score: Math.min(1, sc), cov: cov, strongMiss: strongMiss };
     }).sort(function (a, b) { return b.score - a.score; });
+  }
+
+  // Konu taşımayan sorudaki fiyat / süre kelimesi önceki konu ailesinde (örnekler + topic) geçiyor mu
+  var GEN_CLASS = { tut: 'p', tutar: 'p', fiyat: 'p', ucret: 'p', para: 'p', '@fiyat': 'p', sure: 'd', sur: 'd' };
+  function genFits(qa, fam, idx) {
+    var have = {};
+    idx.list.forEach(function (L) {
+      if (fam.indexOf(L.it.id) < 0) return;
+      L.bag.concat(L.it.topic || []).forEach(function (t) { var c = GEN_CLASS[t]; if (c) have[c] = 1; });
+    });
+    return qa.words.every(function (w) { var c = GEN_CLASS[w]; return !c || have[c]; });
   }
 
   // Eşikler (Node değerlendirmesiyle ayarlandı)
@@ -533,14 +546,18 @@
     // böylece konu değiştiren kısa soru ("iban ne?") yine kendi cevabını bulur.
     var last = ctx && ctx.last && ctx.last.intent;
     var lastIt = last && idx.list.filter(function (L) { return L.it.id === last; })[0];
-    var strongFollow = FOLLOW_MARK.test(qa.norm) || qa.generic;
+    var fam = lastIt ? [last].concat(lastIt.it.follow || []) : [];
+    // "fiyat ne kadar", "süresi ne kadar": konu taşımayan soru yalnız önceki konu ailesinde fiyat /
+    // süre bilgisi varsa takip sayılır — "talebimi iptal etmek istiyorum" → "fiyat ne kadar" = fiyatlar
+    var generic = qa.generic && !!lastIt && genFits(qa, fam, idx);
+    var strongFollow = FOLLOW_MARK.test(qa.norm) || generic;
     var isFollow = strongFollow || qa.words.length <= 3;
     if (lastIt && isFollow) {
       var topic = (lastIt.it.topic || []).map(function (t) { return t.charAt(0) === '@' ? t : stem(normalize(t)); });
       if (topic.length) {
         var wmul = {};
         // yalnız soru kelimesinden oluşan ya da 1–2 kelimelik soruda konu tam ağırlık taşır
-        var tw = qa.generic || qa.words.length <= 2 ? 1 : 0.6;
+        var tw = generic || qa.words.length <= 2 ? 1 : 0.6;
         topic.forEach(function (t) { if (qa.tokens.indexOf(t) < 0) wmul[t] = tw; });
         var qa2 = { tokens: uniq(qa.tokens.concat(topic)), words: qa.words.concat(topic.filter(function (t) { return t.charAt(0) !== '@'; })), wmul: wmul, flags: qa.flags };
         qa2.tri = trigrams(qa2.words.join(' '));
@@ -548,23 +565,29 @@
         var pick = r2[0];
         // konu taşımayan soru ("ne kadar tutuyor?", "ne zamana kadar?"): cevap aynı konuda kalır —
         // önceki niyet ya da onun "follow" listesi arasından en iyisi
-        if (qa.generic) {
-          var fam = [last].concat(lastIt.it.follow || []);
+        if (generic) {
           var inFam = r2.filter(function (x) { return fam.indexOf(x.id) >= 0; })[0];
           if (inFam && inFam.score >= T_LO) { pick = inFam; res.sameTopic = true; }
         }
         // takip sorusu genelde aynı soruyu tekrar etmez: bağlam önceki niyete çekiyorsa ama soru kendi
         // başına başka bir şey soruyorsa, önceki niyetin "follow" listesinden ya da sorunun kendi en iyi
         // niyetinden uygun olanı seçilir ("kaç hakkım var" → "bi tane daha alsam" = ek hak)
-        if (pick.id === last && ranked[0].id !== last && !qa.generic) {
+        if (pick.id === last && ranked[0].id !== last && !generic) {
           var fl = lastIt.it.follow || [];
           var alt = r2.filter(function (x) { return x.id !== last && fl.indexOf(x.id) >= 0; })[0];
           if (alt && alt.score >= T_LO && alt.score >= pick.score - 0.25) pick = alt;
         }
-        if (strongFollow || qa.words.length <= 2 || pick.score >= ranked[0].score - 0.05 || ranked[0].score < T_HI || (ranked[0].cov || 0) < T_COV) {
+        // Soru kendi başına başka bir konuda güvenle eşleşiyorsa ve önceki konunun seçilen niyeti
+        // sorunun kendi kelimeleriyle örtüşmüyorsa (istek düzenleme → "fiyat ne kadar") kendi cevabı
+        // kalır; kısa olması tek başına takip sayılmaz. Örtüşüyorsa ("deneme dersi" → "kaç dakika")
+        // takip sürer.
+        var own = {};
+        ranked.forEach(function (x) { own[x.id] = x.cov || 0; });
+        var own0 = ranked[0];
+        var ownClear = !generic && own0.score >= T_HI && (own0.cov || 0) >= T_COV && own0.id !== last &&
+          fam.indexOf(own0.id) < 0 && (own[pick.id] || 0) < 0.3;
+        if (!ownClear && (strongFollow || qa.words.length <= 2 || pick.score >= ranked[0].score - 0.05 || ranked[0].score < T_HI || (ranked[0].cov || 0) < T_COV)) {
           // kapsam: taşınan konu belirteçleri sorunun kendi kelimelerinin karşılanmasını gölgelemesin
-          var own = {};
-          ranked.forEach(function (x) { own[x.id] = x.cov || 0; });
           r2.forEach(function (x) { x.cov = Math.max(x.cov || 0, own[x.id] || 0); });
           ranked = [pick].concat(r2.filter(function (x) { return x !== pick; }));
           res.followup = true;
@@ -574,12 +597,13 @@
 
     var top = ranked[0], second = ranked[1] || { score: 0 };
     res.score = +top.score.toFixed(4);
-    res.alternatives = ranked.slice(0, 4).filter(function (x) { return x.score >= T_LO * 0.8; })
-      .map(function (x) { return { id: x.id, score: +x.score.toFixed(4), cov: +(x.cov || 0).toFixed(3) }; });
+    // strong kavramı soruda geçmeyen niyet (korsan yazılım) seçenek olarak önerilmez
+    res.alternatives = ranked.filter(function (x, i) { return i === 0 || !x.strongMiss; }).slice(0, 4).filter(function (x) { return x.score >= T_LO * 0.8; })
+      .map(function (x) { return { id: x.id, score: +x.score.toFixed(4), cov: +(x.cov || 0).toFixed(3), strongMiss: !!x.strongMiss }; });
     if (top.score >= T_LO) res.intent = top.id;
     // "Bunu mu demek istedin?" seçenekleri: yalnız sorunun en azından bir kısmını karşılayanlar —
     // tanınmayan sorulara alakasız düğme gösterilmez (arayüz boşsa "bilmiyorum + Berkay'a ilet" der)
-    res.suggestions = res.alternatives.filter(function (a) { return a.score >= 0.3 && a.cov >= 0.25; }).slice(0, 3);
+    res.suggestions = res.alternatives.filter(function (a) { return a.score >= 0.3 && a.cov >= 0.25 && !a.strongMiss; }).slice(0, 3);
     // Güven: puan eşiği + ikinciden ayrışma + sorgunun çoğu karşılanmış olmalı (tanınmayan
     // kelimesi ağır basan soru — "gitar dersi veriyor musunuz" — öneriye düşer)
     res.coverage = +(top.cov || 0).toFixed(3);
@@ -621,7 +645,7 @@
       if (!v || !flagsOk(v.if, flags)) continue;
       var s = pickLang(v, lang);
       if (s == null) continue;
-      text = fill(s, vars);
+      text = intent.raw ? String(s) : fill(s, vars);   // raw: öğrenilen cevap, yer tutucu doldurulmaz
     }
     if (text == null) text = '';
     var actions = (intent.actions || []).filter(function (a) { return flagsOk(a.if, flags); });

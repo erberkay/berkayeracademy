@@ -38,6 +38,7 @@
     waAsk: [`WhatsApp'tan sor`, `Ask on WhatsApp`],
     fwdDone: [`İletildi. Berkay Er yanıtlayınca cevabı burada görürsün (asistanı açtığında).`, `Forwarded. When Berkay Er answers, you'll see it here (next time you open the assistant).`],
     fwdDup: [`Bu soruyu zaten ilettin; yanıt bekleniyor.`, `You already forwarded this; waiting for an answer.`],
+    fwdWait: [`Az önce bir soru ilettin; yenisini göndermek için yarım dakika bekle.`, `You just forwarded a question; wait half a minute before sending another.`],
     fwdErr: [`İletilemedi ({c}). Bağlantını kontrol edip tekrar dene ya da WhatsApp'tan yaz.`, `Couldn't forward ({c}). Check your connection and retry, or message on WhatsApp.`],
     answered: [`Sorduğun "{q}" sorusunu Berkay Er yanıtladı:`, `Berkay Er answered your question "{q}":`],
     notHere: [`Bu bölüm şu an ekranda yok.`, `That section isn't on screen right now.`],
@@ -95,6 +96,8 @@
     } catch (_) { return undefined; }
   }
   function pf(name) { var f = pv(name); return typeof f === 'function' ? f : null; }
+  // Panel turu bu durumda açılabiliyor mu: sayfa "Panel turu" düğmesini yalnız turu olan durumda gösterir
+  function hasTour() { var b = document.getElementById('bkTourBtn'); return !!(W.beTour && pf('bkTourStart') && b && !b.hidden); }
 
   // Güvenli işaretleme: önce kaçış, sonra **kalın**, "- " madde, paragraf, https bağlantısı
   function md(text) {
@@ -167,7 +170,7 @@
     var reschH = num('MIN_LEAD_MS', F.reschH * 3600e3) / 3600e3;
     var joinMin = num('BK_JOIN_MS', F.joinMin * 60e3) / 60e3;
     var cfmH = num('BK_CFM_WINDOW_MS', F.cfmH * 3600e3) / 3600e3;
-    var flags = { signedIn: !!u, signedOut: !u, isEn: l === 'en', hasTour: !!(W.beTour), tzDiff: new Date().getTimezoneOffset() !== -180 };
+    var flags = { signedIn: !!u, signedOut: !u, isEn: l === 'en', hasTour: hasTour(), tzDiff: new Date().getTimezoneOffset() !== -180 };
     flags['st_' + st] = true;
     var name = u ? ((u.displayName || '').trim() || (u.email || '').split('@')[0] || '') : '';
     var first = name.split(/\s+/)[0] || '';
@@ -255,7 +258,10 @@
       if (cs) flags.cfmOpen = lessons.some(function (x) { try { return cs(x, now) === 'open'; } catch (_) { return false; } });
       // Saati değiştirilebilir herhangi bir ders (sıradaki değilse de seçici açılabilir)
       var wsAny = pf('bkWkState');
-      if (wsAny) flags.anyChange = upcoming.some(function (x) { try { return wsAny(x, now, wk).actionable; } catch (_) { return false; } });
+      var anyL = wsAny ? upcoming.filter(function (x) { try { return wsAny(x, now, wk).actionable; } catch (_) { return false; } })[0] : null;
+      flags.anyChange = !!anyL;
+      // sıradaki ders taşınamıyorsa cevap, seçicinin açacağı dersi (ilk taşınabilir ders) adıyla söyler
+      if (anyL) vars.change_any = fmtMs(trStart(anyL.date, anyL.time), l);
       // Sıradaki ders
       var nx = upcoming[0];
       vars.next_line = '';
@@ -327,7 +333,8 @@
     var q = Array.isArray(d.q) ? d.q : (d.q ? [String(d.q)] : []);
     q = q.map(function (s) { return String(s).trim(); }).filter(Boolean).slice(0, 30);
     if (!q.length || !d.a) return null;
-    return { id: 'faq:' + id, learned: true, ex: { tr: q }, kw: Array.isArray(d.keywords) ? d.keywords.slice(0, 20).map(String) : [],
+    // raw: öğretmenin metni olduğu gibi gösterilir — içindeki {kelime} şablon sayılmaz (dolmazsa cevap boş kalırdı)
+    return { id: 'faq:' + id, learned: true, raw: true, ex: { tr: q }, kw: Array.isArray(d.keywords) ? d.keywords.slice(0, 20).map(String) : [],
       a: { tr: String(d.a), en: String(d.a_en || d.a) }, actions: [] };
   }
   function rebuildKb() {
@@ -348,7 +355,7 @@
 
   // ── DOM ──────────────────────────────────────────────────────
   var fab, panel, scrim, log, chipsEl, form, input, sendBtn, opened = false, lastFocus = null, conv = { last: null, lastText: '' };
-  var forwarded = {};
+  var forwarded = {}, lastFwdAt = 0;
 
   function build() {
     if (fab) return;
@@ -394,9 +401,20 @@
     panel.querySelector('.be-asst-foot').textContent = t(S.foot);
   }
 
+  // a[href]: ikonlardaki SVG <use href> odaklanamaz; görünürlük getClientRects ile (offsetParent SVG'de tanımsız)
   function focusables() {
-    return Array.prototype.filter.call(panel.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'),
-      function (el) { return !el.disabled && el.offsetParent !== null; });
+    return Array.prototype.filter.call(panel.querySelectorAll('a[href], button, input, textarea, select, [tabindex]:not([tabindex="-1"])'),
+      function (el) { return !el.disabled && el.getClientRects().length > 0; });
+  }
+  // Telefonda alt sayfa açıkken arkadaki sayfa etkisiz (inert): Tab ve ekran okuyucu örtünün arkasına geçmez
+  var inerted = [];
+  function setInert(on) {
+    if (on) {
+      Array.prototype.forEach.call(document.body.children, function (el) {
+        if (el === panel || el === scrim || el.inert || el.tagName === 'SCRIPT') return;
+        el.inert = true; inerted.push(el);
+      });
+    } else { inerted.forEach(function (el) { el.inert = false; }); inerted = []; }
   }
   function onKey(e) {
     if (e.key === 'Escape') { e.preventDefault(); close(); return; }
@@ -411,12 +429,16 @@
 
   function open() {
     if (!panel || opened) return;
+    // açık panel turu asistanın üstünde kalır (aynı katman): asistan açılınca tur kapanır
+    try { if (W.beTour && W.beTour.current && W.beTour.current.active) W.beTour.current.stop('assistant'); } catch (_) {}
     opened = true; lastFocus = document.activeElement;
     var sheet = isSheet();
-    panel.setAttribute('aria-modal', sheet ? 'true' : 'false');
+    // aria-modal yalnız telefonda ve yalnız açıkken: kapalı panelde kalırsa sayfa (tur, pencere sırası)
+    // açık bir pencere var sanar
+    if (sheet) panel.setAttribute('aria-modal', 'true'); else panel.removeAttribute('aria-modal');
     scrim.hidden = !sheet;
     panel.hidden = false; fab.hidden = true; fab.setAttribute('aria-expanded', 'true');
-    if (sheet) document.documentElement.style.overflow = 'hidden';
+    if (sheet) { document.documentElement.style.overflow = 'hidden'; setInert(true); }
     document.addEventListener('keydown', onDocKey);
     if (!log.childElementCount) greet();
     prefetch().then(function () { renderChips(); checkAnswered(); });
@@ -426,6 +448,7 @@
   function close(noFocus) {
     if (!opened) return;
     opened = false;
+    panel.removeAttribute('aria-modal'); setInert(false);
     panel.hidden = true; scrim.hidden = true; document.documentElement.style.overflow = '';
     fab.setAttribute('aria-expanded', 'false');
     syncVisibility();
@@ -487,6 +510,7 @@
     unknown(q, ctx, l);
   }
   function exampleLabel(it, l) {
+    if (it.label && (it.label[l] || it.label.tr)) return it.label[l] || it.label.tr;
     var ex = it.ex || {};
     var arr = (l === 'en' && ex.en && ex.en.length ? ex.en : ex.tr) || [];
     // KB'de ilk örnekler ayarlamada eklenmiş olabilir: "?" ile biten, büyük harfle başlayan örnek tercih
@@ -665,11 +689,11 @@
       case 'url': { if (/^\/[a-z0-9-]*$/.test(a.href)) W.location.href = a.href; return; }
       case 'lang': { if (W._i18n && W._i18n.setLang) W._i18n.setLang(a.to); paintStatic(); renderChips(); return; }
       case 'tour': {
-        var tr = W.beTour;
-        if (!tr) return say(S.notHere);
+        // sayfanın tur başlatıcısı (booking.html bkTourStart → beTour.create); yoksa görünür "Panel turu" düğmesi
+        var ts = pf('bkTourStart'), tb2 = document.getElementById('bkTourBtn');
+        if (!W.beTour || (!ts && !visible(tb2))) return say(S.notHere);
         close(true);
-        var fn = (a.step && (tr.goTo || tr.step || tr.start)) || tr.start || tr.open;
-        if (typeof fn === 'function') fn.call(tr, a.step);
+        if (ts) ts(); else tb2.click();
         return;
       }
       case 'forward': return forward(q || conv.lastText, btn);
@@ -681,18 +705,25 @@
     var u = curUser(); var q = String(text || '').trim().slice(0, 500);
     if (!u || !q || !W.firebase) return;
     if (forwarded[q]) { addMsg('bot', md(t(S.fwdDup))); return; }
+    if (Date.now() - lastFwdAt < 30e3) { addMsg('bot', md(t(S.fwdWait))); return; }
     if (btn) btn.disabled = true;
     var ctx = buildContext();
-    W.firebase.firestore().collection('assistant_questions').add({
+    // Soru + öğrencinin iletme sınırı belgesi tek toplu yazımda (kurallar: 30 sn'de bir, created_at = sunucu saati)
+    var db = W.firebase.firestore(), ts = W.firebase.firestore.FieldValue.serverTimestamp();
+    var batch = db.batch();
+    batch.set(db.collection('assistant_limits').doc(u.uid), { last_at: ts });
+    batch.set(db.collection('assistant_questions').doc(), {
       uid: u.uid,
       name: ((u.displayName || '').trim() || (u.email || '').split('@')[0] || '').slice(0, 80),
       text: q, state: ctx.state, lang: ctx.lang, answered: false,
-      created_at: W.firebase.firestore.FieldValue.serverTimestamp(),
-    }).then(function () {
-      forwarded[q] = 1;
+      created_at: ts,
+    });
+    batch.commit().then(function () {
+      forwarded[q] = 1; lastFwdAt = Date.now();
       addMsg('bot', md(t(S.fwdDone)));
     }).catch(function (e) {
       if (btn) btn.disabled = false;
+      if (e && e.code === 'permission-denied') { addMsg('bot', md(t(S.fwdWait))); return; }   // başka sekmeden az önce iletildi
       var c = '#' + Math.random().toString(36).slice(2, 5).toUpperCase();
       try { console.warn('[asistan] ilet', c, e && (e.code || e.message)); } catch (_) {}
       addMsg('bot', md(t(S.fwdErr).replace('{c}', c)));
@@ -750,9 +781,15 @@
     }
     admRender(); admRenderFaq();
   }
+  // Yanıt bekleyen soru sayısı "WhatsApp & sorular" menü/sekme rozetine eklenir (booking.html admUpdateCounts)
+  function admNavCount(k) {
+    if (pv('_admAsstOpen') === undefined) return;
+    W._admAsstOpen = k;
+    var uc = pf('admUpdateCounts'); if (uc) { try { uc(); } catch (_) {} }
+  }
   function admUnmount() {
     if (admUnsub) { try { admUnsub(); } catch (_) {} admUnsub = null; }
-    admQs = [];
+    admQs = []; admNavCount(0);
     if (admEl) { admEl.hidden = true; admEl.innerHTML = ''; admEl = null; }
   }
   var STATE_LBL = { active: ['aktif', 'active'], unpaid: ['ödeme bekliyor', 'unpaid'], trial: ['deneme', 'trial'], pending: ['talep bekliyor', 'pending'], rejected: ['reddedildi', 'rejected'], new: ['yeni', 'new'], request: ['talep formu', 'request form'], ended: ['paketi bitti', 'ended'], signedout: ['girişsiz', 'signed out'] };
@@ -761,6 +798,7 @@
     var list = document.getElementById('beAsstAdmList'); if (!list) return;
     var l = lang();
     var n = document.getElementById('beAsstAdmN'); if (n) n.textContent = admQs.length ? String(admQs.length) : '';
+    admNavCount(admQs.length);
     if (!admQs.length) { list.innerHTML = '<div class="adm-empty">' + esc(t(S.adm.empty, l)) + '</div>'; return; }
     list.innerHTML = '';
     admQs.forEach(function (q) {

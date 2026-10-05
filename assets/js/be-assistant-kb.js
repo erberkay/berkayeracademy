@@ -17,7 +17,9 @@
      need    bu kavram/köklerden en az biri soruda yoksa puan ve kapsam düşer ("talebim onaylandı mı"da
              "ertele" yok → erteleme durumu değil)
      avoid   bunlardan biri soruda varsa başka konudur, puan ve kapsam düşer ("talebimi iptal" → iptal politikası değil)
-     strong  bu kavram geçerse niyet kesin konu (korsan yazılım isteği her zaman reddedilir)
+     strong  bu kavram geçerse niyet kesin konu (korsan yazılım isteği her zaman reddedilir); geçmezse
+             niyet "Bunu mu demek istedin?" seçeneklerine girmez
+     label   { tr, en } seçenek düğmesinde görünen soru (yoksa örneklerden biri)
    Eş anlamlar (SYN): çok kelimeli ifade her kelimeye ek alabilir; tek kelime kökle eşlenir; "=kelime"
    yalnız o biçimle başlayan kelimeyle, "=kelime$" tam olarak o kelimeyle eşlenir (kökü başka fiillerle
    çakışanlar için). Satırın üçüncü alanı 'flag' ise kavram eşleşmede belirteç olmaz, yalnız need/avoid
@@ -135,7 +137,6 @@
     phone: { do: 'scroll', target: '#studentPhonePrompt', label: L(`Numara alanı`, `Phone field`), if: 'needPhone' },
     langEn: { do: 'lang', to: 'en', label: L(`English`, `English`), if: '!isEn' },
     langTr: { do: 'lang', to: 'tr', label: L(`Türkçe`, `Türkçe`), if: 'isEn' },
-    tourCredits: { do: 'tour', step: 'credits', label: L(`Panel turunda göster`, `Show in panel tour`), if: 'hasTour dash' },
     tour: { do: 'tour', label: L(`Panel turunu başlat`, `Start the panel tour`), if: 'hasTour' },
     forward: { do: 'forward', label: L(`Berkay'a ilet`, `Forward to Berkay`), if: 'signedIn' },
   };
@@ -242,6 +243,12 @@
     a: [
       A(`Evet. Sıradaki dersini (**{next}**) kendin, onaysız ve ücretsiz taşıyabilirsin — seçim **{change_until}**'e kadar açık ({change_left}).\n\nKurallar:\n- Dersine {self_h} saatten fazla olmalı; yeni saat de en az {self_h} saat sonra olmalı\n- Yalnız aynı hafta içinde (Pzt–Paz)\n- Her ders için bir kez\n- Erteleme hakkı düşmez`,
         `Yes. You can move your next lesson (**{next}**) yourself — no approval, free — until **{change_until}** ({change_left} left).\n\nRules:\n- More than {self_h} hours before the lesson, and the new time at least {self_h} hours away\n- Within the same week only (Mon–Sun)\n- Once per lesson\n- No reschedule credit used`, 'canChange'),
+      A(`Sıradaki dersin (**{next}**) bir kez taşındı; aynı ders ikinci kez taşınamaz. Ama **{change_any}** dersini bu hafta içinde kendin taşıyabilirsin — **Saat seçiciyi aç**'a bas.`,
+        `Your next lesson (**{next}**) was already moved once and can't be moved again. But you can still move your **{change_any}** lesson yourself this week — tap **Open the time picker**.`, 'changeMoved anyChange'),
+      A(`Sıradaki dersine ({next}) {self_h} saatten az kaldığı için o dersin saati artık değiştirilemez. Ama **{change_any}** dersini bu hafta içinde kendin taşıyabilirsin — **Saat seçiciyi aç**'a bas.`,
+        `Your next lesson ({next}) is less than {self_h} hours away, so its time can't be changed any more. But you can still move your **{change_any}** lesson yourself this week — tap **Open the time picker**.`, 'changeLocked anyChange'),
+      A(`Sıradaki dersin için bekleyen bir erteleme talebin var; talep yanıtlanana kadar o dersin saati değiştirilemez. Ama **{change_any}** dersini bu hafta içinde kendin taşıyabilirsin — **Saat seçiciyi aç**'a bas.`,
+        `You have a pending reschedule request for your next lesson, so its time can't be changed until that's answered. But you can still move your **{change_any}** lesson yourself this week — tap **Open the time picker**.`, 'reschPendingNext anyChange'),
       A(`Sıradaki dersin (**{next}**) bir kez taşındı; aynı ders ikinci kez taşınamaz. Başka haftaya almak istersen **Ertele**'yi kullanabilirsin (hak kullanır).`,
         `Your next lesson (**{next}**) was already moved once; a lesson can only be moved once. To push it to another week use **Reschedule** (uses a credit).`, 'changeMoved'),
       A(`Sıradaki dersine ({next}) {self_h} saatten az kaldığı için saat değişikliği kapandı. Bir sonraki derslerin için yine açılır.`,
@@ -261,6 +268,7 @@
     a: [
       A(`Sıradaki dersin (**{next}**) için seçim **{change_until}**'e kadar açık — **{change_left}** kaldı. Ders saatinden {self_h} saat önce kapanır.`,
         `For your next lesson (**{next}**) changes are open until **{change_until}** — **{change_left}** left. It closes {self_h} hours before the lesson.`, 'canChange'),
+      A(`Sıradaki dersin (**{next}**) için saat değişikliği kapandı (derse {self_h} saatten az kaldı). **{change_any}** dersin için seçim hâlâ açık.`, `Time changes are closed for your next lesson (**{next}**) — it's less than {self_h} hours away. Your **{change_any}** lesson can still be moved.`, 'changeLocked anyChange'),
       A(`Sıradaki dersin (**{next}**) için saat değişikliği kapandı (derse {self_h} saatten az kaldı).`, `Time changes are closed for your next lesson (**{next}**) — it's less than {self_h} hours away.`, 'changeLocked'),
       A(`Saat değişikliği her ders için dersten **{self_h} saat önce** kapanır; yeni saat de en az {self_h} saat sonra olmalı.`,
         `Time changes close **{self_h} hours before** each lesson; the new time must also be at least {self_h} hours away.`),
@@ -787,8 +795,8 @@
     actions: [ACT.samples, ACT.wa] });
 
   add({ id: 'ableton_version', pub: true, topic: ['@ableton', 'surum'], avoid: ['@korsan'],
-    ex: { tr: [`Hangi Ableton sürümü lazım?`, `Ableton Live 12 mi 11 mi`, `Ableton suite gerekli mi`, `Ableton'ın deneme sürümü olur mu`, `hangi versiyonu kurmalıyım`, `ableton intro yeterli mi`, `ableton almam gerekiyor mu`, `ableton lisansı`, `FL Studio biliyorum Ableton'a geçmem gerekir mi`, `logic kullanıyorum ableton şart mı`, `başka bir DAW ile ders olur mu`, `ableton 11 ile derse girebilir miyim`],
-      en: [`Which Ableton version do I need?`, `is the Ableton trial enough`] },
+    ex: { tr: [`Hangi Ableton sürümü lazım?`, `Ableton Live 12 mi 11 mi`, `Ableton suite gerekli mi`, `Ableton'ın deneme sürümü olur mu`, `hangi versiyonu kurmalıyım`, `ableton intro yeterli mi`, `ableton almam gerekiyor mu`, `ableton lisansı`, `FL Studio biliyorum Ableton'a geçmem gerekir mi`, `logic kullanıyorum ableton şart mı`, `başka bir DAW ile ders olur mu`, `ableton 11 ile derse girebilir miyim`, `hangi programı kullanıyoruz`, `derslerde hangi program kullanılıyor`, `hangi DAW`, `hangi DAW kullanılıyor`, `hangi yazılımla çalışıyoruz`],
+      en: [`Which Ableton version do I need?`, `is the Ableton trial enough`, `which DAW do we use`, `which software do we use`] },
     a: [A(`Eğitim **Ableton Live 12** üzerine kurulu ve dersler Ableton'la yapılır. Başlamak için **en az Intro sürümü** yüklü bir bilgisayar yeterli — **deneme sürümü de olur**. FL Studio, Logic gibi başka bir DAW biliyorsan avantajdır; derslerde Ableton'a geçersin. Hangi sürümün hedeflerine yeteceğini deneme dersinde ya da WhatsApp'tan Berkay Er'e sor.`,
       `The course is built on **Ableton Live 12** and lessons use Ableton. To start, a computer with **at least the Intro edition** is enough — **the trial version works too**. Knowing another DAW like FL Studio or Logic helps; you'll switch to Ableton in the lessons. Ask Berkay Er in the trial lesson or on WhatsApp which edition suits your goals.`)],
     actions: [ACT.wa] });
@@ -958,6 +966,7 @@
     actions: [ACT.wa, ACT.pay] });
 
   add({ id: 'piracy', pub: true, topic: ['@korsan'], need: ['@korsan'], strong: ['@korsan'],
+    label: L(`Korsan/crack program kullanabilir miyim?`, `Can I use cracked software?`),
     ex: { tr: [`crack ableton nereden indirilir`, `ableton crack linki`, `korsan program kullanabilir miyim`, `serum crack var mı`, `plugin crackli olur mu`, `kırık ableton`, `torrent ile indirsem olur mu`, `keygen`],
       en: [`ableton crack`, `cracked plugins`] },
     a: [A(`Crack / korsan yazılım konusunda yardımcı olamam. Ableton Live'ın **ücretsiz deneme sürümü** derslere başlamak için yeterli; plugin'lerin çoğunun da deneme ya da uygun lisans seçenekleri var. Lisans konusunda Berkay Er'e danışabilirsin.`,
