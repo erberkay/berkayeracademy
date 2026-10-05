@@ -36,20 +36,26 @@ Geliştirme kuralları ve mimari ayrıntıları için **[`CLAUDE.md`](CLAUDE.md)
 | `ders-ableton.html` | `/ders-ableton` | Ücretsiz Ableton Live dersi |
 | `ders-push3.html` | `/ders-push3` | **Push 3 Laboratuvarı:** öğretici, seviyeler, emülatör |
 | `app-bridge.html` | `/app-bridge` | Uygulamalar arası veri köprüsü |
+| `migration.html` | `/migration` | Tek seferlik admin aracı (eski mesajları düzeltme) |
 
-`site_1.html` eski Lab sayfasıdır; `/site_1` adresi `/ableton-lab`'a yönlenir.
+Eski Lab adresleri `/site_1` ve `/site_1.html`, `firebase.json`'daki yönlendirmeyle `/ableton-lab`'a gider. `4d48d66dcfc588cf4da6147a4780d0e8.html` Twilio alan adı doğrulama dosyasıdır; silinmemeli.
 
 ## Öne çıkanlar
 
 ### Ders Paneli (`booking.html`)
 
 - **Talepler ve deneme dersi:** deneme dersi, aylık plan ya da tek ders talebi. Tek ders seçilince aylık plana geçiş önerisi çıkar.
+- **Tanıtım videoları** (`assets/js/trial-intro.js`): deneme dersi düğmelerinde deneme animasyonu (10 sn) ve sistem tanıtımı (60 sn), paket düğmelerinde sistem tanıtımı, panele ilk girişte ikisi; panelde "Tanıtım videosu" ile yeniden izlenir.
 - **Seviye belirleme sınavı:** 20 soru, zorunlu.
-- **Ödeme ve kurallar:** ödeme bildirimi, akademi kuralları onayı.
-- **Derslerim · Bu hafta:** öğrenci dersinin saatini kendisi değiştirebilir. Aynı hafta içinde, ders başına bir kez, dersten en az 5 saat önce. Kurallar sunucuda (`studentSelfReschedule`) uygulanır.
-- **Erteleme:** erteleme talebi gönderilir, admin onaylar. Erteleme hakları paket bazında tutulur.
-- **Zoom:** ders saati yaklaşınca katılma düğmesi açılır.
-- **Admin:** öğrenci ve ders yönetimi, gelen talepler, ödeme onayı, e-posta ve WhatsApp gönderimi, Zoom toplantısı oluşturma.
+- **Ödeme ve kurallar:** ödeme bildirimi, akademi kuralları onayı (kural başına ayrı onay kaydı).
+- **Derslerim · Bu hafta:** canlı geri sayımlı ders kartları. Öğrenci aynı hafta içinde yeni bir saat için **saat değişikliği talebi** gönderir (dersten en az 5 saat önce, ders başına bir kez); admin onaylayınca ders taşınır, erteleme hakkı düşmez. Kurallar sunucuda (`studentSelfReschedule`) denetlenir.
+- **Erteleme:** dersi 1 hafta ileri alır; talep edilir, admin onaylar. Erteleme hakları paket bazında tutulur (N aylık paket = N hak, ek hak 500 TL).
+- **Ders kanıtı:** her dersten sonra öğrenci 48 saat içinde onaylar ya da itiraz eder; Zoom katılım kaydı saklanır. Biten dersler "Son derslerin" bölümünde durumuyla görünür.
+- **Zoom:** ders saatinden 15 dakika önce "Derse Katıl" düğmesi açılır.
+- **Asistan** (`assets/js/be-assistant*.js`): harici yapay zekâ kullanmayan, site içinde çalışan soru-cevap asistanı; öğrencinin kendi derslerine, haklarına ve ödemesine göre cevap verir. Bilmediği soruyu Berkay Er'e iletir; admin cevabı "Asistan soruları" kartından yazınca asistan onu öğrenir.
+- **Panel turu** (`assets/js/be-tour.js`): öğrencinin durumuna ve ekranına (masaüstü / mobil) göre adım adım rehber.
+- **Admin:** öğrenci ve ders yönetimi, gelen talepler (ders, deneme, erteleme, saat değişikliği, ödeme), erteleme hakları, ödeme onayı, e-posta ve WhatsApp gönderimi, Zoom toplantısı oluşturma.
+- **Admin önizlemesi (demo):** "Öğrenci görünümü" yeni öğrencinin ekranlarını gösterir. Hiçbir şey kaydedilmez; gönderilen talep bekleme ekranı, onaylı panel ve ödemesi onaylı hâliyle demo olarak ilerler.
 
 ### Ableton Lab (`ableton-lab.html`)
 
@@ -60,7 +66,7 @@ Her modül profesyonel bir eklenti penceresi olarak çalışır. Altında akış
 | 01 Synthesizer | `#synth` | BE·SYNTH 01 | 2 OSC + sub + noise, her notada ayrı filtre ve zarf (16 ses), MOD ENV, LFO, FX rafı, preset tarayıcı, A/B, geri al |
 | 02 Beat Maker | `#beat` | BE·RHYTHM 02 | Lookahead zamanlayıcı, 4 pattern slotu, 16/32 adım, sentezlenmiş veya sample davul, ses editörü, choke, tap tempo |
 | 03 Mixing | `#mixing` | BE·CONSOLE 03 | 6 kanal (EQ, kompresör, pan, send), reverb/delay return'leri, sidechain, master limiter |
-| 04 Arrangement | `#arrangement` | BE·ARRANGER 04 | 8 bölümlük şarkı yapısı, bölüm otomasyonu, loop, tür şablonları |
+| 04 Arrangement | `#arrangement` | BE·ARRANGER 04 | 8 bölümlük şarkı yapısı, MIDI kanalları ve piano roll (gam seçimi), klip kopyalama / uzatma, bölüm otomasyonu, loop, tür şablonları |
 | 05 Mastering | `#mastering` | BE·MASTER 05 | EQ, glue, multiband, stereo ve limiter zinciri; K-weighting LUFS ve true peak ölçümü, seviye eşli REF |
 
 - **Görevler:** her modülde görev listesi var. İlerleme `localStorage`'da ve Firestore'da saklanır.
@@ -76,13 +82,15 @@ Tarayıcıda çalan bir Push 3 emülatörü (Wavetable synth, drum rack, sequenc
 ├── *.html                    # Sayfalar (build yok)
 ├── assets/
 │   ├── css/                  # ui.css (tasarım sistemi) · style.css (tanıtım sayfaları) · themes.css (menü kabuğu)
-│   ├── js/                   # theme-init · i18n · auth-ui · trial-nav · placement-quiz · push3/
+│   ├── js/                   # theme-init · i18n · auth-ui · trial-nav · trial-intro · be-tour · be-assistant* · placement-quiz · push3/
 │   ├── img/                  # icons.svg sprite, favicon, fotoğraflar, push3-device.svg
 │   ├── audio/                # Lab sample'ları ve loop'ları
-│   ├── video/                # live.mp4 (döngü videoları)
+│   ├── video/                # live.mp4 (döngü videosu)
+│   ├── media/deneme-dersi/   # Tanıtım videoları (web / mobil, webm + mp4)
 │   └── pdf/                  # Prodüksiyon dergisi
 ├── functions/                # Cloud Functions (index.js, whatsapp.js)
 ├── docs/                     # Tasarım ve Push 3 dokümanları (yayınlanmaz)
+├── tools/                    # Yardımcı betikler (yayınlanmaz): demo-uyeler.cjs
 ├── firebase.json             # Hosting ayarları (cleanUrls, ignore, başlıklar)
 ├── firestore.rules           # Güvenlik kuralları
 └── CLAUDE.md                 # Geliştirici rehberi
@@ -117,9 +125,9 @@ firebase deploy --only firestore:rules    # Güvenlik kuralları
 
 | Tür | Fonksiyonlar |
 |---|---|
-| Zamanlanmış (İstanbul saati) | `paymentReminder`, `lessonReminder24h`, `lessonReminder1h`, `lessonEndFollowUp` |
-| Firestore tetikleyici | `notifyAdminOnNewRequest`, `notifyStudentOnRequestStatus` |
-| Çağrılabilir (`onCall`) | `studentSelfReschedule`, `checkTrialEligibility`, `createZoomMeeting`, `sendWhatsAppMessage`, `sendWhatsAppAdmin`, `markWhatsAppConvoRead`, `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle` |
+| Zamanlanmış (İstanbul saati) | `paymentReminder`, `lessonReminder24h`, `lessonReminder1h`, `lessonEndFollowUp`, `lessonAttendanceSync`, `lessonAutoConfirm` |
+| Firestore tetikleyici | `notifyAdminOnNewRequest`, `notifyStudentOnRequestStatus`, `notifyAdminOnAssistantQuestion` |
+| Çağrılabilir (`onCall`) | `studentSelfReschedule` (saat değişikliği talebi), `confirmLesson`, `checkTrialEligibility`, `createZoomMeeting`, `sendWhatsAppMessage`, `sendWhatsAppAdmin`, `markWhatsAppConvoRead`, `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle` |
 | HTTP | `twilioWhatsAppWebhook` |
 
 ## Güvenlik

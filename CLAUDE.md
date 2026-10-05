@@ -214,7 +214,7 @@ Design column = screen in the Claude Design canvas (desktop 1440 / mobile `M_*` 
 
 **Döngü videoları (index, egitmen):** tasarımdaki fotoğraflar `assets/video/live.mp4` (poster `DSC00141.jpg`, `object-position: 50% 40%`) sessiz döngü videosu. `autoplay` özniteliği yok — oynatmayı sayfa içi denetleyici başlatır: görünürken oynar, ekran dışı / sekme gizliyken durur; `prefers-reduced-motion`, Save-Data ve 2g'de poster kalır, hiç video baytı inmez. Her videoda WCAG 2.2.2 duraklat/oynat düğmesi zorunlu (`.idx-video-toggle`, `.eg-live-toggle`). Yerelde `firebase serve` Range isteğine 206 vermez; eğitmen hero'su `#liveVideo` ile aynı dosyayı paylaştığı için localhost'ta yüklenmeyebilir — üretimde sorun yok.
 
-Legacy: `site_1.html` (3300+ lines) is orphan content; `/site_1` and `/site_1.html` both 301-redirect to `/ableton-lab`. Do not link to it.
+Legacy: `/site_1` and `/site_1.html` 301-redirect to `/ableton-lab` (redirects in `firebase.json`; the old `site_1.html` file was removed). `4d48d66dcfc588cf4da6147a4780d0e8.html` is the Twilio domain verification file — keep it.
 
 ## Ableton Lab (`ableton-lab.html`, ~12100 lines)
 
