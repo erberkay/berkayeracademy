@@ -3200,6 +3200,15 @@ function showRulesAcceptanceModal(opts) {
   });
 }
 
+// ─── Banka / IBAN bilgisi — istemci tarafında TEK KAYNAK ─────────
+// Ek hak modalındaki ödeme tablosu, "Yapman gereken" kartı ve Ders Paneli asistanı
+// (be-assistant-ui.js → window.BK_BANK) buradan okur; markup'a IBAN yazılmaz.
+// Ödeme bilgisi değişirse functions/index.js'teki e-posta kopyası da güncellenir.
+var BK_BANK = (function () {
+  var iban = `TR35 0006 2000 6870 0006 8982 06`;
+  return { bank: `Garanti Bankası`, name: `Muhammet Berkay Er`, iban: iban, ibanRaw: iban.replace(/\s+/g, '') };
+})();
+
 // Modal: buy extra reschedule credits. Quantity selector + payment info card.
 function showExtraCreditModal(studentName, monthKey) {
   const PRICE_PER = 500;
@@ -3233,15 +3242,15 @@ function showExtraCreditModal(studentName, monthKey) {
       <div class="pay-table-title">${bkT('bk_pay_info_title', 'Ödeme Bilgileri')}</div>
       <div class="pay-table-row">
         <span class="pay-table-key">${bkT('bk_pay_bank', 'Banka')}</span>
-        <span class="pay-table-val">Garanti Bankası</span>
+        <span class="pay-table-val">${escHtml(BK_BANK.bank)}</span>
       </div>
       <div class="pay-table-row">
         <span class="pay-table-key">${bkT('bk_pay_name_label', 'İsim')}</span>
-        <span class="pay-table-val">Muhammet Berkay Er</span>
+        <span class="pay-table-val">${escHtml(BK_BANK.name)}</span>
       </div>
       <div class="pay-table-row">
         <span class="pay-table-key">${bkT('bk_pay_iban', 'IBAN')}</span>
-        <span class="pay-table-val">TR35 0006 2000 6870 0006 8982 06</span>
+        <span class="pay-table-val">${escHtml(BK_BANK.iban)}</span>
         <button id="ecCopy" class="btn btn-sm btn-ghost">${_copyLbl}</button>
       </div>
       <div class="pay-table-note">${bkT('bk_pay_warn', 'Lütfen açıklama kısmına <strong>hiçbir şey yazmayınız.</strong>')}</div>
@@ -3278,7 +3287,7 @@ function showExtraCreditModal(studentName, monthKey) {
   });
 
   box.querySelector('#ecCopy').onclick = function() {
-    navigator.clipboard.writeText('TR350006200068700006898206');
+    navigator.clipboard.writeText(BK_BANK.ibanRaw);
     this.textContent = '✓';
     setTimeout(() => this.textContent = _copyLbl, 1500);
   };
@@ -6543,12 +6552,11 @@ async function renderDashboard() {
   } else if (todo) {
     // Ödemesi onaylanmamış öğrenci: panelin en üstünde numaralı "Yapman gereken" kartı.
     // 1) IBAN'a havale (Kopyala) 2) "Ödemeyi yaptım" 3) onaydan sonra açılanlar.
-    const _iban = 'TR35 0006 2000 6870 0006 8982 06';
     const _copyLbl = bkT('bk_pay_copy', 'Kopyala');
     const bankHtml = `<div class="pay-info-popup bk-todo-bank">
-        <div class="pay-info-row"><span class="pay-info-label">${bkT('bk_pay_bank', 'Banka')}</span><span class="pay-info-val">Garanti Bankası</span></div>
-        <div class="pay-info-row"><span class="pay-info-label">${bkT('bk_pay_name_label', 'İsim')}</span><span class="pay-info-val">Muhammet Berkay Er</span></div>
-        <div class="pay-info-row"><span class="pay-info-label">${bkT('bk_pay_iban', 'IBAN')}</span><span class="pay-info-val" id="ibanVal">${_iban}</span><button type="button" class="pay-copy-btn bk-iban-copy">${_copyLbl}</button></div>
+        <div class="pay-info-row"><span class="pay-info-label">${bkT('bk_pay_bank', 'Banka')}</span><span class="pay-info-val">${escHtml(BK_BANK.bank)}</span></div>
+        <div class="pay-info-row"><span class="pay-info-label">${bkT('bk_pay_name_label', 'İsim')}</span><span class="pay-info-val">${escHtml(BK_BANK.name)}</span></div>
+        <div class="pay-info-row"><span class="pay-info-label">${bkT('bk_pay_iban', 'IBAN')}</span><span class="pay-info-val" id="ibanVal">${escHtml(BK_BANK.iban)}</span><button type="button" class="pay-copy-btn bk-iban-copy">${_copyLbl}</button></div>
         <div class="pay-info-warn">${bkT('bk_pay_warn', 'Açıklama kısmına <strong>hiçbir şey yazma.</strong>')}</div>
       </div>`;
     const amount = `<strong class="text-accent">${tlFmt(totalPrice)}</strong>`;
@@ -6567,7 +6575,7 @@ async function renderDashboard() {
     todo.hidden = false;
     todo.querySelectorAll('.bk-iban-copy').forEach(cb => {
       cb.onclick = () => {
-        try { navigator.clipboard.writeText('TR350006200068700006898206'); } catch (_) {}
+        try { navigator.clipboard.writeText(BK_BANK.ibanRaw); } catch (_) {}
         cb.textContent = bkT('bk_pay_copied', 'Kopyalandı ✓');
         setTimeout(() => { cb.textContent = _copyLbl; }, 1800);
       };
