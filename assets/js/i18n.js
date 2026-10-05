@@ -1389,6 +1389,7 @@
     tour_sr_step: { tr: `Adım {i} / {n}`, en: `Step {i} of {n}` },
     tour_skip_aria: { tr: `Turu atla ve kapat`, en: `Skip and close the tour` },
     bk_tour_btn: { tr: `Panel turu`, en: `Panel tour` },
+    bk_intro_btn: { tr: `Tanıtım videosu`, en: `Intro video` },
     bk_tour_welcome_btn: { tr: `Turu başlat`, en: `Start the tour` },
     bk_tour_lab_t: { tr: `Ableton Lab`, en: `Ableton Lab` },
     bk_tour_lab_b: { tr: `Derse başlamadan önce Lab'daki etkileşimli modüllere göz at; temel kavramları orada deneyerek öğrenirsin.`, en: `Before your lesson, try the interactive modules in the Lab — you learn the basics by playing with them.` },
