@@ -183,6 +183,10 @@ service cloud.firestore {
           // rules_version ride along in the same one-time write.
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rules_accepted_at', 'rules_accepted_detail', 'rules_version']) &&
             !('rules_accepted_at' in resource.data)) ||
+          // Kural güncellemesi (48 saat itiraz + Zoom kanıtı) onayı — tek seferlik, sunucu zamanı
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rules_v2_accepted_at']) &&
+            !('rules_v2_accepted_at' in resource.data) &&
+            request.resource.data.rules_v2_accepted_at == request.time) ||
           // Student adds/updates own WhatsApp number. Format kontrolü:
           // 5XXXXXXXXX | 05XXXXXXXXX | 905XXXXXXXXX (Türk hat formatları)
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['student_phone']) &&
@@ -191,6 +195,17 @@ service cloud.firestore {
           // Lessons: sadece admin güncelleyebilir
         ))
       );
+    }
+
+    // Ders kanıtı: Zoom katılımcı listesi (lessonAttendanceSync yazar) — yalnız admin
+    match /lesson_attendance/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Admin bildirim sayaçları (notifyAdminOnNewRequest) — yalnız fonksiyon yazar
+    match /rate_limits/{uid} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     // WhatsApp conversations — admin-only (Cloud Functions bypass rules)

@@ -46,9 +46,11 @@ Env vars in use: `GMAIL_PASS`, `Z_ACCOUNT_ID` / `Z_CLIENT_ID` / `Z_CLIENT_SECRET
 - `lessonReminder24h` — daily 06:00, WhatsApp + email 24h ahead
 - `lessonReminder1h` — hourly at :00, WhatsApp 1h ahead
 - `lessonEndFollowUp` — hourly at :05, WhatsApp follow-up after the lesson that just ended (uses `TEMPLATES.lesson_completed` if its HX SID is filled in `whatsapp.js`; until then falls back to freeform, which only delivers inside the 24h conversation window)
+- `lessonAttendanceSync` — hourly at :20, ders kanıtı: lessons ended <48h get `confirmation:{status:'pending',opened_at,due_at}` + bell notification (`notifications/{uid}/items/lessoncfm_*`, `type:'lesson_confirm'`); lessons ended 10 min–6 h ago get Zoom attendance (`lessons[i].attendance` + full list in `lesson_attendance/`). Zoom Reports API needs scopes `report:read:user:admin` + `report:read:list_meeting_participants:admin` (classic: `report:read:admin`) and a Pro+ plan; otherwise `attendance.status:'unavailable'` with a reason (one `console.warn` per run). Logic/tests: `functions/attendance.js`
+- `lessonAutoConfirm` — hourly at :40, `pending` confirmations whose lesson ended ≥48 h ago → `{status:'auto', at}` (lessons that never got a window are not touched)
 
 **Triggered (Firestore docs):**
-- `notifyAdminOnNewRequest` — new `lesson_requests/*`
+- `notifyAdminOnNewRequest` — new `lesson_requests/*`; admin WhatsApp limited to 3 per student per 24 h (`rate_limits/{uid}`), the request itself is always kept
 - `notifyStudentOnRequestStatus` — `lesson_requests/*` status change
 
 **Callable (`onCall`):**
@@ -56,6 +58,7 @@ Env vars in use: `GMAIL_PASS`, `Z_ACCOUNT_ID` / `Z_CLIENT_ID` / `Z_CLIENT_SECRET
 - `createZoomMeeting` — admin only, writes `settings/global.zoom_link`
 - `sendWhatsAppMessage`, `sendWhatsAppAdmin` — WhatsApp send (template or freeform)
 - `markWhatsAppConvoRead` — clears unread count on admin panel
+- `confirmLesson` — student "Evet, ders yapıldı" / "Sorun bildir" (`{date,time,action,reason}`): own ended lesson, not cancelled/frozen, no decision yet, dispute ≤48 h after end → `lessons[i].confirmation = {status:'confirmed'|'disputed', at, by:'student', reason?}`; dispute → admin WhatsApp + e-mail. Admin closes a dispute in the panel (`status:'resolved', resolved_at, resolved_note`)
 - `studentSelfReschedule` — öğrencinin ders saatini onaysız değiştirmesi (kurallar aşağıda "Reservation update rules"); Admin SDK ile transaction içinde yazar, sonra admine WhatsApp + e-posta atar
 
 **HTTP:**
@@ -129,6 +132,8 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 | `placement_tests/{uid}` | Seviye belirleme sınavı sonucu (skor, seviye, cevaplar). Öğrenci bir kez `create` eder ve sadece kendi dokümanını okur; admin hepsini okur, sıfırlamak için siler. |
 | `userSettings/{uid}` | Per-user preferences |
 | `follows` | Profile follow edges |
+| `lesson_attendance/{uid}_{date}_{time}` | Zoom katılımcı listesi (ders kanıtı) — `lessonAttendanceSync` yazar, yalnız admin okur |
+| `rate_limits/{uid}` | Admin bildirim sayacı (`notifyAdminOnNewRequest`) — yalnız fonksiyon yazar, admin okur |
 
 ### Reservation update rules
 
@@ -136,6 +141,7 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 - `note` (anytime)
 - `payment_pending` (set to `true` only)
 - `rules_accepted_at` (write-once: must not already exist)
+- `rules_v2_accepted_at` (write-once, must equal `request.time`) — kural güncellemesi (48 saat itiraz + Zoom kanıtı) for students who accepted the v1 rules
 
 Lesson rows themselves are **always admin-only**. If the client tries to modify any other field, the rule will reject the write.
 
@@ -152,7 +158,8 @@ Because of this, the student "↺ Ertele" button does **not** write lessons dire
 - **Package price flow:** the request stores `package_*` fields for display only. `acceptRequest` re-validates with `requestPackageCheck()` (duration, `schedule.length === weekly`, 4 lessons/month) and writes `reservationPriceFields()`: valid package → `package_*`, `price_source:'package'`, `custom_lesson_price = perHour`, `custom_total_price = total` (or `lessons × perHour` when conflicts dropped lessons). No/invalid package → `package_*` deleted, and a previous `price_source:'package'` price is deleted too so it cannot leak into the new plan. A price the admin typed (`adminEditStudentPrice` writes `price_source:'admin'` only when the value actually changed, or legacy docs without `price_source`) is kept by default; on such an accept the admin is asked (`showChoiceModal`) whether to keep it or return to list price (`reservationPriceFields(..., {keepAdminPrice})`). `functions/index.js` `reservationPrice()` already reads `custom_total_price`, so reminders show the discounted total.
 - **Extra lessons on a package:** an extra lesson (student "Ek Ders" request approved, or admin "Ders Ekle" with the charge box ticked) is outside the package — `extraLessonPriceFields()` adds `FieldValue.increment(LESSON_PRICE)` to `custom_total_price` in the same batch and counts it in `extra_lessons_count` / `extra_lessons_price` (reset on the next accept), so the panel shows "package + N extra" and the package saving line stays correct. Cancelled lessons do **not** reduce a package total (the package is sold as a whole); the admin edits the price by hand if needed. Payment box and the admin payment-request check share `reservationTotalPrice()`.
 - **Reschedule credits:** package-based pool — an N-month package grants N credits total (1-month = 1 credit even if lessons spill into the next calendar month). Stored as `reservations.reschedule_credits {'YYYY-MM': n}`; available = sum of values (`totalRescheduleCredits()`), consumption via `consumeRescheduleCredit()` decrements the lesson's month key if positive, else the earliest positive key. Buying an extra credit costs **500 TL** via the in-panel modal (admin adds +1 to a month key).
-- **Rules acceptance:** modal shown once after first lesson purchase; writes `rules_accepted_at` (write-once). Re-shown only if the field is missing.
+- **Rules acceptance:** modal shown once after first lesson purchase; writes `rules_accepted_at` (write-once). Re-shown only if the field is missing. `RULES_CONSENT_VERSION` is `per-rule-v2` (adds the `proof` rule); a student whose `rules_version` is older sees a one-time "Kurallarda güncelleme" modal that writes `rules_v2_accepted_at`.
+- **Ders onayı / kanıt:** after a lesson ends (Istanbul time, 60 min) the student panel shows "Dersin tamamlandı" (this-week card, an "Onay bekleyen dersler" group for older open lessons, `#bkCfmEnded` strip when the package has ended) with "Evet, ders yapıldı" / "Sorun bildir" and the Zoom line when matched. Undisputed lessons count as held after 48 h. Admin lesson rows show the Zoom chip (click → participant list) and confirmation badge; open disputes are listed above "Gelen talepler".
 - **Closed slots:** admin "Müsaitlik" matrix (7 days × 24 hours) edits `settings/global.available_days` + `blocked_hours` as a draft; "Kaydet" writes both with `update()` (so a day whose last closed hour was reopened really disappears from the map). A closed day blocks all 24 hours in the student grid; closed slots appear blocked but visible in the trial-lesson day grid. Cells with a lesson in the next 90 days are marked (still toggleable).
 - **24h rule:** `calculateLessonDates()` pushes a weekday series one week forward while its first slot starts less than 24h from now (or is already past), so a request made Sunday 11:00 for Monday 10:00 begins with the other selected day. The extra-lesson picker disables such days/times via `slotStartsTooSoon()`; the same function feeds the request preview, the min-lesson check and admin `acceptRequest`.
 

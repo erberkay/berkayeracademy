@@ -3,9 +3,10 @@ const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {onCall, HttpsError, onRequest} = require("firebase-functions/v2/https");
 const crypto = require("crypto");
 const {initializeApp} = require("firebase-admin/app");
-const {getFirestore, FieldValue} = require("firebase-admin/firestore");
+const {getFirestore, FieldValue, Timestamp} = require("firebase-admin/firestore");
 const nodemailer = require("nodemailer");
 const {sendWhatsApp, sendWhatsAppTemplate, TEMPLATES} = require("./whatsapp");
+const att = require("./attendance");
 
 
 setGlobalOptions({maxInstances: 10, region: "europe-west1"});
@@ -479,6 +480,12 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
     async (event) => {
       const d = event.data && event.data.data();
       if (!d || d.status !== "pending") return;
+      // Talep her durumda kaydedilir; yalnız admine giden WhatsApp öğrenci başına sınırlıdır
+      // (kötü niyetli bir hesap talep yağdırıp bildirim spam'i yapamasın).
+      if (d.from_uid && !(await allowAdminNotify(d.from_uid))) {
+        console.warn("admin notify rate-limited", {reqId: event.params.reqId});
+        return;
+      }
       const adminNum = process.env.WA_ADMIN_NUMBER || "905523070067";
       const name = d.from_name || d.from_email || "Öğrenci";
       let detail;
@@ -501,6 +508,37 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
       else console.log("admin notified for new request", event.params.reqId);
     },
 );
+
+// Öğrenci başına admin bildirimi sınırı: 24 saatlik pencerede en fazla
+// ADMIN_NOTIFY_MAX. Sayaç rate_limits/{uid} (yalnız fonksiyon yazar, admin okur).
+const ADMIN_NOTIFY_MAX = 3;
+const ADMIN_NOTIFY_WINDOW_MS = 24 * 60 * 60 * 1000;
+async function allowAdminNotify(uid) {
+  const db = getFirestore();
+  const ref = db.collection("rate_limits").doc(String(uid));
+  try {
+    return await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const now = Date.now();
+      const cur = (snap.exists && snap.data().admin_notify) || {};
+      const start = cur.window_start && cur.window_start.toMillis ? cur.window_start.toMillis() : 0;
+      if (!start || now - start >= ADMIN_NOTIFY_WINDOW_MS) {
+        tx.set(ref, {admin_notify: {window_start: Timestamp.fromMillis(now), count: 1}}, {merge: true});
+        return true;
+      }
+      const count = Number(cur.count) || 0;
+      if (count >= ADMIN_NOTIFY_MAX) {
+        tx.set(ref, {admin_notify: {suppressed: FieldValue.increment(1)}}, {merge: true});
+        return false;
+      }
+      tx.set(ref, {admin_notify: {count: count + 1}}, {merge: true});
+      return true;
+    });
+  } catch (e) {
+    console.error("rate limit check failed", e.message || e);
+    return true; // sayaç okunamazsa bildirim kaybolmasın
+  }
+}
 
 // ─── Trial-lesson eligibility check ────────────────────────────
 // Trial ders sadece 1 kere alınabilir. Aynı email / telefon / IP'den
@@ -1261,5 +1299,344 @@ exports.studentSelfReschedule = onCall(
         console.error("self-reschedule admin email error", e);
       }
       return {ok: true, date: newDate, time: newTime};
+    },
+);
+
+// ─── Ders kanıtı: Zoom katılımı + onay / itiraz penceresi ─────────────
+// Öğrenci "o ders hiç yapılmadı" diyemesin diye her dersin bitiminde:
+//   1) lessons[i].confirmation = {status:"pending", opened_at, due_at} + zil bildirimi
+//      (öğrenci panelde "Evet, ders yapıldı" / "Sorun bildir" görür; confirmLesson yazar)
+//   2) Zoom Reports API'den katılım: lessons[i].attendance (özet) ve
+//      lesson_attendance/{uid}_{date}_{time} (tam katılımcı listesi, yalnız admin)
+//   3) 48 saat içinde karar verilmeyen ders lessonAutoConfirm ile {status:"auto"} olur.
+// Yalnız ilgili dersin attendance / confirmation alanı değişir; yazımlar transaction içinde.
+// Zoom kapsamları ve plan şartı: functions/attendance.js başındaki not.
+const LESSON_SYNC_BATCH = 100; // tek çalıştırmada en fazla açılan onay penceresi
+const ATTENDANCE_BATCH = 25; // tek çalıştırmada en fazla Zoom'a sorulan ders
+const AUTO_CONFIRM_BATCH = 200; // tek çalıştırmada en fazla otomatik onay
+
+function lessonKey(date, time) {
+  return `${date}_${time}`;
+}
+function proofStudent(d) {
+  return {
+    email: d.student_email || d.from_email || "",
+    name: d.student_name || d.from_name || "",
+  };
+}
+// attendance karşılaştırması (fetched_at hariç) — değişmeyen sonucu her saat yeniden yazmayalım
+function attendanceSig(a) {
+  if (!a) return "";
+  return [a.status, a.reason || "", a.student_join || "", a.student_leave || "",
+    a.student_minutes || 0, a.host_minutes || 0, a.matched_by || ""].join("|");
+}
+
+// Zoom katılımını toplar: her ders için {attendance, evidence} döner. Rapor alınamazsa
+// tüm dersler "unavailable" olur ve çalıştırma başına TEK uyarı yazılır (kişisel veri yok).
+async function collectAttendance(items) {
+  const out = {};
+  if (!items.length) return out;
+  const client = att.zoomReportClient({
+    fetch: (url, init) => fetch(url, init),
+    accountId: process.env.Z_ACCOUNT_ID,
+    clientId: process.env.Z_CLIENT_ID,
+    clientSecret: process.env.Z_CLIENT_SECRET,
+    hostUser: process.env.Z_HOST_USER || "me",
+  });
+  const hostEmails = [process.env.Z_HOST_EMAIL, ADMIN_EMAIL];
+  const fetchedAt = new Date().toISOString();
+  const unavailable = (reason) => ({attendance: {source: "zoom", status: "unavailable", reason,
+    student_join: null, student_leave: null, student_minutes: 0, host_minutes: 0, matched_by: null,
+    fetched_at: fetchedAt}, evidence: null});
+
+  const minStart = Math.min.apply(null, items.map((x) => x.startMs));
+  const maxEnd = Math.max.apply(null, items.map((x) => x.endMs));
+  const range = att.reportDateRange(minStart, maxEnd);
+  const list = await client.listMeetings(range.from, range.to);
+  if (!list.ok) {
+    console.warn("[attendance] Zoom raporu alınamadı", {reason: list.reason, lessons: items.length});
+    items.forEach((x) => {
+      out[x.id] = unavailable(list.reason);
+    });
+    return out;
+  }
+  const partCache = {};
+  let warned = false;
+  for (const x of items) {
+    const meeting = att.pickMeetingInstance(list.data, x.startMs, x.endMs);
+    let participants = [];
+    if (meeting) {
+      if (!partCache[meeting.uuid]) partCache[meeting.uuid] = await client.listParticipants(meeting.uuid);
+      const pr = partCache[meeting.uuid];
+      if (!pr.ok) {
+        if (!warned) console.warn("[attendance] Zoom katılımcı raporu alınamadı", {reason: pr.reason});
+        warned = true;
+        out[x.id] = unavailable(pr.reason);
+        continue;
+      }
+      participants = pr.data;
+    }
+    const a = att.summarizeAttendance(meeting, participants, x.student,
+        {startMs: x.startMs, endMs: x.endMs}, hostEmails);
+    a.fetched_at = fetchedAt;
+    out[x.id] = {
+      attendance: a,
+      evidence: {
+        uid: x.uid, date: x.date, time: x.time,
+        lesson_start: new Date(x.startMs).toISOString(),
+        lesson_end: new Date(x.endMs).toISOString(),
+        student_name: x.student.name, student_email: x.student.email,
+        status: a.status, reason: a.reason || null, matched_by: a.matched_by,
+        student_join: a.student_join, student_leave: a.student_leave,
+        student_minutes: a.student_minutes, host_minutes: a.host_minutes,
+        meeting: meeting ? {
+          uuid: meeting.uuid || null, id: meeting.id || null, topic: meeting.topic || null,
+          start_time: meeting.start_time || null, end_time: meeting.end_time || null,
+          duration: typeof meeting.duration === "number" ? meeting.duration : null,
+          participants_count: typeof meeting.participants_count === "number" ? meeting.participants_count : null,
+        } : null,
+        participants: att.evidenceParticipants(participants, meeting, hostEmails),
+      },
+    };
+  }
+  return out;
+}
+
+async function runLessonEndSync(nowMs) {
+  const db = getFirestore();
+  const snap = await db.collection("reservations").get();
+  const work = {}; // uid → {ref, open: [lesson], att: [item]}
+  const attItems = [];
+  let openCount = 0;
+  snap.forEach((doc) => {
+    const d = doc.data();
+    dedupLessons(d.lessons || []).forEach((l) => {
+      if (att.PROOF_STATUSES.indexOf(l.status) < 0) return;
+      const startMs = att.lessonStartMs(l.date, l.time);
+      const endMs = startMs + att.LESSON_MS;
+      const age = nowMs - endMs;
+      if (!(age >= 0)) return;
+      const w = work[doc.id] || (work[doc.id] = {ref: doc.ref, open: [], att: []});
+      if (age < att.CONFIRM_WINDOW_MS && !(l.confirmation && l.confirmation.status) && openCount < LESSON_SYNC_BATCH) {
+        w.open.push({date: l.date, time: l.time, endMs});
+        openCount++;
+      }
+      if (age >= att.ATTENDANCE_MIN_AGE_MS && age < att.ATTENDANCE_LOOKBACK_MS &&
+          !(l.attendance && l.attendance.status === "ok") && attItems.length < ATTENDANCE_BATCH) {
+        const item = {id: `${doc.id}_${lessonKey(l.date, l.time)}`, uid: doc.id, date: l.date, time: l.time,
+          startMs, endMs, student: proofStudent(d)};
+        w.att.push(item);
+        attItems.push(item);
+      }
+    });
+  });
+
+  const results = await collectAttendance(attItems);
+
+  let opened = 0;
+  let attWritten = 0;
+  for (const uid of Object.keys(work)) {
+    const w = work[uid];
+    if (!w.open.length && !w.att.length) continue;
+    try {
+      const r = await db.runTransaction(async (tx) => {
+        const s = await tx.get(w.ref);
+        if (!s.exists) return {opened: 0, changed: false};
+        const lessons = Array.isArray(s.data().lessons) ? s.data().lessons.slice() : [];
+        const nowIso = new Date(nowMs).toISOString();
+        let changed = false;
+        const notifs = [];
+        const evidence = [];
+        w.open.forEach((o) => {
+          const i = att.findLessonIdx(lessons, o.date, o.time);
+          if (i < 0) return;
+          const l = lessons[i];
+          if (att.PROOF_STATUSES.indexOf(l.status) < 0 || (l.confirmation && l.confirmation.status)) return;
+          lessons[i] = Object.assign({}, l, {confirmation: {
+            status: "pending", opened_at: nowIso, due_at: new Date(o.endMs + att.CONFIRM_WINDOW_MS).toISOString(),
+          }});
+          notifs.push(o);
+          changed = true;
+        });
+        w.att.forEach((x) => {
+          const r = results[x.id];
+          if (!r) return;
+          const i = att.findLessonIdx(lessons, x.date, x.time);
+          if (i < 0) return;
+          const l = lessons[i];
+          const prev = l.attendance;
+          if (prev && prev.status === "ok") return;
+          // geçici erişim hatası daha önce alınmış bir "absent" sonucunu silmesin
+          if (r.attendance.status === "unavailable" && prev && prev.status === "absent") return;
+          if (r.evidence) evidence.push(r.evidence);
+          if (attendanceSig(prev) === attendanceSig(r.attendance)) return;
+          lessons[i] = Object.assign({}, lessons[i], {attendance: r.attendance});
+          changed = true;
+        });
+        if (changed) tx.update(w.ref, {lessons});
+        notifs.forEach((o) => {
+          tx.set(db.collection("notifications").doc(uid).collection("items").doc(`lessoncfm_${lessonKey(o.date, o.time)}`), {
+            type: "lesson_confirm",
+            text: `Dersin tamamlandı (${trLabel(o.date, o.time)}). Ders yapıldıysa onayla; bir sorun varsa 48 saat içinde bildir.`,
+            link: "/booking#derslerim",
+            lesson_date: o.date,
+            lesson_time: o.time,
+            read: false,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+        });
+        evidence.forEach((e) => {
+          tx.set(db.collection("lesson_attendance").doc(`${uid}_${lessonKey(e.date, e.time)}`),
+              Object.assign({}, e, {fetched_at: FieldValue.serverTimestamp()}));
+        });
+        return {opened: notifs.length, changed};
+      });
+      opened += r.opened;
+      if (r.changed && w.att.length) attWritten += w.att.length;
+    } catch (e) {
+      console.error("lessonEndSync transaction failed", {uid, error: e.message || String(e)});
+    }
+  }
+  console.log(`lessonAttendanceSync done: windows opened ${opened}, attendance checked ${attItems.length}`);
+  return {opened, attendanceChecked: attItems.length, attWritten};
+}
+
+async function runAutoConfirm(nowMs) {
+  const db = getFirestore();
+  const snap = await db.collection("reservations").get();
+  let budget = AUTO_CONFIRM_BATCH;
+  let confirmed = 0;
+  for (const doc of snap.docs) {
+    if (budget <= 0) break;
+    const due = dedupLessons(doc.data().lessons || []).filter((l) =>
+      att.PROOF_STATUSES.indexOf(l.status) >= 0 && l.confirmation && l.confirmation.status === "pending" &&
+      nowMs - att.lessonEndMs(l.date, l.time) >= att.CONFIRM_WINDOW_MS).slice(0, budget);
+    if (!due.length) continue;
+    try {
+      const n = await db.runTransaction(async (tx) => {
+        const s = await tx.get(doc.ref);
+        if (!s.exists) return 0;
+        const lessons = Array.isArray(s.data().lessons) ? s.data().lessons.slice() : [];
+        const nowIso = new Date(nowMs).toISOString();
+        let k = 0;
+        due.forEach((l0) => {
+          const i = att.findLessonIdx(lessons, l0.date, l0.time);
+          if (i < 0) return;
+          const l = lessons[i];
+          if (att.PROOF_STATUSES.indexOf(l.status) < 0) return;
+          if (!l.confirmation || l.confirmation.status !== "pending") return;
+          if (nowMs - att.lessonEndMs(l.date, l.time) < att.CONFIRM_WINDOW_MS) return;
+          lessons[i] = Object.assign({}, l, {confirmation: Object.assign({}, l.confirmation, {status: "auto", at: nowIso})});
+          k++;
+        });
+        if (k) tx.update(doc.ref, {lessons});
+        return k;
+      });
+      confirmed += n;
+      budget -= due.length;
+    } catch (e) {
+      console.error("autoConfirm transaction failed", {uid: doc.id, error: e.message || String(e)});
+    }
+  }
+  console.log(`lessonAutoConfirm done: ${confirmed} lessons auto-confirmed`);
+  return {confirmed};
+}
+
+// Her saat :20 — biten derslerde onay penceresi + zil bildirimi, son 6 saatte bitenlerde Zoom katılımı
+exports.lessonAttendanceSync = onSchedule(
+    {schedule: "20 * * * *", timeZone: "Europe/Istanbul", timeoutSeconds: 300},
+    async () => {
+      await runLessonEndSync(Date.now());
+    },
+);
+
+// Her saat :40 — 48 saat içinde onaylanmayan / itiraz edilmeyen dersler "yapılmış" sayılır
+exports.lessonAutoConfirm = onSchedule(
+    {schedule: "40 * * * *", timeZone: "Europe/Istanbul", timeoutSeconds: 300},
+    async () => {
+      await runAutoConfirm(Date.now());
+    },
+);
+
+// Öğrenci: "Evet, ders yapıldı" / "Sorun bildir". Kurallar ders satırlarını yalnız admine
+// açtığı için karar burada doğrulanıp Admin SDK ile yazılır.
+const DISPUTE_REASON_MAX = 500;
+exports.confirmLesson = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Giriş yapmalısın.");
+      const uid = request.auth.uid;
+      const data = request.data || {};
+      const date = String(data.date || "");
+      const time = String(data.time || "");
+      const action = String(data.action || "");
+      const reason = String(data.reason || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+        throw new HttpsError("invalid-argument", "Geçersiz tarih veya saat.");
+      }
+      if (action !== "confirm" && action !== "dispute") throw new HttpsError("invalid-argument", "Geçersiz işlem.");
+      if (action === "dispute" && !reason) throw new HttpsError("invalid-argument", "Sorunu kısaca yazmalısın.");
+      if (reason.length > DISPUTE_REASON_MAX) {
+        throw new HttpsError("invalid-argument", `Açıklama en fazla ${DISPUTE_REASON_MAX} karakter olabilir.`);
+      }
+      const now = Date.now();
+      const endMs = att.lessonEndMs(date, time);
+      const db = getFirestore();
+      const resRef = db.collection("reservations").doc(uid);
+      let who = "";
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(resRef);
+        if (!snap.exists) throw new HttpsError("not-found", "Rezervasyon bulunamadı.");
+        const res = snap.data();
+        who = res.student_name || res.student_email || "";
+        const lessons = Array.isArray(res.lessons) ? res.lessons.slice() : [];
+        const i = att.findLessonIdx(lessons, date, time);
+        if (i < 0) throw new HttpsError("not-found", "Ders bulunamadı.");
+        const l = lessons[i];
+        if (att.PROOF_STATUSES.indexOf(l.status) < 0) {
+          throw new HttpsError("failed-precondition", "Bu ders iptal edilmiş ya da dondurulmuş.");
+        }
+        if (now < endMs) throw new HttpsError("failed-precondition", "Ders henüz bitmedi.");
+        const c = l.confirmation;
+        if (c && c.status && c.status !== "pending") {
+          throw new HttpsError("already-exists", "Bu ders için karar zaten verilmiş.");
+        }
+        if (action === "dispute" && now - endMs > att.CONFIRM_WINDOW_MS) {
+          throw new HttpsError("failed-precondition", "İtiraz süresi (48 saat) doldu.");
+        }
+        const conf = Object.assign({}, c || {}, {
+          status: action === "confirm" ? "confirmed" : "disputed",
+          at: new Date(now).toISOString(),
+          by: "student",
+        });
+        if (action === "dispute") conf.reason = reason;
+        lessons[i] = Object.assign({}, l, {confirmation: conf});
+        tx.update(resRef, {lessons});
+      });
+
+      if (action === "dispute") {
+        // Karar kaydedildi; bildirim hatası öğrencinin işlemini bozmasın.
+        const label = trLabel(date, time);
+        const name = who || request.auth.token.email || "Öğrenci";
+        try {
+          const adminNum = process.env.WA_ADMIN_NUMBER || "905523070067";
+          const wa = await sendWhatsApp(adminNum,
+              `⚠ Ders itirazı — ${name}\n${label}\nSebep: ${reason}\nberkayeracademy.com/booking`);
+          if (!wa.ok) console.error("dispute admin WhatsApp failed", wa.error);
+        } catch (e) {
+          console.error("dispute admin WhatsApp error", e.message || e);
+        }
+        try {
+          await transporter.sendMail({
+            from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
+            to: "berkayer032@gmail.com",
+            subject: `Ders itirazı — ${name.replace(/[\r\n]/g, " ").slice(0, 100)}`,
+            text: `${name} şu ders için itiraz etti: ${label}\n\nSebep:\n${reason}\n\nAdmin panelinde dersin Zoom katılım kaydını görüp itirazı "Çözüldü" olarak işaretleyebilirsin.\nhttps://berkayeracademy.com/booking`,
+          });
+        } catch (e) {
+          console.error("dispute admin email error", e.message || e);
+        }
+      }
+      return {ok: true, status: action === "confirm" ? "confirmed" : "disputed"};
     },
 );
