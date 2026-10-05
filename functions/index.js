@@ -580,8 +580,17 @@ function validateTwilioSig(url, params, twilioSig, token) {
   // Twilio's signature = HMAC-SHA1 of (URL + alphabetized form params concatenated), base64
   const sorted = Object.keys(params).sort().map((k) => k + params[k]).join("");
   const expected = crypto.createHmac("sha1", token).update(url + sorted).digest("base64");
-  return expected === twilioSig;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(String(twilioSig || ""));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
+
+// Twilio imzayı konsolda tanımlı webhook adresi üzerinden hesaplar. Cloud Functions v2'de
+// req.originalUrl fonksiyon yolunu içermez ("/"), bu yüzden kanonik adres(ler) ile denenir.
+const TWILIO_WEBHOOK_URLS = [
+  process.env.TWILIO_WEBHOOK_URL,
+  "https://europe-west1-ableton-tutorial.cloudfunctions.net/twilioWhatsAppWebhook",
+].filter(Boolean);
 
 exports.twilioWhatsAppWebhook = onRequest(
     {region: "europe-west1", cors: false},
@@ -594,19 +603,17 @@ exports.twilioWhatsAppWebhook = onRequest(
       const sig = req.get("X-Twilio-Signature");
       const proto = req.get("x-forwarded-proto") || "https";
       const host = req.get("x-forwarded-host") || req.get("host");
-      const url = `${proto}://${host}${req.originalUrl}`;
-      console.log("twilio webhook hit", {
-        url,
-        hasSig: !!sig,
-        bodyKeys: Object.keys(req.body || {}),
-        from: req.body.From,
-        bodyText: req.body.Body,
-      });
-      if (token && sig && !validateTwilioSig(url, req.body, sig, token)) {
-        // Don't reject — Cloud Functions v2 URL reconstruction can mismatch
-        // Twilio's webhook URL string. Log it so we can investigate, but
-        // proceed with the message.
-        console.warn("Twilio signature mismatch (logging only)", {url, sig});
+      const q = req.originalUrl && req.originalUrl.indexOf("?") >= 0 ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : "";
+      const candidates = TWILIO_WEBHOOK_URLS.map((u) => u + q).concat([`${proto}://${host}${req.originalUrl}`]);
+      const params = req.body || {};
+      // Yalnız Twilio'dan gelen (doğru imzalı) istekler işlenir; sahte istek admin sohbetine mesaj yazamaz.
+      const ok = !!(token && sig) && candidates.some((u) => validateTwilioSig(u, params, sig, token));
+      // Log: mesaj içeriği / telefon yazılmaz (kişisel veri)
+      console.log("twilio webhook", {ok, hasSig: !!sig, bodyKeys: Object.keys(params)});
+      if (!ok) {
+        console.warn("Twilio signature rejected", {hasSig: !!sig, tried: candidates.length});
+        res.status(403).send("Forbidden");
+        return;
       }
 
       const from = req.body.From || ""; // "whatsapp:+90555..."

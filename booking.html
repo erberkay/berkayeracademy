@@ -2293,7 +2293,7 @@ function toast(msg, isErr = false) {
   const w = document.getElementById('toastWrap');
   const t = document.createElement('div'); t.className = 'toast' + (isErr ? ' err' : '');
   if (isErr) {
-    t.innerHTML = `<div class="toast-body">${msg}</div><div class="toast-hint">${window._i18n?.getLang()==='en'?'Please share this error code with your instructor.':'Bu hata kodunu eğitmeninize iletin.'}</div>`;
+    t.innerHTML = `<div class="toast-body">${escHtml(msg)}</div><div class="toast-hint">${window._i18n?.getLang()==='en'?'Please share this error code with your instructor.':'Bu hata kodunu eğitmeninize iletin.'}</div>`;
     const x = document.createElement('button');
     x.textContent = '✕';
     x.className = 'toast-close';
@@ -4545,7 +4545,7 @@ async function submitRequest() {
       created_at: firebase.firestore.FieldValue.serverTimestamp(),
     });
     // Persist phone on user doc for future re-use
-    await db.collection('users').doc(_user.uid).set({ phone: phoneE164 }, { merge: true }).catch(() => {});
+    await db.collection('users').doc(_user.uid).collection('private').doc('contact').set({ phone: phoneE164 }, { merge: true }).catch(() => {});
     // Flag user doc so egitim.html can unlock member content without a collection query
     await db.collection('users').doc(_user.uid).set({ hasLessonRequest: true }, { merge: true }).catch(() => {});
     // Welcome email — send only once
@@ -5076,8 +5076,12 @@ function initRequestForm() {
   _sdEl.value = '';
   // Pre-fill phone from prior submission if we have it
   if (_user) {
-    db.collection('users').doc(_user.uid).get().then(snap => {
-      const p = snap.exists ? (snap.data().phone || '') : '';
+    // Telefon kişisel veri: users/{uid}/private/contact (yalnız sahibi + admin); eski kayıtlar users/{uid}.phone
+    Promise.all([
+      db.collection('users').doc(_user.uid).collection('private').doc('contact').get().catch(() => null),
+      db.collection('users').doc(_user.uid).get().catch(() => null),
+    ]).then(([pc, snap]) => {
+      const p = (pc && pc.exists && pc.data().phone) || (snap && snap.exists ? (snap.data().phone || '') : '');
       const _ph = document.getElementById('reqPhone');
       if (_ph && p && !_ph.value) {
         // Display friendly format: +90 5XX XXX XX XX → 0 5XX XXX XX XX
@@ -7782,7 +7786,7 @@ async function adminGrantRescheduleCredit(studentUid, resDataInit) {
 
     card.innerHTML = `
       <div class="field-label text-accent">Erteleme hakları</div>
-      <div class="modal-title">${studentName}</div>
+      <div class="modal-title">${escHtml(studentName)}</div>
       <button id="creditMgrClose" class="modal-close" aria-label="Kapat">✕</button>
       <div class="dlg-sub">Toplam kalan: <strong class="${total>0?'text-accent':'text-err'}">${total}</strong></div>
       <div class="credit-rows">${rows}</div>
@@ -9266,7 +9270,7 @@ function renderAccessView(user, state, rejectReason) {
           status: 'pending',
           created_at: firebase.firestore.FieldValue.serverTimestamp(),
         });
-        await db.collection('users').doc(user.uid).set({ phone: phoneE164 }, { merge: true }).catch(() => {});
+        await db.collection('users').doc(user.uid).collection('private').doc('contact').set({ phone: phoneE164 }, { merge: true }).catch(() => {});
         // Welcome email — send only once
         const _wKey2 = 'bk_welcome_mail_' + user.uid;
         if (!localStorage.getItem(_wKey2)) {
