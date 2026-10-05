@@ -509,29 +509,51 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
     },
 );
 
+// ─── Asistan: öğrencinin "Berkay'a ilet" dediği soru → admine WhatsApp ───
+// Cevap admin panelindeki "Asistan soruları" kartından yazılır; asistan onu öğrenir.
+exports.notifyAdminOnAssistantQuestion = onDocumentCreated(
+    {region: "europe-west1", document: "assistant_questions/{qId}"},
+    async (event) => {
+      const d = event.data && event.data.data();
+      if (!d || d.answered || !d.uid) return;
+      if (!(await allowAdminNotify(d.uid, "assistant_notify"))) {
+        console.warn("assistant notify rate-limited", {qId: event.params.qId});
+        return;
+      }
+      const adminNum = process.env.WA_ADMIN_NUMBER || "905523070067";
+      const name = d.name || "Öğrenci";
+      const text = String(d.text || "").slice(0, 300);
+      const body = `💬 Asistan sorusu — ${name}\n"${text}"\nYanıtla: berkayeracademy.com/booking#adm-mesajlar`;
+      const res = await sendWhatsApp(adminNum, body);
+      if (!res.ok) console.error("assistant notify failed", res.error);
+      else console.log("admin notified for assistant question", event.params.qId);
+    },
+);
+
 // Öğrenci başına admin bildirimi sınırı: 24 saatlik pencerede en fazla
 // ADMIN_NOTIFY_MAX. Sayaç rate_limits/{uid} (yalnız fonksiyon yazar, admin okur).
+// field: ayrı sayaç ("admin_notify" talepler, "assistant_notify" asistan soruları).
 const ADMIN_NOTIFY_MAX = 3;
 const ADMIN_NOTIFY_WINDOW_MS = 24 * 60 * 60 * 1000;
-async function allowAdminNotify(uid) {
+async function allowAdminNotify(uid, field = "admin_notify") {
   const db = getFirestore();
   const ref = db.collection("rate_limits").doc(String(uid));
   try {
     return await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const now = Date.now();
-      const cur = (snap.exists && snap.data().admin_notify) || {};
+      const cur = (snap.exists && snap.data()[field]) || {};
       const start = cur.window_start && cur.window_start.toMillis ? cur.window_start.toMillis() : 0;
       if (!start || now - start >= ADMIN_NOTIFY_WINDOW_MS) {
-        tx.set(ref, {admin_notify: {window_start: Timestamp.fromMillis(now), count: 1}}, {merge: true});
+        tx.set(ref, {[field]: {window_start: Timestamp.fromMillis(now), count: 1}}, {merge: true});
         return true;
       }
       const count = Number(cur.count) || 0;
       if (count >= ADMIN_NOTIFY_MAX) {
-        tx.set(ref, {admin_notify: {suppressed: FieldValue.increment(1)}}, {merge: true});
+        tx.set(ref, {[field]: {suppressed: FieldValue.increment(1)}}, {merge: true});
         return false;
       }
-      tx.set(ref, {admin_notify: {count: count + 1}}, {merge: true});
+      tx.set(ref, {[field]: {count: count + 1}}, {merge: true});
       return true;
     });
   } catch (e) {

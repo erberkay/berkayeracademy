@@ -50,7 +50,8 @@ Env vars in use: `GMAIL_PASS`, `Z_ACCOUNT_ID` / `Z_CLIENT_ID` / `Z_CLIENT_SECRET
 - `lessonAutoConfirm` — hourly at :40, `pending` confirmations whose lesson ended ≥48 h ago → `{status:'auto', at}` (lessons that never got a window are not touched)
 
 **Triggered (Firestore docs):**
-- `notifyAdminOnNewRequest` — new `lesson_requests/*`; admin WhatsApp limited to 3 per student per 24 h (`rate_limits/{uid}`), the request itself is always kept
+- `notifyAdminOnNewRequest` — new `lesson_requests/*`
+- `notifyAdminOnAssistantQuestion` — new `assistant_questions/*` (asistandan "Berkay'a ilet"; öğrenci başına 24 saatte 3 WhatsApp); admin WhatsApp limited to 3 per student per 24 h (`rate_limits/{uid}`), the request itself is always kept
 - `notifyStudentOnRequestStatus` — `lesson_requests/*` status change
 
 **Callable (`onCall`):**
@@ -100,6 +101,7 @@ Loaded by most pages via `<script src="/assets/js/X.js">` and `<link href="/asse
 - `assets/js/placement-quiz.js` — seviye belirleme sınavının soru bankası + puanlama (`window.bkQuiz`). Sadece `booking.html` yükler. Soruları/eşikleri değiştirmek için tek düzenlenecek yer burası; soru seti değişirse dosyadaki `VERSION` artırılır.
 - `assets/js/be-tour.js` — paylaşılan panel turu bileşeni (`window.beTour`, koç işaretleri, masaüstü/mobil yerleşim; API dosya başında). `booking.html` öğrenci paneli turunu duruma (yeni, bekleyen, ödemesiz, aktif, deneme, deneme sonrası, biten) ve ekrana (≤1024 mobil) göre kurar (`bkTour*`); bir kez kendiliğinden açılır, `userSettings/{uid}.panel_tours`'a yazılır, "Panel turu" düğmesiyle yeniden açılır.
 - `assets/js/trial-intro.js` — deneme dersi tanıtım animasyonu (`window.beIntro`, `defer`, kabuklu her sayfada). Deneme çağrısına (`[data-deneme-dersi]`, kabuğun `.be-cta`'sı, `#trialPanel`, `html.be-trial`'da "Deneme" etiketli gezinme) oturumdaki ilk tıklamayı yakalar, tam ekran koyu katmanda `PLAYLIST` sırasını sesli oynatır (ses engellenirse sessiz), bitince / Geç / Esc ile aynı öğeye yeniden tıklar — form ve rezervasyon mantığı değişmez. ≤768px dikey (`-mobil`), VP9 'probably' değilse mp4; `prefers-reduced-motion`'da oynamaz; `sessionStorage['be-intro-seen']`. Dosyalar `assets/media/deneme-dersi/<ad>-(web|mobil).(webm|mp4)` + `-poster.jpg`; dosyası olmayan adım atlanır (ikinci adım `sistem-tanitim` klasöre konunca kendiliğinden oynar). Stil: ui.css `.be-intro`.
+- `assets/js/be-assistant.js` + `be-assistant-kb.js` + `be-assistant-ui.js` + `assets/css/be-assistant.css` — Ders Paneli'nin site içi asistanı (yalnız `booking.html`; harici yapay zekâ/API yok). Motor (`window.beAssistant`: Türkçe normalleştirme, ek ayıklama, eş anlam, yazım hatası toleransı, TF-IDF + trigram eşleme; saf fonksiyonlar, Node'da `vm` ile test edilir), bilgi tabanı (`window.beAssistantKB`: niyetler, örnek sorular, durum bayraklı TR/EN cevap şablonları, eylemler — kural/fiyat değişince burası da güncellenir), arayüz (yüzen "Asistan" düğmesi, sayfa durumunu yalnız okur; `showView` → `beAssistant.onView`). Niyet alanları (`need`/`avoid`/`strong`) ve eş anlam söz dizimi (`=kelime`, `kelime$`, `'flag'`) `be-assistant-kb.js` başında açıklı; yeni soru tipi için önce kavram/eş anlam ekle, tek tek örnek cümle yapıştırma. Bilinmeyen soru "Berkay'a ilet" ile `assistant_questions`'a düşer (`notifyAdminOnAssistantQuestion` admine WhatsApp atar; yanıt bekleyenler "WhatsApp & sorular" menü rozetine eklenir); admin panelindeki "Asistan soruları" kartında cevaplanınca `assistant_faq`'a yazılır ve asistan onu canlı öğrenir (öğrenilen metin olduğu gibi gösterilir, `{…}` doldurulmaz). Asistan açılınca açık panel turu kapanır; "Panel turunu başlat" sayfanın `bkTourStart()`'ını çağırır.
 - `assets/js/auth-ui.js` — shared sign-in modal (Google + e-posta/şifre: giriş, kayıt, şifre sıfırlama), exposed as `window.bkAuth` (`openLogin`, `signInGoogle`, `handleRedirectResult`, `isEmbeddedBrowser`, `errorMessage`). Plain `<script>` in `<head>` before the Firebase SDK — it only calls `firebase.auth()` lazily. Every page with a sign-in button loads it (not `app-bridge.html`).
 - `assets/img/icons.svg` — icon sprite: `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-NAME"/></svg>`. UI chrome uses these (or inline line SVGs), never emoji.
 
@@ -132,6 +134,9 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 | `testimonials` | Student testimonials (public read, auth create) |
 | `app_bridge` | UUID-keyed cross-app data bridge (publicly readable) |
 | `placement_tests/{uid}` | Seviye belirleme sınavı sonucu (skor, seviye, cevaplar). Öğrenci bir kez `create` eder ve sadece kendi dokümanını okur; admin hepsini okur, sıfırlamak için siler. |
+| `assistant_questions` | Asistandan "Berkay'a ilet" denen sorular `{uid, name, text, state, lang, answered:false, created_at}`. Öğrenci yalnız kendi adına oluşturur (`created_at` = sunucu saati, `assistant_limits` ile aynı toplu yazımda) ve kendininkini okur; admin okur, yanıtlar (`answered, answer, faq_id`), siler. |
+| `assistant_limits/{uid}` | `{last_at}` — öğrenci başına iletme sınırı: her iletmede sunucu saatine çekilir, 30 sn dolmadan güncellenemez, öğrenci silemez. |
+| `assistant_faq` | Asistanın öğrendiği cevaplar `{q:[örnek sorular], a, keywords, created_at}` — admin yazar, giriş yapmış herkes okur; asistan canlı birleştirir. |
 | `userSettings/{uid}` | Per-user preferences |
 | `follows` | Profile follow edges |
 | `lesson_attendance/{uid}_{date}_{time}` | Zoom katılımcı listesi (ders kanıtı) — `lessonAttendanceSync` yazar, yalnız admin okur |

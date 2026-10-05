@@ -284,6 +284,46 @@ service cloud.firestore {
         isAdmin();
     }
 
+    // Site içi asistan: öğrencinin "Berkay'a ilet" dediği soru — öğrenci yalnız kendi adına,
+    // yanıtlanmamış olarak oluşturur ve yalnız kendininkini okur; admin hepsini okur, yanıtlar, siler.
+    match /assistant_questions/{qId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.uid ||
+        isAdmin()
+      );
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.answered == false &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 &&
+        request.resource.data.text.size() <= 500 &&
+        request.resource.data.keys().hasOnly(['uid', 'name', 'text', 'state', 'lang', 'answered', 'created_at']) &&
+        request.resource.data.created_at == request.time &&
+        // aynı toplu yazımda assistant_limits/{uid} şimdiye çekilmiş olmalı (30 sn sınırı orada)
+        getAfter(/databases/$(database)/documents/assistant_limits/$(request.auth.uid)).data.last_at == request.time;
+      allow update, delete: if isAdmin();
+    }
+
+    // Öğrenci başına "Berkay'a ilet" sınırı: her iletme bu belgeyi sunucu saatine çeker; önceki
+    // iletmeden 30 sn geçmeden güncellenemez, öğrenci silemez (sınır sıfırlanamaz)
+    match /assistant_limits/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['last_at']) &&
+        request.resource.data.last_at == request.time;
+      allow update: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['last_at']) &&
+        request.resource.data.last_at == request.time &&
+        request.time > resource.data.last_at + duration.value(30, 's');
+      allow delete: if isAdmin();
+    }
+
+    // Asistanın öğrendiği cevaplar (admin yazar, giriş yapmış herkes okur; asistan canlı birleştirir)
+    match /assistant_faq/{faqId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
     match /lesson_questions/{qId} {
       allow read: if request.auth != null && (
         request.auth.uid == resource.data.uid ||

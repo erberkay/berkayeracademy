@@ -61,7 +61,6 @@
     layer.className = 'be-intro';
     layer.hidden = true;
     layer.setAttribute('role', 'dialog');
-    layer.setAttribute('aria-modal', 'true');
     video = document.createElement('video');
     video.className = 'be-intro-video';
     video.setAttribute('playsinline', '');
@@ -100,6 +99,7 @@
     layer.setAttribute('aria-label', isEn() ? 'Trial Lesson' : `Deneme Dersi`);
     skip.textContent = isEn() ? 'Skip' : `Geç`;
     layer.hidden = false;
+    layer.setAttribute('aria-modal', 'true'); // yalnız açıkken (panel turu açık pencere bekler)
     html.classList.add('be-intro-open');
     document.addEventListener('keydown', onKey, true);
     requestAnimationFrame(function () { layer.classList.add('is-on'); });
@@ -160,6 +160,7 @@
 
   function hide() {
     layer.classList.remove('is-on');
+    layer.removeAttribute('aria-modal');
     html.classList.remove('be-intro-open');
     setTimeout(function () { if (!run || run.done) layer.hidden = true; }, FADE_MS);
   }
@@ -219,7 +220,7 @@
 
   // Geri tuşuyla önbellekten dönülürse açık kalan katmanı kapat.
   window.addEventListener('pageshow', function (e) {
-    if (e.persisted && layer && !layer.hidden) { if (run) run.done = true; layer.classList.remove('is-on'); html.classList.remove('be-intro-open'); layer.hidden = true; }
+    if (e.persisted && layer && !layer.hidden) { if (run) run.done = true; layer.classList.remove('is-on'); layer.removeAttribute('aria-modal'); html.classList.remove('be-intro-open'); layer.hidden = true; }
   });
 
   window.beIntro = { playlist: PLAYLIST, isSeen: seen };
