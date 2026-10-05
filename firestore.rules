@@ -76,12 +76,20 @@ service cloud.firestore {
         (!('authorIsAdmin' in request.resource.data) || request.resource.data.authorIsAdmin == false || isAdmin());
       allow update: if request.auth != null && (
         isAdmin() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy','likeCount']) ||
+        // Beğeni: yalnız kendi uid'ini ekler/çıkarır, sayaç listeyle aynı miktarda değişir
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy','likeCount']) &&
+          request.resource.data.likedBy.toSet().difference(resource.data.get('likedBy', []).toSet())
+            .union(resource.data.get('likedBy', []).toSet().difference(request.resource.data.likedBy.toSet()))
+            .hasOnly([request.auth.uid]) &&
+          request.resource.data.likeCount - resource.data.get('likeCount', 0) ==
+            request.resource.data.likedBy.size() - resource.data.get('likedBy', []).size()) ||
         (request.auth.uid == resource.data.authorId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','editedAt'])) ||
         (request.auth.uid == resource.data.authorId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['solved'])) ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount'])
+        // Yanıt sayacı: yalnız ±1 (yanıt ekleme / silme)
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount']) &&
+          (request.resource.data.replyCount - resource.data.get('replyCount', 0)) in [1, -1])
       );
       allow delete: if request.auth != null && isAdmin();
 
@@ -232,10 +240,9 @@ service cloud.firestore {
         isAdmin()
       );
       allow create: if request.auth != null && request.auth.uid == uid;
-      allow update, delete: if request.auth != null && (
-        request.auth.uid == uid ||
-        isAdmin()
-      );
+      // Durumu (onay/red) yalnız admin değiştirir; öğrenci kendi talebini yalnız silebilir
+      allow update: if isAdmin();
+      allow delete: if request.auth != null && (request.auth.uid == uid || isAdmin());
     }
 
     // UUID anahtarlı köprü: anahtarı bilen tek belgeyi okur (get); koleksiyon LİSTELENEMEZ
