@@ -2335,6 +2335,10 @@
         .lab-m4-sel--root { width:52px; }
         .lab-m4-sel--type { width:128px; font-family:var(--ff); font-size:12px; letter-spacing:0; }
         .lab-m4 .lab-mhead-actions .lp-tut-btn { height:40px; padding:0 14px; font-size:12px; }
+        /* İki ders alt alta (yan yana iken açıklama başlığın üstüne biniyordu) */
+        .lab-m4 .lab-mhead-actions { flex-direction:column; align-items:stretch; gap:8px; }
+        .lab-m4 .lab-mhead-actions .lp-tut-btn { justify-content:flex-start; }
+        .lab-m4 .lab-mhead-actions .lp-tut-btn-n { margin-left:auto; }
         .lab-m4 .lp-bar-c { gap:10px; }
         .lab-m4-key { display:flex; align-items:center; gap:6px; }
         .lab-m4 .lp-bar-r .lp-midi { margin-right:2px; }
@@ -2477,6 +2481,44 @@
         .lab-m4-rso[hidden] { display:none; }
         .lab-m4-rso-t { flex:1 1 240px; min-width:0; font-size:12px; line-height:1.45; color:var(--fg-soft); }
 
+        /* ── Yeni başlayan katmanı (tur: Lab inceleme) ───────────────────── */
+        .lab-m4-gcol { display:flex; flex-direction:column; min-width:0; }
+        .lab-m4-mbox-h { flex-wrap:wrap; row-gap:4px; }
+        .lab-m4 .lab-m4-fltt { margin-left:auto; height:24px; padding:0 8px; font-size:9px; letter-spacing:.08em; }
+        .lab-m4-mbox-hint { font-size:9px; }
+        .lab-m4-kwarn { border-left-color:var(--warn); }
+        .lab-m4-offer .lp-btn[hidden] { display:none; }
+        .lab-m4-en-cap { position:absolute; top:2px; right:6px; padding:1px 6px; border-radius:var(--r-pill); background:var(--bg); font-family:var(--ff-mono); font-size:9px; letter-spacing:.08em; color:var(--fg-2); }
+        .lab-m4-en-dot { font-size:9px; }
+        .lab-m4-ins-short { font-size:12px; line-height:1.45; color:var(--fg-muted); }
+        .lab-m4-cm.is-touch kbd { display:none; }
+        .lab-m4-hen { margin:0; font-size:14px; line-height:1.6; color:var(--fg-2); }
+        .lab-m4-fnote { margin:0; }
+        .lab-m4-st-prog { color:var(--ok-strong); font-weight:700; }
+        .lab-m4-st-prog[hidden] { display:none; }
+        /* "Yana kaydır" ipucu + seçili klip çubuğu: yalnız dar ekran / dokunmatik */
+        .lab-m4-swipe { display:none; }
+        .lab-m4-sb { display:none; }
+        .lab-m4-ch { display:none; }
+        @media (max-width:1024px) {
+            .lab-m4-swipe { display:block; margin:0; padding:6px 12px; background:var(--m4-lane); font-size:13px; font-weight:600; color:var(--accent); }
+            .lab-m4-swipe[hidden] { display:none; }
+        }
+        @media (max-width:1024px), (pointer:coarse) {
+            /* Yapışkan (alt sekme çubuğunun üstünde); seçim yokken tek satır ipucu, seçimde ipucu + düğmeler */
+            .lab-m4-sb { position:sticky; bottom:var(--be-tabbar-space, 0px); z-index:4; display:flex; flex-direction:column; gap:6px; padding:8px 12px; background:var(--surface); border-top:1px solid var(--line-2); border-bottom:1px solid var(--line-2); }
+            .lab-m4-sb.is-on { border-top-color:var(--accent-line-2); }
+            .lab-m4-sb:not(.is-on) .lab-m4-sb-b { display:none; }
+            .lab-m4-sb-t { min-width:0; font-family:var(--ff-mono); font-size:11px; letter-spacing:.06em; color:var(--fg-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .lab-m4-sb.is-on .lab-m4-sb-t { color:var(--fg); }
+            .lab-m4-sb-b { display:flex; flex-wrap:wrap; gap:6px; }
+            .lab-m4-sb .lp-btn[hidden] { display:none; }
+            .lab-m4-sb .lp-btn svg { width:12px; height:12px; }
+        }
+        @media (hover:none) and (pointer:coarse) {
+            .lab-m4 .lab-m4-kbdt, .lab-m4 .lab-m4-st-ic.lp-hint-kbd { display:none; }
+        }
+
         /* Odak halkaları */
         .lab-m4 :is(.lab-m4-ms, .lab-m4-fill, .lab-m4-loc, .lab-m4-clip, .lab-m4-tplb, .lab-m4-reset, .lab-m4-ins-loop, .lab-m4-step, .lab-m4-gcard, .lab-m4-arm, .lab-m4-edit, .lab-m4-vb):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 
@@ -2546,9 +2588,43 @@
             .lab-m4-tright { width:100%; margin-left:0; justify-content:space-between; }
             .lab-m4 .lab-m4-tright .lp-knob { width:auto; }
             .lab-m4-card-h { font-size:24px; }
-            /* Telefonda başlık sütunu yapışkan değil (340 px ekranı kaplardı): ızgarayla birlikte kayar */
-            .lab-m4-heads { position:relative; }
-            /* ÖĞRETİCİ + ton seçicileri aynı satırda (tek başına duran öğretici düğmesi olmasın) */
+            /* Telefonda iz başlığı SADE ve yapışkan (128 px: renk şeridi, ad, M / S 44 px); ses sürgüsü, SMP|MIDI, ARM ve
+               "tüm bölümlere yaz" ızgaranın altındaki KANAL panelinde (iz adına dokun → o iz). Klipler ilk bakışta görünür. */
+            .lab-m4 { --m4-head:128px; --m4-rh:80px; }
+            .lab-m4-inner { min-width:820px; }   /* bölüm ≈ 86 px: ilk bakışta 2½ bölüm görünür */
+            .lab-m4-heads { padding:10px 6px 10px 8px; }
+            .lab-m4-th-s, .lab-m4-th-no, .lab-m4-th .lab-m4-led, .lab-m4 .lab-m4-th .lab-m4-inst, .lab-m4-th .lab-m4-fill, .lab-m4-th .lab-m4-arm,
+            .lab-m4 .lab-m4-th .lp-fader, .lab-m4-voltxt, .lab-m4-colh-t, .lab-m4-vb ~ .lab-m4-vb, .lab-m4-mbox-w, .lab-m4-mbox-hint { display:none; }
+            .lab-m4-th-in { padding:6px; gap:6px; }
+            .lab-m4-th-n { font-size:13px; }
+            .lab-m4-colh { font-size:11px; letter-spacing:.06em; overflow:hidden; text-overflow:ellipsis; }
+            .lab-m4-mbox { padding:6px; }
+            .lab-m4-mbox-n { flex-basis:100%; }
+            .lab-m4 .lab-m4-fltt { margin-left:0; height:30px; font-size:11px; }
+            .lab-m4-mbox-p { font-size:11px; }
+            /* KANAL paneli */
+            .lab-m4-ch { display:flex; flex-direction:column; gap:10px; padding:12px; background:var(--surface); border-bottom:1px solid var(--line-2); }
+            .lab-m4-ch [hidden] { display:none; }
+            .lab-m4-ch-h { margin:0; padding-left:10px; border-left:4px solid var(--c); font-size:15px; font-weight:700; }
+            .lab-m4-ch-p { margin:0; font-size:13px; line-height:1.45; color:var(--fg-muted); }
+            .lab-m4-ch-r { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+            .lab-m4 .lab-m4-ch .lab-m4-inst .lp-seg-b { height:44px; min-width:60px; font-size:12px; }
+            .lab-m4-ch-v { display:flex; align-items:center; gap:12px; min-width:0; }
+            .lab-m4-ch-l, .lab-m4-ch-vt { font-family:var(--ff-mono); font-size:12px; color:var(--fg-2); white-space:nowrap; }
+            .lab-m4-ch .lp-fader--h { flex:1; min-width:0; }
+            .lab-m4-ch > .lp-btn { align-self:flex-start; }
+            /* Yazı tabanı: mono başlıklar ≥11 px, açıklamalar 13 px (dekoratif alt yazılar gizli) */
+            .lab-m4-cnt, .lab-m4-outrow, .lab-m4 .lab-m4-tright .lp-knob-lbl, .lab-m4 .lab-m4-tright .lp-knob-val, .lab-m4 .lp-lcd .lp-ro-l,
+            .lab-m4 .lp-status, .lab-m4-rbar, .lab-m4-en-dot, .lab-m4-en-cap, .lab-m4-pt-l, .lab-m4-ins-h, .lab-m4-ins-no, .lab-m4-ins-rng,
+            .lab-m4-ins-role, .lab-m4-ins-el, .lab-m4-ins-hz, .lab-m4-chip, .lab-m4-ins-loop, .lab-m4-cinfo, .lab-m4-cclip, .lab-m4-dg-h,
+            .lab-m4-dg-k .lp-knob-lbl, .lab-m4-dg-k .lp-knob-val, .lab-m4-gbars, .lab-m4-vtag, .lab-m4-fb-k, .lab-m4-fb-l, .lab-m4-rs-info,
+            .lab-m4-rs-clip, .lab-m4-lcd-b, .lab-m4-aux, .lab-m4 .lab-m4-etgl, .lab-m4-name-l, .lab-m4-kbd, .lab-m4-tip-l,
+            .lab-m4 .lp-pt, .lab-m4 .lp-pinfo, .lab-m4 .lp-pb-cap, .lab-m4 .lp-brand-sub { font-size:11px; }
+            .lab-m4-clip-h { height:18px; line-height:18px; font-size:11px; }
+            .lab-m4-clip svg { top:22px; height:calc(100% - 28px); }
+            .lab-m4-gtext, .lab-m4-ins-tip, .lab-m4-vp, .lab-m4-keys div, .lab-m4-step-t, .lab-m4-fdet-t, .lab-m4-sdev-p, .lab-m4-ins-short,
+            .lab-m4-offer-t { font-size:13px; }
+            /* Ton seçicileri tam satır (öğreticiler başlığın sağında) */
             .lab-m4 .lp-bar-c { width:100%; flex-wrap:nowrap; }
             .lab-m4-key { flex:1; min-width:0; }
             .lab-m4-sel--root { width:70px; }
@@ -14415,14 +14491,14 @@ function m2DecayMs(si) {
 // col = builder bölüm rengi, txt = soluk zemindeki yazı rengi (kontrast ≥ 4.5), ink = çalarkenki yazı
 // (renk token'ları .lab-m4 kökünde tanımlı → yalnız modül 4 ekranında çözülür)
 const ARR_SECTIONS = [
-    {name:'Intro',    short:'Int', e:'low',   col:'--lab-sec-intro',  txt:'--lab-sec-intro'},
-    {name:'Verse 1',  short:'V1',  e:'mid',   col:'--lab-sec-verse',  txt:'--lab-sec-verse'},
-    {name:'Pre-Ch',   short:'Pre', e:'build', col:'--lab-sec-pre',    txt:'--lab-sec-pre'},
-    {name:'Chorus 1', short:'Ch1', e:'high',  col:'--lab-sec-chorus', txt:'--err',    ink:'--fg'},
-    {name:'Bridge',   short:'Br',  e:'mid',   col:'--lab-sec-bridge', txt:'--violet'},
-    {name:'Chorus 2', short:'Ch2', e:'peak',  col:'--lab-sec-chorus', txt:'--err',    ink:'--fg'},
-    {name:'B-Down',   short:'BD',  e:'low',   col:'--lab-sec-bd',     txt:'--lab-sec-bd'},
-    {name:'Outro',    short:'Out', e:'low',   col:'--lab-sec-intro',  txt:'--lab-sec-intro'},
+    {name:'Intro',    short:'Int', full:'Intro',      e:'low',   col:'--lab-sec-intro',  txt:'--lab-sec-intro'},
+    {name:'Verse 1',  short:'V1',  full:'Verse 1',    e:'mid',   col:'--lab-sec-verse',  txt:'--lab-sec-verse'},
+    {name:'Pre-Ch',   short:'Pre', full:'Pre-Chorus', e:'build', col:'--lab-sec-pre',    txt:'--lab-sec-pre'},
+    {name:'Chorus 1', short:'Ch1', full:'Chorus 1',   e:'high',  col:'--lab-sec-chorus', txt:'--err',    ink:'--fg'},
+    {name:'Bridge',   short:'Br',  full:'Bridge',     e:'mid',   col:'--lab-sec-bridge', txt:'--violet'},
+    {name:'Chorus 2', short:'Ch2', full:'Chorus 2',   e:'peak',  col:'--lab-sec-chorus', txt:'--err',    ink:'--fg'},
+    {name:'B-Down',   short:'BD',  full:'Breakdown',  e:'low',   col:'--lab-sec-bd',     txt:'--lab-sec-bd'},
+    {name:'Outro',    short:'Out', full:'Outro',      e:'low',   col:'--lab-sec-intro',  txt:'--lab-sec-intro'},
 ];
 // kind: 'hit' = tek vuruşluk örnek (adımda tetiklenir), 'loop' = şarkı ofsetiyle dönen loop örneği.
 // cssVar = genel bakış rengi, arrVar = BE·ARRANGER rengi (tasarım paleti, .lab-m4 kökünde),
@@ -14539,10 +14615,12 @@ const M4_ZOOM = [1, 1.5, 2, 3, 4];
 const m4S = {
     tpl: 'Pop', auto: ARR_TPL_AUTO.Pop.slice(),
     vol: [.8, .8, .8, .8, .8], mute: [0, 0, 0, 0, 0], solo: [0, 0, 0, 0, 0],
-    q: .9, outDb: 0, bypass: false, loop: false, sel: 3, showE: true, guide: 3, flow: ARR_HERE,
+    // İlk ▶ şarkı başından çalar (Live: set açılınca ekleme işareti 1.1.1); enerji eğrisi isteğe bağlı (Lab'a özel)
+    q: .9, outDb: 0, bypass: false, loop: false, sel: 0, showE: false, guide: 3, flow: ARR_HERE,
     resume: -1,                         // duraklatılan adım (−1 = seçili bölümün başı)
     played: false, tplUsed: false, dirty: false,
-    cols: [false, false, false, false, false, false, false, false],   // kullanıcının klip düzenlediği bölümler (görev 8)
+    cols: [false, false, false, false, false, false, false, false],   // kullanıcının klip düzenlediği bölümler
+    ch1On: false,                       // kullanıcı Chorus 1'de KAPALI bir klibi tek tek açtı (ekle / AÇ / satırı doldur) — görev 8
     bdKick: false,                      // kullanıcı B-Down'daki kick klibini kendisi değiştirdi (görev 9)
     // Loop seti / tempo / proje tonu
     set: 'classic', kit: 'classic', bpm: 125, key: { root: 0, type: 'minor' }, scaleOn: true,
@@ -14552,10 +14630,13 @@ const m4S = {
     clips: [null, null, m4Clips8(), m4Clips8(), m4Clips8()],
     arm: [0, 0, 0, 0, 0],
     trk: 3, csec: 3,                    // seçili iz + seçili klibin bölümü (detay görünümü, kopyala/yapıştır hedefi)
-    selEnd: 3,                          // locator seçim aralığı sonu (Shift+tık; loop bu aralıkta döner)
+    selEnd: 0,                          // locator seçim aralığı sonu (Shift+tık; loop bu aralıkta döner)
     rec: false, follow: true, zoom: 0,
     clip: null,                         // pano: { notes, len, r, c }
-    added: [0, 0, 0, 0, 0], copied: false, keyMoved: false, flagUid: null,   // görev 11–14 (oturum bayrakları)
+    added: [0, 0, 0, 0, 0], copied: false, keyMoved: false, flagUid: null,   // görev 11, 13, 14 (oturum bayrakları)
+    outSeen: false,                     // görev 15: MIDI klipte gam dışı nota oldu (sonra gam içine alınınca tamam)
+    kbd: false, kbdOct: 0,              // bilgisayar MIDI klavyesi (Live: Computer MIDI Keyboard, M) + oktav kaydırma
+    swiped: false,                      // dar ekranda ızgara bir kez yana kaydırıldı ("yana kaydır" ipucu kalkar)
 };
 
 // ── Ses motoru (arrCtx): generator ×5 → [inst ×3] → trackGain ×5 → masterFilter → comp → outGain → çıkış ──
@@ -15017,7 +15098,7 @@ function arrStop(mode) {
     R.queue = []; R.jump = null; R.endAt = 0; R.cur = null;
     if (mode === 'pause' && was && R.pos >= 0) m4S.resume = R.pos;
     else if (mode !== 'pause') m4S.resume = -1;
-    if (mode === 'end' && R.fromStart) m4S.played = true;
+    if (mode === 'end' && R.fromStart) { m4S.played = true; m4T.full++; }
     if (mode !== 'pause') R.fromStart = false;
     R.pos = -1;
     if (mode === 'teardown' && arrCtx) {
@@ -18215,8 +18296,10 @@ function m3TaskLive() {
 // ═══════════════════════════════════════════════════════════════════
 // Modül 4 görevleri ve metinleri — yalnız bu modülün kodu düzenler.
 // Otomatik görevler (m4Auto). Kimlikler 6–10: eski 1–5 başka görevlerdi, yeniden kullanılmaz.
-// 11–14: MIDI iş akışı (synth izine nota, gam içi melodi, klip kopyala, tonu değiştir + gam içinde taşı).
-TASKS[4] = [6, 7, 8, 9, 10, 11, 12, 13, 14].map(id => ({ id, get text() { return L('lab_m4_t' + id); } }));
+// 11, 13, 14: MIDI iş akışı (synth izine nota, klip kopyala, tonu değiştir + gam içinde taşı). 12 ("gam dışı nota
+// bırakmadan melodi") GAM açıkken kendiliğinden geçtiği için kaldırıldı → yerine 15 (gam dışı notayı duy, gam içine al).
+// 8 aynı anlam (Chorus 1'de bütün kanallar), koşulu sıkılaştı: kapalı bir klibi kullanıcı tek tek açmalı.
+TASKS[4] = [6, 7, 8, 9, 10, 11, 15, 13, 14].map(id => ({ id, get text() { return L('lab_m4_t' + id); } }));
 Object.assign(LAB_TXT, {
     // Modül 4 · Arrangement metinleri: anahtar: [`TR`, `EN`],
     lab_m4_win_aria:  [`BE·ARRANGER 04 eklentisi`, `BE·ARRANGER 04 plug-in`],
@@ -18225,15 +18308,15 @@ Object.assign(LAB_TXT, {
     lab_m4_tpl_prev:  [`Önceki şablon`, `Previous template`],
     lab_m4_tpl_next:  [`Sonraki şablon`, `Next template`],
     lab_m4_custom:    [`Özel (düzenlendi)`, `Custom (edited)`],
-    lab_m4_clip_w:    [`KLİP`, `CLIPS`],
-    lab_m4_voice_w:   [`SES`, `VOICES`],
+    lab_m4_clip_w:    [`AÇIK KLİP`, `CLIPS ON`],
+    lab_m4_voice_w:   [`ÇALAN İZ`, `TRACKS PLAYING`],
     lab_m4_out_aria:  [`Çıkış seviyesi L/R`, `Output level L/R`],
-    lab_m4_pwr:       [`Master filtre ve otomasyon`, `Master filter and automation`],
-    lab_m4_pwr_t:     [`Master filtre + otomasyon (kapalı = bypass)`, `Master filter + automation (off = bypass)`],
+    lab_m4_pwr:       [`Master filtre açık / kapalı`, `Master filter on / off`],
+    lab_m4_pwr_t:     [`Master filtreyi ve otomasyonunu aç / kapat (kapalıyken ses filtresiz, tam parlak geçer)`, `Turn the master filter and its automation on / off (when off, the sound passes unfiltered, fully bright)`],
     lab_m4_play:      [`Çal / Duraklat (Boşluk)`, `Play / Pause (Space)`],
     lab_m4_stop:      [`Durdur — iki kez: şarkı başına`, `Stop — twice: back to the song start`],
     lab_m4_loop:      [`Seçim loop'u`, `Selection loop`],
-    lab_m4_rec:       [`Kayıt (REC): MIDI klavyeden açık klibe yaz`, `Record (REC): write from a MIDI keyboard into the open clip`],
+    lab_m4_rec:       [`Kayıt (REC): açık MIDI klibine MIDI klavyeden ya da bilgisayar klavyesinden yaz`, `Record (REC): write into the open MIDI clip from a MIDI keyboard or your computer keyboard`],
     lab_m4_lcd_pos:   [`POZİSYON · BAR.VURUŞ.16`, `POSITION · BAR.BEAT.16`],
     lab_m4_lcd_time:  [`ZAMAN`, `TIME`],
     lab_m4_lcd_set:   [`TEMPO · LOOP SETİ`, `TEMPO · LOOP SET`],
@@ -18244,7 +18327,7 @@ Object.assign(LAB_TXT, {
     lab_m4_bypass:    [`BYPASS`, `BYPASS`],
     lab_m4_bars:      [`BAR {a}–{b}`, `BAR {a}–{b}`],
     lab_m4_energy_b:  [`ENERJİ`, `ENERGY`],
-    lab_m4_energy_t:  [`Enerji eğrisini göster / gizle`, `Show / hide the energy curve`],
+    lab_m4_energy_t:  [`Enerji eğrisi (yalnız bu Lab'da, Ableton'da yok): her bölümde kaç iz çalıyor ve filtre ne kadar açık, yüzde olarak`, `Energy curve (only in this Lab, not in Ableton): how many tracks play in each section and how open the filter is, as a percentage`],
     lab_m4_reso_t:    [`Master filtre rezonansı (Q)`, `Master filter resonance (Q)`],
     lab_m4_out_t:     [`Master çıkış kazancı`, `Master output gain`],
     lab_m4_trk_h:     [`TRACK · 5 KANAL`, `TRACKS · 5 CHANNELS`],
@@ -18260,8 +18343,8 @@ Object.assign(LAB_TXT, {
     lab_m4_fill_t:    [`Tüm bölümlere yaz / temizle`, `Write to / clear all sections`],
     lab_m4_vol_a:     [`{trk} ses seviyesi`, `{trk} volume`],
     lab_m4_inst_aria: [`{trk} enstrümanı: SAMPLE ya da SYNTH (MIDI)`, `{trk} instrument: SAMPLE or SYNTH (MIDI)`],
-    lab_m4_inst_smp:  [`SAMPLE: loop / one-shot örnek çalar`, `SAMPLE: plays a loop / one-shot sample`],
-    lab_m4_inst_syn:  [`MIDI: bölüm başına bir MIDI klip, iz enstrümanı çalar`, `MIDI: one MIDI clip per section, played by the track instrument`],
+    lab_m4_inst_smp:  [`SMP: hazır örnek / loop çalar. Live'da ses izi ile MIDI izi ayrı izlerdir; bir izi dönüştürmezsin, yeni MIDI izi açarsın (Ctrl/⌘+Shift+T).`, `SMP: plays a ready-made sample / loop. In Live, audio and MIDI tracks are separate tracks; you don't convert one, you add a new MIDI track (Ctrl/⌘+Shift+T).`],
+    lab_m4_inst_syn:  [`MIDI: senin yazdığın notaları izin synth'i çalar (bölüm başına bir MIDI klip). Live'da bu ayrı bir MIDI izidir.`, `MIDI: the track's synth plays the notes you write (one MIDI clip per section). In Live this is a separate MIDI track.`],
     lab_m4_arm_a:     [`{trk} kayda hazırla (ARM) — MIDI klavye bu izi çalar`, `Arm {trk} — the MIDI keyboard plays this track`],
     lab_m4_edit_a:    [`{trk} · {sec} — MIDI klibi düzenle`, `{trk} · {sec} — edit the MIDI clip`],
     lab_m4_edit_t:    [`Klibi düzenle (ya da klibe çift tık)`, `Edit the clip (or double-click the clip)`],
@@ -18269,7 +18352,7 @@ Object.assign(LAB_TXT, {
     lab_m4_master:    [`MASTER`, `MASTER`],
     lab_m4_auto_w:    [`OTOMASYON`, `AUTOMATION`],
     lab_m4_auto_p:    [`Filter · Cutoff`, `Filter · Cutoff`],
-    lab_m4_auto_h:    [`Noktayı yukarı/aşağı sürükle · tekerlek = ince ayar`, `Drag a point up/down · wheel = fine adjust`],
+    lab_m4_auto_h:    [`Noktayı yukarı / aşağı çek: yukarı = parlak, aşağı = boğuk`, `Drag a point up / down: up = bright, down = muffled`],
     lab_m4_grid_aria: [`Aranjman ızgarası: 5 iz × 8 bölüm. Oklar gezinir, Shift+ok seçimi genişletir, Ctrl/⌘+C / X / V / D kopyalar / keser / yapıştırır / çoğaltır, Delete siler, 0 açar/kapatır, Alt+→/← klibi uzatır/kısaltır, Shift+F10 klip menüsü.`, `Arrangement grid: 5 tracks × 8 sections. Arrows move, Shift+arrow extends the selection, Ctrl/⌘+C / X / V / D copy / cut / paste / duplicate, Delete removes, 0 turns on/off, Alt+→/← lengthens/shortens the clip, Shift+F10 opens the clip menu.`],
     lab_m4_loc_aria:  [`Locator'lar: bölüm seç / atla (Shift+tık aralık seçer)`, `Locators: select / jump to a section (Shift+click selects a range)`],
     lab_m4_loc_a:     [`{sec} — seç, çalarken atla`, `{sec} — select, jump while playing`],
@@ -18283,7 +18366,7 @@ Object.assign(LAB_TXT, {
     lab_m4_ins:       [`INSPECTOR`, `INSPECTOR`],
     lab_m4_ins_n:     [`BÖLÜM {n} / 08`, `SECTION {n} / 08`],
     lab_m4_ins_rng:   [`BAR {a}–{b} · 2 BAR`, `BAR {a}–{b} · 2 BARS`],
-    lab_m4_ins_role:  [`{role} · ÖNERİ {bars}`, `{role} · SUGGESTED {bars}`],
+    lab_m4_ins_role:  [`{role} · GERÇEK ŞARKIDA {bars}`, `{role} · IN A REAL SONG {bars}`],
     lab_m4_ins_e:     [`ENERJİ`, `ENERGY`],
     lab_m4_ins_chips: [`Bu bölümde açık izler`, `Tracks on in this section`],
     lab_m4_ins_hz:    [`FİLTRE NOKTASI`, `FILTER POINT`],
@@ -18375,7 +18458,7 @@ Object.assign(LAB_TXT, {
     lab_m4_smp_h:     [`SAMPLER`, `SAMPLER`],
     lab_m4_smp_listen:[`DİNLE`, `LISTEN`],
     lab_m4_smp_listen_t: [`Bu izin örneğini dinle`, `Listen to this track's sample`],
-    lab_m4_smp_p:     [`SAMPLE modunda bu iz, loop setinin örneğini şarkı zamanıyla eş (perde değişmeden) çalar. MIDI'ye çevirip kendi klibini yazabilirsin.`, `In SAMPLE mode this track plays the loop set's sample in sync with the song time (no pitch change). Switch to MIDI to write your own clip.`],
+    lab_m4_smp_p:     [`SAMPLE modunda bu iz, loop setinin hazır kaydını şarkının zamanıyla eş (perdesi değişmeden) çalar. Kendi notalarını yazmak için MIDI'ye çevir — Live'da bu, yeni bir MIDI izi açmak demektir (Ctrl/⌘+Shift+T); ses izi MIDI'ye dönüşmez.`, `In SAMPLE mode this track plays the loop set's recording in time with the song (no pitch change). Switch to MIDI to write your own notes — in Live that means adding a new MIDI track (Ctrl/⌘+Shift+T); an audio track doesn't turn into MIDI.`],
     lab_m4_drum_p:    [`Davul izi: örnek her vuruşta tetiklenir. Kiti değiştir — Mersey (Sounds Mania) ya da Classic.`, `Drum track: the sample fires on every hit. Swap the kit — Mersey (Sounds Mania) or Classic.`],
     lab_m4_kit:       [`KİT`, `KIT`],
     lab_m4_kit_aria:  [`Davul kiti (KICK + HAT)`, `Drum kit (KICK + HAT)`],
@@ -18408,14 +18491,14 @@ Object.assign(LAB_TXT, {
     lab_m4_a_rec:     [`Kaydedildi: {n}`, `Recorded: {n}`],
     // Çalışma mantığı
     lab_m4_hiw_t:     [`Çalışma mantığı`, `How it works`],
-    lab_m4_hiw_aux:   [`ZAMAN ÇİZELGESİ → SCHEDULER → SES GRAFİĞİ`, `TIMELINE → SCHEDULER → AUDIO GRAPH`],
+    lab_m4_hiw_aux:   [`ŞARKI HARİTASI → ZAMAN → ÇALGILAR → ÇIKIŞ`, `SONG MAP → TIME → PLAYERS → OUTPUT`],
     lab_m4_hiw_flow:  [`Sinyal akışı: zaman çizelgesi, scheduler, generator, track gain, master filtre, çıkış`, `Signal flow: timeline, scheduler, generator, track gain, master filter, output`],
     lab_m4_fb1_k:     [`01 · ZAMAN ÇİZELGESİ`, `01 · TIMELINE`],
     lab_m4_fb1_1:     [`5 track × 8 bölüm = 40 klip`, `5 tracks × 8 sections = 40 clips`],
     lab_m4_fb1_2:     [`bölüm = 2 bar = 32 adım`, `section = 2 bars = 32 steps`],
     lab_m4_fb1_3:     [`toplam 256 adım (16 bar)`, `256 steps in total (16 bars)`],
     lab_m4_fb2_k:     [`02 · SCHEDULER`, `02 · SCHEDULER`],
-    lab_m4_fb2_2:     [`nextT += 60/BPM/4 (drift yok)`, `nextT += 60/BPM/4 (no drift)`],
+    lab_m4_fb2_2:     [`her 25 ms'de bir bak, ~0,1 sn ilerisini planla`, `look every 25 ms, book ~0.1 s ahead`],
     lab_m4_fb3_k:     [`03 · GENERATOR ×5`, `03 · GENERATOR ×5`],
     lab_m4_fb3_t:     [`grid[tr][sec] = 1 ise`, `if grid[tr][sec] = 1`],
     lab_m4_fb3_1:     [`KICK · HAT: kit örneği (Classic / Mersey)`, `KICK · HAT: kit sample (Classic / Mersey)`],
@@ -18433,7 +18516,7 @@ Object.assign(LAB_TXT, {
     lab_m4_x1_t:      [`Klip`, `Clip`],
     lab_m4_x1_d:      [`Her klip grid[track][bölüm] = 0/1 (açık/kapalı) ve bir aralıktır (varsayılan tek bölüm). Scheduler o adıma gelince yalnızca klibi açık olan track'lerin generator'ını tetikler.`, `Every clip is grid[track][section] = 0/1 (on/off) plus a range (one section by default). When the scheduler reaches that step it only triggers the generators of tracks whose clip is on.`],
     lab_m4_x2_t:      [`Scheduler`, `Scheduler`],
-    lab_m4_x2_d:      [`Her 16'lık adım (60/BPM/4 — {bpm} BPM'de {ms} ms) bir setTimeout ile ilerler; nota zamanı AudioContext saatinden (nextT) verilir, böylece kayma olmaz. BPM seçili loop setinden gelir.`, `Each 16th step (60/BPM/4 — {ms} ms at {bpm} BPM) advances with a setTimeout; note times come from the AudioContext clock (nextT), so nothing drifts. The BPM comes from the chosen loop set.`],
+    lab_m4_x2_d:      [`Her 25 ms'de bir setTimeout uyanır ve önümüzdeki ~0,1 sn içindeki 16'lık adımları (arka plan sekmesinde 1,2 sn) AudioContext saatine yazar; adım = 60/BPM/4 ({bpm} BPM'de {ms} ms). Nota zamanı ses saatinden (nextT) geldiği için kayma olmaz. BPM seçili loop setinden gelir.`, `Every 25 ms a setTimeout wakes up and books the 16th steps of the next ~0.1 s (1.2 s in a background tab) on the AudioContext clock; step = 60/BPM/4 ({ms} ms at {bpm} BPM). Note times come from the audio clock (nextT), so nothing drifts. The BPM comes from the chosen loop set.`],
     lab_m4_x3_t:      [`Locator`, `Locator`],
     lab_m4_x3_d:      [`Bölüm başlığına tıklamak o bölümü seçer (Shift+tık aralık); çalarken playhead bir sonraki adımda step = bölüm × 32'ye atlar.`, `Clicking a section header selects that section (Shift+click a range); while playing, the playhead jumps to step = section × 32 on the next step.`],
     lab_m4_x4_t:      [`Loop`, `Loop`],
@@ -18523,19 +18606,18 @@ Object.assign(LAB_TXT, {
     lab_m4_gt_drop:   [`Bas ve kick tam gaz. Drop'tan önceki 1 beat sessizlik (gap) etkisini ikiye katlar.`, `Bass and kick at full power. One beat of silence (a gap) before the drop doubles its impact.`],
     lab_m4_g_outro:   [`Elemanlar tek tek çıkar.`, `Elements drop out one by one.`],
     lab_m4_gt_outro:  [`Intro'nun aynası gibi düşün; DJ'in sonraki şarkıya geçişi için ritmi sade bırak.`, `Think of it as a mirror of the intro; keep the rhythm simple so the DJ can mix into the next track.`],
-    lab_m4_tasks_note:[`Görevler builder'daki duruma bakılarak otomatik tamamlanır.`, `Tasks complete automatically from the state of the builder.`],
+    lab_m4_tasks_note:[`Görevler, düzenleyicide yaptıkların izlenerek kendiliğinden tamamlanır. Nerede olduğunu bulamazsan Göster'e bas.`, `Tasks complete by themselves as you work in the editor. Can't find a control? Press Show.`],
     lab_m4_t6:        [`Bir tür şablonu yükle`, `Load a genre template`],
     lab_m4_t7:        [`Intro'da yalnızca Kick + Hi-hat bırak`, `Leave only Kick + Hi-hat in the Intro`],
-    lab_m4_t8:        [`Chorus 1'de tüm kanalları aç`, `Turn on every channel in Chorus 1`],
-    lab_m4_t9:        [`Breakdown'da kick'i kapat`, `Turn off the kick in the Breakdown`],
-    lab_m4_t10:       [`Aranjmanı baştan sona dinle`, `Listen to the arrangement from start to finish`],
+    lab_m4_t8:        [`Chorus 1'de kapalı kanalı aç: bütün kanallar çalsın`, `Turn on the missing channel in Chorus 1 so every channel plays`],
+    lab_m4_t9:        [`Breakdown'da (B-Down) kick'i kapat`, `Turn off the kick in the Breakdown (B-Down)`],
+    lab_m4_t10:       [`Şarkıyı baştan sona dinle (loop kapalı, ■ iki kez, sonra ▶)`, `Listen to the song from start to finish (loop off, ■ twice, then ▶)`],
     lab_m4_t11:       [`Bir synth (MIDI) izine en az 8 nota yaz`, `Write at least 8 notes on a synth (MIDI) track`],
-    lab_m4_t12:       [`Gam dışı nota bırakmadan bir melodi yaz`, `Write a melody with no out-of-key notes`],
     lab_m4_t13:       [`Bir MIDI klibi başka bölüme kopyala`, `Copy a MIDI clip into another section`],
     lab_m4_t14:       [`Tonu değiştir ve MIDI'yi gam içinde taşı`, `Change the key and move the MIDI in key`],
     // Öğretici: DAW'da MIDI yazmak
     lab_m4_tut_t:     [`DAW'da MIDI yazmak`, `Writing MIDI in a DAW`],
-    lab_m4_tut_i:     [`LEAD izini synth'e çevirip Chorus'a kendi melodini yazacaksın: klibi aç, tonu seç, nota çiz, uzunluk ve velocity ayarla, kuantize et, klibi çoğalt, enstrümanı şekillendir ve şarkıyı baştan dinle — Ableton Live'daki MIDI iş akışının aynısı.`, `You will turn the LEAD track into a synth and write your own melody for the chorus: open the clip, pick the key, draw notes, set length and velocity, quantize, duplicate the clip, shape the instrument and play the song from the top — the same MIDI workflow as in Ableton Live.`],
+    lab_m4_tut_i:     [`LEAD izini synth'e çevirip nakarata kendi melodini yazacaksın: tonu loop'larla eşle, klibi aç, nota çiz, uzunluk ve velocity ayarla, kuantize et, klibi çoğalt, enstrümanı şekillendir ve şarkıyı baştan dinle — Ableton Live'daki MIDI iş akışının aynısı.`, `You will turn the LEAD track into a synth and write your own melody for the chorus: match the key to the loops, open the clip, draw notes, set length and velocity, quantize, duplicate the clip, shape the instrument and play the song from the top — the same MIDI workflow as in Ableton Live.`],
     lab_m4_tut_o:     [`Tebrikler: MIDI klibini yazdın, gam içinde tuttun, kopyalayıp kenarından uzatarak aranjmana yaydın. Live'da aynı adımlar: MIDI izi + enstrüman, klibe çift tık, Scale, Ctrl/⌘+U, Ctrl/⌘+C / V, loop'lu klibin kenarını sürükle.`, `Well done: you wrote a MIDI clip, kept it in key and spread it across the arrangement by copying it and dragging its edge. The same steps in Live: MIDI track + instrument, double-click the clip, Scale, Ctrl/⌘+U, Ctrl/⌘+C / V, drag the edge of a looped clip.`],
     lab_m4_tut_1:     [`LEAD izini MIDI (synth) yap`, `Turn LEAD into a MIDI (synth) track`],
     lab_m4_tut_1b:    [`LEAD başlığındaki SMP | MIDI anahtarından MIDI'yi seç. İz artık loop çalmaz: her bölüm senin yazacağın bir MIDI klibi olur ve izin enstrümanı (osilatör → filtre → zarf) onu çalar.`, `Pick MIDI on the SMP | MIDI switch in the LEAD header. The track stops playing the loop: every section becomes a MIDI clip you write, played by the track's instrument (oscillator → filter → envelope).`],
@@ -18543,11 +18625,8 @@ Object.assign(LAB_TXT, {
     lab_m4_tut_2:     [`Chorus 1 klibini aç`, `Open the Chorus 1 clip`],
     lab_m4_tut_2b:    [`LEAD satırında Chorus 1 kutusuna çift tıkla ya da köşedeki kalem düğmesine bas. MIDI nota düzenleyici açılır; klibin uzunluğu bölüm kadardır (2 bar).`, `Double-click the Chorus 1 box on the LEAD row, or press the pencil button in its corner. The MIDI note editor opens; the clip is as long as the section (2 bars).`],
     lab_m4_tut_2a:    [`Klibe çift tık → alttaki Detail View'da MIDI Note Editor açılır.`, `Double-click the clip → the MIDI Note Editor opens in the Detail View below.`],
-    lab_m4_tut_3:     [`Tonu A minör yap, GAM açık kalsın`, `Set the key to A minor, keep SCALE on`],
-    lab_m4_tut_3b:    [`Araç çubuğunda kök notayı A, türü Doğal minör seç; GAM ışığı yanık olsun. Gam içi satırlar açılır ve yeni notalar gama oturur — bu, projenin tonu olur (başlık çubuğundaki ton seçicisi de değişir).`, `In the toolbar set the root to A and the type to Natural Minor; keep the SCALE light on. In-key rows light up and new notes snap to the scale — this becomes the project key (the key selector in the title bar changes too).`],
-    lab_m4_tut_3a:    [`Klip görünümünde Scale düğmesi + kök / tür (Live 12: Scale Awareness).`, `The Scale button + root / type in the clip view (Live 12: Scale Awareness).`],
     lab_m4_tut_4:     [`En az 4 nota çiz`, `Draw at least 4 notes`],
-    lab_m4_tut_4b:    [`ÇİZ modunda boş kareye tıkla: ızgara boyunda nota eklenir, sürükleyerek uzatırsın. Akorun notalarıyla (A, C, E) başlamak melodiyi oturtur.`, `In DRAW mode click an empty cell: a grid-length note appears, drag to extend it. Starting from the chord tones (A, C, E) makes the melody sit.`],
+    lab_m4_tut_4b:    [`ÇİZ modunda boş kareye dokun / tıkla: ızgara boyunda nota eklenir, sürükleyerek uzatırsın. GAM açık olduğu için yalnız ton içindeki (aydınlık) satırlara yazılır. A, C, E notalarıyla başlamak melodiyi Am akoruna oturtur.`, `In DRAW mode tap / click an empty cell: a grid-length note appears, drag to extend it. With SCALE on, notes land only on the in-key (lit) rows. Starting on A, C and E makes the melody sit on the Am chord.`],
     lab_m4_tut_4a:    [`Draw Mode (B) ile çiz ya da boş yere çift tıkla.`, `Draw with Draw Mode (B) or double-click an empty spot.`],
     lab_m4_tut_5:     [`Bir notanın uzunluğunu değiştir`, `Change a note's length`],
     lab_m4_tut_5b:    [`Notanın sağ kenarını sürükle (ya da seçip Alt+→). Uzun nota cümleyi bağlar, kısa nota ritim verir.`, `Drag the note's right edge (or select it and press Alt+→). Long notes connect the phrase, short notes add rhythm.`],
@@ -18567,13 +18646,156 @@ Object.assign(LAB_TXT, {
     lab_m4_tut_10:    [`Aranjmanı baştan çal`, `Play the arrangement from the start`],
     lab_m4_tut_10b:   [`Loop'u kapat, ■'e iki kez bas (şarkı başına döner) ya da Intro locator'ını seç, sonra ▶. Nakaratlarda kendi melodini duyacaksın.`, `Turn the loop off, press ■ twice (back to the song start) or select the Intro locator, then ▶. You will hear your melody in the choruses.`],
     lab_m4_tut_10a:   [`Loop'u kapat (Ctrl/⌘+L), Home ile başa git, Boşluk ile çal.`, `Turn the loop off (Ctrl/⌘+L), press Home, then Space.`],
-    lab_m4_tut_11:    [`Bir klibi Ctrl/⌘+C ile kopyala, Ctrl/⌘+V ile yapıştır`, `Copy a clip with Ctrl/⌘+C, paste it with Ctrl/⌘+V`],
+    lab_m4_tut_11:    [`Bir klibi kopyala ve başka bölüme yapıştır`, `Copy a clip and paste it into another section`],
     lab_m4_tut_11b:   [`Izgarada bir klibe tıkla (seçilir) ve Ctrl/⌘+C'ye bas. Sonra hedef bölüme ok tuşlarıyla geç ya da hedef hücreye tıkla ve Ctrl/⌘+V. Dokunmatikte klibe uzun bas → KOPYALA, hedefe uzun bas → YAPIŞTIR.`, `Click a clip in the grid (it gets selected) and press Ctrl/⌘+C. Then move to the target section with the arrow keys or click the target cell and press Ctrl/⌘+V. On touch, long-press the clip → COPY, long-press the target → PASTE.`],
     lab_m4_tut_11a:   [`Klibi seç → Ctrl/⌘+C → hedef zamanı seç → Ctrl/⌘+V (Ctrl/⌘+D seçimi hemen arkasına çoğaltır).`, `Select the clip → Ctrl/⌘+C → select the target time → Ctrl/⌘+V (Ctrl/⌘+D duplicates the selection right after itself).`],
     lab_m4_tut_12:    [`Bir klibi sağ kenarından sürükleyerek uzat`, `Extend a clip by dragging its right edge`],
     lab_m4_tut_12b:   [`Klibin sağ kenarına gel (imleç ↔ olur) ve sağa sürükle: klip sonraki bölümlerin üstüne tek parça uzar, içeriği loop olarak tekrarlanır (üstteki çentikler tekrar noktaları). Shift ile 1 bar adımla; klavyede Alt+→. Sola sürükleyince kısalır — içerik gizlenir, silinmez.`, `Move to the clip's right edge (the cursor becomes ↔) and drag right: the clip grows over the next sections as one piece and its content repeats as a loop (the notches on top are the repeat points). Hold Shift for 1-bar steps; on the keyboard Alt+→. Dragging left shortens it again — the content is hidden, not deleted.`],
     lab_m4_tut_12a:   [`Loop'u açık klibin sağ kenarını sürükle: Live klibi loop uzunluğu kadar tekrarlar.`, `Drag the right edge of a looped clip: Live repeats the clip every loop length.`],
     lab_m4_tut_reopen:[`Düzenleyiciyi kapattıysan LEAD · Chorus 1 klibine çift tıkla (ya da kaleme bas); başka klipteysen şeritteki ok düğmeleriyle Chorus 1'e dön.`, `If you closed the editor, double-click the LEAD · Chorus 1 clip (or press its pencil); if another clip is open, go back to Chorus 1 with the arrow buttons in the strip.`],
+});
+// Modül 4 · yeni başlayan katmanı: öğretici (Aranjman temelleri), görev ipuçları, dokunmatik ipuçları,
+// kanal paneli, seçim çubuğu, bilgisayar MIDI klavyesi, ton uyarısı ve "Ses nasıl oluşuyor?" (journey + sözlük)
+Object.assign(LAB_TXT, {
+    lab_m4_flt_b:     [`FİLTRE`, `FILTER`],
+    lab_m4_ab_t:      [`İki versiyonu karşılaştır: A ve B ayrı aranjman saklar`, `Compare two versions: A and B keep separate arrangements`],
+    lab_m4_en_cap:    [`ENERJİ EĞRİSİ · LAB'A ÖZEL · %`, `ENERGY CURVE · LAB ONLY · %`],
+    lab_m4_ins_short: [`Bu Lab'da her bölüm kısaltılmış: 2 bar (≈4 sn). Gerçek şarkıda {bars}.`, `In this Lab every section is shortened to 2 bars (≈4 s). In a real song: {bars}.`],
+    lab_m4_st_t1:     [`DOKUN = KLİBİ SEÇ · BOŞ KAREYE DOKUN = KLİP EKLE`, `TAP = SELECT CLIP · TAP AN EMPTY CELL = ADD CLIP`],
+    lab_m4_st_t2:     [`UZUN BAS = MENÜ (KOPYALA / SİL) · KENARI SÜRÜKLE = UZAT`, `LONG-PRESS = MENU (COPY / DELETE) · DRAG AN EDGE = EXTEND`],
+    lab_m4_st_t3:     [`İZ ADINA DOKUN = SES · M/S · SMP|MIDI · KALEM = NOTA YAZ`, `TAP A TRACK NAME = VOLUME · M/S · SMP|MIDI · PENCIL = WRITE NOTES`],
+    lab_m4_st_prog:   [`DİNLENİYOR · BAR {n}/16`, `LISTENING · BAR {n}/16`],
+    lab_m4_swipe:     [`Şarkının devamı sağda — ızgarayı yana kaydır →`, `The rest of the song is to the right — swipe the grid →`],
+    // Seçim çubuğu (dokunmatik / dar ekran): seçili klibin eylemleri ızgaranın hemen altında
+    lab_m4_sb_aria:   [`Seçili klip eylemleri`, `Selected clip actions`],
+    lab_m4_sb_sel:    [`SEÇİLİ · {name}`, `SELECTED · {name}`],
+    lab_m4_sb_seln:   [`SEÇİLİ · {n} KLİP`, `SELECTED · {n} CLIPS`],
+    lab_m4_sb_none:   [`Klibe dokun → SİL · AÇ/KAPA · KOPYALA burada`, `Tap a clip → DELETE · ON/OFF · COPY here`],
+    // Kanal paneli (telefon: iz başlığı sadeleşir; ses / SMP|MIDI / ARM / doldur burada)
+    lab_m4_ch_h:      [`KANAL · {trk}`, `CHANNEL · {trk}`],
+    lab_m4_ch_p:      [`Izgarada iz adına dokununca o izin ayarları burada açılır.`, `Tap a track name in the grid to show its settings here.`],
+    lab_m4_ch_vol:    [`SES`, `VOLUME`],
+    lab_m4_ch_fill:   [`TÜM BÖLÜMLERE YAZ`, `FILL ALL SECTIONS`],
+    lab_m4_ch_clear:  [`SATIRI TEMİZLE`, `CLEAR THE ROW`],
+    lab_m4_ch_inst:   [`ÇALGI`, `INSTRUMENT`],
+    lab_m4_th_t:      [`{trk}: izi seç — ayarlar aşağıdaki KANAL panelinde`, `{trk}: select the track — its settings are in the CHANNEL panel below`],
+    // Ton uyarısı
+    lab_m4_keywarn:   [`Loop'lar {set} — MIDI'yi {key} tonunda yazarsan çatışır`, `The loops are in {set} — MIDI written in {key} will clash`],
+    lab_m4_keywarn_b: [`TONU {set} YAP`, `USE {set}`],
+    lab_m4_keywarn_t: [`Proje tonunu loop setinin tonuna eşitle`, `Match the project key to the loop set`],
+    // Kayıt + bilgisayar MIDI klavyesi (Live: Computer MIDI Keyboard, M)
+    lab_m4_kbd:       [`KLAVYE`, `KEYS`],
+    lab_m4_kbd_t:     [`Bilgisayar klavyesiyle çal (Live: Computer MIDI Keyboard, M): A W S E D F T G Y H U J K = notalar, Z / X = oktav`, `Play with the computer keyboard (Live: Computer MIDI Keyboard, M): A W S E D F T G Y H U J K = notes, Z / X = octave`],
+    lab_m4_kbd_oct:   [`Klavye oktavı: {n}`, `Keyboard octave: {n}`],
+    lab_m4_rec_noclip:[`Kayıt bir MIDI klibine yazılır: önce LEAD, BASS ya da PAD izini MIDI'ye çevir, sonra klibin kalemine dokun.`, `Recording goes into a MIDI clip: switch LEAD, BASS or PAD to MIDI first, then tap the clip's pencil.`],
+    lab_m4_rec_nodev: [`MIDI klavye bağlı değil. KLAVYE'yi açıp bilgisayar klavyesiyle çal: A W S E D F T G Y H U J K notalar, Z / X oktav.`, `No MIDI keyboard connected. Turn on KEYS and play with your computer keyboard: A W S E D F T G Y H U J K are notes, Z / X change octave.`],
+    lab_m4_rec_touch: [`Telefonda kayıt için MIDI klavye gerekir. Notaları düzenleyicide ÇİZ modunda dokunarak da yazabilirsin.`, `On a phone, recording needs a MIDI keyboard. You can also write notes by tapping in DRAW mode in the editor.`],
+    lab_m4_rec_ok:    [`KAYIT HAZIR — bir tuşa bas`, `READY TO RECORD — press a key`],
+    // Görev ipuçları (makeTaskPanel hints)
+    lab_m4_h6:        [`Pencerenin sağındaki TÜR ŞABLONU: Pop, House, Trap ya da Hip-Hop.`, `GENRE TEMPLATE on the right of the window: Pop, House, Trap or Hip-Hop.`],
+    lab_m4_h7:        [`Intro sütununda BASS / LEAD / PAD klibini seç ve SİL'e bas (telefonda klibe dokun → alttaki SİL).`, `In the Intro column select the BASS / LEAD / PAD clip and press DELETE (on a phone tap the clip → DELETE below).`],
+    lab_m4_h8:        [`House, Trap ya da Hip-Hop'ta Chorus 1'de PAD kapalıdır: o boş kareye dokun.`, `In House, Trap or Hip-Hop the PAD is off in Chorus 1: tap that empty cell.`],
+    lab_m4_h9:        [`KICK satırında B-Down klibini seç → SİL ya da AÇ/KAPA.`, `On the KICK row select the B-Down clip → DELETE or ON/OFF.`],
+    lab_m4_h10:       [`16 bar ≈ 31 sn. Durum satırı kaçıncı barda olduğunu gösterir.`, `16 bars ≈ 31 s. The status line shows which bar you are in.`],
+    lab_m4_h11:       [`İz başlığında SMP | MIDI → MIDI, sonra klibin kalemi → ÇİZ modunda dokun.`, `In the track header pick SMP | MIDI → MIDI, then the clip's pencil → tap in DRAW mode.`],
+    lab_m4_h15:       [`Düzenleyicide GAM'ı kapat, koyu bir satıra nota koy; sonra GAM'ı aç ve o notayı aydınlık satıra taşı ya da sil.`, `In the editor turn SCALE off and put a note on a dark row; then turn SCALE on and move that note to a lit row or delete it.`],
+    lab_m4_h13:       [`MIDI klibi seç → KOPYALA → başka bölümde aynı satırı seç → YAPIŞTIR.`, `Select a MIDI clip → COPY → select the same row in another section → PASTE.`],
+    lab_m4_h14:       [`Notalar varken başlık çubuğundaki ton seçicisini değiştir → GAM İÇİNDE TAŞI.`, `With notes written, change the key selector in the title bar → TRANSPOSE IN KEY.`],
+    lab_m4_t15:       [`Gam dışı bir nota yaz, duy; sonra onu gam içine al`, `Write an out-of-key note, hear it, then bring it back into the key`],
+    // Öğretici 1: Aranjman temelleri
+    lab_m4_tuta_t:    [`Aranjman temelleri`, `Arranging basics`],
+    lab_m4_tuta_i:    [`Bir loop'u şarkıya çevirmenin yolu: hangi çalgının hangi bölümde çalacağını seçmek. Çalacak, bölüme atlayacak, klip silip ekleyecek, bir izi susturacak ve parlaklığı otomasyonla değiştireceksin — Ableton Live'ın Arrangement görünümündeki işlerin aynısı.`, `Turning a loop into a song means choosing which instrument plays in which section. You will play, jump to a section, delete and add clips, mute a track and change the brightness with automation — the same jobs as in Ableton Live's Arrangement View.`],
+    lab_m4_tuta_o:    [`Aranjmanın temelini kurdun: bölümler, klipler, mute/solo ve otomasyon. Sıradaki ders "DAW'da MIDI yazmak" — nakarata kendi melodini yazacaksın.`, `You have the basics of arranging: sections, clips, mute/solo and automation. Next lesson: "Writing MIDI in a DAW" — you'll write your own melody for the chorus.`],
+    lab_m4_ta_1:      [`▶ ile şarkıyı baştan çal`, `Play the song from the top with ▶`],
+    lab_m4_ta_1b:     [`Çal düğmesine bas. Soldan sağa ilerleyen beyaz çizgi (playhead) şarkının neresinde olduğunu gösterir; renkli kutular o an çalan çalgılardır. Başa dönmek için ■'e iki kez bas.`, `Press play. The white line moving left to right (the playhead) shows where you are in the song; the coloured boxes are the instruments playing right now. Press ■ twice to go back to the start.`],
+    lab_m4_ta_1a:     [`Boşluk = çal / dur. Stop'a iki kez basmak şarkı başına döner.`, `Space = play / stop. Pressing Stop twice returns to the song start.`],
+    lab_m4_ta_2:      [`Bir bölüm başlığına (locator) dokun`, `Tap a section header (locator)`],
+    lab_m4_ta_2b:     [`Intro, Verse, Chorus… yazan renkli başlıklar şarkının bölümleridir. Birine dokununca seçilir; çalarken playhead oraya atlar. Sağdaki INSPECTOR o bölümün ne işe yaradığını anlatır.`, `The coloured headers saying Intro, Verse, Chorus… are the song's sections. Tap one to select it; while playing, the playhead jumps there. The INSPECTOR on the right explains what that section is for.`],
+    lab_m4_ta_2a:     [`Locator'lar (sağ tık → Add Locator); tıklayınca çalma oraya atlar.`, `Locators (right-click → Add Locator); clicking one jumps playback there.`],
+    lab_m4_ta_3:      [`Intro'da yalnız Kick + Hi-hat bırak`, `Leave only Kick + Hi-hat in the Intro`],
+    lab_m4_ta_3b:     [`Intro sütununda BASS, LEAD ya da PAD satırında renkli bir klip varsa ona dokun (seçilir), sonra SİL'e bas. Bilgisayarda Delete tuşu, telefonda uzun basış → SİL de olur. Şarkılar genelde sade başlar; dinleyici içeri yavaşça alınır.`, `If the Intro column has a coloured clip on the BASS, LEAD or PAD row, tap it (it gets selected), then press DELETE. The Delete key or a long-press → DELETE on a phone also work. Songs usually start simple to draw the listener in.`],
+    lab_m4_ta_3a:     [`Klibi seç → Delete. Klibi silmeden susturmak için 0 (Deactivate).`, `Select the clip → Delete. To silence it without deleting, press 0 (Deactivate).`],
+    lab_m4_ta_4:      [`Boş bir kareye dokunup klip ekle`, `Tap an empty cell to add a clip`],
+    lab_m4_ta_4b:     [`Kesik çizgili boş kareler, o çalgının o bölümde susması demektir. Birine dokununca klip eklenir ve çalgı orada girer. Örneğin Verse 1'de LEAD'i ekle.`, `Dashed empty cells mean that instrument is silent in that section. Tap one to add a clip, and the instrument comes in there. For example, add the LEAD in Verse 1.`],
+    lab_m4_ta_4a:     [`Draw Mode (B) ile çiz ya da Session'dan klibi sürükle.`, `Draw with Draw Mode (B) or drag a clip in from Session View.`],
+    lab_m4_ta_5:      [`BASS'ı M ile sustur ya da S ile yalnız dinle`, `Mute the BASS with M or solo it with S`],
+    lab_m4_ta_5b:     [`İz başlığındaki M (mute) o çalgıyı susturur, S (solo) yalnız onu bırakır. Klipler silinmez; tekrar basınca geri gelir. Bir sesin şarkıya ne kattığını anlamanın en hızlı yolu budur.`, `M (mute) in the track header silences that instrument, S (solo) leaves only it playing. Nothing is deleted; press again to bring it back. It is the fastest way to hear what a sound adds to the song.`],
+    lab_m4_ta_5a:     [`İz başlığındaki Track Activator (sarı numara) = mute, S = Solo.`, `The Track Activator (yellow number) in the track header = mute, S = Solo.`],
+    lab_m4_ta_6:      [`Breakdown'daki otomasyon noktasını aşağı çek`, `Drag the Breakdown automation point down`],
+    lab_m4_ta_6b:     [`Alttaki sarı çizgi tüm şarkının parlaklığıdır (master filtre). B-Down'ın noktasını aşağı çekince o bölüm boğuklaşır ve sakinleşir; nakarattan önce nefes aldırır. Klavyede ok tuşları da çalışır.`, `The yellow line at the bottom is the whole song's brightness (the master filter). Drag the B-Down point down and that section gets muffled and calm; it lets the song breathe before the chorus. Arrow keys work too.`],
+    lab_m4_ta_6a:     [`A ile otomasyonu göster, çizgideki noktayı sürükle (Auto Filter → Frequency).`, `Press A to show automation, drag the point on the line (Auto Filter → Frequency).`],
+    lab_m4_ta_7:      [`Şarkıyı baştan sona dinle`, `Listen to the song from start to finish`],
+    lab_m4_ta_7b:     [`Loop kapalıyken ■'e iki kez bas, sonra ▶. 16 bar ≈ 31 sn; durum satırı kaçıncı barda olduğunu sayar. Enerjinin bölümden bölüme nasıl değiştiğini dinle.`, `With the loop off press ■ twice, then ▶. 16 bars ≈ 31 s; the status line counts the bar. Listen to how the energy changes from section to section.`],
+    lab_m4_ta_7a:     [`Loop'u kapat (Ctrl/⌘+L), Home, Boşluk.`, `Turn the loop off (Ctrl/⌘+L), Home, Space.`],
+    // Öğretici 2 (MIDI): ilk adım — tonu loop'larla eşle
+    lab_m4_tut_s:     [`Loop setini Cassianism · Am yap`, `Set the loop set to Cassianism · Am`],
+    lab_m4_tut_sb:    [`TEMPO · LOOP SETİ ekranına dokun ve "126.00 · Cassianism · Am"ı seç. Tempo, davullar, bas ve pad birlikte değişir; proje tonu da A minör olur. Melodin loop'larla aynı tonda olmalı, yoksa notalar çatışır.`, `Tap the TEMPO · LOOP SET display and pick "126.00 · Cassianism · Am". Tempo, drums, bass and pad change together, and the project key becomes A minor. Your melody must be in the same key as the loops, or the notes will clash.`],
+    lab_m4_tut_sa:    [`Kontrol çubuğunda Tempo + Key/Scale; loop'ları projenin tonunda seç (Browser'da Key süzgeci).`, `Tempo + Key/Scale in the control bar; pick loops in the project's key (the Key filter in the Browser).`],
+    lab_m4_tut_11t:   [`Klibe uzun bas → KOPYALA. Sonra hedef boş kareye uzun bas → YAPIŞTIR. (Klavyede: klibi seç, Ctrl/⌘+C, hedefi seç, Ctrl/⌘+V.)`, `Long-press the clip → COPY. Then long-press the empty target cell → PASTE. (Keyboard: select the clip, Ctrl/⌘+C, select the target, Ctrl/⌘+V.)`],
+    lab_m4_tut_btn1:  [`1 · Aranjman temelleri`, `1 · Arranging basics`],
+    lab_m4_tut_btn2:  [`2 · DAW'da MIDI yazmak`, `2 · Writing MIDI in a DAW`],
+    lab_m4_flow_note: [`Lab'da Mixing önce gelir: karıştırmayı kısa bir loop üzerinde öğrenmek kolaydır. Gerçek projede sıra önce aranjman, sonra mix ve master.`, `In the Lab, Mixing comes first: mixing is easier to learn on a short loop. In a real project you arrange first, then mix and master.`],
+    // Ses nasıl oluşuyor? (yeni başlayan katmanı)
+    lab_m4_hb_t:      [`Bu sayfada ses nasıl oluşuyor?`, `How is the sound made on this page?`],
+    lab_m4_hb_intro:  [`Şarkın bir yol gibi soldan sağa akar. Her bölümde hangi çalgının çalacağını sen seçersin. Aşağıdaki 6 kutu, sesin hoparlöre kadar geçtiği yolu sırasıyla gösterir; bir kutuya dokununca açıklamasına gidersin.`, `Your song flows left to right like a road. In each section you choose which instruments play. The 6 boxes below show, in order, the path the sound takes to your speakers; tap a box to jump to its explanation.`],
+    lab_m4_hn_1:      [`ŞARKI HARİTASI`, `SONG MAP`],
+    lab_m4_hn_2:      [`ZAMAN TUTUCU`, `TIMEKEEPER`],
+    lab_m4_hn_3:      [`ÇALGILAR`, `PLAYERS`],
+    lab_m4_hn_4:      [`SES DÜĞMELERİ`, `VOLUME KNOBS`],
+    lab_m4_hn_5:      [`PARLAKLIK PERDESİ`, `BRIGHTNESS CURTAIN`],
+    lab_m4_hn_6:      [`ÇIKIŞ`, `OUTPUT`],
+    lab_m4_j1_t:      [`Şarkı haritası`, `The song map`],
+    lab_m4_j1_d:      [`Şarkın soldan sağa uzanan bir zaman şerididir: 8 bölüm (Intro, Verse, Pre-Chorus, Chorus…) ve her satırda bir çalgı. Renkli kutulara klip denir: "bu çalgı burada çalsın" demek.`, `Your song is a timeline running left to right: 8 sections (Intro, Verse, Pre-Chorus, Chorus…) and one instrument per row. The coloured boxes are called clips: they mean "this instrument plays here".`],
+    lab_m4_j1_l:      [`Bir otobüs güzergâhı: duraklar bölümler, otobüse binen yolcular o bölümde çalan çalgılar.`, `A bus route: the stops are the sections, the passengers who get on are the instruments playing there.`],
+    lab_m4_j1_h:      [`Bir klibi silersen o çalgı o bölümde susar; boş kareye dokunursan orada girer.`, `Delete a clip and that instrument goes quiet in that section; tap an empty cell and it comes in there.`],
+    lab_m4_j1_a:      [`Arrangement View (Tab), Locator'lar`, `Arrangement View (Tab), Locators`],
+    lab_m4_j2_t:      [`Zaman tutucu`, `The timekeeper`],
+    lab_m4_j2_d:      [`Şarkıyı adım adım ilerletir ve "şimdi hangi bölümdeyiz?" diye bakar. Hızı [[bpm]] belirler: 125 BPM = dakikada 125 vuruş. Tempo seçtiğin loop setinden gelir. Burada her bölüm 2 [[bar]] (gerçek şarkıda 8–16 bar).`, `Moves the song forward step by step and keeps asking "which section are we in?". The [[bpm]] sets the speed: 125 BPM = 125 beats a minute. The tempo comes from the loop set you pick. Here every section is 2 [[bar|bars]] (8–16 in a real song).`],
+    lab_m4_j2_l:      [`Orkestra şefinin sopası: herkese ne zaman çalacağını o söyler.`, `The conductor's baton: it tells everyone when to play.`],
+    lab_m4_j2_h:      [`▶ şarkıyı başlatır, ■'e iki kez basmak başa döndürür. ↻ [[loop]] açıkken seçili bölüm sürekli tekrar eder.`, `▶ starts the song, pressing ■ twice goes back to the start. With ↻ [[loop]] on, the selected section repeats.`],
+    lab_m4_j2_a:      [`Kontrol çubuğu: Play / Stop, Tempo, Loop`, `Control bar: Play / Stop, Tempo, Loop`],
+    lab_m4_j3_t:      [`Çalgılar`, `The players`],
+    lab_m4_j3_d:      [`KICK ve HI-HAT hazır davul sesleridir ([[sample|örnek]]). BASS, LEAD ve PAD ya hazır bir kayıt / [[loop]] çalar ya da senin yazdığın notaları bir synth çalar: iz başlığındaki SMP | MIDI anahtarı bunu seçer.`, `KICK and HI-HAT are ready-made drum sounds ([[sample|samples]]). BASS, LEAD and PAD either play a ready-made recording / [[loop]] or a synth plays the notes you write: the SMP | MIDI switch in the track header picks which.`],
+    lab_m4_j3_l:      [`Sahnedeki müzisyenler: kimi kayıttan çalar, kimi senin yazdığın notayı okur.`, `Musicians on stage: some play a recording, some read the sheet music you write.`],
+    lab_m4_j3_h:      [`LEAD'i MIDI'ye çevirirsen hazır melodi susar; yerine kendi [[midi|MIDI]] notaların çalar.`, `Switch LEAD to MIDI and the recorded melody stops; your own [[midi|MIDI]] notes play instead.`],
+    lab_m4_j3_a:      [`Audio Clip (loop), Drum Rack / Simpler, MIDI Clip + Analog / Wavetable`, `Audio Clip (loop), Drum Rack / Simpler, MIDI Clip + Analog / Wavetable`],
+    lab_m4_j4_t:      [`Her çalgının ses düğmesi`, `Each player's volume`],
+    lab_m4_j4_d:      [`Her satırın bir ses sürgüsü var. M (mute) o çalgıyı susturur, S (solo) yalnız onu dinletir. Telefonda iz adına dokun: sürgü aşağıdaki KANAL panelinde açılır.`, `Every row has a volume slider. M (mute) silences that instrument, S (solo) plays only that one. On a phone tap the track name: the slider opens in the CHANNEL panel below.`],
+    lab_m4_j4_l:      [`Evdeki her odanın ayrı ışık düğmesi.`, `A separate light switch for every room.`],
+    lab_m4_j4_h:      [`Sürgüyü sola çekince o çalgı kısılır. S ile tek başına dinlemek, bir sorunu bulmanın en kolay yoludur.`, `Slide left and it gets quieter. Soloing a part with S is the easiest way to find a problem.`],
+    lab_m4_j4_a:      [`Track Volume, Track Activator (mute), Solo`, `Track Volume, Track Activator (mute), Solo`],
+    lab_m4_j5_t:      [`Parlaklık perdesi (master filtre + otomasyon)`, `The brightness curtain (master filter + automation)`],
+    lab_m4_j5_d:      [`Bütün şarkının üstünde bir [[filter|filtre]] var. Alttaki sarı çizgideki noktalar, her bölümde perdenin ne kadar açık olacağını ([[cutoff]]) söyler. Bir ayarın şarkı boyunca kendiliğinden değişmesine otomasyon denir. FİLTRE anahtarı perdeyi tamamen kaldırır.`, `A [[filter]] sits over the whole song. The dots on the yellow line say how open the curtain ([[cutoff]]) is in each section. A setting that changes by itself over the song is called automation. The FILTER switch removes the curtain completely.`],
+    lab_m4_j5_l:      [`Pencere perdesi: kapalıyken ses boğuk ve uzaktan gelir gibi, açıkken parlak ve yakın.`, `A window curtain: closed, the sound is muffled and far away; open, it is bright and close.`],
+    lab_m4_j5_h:      [`Noktayı aşağı çekince bölüm boğuklaşır ve sakinleşir (Intro, Breakdown); yukarı çekince parlar ve enerji yükselir (Chorus). [[reso|RESO]] perdenin kenarına "vıu" diye öten bir vurgu ekler.`, `Pull a dot down and the section gets darker and calmer (Intro, Breakdown); push it up and it gets brighter and more energetic (Chorus). [[reso|RESO]] adds a whistling peak at the curtain's edge.`],
+    lab_m4_j5_a:      [`Master'da Auto Filter + Automation (A tuşu)`, `Auto Filter on the Master + Automation (A key)`],
+    lab_m4_j6_t:      [`Çıkış`, `The output`],
+    lab_m4_j6_d:      [`Bütün çalgılar burada birleşir. Hafif bir [[comp|kompresör]] sesi toparlar, OUT düğmesi son ses seviyesini ayarlar, ışıklı gösterge ne kadar yüksek çaldığını gösterir ve ses hoparlöre gider.`, `Every instrument meets here. A gentle [[comp|compressor]] glues the sound together, OUT sets the final level, the light meter shows how loud it is, and the sound goes to your speakers.`],
+    lab_m4_j6_l:      [`Bütün nehirlerin döküldüğü deniz; OUT da evin ana vanası.`, `The sea all rivers flow into; OUT is the main tap.`],
+    lab_m4_j6_h:      [`OUT'u açınca her şey birlikte yükselir. Gösterge kırmızıya dayanıyorsa ses fazla yüksektir.`, `Turn OUT up and everything gets louder together. If the meter hits red, it is too loud.`],
+    lab_m4_j6_a:      [`Master izi: Glue Compressor, Master Volume, seviye göstergesi`, `Master track: Glue Compressor, Master Volume, level meter`],
+    lab_m4_he_cap:    [`ENERJİ EĞRİSİ · YALNIZ BU LAB'DA`, `ENERGY CURVE · ONLY IN THIS LAB`],
+    lab_m4_he_p:      [`ENERJİ düğmesi açınca ızgaranın üstüne kesik bir çizgi çizilir: her bölümde kaç çalgı çaldığına ve perdenin ne kadar açık olduğuna bakıp bir yüzde verir. Ableton'da böyle bir çizgi yoktur; kulağını eğitmek için burada. İyi bir şarkıda eğri "nefes alır": yükselir → düşer → patlar.`, `The ENERGY button draws a dashed line over the grid: it gives a percentage from how many instruments play in each section and how open the curtain is. Ableton has no such line; it is here to train your ear. In a good song the curve "breathes": rise → fall → burst.`],
+    lab_m4_gl_arr_t:  [`Aranjman`, `Arrangement`],
+    lab_m4_gl_arr_d:  [`Şarkının baştan sona dizilişi: hangi çalgı hangi bölümde çalıyor.`, `How the song is laid out from start to end: which instrument plays in which section.`],
+    lab_m4_gl_trk_t:  [`İz / kanal`, `Track / channel`],
+    lab_m4_gl_trk_d:  [`Bir çalgının yatay satırı; kendi ses düğmesi, M ve S'si vardır.`, `One instrument's horizontal row; it has its own volume, M and S.`],
+    lab_m4_gl_clip_t: [`Klip`, `Clip`],
+    lab_m4_gl_clip_d: [`İzdeki renkli kutu: "bu çalgı bu zamanda çalsın" demek. İçinde bir kayıt ya da MIDI notaları olur.`, `The coloured box on a track: it means "this instrument plays at this time". It holds a recording or MIDI notes.`],
+    lab_m4_gl_loc_t:  [`Bölüm / locator`, `Section / locator`],
+    lab_m4_gl_loc_d:  [`Intro, Chorus gibi adı olan zaman parçası; başlığına dokununca oraya gidilir.`, `A named stretch of time such as Intro or Chorus; tap its header to go there.`],
+    lab_m4_gl_ms_t:   [`Mute / Solo (M / S)`, `Mute / Solo (M / S)`],
+    lab_m4_gl_ms_d:   [`Mute bir izi susturur, Solo yalnız o izi bırakır. Klipler silinmez.`, `Mute silences a track, Solo leaves only that track playing. No clips are deleted.`],
+    lab_m4_gl_auto_t: [`Otomasyon`, `Automation`],
+    lab_m4_gl_auto_d: [`Bir ayarın şarkı boyunca kendiliğinden değişmesi; çizgideki noktalarla çizilir.`, `A setting that changes by itself over the song, drawn with points on a line.`],
+    lab_m4_gl_roll_t: [`Nota düzenleyici (piyano rulosu)`, `Note editor (piano roll)`],
+    lab_m4_gl_roll_d: [`MIDI notalarını kare kare çizdiğin pencere: yukarısı tiz, sağı ileri zaman.`, `The window where you draw MIDI notes cell by cell: up is higher, right is later.`],
+    lab_m4_gl_q_t:    [`Kuantize`, `Quantize`],
+    lab_m4_gl_q_d:    [`Kayık çalınmış notaları ızgaraya hizalamak.`, `Snapping slightly-off notes onto the grid.`],
+    lab_m4_gl_key_t:  [`Ton / gam`, `Key / scale`],
+    lab_m4_gl_key_d:  [`Birbirine uyan notaların ailesi (ör. A minör). Loop'larla aynı tonda yazmazsan notalar çatışır.`, `A family of notes that fit together (e.g. A minor). Write in a different key from the loops and the notes clash.`],
+    lab_m4_gl_syn_t:  [`Synth`, `Synth`],
+    lab_m4_gl_syn_d:  [`Sesi elektronik olarak üreten çalgı; MIDI notalarını çalar.`, `An instrument that makes sound electronically; it plays MIDI notes.`],
 });
 // İnce çizgi ikonlar (tasarımdaki ▸ 〰 ↺ glifleri + MIDI araçları; currentColor)
 const M4_IC = {
@@ -18599,7 +18821,8 @@ const m4Ann = t => lpAnnounce(t);
 const m4RollOpen = () => !!(_m4ui && _m4ui.roll && _m4ui.roll.isOpen());
 // İz rengi YAZI olarak (açık anahtar, düzenleyici okumaları): bas / pad paletinin okunur (≥4.5:1) eşi
 const m4TxtVar = tr => ({ 2: '--err', 4: '--violet' })[tr] || ARR_TRACKS[tr].arrVar;
-const m4T = { resize: 0, vel: 0, q: 0, copy: 0, paste: 0, ext: 0 };   // öğretici sayaçları (piyano rulosu + ızgara klip eylemleri)
+// öğretici sayaçları (piyano rulosu + ızgara klip eylemleri + aranjman dersi: locator, klip ekle, M/S, baştan sona dinleme)
+const m4T = { resize: 0, vel: 0, q: 0, copy: 0, paste: 0, ext: 0, loc: 0, add: 0, ms: 0, full: 0 };
 let m4Ed = null;                             // düzenleyicide açık klip { r, c }
 const m4Rec = { cur: 0, down: 0, held: new Map(), grid: 1 };   // MIDI kayıt: adım imleci, basılı notalar, ızgara (1/16 adım)
 const m4MidiTr = new Map();                  // basılı MIDI nota → çalınan iz (noteoff doğru ize gitsin)
@@ -18686,6 +18909,7 @@ function m4FillRow(r) {
         if (!!v === !full) return;
         state.arrCells[r][c] = !full; m4S.cols[c] = true;
         if (r === 0 && c === 6) m4S.bdKick = true;
+        if (c === 3 && !full) m4S.ch1On = true;
         if (full) arrCellOff(r, c);
     });
     if (full) m4SpanClear(r);                // satır temizlenince uzatılmış klipler de tek bölüme döner
@@ -18700,6 +18924,7 @@ function m4PickTpl(name) {
     state.arrCells.forEach((row, r) => row.forEach((v, c) => { const nv = !!p[r][c]; if (nv !== !!v) { row[c] = nv; if (!nv) arrCellOff(r, c); } }));
     m4S.auto = ARR_TPL_AUTO[name].slice();
     m4S.tpl = name; m4S.tplUsed = true; m4S.dirty = true;
+    m4S.ch1On = false;                       // görev 8: şablondan SONRA kapalı bir Chorus 1 klibi açılmalı
     m4Changed(); arrApplyFilterNow();
 }
 function m4StepTpl(d) {
@@ -18741,12 +18966,12 @@ function m4SetBypass(b) {
     if (!!b === m4S.bypass) return;
     m4Push();
     m4S.bypass = !!b;
-    if (_m4ui && _m4ui.pwr) _m4ui.pwr.set(!m4S.bypass);
+    if (_m4ui && _m4ui.fltT) _m4ui.fltT.set(!m4S.bypass);
     arrApplyFilterNow();
     m4PaintAuto(); m4PaintPos(true);
 }
-function m4SetMute(i) { m4Push(); m4S.mute[i] = m4S.mute[i] ? 0 : 1; arrApplyMix(); m4PaintMix(); }
-function m4SetSolo(i) { m4Push(); m4S.solo[i] = m4S.solo[i] ? 0 : 1; arrApplyMix(); m4PaintMix(); }
+function m4SetMute(i) { m4Push(); m4S.mute[i] = m4S.mute[i] ? 0 : 1; m4T.ms++; arrApplyMix(); m4PaintMix(); }
+function m4SetSolo(i) { m4Push(); m4S.solo[i] = m4S.solo[i] ? 0 : 1; m4T.ms++; arrApplyMix(); m4PaintMix(); }
 function m4Toggle() {
     if (!arrAudioOK()) { m4NoAudio(); return; }
     if (arrRun.playing) arrStop('pause'); else arrStart();
@@ -19208,6 +19433,7 @@ function m4Del(cells, quiet) {
 function m4Act(cells) {
     if (!cells.length) return;
     const on = !cells.some(R => R.on);
+    if (on && cells.some(R => R.h <= 3 && R.last >= 3)) m4S.ch1On = true;   // görev 8: kapalı Chorus 1 klibi açıldı
     m4Edit(() => cells.forEach(R => m4SetOnRaw(R.r, R.h, on)));
     m4Ann(Lf(on ? 'lab_m4_a_on' : 'lab_m4_a_off', { n: cells.length }));
 }
@@ -19242,6 +19468,8 @@ const m4DelSel = () => m4Del(m4SelCells());
 const m4ActSel = () => m4Act(m4SelCells());
 // Boş hücreye tık: klip ekle (Ableton'da çizim; burada bir bölümlük klip açılır)
 function m4NewClip(r, h) {
+    if (h === 3) m4S.ch1On = true;           // görev 8: Chorus 1'deki boş kareye klip eklendi
+    m4T.add++;
     m4Edit(() => m4SetOnRaw(r, h, true));
     m4Ann(Lf('lab_m4_a_new', { trk: ARR_TRACKS[r].name, sec: ARR_SECTIONS[h].name }));
 }
@@ -19464,7 +19692,8 @@ function m4MenuOpen(x, y, opener) {
     m4MenuClose(false);
     const cells = m4SelCells(), one = cells.length === 1 ? cells[0] : null;
     const mod = M4_MAC ? '⌘' : 'Ctrl+', ks = M4_MAC ? 'Meta+' : 'Control+';
-    const el = mk('div', 'lab-m4-cm');
+    // Dokunmatikle açılan menüde kısayol sütunu yok (⌘C, Del dokunmatikte anlamsız)
+    const el = mk('div', 'lab-m4-cm' + (m4Ptr === 'touch' ? ' is-touch' : ''));
     el.setAttribute('role', 'menu'); el.setAttribute('aria-label', L('lab_m4_cm_aria'));
     const defs = [
         ['lab_m4_c_copy', mod + 'C', ks + 'C', m4CopySel, true],
@@ -19561,6 +19790,8 @@ function m4RollStrip() {
     el.setAttribute('role', 'group');
     const rec = makeToggle({ text: 'REC', led: true, color: 'var(--err-strong)', on: m4S.rec, cls: 'lab-m4-rs-rec', onToggle: b => m4SetRec(b) });
     const midi = makeMidiButton({ cls: 'lab-m4-rs-midi' });
+    const kbd = makeToggle({ text: () => L('lab_m4_kbd'), led: true, color: 'var(--accent)', on: m4S.kbd, cls: 'lab-m4-kbdt',
+        label: () => L('lab_m4_kbd_t'), title: () => L('lab_m4_kbd_t'), onToggle: b => m4SetKbd(b) });
     const nav = mk('div', 'lab-m4-rs-nav');
     const prev = lpBtn({ icon: 'prev', onClick: () => m4RollNav(-1) });
     const name = mk('span', 'lab-m4-rs-name');
@@ -19578,10 +19809,10 @@ function m4RollStrip() {
     ops.append(cp, ps, dup);
     const info = mk('span', 'lab-m4-rs-info');
     const clip = mk('span', 'lab-m4-rs-clip');
-    el.append(rec.el, midi.el, nav, ops, info, clip);
+    el.append(rec.el, midi.el, kbd.el, nav, ops, info, clip);
     // Şerit tuşları kitin pencere kısayollarına (Delete, B, +/−) gitmesin; Tab tuzağı ve Esc pencereye kalsın
     el.addEventListener('keydown', e => { if (e.key !== 'Tab' && e.key !== 'Escape') e.stopPropagation(); });
-    return { el, rec, midi, prev, name, next, cp, ps, dup, info, clip };
+    return { el, rec, midi, kbd, prev, name, next, cp, ps, dup, info, clip };
 }
 function m4PaintStrip() {
     const ui = _m4ui; if (!ui || !ui.rs) return;
@@ -19599,7 +19830,10 @@ function m4PaintStrip() {
     R.ps.setAttribute('aria-disabled', String(!m4S.clip));
     R.clip.textContent = m4ClipTxt();
     const gl = m4GridLbl();
-    R.info.textContent = !m4S.rec ? L('lab_m4_rs_off') : arrRun.playing ? Lf('lab_m4_rs_live', { g: gl }) : Lf('lab_m4_rs_step', { pos: m4RecPos() });
+    const nodev = m4S.rec && !m4S.kbd && !(labMidi.supported() && labMidi.status() === 'ready' && labMidi.inputs().length);
+    R.info.textContent = !m4S.rec ? L('lab_m4_rs_off') : nodev ? L(m4Coarse() ? 'lab_m4_rec_touch' : 'lab_m4_rec_nodev')
+        : arrRun.playing ? Lf('lab_m4_rs_live', { g: gl }) : Lf('lab_m4_rs_step', { pos: m4RecPos() });
+    R.kbd.set(m4S.kbd);
     R.el.classList.toggle('is-rec', m4S.rec);
     const O = ui.rso;
     if (O) {
@@ -19617,6 +19851,7 @@ function m4SetRec(b) {
     if (ui && ui.rs) ui.rs.rec.set(m4S.rec);
     if (m4S.rec && !arrRun.playing && m4RollOpen()) ui.roll.setPlayhead(m4Rec.cur);
     else if (m4RollOpen() && !arrRun.playing) ui.roll.setPlayhead(null);
+    m4RecHint();
     m4PaintStrip();
 }
 // Pano etiketi (detay paneli + düzenleyici şeridi)
@@ -19637,7 +19872,7 @@ function m4OpenClip(r, c, opener) {
     if (!roll.isOpen()) roll.open(opener || document.activeElement);
     if (arrRun.playing) roll.setPlaying(true);
     else if (m4S.rec) roll.setPlayhead(m4Rec.cur);
-    m4PaintDetail(); m4PaintStrip();
+    m4PaintDetail(); m4PaintStrip(); m4RecHint();
 }
 // Açık düzenleyiciyi m4Ed klibine yükle (başlık, renk, aralık, gam, uzunluk, notalar; roll geçmişi sıfırlanır)
 function m4RollLoad() {
@@ -19720,7 +19955,7 @@ function m4RollPh() {
 }
 function m4RollClosed() {
     m4Ed = null; m4Rec.down = 0; m4Rec.held.clear();
-    m4PaintDetail(); m4Tasks();
+    m4PaintDetail(); m4Tasks(); m4RecHint();
 }
 const m4GridLbl = () => m4Rec.gridLbl || '1/16';
 const m4RecPos = () => { const s = m4Rec.cur; return `${Math.floor(s / 16) + 1}.${Math.floor((s % 16) / 4) + 1}.${Math.round((s % 4 + 1) * 100) / 100}`; };
@@ -19804,7 +20039,7 @@ function m4MidiCc(e) {
 function m4FlagGuard() {
     const uid = currentUser ? currentUser.uid : '';
     if (m4S.flagUid === uid) return;
-    if (m4S.flagUid) { m4S.added = [0, 0, 0, 0, 0]; m4S.copied = false; m4S.keyMoved = false; }
+    if (m4S.flagUid) { m4S.added = [0, 0, 0, 0, 0]; m4S.copied = false; m4S.keyMoved = false; m4S.outSeen = false; m4S.ch1On = false; }
     m4S.flagUid = uid;
 }
 // Görev koşulları (TASKS[4] sırasıyla). Modülü açmak tek başına hiçbir şey kazandırmaz:
@@ -19817,17 +20052,31 @@ function m4Auto() {
     const syn = M4_MEL.filter(m4IsSyn);
     const notes = tr => m4S.clips[tr].reduce((a, k) => a + k.notes.length, 0);
     const inKey = tr => m4S.clips[tr].every(k => k.notes.every(n => inScale(n.p, K.root, K.type)));
+    // Görev 15: önce bir MIDI izinde gam dışı nota olmalı (GAM kapalıyken yazılır), sonra hepsi gam içine alınmalı
+    const scaled = K.type !== 'chromatic';
+    if (scaled && syn.some(tr => !inKey(tr))) m4S.outSeen = true;
     return [
         m4S.tplUsed,
         d && c[0][0] && c[1][0] && !c[2][0] && !c[3][0] && !c[4][0],
-        m4S.cols[3] && c.every(row => row[3]),     // Chorus 1'de klip düzenleyip hepsini açtı
+        m4S.ch1On && c.every(row => row[3]),       // Chorus 1'de kapalı bir klibi kullanıcı açtı ve hepsi açık
         m4S.bdKick && !c[0][6],                    // Breakdown'daki kick'i kullanıcı kendisi kapattı
         m4S.played,
         syn.some(tr => m4S.added[tr] >= 8 && notes(tr) >= 8),
-        K.type !== 'chromatic' && syn.some(tr => m4S.added[tr] >= 4 && notes(tr) >= 4 && inKey(tr)),
+        scaled && m4S.outSeen && syn.some(tr => m4S.added[tr] > 0 && notes(tr) > 0) && syn.every(inKey),
         m4S.copied,
         m4S.keyMoved,
     ];
+}
+function m4TaskRelabel() {
+    const ui = _m4ui; if (!ui || !ui.tasks) return;
+    ui.tasks.querySelectorAll('.lab-task').forEach((li, i) => {
+        const t = TASKS[4][i]; if (!t) return;
+        const s = li.querySelector('.lab-task-text'), h = s && s.querySelector('.lab-task-hint');
+        if (s && s.firstChild && s.firstChild.nodeType === 3) s.firstChild.data = L('lab_m4_t' + t.id);
+        if (h && LAB_TXT['lab_m4_h' + t.id]) h.textContent = L('lab_m4_h' + t.id);
+        const b = li.querySelector('.lab-task-show');
+        if (b) { b.textContent = L('lab_task_show'); b.setAttribute('aria-label', `${L('lab_task_show')}: ${L('lab_m4_t' + t.id)}`); }
+    });
 }
 function m4Tasks() {
     const ui = _m4ui;
@@ -20003,7 +20252,7 @@ function m4PaintCell(r, R) {
     w.classList.toggle('is-bar', R.e - R.s <= M4_BAR);
     b.classList.toggle('is-on', on);
     b.classList.toggle('is-span', span);
-    b._lbl.textContent = on ? `${ARR_TRACKS[r].name} ${R.s / M4_BAR + 1}` : '';
+    b._lbl.textContent = on ? ARR_TRACKS[r].name : '';     // Live gibi iz adı (bar numarası "kick #3" sanılıyordu)
     b.classList.toggle('is-midi', syn);
     b.classList.toggle('is-empty', syn && !n);
     b.classList.toggle('is-devoff', syn && !m4S.syn[r].on);
@@ -20033,7 +20282,7 @@ function m4PaintGrid() {
     });
     ui.fills.forEach((b, r) => b.classList.toggle('is-full', c[r].every(Boolean)));
     ui.clipN.textContent = String(c.reduce((a, row) => a + row.filter(Boolean).length, 0));
-    m4PaintSelClip(); m4PaintHot(); m4PaintVoices(); m4PaintEnergy(); m4PaintChips();
+    m4PaintSelClip(); m4PaintHot(); m4PaintVoices(); m4PaintEnergy(); m4PaintChips(); m4PaintChannel(); m4PaintKeyWarn();
 }
 // İmleç (odak halkası + roving tabindex) ve seçim (aria-selected + vurgu)
 function m4PaintSelClip() {
@@ -20049,6 +20298,7 @@ function m4PaintSelClip() {
         const ed = ui.edits[r] && ui.edits[r][j]; if (ed) ed.tabIndex = cur ? 0 : -1;
     }));
     ui.heads.forEach((h, i) => h.classList.toggle('is-sel', i === cr));
+    m4PaintSelBar();
 }
 function m4PaintMix() {
     const ui = _m4ui; if (!ui) return;
@@ -20062,7 +20312,7 @@ function m4PaintMix() {
         ui.vtxt[i].textContent = m4VolTxt(m4S.vol[i]);
         ui.vfill[i].style.width = (m4S.vol[i] * 100).toFixed(1) + '%';
     });
-    m4PaintVoices(); m4PaintEnergy();
+    m4PaintVoices(); m4PaintEnergy(); m4PaintChannel();
 }
 function m4PaintVoices() {
     const ui = _m4ui; if (!ui) return;
@@ -20081,7 +20331,7 @@ function m4PaintEnergy() {
     const line = 'M0,' + m4Ey(e[0]).toFixed(1) + ' ' + e.map((v, j) => 'L' + (j * 100 + 50) + ',' + m4Ey(v).toFixed(1)).join(' ') + ' L800,' + m4Ey(e[7]).toFixed(1);
     ui.eLine.setAttribute('d', line);
     ui.eArea.setAttribute('d', line + ' L800,100 L0,100 Z');
-    ui.eDots.forEach((d, j) => { d.style.top = m4Ey(e[j]).toFixed(1) + '%'; d.textContent = String(Math.round(e[j] * 100)); });
+    ui.eDots.forEach((d, j) => { d.style.top = m4Ey(e[j]).toFixed(1) + '%'; d.textContent = Math.round(e[j] * 100) + '%'; });
     ui.en.setAttribute('aria-label', Lf('lab_m4_en_aria', { list: ARR_SECTIONS.map((s, j) => `${s.name} ${Math.round(e[j] * 100)}%`).join(', ') }));
     const es = e[m4S.sel];
     ui.insE.textContent = Math.round(es * 100) + '%';
@@ -20100,7 +20350,7 @@ function m4PaintAuto() {
     ui.autoBox.classList.toggle('is-byp', m4S.bypass);
     ui.win.root.classList.toggle('is-byp', m4S.bypass);
     ui.autoLed.set(!m4S.bypass);
-    ui.pwr.set(!m4S.bypass);
+    ui.fltT.set(!m4S.bypass);
     ui.pts.forEach((p, j) => {
         const y = m4Ay(a[j]), hz = lpFmt.hz(arrHz(a[j]));
         p.style.top = y.toFixed(1) + 'px';
@@ -20122,9 +20372,10 @@ function m4PaintSel() {
     ui.insCard.style.setProperty('--sc', `var(${s.col})`);
     ui.insCard.style.setProperty('--sct', `var(${s.txt})`);
     ui.insN.textContent = Lf('lab_m4_ins_n', { n: pad2(j + 1) });
-    ui.insName.textContent = s.name;
+    ui.insName.textContent = s.full;
     ui.insRng.textContent = Lf('lab_m4_ins_rng', { a: j * 2 + 1, b: j * 2 + 2 });
-    ui.insRole.textContent = Lf('lab_m4_ins_role', { role: g.name.toUpperCase(), bars: L(g.bars) });
+    ui.insRole.textContent = Lf('lab_m4_ins_role', { role: g.name.toUpperCase(), bars: L(g.bars).toUpperCase() });
+    ui.insShort.textContent = Lf('lab_m4_ins_short', { bars: L(g.bars) });
     ui.insText.textContent = L('lab_m4_g_' + g.key);
     ui.insTip.textContent = L('lab_m4_gt_' + g.key);
     const selName = n > 1 ? `${s.name} → ${ARR_SECTIONS[e].name}` : s.name;
@@ -20164,6 +20415,10 @@ function m4PaintPos(force) {
     if (force || bar !== ui.bar) {
         ui.bar = bar; ui.rbars.forEach((b, k) => b.classList.toggle('is-cur', k === bar));
         if (pl) m4Follow(st);
+        // Baştan dinleme ilerlemesi (görev 10 / öğretici): yalnız 1.1.1'den loop'suz çalarken
+        const prog = pl && R.fromStart;
+        ui.stProg.hidden = !prog;
+        if (prog) ui.stProg.textContent = Lf('lab_m4_st_prog', { n: bar + 1 });
     }
     const ps = pl ? st >> 5 : -1;
     if (force || ps !== ui.ps) {
@@ -20172,7 +20427,7 @@ function m4PaintPos(force) {
         ui.locs.forEach((b, k) => b.classList.toggle('is-playing', k === ps));
         const cur = ps >= 0 ? ps : m4S.sel, s = ARR_SECTIONS[cur];
         ui.lcdSec.setLabel(L(ps >= 0 ? 'lab_m4_lcd_play' : 'lab_m4_lcd_sel'));
-        ui.lcdSecN.textContent = s.name;
+        ui.lcdSecN.textContent = s.full;
         ui.lcdSecB.textContent = ps >= 0 ? m4Bars(cur) : m4Bars(m4S.sel, m4S.selEnd);
         ui.lcdSec.el.style.setProperty('--sct', `var(${s.txt})`);
         m4PaintHot(); m4PaintVoices();
@@ -20243,11 +20498,13 @@ function m4PaintInst() {
         ui.subs[tr].textContent = syn ? `MIDI · ${m4S.syn[tr].name}` : (s ? s.name : L(ARR_TRACKS[tr].sub));
     });
     [0, 1].forEach(tr => { const s = labSample(m4SmpId(tr)); ui.subs[tr].textContent = `${L(ARR_TRACKS[tr].sub)} · ${s ? s.name : ''}`; });
+    m4PaintChannel(); m4PaintKeyWarn();
 }
 function m4PaintKey() {
     const ui = _m4ui; if (!ui) return;
     ui.keyRoot.value = String(m4S.key.root);
     ui.keyType.value = m4S.key.type;
+    m4PaintKeyWarn();
 }
 function m4PaintSet() {
     const ui = _m4ui; if (!ui) return;
@@ -20290,7 +20547,7 @@ function m4PaintDetail() {
     ui.smpText.textContent = L(mel ? 'lab_m4_smp_p' : 'lab_m4_drum_p');
     ui.kitRow.hidden = mel; ui.kitSeg.set(m4S.kit);
     ui.toSyn.hidden = !mel;
-    m4PaintSelClip();
+    m4PaintSelClip(); m4PaintChannel();
 }
 function m4PaintDevice() {
     const ui = _m4ui, D = ui && ui.dev; if (!D || D.tr < 0) return;
@@ -20336,7 +20593,7 @@ function m4PaintAll() {
     const ui = _m4ui; if (!ui) return;
     ui.reso.update(m4S.q); ui.out.update(m4S.outDb);
     m4PaintTpl(); m4PaintKey(); m4PaintSet(); m4PaintInst(); m4PaintGrid(); m4PaintMix(); m4PaintAuto(); m4PaintSel();
-    m4PaintTransport(); m4PaintPos(true); m4PaintDetail(); m4PaintDel(); m4Tasks();
+    m4PaintTransport(); m4PaintPos(true); m4PaintDetail(); m4PaintDel(); m4Tasks(); m4RecHint();
 }
 // Dil değişince birleşik metinler yerinde (labShellLang → labOnRefresh; ses sürer)
 // İlerleme tazelemesinde (giriş/çıkış, bulut ilerlemesi) yalnız durum boyanır; cihaz ve Çalışma mantığı yalnız
@@ -20348,7 +20605,7 @@ function m4Relang() {
     ui.lang = lg;
     m4SyncUser(false);
     if (langCh) {
-        m4Labels(ui);
+        m4Labels(ui); m4TaskRelabel();
         ui.live.textContent = '';
         if (ui.dev) ui.dev.tr = -1;          // cihaz metinleri yeniden kurulur
         if (ui.hiw) { ui.hiwSig = m4S.set + '|' + m4S.bpm; ui.hiw.rebuild(m4HiwOpts()); }
@@ -20376,7 +20633,10 @@ function m4Labels(ui) {
     ui.reso.setLabel('RESO'); ui.out.setLabel('OUT');
     ui.reso.el.title = `${L('lab_m4_reso_t')} — ${L('lp_knob_tip')}`; ui.out.el.title = `${L('lab_m4_out_t')} — ${L('lp_knob_tip')}`;
     ui.eTgl.el.title = L('lab_m4_energy_t');
-    ui.pwr.el.setAttribute('aria-label', L('lab_m4_pwr')); ui.pwr.el.title = L('lab_m4_pwr_t');
+    ui.fltT.el.setAttribute('aria-label', L('lab_m4_pwr')); ui.fltT.el.title = L('lab_m4_pwr_t'); lpBtnText(ui.fltT.el, L('lab_m4_flt_b'));
+    ui.ab.buttons.forEach(b => { b.title = L('lab_m4_ab_t'); });
+    ui.kbdT.el.setAttribute('aria-label', L('lab_m4_kbd_t')); ui.kbdT.el.title = L('lab_m4_kbd_t'); lpBtnText(ui.kbdT.el, L('lab_m4_kbd'));
+    m4PaintKeyWarn();
     ui.win.root.setAttribute('aria-label', L('lab_m4_win_aria'));
     // Proje tonu seçicileri (gam adları dile bağlı)
     ui.keyRoot.setAttribute('aria-label', L('lab_m4_key_root')); ui.keyRoot.title = L('lab_m4_key_t');
@@ -20422,10 +20682,10 @@ function m4Sel(cls, opts, value, onPick) {
 }
 const m4SelW = s => { const w = mk('span', 'lab-m4-selw'); w.append(s); return w; };
 function m4Window(ui) {
+    // ⏻ yok: eklentinin "gücü" yalnız master filtreyi atlıyordu (yeni başlayan eklentiyi kapattığını sanır) →
+    // FİLTRE AÇIK/KAPALI anahtarı MASTER otomasyon şeridinin başlığında (m4Heads)
     const win = ui.win = pluginWindow({ code: 'ARRANGER', num: '04', sub: L('lab_m4_win_sub'), aria: L('lab_m4_win_aria'),
-        power: { on: !m4S.bypass, onToggle: on => m4SetBypass(!on), label: L('lab_m4_pwr'), title: L('lab_m4_pwr_t'), pos: 'right' },
-        transport: true, status: true, cls: 'lab-m4-win' });
-    ui.pwr = win.power;
+        power: false, transport: true, status: true, cls: 'lab-m4-win' });
     // Başlık çubuğu · sol: şablon / kayıt tarayıcı · A|B · ↶ ↷ · KAYDET · SİL
     ui.pbOpts = { items: m4PresetItems(), value: m4S.tpl || '_custom', width: 150, capLabel: L('lp_preset_cap'),
         label: L('lab_m4_preset'), prevLabel: L('lab_m4_tpl_prev'), nextLabel: L('lab_m4_tpl_next'),
@@ -20444,15 +20704,20 @@ function m4Window(ui) {
     ui.del = lpBtn({ icon: 'del', label: () => L('lab_m4_del_t'), title: () => L('lab_m4_del_t'), onClick: m4DeleteClick });
     lpBtnSlot(ui.del, false, false);
     win.left.append(ui.pb.el, ab.el, un, re, ui.save, ui.del);
-    // Orta: ÖĞRETİCİ · proje TONU (kök + gam)
+    // Orta: proje TONU (kök + gam) + loop setiyle uyuşmazlık uyarısı. Öğreticiler başlığın sağında (renderModule4).
+    ui.tutA = m4TutorialArr();
     ui.tut = m4Tutorial();
-    ui.tutBtn = makeTutorialButton(ui.tut, { compact: true });
     const key = mk('div', 'lab-m4-key');
     ui.keyRoot = m4Sel('lab-m4-sel--root', LAB_NOTE_NAMES.map((n, i) => [i, noteName(i)]), m4S.key.root, v => m4SetKey({ root: +v, type: m4S.key.type }, true));
     ui.keyType = m4Sel('lab-m4-sel--type', LAB_SCALE_ORDER.map(k => [k, m4ScaleShort(k)]), m4S.key.type, v => m4SetKey({ root: m4S.key.root, type: v }, true));
     key.setAttribute('role', 'group'); key.setAttribute('data-i18n-aria', 'lab_m4_key_t'); key.setAttribute('aria-label', L('lab_m4_key_t'));
     key.append(m4SelW(ui.keyRoot), m4SelW(ui.keyType));
-    win.center.append(ui.tutBtn.el, key);
+    // Ton ≠ loop setinin tonu ve bir melodik iz hâlâ SAMPLE (loop çalıyor) → MIDI çatışır
+    ui.keyWarn = mk('div', 'lab-m4-offer lab-m4-kwarn'); ui.keyWarn.hidden = true; ui.keyWarn.setAttribute('role', 'status');
+    ui.keyWarnT = mk('span', 'lab-m4-kwarn-t');
+    ui.keyWarnB = lpBtn({ text: ' ', variant: 'accent', onClick: () => { const S = ARR_SETS[m4S.set] || ARR_SETS.classic; m4SetKey(S.key, true); } });
+    ui.keyWarn.append(ui.keyWarnT, ui.keyWarnB);
+    win.center.append(key);
     // Sağ: MIDI · KLİP x/40 · SES y/5 · OUT L/R metre + dB
     ui.midiBtn = makeMidiButton();
     ui.cnt = mk('span', 'lab-m4-cnt');
@@ -20468,7 +20733,9 @@ function m4Window(ui) {
     ui.outDb = mk('span'); ui.outDb.textContent = '−∞';
     outRow.append(ol, ui.outDb);
     outBox.append(ui.outM.el, outRow);
-    win.right.append(ui.midiBtn.el, ui.cnt, outBox);
+    // Bilgisayar MIDI klavyesi (Live: Computer MIDI Keyboard) — yalnız fiziksel klavyeli cihazlarda görünür (CSS)
+    ui.kbdT = makeToggle({ text: L('lab_m4_kbd'), led: true, color: 'var(--accent)', on: m4S.kbd, cls: 'lab-m4-kbdt', onToggle: b => m4SetKbd(b) });
+    win.right.append(ui.kbdT.el, ui.midiBtn.el, ui.cnt, outBox);
     // Kaydet formu (prompt() yok: uygulama içi WebView'ler onu bastırabiliyor) + ton değişimi önerisi
     const nf = ui.nameF = mk('form', 'lab-m4-name'); nf.hidden = true; nf.noValidate = true;
     ui.nameL = mk('label', 'lab-m4-name-l'); ui.nameL.htmlFor = 'labM4NameIn'; ui.nameL.textContent = L('lab_m4_save_p');
@@ -20484,7 +20751,12 @@ function m4Window(ui) {
     const oY = lpBtn({ text: () => L('lab_m4_offer_yes'), variant: 'accent', onClick: m4OfferYes });
     const oN = lpBtn({ text: () => L('lab_m4_offer_no'), onClick: m4OfferNo });
     of.append(ui.offerTxt, oY, oN);
-    win.bar.after(nf, of);
+    // REC ipucu (MIDI klip / giriş yoksa ne yapılacağını söyler)
+    ui.recHint = mk('div', 'lab-m4-offer lab-m4-rechint'); ui.recHint.hidden = true; ui.recHint.setAttribute('role', 'status');
+    ui.recHintT = mk('span', 'lab-m4-offer-t');
+    ui.recHintB = lpBtn({ text: () => L('lab_m4_kbd'), variant: 'accent', cls: 'lab-m4-kbdt', onClick: () => { m4SetKbd(true); m4RecHint(); } });
+    ui.recHint.append(ui.recHintT, ui.recHintB);
+    win.bar.after(nf, of, ui.keyWarn, ui.recHint);
 
     // Taşıma: ▶/❚❚ ■ ⟲ ● · LCD'ler (+ LOOP SETİ) · ENERJİ · RESO · OUT
     ui.play = lpBtn({ icon: 'play', label: L('lab_m4_play'), title: L('lab_m4_play'), cls: 'lab-m4-tb lab-m4-tb--play', onClick: m4Toggle });
@@ -20524,7 +20796,12 @@ function m4Window(ui) {
     const inner = ui.inner = mk('div', 'lab-m4-inner');
     inner.append(m4Heads(ui), m4Lanes(ui));
     scroll.append(inner);
-    grid.append(scroll, m4Inspector(ui));
+    // Izgara sütunu: kaydırıcı + (dar ekran) "yana kaydır" ipucu + seçili klip çubuğu + telefonda KANAL paneli
+    const gcol = mk('div', 'lab-m4-gcol');
+    ui.swipe = m4Txt('p', 'lab-m4-swipe', 'lab_m4_swipe'); ui.swipe.hidden = true; ui.swipe.setAttribute('aria-hidden', 'true');
+    scroll.addEventListener('scroll', () => { if (scroll.scrollLeft > 24 && !m4S.swiped) { m4S.swiped = true; ui.swipe.hidden = true; } }, { passive: true });
+    gcol.append(ui.swipe, scroll, m4SelBar(ui), m4ChPanel(ui));
+    grid.append(gcol, m4Inspector(ui));
     win.body.append(grid, m4Detail(ui));
 
     // Durum satırı
@@ -20532,10 +20809,14 @@ function m4Window(ui) {
     ui.stDot = mk('span', 'lab-m4-st-dot'); ui.stDot.setAttribute('aria-hidden', 'true');
     ui.stTxt = mk('span');
     st.append(ui.stDot, ui.stTxt);
-    const loopHint = mk('span', 'lab-m4-st-ic', LP_IC.loop); loopHint.append(m4Txt('span', '', 'lab_m4_st_3'));
+    const loopHint = mk('span', 'lab-m4-st-ic lp-hint-kbd', LP_IC.loop); loopHint.append(m4Txt('span', '', 'lab_m4_st_3'));
     ui.noAudio = m4Txt('span', 'lab-m4-noaudio', 'lab_m4_noaudio'); ui.noAudio.hidden = arrAudioOK();
     ui.stBpm = mk('span', 'lab-m4-st-r');
-    win.status.append(st, m4Txt('span', '', 'lab_m4_st_1'), m4Txt('span', '', 'lab_m4_st_7'), m4Txt('span', '', 'lab_m4_st_2'), loopHint, m4Txt('span', '', 'lab_m4_st_4'), m4Txt('span', '', 'lab_m4_st_6'), m4Txt('span', '', 'lab_m4_st_8'), ui.noAudio, ui.stBpm);
+    ui.stProg = mk('span', 'lab-m4-st-prog'); ui.stProg.hidden = true;
+    // Klavye/fare ipuçları dokunmatikte gizli (.lp-hint-kbd), dokunmatik ipuçları yalnız orada (.lp-hint-touch)
+    const kb = k => m4Txt('span', 'lp-hint-kbd', k), tc = k => m4Txt('span', 'lp-hint-touch', k);
+    win.status.append(st, ui.stProg, kb('lab_m4_st_1'), kb('lab_m4_st_7'), kb('lab_m4_st_2'), loopHint, kb('lab_m4_st_4'), kb('lab_m4_st_6'), kb('lab_m4_st_8'),
+        tc('lab_m4_st_t1'), tc('lab_m4_st_t2'), tc('lab_m4_st_t3'), ui.noAudio, ui.stBpm);
     ui.live = mk('span', 'sr-only'); ui.live.setAttribute('aria-live', 'polite');
     win.status.append(ui.live);
     // İlk etkileşimde örnekleri indirmeye başla (bağlam gerekmez) → ilk ▶'da ses hazır
@@ -20571,6 +20852,7 @@ function m4Heads(ui) {
         const top2 = mk('div', 'lab-m4-th-top');
         const no = mk('span', 'lab-m4-th-no'); no.textContent = pad2(i + 1); no.setAttribute('aria-hidden', 'true');
         const nm = mk('span', 'lab-m4-th-n'); nm.textContent = T.name;
+        lpTr(h, 'title', () => Lf('lab_m4_th_t', { trk: T.name }));
         const sub = mk('span', 'lab-m4-th-s'); ui.subs.push(sub);
         const led = makeMeter({ channels: 1, orientation: 'h', segments: 8, length: 31, thickness: 8, min: -40, max: -4, warn: -12, hot: 0, peakHold: false, release: 36, cls: 'lab-m4-led' });
         top2.append(no, nm, sub);
@@ -20612,7 +20894,10 @@ function m4Heads(ui) {
     const mbox = ui.autoBox = mk('div', 'lab-m4-mbox');
     const r1 = mk('span', 'lab-m4-mbox-h');
     ui.autoLed = makeLed({ on: !m4S.bypass });
-    r1.append(ui.autoLed.el, m4Txt('span', 'lab-m4-mbox-n', 'lab_m4_master'), m4Txt('span', 'lab-m4-mbox-w', 'lab_m4_auto_w'));
+    // FİLTRE AÇIK/KAPALI: otomasyon şeridinin yanında (eski başlık çubuğu ⏻'ü yalnız bunu yapıyordu)
+    ui.fltT = makeToggle({ text: () => L('lab_m4_flt_b'), led: true, color: 'var(--accent)', on: !m4S.bypass, cls: 'lab-m4-fltt',
+        label: () => L('lab_m4_pwr'), title: () => L('lab_m4_pwr_t'), onToggle: on => m4SetBypass(!on) });
+    r1.append(m4Txt('span', 'lab-m4-mbox-n', 'lab_m4_master'), m4Txt('span', 'lab-m4-mbox-w', 'lab_m4_auto_w'), ui.fltT.el);   // ui.autoLed DOM dışında (anahtarın kendi LED'i var)
     mbox.append(r1, m4Txt('span', 'lab-m4-mbox-p', 'lab_m4_auto_p'), m4Txt('span', 'lab-m4-mbox-hint', 'lab_m4_auto_h'));
     col.append(mbox);
     return col;
@@ -20638,7 +20923,8 @@ function m4Lanes(ui) {
         const t = mk('span'); t.textContent = s.name; b.append(t);
         b.style.setProperty('--sc', `var(${s.col})`); b.style.setProperty('--sct', `var(${s.txt})`);
         if (s.ink) b.style.setProperty('--sci', `var(${s.ink})`);
-        b.onclick = e => m4Select(j, false, e.shiftKey);
+        b.title = s.full;
+        b.onclick = e => { m4T.loc++; m4Select(j, false, e.shiftKey); };
         locs.append(b); return b;
     });
     // Klip ızgarası (role=grid, çoklu seçim) + enerji eğrisi katmanı. Satır = 16 bar sütunu; klip hücresi
@@ -20707,6 +20993,7 @@ function m4Lanes(ui) {
     ui.en = mk('div', 'lab-m4-en'); ui.en.setAttribute('role', 'img'); ui.en.hidden = !m4S.showE;
     ui.en.innerHTML = '<svg viewBox="0 0 800 100" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path class="lab-m4-en-area"/><path class="lab-m4-en-line"/></svg>';
     ui.eArea = ui.en.querySelector('.lab-m4-en-area'); ui.eLine = ui.en.querySelector('.lab-m4-en-line');
+    ui.en.append(m4Txt('span', 'lab-m4-en-cap', 'lab_m4_en_cap'));
     ui.eDots = ARR_SECTIONS.map((_, j) => { const d = mk('span', 'lab-m4-en-dot'); d.setAttribute('aria-hidden', 'true'); d.style.left = ((j + 0.5) * 12.5) + '%'; ui.en.append(d); return d; });
     clips.append(ui.en);
     // Otomasyon şeridi: MASTER · Filter Cutoff (8 sürüklenebilir nokta)
@@ -20783,7 +21070,8 @@ function m4Inspector(ui) {
     ui.insName = mk('span', 'lab-m4-ins-name'); ui.insRng = mk('span', 'lab-m4-ins-rng');
     r1.append(ui.insName, ui.insRng);
     ui.insRole = mk('span', 'lab-m4-ins-role'); ui.insText = mk('span', 'lab-m4-ins-text'); ui.insTip = mk('span', 'lab-m4-ins-tip');
-    card.append(r1, ui.insRole, ui.insText, ui.insTip);
+    ui.insShort = mk('span', 'lab-m4-ins-short');     // dürüst etiket: Lab'da bölüm 2 bar (gerçek şarkıda 4–16)
+    card.append(r1, ui.insRole, ui.insText, ui.insTip, ui.insShort);
     const eb = mk('div', 'lab-m4-ins-eb');
     const el = mk('span', 'lab-m4-ins-el');
     ui.insE = mk('span', 'lab-m4-ins-ev');
@@ -20937,7 +21225,199 @@ function m4Reveal(c) {
     sc.scrollLeft = Math.max(0, x - head - Math.max(16, (sc.clientWidth - head - w.offsetWidth) / 2));
 }
 
-// ── Öğretici: DAW'da MIDI yazmak (her adım gerçek kontrolü hedefler, yapınca kendiliğinden ilerler) ──
+// ── Seçili klip çubuğu (dokunmatik / ≤1024; CSS): SİL · AÇ/KAPA · KOPYALA · YAPIŞTIR · DÜZENLE ızgaranın hemen altında
+// (telefonda detay panelindeki SİL ~900 px aşağıdaydı). Yapışkan: ızgara görünürken ekranın altında kalır.
+function m4SelBar(ui) {
+    const el = ui.sb = mk('div', 'lab-m4-sb');
+    el.setAttribute('role', 'toolbar'); lpTr(el, 'aria-label', () => L('lab_m4_sb_aria'));
+    ui.sbT = mk('span', 'lab-m4-sb-t');
+    const B = (k, fn, o) => lpBtn(Object.assign({ text: () => L(k), title: () => L(k + '_t'), onClick: fn }, o || {}));
+    ui.sbDel = B('lab_m4_c_clear', m4DelSel, { icon: 'del', variant: 'danger' });
+    ui.sbAct = B('lab_m4_c_act', m4ActSel);
+    ui.sbCopy = B('lab_m4_c_copy', m4CopySel);
+    ui.sbPaste = B('lab_m4_c_paste', m4PasteSel);
+    ui.sbEdit = B('lab_m4_c_edit', () => { const c = m4SelCells(); if (c.length === 1) m4OpenClip(c[0].r, c[0].h, ui.sbEdit); }, { icon: M4_IC.pen, variant: 'accent' });
+    const bs = mk('div', 'lab-m4-sb-b'); bs.append(ui.sbDel, ui.sbAct, ui.sbCopy, ui.sbPaste, ui.sbEdit);
+    el.append(ui.sbT, bs);
+    return el;
+}
+function m4PaintSelBar() {
+    const ui = _m4ui; if (!ui || !ui.sb) return;
+    const n = m4Cs.set.size, cells = n ? m4SelCells() : [], one = cells.length === 1 ? cells[0] : null;
+    ui.sbT.textContent = !n ? L('lab_m4_sb_none') : one ? Lf('lab_m4_sb_sel', { name: `${ARR_TRACKS[one.r].name} · ${ARR_SECTIONS[one.h].full}` }) : Lf('lab_m4_sb_seln', { n: cells.length });
+    ui.sb.classList.toggle('is-on', !!n);
+    ui.sbDel.setAttribute('aria-disabled', String(!cells.some(R => m4Visible(R.r, R.h))));
+    ui.sbAct.setAttribute('aria-disabled', String(!n));
+    ui.sbCopy.setAttribute('aria-disabled', String(!n));
+    ui.sbPaste.setAttribute('aria-disabled', String(!n || !(m4S.clip && m4S.clip.items.length)));
+    ui.sbEdit.hidden = !(one && m4IsSyn(one.r));
+}
+// ── KANAL paneli (yalnız ≤600; CSS): telefonda iz başlığı sadeleşir (ad + M/S) → seçili izin SMP|MIDI, ARM, ses
+// sürgüsü ve "tüm bölümlere yaz" burada. Aynı durumu (m4S) yazar; başlıktaki denetimlerle birlikte boyanır.
+function m4ChPanel(ui) {
+    const el = ui.ch = mk('section', 'lab-m4-ch');
+    ui.chH = mk('h3', 'lab-m4-ch-h');
+    ui.chP = m4Txt('p', 'lab-m4-ch-p', 'lab_m4_ch_p');
+    const row = mk('div', 'lab-m4-ch-r');
+    const msb = (cls, txt, fn) => { const b = mk('button', 'lab-m4-ms ' + cls); b.type = 'button'; b.textContent = txt; b.onclick = () => fn(m4S.trk); return b; };
+    ui.chM = msb('lab-m4-ms--m', 'M', m4SetMute); ui.chS = msb('lab-m4-ms--s', 'S', m4SetSolo);
+    ui.chArm = mk('button', 'lab-m4-arm', M4_IC.arm); ui.chArm.type = 'button'; ui.chArm.onclick = () => m4SetArm(m4S.trk);
+    ui.chInst = makeSeg([
+        { value: 'sample', label: 'SMP', title: () => L('lab_m4_inst_smp') },
+        { value: 'synth', label: 'MIDI', title: () => L('lab_m4_inst_syn') },
+    ], 'sample', v => m4SetInst(m4S.trk, v), { label: () => L('lab_m4_ch_inst'), cls: 'lab-m4-inst lab-m4-ch-inst' });
+    row.append(ui.chM, ui.chS, ui.chArm, ui.chInst.el);
+    const vr = mk('div', 'lab-m4-ch-v');
+    const vl = m4Txt('span', 'lab-m4-ch-l', 'lab_m4_ch_vol');
+    ui.chVt = mk('span', 'lab-m4-ch-vt');
+    ui.chFd = makeFader({ law: 'linear', min: 0, max: 1, step: 0.01, def: 0.8, value: m4S.vol[m4S.trk], wheelStep: 0.03, orientation: 'h', length: 220, scale: false,
+        color: 'var(--c)', aria: Lf('lab_m4_vol_a', { trk: ARR_TRACKS[m4S.trk].name }), fmt: m4VolTxt, onStart: m4Push,
+        onChange: v => { m4S.vol[m4S.trk] = v; arrApplyMix(); m4PaintMix(); } });
+    vr.append(vl, ui.chFd.el, ui.chVt);
+    ui.chFill = lpBtn({ text: ' ', onClick: () => m4FillRow(m4S.trk) });
+    el.append(ui.chH, ui.chP, row, vr, ui.chFill);
+    return el;
+}
+function m4PaintChannel() {
+    const ui = _m4ui; if (!ui || !ui.ch) return;
+    const tr = m4S.trk, T = ARR_TRACKS[tr], mel = M4_MEL.indexOf(tr) >= 0, syn = m4IsSyn(tr);
+    ui.ch.style.setProperty('--c', `var(${T.arrVar})`);
+    ui.chH.textContent = Lf('lab_m4_ch_h', { trk: T.name });
+    ui.chM.setAttribute('aria-pressed', String(!!m4S.mute[tr])); ui.chM.setAttribute('aria-label', Lf('lab_m4_mute_a', { trk: T.name }));
+    ui.chS.setAttribute('aria-pressed', String(!!m4S.solo[tr])); ui.chS.setAttribute('aria-label', Lf('lab_m4_solo_a', { trk: T.name }));
+    ui.chArm.hidden = !syn; ui.chArm.setAttribute('aria-pressed', String(!!m4S.arm[tr]));
+    ui.chArm.setAttribute('aria-label', Lf('lab_m4_arm_a', { trk: T.name })); ui.chArm.title = ui.chArm.getAttribute('aria-label');
+    ui.chInst.el.hidden = !mel; if (mel) ui.chInst.set(m4S.inst[tr]);
+    ui.chFd.update(m4S.vol[tr]); ui.chFd.track.setAttribute('aria-label', Lf('lab_m4_vol_a', { trk: T.name }));
+    ui.chVt.textContent = m4VolTxt(m4S.vol[tr]);
+    lpBtnText(ui.chFill, L(state.arrCells[tr].every(Boolean) ? 'lab_m4_ch_clear' : 'lab_m4_ch_fill'));
+}
+// "Yana kaydır" ipucu: ızgara kendi kaydırıcısına sığmıyorsa ve öğrenci henüz kaydırmadıysa (oturumda bir kez)
+function m4PaintSwipe() {
+    const ui = _m4ui; if (!ui || !ui.swipe) return;
+    const sc = ui.scroll;
+    ui.swipe.hidden = m4S.swiped || !sc || sc.scrollWidth <= sc.clientWidth + 4;
+}
+
+// ── Proje tonu ↔ loop seti uyarısı: melodik bir iz hâlâ SAMPLE (setin loop'u / basın one-shot'ı çalıyor) ve proje
+// tonu setin tonundan farklıysa yazılan MIDI çatışır (ör. Classic Cm loop'ları üstüne Am melodi).
+function m4PaintKeyWarn() {
+    const ui = _m4ui; if (!ui || !ui.keyWarn) return;
+    const S = ARR_SETS[m4S.set] || ARR_SETS.classic, k = m4S.key;
+    const diff = labPc(k.root) !== labPc(S.key.root) || k.type !== S.key.type;
+    const smp = M4_MEL.some(tr => !m4IsSyn(tr) && state.arrCells[tr].some(Boolean));
+    ui.keyWarn.hidden = !(diff && smp);
+    if (ui.keyWarn.hidden) return;
+    ui.keyWarnT.textContent = Lf('lab_m4_keywarn', { set: m4KeyShort(S.key), key: m4KeyShort(k) });
+    lpBtnText(ui.keyWarnB, Lf('lab_m4_keywarn_b', { set: m4KeyShort(S.key) }));
+    ui.keyWarnB.title = L('lab_m4_keywarn_t');
+}
+
+// ── REC ipucu + bilgisayar MIDI klavyesi (Live: Computer MIDI Keyboard) ─────────────────────────────
+const m4Coarse = () => !!(window.matchMedia && window.matchMedia('(hover:none) and (pointer:coarse)').matches);
+function m4RecHint() {
+    const ui = _m4ui; if (!ui || !ui.recHint) return;
+    let key = '';
+    if (m4S.rec) {
+        const devs = labMidi.supported() && labMidi.status() === 'ready' ? labMidi.inputs().length : 0;
+        if (!M4_MEL.some(m4IsSyn)) key = 'lab_m4_rec_noclip';
+        else if (!devs && !m4S.kbd) key = m4Coarse() ? 'lab_m4_rec_touch' : 'lab_m4_rec_nodev';
+        else if (!m4RollOpen()) key = 'lab_m4_rec_noclip';
+    }
+    ui.recHint.hidden = !key;
+    if (key) { ui.recHintT.textContent = L(key); ui.recHintB.hidden = key !== 'lab_m4_rec_nodev'; }
+    if (ui.rs) ui.rs.el.classList.toggle('is-nodev', m4S.rec && key === 'lab_m4_rec_nodev');
+}
+// Klavye eşlemesi Modül 1 ile aynı (M1_KEYCODES: A=C … K=C+1 okt.); taban izin aralığına göre, Z/X oktav kaydırır
+const M4_KBD_BASE = { 2: 36, 3: 60, 4: 48 };
+const m4KbdDown = new Map();                       // e.code → { note, tr } (bırakınca aynı nota susar)
+function m4SetKbd(b) {
+    m4S.kbd = !!b;
+    if (!m4S.kbd) m4KbdAllOff();
+    const ui = _m4ui; if (ui && ui.kbdT) ui.kbdT.set(m4S.kbd);
+    m4RecHint(); m4PaintStrip();
+}
+function m4KbdAllOff() {
+    m4KbdDown.forEach((x, code) => m4MidiOff({ input: 'kbd', ch: 1, note: x.note, vel: 0, code }));
+    m4KbdDown.clear();
+}
+function m4KbdKey(e) {
+    if (!m4S.kbd || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (m4Typing(t) || (t && t.closest && t.closest('.lp-pb-pop, .lp-midi-pop, [role="menu"], .lab-m4-name'))) return;
+    const down = e.type === 'keydown';
+    if (e.code === 'KeyZ' || e.code === 'KeyX') {
+        e.preventDefault(); e.stopPropagation();
+        if (down && !e.repeat) { m4S.kbdOct = lpClamp(m4S.kbdOct + (e.code === 'KeyX' ? 1 : -1), -2, 2); m4Ann(Lf('lab_m4_kbd_oct', { n: (m4S.kbdOct > 0 ? '+' : '') + m4S.kbdOct })); }
+        return;
+    }
+    const i = M1_KEYCODES.indexOf(e.code);
+    if (i < 0 || i > 12) return;
+    e.preventDefault(); e.stopPropagation();
+    if (down) {
+        if (e.repeat || m4KbdDown.has(e.code)) return;
+        const tr = m4MidiTarget(); if (tr < 0) return;
+        const note = lpClamp((M4_KBD_BASE[tr] || 60) + 12 * m4S.kbdOct + i, 0, 127);
+        m4KbdDown.set(e.code, { note, tr });
+        m4MidiOn({ input: 'kbd', ch: 1, note, vel: 100 / 127 });
+    } else {
+        const x = m4KbdDown.get(e.code); if (!x) return;
+        m4KbdDown.delete(e.code);
+        m4MidiOff({ input: 'kbd', ch: 1, note: x.note, vel: 0 });
+    }
+}
+// ── Boşluk her yerde çal / durdur (Live gibi): modül görünümündeyken, odak eklenti penceresinin DIŞINDA ve bir
+// metin alanı / düğme / bağlantı / kaydırıcı / liste üzerinde değilse (onlar Boşluk'u kendileri kullanır). Pencerenin
+// içi m4WinKey'de; düzenleyici açıkken (modal) kendi Boşluk'u çalar.
+function m4DocKey(e) {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || !(e.key === ' ' || e.code === 'Space')) return;
+    const ui = _m4ui; if (!ui || m4RollOpen()) return;
+    const t = e.target;
+    if (t && t.closest && (ui.win.root.contains(t) || m4Typing(t) ||
+        t.closest('button, a[href], select, [role="slider"], [role="button"], [role="checkbox"], [role="option"], [role="menuitem"], [role="dialog"], [contenteditable]'))) return;
+    e.preventDefault();
+    if (!e.repeat) m4Toggle();
+}
+
+// ── Öğretici 1: Aranjman temelleri (görev 6–10'un rehberi; her adım gerçek kontrolü hedefler) ──
+function m4TutorialArr() {
+    const U = () => _m4ui;
+    const K = { l: 0, a: 0, m: 0, v: 1, f: 0 };
+    const introOnly = () => { const c = state.arrCells; return c[0][0] && c[1][0] && !c[2][0] && !c[3][0] && !c[4][0]; };
+    // Intro'da silinecek ilk melodik klip (yoksa Intro locator'ı)
+    const introTarget = () => {
+        const u = U(); if (!u) return null;
+        const r = [2, 3, 4].find(x => state.arrCells[x][0]);
+        if (r != null) return u.cellw[r][m4HeadOf(r, 0)];
+        if (!state.arrCells[0][0] || !state.arrCells[1][0]) return u.cellw[state.arrCells[0][0] ? 1 : 0][0];
+        return u.locs[0];
+    };
+    return labTutorial({ mid: 4, id: 'arr', title: 'lab_m4_tuta_t', intro: 'lab_m4_tuta_i', outro: 'lab_m4_tuta_o', steps: [
+        { id: 'play', title: 'lab_m4_ta_1', body: 'lab_m4_ta_1b', ableton: 'lab_m4_ta_1a', onEnter: () => m4Reveal(-1),
+          target: () => { const u = U(); return u ? u.play : null; }, check: () => arrRun.playing && arrRun.fromStart },
+        { id: 'loc', title: 'lab_m4_ta_2', body: 'lab_m4_ta_2b', ableton: 'lab_m4_ta_2a', dim: false,
+          onEnter: () => { K.l = m4T.loc; m4Reveal(-1); },
+          target: () => { const u = U(); return u && u.locs ? u.locs[0].parentNode : null; }, check: () => m4T.loc > K.l },
+        { id: 'intro', title: 'lab_m4_ta_3', body: 'lab_m4_ta_3b', ableton: 'lab_m4_ta_3a', dim: false,
+          onEnter: () => m4Reveal(-1), target: introTarget, check: introOnly },
+        { id: 'add', title: 'lab_m4_ta_4', body: 'lab_m4_ta_4b', ableton: 'lab_m4_ta_4a', dim: false,
+          onEnter: () => { K.a = m4T.add; m4Reveal(1); },
+          target: () => { const u = U(); if (!u) return null; return !state.arrCells[3][1] ? u.cellw[3][m4HeadOf(3, 1)] : u.rows; },
+          check: () => m4T.add > K.a },
+        { id: 'ms', title: 'lab_m4_ta_5', body: 'lab_m4_ta_5b', ableton: 'lab_m4_ta_5a', dim: false,
+          onEnter: () => { K.m = m4T.ms; m4Reveal(-1); },
+          target: () => { const u = U(); return u && u.mBtns ? u.mBtns[2].parentNode : null; }, check: () => m4T.ms > K.m },
+        { id: 'auto', title: 'lab_m4_ta_6', body: 'lab_m4_ta_6b', ableton: 'lab_m4_ta_6a', dim: false,
+          onEnter: () => { K.v = m4S.auto[6]; m4Reveal(6); },
+          target: () => { const u = U(); return u && u.pts ? u.pts[6] : null; },
+          check: () => m4S.auto[6] < K.v - 0.05 || (K.v < 0.1 && m4S.auto[6] !== K.v) },
+        { id: 'full', title: 'lab_m4_ta_7', body: 'lab_m4_ta_7b', ableton: 'lab_m4_ta_7a', dim: false,
+          onEnter: () => { K.f = m4T.full; m4Reveal(-1); },
+          target: () => { const u = U(); return u ? u.play : null; }, check: () => m4T.full > K.f },
+    ] });
+}
+
+// ── Öğretici 2: DAW'da MIDI yazmak (her adım gerçek kontrolü hedefler, yapınca kendiliğinden ilerler) ──
 function m4Tutorial() {
     const U = () => _m4ui;
     const rollEl = () => { const u = U(); return u && u.roll && u.roll.isOpen() ? u.roll.el : null; };
@@ -20956,15 +21436,17 @@ function m4Tutorial() {
     // kart bu adımda üste alınır → kontrol kapanmaz (modül yerel sınıf, yalnız .is-dock iken etkili)
     const top = on => t => { if (t && t.el) t.el.classList.toggle('lab-m4-tut-top', on); };
     return labTutorial({ mid: 4, id: 'midi', title: 'lab_m4_tut_t', intro: 'lab_m4_tut_i', outro: 'lab_m4_tut_o', steps: [
+        // Eski 'key' adımı (Classic Cm loop'ları üstünde tonu Am yaptırıyordu → nakaratta çatışma) kaldırıldı. Yerine:
+        // önce loop setini Am setine çevir (tempo + davul + bas + pad + proje tonu birlikte) → melodi loop'larla aynı tonda.
+        { id: 'set', title: 'lab_m4_tut_s', body: 'lab_m4_tut_sb', ableton: 'lab_m4_tut_sa',
+          target: () => { const u = U(); return u && u.setSel ? u.setSel.closest('.lab-m4-lcd--set') : null; },
+          check: () => m4S.set === 'casAm' && m4S.key.root === 9 && m4S.key.type === 'minor' },
         { id: 'synth', title: 'lab_m4_tut_1', body: 'lab_m4_tut_1b', ableton: 'lab_m4_tut_1a', onEnter: () => m4Reveal(-1),
           target: () => { const u = U(); return u && u.instSeg[3] ? u.instSeg[3].el : null; },
           check: () => m4IsSyn(3) },
         { id: 'open', title: 'lab_m4_tut_2', body: 'lab_m4_tut_2b', ableton: 'lab_m4_tut_2a', onEnter: () => m4Reveal(3),
           target: () => { const u = U(); return u && u.cellw[3] ? u.cellw[3][m4HeadOf(3, 3)] : null; },
           check: () => !!(m4Ed && m4Ed.r === 3 && m4Ed.c === 3 && m4RollOpen()) },
-        { id: 'key', title: 'lab_m4_tut_3', body: 'lab_m4_tut_3b', ableton: 'lab_m4_tut_3a',
-          target: () => { const el = rollEl(); if (el) return Array.from(el.querySelectorAll('select.lpr-sel')).find(s => s.getAttribute('aria-label') === L('lpr_root')) || null; const u = U(); return u ? u.keyRoot : null; },
-          check: () => m4S.key.root === 9 && m4S.key.type === 'minor' && m4S.scaleOn },
         { id: 'draw', title: 'lab_m4_tut_4', body: 'lab_m4_tut_4b', ableton: 'lab_m4_tut_4a', hint: 'lab_m4_tut_reopen', dim: false,
           target: inRoll(el => el.querySelector('.lpr-gw')), check: () => lead().notes.length >= 4 },
         { id: 'len', title: 'lab_m4_tut_5', body: 'lab_m4_tut_5b', ableton: 'lab_m4_tut_5a', hint: 'lab_m4_tut_reopen', dim: false,
@@ -20991,7 +21473,7 @@ function m4Tutorial() {
           target: () => { const u = U(); return u ? u.play : null; },
           check: () => arrRun.playing && arrRun.fromStart },
         // Izgarada klip düzenleme (Ableton arrangement): kopyala / yapıştır, kenardan uzat (loop)
-        { id: 'clipcopy', title: 'lab_m4_tut_11', body: 'lab_m4_tut_11b', ableton: 'lab_m4_tut_11a',
+        { id: 'clipcopy', title: 'lab_m4_tut_11', body: () => L(m4Coarse() ? 'lab_m4_tut_11t' : 'lab_m4_tut_11b'), ableton: 'lab_m4_tut_11a',
           onEnter: () => { K.c = m4T.copy; K.p = m4T.paste; m4Reveal(m4S.csec); },
           target: () => { const u = U(); return u ? u.rows : null; },
           check: () => m4T.copy > K.c && m4T.paste > K.p },
@@ -21007,7 +21489,7 @@ function m4Tutorial() {
 function m4FlowBoxes() {
     const B = [
         { k: 'lab_m4_fb1_k', t: 'grid[5][8]', c: '--accent', f: 1, lines: [['lab_m4_fb1_1'], ['lab_m4_fb1_2'], ['lab_m4_fb1_3']] },
-        { k: 'lab_m4_fb2_k', t: `setTimeout · ${Math.round(ARR_S16 * 1000)} ms`, c: '--ember-2', f: 1.15, lines: [[null, 'sec = floor(step / 32)', '--fg'], ['lab_m4_fb2_2'], [null, 'loop: step ∈ [sel·32, selEnd·32+31]']] },
+        { k: 'lab_m4_fb2_k', t: `setTimeout 25 ms · step ${Math.round(ARR_S16 * 1000)} ms`, c: '--ember-2', f: 1.15, lines: [[null, 'sec = floor(step / 32)', '--fg'], ['lab_m4_fb2_2'], [null, 'loop: step ∈ [sel·32, selEnd·32+31]']] },
         { k: 'lab_m4_fb3_k', tk: 'lab_m4_fb3_t', c: '--err', f: 1.2, lines: [['lab_m4_fb3_1', null, '--accent'], ['lab_m4_fb3_2', null, '--lab-arr-lead'], ['lab_m4_fb3_3', null, '--violet']] },
         { k: 'lab_m4_fb4_k', t: 'vol · mute · solo', c: '--lab-arr-hat', f: 1, lines: [['lab_m4_fb4_1'], ['lab_m4_fb4_2'], [null, 'setTargetAtTime(τ 15 ms)']] },
         { k: 'lab_m4_fb5_k', t: 'Biquad lowpass', c: '--accent', f: 1.2, strong: true, lines: [['lab_m4_fb5_1', null, '--fg'], [null, 'hz = 150 · 120^v (v 0–1)'], ['lab_m4_fb5_3']] },
@@ -21036,9 +21518,25 @@ function m4FlowBoxes() {
 function m4HiwOpts() {
     const tv = { bpm: m4S.bpm, ms: Math.round(ARR_S16 * 1000) };    // tempo seti değişince m4PaintSet yeniden kurar
     const X = n => ({ t: L(`lab_m4_x${n}_t`), d: Lf(`lab_m4_x${n}_d`, tv) });
+    // Yeni başlayan katmanı: 6 numaralı kutu (sesin yolu) ↔ 6 "Sesin yolculuğu" kartı; Ableton adı kutunun alt yazısında
+    const C = ['var(--accent)', 'var(--ember-2)', 'var(--lab-arr-lead)', 'var(--lab-arr-hat)', 'var(--accent)', 'var(--lab-sec-bridge)'];
+    const ABL = ['Arrangement View', 'Transport · Tempo', 'Clips · Instruments', 'Volume · Mute · Solo', 'Auto Filter · Automation', 'Master · Glue Comp'];
+    const nodes = [1, 2, 3, 4, 5, 6].map((n, i) => ({ id: 'n' + n, n, x: 1 + i * 170, y: 16, w: 148, h: 64, t: L('lab_m4_hn_' + n), s: ABL[i], c: C[i], fill: n === 5 ? 'accent' : undefined }));
+    const edges = [1, 2, 3, 4, 5].map(n => ({ from: 'n' + n, to: 'n' + (n + 1), c: 'var(--accent)' }));
+    const J = n => ({ n, c: C[n - 1], t: L(`lab_m4_j${n}_t`), d: L(`lab_m4_j${n}_d`), like: L(`lab_m4_j${n}_l`), hear: L(`lab_m4_j${n}_h`), ableton: L(`lab_m4_j${n}_a`) });
+    const G = (k, abl) => [L(`lab_m4_gl_${k}_t`), L(`lab_m4_gl_${k}_d`), abl];
+    const enP = mk('p', 'lab-m4-hen'); enP.textContent = L('lab_m4_he_p');
     return {
-        kicker: false, title: L('lab_m4_hiw_t'), aux: L('lab_m4_hiw_aux'), cls: 'lab-m4-hiw',
-        blocks: [
+        id: 'labM4Hiw', title: L('lab_m4_hb_t'), aux: L('lab_m4_hiw_aux'), cls: 'lab-m4-hiw',
+        intro: L('lab_m4_hb_intro'),
+        flow: { w: 1000, h: 96, minWidth: 860, aria: L('lab_m4_hiw_flow'), nodes, edges },
+        journey: [1, 2, 3, 4, 5, 6].map(J),
+        blocks: [{ card: { cap: L('lab_m4_he_cap'), body: [enP] } }],
+        glossary: [G('arr', 'Arrangement View'), G('trk', 'Track'), G('clip', 'Clip'), G('loc', 'Locator'), 'bar', 'bpm', 'loop', G('ms', 'Track Activator · Solo'),
+            G('auto', 'Automation (A)'), 'filter', 'cutoff', 'reso', 'midi', 'sample', G('syn', 'Analog · Wavetable · Drift'), G('roll', 'MIDI Note Editor'),
+            'velocity', G('q', 'Quantize (Ctrl/⌘+U)'), G('key', 'Scale / Key'), 'master', 'comp', 'db'],
+        // Teknik ayrıntı (kapalı): eski mühendislik katmanı — WebAudio kutuları, 10 adım, parametre tablosu
+        technical: { blocks: [
             { el: m4FlowBoxes() },
             { row: [
                 { steps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(X), cols: 1 },
@@ -21059,7 +21557,7 @@ function m4HiwOpts() {
                     ['Loop', L('lab_m4_p_loop'), L('lab_m4_p_off'), 'step = sel·32 … selEnd·32+31'],
                 ] } },
             ], cols: 'minmax(0,.9fr) minmax(0,1.1fr)' },
-        ],
+        ] },
     };
 }
 
@@ -21117,7 +21615,8 @@ function m4FlowCard(ui) {
     const det = mk('div', 'lab-m4-fdet'); det.id = 'labM4FlowDet'; det.setAttribute('aria-live', 'polite');
     ui.fText = mk('span', 'lab-m4-fdet-t'); ui.fLink = mk('span');
     det.append(ui.fText, ui.fLink);
-    c.append(h, list, det);
+    // Lab sekme sırası (Mixing 03 → Arrangement 04) bu iş akışından farklı: nedenini söyle
+    c.append(h, list, det, m4Txt('p', 'lab-fnote lab-m4-fnote', 'lab_m4_flow_note'));
     return c;
 }
 function m4GuideSection(ui) {
@@ -21153,21 +21652,47 @@ function renderModule4() {
     const ui = _m4ui = { st: -1, bar: -2, ps: -1, lang: labLang() };
     m4FlagGuard();
     top.append(m4Window(ui).root);
-    // Öğreticinin görünür girişi: başlığın sağ yuvasında adıyla (pencere başlık çubuğunda kompakt kopyası)
-    ui.tutBig = makeTutorialButton(ui.tut, { text: () => L('lab_m4_tut_t') });
-    actions.append(ui.tutBig.el);
+    // İki ders başlığın sağında, sırasıyla: 1 · Aranjman temelleri (görev 6–10) → 2 · DAW'da MIDI yazmak (11–15)
+    ui.tutBigA = makeTutorialButton(ui.tutA, { text: () => L('lab_m4_tut_btn1') });
+    ui.tutBig = makeTutorialButton(ui.tut, { text: () => L('lab_m4_tut_btn2') });
+    actions.append(ui.tutBigA.el, ui.tutBig.el);
     ui.hiw = howItWorks(m4HiwOpts()); ui.hiwSig = m4S.set + '|' + m4S.bpm;
     const row = mk('div', 'lab-m4-row3');
-    ui.tasks = makeTaskPanel(4, { auto: m4Auto, note: 'lab_m4_tasks_note' });
-    ui.tasks.querySelectorAll('.lab-task-text').forEach((s, i) => { if (TASKS[4][i]) s.setAttribute('data-i18n', 'lab_m4_t' + TASKS[4][i].id); });
+    const cellOf = (r, c) => ui.cellw[r][m4HeadOf(r, c)];
+    const vis = el => !!(el && el.offsetParent);
+    // Görev "Göster" hedefleri (TASKS[4] sırası: 6 7 8 9 10 11 15 13 14) + nerede olduğunu söyleyen ipucu satırı
+    const targets = {
+        6: () => ui.tplBtns[0].parentNode,
+        7: () => { const r = [2, 3, 4].find(x => state.arrCells[x][0]); return r != null ? cellOf(r, 0) : ui.locs[0]; },
+        8: () => { const r = ARR_TRACKS.findIndex((_, x) => !state.arrCells[x][3]); return r >= 0 ? cellOf(r, 3) : ui.tplBtns[0].parentNode; },
+        9: () => cellOf(0, 6),
+        10: () => ui.play,
+        11: () => { const tr = M4_MEL.find(m4IsSyn); if (tr != null) return cellOf(tr, 3); if (vis(ui.instSeg[3].el)) return ui.instSeg[3].el; m4SelTrack(3); return ui.chInst.el; },
+        15: () => { const tr = M4_MEL.find(m4IsSyn); return tr != null ? cellOf(tr, 3) : (vis(ui.instSeg[3].el) ? ui.instSeg[3].el : ui.chInst.el); },
+        13: () => vis(ui.sb) ? ui.sb : ui.cBtns,
+        14: () => ui.keyRoot,
+    };
+    ui.tasks = makeTaskPanel(4, { auto: m4Auto, note: 'lab_m4_tasks_note', targets,
+        hints: TASKS[4].map(t => LAB_TXT['lab_m4_h' + t.id] ? 'lab_m4_h' + t.id : null) });
+    // Görev metni + ipucu satırı dil değişince m4TaskRelabel ile (data-i18n ipucu satırını silerdi)
     ui.taskLive = mk('p', 'sr-only'); ui.taskLive.setAttribute('aria-live', 'polite');
     ui.tasks.append(ui.taskLive);
     row.append(ui.tasks, m4WhereCard(), m4FlowCard(ui));
-    main.append(ui.hiw.el, row, m4GuideSection(ui));
+    // Sıra (yeni başlayan): görevler + Ableton'da nerede → şarkı yapısı rehberi → "Ses nasıl oluşuyor?" en sonda
+    main.append(row, m4GuideSection(ui), ui.hiw.el);
     // Web MIDI (görünüm ömürlü abonelik — gezinmede kit bırakır): REC + açık klip → kayıt, değilse ARM / seçili MIDI izi çalar
     labMidi.on('noteon', m4MidiOn);
     labMidi.on('noteoff', m4MidiOff);
     labMidi.on('cc', m4MidiCc);
+    labMidi.on('state', m4RecHint);
+    // Boşluk sayfanın her yerinde çal/durdur; bilgisayar MIDI klavyesi (yakalama evresi: düzenleyici tuşları yutmadan önce)
+    document.addEventListener('keydown', m4DocKey);
+    document.addEventListener('keydown', m4KbdKey, true);
+    document.addEventListener('keyup', m4KbdKey, true);
+    window.addEventListener('blur', m4KbdAllOff);
+    const onRs = () => m4PaintSwipe();
+    window.addEventListener('resize', onRs);
+    requestAnimationFrame(onRs);
     // İlk boyama (render() önce teardownView çağırır → çalma burada hep durmuş). Birleşik aria adları burada da
     // yazılır: kabuk görünüm yeniden kurulunca labOnRefresh'i çağırmaz (Genel bakış → Arrangement dönüşü).
     m4Labels(ui);
@@ -21179,6 +21704,12 @@ function renderModule4() {
         m4MenuClose(false);
         if (m4Drag) { clearTimeout(m4Drag.lp); m4Drag = null; }   // lpTeardown sürüklemeyi zaten bitirir
         clearTimeout(ui.saveT);
+        document.removeEventListener('keydown', m4DocKey);
+        document.removeEventListener('keydown', m4KbdKey, true);
+        document.removeEventListener('keyup', m4KbdKey, true);
+        window.removeEventListener('blur', m4KbdAllOff);
+        window.removeEventListener('resize', onRs);
+        m4KbdAllOff();
         m4MidiTr.clear(); m4Rec.held.clear(); m4Rec.down = 0;
         if (_m4ui === ui) _m4ui = null;
     });
