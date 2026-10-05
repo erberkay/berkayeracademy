@@ -15,9 +15,34 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // users/{uid}.email profil/üye listesinde admin rozetini belirler: kullanıcı yalnız kendi
+    // oturum e-postasını (ya da boş / değişmemiş değeri) yazabilir; admin adresini yalnız admin.
+    function userEmailOk() {
+      let e = request.resource.data.get('email', null);
+      return e == null || e == '' || (
+        e is string &&
+        (e == request.auth.token.get('email', null) ||
+          (resource != null && e == resource.data.get('email', null))) &&
+        (e.lower() != "berkayer032@gmail.com" || isAdmin())
+      );
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (
+      // Ünvan (title) yalnız admin yazar (profile.html ünvan seçici)
+      allow create: if request.auth != null && (
+        isAdmin() ||
+        (request.auth.uid == uid &&
+          !('title' in request.resource.data) &&
+          userEmailOk())
+      );
+      allow update: if request.auth != null && (
+        isAdmin() ||
+        (request.auth.uid == uid &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['title']) &&
+          userEmailOk())
+      );
+      allow delete: if request.auth != null && (
         request.auth.uid == uid ||
         isAdmin()
       );
@@ -53,7 +78,15 @@ service cloud.firestore {
 
     match /testimonials/{id} {
       allow read: if true;
-      allow create: if request.auth != null;
+      // Alanlar index.html submitComment() ile birebir (form: ad ≤ 40, yorum ≤ 300 karakter)
+      allow create: if request.auth != null &&
+        request.resource.data.keys().hasOnly(['name', 'text', 'uid', 'createdAt']) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60 &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 500;
       allow update, delete: if request.auth != null && isAdmin();
     }
 
@@ -61,7 +94,20 @@ service cloud.firestore {
       allow read, delete: if request.auth != null && request.auth.uid == uid;
       allow update: if request.auth != null && request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow create: if request.auth != null && request.resource.data.fromUid == request.auth.uid;
+      // İstemcinin yazdığı bildirimler: DM / collab (profile.html), yeni konu (new-post.html),
+      // konuya yanıt (post.html). Ders onayı (lesson_confirm) yalnız Cloud Functions yazar.
+      allow create: if request.auth != null &&
+        request.resource.data.fromUid == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['text', 'read', 'fromUid', 'fromName', 'type', 'postId', 'createdAt']) &&
+        request.resource.data.text is string &&
+        request.resource.data.text.size() <= 500 &&
+        request.resource.data.get('read', false) == false &&
+        request.resource.data.get('type', 'none') in ['none', 'collab', 'collab_accepted'] &&
+        request.resource.data.get('fromName', '') is string &&
+        request.resource.data.get('fromName', '').size() <= 100 &&
+        (!('postId' in request.resource.data) ||
+          (request.resource.data.postId is string && request.resource.data.postId.matches('^[A-Za-z0-9]{1,64}$'))) &&
+        request.resource.data.createdAt == request.time;
     }
 
     match /announcements/{docId} {
@@ -71,9 +117,16 @@ service cloud.firestore {
 
     match /forum/{postId} {
       allow read: if true;
+      // Alanlar new-post.html submitPost() ile birebir; admin rozeti (authorIsAdmin) ve
+      // sabitleme (pinned) yalnız admin; yanıt sayacı 0'dan başlar
       allow create: if request.auth != null &&
         request.resource.data.authorId == request.auth.uid &&
-        (!('authorIsAdmin' in request.resource.data) || request.resource.data.authorIsAdmin == false || isAdmin());
+        (isAdmin() || (
+          request.resource.data.keys().hasOnly(['title', 'text', 'category', 'authorName', 'authorId',
+            'authorIsAdmin', 'authorPhotoURL', 'createdAt', 'replyCount', 'solved']) &&
+          request.resource.data.get('authorIsAdmin', false) == false &&
+          request.resource.data.get('replyCount', 0) == 0
+        ));
       allow update: if request.auth != null && (
         isAdmin() ||
         // Beğeni: yalnız kendi uid'ini ekler/çıkarır, sayaç listeyle aynı miktarda değişir
@@ -218,16 +271,11 @@ service cloud.firestore {
       }
     }
 
+    // Dolu saatleri yalnız admin (panel) ve Cloud Functions (Admin SDK) yazar; öğrenci istemcisi yazmaz
     match /booked_slots/{slotId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null &&
         isAdmin();
-      allow create: if request.auth != null &&
-        request.resource.data.student_uid == request.auth.uid &&
-        !isAdmin();
-      allow delete: if request.auth != null &&
-        resource.data.student_uid == request.auth.uid &&
-        !isAdmin();
     }
 
     match /lesson_requests/{reqId} {
@@ -235,8 +283,12 @@ service cloud.firestore {
         request.auth.uid == resource.data.from_uid ||
         isAdmin()
       );
+      // from_email oturum e-postasıyla aynı olmalı (e-postalarda/WhatsApp'ta başkası adına talep olmasın);
+      // deneme talebi küçük harfe çevirip yazdığı için karşılaştırma büyük/küçük harf duyarsız
       allow create: if request.auth != null &&
-        request.resource.data.from_uid == request.auth.uid;
+        request.resource.data.from_uid == request.auth.uid &&
+        request.resource.data.get('from_email', '') is string &&
+        request.resource.data.get('from_email', '').lower() == request.auth.token.get('email', '').lower();
       allow update: if request.auth != null && isAdmin();
       allow delete: if request.auth != null && (
         // Öğrenci reddedilen talebini (yeniden deneme) ya da bekleyen talebini ("Talebi geri çek") silebilir
@@ -245,8 +297,16 @@ service cloud.firestore {
       );
     }
 
+    // settings/zoom (Zoom linki) yalnız admin ile ödemesi onaylı ya da deneme dersi olan öğrenciye
+    // açık; diğer ayarlar (müsaitlik, kampanyalar) giriş yapan herkese.
+    function canReadZoom() {
+      let resPath = /databases/$(database)/documents/reservations/$(request.auth.uid);
+      return exists(resPath) && (
+        get(resPath).data.get('payment_confirmed', false) == true ||
+        get(resPath).data.get('lesson_type', '') == 'trial');
+    }
     match /settings/{docId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (docId != 'zoom' || isAdmin() || canReadZoom());
       allow write: if request.auth != null && isAdmin();
     }
 
@@ -255,19 +315,36 @@ service cloud.firestore {
         request.auth.uid == uid ||
         isAdmin()
       );
-      allow create: if request.auth != null && request.auth.uid == uid;
+      // Erişim talebi akışı kaldırıldı: istemci artık oluşturmaz (eski belgeler okunur/silinir).
       // Durumu (onay/red) yalnız admin değiştirir; öğrenci kendi talebini yalnız silebilir
       allow update: if isAdmin();
       allow delete: if request.auth != null && (request.auth.uid == uid || isAdmin());
     }
 
     // UUID anahtarlı köprü: anahtarı bilen tek belgeyi okur (get); koleksiyon LİSTELENEMEZ
-    // (belgelerde Google ID token + e-posta var). Yazma/silme yalnız belgenin sahibine.
+    // (belgelerde Google ID token + e-posta var). Belge yalnız yazıldıktan sonraki 10 dakika
+    // okunabilir (createdAt = sunucu saati). Admin hesabı köprüye belirteç yazamaz.
+    // Yazma/silme yalnız belgenin sahibine; alanlar app-bridge.html ile birebir.
+    function bridgeWriteOk(key) {
+      return request.auth != null &&
+        key.matches('^[A-Za-z0-9_-]{16,128}$') &&
+        request.auth.token.get('email', '').lower() != "berkayer032@gmail.com" &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.email == request.auth.token.get('email', null) &&
+        request.resource.data.keys().hasOnly(['googleIdToken', 'uid', 'email', 'displayName', 'photoURL', 'expiresAt', 'createdAt']) &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.expiresAt is timestamp &&
+        request.resource.data.expiresAt <= request.time + duration.value(30, 'm');
+    }
     match /app_bridge/{key} {
-      allow get: if true;
+      // Henüz yazılmamış belge (uygulama bekler/yoklar) "yok" döner, izin hatası değil
+      allow get: if resource == null || (
+        resource.data.get('createdAt', null) is timestamp &&
+        request.time < resource.data.createdAt + duration.value(10, 'm'));
       allow list: if false;
-      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if bridgeWriteOk(key);
+      allow update: if bridgeWriteOk(key) && resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
 
     // Seviye belirleme sınavı — öğrenci kendi sonucunu bir kez yazar ve görür,
@@ -277,9 +354,32 @@ service cloud.firestore {
         request.auth.uid == uid ||
         isAdmin()
       );
+      // Alanlar booking.html ptSubmit() ile birebir; sayılar tam sayı ve aralıkta, metinler kısa
       allow create: if request.auth != null &&
         request.auth.uid == uid &&
-        request.resource.data.uid == uid;
+        request.resource.data.uid == uid &&
+        request.resource.data.keys().hasOnly(['uid', 'student_name', 'student_email', 'score', 'correct',
+          'unknown', 'total', 'level_key', 'level_tr', 'level_en', 'answers', 'quiz_version', 'completed_at']) &&
+        request.resource.data.score is int &&
+        request.resource.data.score >= 0 && request.resource.data.score <= 100 &&
+        request.resource.data.correct is int &&
+        request.resource.data.correct >= 0 && request.resource.data.correct <= 100 &&
+        request.resource.data.unknown is int &&
+        request.resource.data.unknown >= 0 && request.resource.data.unknown <= 100 &&
+        request.resource.data.total is int &&
+        request.resource.data.total >= 1 && request.resource.data.total <= 100 &&
+        request.resource.data.quiz_version is int &&
+        request.resource.data.quiz_version >= 1 && request.resource.data.quiz_version <= 1000 &&
+        request.resource.data.level_key in ['zero', 'beginner', 'intermediate', 'advanced'] &&
+        request.resource.data.level_tr is string && request.resource.data.level_tr.size() <= 40 &&
+        request.resource.data.level_en is string && request.resource.data.level_en.size() <= 40 &&
+        request.resource.data.get('student_name', '') is string &&
+        request.resource.data.get('student_name', '').size() <= 120 &&
+        request.resource.data.get('student_email', '') is string &&
+        request.resource.data.get('student_email', '').size() <= 200 &&
+        request.resource.data.answers is map &&
+        request.resource.data.answers.size() <= 100 &&
+        request.resource.data.completed_at == request.time;
       allow update, delete: if request.auth != null &&
         isAdmin();
     }
@@ -291,9 +391,16 @@ service cloud.firestore {
         request.auth.uid == resource.data.uid ||
         isAdmin()
       );
+      // Belge id'si istemcinin .doc() otomatik id'si olmalı (20 harf/rakam) — admin kartı bu id'yi kullanır
       allow create: if request.auth != null &&
+        qId.matches('^[A-Za-z0-9]{20}$') &&
         request.resource.data.uid == request.auth.uid &&
         request.resource.data.answered == false &&
+        request.resource.data.get('name', '') is string &&
+        request.resource.data.get('name', '').size() <= 80 &&
+        request.resource.data.get('state', '') is string &&
+        request.resource.data.get('state', '').size() <= 20 &&
+        request.resource.data.get('lang', 'tr') in ['tr', 'en'] &&
         request.resource.data.text is string &&
         request.resource.data.text.size() > 0 &&
         request.resource.data.text.size() <= 500 &&

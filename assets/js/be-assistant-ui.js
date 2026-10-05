@@ -814,17 +814,19 @@
     admNavCount(admQs.length);
     if (!admQs.length) { list.innerHTML = '<div class="adm-empty">' + esc(t(S.adm.empty, l)) + '</div>'; return; }
     list.innerHTML = '';
-    admQs.forEach(function (q) {
+    admQs.forEach(function (q, qi) {
       var x = q.x;
+      // Form alanı id'leri satır sırasından üretilir — belge id'si (Firestore'dan gelir) asla HTML'e yazılmaz
+      var fid = 'baR' + qi;
       var row = document.createElement('div'); row.className = 'be-asst-adm-q';
-      var sl = STATE_LBL[x.state];
+      var sl = Object.prototype.hasOwnProperty.call(STATE_LBL, x.state) ? STATE_LBL[x.state] : null;
       row.innerHTML = '<p class="be-asst-adm-qt"></p>' +
         '<div class="be-asst-adm-meta"><strong></strong>' + (sl ? '<span class="adm-chip adm-chip--info">' + esc(sl[l === 'en' ? 1 : 0]) + '</span>' : '') + '<span>' + esc(admWhen(x.created_at)) + '</span></div>' +
         '<div class="be-asst-adm-row"><button type="button" class="btn btn-sm btn-primary" data-a="open"></button><button type="button" class="btn btn-sm btn-danger" data-a="del"></button></div>' +
         '<form class="be-asst-adm-form" hidden>' +
-          '<label class="field-label" for="baA_' + q.id + '"></label><textarea class="textarea" id="baA_' + q.id + '" rows="4" maxlength="2000" required></textarea>' +
-          '<label class="field-label" for="baQ_' + q.id + '"></label><textarea class="textarea" id="baQ_' + q.id + '" rows="3" maxlength="1500"></textarea><p class="field-help"></p>' +
-          '<label class="field-label" for="baK_' + q.id + '"></label><input class="input input-sm" id="baK_' + q.id + '" maxlength="200">' +
+          '<label class="field-label" for="' + fid + 'A"></label><textarea class="textarea" id="' + fid + 'A" rows="4" maxlength="2000" required></textarea>' +
+          '<label class="field-label" for="' + fid + 'Q"></label><textarea class="textarea" id="' + fid + 'Q" rows="3" maxlength="1500"></textarea><p class="field-help"></p>' +
+          '<label class="field-label" for="' + fid + 'K"></label><input class="input input-sm" id="' + fid + 'K" maxlength="200">' +
           '<div class="be-asst-adm-row"><button type="submit" class="btn btn-sm btn-primary"></button><button type="button" class="btn btn-sm btn-subtle" data-a="cancel"></button></div>' +
           '<p class="form-status" role="status"></p></form>';
       row.querySelector('.be-asst-adm-qt').textContent = x.text || '';
@@ -837,7 +839,7 @@
       f.querySelector('.field-help').textContent = t(S.adm.qHelp, l);
       f.querySelector('[type="submit"]').textContent = t(S.adm.save, l);
       f.querySelector('[data-a="cancel"]').textContent = t(S.adm.cancel, l);
-      f.querySelector('#baQ_' + q.id).value = x.text || '';
+      f.querySelector('#' + fid + 'Q').value = x.text || '';
       bOpen.addEventListener('click', function () { f.hidden = false; bOpen.hidden = true; f.querySelector('textarea').focus(); });
       f.querySelector('[data-a="cancel"]').addEventListener('click', function () { f.hidden = true; bOpen.hidden = false; bOpen.focus(); });
       bDel.addEventListener('click', function () {
@@ -846,9 +848,9 @@
       });
       f.addEventListener('submit', function (e) {
         e.preventDefault();
-        var aTxt = f.querySelector('#baA_' + q.id).value.trim();
-        var qs = f.querySelector('#baQ_' + q.id).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 20);
-        var kw = f.querySelector('#baK_' + q.id).value.split(',').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 20);
+        var aTxt = f.querySelector('#' + fid + 'A').value.trim();
+        var qs = f.querySelector('#' + fid + 'Q').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 20);
+        var kw = f.querySelector('#' + fid + 'K').value.split(',').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 20);
         var stEl = f.querySelector('.form-status');
         if (!aTxt || !qs.length) { stEl.textContent = t(S.adm.need, l); return; }
         var sb = f.querySelector('[type="submit"]'); sb.disabled = true;

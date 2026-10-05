@@ -4103,7 +4103,7 @@ var _bkWkSide = {};             // anahtar → yan sütun satırı referansları
 var _bkWkWeekStart = null, _bkWkDay = null, _bkWkSig = '', _bkWkLang = '', _bkWkDeepDone = false, _bkWkLoadSeq = 0;
 var BK_WK_STATUSES = ['scheduled', 'rescheduled', 'completed', 'frozen', 'cancel_requested'];
 var BK_JOIN_MS = 15 * 60e3;     // "Derse Katıl" dersten 15 dk önce açılır (initZoomJoinBox ile aynı)
-var _bkZoomLink = null;         // settings/global.zoom_link (initZoomJoinBox dinleyicisi yazar)
+var _bkZoomLink = null;         // settings/zoom.zoom_link (initZoomJoinBox dinleyicisi yazar)
 var BK_WK_BADGE = {
   ok:        ['accent', 'bk_wk_badge_ok', `Değiştirilebilir`],
   soon:      ['warn', 'bk_wk_badge_soon', `Son dakikalar`],
@@ -5802,14 +5802,16 @@ function ptOpenAdminDetail(uid) {
   // Sınav büyüyebilir: eski sonuçlarda sadece o gün sorulan sorular listelenir,
   // sonradan eklenen sorular "bilmiyorum" gibi görünmesin.
   const askedQs = (window.bkQuiz?.questions || []).filter(q => d.answers && Object.prototype.hasOwnProperty.call(d.answers, q.id));
+  // Belgedeki sayılar öğrencinin yazdığı veridir — HTML'e yalnız sayı olarak girer
+  const ptNum = v => (typeof v === 'number' && isFinite(v)) ? String(v) : '?';
   const verNote = (d.quiz_version && window.bkQuiz && d.quiz_version !== window.bkQuiz.VERSION)
-    ? `<div>Bu sonuç sınavın ${d.quiz_version}. sürümüyle alındı (${d.total} soru).</div>`
+    ? `<div>Bu sonuç sınavın ${escHtml(ptNum(d.quiz_version))}. sürümüyle alındı (${escHtml(ptNum(d.total))} soru).</div>`
     : '';
   const rows = (askedQs.length ? askedQs : (window.bkQuiz?.questions || [])).map((q, i) => {
     const given = d.answers ? d.answers[q.id] : undefined;
     const isUnknown = given === (window.bkQuiz?.UNKNOWN ?? -1) || given == null;
     const isRight = !isUnknown && given === q.answer;
-    const givenText = isUnknown ? 'Bilmiyorum' : (q.tr.options[given] ?? '—');
+    const givenText = isUnknown ? 'Bilmiyorum' : (Number.isInteger(given) && Object.prototype.hasOwnProperty.call(q.tr.options, given) ? q.tr.options[given] : '—');
     const mark = isRight ? '<span class="text-ok">doğru</span>' : (isUnknown ? '<span class="text-info">bilmiyorum</span>' : '<span class="text-err">yanlış</span>');
     return `<div class="pt-review-row">
         <div><strong>${i+1}.</strong> ${q.tr.q} — ${mark}</div>
@@ -5821,8 +5823,8 @@ function ptOpenAdminDetail(uid) {
     <div class="modal-title">Seviye Belirleme — ${escHtml(d.student_name || d.student_email || uid)}</div>
     <div class="modal-body">
       <div class="be-callout be-callout--accent pt-sum"><div>
-        <span class="pt-sum-title">${escHtml(d.level_tr)} · ${d.score}/100</span>
-        <div>${d.correct}/${d.total} doğru · ${d.unknown || 0} "bilmiyorum" · ${when}</div>
+        <span class="pt-sum-title">${escHtml(d.level_tr)} · ${escHtml(ptNum(d.score))}/100</span>
+        <div>${escHtml(ptNum(d.correct))}/${escHtml(ptNum(d.total))} doğru · ${escHtml(ptNum(d.unknown || 0))} "bilmiyorum" · ${escHtml(when)}</div>
         ${verNote}
       </div></div>
       ${rows}
@@ -7132,7 +7134,7 @@ async function renderDashboard() {
       list.append(pastToggle, pastSection);
     }
   }
-  initZoomJoinBox(lessons, today, isPaid, isPending);
+  initZoomJoinBox(lessons, today, isPaid, isPending, isPaid || isTrial || _bkAdminPreview);
   initStudentQA(_user.uid, _user);
 
   // Welcome popup — show on first visit and again when student re-books (new start_date)
@@ -7420,7 +7422,6 @@ async function renderAdminPanel() {
   document.documentElement.classList.remove('bk-admin-preview');
   showView('view-admin');
   admInitChrome();
-  loadAdminAccessRequests();
   initAdminAvailDays();
   initAdminWhatsAppTest();
   initAdminZoomLink();
@@ -10871,11 +10872,24 @@ async function initAdminZoomLink() {
       joinDiv.append(a);
     }
   }
+  // Zoom linki settings/zoom'da (yalnız admin + ödemesi onaylı / deneme öğrencisi okur).
+  // Geçiş: eski konum settings/global.zoom_link (giriş yapan herkes okuyabiliyordu) varsa
+  // settings/zoom'a taşınır ve global'den silinir.
   try {
-    const snap = await db.collection('settings').doc('global').get();
-    if (snap.exists && snap.data().zoom_link) {
-      input.value = snap.data().zoom_link;
-      renderAdminZoomJoin(snap.data().zoom_link);
+    const zoomRef = db.collection('settings').doc('zoom');
+    const globalRef = db.collection('settings').doc('global');
+    const [zs, gs] = await Promise.all([zoomRef.get(), globalRef.get()]);
+    let link = zs.exists ? (zs.data().zoom_link || null) : null;
+    const legacy = gs.exists ? (gs.data().zoom_link || null) : null;
+    if (legacy) {
+      const b = db.batch();
+      if (!link) { link = legacy; b.set(zoomRef, { zoom_link: legacy, updated_at: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }); }
+      b.set(globalRef, { zoom_link: firebase.firestore.FieldValue.delete() }, { merge: true });
+      await b.commit().catch(e => console.warn('[zoom] taşıma', e && e.code));
+    }
+    if (link) {
+      input.value = link;
+      renderAdminZoomJoin(link);
     }
   } catch(e) {}
   saveBtn.onclick = async () => {
@@ -10886,7 +10900,10 @@ async function initAdminZoomLink() {
     input.classList.remove('is-invalid');
     saveBtn.disabled = true; saveBtn.textContent = '…';
     try {
-      await db.collection('settings').doc('global').set({ zoom_link: link }, { merge: true });
+      const b = db.batch();
+      b.set(db.collection('settings').doc('zoom'), { zoom_link: link, updated_at: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      b.set(db.collection('settings').doc('global'), { zoom_link: firebase.firestore.FieldValue.delete() }, { merge: true });
+      await b.commit();
       admStatus(status, '✓ Kaydedildi', 'ok');
       renderAdminZoomJoin(link);
       setTimeout(() => status.textContent = '', 2500);
@@ -10931,7 +10948,8 @@ let _zoomSettingsUnsub = null;
 let _dashResUnsub = null;
 let _zoomVisibilityHandler = null;
 
-async function initZoomJoinBox(lessons, today, isPaid, isPending) {
+// canReadLink: ödemesi onaylı ya da deneme dersi — settings/zoom'u yalnız bunlar (ve admin) okuyabilir
+async function initZoomJoinBox(lessons, today, isPaid, isPending, canReadLink) {
   const box = document.getElementById('zoomJoinBox');
   if (_zoomCountdownTimer) { clearInterval(_zoomCountdownTimer); _zoomCountdownTimer = null; }
   if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
@@ -11062,12 +11080,25 @@ async function initZoomJoinBox(lessons, today, isPaid, isPending) {
 
   // Listen to zoom link changes in real-time
   if (_zoomSettingsUnsub) { _zoomSettingsUnsub(); _zoomSettingsUnsub = null; }
-  _zoomSettingsUnsub = db.collection('settings').doc('global').onSnapshot(snap => {
-    zoomLink = snap.exists ? (snap.data().zoom_link || null) : null;
+  const applyZoom = link => {
+    zoomLink = (typeof link === 'string' && link) ? link : null;
     // "Bu hafta" kartları da 15 dk kala Derse Katıl bağlantısını gösterir
     if (_bkZoomLink !== zoomLink) { _bkZoomLink = zoomLink; if (_bkWkCtx) bkWkTick(); }
     renderAll();
-  }, () => { renderAll(); });
+  };
+  // Geçiş (bir sürüm): settings/zoom henüz yoksa eski alan settings/global.zoom_link okunur;
+  // admin paneli ilk açılışta linki settings/zoom'a taşır ve global'den siler.
+  const legacyZoom = () => db.collection('settings').doc('global').get()
+    .then(g => applyZoom(g.exists ? g.data().zoom_link : null))
+    .catch(() => applyZoom(null));
+  if (canReadLink !== false) {
+    _zoomSettingsUnsub = db.collection('settings').doc('zoom').onSnapshot(snap => {
+      const link = snap.exists ? snap.data().zoom_link : null;
+      if (link) applyZoom(link); else legacyZoom();
+    }, () => { legacyZoom(); });
+  } else {
+    applyZoom(null);
+  }
 
   _zoomCountdownTimer = setInterval(renderAll, 1000);
   // Re-render immediately when page becomes visible (fixes background tab timer throttling)
@@ -11782,78 +11813,10 @@ function renderAccessView(user, state, rejectReason) {
   }
 }
 
-// ─── Admin: Load Access Requests ──────────────────────────
-let _adminAccessUnsub = null;
+// ─── Admin dinleyicileri ──────────────────────────────────
+let _adminAccessUnsub = null;   // eski erişim talebi dinleyicisi (kaldırıldı; temizlik kodu null görür)
 let _adminReqUnsub = null;
 let _adminStudUnsub = null;
-
-function loadAdminAccessRequests() {
-  const card = document.getElementById('adminAccessCard');
-  const list = document.getElementById('adminAccessList');
-  if (!card || !list) return;
-
-  if (_adminAccessUnsub) { _adminAccessUnsub(); _adminAccessUnsub = null; }
-
-  // Show loading state immediately so card is visible on error too
-  card.style.display = '';
-  list.innerHTML = '<div class="empty-state">Yükleniyor…</div>';
-
-  let _accessInitialLoad = true;
-  _adminAccessUnsub = db.collection('booking_access_requests')
-    .where('status', '==', 'pending')
-    .onSnapshot(snap => {
-      if (!_accessInitialLoad) {
-        const hasNew = snap.docChanges().some(c => c.type === 'added');
-        if (hasNew) {
-          try { const a = new Audio('assets/audio/bildirim sesi.wav'); a.play().catch(() => {}); } catch(e) {}
-        }
-      }
-      _accessInitialLoad = false;
-      card.style.display = '';
-      list.innerHTML = '';
-      if (snap.empty) { list.innerHTML = '<div class="empty-state">Bekleyen erişim talebi yok.</div>'; return; }
-      snap.docs.forEach(doc => {
-        const r = doc.data();
-        const row = document.createElement('div');
-        row.className = 'access-row';
-        row.innerHTML = `
-          <div class="access-row-body">
-            <div class="access-head">
-              <div class="ava">
-                ${r.photo ? `<img src="${r.photo}" alt="">` : (r.name?.[0]||'?')}
-              </div>
-              <div>
-                <div class="access-row-name">${r.name || '—'}</div>
-                <div class="access-row-meta">${r.email || ''}</div>
-              </div>
-            </div>
-            ${r.message ? `<div class="access-msg">"${r.message}"</div>` : ''}
-          </div>
-          <div class="req-actions">
-            <button class="accessApproveBtn req-approve">✓ Onayla</button>
-            <button class="accessRejectBtn req-reject">✕ Reddet</button>
-          </div>`;
-
-        row.querySelector('.accessApproveBtn').onclick = async (e) => {
-          e.target.disabled = true;
-          try {
-            await db.collection('booking_access_requests').doc(doc.id).update({ status: 'approved' });
-            toast(`✓ ${r.name || r.email} erişimi onaylandı.`);
-          } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
-        };
-        row.querySelector('.accessRejectBtn').onclick = async (e) => {
-          const reason = await showInputModal({ title: bkT('adm_reject_reason', 'Reddetme sebebi'), placeholder: bkT('adm_optional', 'İsteğe bağlı…'), multiline: true });
-          if (reason === null) return;
-          e.target.disabled = true;
-          try {
-            await db.collection('booking_access_requests').doc(doc.id).update({ status: 'rejected', reject_reason: reason });
-            toast(`${r.name || r.email} erişimi reddedildi.`);
-          } catch(err) { const c=errId(); toast(`Hata (${c}): `+(err.message||err.code), true); e.target.disabled = false; }
-        };
-        list.append(row);
-      });
-    }, e => { const c=errId(); list.innerHTML = `<div class="empty-state text-err">Yüklenemedi (${c}): ${e.code||e.message}</div>`; });
-}
 
 // ─── Lesson Panel Announcements ───────────────────────────
 let _lessonAnnUnsub = null;

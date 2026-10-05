@@ -128,6 +128,8 @@ const _db   = firebase.firestore()
 
 const bridgeKey = new URLSearchParams(window.location.search).get('bridge_key')
 const card      = document.getElementById('card')
+// Admin hesabının Google kimlik belirteci köprüye asla yazılmaz (kurallar da reddeder)
+const ADMIN_EMAIL = 'berkayer032@gmail.com'
 
 // ── Görünüm parçaları (emoji yerine çizgi ikonlar; Google "G" logosu marka rengiyle kalır)
 const ICONS = {
@@ -180,6 +182,15 @@ function showCancel() {
   `, true)
 }
 
+function showAdminBlocked() {
+  renderCard(`
+    ${stateIcon('lock')}
+    <h1 class="ab-title" tabindex="-1">Bu hesapla kullanılamaz</h1>
+    <p class="ab-text">Yönetici hesabıyla uygulama girişi yapılamaz. Uygulamaya başka bir Google hesabıyla giriş yapın.</p>
+    ${signInButton(`Başka Hesapla Giriş Yap`)}
+  `, true)
+}
+
 function showError(msg) {
   renderCard(`
     ${stateIcon('err')}
@@ -211,6 +222,12 @@ async function startSignIn() {
       credential = reauth.credential || firebase.auth.GoogleAuthProvider.credentialFromResult(reauth)
     }
 
+    if (String(result.user.email || '').toLowerCase() === ADMIN_EMAIL) {
+      showAdminBlocked()
+      return
+    }
+
+    // Belge yalnız oluşturulduktan sonraki 10 dakika okunabilir (kurallar createdAt'e bakar)
     await _db.collection('app_bridge').doc(bridgeKey).set({
       googleIdToken: credential.idToken,
       uid:           result.user.uid,
@@ -218,6 +235,7 @@ async function startSignIn() {
       displayName:   result.user.displayName || '',
       photoURL:      result.user.photoURL    || '',
       expiresAt:     firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000)),
+      createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
     })
 
     showSuccess()
