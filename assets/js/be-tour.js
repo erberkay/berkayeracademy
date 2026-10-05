@@ -26,7 +26,9 @@
  *   });
  *   tour.start(index?) → true | false (gösterilecek adım yoksa false)
  *   tour.stop(reason?) · tour.next() · tour.prev() · tour.refresh() (metni yeniden çiz, ör. dil değişince)
+ *   tour.retarget() (geçerli adımın hedefini yeniden çöz + göster — ör. hedef bir paneli açınca)
  *   tour.active (bool) · tour.index · tour.count · tour.mobile · tour.targets() (geçerli adımın hedef öğeleri)
+ *   tour.stepId() (geçerli adımın id'si ya da null)
  *   beTour.current → açık tur ya da null (aynı anda tek tur)
  *   Tur açıkken <html> .be-touring sınıfını taşır.
  *
@@ -35,6 +37,10 @@
  *   - Masaüstü: kart hedefin yanında (tercih → alt → üst → sağ → sol), hedefi örtmez; sayfa gerekirse kaydırılır.
  *   - Mobil iz: kart altta (sekme çubuğunun üstünde) sabit; hedef kalan boşluğa kaydırılır; sabit/alttaki
  *     hedeflerde (ör. WhatsApp düğmesi) kart üste geçer. Yatay kayan kaplardaki hedef görünür alana alınır.
+ *     Hedef iki yerleşimde de karta denk geliyorsa kart kalan boşluğa sığacak kadar kısalır (metin kayar).
+ *   - Kısa yatay ekran (mobil iz, yükseklik < 560, yatay — telefon yan çevrilmiş): kart sağ (sabit hedef
+ *     sağdaysa sol) sütuna geçer, sayfa içeriği <html>.be-tour-side ile kalan genişliğe akar; kart hiçbir
+ *     hedefin üstüne binmez. Tur bitince içerik eski genişliğine döner (hedef yerinde tutulur).
  *   - Kaydırma/boyut değişince yeniden konumlanır; hedef kaybolursa (yeniden çizim) seçici yeniden çözülür,
  *     yine yoksa adım atlanır. Gizli/eksik hedefli adımlar baştan sayılmaz.
  *   - Esc kapatır (üstte aria-modal bir pencere ya da açık çekmece varken değil), ← / → kart içindeyken
@@ -80,9 +86,17 @@
   }
   function val(v) { return typeof v === 'function' ? v() : v; }
   function reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  // Kök değişkenin px değeri; calc()/env() içeriyorsa geçici bir ölçü kutusuyla çözülür
   function cssPx(name) {
-    var v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name));
-    return isFinite(v) ? v : 0;
+    var raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (!raw) return 0;
+    if (/^-?[\d.]+px$/.test(raw)) return parseFloat(raw);
+    var probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;height:var(' + name + ')';
+    document.body.appendChild(probe);
+    var h = probe.getBoundingClientRect().height;
+    probe.remove();
+    return isFinite(h) ? h : 0;
   }
   function svgUse(id) {
     return '<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#' + id + '"/></svg>';
@@ -167,6 +181,7 @@
     return !(a.right + p <= b.left || a.left - p >= b.right || a.bottom + p <= b.top || a.top - p >= b.bottom);
   }
   var PAD = 10;
+  var SIDE_MAX_H = 560, SIDE_MIN_W = 600;   // yan sütun: kısa (telefon yatay) ve yeterince geniş ekran
 
   var current = null;
   var uid = 0;
@@ -182,9 +197,25 @@
     var els = null;             // geçerli adımın hedefleri
     var ring = null, card = null, ui = {};
     var raf = 0, timer = 0, lockUntil = 0, dock = 'bottom', place = null, lastSig = '', userMoved = false, tries = 0;
+    var side = '';              // '' | 'r' | 'l' — kısa yatay ekranda kartın durduğu sütun
     var opener = null;
 
     function isMobile() { return !!(mq && mq.matches); }
+    function wantSide() {
+      var vw = document.documentElement.clientWidth, vh = window.innerHeight;
+      return api.mobile && vh < SIDE_MAX_H && vw > vh && vw >= SIDE_MIN_W;
+    }
+    // Yan sütunu açar/kapatır/taraf değiştirir; sayfa yeniden akarsa true
+    function setSide(which) {
+      if (which === side) return false;
+      var root = document.documentElement;
+      side = which;
+      root.classList.toggle('be-tour-side', !!which);
+      root.classList.toggle('be-tour-side-l', which === 'l');
+      if (card) { card.classList.toggle('is-side', !!which); card.classList.toggle('is-left', which === 'l'); }
+      void root.offsetWidth;
+      return true;
+    }
     function eligible(s) {
       if (s.mobileOnly && !api.mobile) return false;
       if (s.desktopOnly && api.mobile) return false;
@@ -253,6 +284,13 @@
       else if (e.key === 'ArrowLeft') { e.preventDefault(); if (api.index > 0) api.prev(); }
     }
     function onScroll() { schedule(); }
+    // Boyut değişti: yan sütun gerekliliği değiştiyse (ör. telefon döndü) adımı yeniden yerleştir
+    function onResize() {
+      if (!api.active) return;
+      if (wantSide() !== !!side) { clearTimeout(resizeT); resizeT = setTimeout(function () { if (api.active && plan[api.index]) reveal(plan[api.index]); }, 150); }
+      else schedule();
+    }
+    var resizeT = 0;
     // İz değişti (ör. tablet döndü): sayfa yeni yerleşimini kurana kadar bekle, sonra aynı adımdan devam et
     function onMq() { setTimeout(rebuild, 350); }
     function rebuild() {
@@ -296,6 +334,11 @@
       var g = geom(), c = card.getBoundingClientRect();
       var top = els.every(isPinned) ? 0 : g.top;
       var vis = { top: Math.max(r.top, top), bottom: Math.min(r.bottom, g.vh), left: r.left, right: r.right };
+      if (side) {
+        var bot = g.vh - cssPx('--be-tabbar-space');
+        if (r.height <= bot - top - 2 * g.m && (r.top < top || r.bottom > bot)) return true;
+        return vis.bottom > vis.top && overlap(vis, c, 2);
+      }
       if (r.height <= g.vh - top - c.height - 2 * g.m && (r.top < top || r.bottom > g.vh)) return true;
       return vis.bottom > vis.top && overlap(vis, c, 2);
     }
@@ -384,12 +427,28 @@
     }
     function reveal(s) {
       var smooth = !reduced();
+      var pinned = els.every(isPinned);
+      card.style.maxHeight = '';
+      // Kısa yatay ekran: kart yan sütunda (sabit hedef sağdaysa solda); içerik önce yeniden akar, sonra ölçülür
+      if (wantSide()) {
+        var r0 = unionRect(els);
+        setSide(pinned && r0 && (r0.left + r0.right) / 2 > document.documentElement.clientWidth / 2 ? 'l' : 'r');
+      } else setSide('');
       els.forEach(function (x) { revealInScrollers(x, smooth); });
       var g = geom();
-      card.classList.toggle('is-dock', api.mobile);
+      card.classList.toggle('is-dock', api.mobile && !side);
       var r = unionRect(els);
       if (!r) { position(); return; }
-      var pinned = els.every(isPinned);
+      if (side) {
+        card.classList.remove('is-top');
+        if (!pinned) {
+          var top = g.top + g.m, bot = g.vh - cssPx('--be-tabbar-space') - g.m, room = bot - top;
+          if (r.top < top || r.bottom > bot) scrollByY(r.top - (r.height <= room ? top + (room - r.height) / 3 : top));
+        }
+        lockUntil = Math.max(lockUntil, Date.now() + 120);
+        position();
+        return;
+      }
       if (api.mobile) {
         // Kart altta; hedef üstteki boş alana. Hedef karta denk geliyorsa kart üste geçer.
         var cb = dockRect('bottom'), ct = dockRect('top');
@@ -404,7 +463,21 @@
         if (!pinned) { dyB = predicted(want(freeB)); dyT = predicted(want(freeT)); }
         var rb = { top: r.top - dyB, bottom: r.bottom - dyB, left: r.left, right: r.right };
         var rt = { top: r.top - dyT, bottom: r.bottom - dyT, left: r.left, right: r.right };
-        if (!overlap(rb, cb, PAD) || overlap(rt, ct, PAD)) { dock = 'bottom'; if (!pinned) scrollByY(dyB); }
+        var okB = !overlap(rb, cb, PAD), okT = !overlap(rt, ct, PAD);
+        if (!okB && !okT && !pinned) {
+          // İki yerleşim de hedefi örter: hedef üstteki boşluğun başına, kart kalan yere sığacak kadar kısalır
+          var dy = predicted(r.top - (g.top + g.m));
+          var room = cb.bottom - (r.bottom - dy + PAD);
+          var minH = card.offsetHeight - ui.body.clientHeight + Math.min(ui.body.scrollHeight, 44);
+          if (room >= minH) {
+            card.style.maxHeight = Math.floor(room) + 'px';
+            dock = 'bottom'; scrollByY(dy);
+            lockUntil = Math.max(lockUntil, Date.now() + 120);
+            position();
+            return;
+          }
+        }
+        if (okB || !okT) { dock = 'bottom'; if (!pinned) scrollByY(dyB); }
         else { dock = 'top'; if (!pinned) scrollByY(dyT); }
         lockUntil = Math.max(lockUntil, Date.now() + 120);
       } else {
@@ -459,7 +532,10 @@
         ring.style.borderRadius = Math.round(Math.min(32, Math.max(10, rad + pad))) + 'px';
       }
       var cw = card.offsetWidth, ch = card.offsetHeight;
-      if (api.mobile) {
+      if (side) {
+        card.classList.remove('is-dock', 'is-top');
+        card.style.transform = '';
+      } else if (api.mobile) {
         if (Date.now() >= lockUntil) {
           var cb = dockRect('bottom'), ct = dockRect('top');
           var rv = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
@@ -502,7 +578,7 @@
       build();
       document.addEventListener('keydown', onKey);
       window.addEventListener('scroll', onScroll, { passive: true, capture: true });
-      window.addEventListener('resize', onScroll, { passive: true });
+      window.addEventListener('resize', onResize, { passive: true });
       window.addEventListener('wheel', onUserScroll, { passive: true });
       window.addEventListener('touchmove', onUserScroll, { passive: true });
       document.addEventListener('keydown', onUserScroll);
@@ -519,14 +595,23 @@
       if (current === api) current = null;
       document.removeEventListener('keydown', onKey);
       window.removeEventListener('scroll', onScroll, { capture: true });
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('resize', onResize);
+      clearTimeout(resizeT);
       window.removeEventListener('wheel', onUserScroll);
       window.removeEventListener('touchmove', onUserScroll);
       document.removeEventListener('keydown', onUserScroll);
       if (mq) { if (mq.removeEventListener) mq.removeEventListener('change', onMq); else if (mq.removeListener) mq.removeListener(onMq); }
       clearInterval(timer); timer = 0;
+      clearTimeout(retargetT);
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
       var hadFocus = card && card.contains(document.activeElement);
+      if (side) {
+        // İçerik eski genişliğine dönerken son hedef ekranda aynı yerde kalsın
+        var anchor = els && els[0] && !isPinned(els[0]) ? els[0] : null;
+        var before = anchor ? anchor.getBoundingClientRect().top : 0;
+        setSide('');
+        if (anchor && anchor.isConnected) window.scrollBy(0, anchor.getBoundingClientRect().top - before);
+      }
       if (ring) ring.remove();
       if (card) card.remove();
       ring = card = null; ui = {}; els = null;
@@ -553,7 +638,22 @@
     };
     api.prev = function () { if (api.active && api.index > 0) show(api.index - 1, -1); };
     api.refresh = function () { if (api.active) { render(); position(); } };
+    // Yeni hedef (ör. açılan panel) giriş animasyonundayken görünmez sayılabilir: kısa bir süre yeniden dene
+    var retargetT = 0;
+    api.retarget = function () {
+      var at = api.index, n = 0;
+      clearTimeout(retargetT);
+      (function go() {
+        if (!api.active || api.index !== at || !plan[at]) return;
+        var s = plan[at], found = resolve(s);
+        if (!found && ++n < 10) { retargetT = setTimeout(go, 100); return; }
+        if (!found) { drop(at, 1); return; }
+        els = found; userMoved = false; tries = 0;
+        render(); reveal(s);
+      })();
+    };
     api.targets = function () { return els ? els.slice() : null; };
+    api.stepId = function () { return api.active && plan[api.index] ? plan[api.index].id : null; };
     return api;
   }
 
