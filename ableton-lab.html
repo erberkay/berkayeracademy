@@ -453,7 +453,7 @@
         .lab-tasks { display:flex; flex-direction:column; gap:12px; padding:20px; border-radius:var(--r-20); background:var(--surface); border:1px solid var(--accent-line); scroll-margin-top:calc(var(--be-sticky-top) + 80px); }
         .lab-tasks-head { display:flex; justify-content:space-between; align-items:center; gap:12px; }
         .lab-tasks-title { font-family:var(--ff-disp); font-weight:400; font-size:26px; line-height:1.1; }
-        .lab-tasks-count { font-family:var(--ff-mono); font-size:var(--fs-label); color:var(--accent); }
+        .lab-tasks-count { font-family:var(--ff-mono); font-size:max(var(--fs-label), 11px); /* telefonda 10px olmasın */ color:var(--accent); font-variant-numeric:tabular-nums; }
         .lab-task-bar { height:6px; border-radius:var(--r-pill); background:var(--track-2); overflow:hidden; }
         .lab-task-fill { height:100%; background:linear-gradient(90deg, var(--ember-1), var(--accent)); transform:scaleX(var(--p, 0)); transform-origin:left; transition:transform .4s var(--ease-out); }
         .lab-task-list { list-style:none; display:flex; flex-direction:column; gap:6px; }
@@ -476,6 +476,13 @@
         .lab-task-show:hover { background:var(--accent-soft); }
         .lab-task-hint { display:block; margin-top:3px; font-size:12px; line-height:1.45; color:var(--fg-3); }
         .lab-task--auto.is-new .lab-task-check { animation:lab-task-pop .6s var(--ease-out); }
+        /* Görev tamamlandı tostu (labTaskDone) — ui.css .toast-wrap / .toast.ok üstüne; aria-hidden (duyuru lpAnnounce'ta) */
+        .lab-task-toast { display:flex; align-items:flex-start; gap:10px; pointer-events:none; }   /* bilgi amaçlı, aria-hidden: altındaki öğretici / kontrol dokunuşlarını yutmasın */
+        .lab-task-toast > .icon { flex-shrink:0; width:18px; height:18px; margin-top:2px; color:var(--ok); }
+        .lab-task-toast-x { display:flex; flex-direction:column; gap:2px; min-width:0; }
+        .lab-task-toast-h { font-size:var(--fs-ui); font-weight:700; color:var(--fg); }
+        .lab-task-toast-t { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; font-size:13px; line-height:1.4; color:var(--fg-muted); }
+        @media (prefers-reduced-motion: reduce) { .lab-toasts .toast { animation:none; } }
         @keyframes lab-task-pop { 0% { transform:scale(1); } 40% { transform:scale(1.35); } 100% { transform:scale(1); } }
         .lp-tut-ring.lab-flash { transition:none; }
 
@@ -542,7 +549,7 @@
         @media (max-width:600px) {
             .lab-mhead { gap:16px; padding-top:20px; padding-bottom:16px; }
             .lab-mtop { margin-bottom:16px; gap:12px; }
-            .lab-mhead-kicker { font-size:var(--fs-label); }
+            .lab-mhead-kicker { font-size:max(var(--fs-label), 11px); /* telefonda --fs-label 10px → okunur alt sınır */ }
             .lab-mhead-actions { width:100%; justify-content:flex-start; flex-wrap:wrap; }
             .lab-mview { padding-bottom:var(--s6); }
             .lab-mgrid, .lab-mmain, .lab-mside, .lab-mcols { gap:12px; }
@@ -911,6 +918,15 @@
             .lp-fst-x { display:flex; flex-direction:column; gap:2px; min-width:0; }
             .lp-fst-t { font-family:var(--ff-mono); font-size:13px; font-weight:700; letter-spacing:.04em; overflow-wrap:anywhere; }
             .lp-fst-s { font-size:12px; line-height:1.35; color:var(--fg-3); overflow-wrap:anywhere; }
+            /* Yan yollar: ana kutunun altında girintili "↳" satırı (sol şerit = ana yolun okları) ya da modülün ayrı
+               "yan yollar" satırı (ok yok, kutuda "↳ bağlı: N · AD"). Kesik çerçeve = sesin geçtiği durak değil. */
+            .lp-fst-br { flex-basis:100%; display:flex; flex-direction:column; gap:6px; padding-left:12px; }
+            .lp-fst-brow { display:flex; align-items:center; gap:8px; }
+            .lp-fst-brk { flex-shrink:0; width:16px; font-family:var(--ff-mono); font-size:16px; line-height:1; color:var(--fg-2); }
+            .lp-fst-brow > .lp-fst-n { flex:1 1 auto; }
+            .lp-fst-n--side { border-style:dashed; background:transparent; }
+            .lp-fst + .lp-fst--side::before { display:none; }
+            .lp-fst-to { font-family:var(--ff-mono); font-size:12px; line-height:1.35; color:var(--fg-2); overflow-wrap:anywhere; }
             .lp-jy { grid-template-columns:minmax(0,1fr); gap:10px; }
             .lp-jy-i { padding:12px 14px 14px; }
             .lp-jy-h { min-height:44px; }
@@ -949,8 +965,8 @@
         .lp-tut-card:focus { outline:none; }
         .lp-tut-card:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
         .lp-tut-top { display:flex; align-items:center; gap:10px; min-width:0; }
-        .lp-tut-kick { flex-shrink:0; font-family:var(--ff-mono); font-size:10px; font-weight:700; letter-spacing:.16em; color:var(--accent); white-space:nowrap; }
-        .lp-tut-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--ff-mono); font-size:10px; letter-spacing:.08em; color:var(--fg-3); }
+        .lp-tut-kick { flex-shrink:0; font-family:var(--ff-mono); font-size:11px; font-weight:700; letter-spacing:.16em; color:var(--accent); white-space:nowrap; }
+        .lp-tut-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--ff-mono); font-size:11px; letter-spacing:.08em; color:var(--fg-3); }
         .lp-tut-x { margin-left:auto; }
         .lp-tut-min { display:none; margin-left:auto; }
         .lp-tut-name[hidden] { display:none; }
@@ -962,9 +978,9 @@
         .lp-tut-h { margin:2px 0 0; font-family:var(--ff); font-size:16px; font-weight:700; line-height:1.3; letter-spacing:0; color:var(--fg); }
         .lp-tut-body { margin:0; font-size:13px; line-height:1.55; color:var(--fg-muted); }
         .lp-tut-abl { display:flex; flex-direction:column; gap:3px; margin:0; padding:8px 10px; border-radius:var(--r-8); background:var(--bg); border:1px solid var(--line-2); font-size:12px; line-height:1.5; color:var(--fg-soft); }
-        .lp-tut-abl-l { font-family:var(--ff-mono); font-size:9px; letter-spacing:.14em; color:var(--info); }
+        .lp-tut-abl-l { font-family:var(--ff-mono); font-size:11px; letter-spacing:.14em; color:var(--info); }
         .lp-tut-hint { margin:0; font-size:12px; line-height:1.5; color:var(--fg-3); }
-        .lp-tut-state { display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; min-height:30px; font-family:var(--ff-mono); font-size:10px; letter-spacing:.06em; color:var(--fg-3); }
+        .lp-tut-state { display:flex; align-items:center; flex-wrap:wrap; gap:6px 8px; min-height:30px; font-family:var(--ff-mono); font-size:11px; letter-spacing:.06em; color:var(--fg-3); }
         .lp-tut-state-t { flex:1; min-width:0; }
         .lp-tut-state.is-ok { color:var(--ok); }
         .lp-tut-state.is-miss { color:var(--warn); }
@@ -1018,19 +1034,23 @@
         @media (max-width:1024px) {
             .lp-sb-opt { min-height:44px; }
             .lp-sb-play::after { content:''; position:absolute; inset:-9px; }
-        }
-        @media (max-width:600px) {
-            /* Telefonda kart altta, sekme çubuğunun üstünde (JS transform'u kaldırır) */
-            .lp-tut-card.is-dock { top:auto; left:8px; right:8px; bottom:calc(var(--be-tabbar-space) + 8px); width:auto; max-height:40vh; }
-            /* Uzun gövdede Geri / İleri hep görünür: alt şerit kartın kendi kaydırıcısında yapışkan */
-            .lp-tut-card.is-dock .lp-tut-foot { position:sticky; bottom:-12px; z-index:1; margin-bottom:-12px; padding-bottom:12px; background:var(--surface-1); }
+            /* Küçült / büyüt (≤1024): hap = künye (ÖĞRETİCİ · x/N) + adım başlığı; telefonda yerleşik kartta + durum ve Geri/İleri */
             .lp-tut-min { display:inline-flex; }
             .lp-tut-min + .lp-tut-x { margin-left:0; }
             .lp-tut-min svg { width:12px; height:12px; transition:transform var(--dur) var(--ease-out); }
-            .lp-tut-card.is-dock.is-min .lp-tut-min svg { transform:rotate(180deg); }
-            .lp-tut-card.is-dock.is-min { gap:6px; }
+            .lp-tut-card.is-min .lp-tut-min svg { transform:rotate(180deg); }
+            .lp-tut-card.is-min { gap:6px; }
+            .lp-tut-card.is-min:not(.is-dock) { width:min(320px, calc(100vw - 32px)); padding:6px 8px 10px 14px; }
+            .lp-tut-card.is-min:not(.is-dock) > :not(.lp-tut-top):not(.lp-tut-h) { display:none; }
+            .lp-tut-card.is-min .lp-tut-h { font-size:14px; }
+        }
+        @media (max-width:600px) {
+            /* Telefonda kart altta, sekme çubuğunun üstünde (JS transform'u kaldırır) */
+            .lp-tut-card.is-dock { top:auto; left:8px; right:8px; bottom:calc(var(--be-tabbar-space) + 8px + var(--lp-tut-lift, 0px)); width:auto; max-height:40vh; }
+            /* Uzun gövdede Geri / İleri hep görünür: alt şerit kartın kendi kaydırıcısında yapışkan */
+            .lp-tut-card.is-dock .lp-tut-foot { position:sticky; bottom:-12px; z-index:1; margin-bottom:-12px; padding-bottom:12px; background:var(--surface-1); }
             .lp-tut-card.is-dock.is-min > :not(.lp-tut-top):not(.lp-tut-h):not(.lp-tut-state):not(.lp-tut-foot) { display:none; }
-            .lp-tut-card.is-dock.is-min .lp-tut-h { font-size:14px; }
+            .lp-tut-card.is-dock.is-min.is-pill > .lp-tut-state, .lp-tut-card.is-dock.is-min.is-pill > .lp-tut-foot { display:none; }
             .lp-tut-foot .lp-btn { min-height:44px; }
             .lp-tut-x { min-height:44px; }
             .lp-sb-opt { grid-template-columns:26px minmax(0,1fr) auto; }
@@ -3407,6 +3427,7 @@ _auth.onAuthStateChanged(async user => {
         updateAuthBar();
         if (user) await loadUserData(user.uid);
         // Açık modül yeniden kurulmaz (ses durmasın): kayıt kartları + görev panelleri yerinde tazelenir.
+        labTaskQuiet();                // toplu yükleme: senkronla gelen / tazelemede işaretlenen görevler için tost yok
         labRefreshProgress();
     });
 } else {
@@ -5015,10 +5036,71 @@ function _labStoreTask(mid, tid) {
 }
 function completeTask(mid, tid) {
     if (!_labStoreTask(mid, tid)) return false;
+    labTaskDone(mid, [tid]);
     labPersistTasks(true);
     if (getProgress(mid) === 100) showModuleCompletion(mid);
     labRefreshProgress();
     return true;
+}
+
+// ── Görev tamamlandı bildirimi (LAB KABUK API: labTaskDone / labTaskQuiet) ──
+// completeTask ve otomatik görev paneli YENİ tamamlanan görevleri buraya bildirir. Aynı karede gelenler tek
+// bildirimde birleşir: aria-live duyuru (lpAnnounce "Görev tamamlandı: …") + açık modülün görevi ise ekranın
+// altında ~3 sn görünür tost (.lab-toasts, aria-hidden — duyuru zaten okunur). Telefonda görev listesi kontrollerin
+// çok altında; tek işaret sekme çubuğundaki küçük sayaçtı. Toplu yüklemede (görünüm kurulumu render(), giriş /
+// bulut senkronu → labTaskQuiet()) ne tost ne duyuru. Modül kendi görünür başarı tostunu (.toast.ok, ör. Synth)
+// gösterdiyse kit yalnız duyurur (iki tost üst üste binmesin). Hareket azaltılmışsa giriş animasyonu yok.
+let _labDoneQ = [], _labDoneRaf = 0, _labQuietUntil = 0, _labToastWrap = null, _labToastT = 0, _labToastOff = null;
+function labTaskQuiet(ms) { _labQuietUntil = Math.max(_labQuietUntil, performance.now() + (ms == null ? 1500 : ms)); }
+function labTaskDone(mid, tids) {
+    if (performance.now() < _labQuietUntil || document.hidden || !tids || !tids.length) return;
+    tids.forEach(t => _labDoneQ.push([mid, t]));
+    if (!_labDoneRaf) _labDoneRaf = requestAnimationFrame(_labTaskFlush);
+}
+function _labToastHide() {
+    clearTimeout(_labToastT); _labToastT = 0;
+    if (_labToastWrap) { _labToastWrap.replaceChildren(); _labToastWrap.style.bottom = ''; }
+    if (_labToastOff) { lpOffTeardown(_labToastOff); _labToastOff = null; }
+}
+// Açık öğretici kartı (telefonda altta yapışık, tablette yüzen) tostun alanına biniyorsa tost kartın üstüne
+// taşınır (çalışma anı `bottom`) — kartın durum satırı ve Geri / Atla / İleri görünür kalsın
+function _labToastAvoidTut() {
+    const card = document.querySelector('.lp-tut-card:not([hidden])');
+    if (!_labToastWrap || !card || !card.getClientRects().length) return;
+    const c = card.getBoundingClientRect(), t = _labToastWrap.getBoundingClientRect();
+    if (c.bottom <= t.top || c.top >= t.bottom || c.right <= t.left || c.left >= t.right) return;
+    _labToastWrap.style.bottom = Math.max(8, Math.round(window.innerHeight - c.top + 8)) + 'px';
+}
+function _labTaskFlush() {
+    _labDoneRaf = 0;
+    const q = _labDoneQ; _labDoneQ = [];
+    const seen = new Set(), items = [];
+    q.forEach(([mid, tid]) => {
+        const k = `${mid}-${tid}`; if (seen.has(k)) return; seen.add(k);
+        const t = (TASKS[mid] || []).find(x => String(x.id) === String(tid));
+        if (t) items.push({ mid, text: String(t.text || '') });
+    });
+    if (!items.length) return;
+    lpAnnounce(Lf('lab_task_done_ann', { t: items.map(x => x.text).join(' · ') }));
+    const mine = items.filter(x => x.mid === state.currentModule);
+    if (!mine.length || document.querySelector('.toast.ok:not(.lab-task-toast)')) return;
+    const mid = state.currentModule, N = (TASKS[mid] || []).length, done = getDoneCount(mid);
+    if (!_labToastWrap || !_labToastWrap.isConnected) {
+        _labToastWrap = mk('div', 'toast-wrap lab-toasts'); _labToastWrap.setAttribute('aria-hidden', 'true');
+        document.body.append(_labToastWrap);
+    }
+    const el = mk('div', 'toast ok lab-task-toast', ic('check'));
+    const tx = mk('span', 'lab-task-toast-x');
+    const h = mk('strong', 'lab-task-toast-h');
+    h.textContent = `${mine.length > 1 ? Lf('lab_task_toast_n', { n: mine.length }) : L('lab_task_toast')} · ${done}/${N}`;
+    // Görünür satır kısa: görev metninin " — " öncesi (ayrıntı duyuruda tam okunur)
+    const b = mk('span', 'lab-task-toast-t'); b.textContent = mine.map(x => x.text.split(' — ')[0]).join(' · ');
+    tx.append(h, b); el.append(tx);
+    _labToastWrap.style.bottom = '';
+    _labToastWrap.replaceChildren(el);
+    _labToastAvoidTut();
+    clearTimeout(_labToastT); _labToastT = setTimeout(_labToastHide, 3200);
+    if (!_labToastOff) _labToastOff = lpOnTeardown(() => { _labToastOff = null; _labToastHide(); });
 }
 
 const MODULE_NAMES = { 1: 'Synthesizer', 2: 'Beat Maker', 3: 'Mixing', 4: 'Arrangement Builder', 5: 'Mastering' };
@@ -5098,6 +5180,8 @@ const LAB_TXT = {
     lab_tab_menu_aria:  [`Lab ana sayfasına dön`, `Back to the Lab home page`],
     lab_taskcount_m:    [`{done}/{N} görev`, `{done}/{N} tasks`],
     lab_task_show:      [`Göster`, `Show`],
+    lab_task_toast:     [`Görev tamamlandı`, `Task complete`],
+    lab_task_toast_n:   [`{n} görev tamamlandı`, `{n} tasks complete`],
     lab_task_show_none: [`Bu kontrol şu an ekranda değil.`, `This control isn't on the screen right now.`],
     lab_task_done_ann:  [`Görev tamamlandı: {t}`, `Task complete: {t}`],
     lab_nav_done:       [`Bu modülde {done}/{N} görev tamam.`, `{done}/{N} tasks done in this module.`],
@@ -5397,11 +5481,18 @@ function showModal(title, html, actions) {
 //            labShowTarget(hedef) kontrolü görünüme kaydırır, odak verir, ~2.4 sn altın halka çizer.
 //     opts.hints: [metin | LAB_TXT anahtarı | () => metin] (ya da TASKS öğesinde hint) → satırda ikinci,
 //            soluk satır ("AMP ENV, eklentinin sağ altında" gibi nerede olduğunu söyleyen ipucu).
-//     Otomatik tamamlanan görev: onay kutusu kısa "pop" + lpAnnounce("Görev tamamlandı: …").
+//     Otomatik tamamlanan görev: onay kutusu kısa "pop" + labTaskDone (duyuru + kısa tost, aşağıda).
+//     "Göster" düğmesi, görev metni ve ipucu canlı dil değişiminde yerinde çevrilir (lpTr / lpOnLang — modül panelini
+//     kendisi yeniden kursa da çakışmaz: kit yalnız hâlâ kendi yazdığı metni değiştirir).
 //     refresh(): görünümü, x/N sayacını, çubuğu, sekme sayacını ve hero listesini tazeler.
 //     Panel her render'da yeniden kurulur; sayfada tek panel varsayılır (id labTasks).
 // completeTask(mid, tid) → bool  Görevi kalıcı tamamla (zaten tamamsa false). toggleTask gibi
 //     kaydeder (Firestore ~1 sn toplu), N/N olursa kutlama modalını bir kez açar, labRefreshProgress().
+//     Yeni tamamlanınca labTaskDone(mid, [tid]).
+// labTaskDone(mid, tids)  Görev tamamlandı bildirimi: aynı karedekiler birleşir → aria-live "Görev tamamlandı: …" +
+//     açık modülün görevi ise ~3 sn tost (.lab-toasts > .toast.ok.lab-task-toast, aria-hidden; "Görev tamamlandı · x/N" +
+//     görevin " — " öncesi). Modül kendi .toast.ok'unu gösteriyorsa tost yok (yalnız duyuru). Hareket azaltılmışsa animasyonsuz.
+// labTaskQuiet(ms = 1500)  Toplu yükleme penceresi: bu sürede labTaskDone sessiz. render() ve giriş/bulut senkronu çağırır.
 // toggleTask(mid, tid)  Elle işaretleme (geri alınabilir). getProgress(mid) → %, getDoneCount(mid) → sayı.
 // labSetTaskCount(done, total)  Sekme çubuğundaki "GÖREV x / N" sayacı (panel kendisi çağırır).
 // labRefreshProgress()  Açık görev panellerini + kayıt kartlarını .refresh(), sayaç, hero listesi.
@@ -5593,6 +5684,12 @@ function showModal(title, html, actions) {
 //   (role=region). ≤600 (mobile:'stack', vars.): SVG yerine aynı düğümlerden dikey numaralı kutu listesi
 //   (13–14 px, aralarda ↓); katmanlar o.stack ya da otomatik (bkz. fonksiyon yorumu). node.n → altın numara
 //   rozeti; onPick verilince numaralı kutular düğmedir (howItWorks journey ile kendisi bağlar).
+//   YAN YOLLAR (yalnız dash'li kenarlara bağlı kutular — LFO, MOD ENV, sidechain, send → return, ölçüm): listede ana
+//   kutunun altında girintili "↳" satırı (.lp-fst-br > .lp-fst-brow > .lp-fst-n--side); katmanı yalnız yan yollardan
+//   oluşuyorsa ayrı satır (.lp-fst--side, ok yok) + kutuda "↳ bağlı: N · AD" (.lp-fst-to). Kenar uçları from/to'dan ya
+//   da yalnız d verilmişse yolun ilk/son noktasının değdiği kutudan çözülür. Ana yol numara sırasıyla okunur.
+//   Okunurluk: SVG'deki her yazı ekranda ≥ 11 px (LP_FLOW_MIN; küçükse büyür, kutuya sığmazsa textLength ile sıkışır,
+//   rozet yazıya biniyorsa yazı sağa kayar); ≤1024 kaydırıcıda çizim en az viewBox genişliğinde (1:1).
 //   subs:false → alt yazılar (WebAudio düğüm adları) gizli.
 // Sözlük: LAB_GLOSSARY { anahtar: [TR terim, TR tanım, EN terim, EN tanım, Ableton adı] } (osc wave filter cutoff
 //   reso env lfo gain db bpm step velocity pan eq comp sidechain reverb delay send master limiter lufs midi sample
@@ -5756,8 +5853,9 @@ function makeTaskPanel(mid, opts) {
     const showBtn = (task, i) => {
         const tg = targetOf(task, i); if (!tg) return null;
         const b = mk('button', 'lab-task-show'); b.type = 'button';
-        b.textContent = L('lab_task_show');
-        b.setAttribute('aria-label', `${L('lab_task_show')}: ${task.text}`);
+        // Canlı dil değişiminde yerinde çevrilir (lpTr: modül bu arada kendi metnini yazdıysa ona dokunmaz)
+        lpTr(b, 'text', () => L('lab_task_show'));
+        lpTr(b, 'aria-label', () => `${L('lab_task_show')}: ${task.text}`);
         b.onclick = () => labShowTarget(tg);
         return b;
     };
@@ -5767,7 +5865,15 @@ function makeTaskPanel(mid, opts) {
         if (auto && sb) li.classList.add('has-show');
         const chk = mk('span', 'lab-task-check', ic('check')); chk.setAttribute('aria-hidden', 'true');
         const txt = mk('span', 'lab-task-text'); txt.textContent = task.text;
-        if (hint) { const hn = mk('span', 'lab-task-hint'); hn.textContent = hint; txt.append(hn); }
+        let hn = null;
+        if (hint) { hn = mk('span', 'lab-task-hint'); hn.textContent = hint; txt.append(hn); }
+        // Dil değişimi: görev metni (ilk metin düğümü) ve ipucu yerinde yenilenir — yalnız hâlâ kitin yazdığıysa
+        // (modül kendi relabel'ında satırı yeniden yazdıysa dokunulmaz). task.text getter / ipucu fonksiyonu yeni dili verir.
+        const tNode = txt.firstChild; let tLast = tNode.data, hLast = hint;
+        lpOnLang(txt, () => {
+            if (tNode.parentNode === txt && tNode.data === tLast) { tNode.data = tLast = task.text; }
+            if (hn && hn.parentNode === txt && hn.textContent === hLast) { hn.textContent = hLast = hintOf(task, i); }
+        });
         if (auto) {
             const sr = mk('span', 'sr-only');
             li.append(chk, txt, sr); if (sb) li.append(sb); list.append(li);
@@ -5794,7 +5900,7 @@ function makeTaskPanel(mid, opts) {
             if (added) {
                 // Kendiliğinden tamamlanan görev: kısa vurgu + ekran okuyucu duyurusu
                 fresh.forEach(i => { const e = rows[i] && rows[i].el; if (e) { e.classList.remove('is-new'); void e.offsetWidth; e.classList.add('is-new'); } });
-                lpAnnounce(Lf('lab_task_done_ann', { t: fresh.map(i => tasks[i].text).join(' · ') }));
+                labTaskDone(mid, fresh.map(i => tasks[i].id));     // duyuru + kısa tost (toplu yüklemede sessiz)
                 labPersistTasks(true);
                 if (getProgress(mid) === 100) showModuleCompletion(mid);
                 renderPath();
@@ -7097,6 +7203,8 @@ Object.assign(LAB_TXT, {
                        `Inside the sound engine: WebAudio nodes, formulas and the parameter table. You don't need it to get started.`],
     lp_flow_swipe:    [`Şemanın tamamı için yana kaydır →`, `Swipe sideways to see the whole diagram →`],
     lp_flow_region:   [`Sinyal akış şeması — yana kaydırılabilir`, `Signal flow diagram — scrolls sideways`],
+    lp_fst_side:      [`yan yol`, `side path`],
+    lp_fst_to:        [`bağlı:`, `linked to:`],
     lp_hiw_fold_show: [`Göster`, `Show`],
     lp_hiw_fold_hide: [`Gizle`, `Hide`],
     lp_hiw_fold_aria: [`Teknik açıklama`, `Technical explanation`],
@@ -7262,6 +7370,9 @@ function lpRich(text) {
 //      edges:[{ from, to, fromSide?'r'|'l'|'t'|'b', toSide?, d?(özel path), c?, dash?:true|'dot', label?, lx?, ly? }],
 //      groups:[{ x, y, w, h, label?, c? }], labels:[{ x, y, t, c?, anchor?, size? }] }
 // Kenarlar: aynı yükseklikte düz, değilse dik açılı (r→l: yatay-dikey-yatay; t/b: dikey-yatay-dikey).
+// Yan yol: bütün kenarları dash'li (kesik/noktalı) kutu. ≤600 listesinde sıradaki durak değildir: o.stack katmanında ana
+//        kutu varsa onun altında "↳" satırı; katman yalnız yan yolsa ayrı satır + "↳ bağlı: N · AD"; o.stack yoksa
+//        ana kutular topolojik katmanlanır ve her yan yol bağlı olduğu ana kutunun (beslediği → besleyen) altına girer.
 // n      kutunun sol üst köşesinde altın numara rozeti; howItWorks bunu o.journey'nin aynı numaralı adımına
 //        bağlar (birden çok kutu aynı numarayı taşıyabilir: OSC A + OSC B = 1). onPick verilince numaralı kutular
 //        (SVG'de role=button tabindex=0, listede <button>) tık/Enter/Space ile onPick(n) çağırır.
@@ -7270,13 +7381,16 @@ function lpRich(text) {
 //        bağlı olmayan düğümler tek katman). node.stack:false → listede yok (ör. analizör, modülasyon kaynağı).
 // subs   false → alt yazılar (s) hem SVG'de hem listede gizli (yeni başlayan şeması: düğüm adı yerine düz Türkçe).
 // Döndürür div.lp-flow (> .lp-flow-sc > svg · p.lp-flow-hint · ol.lp-fstack); .lpFlow = { highlight(n | null) }.
+const LP_FLOW_MIN = 11;          // flowDiagram: ekrandaki en küçük şema yazısı (px)
 function flowDiagram(o) {
     o = o || {};
     const W = o.w || 900, H = o.h || 300;
     const showSubs = o.subs !== false;
     const pick = typeof o.onPick === 'function' ? o.onPick : null;
     const wrap = mk('div', 'lp-flow' + (o.mobile === 'scroll' ? '' : ' lp-flow--stack'));
-    if (o.minWidth) wrap.style.setProperty('--lp-fmin', o.minWidth + 'px');
+    // Kaydırıcıdaki (≤1024) en küçük çizim genişliği: modülün minWidth'i ama en az viewBox genişliği (1:1) — daha
+    // dar çizimde 9–11 birimlik yazılar ekranda 7–9 px'e iniyordu (okunurluk alt sınırı aşağıda fitText'te)
+    wrap.style.setProperty('--lp-fmin', Math.max(o.minWidth || 640, W) + 'px');
     const sc = mk('div', 'lp-flow-sc');
     wrap.append(sc);
     const svg = lpSvg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'lp-flow-svg', role: 'img' }, sc);
@@ -7295,12 +7409,13 @@ function flowDiagram(o) {
     };
     const numEls = new Map();      // numara → [SVG g / liste düğmesi]
     const addNum = (n, e) => { const k = String(n); if (!numEls.has(k)) numEls.set(k, []); numEls.get(k).push(e); };
+    const fitNodes = [], fitGroups = [];   // fitText: kutu yazıları + grup etiketleri
     const gG = lpSvg('g', { class: 'lp-fgs' }, svg), gE = lpSvg('g', { class: 'lp-fes' }, svg), gN = lpSvg('g', { class: 'lp-fns' }, svg), gL = lpSvg('g', { class: 'lp-fls' }, svg);
     (o.groups || []).forEach(g => {
         const gg = lpSvg('g', { class: 'lp-fg' }, gG);
         if (g.c) gg.style.setProperty('--c', g.c);
         lpSvg('rect', { x: g.x, y: g.y, width: g.w, height: g.h, rx: 12 }, gg);
-        if (g.label) { const t = lpSvg('text', { x: g.x + 12, y: g.y + 18 }, gg); t.textContent = g.label; }
+        if (g.label) { const t = lpSvg('text', { x: g.x + 12, y: g.y + 18 }, gg); t.textContent = g.label; fitGroups.push({ t, w: g.w - 24 }); }
     });
     const byId = {};
     (o.nodes || []).forEach(n => {
@@ -7311,11 +7426,14 @@ function flowDiagram(o) {
         lpSvg('rect', { x: n.x, y: n.y, width: n.w, height: n.h, rx: n.h >= 44 ? 8 : 6 }, g);
         const cx = n.x + n.w / 2, cy = n.y + n.h / 2, sub = n.s && showSubs;
         const t = lpSvg('text', { x: cx, y: sub ? cy - 3 : cy + 4, class: 'lp-fn-t', 'text-anchor': 'middle' }, g); t.textContent = n.t || '';
-        if (sub) { const s = lpSvg('text', { x: cx, y: cy + 11, class: 'lp-fn-s', 'text-anchor': 'middle' }, g); s.textContent = n.s; }
+        const fit = { n, t, s: null, nb: null };    // fitText: kutu yazısı kutuya sığsın, rozetle çakışmasın
+        fitNodes.push(fit);
+        if (sub) { const s = lpSvg('text', { x: cx, y: cy + 11, class: 'lp-fn-s', 'text-anchor': 'middle' }, g); s.textContent = n.s; fit.s = s; }
         if (n.n != null) {
             const nb = lpSvg('g', { class: 'lp-fn-nb', 'aria-hidden': 'true' }, g);
-            lpSvg('circle', { cx: n.x + 9, cy: n.y + 9, r: 8 }, nb);
+            const nc = lpSvg('circle', { cx: n.x + 9, cy: n.y + 9, r: 8 }, nb);
             const tt = lpSvg('text', { x: n.x + 9, y: n.y + 12.5, 'text-anchor': 'middle' }, nb); tt.textContent = String(n.n);
+            fit.nb = { c: nc, t: tt, cy: n.y + 9 };
             g.dataset.n = String(n.n); addNum(n.n, g);
             if (pick) {
                 g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.setAttribute('aria-pressed', 'false');
@@ -7334,6 +7452,24 @@ function flowDiagram(o) {
         // role=img + etkileşimli çocuklar bir arada olmaz: kutular düğme olduğunda kap gruptur
         svg.setAttribute('role', 'group');
     }
+    // Dikey kenar parçaları [x, y0, y1] (viewBox birimi) — fitText'te büyüyen serbest etiket bağlantı çizgisine binmesin.
+    // Yalnız mutlak M/L/H/V okunur; eğri ya da göreli komutlu yol (modülün elle verdiği e.d) o noktada bırakılır.
+    const vSegs = [];
+    const vSegsOf = d => {
+        const tk = String(d || '').match(/[A-Za-z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) || [];
+        let i = 0, cmd = '', x = 0, y = 0;
+        const num = () => parseFloat(tk[i++]);
+        while (i < tk.length) {
+            if (/[A-Za-z]/.test(tk[i])) cmd = tk[i++];
+            if (cmd === 'M' || cmd === 'L') {
+                const nx = num(), ny = num();
+                if (cmd === 'L' && Math.abs(nx - x) < 0.5) vSegs.push([x, Math.min(y, ny), Math.max(y, ny)]);
+                x = nx; y = ny; if (cmd === 'M') cmd = 'L';
+            } else if (cmd === 'H') x = num();
+            else if (cmd === 'V') { const ny = num(); vSegs.push([x, Math.min(y, ny), Math.max(y, ny)]); y = ny; }
+            else return;
+        }
+    };
     const anchor = (n, side) => side === 'l' ? [n.x, n.y + n.h / 2] : side === 't' ? [n.x + n.w / 2, n.y] : side === 'b' ? [n.x + n.w / 2, n.y + n.h] : [n.x + n.w, n.y + n.h / 2];
     (o.edges || []).forEach(e => {
         let d = e.d;
@@ -7349,6 +7485,7 @@ function flowDiagram(o) {
             else if (hz(fs)) d = `M${x1} ${y1}H${x2}V${y2}`;
             else d = `M${x1} ${y1}V${y2}H${x2}`;
         }
+        vSegsOf(d);
         const p = lpSvg('path', { d, class: 'lp-fe' + (e.dash === 'dot' ? ' lp-fe--dot' : e.dash ? ' lp-fe--dash' : ''), 'marker-end': `url(#${marker(e.c)})` }, gE);
         if (e.c) p.style.stroke = e.c;
         if (e.label) { const t = lpSvg('text', { x: e.lx, y: e.ly, class: 'lp-fl' }, gL); t.textContent = e.label; if (e.c) t.style.fill = e.c; }
@@ -7376,52 +7513,228 @@ function flowDiagram(o) {
         lpOnTeardown(() => ro.disconnect());
     }
 
-    // ≤600 dikey liste (aynı düğümlerden)
+    // ── Okunurluk (SVG görünürken: >600 ya da mobile:'scroll'): ekrandaki her yazı ≥ LP_FLOW_MIN px. viewBox ölçeği
+    // k = çizim genişliği / W; k·font < 11 olan yazı 11/k birime büyür (satır içi stil = çalışma anı durumu; modül
+    // CSS'i daha büyük verdiyse dokunulmaz). Büyüyen kutu yazısı kutuya sığmazsa textLength ile sıkışır; numara rozeti
+    // de aynı oranda büyür ve kutu yazısıyla çakışıyorsa (rozet modül CSS'iyle köşeye taşınmış olsa da — ekran
+    // kutularıyla ölçülür) yazı rozetin sağına kayar. Grup / serbest etiketler grup kutusuna / viewBox'a sığdırılır; büyüyen
+    // serbest etiket yeni değdiği bağlantı çizgisinden / kutudan uzağa kayar.
+    // Boyut değişince (ResizeObserver) ve yazı tipleri yüklenince yeniden; her geçiş önce eski ayarı geri alır.
+    let fitRaf = 0;
+    const tx0 = el => {                              // ilk değerleri bir kez sakla, sonra geri yükle
+        const A = ['x', 'y', 'r', 'cx', 'cy'];
+        if (!el._lp0) { el._lp0 = { fs: el.style.fontSize }; A.forEach(k => { el._lp0[k] = el.getAttribute(k); }); }
+        const z = el._lp0;
+        el.style.fontSize = z.fs; A.forEach(k => { if (z[k] != null) el.setAttribute(k, z[k]); });
+        el.removeAttribute('textLength'); el.removeAttribute('lengthAdjust');
+    };
+    const squeeze = (t, avail) => { if (avail > 4 && t.getComputedTextLength() > avail) { t.setAttribute('textLength', avail.toFixed(1)); t.setAttribute('lengthAdjust', 'spacingAndGlyphs'); } };
+    function fitText() {
+        fitRaf = 0;
+        if (!svg.isConnected) return;
+        const sr = svg.getBoundingClientRect(), k = sr.width / W;
+        if (!(k > 0) || !sr.height) return;
+        const texts = Array.from(svg.querySelectorAll('text')), circles = Array.from(svg.querySelectorAll('.lp-fn-nb circle'));
+        texts.forEach(tx0); circles.forEach(tx0);
+        const fls = Array.from(svg.querySelectorAll('.lp-fls text'));
+        fls.forEach(t => { try { t._lpB0 = t.getBBox(); } catch (_) { t._lpB0 = null; } });   // büyümeden önceki kutu
+        texts.forEach(t => {
+            const fs = parseFloat(getComputedStyle(t).fontSize) || 0;
+            if (fs && fs * k < LP_FLOW_MIN - 0.05) { const f = LP_FLOW_MIN / k; t.style.fontSize = f.toFixed(2) + 'px'; t._lpG = f / fs; } else t._lpG = 1;
+        });
+        fitNodes.forEach(({ n, t, s, nb }) => {
+            if (nb && nb.t._lpG > 1) {
+                const g = nb.t._lpG, rr = 8 * g, f = parseFloat(nb.t.style.fontSize);
+                nb.c.setAttribute('r', rr.toFixed(2)); nb.c.setAttribute('cx', (n.x + rr + 1).toFixed(2)); nb.c.setAttribute('cy', (n.y + rr + 1).toFixed(2));
+                nb.t.setAttribute('x', (n.x + rr + 1).toFixed(2)); nb.t.setAttribute('y', (n.y + rr + 1 + f * 0.35).toFixed(2));
+            }
+            let x0 = n.x + 5;
+            const x1 = n.x + n.w - 5;
+            if (nb) {                                 // rozet yazının üstüne biniyor mu (ekran kutuları, 2 px pay)
+                const br = nb.c.getBoundingClientRect(), ov = el => {
+                    const q = el.getBoundingClientRect();
+                    return q.width && Math.min(q.right, br.right + 2) > Math.max(q.left, br.left - 2) && Math.min(q.bottom, br.bottom) > Math.max(q.top, br.top);
+                };
+                if (ov(t) || (s && ov(s))) x0 = Math.max(x0, (br.right - sr.left) / k + 3);
+            }
+            [t, s].forEach(el => {
+                if (!el) return;
+                const w = el.getComputedTextLength(), cx = n.x + n.w / 2, av = x1 - x0;
+                if (w > av) { el.setAttribute('x', ((x0 + x1) / 2).toFixed(2)); squeeze(el, av); }
+                else if (cx - w / 2 < x0) el.setAttribute('x', (x0 + w / 2).toFixed(2));
+            });
+        });
+        fitGroups.forEach(({ t, w }) => squeeze(t, w));
+        // Serbest / kenar etiketleri: viewBox'a sığsın. Büyüyen etiket, ilk kutusunun DIŞINDA kalan bir dikey bağlantı
+        // çizgisine ya da kutu kenarına uzandıysa o çizgiler arasındaki boş aralığa kaydırılır (sığmazsa sıkışır).
+        fls.forEach(t => {
+            const x = parseFloat(t.getAttribute('x')) || 0, a = t.getAttribute('text-anchor') || 'start', b0 = t._lpB0;
+            let lo = 2, hi = W - 2;
+            if (t._lpG > 1 && b0 && b0.width) {
+                let b = null; try { b = t.getBBox(); } catch (_) {}
+                if (b) {
+                    const y0 = Math.min(b.y, b0.y), y1 = Math.max(b.y + b.height, b0.y + b0.height), xs = [];
+                    vSegs.forEach(([sx, sa, sb]) => { if (sa < y1 && sb > y0) xs.push(sx); });
+                    (o.nodes || []).forEach(n => { if (n.y < y1 && n.y + n.h > y0) xs.push(n.x, n.x + n.w); });
+                    xs.forEach(ox => {
+                        if (ox <= b0.x) lo = Math.max(lo, ox + 3);
+                        else if (ox >= b0.x + b0.width) hi = Math.min(hi, ox - 3);
+                    });
+                }
+            }
+            if (lo === 2 && hi === W - 2) {
+                const av = a === 'middle' ? 2 * Math.min(x - 2, W - 2 - x) : a === 'end' ? x - 2 : W - 2 - x;
+                squeeze(t, av); return;
+            }
+            const w = t.getComputedTextLength(), av = hi - lo, ww = Math.min(w, av);
+            const L0 = a === 'middle' ? x - w / 2 : a === 'end' ? x - w : x;
+            const L1 = w > av ? lo : lpClamp(L0, lo, hi - w);
+            if (Math.abs(L1 - L0) > 0.01) t.setAttribute('x', (a === 'middle' ? L1 + ww / 2 : a === 'end' ? L1 + ww : L1).toFixed(2));
+            squeeze(t, av);
+        });
+    }
+    const fitLater = () => { if (!fitRaf) fitRaf = requestAnimationFrame(fitText); };
+    if (typeof ResizeObserver === 'function') {
+        const ro2 = new ResizeObserver(fitLater);
+        ro2.observe(svg);
+        lpOnTeardown(() => { ro2.disconnect(); cancelAnimationFrame(fitRaf); fitRaf = 0; });
+    }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (svg.isConnected) fitLater(); });
+
+    // ≤600 dikey liste (aynı düğümlerden). ANA YOL (sesin sırayla geçtiği kutular) katman katman, ok işaretleriyle;
+    // YAN YOLLAR (yalnız kesik/noktalı kenarlarla bağlı kutular: LFO, MOD ENV, sidechain, send → return, ölçüm
+    // kolu…) sıradaki durak gibi dizilmez: katmanında ana kutu varsa onun ALTINDA girintili "↳" satırı (.lp-fst-br),
+    // katmanı yalnız yan yollardan oluşuyorsa (modülün "yan yollar" grubu) ayrı satır (.lp-fst--side, ok yok) ve her
+    // kutuda bağlı olduğu ana kutu ("↳ bağlı: 2 · KUTULAR"). Numaralar şemadaki/kartlardaki ile aynı.
     if (o.mobile !== 'scroll') {
-        const nodes = (o.nodes || []).filter(n => n.stack !== false && n.t);
+        const all = o.nodes || [];
+        const nodes = all.filter(n => n.stack !== false && n.t);
         const by = {}; nodes.forEach(n => { by[n.id] = n; });
+        const allBy = {}; all.forEach(n => { allBy[n.id] = n; });
         const E = (o.edges || []).filter(e => e.from && e.to && by[e.from] && by[e.to]);
         const linkedPair = (a, b) => E.some(e => (e.from === a.id && e.to === b.id) || (e.from === b.id && e.to === a.id));
-        let layers;
-        if (Array.isArray(o.stack)) layers = o.stack.map(l => [].concat(l).map(id => by[id]).filter(Boolean)).filter(l => l.length);
-        else if (E.length && nodes.every(n => E.some(e => e.from === n.id || e.to === n.id))) {
-            const indeg = {}; nodes.forEach(n => { indeg[n.id] = 0; }); E.forEach(e => { indeg[e.to]++; });
-            layers = []; let left = nodes.slice(), guard = 0;
-            while (left.length && guard++ < 64) {
-                let lay = left.filter(n => indeg[n.id] === 0);
-                if (!lay.length) lay = left.slice();                         // döngü: kalanlar tek katman
-                layers.push(lay);
-                lay.forEach(n => E.forEach(e => { if (e.from === n.id) indeg[e.to]--; }));
-                left = left.filter(n => lay.indexOf(n) < 0);
+        // Kenar uçları: from/to; yalnız d (özel yol) verilmişse yolun ilk/son noktasının değdiği kutu (≤6 birim)
+        const pathEnds = d => {
+            const tk = String(d).match(/[A-Za-z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) || [];
+            let x = 0, y = 0, sx = null, sy = null, c = 'M', i = 0;
+            while (i < tk.length) {
+                if (/[A-Za-z]/.test(tk[i])) { c = tk[i++]; continue; }
+                const v = parseFloat(tk[i++]);
+                if (c === 'H') x = v; else if (c === 'V') y = v; else if (c === 'h') x += v; else if (c === 'v') y += v;
+                else if (c === 'Z' || c === 'z') continue;
+                else if (c === c.toLowerCase()) { x += v; y += parseFloat(tk[i++]) || 0; }
+                else { x = v; y = parseFloat(tk[i++]) || 0; }
+                if (sx == null) { sx = x; sy = y; }
             }
-        } else {
-            layers = [];
-            nodes.forEach(n => {
-                const last = layers[layers.length - 1];
-                if (last && Math.abs(last[0].x - n.x) < 1 && !last.some(m => linkedPair(m, n))) last.push(n); else layers.push([n]);
+            return sx == null ? null : [sx, sy, x, y];
+        };
+        const near = (px, py) => {
+            let best = null, bd = 6;
+            all.forEach(n => {
+                const d = Math.hypot(Math.max(n.x - px, 0, px - (n.x + n.w)), Math.max(n.y - py, 0, py - (n.y + n.h)));
+                if (d <= bd) { bd = d; best = n; }
             });
+            return best;
+        };
+        const links = (o.edges || []).map(e => {
+            let a = e.from ? allBy[e.from] : null, b = e.to ? allBy[e.to] : null;
+            if ((!a || !b) && e.d) { const p = pathEnds(e.d); if (p) { a = a || near(p[0], p[1]); b = b || near(p[2], p[3]); } }
+            return a && b && a !== b ? { a: a.id, b: b.id, dash: !!e.dash } : null;
+        }).filter(Boolean);
+        const sideOf = {};
+        nodes.forEach(n => { const t = links.filter(l => l.a === n.id || l.b === n.id); sideOf[n.id] = t.length > 0 && t.every(l => l.dash); });
+        const isMain = id => by[id] && !sideOf[id];
+        // Yan yolun bağlı olduğu ana kutu: beslediği → onu besleyen → yan yol komşuları üzerinden (genişlik öncelikli)
+        const anchorOf = n => {
+            const seen = new Set([n.id]); let q = [n.id];
+            while (q.length) {
+                for (const id of q) {
+                    const f = links.find(l => l.a === id && isMain(l.b)); if (f) return by[f.b];
+                    const g = links.find(l => l.b === id && isMain(l.a)); if (g) return by[g.a];
+                }
+                const nx = [];
+                q.forEach(id => links.forEach(l => {
+                    const o2 = l.a === id ? l.b : l.b === id ? l.a : null;
+                    if (o2 && by[o2] && sideOf[o2] && !seen.has(o2)) { seen.add(o2); nx.push(o2); }
+                }));
+                q = nx;
+            }
+            return null;
+        };
+        const autoLayers = list => {
+            const EE = E.filter(e => list.some(n => n.id === e.from) && list.some(n => n.id === e.to));
+            let layers;
+            if (EE.length && list.every(n => EE.some(e => e.from === n.id || e.to === n.id))) {
+                const indeg = {}; list.forEach(n => { indeg[n.id] = 0; }); EE.forEach(e => { indeg[e.to]++; });
+                layers = []; let left = list.slice(), guard = 0;
+                while (left.length && guard++ < 64) {
+                    let lay = left.filter(n => indeg[n.id] === 0);
+                    if (!lay.length) lay = left.slice();                         // döngü: kalanlar tek katman
+                    layers.push(lay);
+                    lay.forEach(n => EE.forEach(e => { if (e.from === n.id) indeg[e.to]--; }));
+                    left = left.filter(n => lay.indexOf(n) < 0);
+                }
+            } else {
+                layers = [];
+                list.forEach(n => {
+                    const last = layers[layers.length - 1];
+                    if (last && Math.abs(last[0].x - n.x) < 1 && !last.some(m => linkedPair(m, n))) last.push(n); else layers.push([n]);
+                });
+            }
+            return layers;
+        };
+        let rows;                                   // [{ main:[kutu], br:[yan yol], side?:true }]
+        if (Array.isArray(o.stack)) {
+            rows = o.stack.map(l => [].concat(l).map(id => by[id]).filter(Boolean)).filter(l => l.length).map(l => {
+                const m = l.filter(n => !sideOf[n.id]), sd = l.filter(n => sideOf[n.id]);
+                return m.length ? { main: m, br: sd } : { main: sd, br: [], side: true };
+            });
+        } else {
+            rows = autoLayers(nodes.filter(n => !sideOf[n.id])).map(l => ({ main: l, br: [] }));
+            const rest = [];
+            nodes.filter(n => sideOf[n.id]).forEach(n => {
+                const a = anchorOf(n), row = a && rows.find(r => r.main.indexOf(a) >= 0);
+                if (row) row.br.push(n); else rest.push(n);
+            });
+            if (rest.length) rows.push({ main: rest, br: [], side: true });
         }
+        const box = (n, side, anchor) => {
+            const btn = pick && n.n != null;
+            const c = mk(btn ? 'button' : 'span', 'lp-fst-n' + (side ? ' lp-fst-n--side' : ''));
+            if (btn) {
+                c.type = 'button'; c.dataset.n = String(n.n); c.setAttribute('aria-pressed', 'false');
+                c.addEventListener('click', () => pick(String(n.n)));
+            }
+            if (n.n != null) {
+                addNum(n.n, c);
+                const b = mk('span', 'lp-fst-nb'); b.textContent = String(n.n); c.append(b);
+            }
+            if (n.c) c.style.setProperty('--c', n.c);
+            const tx = mk('span', 'lp-fst-x');
+            const t = mk('span', 'lp-fst-t'); t.textContent = n.t; tx.append(t);
+            if (n.s && showSubs) { const s = mk('span', 'lp-fst-s'); s.textContent = n.s; tx.append(s); }
+            if (side && anchor) {
+                const to = mk('span', 'lp-fst-to');
+                lpTr(to, 'text', () => `↳ ${L('lp_fst_to')} ${anchor.n != null ? anchor.n + ' · ' : ''}${anchor.t}`);
+                tx.append(to);
+            } else if (side) { const sr = mk('span', 'sr-only'); lpTr(sr, 'text', () => ` — ${L('lp_fst_side')}`); tx.append(sr); }
+            c.append(tx);
+            return c;
+        };
         const ol = mk('ol', 'lp-fstack');
         lpTr(ol, 'aria-label', () => lpS(o.aria) || L('lp_flow_aria'));
-        layers.forEach(lay => {
-            const li = mk('li', 'lp-fst');
-            lay.forEach(n => {
-                const btn = pick && n.n != null;
-                const c = mk(btn ? 'button' : 'span', 'lp-fst-n');
-                if (btn) {
-                    c.type = 'button'; c.dataset.n = String(n.n); c.setAttribute('aria-pressed', 'false');
-                    c.addEventListener('click', () => pick(String(n.n)));
-                }
-                if (n.n != null) {
-                    addNum(n.n, c);
-                    const b = mk('span', 'lp-fst-nb'); b.textContent = String(n.n); c.append(b);
-                }
-                if (n.c) c.style.setProperty('--c', n.c);
-                const tx = mk('span', 'lp-fst-x');
-                const t = mk('span', 'lp-fst-t'); t.textContent = n.t; tx.append(t);
-                if (n.s && showSubs) { const s = mk('span', 'lp-fst-s'); s.textContent = n.s; tx.append(s); }
-                c.append(tx); li.append(c);
-            });
+        rows.forEach(row => {
+            const li = mk('li', 'lp-fst' + (row.side ? ' lp-fst--side' : '') + (row.br.length ? ' lp-fst--br' : ''));
+            row.main.forEach(n => li.append(box(n, !!row.side, row.side ? anchorOf(n) : null)));
+            if (row.br.length) {
+                const br = mk('div', 'lp-fst-br');
+                row.br.forEach(n => {
+                    const r = mk('div', 'lp-fst-brow');
+                    const k = mk('span', 'lp-fst-brk', '↳'); k.setAttribute('aria-hidden', 'true');
+                    r.append(k, box(n, true, null)); br.append(r);
+                });
+                li.append(br);
+            }
             ol.append(li);
         });
         wrap.append(ol);
@@ -7796,9 +8109,14 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   şey engellenmez (pointer-events:none) — öğrenci adımı gerçekten yapar. Hedef görünüme kaydırılır;
 //   kaydırma/yeniden boyut/düzen değişiminde yeniden konumlanır. Kart hedefin yanında (≤600 px altta,
 //   sekme çubuğunun üstünde). Hedef açık bir [aria-modal] pencerenin içindeyse katman modalın üstüne çıkar.
-//   Telefonda (≤600) kart ≤40vh, Geri/İleri şeridi kartın içinde yapışkan (uzun gövdede hep görünür); başlıktaki
-//   ⌃ düğmesi kartı KÜÇÜLTÜR (.is-min: yalnız künye, adım başlığı, durum ve Geri/İleri) — hedef kontrol görünsün diye;
-//   tercih oturum boyu bütün öğreticilerde geçerli (_lpTutMin). Giriş kartında öğretici adı başlıkta iki kez yazılmaz.
+//   Telefonda (≤600) kart ≤40vh, Geri/İleri şeridi kartın içinde yapışkan (uzun gövdede hep görünür).
+//   ≤1024: başlıktaki ⌃ düğmesi (aria-expanded) kartı KÜÇÜLTÜR (.is-min — tablette hap: künye "ÖĞRETİCİ · x/N" + adım
+//   başlığı; telefonda + durum ve Geri/İleri); tercih oturum boyu bütün öğreticilerde geçerli (_lpTutMin).
+//   ≤1024 kart hedefe BİNMEZ (fitView): yer seçimi halkaya en az binen konumu alır, kart yapışkan başlığın altında ve
+//   alt çubukların (.be-tabbar + modülün altta yapışkan çubuğu, ör. Synth dinleme çubuğu — telefonda kart onun üstüne
+//   kalkar: --lp-tut-lift) üstünde durur; hedef + kart sığmıyorsa kart o adım için kendiliğinden küçülür (telefonda
+//   gerekirse .is-pill: yalnız künye + başlık; öğrenci büyütebilir), sonra hedef serbest banda kaydırılır. "Kontrole git"
+//   (F6) da önce hedefi serbest banda getirir, sonra odağı kaydırmasız verir. Giriş kartında öğretici adı başlıkta iki kez yazılmaz.
 //   Klavye: kart role=dialog (aria-modal=false: tuzak yok, sayfa kullanılabilir); açılınca odak karta,
 //   kapanınca geri (öğretici düğmesine). Esc (odak kartta ya da hiçbir yerde değilken) kapatır; F6 kart ↔
 //   hedef arasında odak taşır ("Kontrole git" düğmesi de). Adım değişimi / tamamlanma aria-live ile duyurulur.
@@ -7864,7 +8182,7 @@ function markTaskDone(mid, tid) { return completeTask(mid, tid); }
 //   gezer, Enter seçer (onPick), Boşluk dinler/durdurur, Esc önizlemeyi durdurur. Tık seçer, ▶ tık dinler.
 //   filter:true (kinds > 1 iken) → üstte TÜMÜ / tür seçici (makeSeg). Seçili satır altın. packs: ['mersey', …] süzgeci.
 //   Modüllere bağlanmadı; modül ajanları kendi paneline koyar.
-// CSS kancaları: .lp-tut-ring (.is-dim, .is-top) · .lp-tut-card (.is-dock, .is-top, .is-min) / -min / -top / -kick / -name /
+// CSS kancaları: .lp-tut-ring (.is-dim, .is-top) · .lp-tut-card (.is-dock, .is-top, .is-min, .is-pill; --lp-tut-lift) / -min / -top / -kick / -name /
 //   -x / -prog (-seg .on .cur) / -h / -body / -abl (-abl-l) / -hint / -state (.is-ok .is-miss) / -foot ·
 //   .lp-tut-btn (-n) · .lp-tut-chip (-bar, --p) · .lp-sb / -head / -cur / -list / -gw / -gh / -opt
 //   (.is-playing .is-busy .is-err) / -play / -name / -meta · --lp-sbh (liste yüksekliği).
@@ -7998,6 +8316,14 @@ function labTutorial(o) {
     let card, ring, kick, nameEl, xBtn, minBtn, prog, hEl, bodyEl, ablEl, ablT, hintEl, stEl, stLed, stTxt, gotoBtn, foot, bBack, bSkip, bNext, bAlt;
     const mq = window.matchMedia ? window.matchMedia('(max-width:600px)') : null;
     const docked = () => !!(mq && mq.matches);
+    // ≤1024 (tablet + telefon): küçült düğmesi görünür ve kart hedefin üstüne binmez (fitView)
+    const mqS = window.matchMedia ? window.matchMedia('(max-width:1024px)') : null;
+    const small = () => !!(mqS && mqS.matches);
+    let autoMin = false, userMax = false;   // adım ömürlü: kart hedefe sığmadığı için kendiliğinden küçüldü / öğrenci yine büyüttü
+    let pill = false;                       // telefonda küçük kart da sığmadı → yalnız künye + başlık (.is-pill)
+    let hit = false;                        // place()'in son kartı hedefin halkasına biniyor mu
+    const isMin = () => _lpTutMin || (autoMin && !userMax);
+    const onMq = () => { paintMin(); schedule(); };
 
     function build() {
         if (built) return;
@@ -8011,9 +8337,13 @@ function labTutorial(o) {
         kick = mk('span', 'lp-tut-kick'); nameEl = mk('span', 'lp-tut-name');
         xBtn = mk('button', 'lp-btn lp-btn--ghost lp-btn--icon lp-tut-x', LP_TUT_IC.x); xBtn.type = 'button';
         xBtn.addEventListener('click', () => api.stop());
-        // ≤600 (yerleşik kart): küçült / büyüt — küçükken yalnız başlık, adım adı, durum ve Geri/İleri kalır
+        // ≤1024: küçült / büyüt — küçükken hap: künye (ADIM x/N) + adım başlığı (telefonda + durum ve Geri/İleri).
+        // Büyütünce kart hedefe binecekse hedef serbest banda kaydırılır (fitView).
         minBtn = mk('button', 'lp-btn lp-btn--ghost lp-btn--icon lp-tut-min', LP_IC.caret); minBtn.type = 'button';
-        minBtn.addEventListener('click', () => { _lpTutMin = !_lpTutMin; paintMin(); schedule(); });
+        minBtn.addEventListener('click', () => {
+            if (isMin()) { _lpTutMin = false; if (autoMin) userMax = true; } else _lpTutMin = true;
+            paintMin(); fitView();
+        });
         top.append(kick, nameEl, minBtn, xBtn);
         prog = mk('div', 'lp-tut-prog'); prog.setAttribute('aria-hidden', 'true');
         hEl = mk('h2', 'lp-tut-h'); hEl.id = hid;
@@ -8055,32 +8385,112 @@ function labTutorial(o) {
         const r = el.getBoundingClientRect();
         return (r.width || r.height) ? r : null;
     };
+    // "Kontrole git" / F6: önce hedef kartın bıraktığı serbest banda kaydırılır (tarayıcının odak kaydırması onu kartın
+    // altına sokabilirdi), sonra odak kaydırmasız verilir.
     function focusTarget() {
         const t = tgt && tgt.isConnected ? tgt : resolve();
         if (!t) return;
+        if (t !== tgt) { tgt = t; watch(); }
         const f = t.matches(LP_FOCUSABLE) ? t : t.querySelector(LP_FOCUSABLE);
-        if (f) try { f.focus(); } catch (_) {}
-        else { t.scrollIntoView({ block: 'center', behavior: lpReduced() ? 'auto' : 'smooth' }); }
+        fitView(true);
+        if (f) try { f.focus({ preventScroll: true }); } catch (_) {}
     }
-    // Görünür bant: üstte yapışkan başlık + sekme çubuğu, altta (telefonda) yerleşik kart
+    // Görünür bant: üstte yapışkan başlık + sekme çubuğu, altta alt gezinme çubuğu (.be-tabbar, ≤1024) ve (telefonda)
+    // yerleşik kart — kart modülün sınıfıyla üste alınmışsa (ör. Arrangement VEL adımı) bant kartın ALTINDAN başlar
+    // Ekranın altındaki "zemin": alt gezinme çubuğu (.be-tabbar) ve modülün altta yapışkan / sabit çubukları (ör. Synth
+    // dinleme çubuğu — DEMO KLİP · NOTA ÇAL: adımlar çoğu zaman "çal, dinle" der). Alt kenarın hemen üstünde üç noktadan
+    // elementsFromPoint ile bulunur (yalnız #app içi; kart, halka, tostlar hariç). Döndürür: zeminin üst kenarı (px).
+    let flAt = -1, flV = 0;                 // floorTop önbelleği (aynı karede viewBand + place iki kez sorar)
+    function floorTop() {
+        const now = performance.now();
+        if (now - flAt < 12) return flV;
+        flAt = now; flV = floorTop0();
+        return flV;
+    }
+    function floorTop0() {
+        const vh = window.innerHeight, vw = document.documentElement.clientWidth;
+        let fl = vh;
+        const tb = document.querySelector('.be-tabbar');
+        if (tb) { const q = tb.getBoundingClientRect(); if (q.height && q.top > vh / 2) fl = Math.min(fl, q.top); }
+        const app = document.getElementById('app');
+        if (!app || !document.elementsFromPoint) return fl;
+        const y0 = fl - 8, seen = new Set();
+        // İki yükseklik: çubuk zeminin hemen üstünde ya da arada ~20 px boşlukla (Synth: sekme çubuğundan 8 px + gölge)
+        [[0.2, 0], [0.5, 0], [0.8, 0], [0.5, 24], [0.2, 24]].forEach(([fx, dy]) => {
+            let els = [];
+            try { els = document.elementsFromPoint(vw * fx, y0 - dy); } catch (_) {}
+            els.forEach(el => {
+                if (!app.contains(el)) return;
+                for (let e = el; e && e !== app; e = e.parentElement) {
+                    if (seen.has(e)) break;
+                    seen.add(e);
+                    const cs = getComputedStyle(e);
+                    if ((cs.position === 'sticky' || cs.position === 'fixed') && cs.bottom !== 'auto') {
+                        const q = e.getBoundingClientRect();
+                        if (q.height && q.height < vh * 0.4 && q.top > vh / 2 && q.bottom >= y0 - 48) fl = Math.min(fl, q.top);
+                        break;
+                    }
+                }
+            });
+        });
+        return fl;
+    }
     function viewBand() {
         const cs = getComputedStyle(document.documentElement);
         const nav = document.getElementById('moduleNav');
-        const top = (parseFloat(cs.getPropertyValue('--be-sticky-top')) || 0) + (nav && !nav.hidden ? nav.offsetHeight : 0) + 12;
-        const bottom = docked() && card && !card.hidden ? card.getBoundingClientRect().top - 12 : window.innerHeight - 12;
+        let top = (parseFloat(cs.getPropertyValue('--be-sticky-top')) || 0) + (nav && !nav.hidden ? nav.offsetHeight : 0) + 12;
+        const vh = window.innerHeight;
+        let bottom = small() ? floorTop() - 12 : vh - 12;
+        if (docked() && card && !card.hidden) {
+            const c = card.getBoundingClientRect();
+            if (c.height) { if (c.top + c.height / 2 < vh / 2) top = Math.max(top, c.bottom + 12); else bottom = Math.min(bottom, c.top - 12); }
+        }
         return { top, bottom: Math.max(top + 40, bottom) };
     }
-    function scrollToTarget() {
+    // force: bantta olsa da yeniden hizala ("Kontrole git"). Kart hedefe biniyorsa (hit) de kaydırır.
+    function scrollToTarget(force) {
         if (!visibleRect(tgt)) return;
         const b = viewBand();
         let r = tgt.getBoundingClientRect();
-        if (r.top >= b.top && r.bottom <= b.bottom) return;
+        if (!force && !(hit && small()) && r.top >= b.top && r.bottom <= b.bottom) return;
         // İç kaydırıcılar (ör. yatay kayan ızgara) için önce en yakın konuma, sonra pencereyi banda ortala
         try { tgt.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' }); } catch (_) {}
         r = tgt.getBoundingClientRect();
-        const room = b.bottom - b.top;
-        const dy = r.height >= room ? r.top - b.top : r.top - (b.top + (room - r.height) / 2);
+        const room = b.bottom - b.top, P = 6, G = 12;
+        let dy;
+        if (small() && !docked() && card && !card.hidden) {
+            // Tablet (yüzen kart): hedef + kart bloğu banda ortalanır → kart hedefin altına (placement 'top' → üstüne)
+            // sığar; sığmıyorsa hedef bandın tepesine (kart altta en az binen yerde durur)
+            const ch = card.offsetHeight, blk = r.height + 2 * P + G + ch, s = steps[cur];
+            if (blk <= room) { const t0 = b.top + (room - blk) / 2; dy = r.top - (s && s.placement === 'top' ? t0 + ch + G + P : t0 + P); }
+            else dy = r.top - P - b.top;
+        } else dy = r.height >= room ? r.top - b.top : r.top - (b.top + (room - r.height) / 2);
         if (Math.abs(dy) > 1) window.scrollBy(0, dy);
+    }
+    // ≤1024: kart hedefi örtmesin. Hedef + kart görünür banda sığmıyorsa (ve yanına da konamıyorsa) kart bu adım
+    // için kendiliğinden küçülür (hap; öğrenci büyütebilir — userMax), sonra hedef kartın bıraktığı serbest banda
+    // kaydırılır. Masaüstü (>1024): eski davranış — hedef görünmüyorsa banda ortalanır.
+    function fitView(force) {
+        if (!active || !built) return;
+        place();
+        if (!visibleRect(tgt)) return;
+        if (small() && !autoMin && !userMax && !_lpTutMin) {
+            const b = viewBand(), r = tgt.getBoundingClientRect(), P = 6, G = 12, M = 16;
+            const vw = document.documentElement.clientWidth, room = b.bottom - b.top, cw = card.offsetWidth;
+            const need = docked() ? r.height + 2 * P : r.height + 2 * P + G + card.offsetHeight;
+            const beside = !docked() && r.height + 2 * P <= room && (r.right + P + G + cw <= vw - M || r.left - P - G - cw >= M);
+            if (need > room && !beside) { autoMin = true; paintMin(); place(); }
+        }
+        // Telefon: küçük kartla da (durum + Geri/İleri) hedef sığmıyorsa hap (künye + başlık) — büyütmek hep elde
+        if (small() && docked() && isMin() && !pill) {
+            const b = viewBand(), r = tgt.getBoundingClientRect();
+            if (r.height + 12 > b.bottom - b.top) { pill = true; paintMin(); place(); }
+        }
+        scrollToTarget(force);
+        place();
+        // Hiçbir konum halkayı boş bırakmıyor (ör. kaydırılamayan sabit pencere içindeki hedef — piyano rulosu VEL
+        // şeridi): kart bu adım için kendiliğinden küçülür (öğrenci büyütebilir — userMax)
+        if (small() && hit && !isMin() && !userMax) { autoMin = true; paintMin(); place(); }
     }
 
     // ── konumlandırma (yalnız transform; genişlik/yükseklik çalışma anı durumu) ─────
@@ -8101,15 +8511,29 @@ function labTutorial(o) {
         } else ring.hidden = true;
         const dock = docked();
         card.classList.toggle('is-dock', dock);
-        if (dock) { card.style.transform = ''; return; }
+        // Kart (x, y, w, h) halkaya (hedef ± P) ne kadar biniyor (alan, px²)
+        const ovl = (x0, y0, w0, h0) => !r ? 0 : Math.max(0, Math.min(x0 + w0, r.right + P) - Math.max(x0, r.left - P))
+            * Math.max(0, Math.min(y0 + h0, r.bottom + P) - Math.max(y0, r.top - P));
+        if (dock) {
+            card.style.transform = '';
+            // Kart altta yapışkan modül çubuğunun (zemin) ÜSTÜNDE dursun: --lp-tut-lift (çalışma anı durumu)
+            const c0 = card.getBoundingClientRect(), lift0 = parseFloat(card.style.getPropertyValue('--lp-tut-lift')) || 0;
+            const lift = card.classList.contains('is-dock') && c0.top + c0.height / 2 > vh / 2 ? Math.max(0, Math.round(c0.bottom + lift0 - (floorTop() - 8))) : 0;
+            if (lift !== lift0) card.style.setProperty('--lp-tut-lift', lift + 'px');
+            const cr = card.getBoundingClientRect();
+            hit = ovl(cr.left, cr.top, cr.width, cr.height) > 0;
+            return;
+        }
         const cw = card.offsetWidth, ch = card.offsetHeight;
+        const T0 = small() ? viewBand().top : M;      // ≤1024: kart yapışkan başlık / sekme şeridinin altında kalsın
+        const B0 = small() ? Math.min(vh - M, floorTop() - 8) : vh - M;   // …ve alt çubukların (zemin) üstünde
         let x, y;
         if (!r) { x = (vw - cw) / 2; y = Math.max(M, (vh - ch) / 2); }
         else {
             const cx = r.left + r.width / 2 - cw / 2, cy = r.top + r.height / 2 - ch / 2;
             const cand = {
-                bottom: [cx, r.bottom + P + G, r.bottom + P + G + ch <= vh - M],
-                top:    [cx, r.top - P - G - ch, r.top - P - G - ch >= M],
+                bottom: [cx, r.bottom + P + G, r.bottom + P + G + ch <= B0],
+                top:    [cx, r.top - P - G - ch, r.top - P - G - ch >= T0],
                 right:  [r.right + P + G, cy, r.right + P + G + cw <= vw - M],
                 left:   [r.left - P - G - cw, cy, r.left - P - G - cw >= M],
             };
@@ -8117,9 +8541,21 @@ function labTutorial(o) {
             const order = pref.concat(['bottom', 'top', 'right', 'left'].filter(k => pref.indexOf(k) < 0));
             const pick = order.find(k => cand[k][2]);
             if (pick) { x = cand[pick][0]; y = cand[pick][1]; }
-            else { x = vw - cw - M; y = vh - ch - M; }       // büyük hedef: sağ alt köşe
+            else {
+                // Hiçbir yan sığmıyor (büyük hedef / kaydırma ortası): kenara yaslı konumlardan halkaya EN AZ binen —
+                // eşitlikte sağ alt (eski varsayılan), sonra sol alt, alt orta, sonra bandın tepesi (hedef alttaysa)
+                const bt = viewBand().top;
+                let best = null;
+                [B0 - ch, bt].forEach(yy => [vw - cw - M, M, (vw - cw) / 2].forEach(xx => {
+                    const X = lpClamp(xx, M, Math.max(M, vw - cw - M)), Y = lpClamp(yy, T0, Math.max(T0, B0 - ch));
+                    const a = ovl(X, Y, cw, ch);
+                    if (!best || a < best.a - 1) best = { x: X, y: Y, a };
+                }));
+                x = best.x; y = best.y;
+            }
         }
-        x = lpClamp(x, M, Math.max(M, vw - cw - M)); y = lpClamp(y, M, Math.max(M, vh - ch - M));
+        x = lpClamp(x, M, Math.max(M, vw - cw - M)); y = lpClamp(y, T0, Math.max(T0, B0 - ch));
+        hit = ovl(x, y, cw, ch) > 0;
         card.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
     }
     const schedule = () => { if (!raf && active) raf = requestAnimationFrame(place); };
@@ -8157,7 +8593,7 @@ function labTutorial(o) {
     function onTick() {
         if (!active || document.hidden) return;
         reResolve();
-        if (syncVis()) { scrollToTarget(); }
+        if (syncVis()) fitView();
         evalCheck();
         schedule();
     }
@@ -8181,14 +8617,19 @@ function labTutorial(o) {
         }
     }
     // Düğmeyle adım değişince: basılan düğme hâlâ kullanılabiliyorsa odak orada kalır, yoksa karta
+    // Odaklanabilir mi: `hidden` değil, devre dışı değil ve CSS ile gizli değil (küçük kart .is-min / hap .is-pill
+    // alt düğmeleri display:none ile saklar — focus() orada sessizce boşa düşer, F6 karta dönemezdi)
+    const canFocus = x => !!x && !x.hidden && x.getAttribute('aria-disabled') !== 'true' && x.getClientRects().length > 0;
     function keepFocus() {
         const a = document.activeElement;
-        if (card.contains(a) && a !== card && !a.hidden && a.getAttribute('aria-disabled') !== 'true') return;
+        if (card.contains(a) && a !== card && canFocus(a)) return;
         try { card.focus({ preventScroll: true }); } catch (_) {}
     }
     function focusCard() {
-        const b = [bNext, bAlt, bSkip, bBack].find(x => x && !x.hidden && x.getAttribute('aria-disabled') !== 'true');
+        // Küçükken alt düğmeler gizli → büyüt düğmesi (Enter kartı açar), o da yoksa kartın kendisi
+        const b = [bNext, bAlt, bSkip, bBack, minBtn].find(canFocus);
         try { (b || card).focus({ preventScroll: true }); } catch (_) {}
+        if (!card.contains(document.activeElement)) { try { card.focus({ preventScroll: true }); } catch (_) {} }
     }
     function listen(on) {
         const f = on ? 'addEventListener' : 'removeEventListener';
@@ -8197,6 +8638,7 @@ function labTutorial(o) {
         document[f]('keydown', onKey);
         ['pointerup', 'input', 'change', 'keyup'].forEach(t => document[f](t, onEvt, true));
         if (mq) { if (mq.addEventListener) mq[on ? 'addEventListener' : 'removeEventListener']('change', schedule); }
+        if (mqS && mqS.addEventListener) mqS[on ? 'addEventListener' : 'removeEventListener']('change', onMq);
     }
 
     // ── boyama ───────────────────────────────────────────────────────
@@ -8224,9 +8666,12 @@ function labTutorial(o) {
     }
     function paintMin() {
         if (!built) return;
-        card.classList.toggle('is-min', _lpTutMin);
-        minBtn.setAttribute('aria-expanded', String(!_lpTutMin));
-        minBtn.setAttribute('aria-label', L(_lpTutMin ? 'lp_tut_max' : 'lp_tut_min'));
+        const m = isMin();
+        card.classList.toggle('is-min', m);           // CSS yalnız ≤1024'te uygular (masaüstünde kart hep tam)
+        card.classList.toggle('is-pill', m && pill);
+        minBtn.setAttribute('aria-expanded', String(!m));
+        minBtn.setAttribute('aria-label', L(m ? 'lp_tut_max' : 'lp_tut_min'));
+        minBtn.title = L(m ? 'lp_tut_max' : 'lp_tut_min');
     }
     function paint() {
         build();
@@ -8285,6 +8730,7 @@ function labTutorial(o) {
         cur = i;
         const s = steps[cur];
         tgt = null; lastOk = false; checkWarned = false; doneNow = false;
+        autoMin = false; userMax = false; pill = false; hit = false;   // kendiliğinden küçültme adım ömürlü
         if (s) {
             if (s.onEnter) { try { s.onEnter(api, s); } catch (e) { console.warn('[lab] tutorial onEnter:', e); } }
             enteredDone = isDone(s);
@@ -8294,7 +8740,7 @@ function labTutorial(o) {
         watch();
         paint();
         place();                                   // kart önce yerleşsin (telefonda kaplayacağı alan belli olsun)
-        if (s) { scrollToTarget(); place(); }
+        if (s) fitView();                          // hedef görünür banda; ≤1024 kart hedefe binmez
         if (s) lpAnnounce(Lf('lp_tut_sr_step', { n: cur + 1, N, t: lpTutText(s.title) }));
         else if (cur >= N) lpAnnounce(Lf('lp_tut_sr_done', { t: lpTutText(o.title) }));
         else lpAnnounce(`${lpTutText(o.title)} — ${lpTutText(o.intro)}`);
@@ -8438,6 +8884,8 @@ function lpElSub(el, subscribe) {
     };
 }
 const lpTutSub = (tut, el, fn) => lpElSub(el, () => tut.subscribe(fn));
+// Tanılama: ?tutdebug=1 → window.__lpTut = { active() → açık öğretici, byMid() → görünümde kurulan öğreticiler } (başsız doğrulama)
+if (/[?&]tutdebug=1\b/.test(location.search)) window.__lpTut = { active: () => _lpTutActive, byMid: () => _lpTutByMid };
 
 // Başlık çubuğu "ÖĞRETİCİ x/N" düğmesi
 function makeTutorialButton(tut, o) {
@@ -26003,6 +26451,7 @@ function labObserve(root) {
     root.querySelectorAll('[data-lab-anim]').forEach(el => _labIO.observe(el));
 }
 function render() {
+    labTaskQuiet();                 // görünüm kurulumu toplu yüklemedir: panelin ilk tazelemesi tost göstermez
     teardownView();
     _lpTutByMid = {};
     // Eski görünümün hedeflerini bırak (kaldırılan öğeler gözlemde kalmasın)
