@@ -3746,7 +3746,7 @@ function bkSelfReschedControl(l, res, { isPaid, isTrial, pendingResch, pendingTc
   btn.type = 'button';
   btn.className = 'btn btn-sm btn-subtle bk-selfresch';
   btn.dataset.wkRow = bkWkKey(l);
-  const left = bkTrStart(l.date, l.time).getTime() - Date.now();
+  const left = bkTrStart(l.date, l.time).getTime() - bkNow();
   if (left < SELF_RESCHED_MIN_MS) {
     btn.disabled = true;
     btn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-clock"/></svg>${bkT('bk_sc_locked', `Saat değişikliği kapandı`)}`;
@@ -4045,7 +4045,7 @@ function bkCfmRenderEnded(res) {
   if (!box) return;
   if (!_user || _user.email === ADMIN_EMAIL || _bkAdminPreview) { box.hidden = true; box.innerHTML = ''; return; }
   _bkCfmEndedRes = res || null;
-  const open = bkCfmOpenLessons(res, Date.now());
+  const open = bkCfmOpenLessons(res, bkNow());
   box.innerHTML = '';
   box.hidden = !open.length;
   if (!open.length) return;
@@ -4122,7 +4122,20 @@ var BK_WK_BADGE = {
 function bkWkKey(l) { return `${l.date}_${l.time}`; }
 function bkIsEn() { return window._i18n?.getLang() === 'en'; }
 function bkPad2(n) { return String(n).padStart(2, '0'); }
-function bkTrNow() { return new Date(Date.now() + 3 * 3600e3); } // getUTC* ile okunur
+  // ── Sunucu saati: cihaz saati yanlış ayarlıysa (yurt dışı/yanlış saat) ders zamanları
+  // kaymasın diye gerçek saati sunucudan al; _bkSkew = sunucu - cihaz. bkNow() her yerde kullanılır.
+  var _bkSkew = 0, _bkClockSynced = false, _bkClockTimer = null;
+  function bkNow() { return Date.now() + _bkSkew; }
+  function bkSyncClock() {
+    try {
+      return fetch('/favicon.svg?_t=' + Date.now(), { method: 'HEAD', cache: 'no-store' }).then(function (r) {
+        var h = r && r.headers && r.headers.get('date');
+        var srv = h ? Date.parse(h) : NaN;
+        if (srv) { _bkSkew = srv - Date.now(); _bkClockSynced = true; }
+      }).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+  }
+function bkTrNow() { return new Date(bkNow() + 3 * 3600e3); } // getUTC* ile okunur
 function bkTrToday() { return bkTrNow().toISOString().slice(0, 10); }
 function bkTzDiffers() { return new Date().getTimezoneOffset() !== -180; }
 function bkWkCompact() { return _bkMobileMq.matches; }
@@ -4130,7 +4143,18 @@ function bkWkNowLabel(compact) {
   const t = bkTrNow();
   const hms = `${bkPad2(t.getUTCHours())}:${bkPad2(t.getUTCMinutes())}:${bkPad2(t.getUTCSeconds())}`;
   const day = getDaysShort()[t.getUTCDay()];
-  return compact ? `${day} ${hms}` : `${day} ${t.getUTCDate()} · ${hms}`;
+  let s = compact ? `${day} ${hms}` : `${day} ${t.getUTCDate()} · ${hms}`;
+  if (bkTzDiffers()) { // yurt dışı: öğrencinin kendi saatini de göster
+    const lo = new Date(bkNow());
+    s += ` · ${bkPad2(lo.getHours())}:${bkPad2(lo.getMinutes())} ${bkIsEn() ? 'local' : 'sen'}`;
+  }
+  return s;
+}
+// Dersin başlangıç saatini öğrencinin yerel saatiyle: "17:00 (sen 10:00)" — saat dilimi farklıysa
+function bkLocalTimeNote(dateStr, timeStr) {
+  if (!bkTzDiffers()) return '';
+  const lo = bkTrStart(dateStr, timeStr); // mutlak an; yerel alanlar cihaz saat dilimine göre
+  return ` (${bkIsEn() ? 'you' : 'sen'} ${bkPad2(lo.getHours())}:${bkPad2(lo.getMinutes())})`;
 }
 // Tasarımdaki dur(): 1 saatin altında M:SS, üstünde "2 g 3 sa 3 dk" (kompakt "2g 3sa 3dk")
 function bkDurLive(ms, compact) {
@@ -4246,7 +4270,7 @@ function bkWkCardEl(l) {
   li.dataset.key = bkWkKey(l);
   li.innerHTML = `
     <div class="bk-wk-top"><span class="bk-wk-day" tabindex="-1"></span><span class="bk-wk-badge"></span></div>
-    <div class="bk-wk-timerow"><span class="bk-wk-time">${escHtml(l.time)}</span><span class="bk-wk-dur">${bkT('bk_wk_dur_online', `60 dk · Online`)}</span></div>
+    <div class="bk-wk-timerow"><span class="bk-wk-time">${escHtml(l.time)}</span><span class="bk-wk-dur">${bkT('bk_wk_dur_online', `60 dk · Online`)}${escHtml(bkLocalTimeNote(l.date, l.time))}</span></div>
     <div class="bk-wk-metawrap">
       <div class="bk-wk-meta"><span class="bk-wk-left"></span><span class="bk-wk-lock"></span></div>
       <div class="bk-wk-bar" aria-hidden="true"><i></i></div>
@@ -4368,7 +4392,7 @@ function bkWkRender(res, ctx) {
     _bkWkSide = {};
     const sl = document.getElementById('bkWkSideList');
     if (sl) { sl.innerHTML = ''; lessons.forEach(l => { const r = bkWkSideEl(l); _bkWkSide[r.key] = r; sl.append(r.li); }); }
-    Object.values(_bkWkCards).forEach(c => bkWkPaintCard(c, Date.now(), compact));
+    Object.values(_bkWkCards).forEach(c => bkWkPaintCard(c, bkNow(), compact));
     if (fKey && _bkWkCards[fKey]) {
       const c = _bkWkCards[fKey];
       ((fBtn && c.btn && !c.btn.disabled) ? c.btn : c.day).focus({ preventScroll: true });
@@ -4377,7 +4401,7 @@ function bkWkRender(res, ctx) {
   // Açık seçici: ders hâlâ uygunsa korunur (dil / kırılma noktası değiştiyse yeniden kurulur)
   if (_bkWkOpenKey) {
     const l = bkWkFindLesson(_bkWkOpenKey);
-    const s = l && bkWkState(l, Date.now(), _bkWkCtx);
+    const s = l && bkWkState(l, bkNow(), _bkWkCtx);
     if (!l || !(s.actionable || s.kind === 'locked')) bkWkClose({ focus: false });
     else if (_bkWkUI && (_bkWkUI.lang !== lang || _bkWkUI.compact !== compact)) bkWkRemount();
   }
@@ -4424,7 +4448,7 @@ function bkWkTick() {
     bkWkRender(_bkWkCtx.res, _bkWkCtx);
     return;
   }
-  const now = Date.now(), compact = bkWkCompact();
+  const now = bkNow(), compact = bkWkCompact();
   bkSetText(document.getElementById('bkWkNow'), bkWkNowLabel(compact));
   let unpaid = false;
   Object.values(_bkWkCards).forEach(c => { if (bkWkPaintCard(c, now, compact) === 'unpaid') unpaid = true; });
@@ -4451,7 +4475,7 @@ function bkWkGoTo(key) {
   const c = _bkWkCards[key];
   bkWkScrollToBlock(!c);
   if (!c) return;
-  const s = bkWkState(c.l, Date.now(), _bkWkCtx);
+  const s = bkWkState(c.l, bkNow(), _bkWkCtx);
   if (!s.actionable) { c.day.focus({ preventScroll: true }); return; }
   if (_bkWkOpenKey !== key) bkWkOpenFor(c.l, 'card');
   if (!bkWkCompact() && c.btn) c.btn.focus({ preventScroll: true });
@@ -4574,7 +4598,7 @@ function bkWkBuildGrid(ui, initialScroll) {
   };
   ui.root.querySelector('.bk-gload').hidden = true;
   table.hidden = false;
-  bkWkPaintCells(ui, Date.now());
+  bkWkPaintCells(ui, bkNow());
   const pk = _bkWkPick ? bkWkKey(_bkWkPick) : null;
   const first = (pk && ui.cells.find(c => `${c.dataset.date}_${c.dataset.time}` === pk))
     || ui.cells.find(c => c.dataset.st === 'current') || ui.cells.find(c => c.dataset.st === 'free') || ui.cells[0];
@@ -4620,7 +4644,7 @@ function bkWkPaintCells(ui, now) {
 }
 function bkWkPickCell(ui, cell) {
   _bkWkPick = { date: cell.dataset.date, time: cell.dataset.time };
-  bkWkPaintPicker(Date.now());
+  bkWkPaintPicker(bkNow());
   bkWkFocusCell(ui, cell, true);
 }
 function bkWkChecks(ui, now) {
@@ -4694,7 +4718,7 @@ function bkWkOpenFor(l, opener) {
   const compact = bkWkCompact();
   if (_bkWkOpenKey === key && _bkWkUI && !compact) { bkWkClose(); return; } // ikinci tık kapatır
   if (_bkWkUI || _bkWkOpenKey) bkWkClose({ focus: false });
-  if (!bkWkState(l, Date.now(), _bkWkCtx).actionable) return;
+  if (!bkWkState(l, bkNow(), _bkWkCtx).actionable) return;
   if (_bkWkDone) { _bkWkDone = null; bkWkRenderDone(false); }
   _bkWkOpenKey = key; _bkWkOpener = opener; _bkWkPick = null; _bkWkWeekData = null;
   const ui = bkWkBuildPicker(l, compact);
@@ -4706,19 +4730,19 @@ function bkWkOpenFor(l, opener) {
     if (opener === 'row') { bkWkScrollToBlock(false); ui.root.focus({ preventScroll: true }); }
   }
   bkWkTick();
-  bkWkPaintPicker(Date.now());
+  bkWkPaintPicker(bkNow());
   bkWkLoad(ui, true);
   if (!compact) bkTourOnPicker(true);
 }
 async function bkWkLoad(ui, initialScroll) {
   const seq = ++_bkWkLoadSeq;
-  if (bkWkData(ui.key)) { bkWkBuildGrid(ui, initialScroll); bkWkPaintPicker(Date.now()); return; }
+  if (bkWkData(ui.key)) { bkWkBuildGrid(ui, initialScroll); bkWkPaintPicker(bkNow()); return; }
   try {
     const data = await bkScLoadWeek(ui.lesson, _bkWkCtx.res);
     if (seq !== _bkWkLoadSeq || _bkWkUI !== ui) return;
     _bkWkWeekData = { key: ui.key, data };
     bkWkBuildGrid(ui, initialScroll);
-    bkWkPaintPicker(Date.now());
+    bkWkPaintPicker(bkNow());
   } catch (e) {
     if (seq !== _bkWkLoadSeq || _bkWkUI !== ui) return;
     const c = errId();
@@ -4774,7 +4798,7 @@ function bkWkRemount() {
     const sc = ui.root.querySelector('.bk-gscroll');
     if (sc) sc.scrollTop = top;
   } else bkWkLoad(ui, true);
-  bkWkPaintPicker(Date.now());
+  bkWkPaintPicker(bkNow());
   if (focusIn) {
     if (compact) ui.wrap.querySelector('.bk-sheet-close')?.focus();
     else (_bkWkCards[key] && _bkWkCards[key].btn ? _bkWkCards[key].btn : ui.root).focus({ preventScroll: true });
@@ -4783,7 +4807,7 @@ function bkWkRemount() {
 async function bkWkConfirm() {
   const ui = _bkWkUI;
   if (!ui || ui.busy || !_bkWkPick) return;
-  if (!bkWkChecks(ui, Date.now()).can) return;
+  if (!bkWkChecks(ui, bkNow()).can) return;
   ui.busy = true;
   bkWkPaintPicker(Date.now());
   const from = { date: ui.lesson.date, time: ui.lesson.time }, pick = { ..._bkWkPick };
@@ -4820,7 +4844,7 @@ async function bkWkConfirm() {
       ui.table.hidden = true;
       bkWkLoad(ui, false);
     }
-    bkWkPaintPicker(Date.now());
+    bkWkPaintPicker(bkNow());
   }
 }
 // Başarı kutusu: bir sonraki seçici açılana, × ya da gün dönümüne kadar kalır
@@ -4869,7 +4893,7 @@ async function rescheduleLesson(lesson, idx, allLessons, res, pendingCount) {
       : bkT('bk_reschedule_no_credit', 'Erteleme hakkın kalmadı.'), 'warn');
     return;
   }
-  if (bkTrStart(lesson.date, lesson.time).getTime() - Date.now() < 24 * 60 * 60 * 1000) {
+  if (bkTrStart(lesson.date, lesson.time).getTime() - bkNow() < 24 * 60 * 60 * 1000) {
     toast(bkT('bk_reschedule_24h', 'Erteleme en az 24 saat önceden yapılmalıdır.'), 'warn'); return;
   }
 
@@ -6394,6 +6418,8 @@ async function renderDashboard() {
   if (_dashResUnsub) { _dashResUnsub(); _dashResUnsub = null; }
   showView('view-dashboard');
   initLessonAnnouncements(false);
+  bkSyncClock(); // ders zamanları cihaz saatine değil sunucuya göre
+  if (!_bkClockTimer) _bkClockTimer = setInterval(bkSyncClock, 5 * 60 * 1000);
   const _onRes = async (snap) => {
   if (!snap || !snap.exists) { initRequestForm(); return; }
   const res = snap.data();
@@ -6954,7 +6980,7 @@ async function renderDashboard() {
   }
   // Penceresi açık ama bu haftanın kartlarında görünmeyen dersler (ör. Pazar dersi, Pazartesi):
   // listenin başında onay paneliyle
-  const _cfmOpenOther = bkCfmOpenLessons(res, Date.now(), _wkDates);
+  const _cfmOpenOther = bkCfmOpenLessons(res, bkNow(), _wkDates);
   if (_cfmOpenOther.length) list.append(bkCfmGroupEl(_cfmOpenOther, 'bkCfmListH'));
   if (thisMonthLessons.length > 0) {
     const monthInfo = document.createElement('div');
@@ -6968,7 +6994,7 @@ async function renderDashboard() {
   } else {
     const sorted = lessons.slice().sort((a,b) => a.date.localeCompare(b.date));
     const upcomingItems = sorted.filter(l => l.date >= today && l.status !== 'cancelled');
-    const _nextJoin = upcomingItems.find(l => (l.status === 'scheduled' || l.status === 'rescheduled') && bkLessonEndMs(l) > Date.now()) || null;
+    const _nextJoin = upcomingItems.find(l => (l.status === 'scheduled' || l.status === 'rescheduled') && bkLessonEndMs(l) > bkNow()) || null;
     const pastItems = sorted.filter(l => l.date < today || l.status === 'completed' || l.status === 'cancelled');
 
     const renderLesson = (l, idx) => {
@@ -6981,7 +7007,7 @@ async function renderDashboard() {
       const _i = window._i18n; let statusLabel = {scheduled: _i?.t('bk_status_scheduled')||'Planlandı',completed: _i?.t('bk_status_completed')||'Tamamlandı',rescheduled: _i?.t('bk_status_rescheduled')||'Ertelendi',cancelled: _i?.t('bk_status_cancelled')||'İptal',cancel_requested: _i?.t('bk_status_cancel_req')||'İptal Talep Edildi',frozen: _i?.t('bk_status_frozen')||'Donduruldu'}[l.status]||l.status;
       // Bitmiş ders: "Planlandı" yerine sonucu yazar (yapıldı / onay bekleniyor / itiraz) — öğrenci kendi
       // dersinin durumunu listede görür; ayrıntı (Zoom, itiraz gerekçesi) satırın altında
-      const _lst = bkLessonEndState(l, Date.now());
+      const _lst = bkLessonEndState(l, bkNow());
       if (_lst) { sc = _lst[0]; statusLabel = bkT(_lst[1], _lst[2]); }
       item.innerHTML = `
         <div class="bk-l-date" aria-hidden="true">
@@ -6990,7 +7016,7 @@ async function renderDashboard() {
         </div>
         <div class="bk-l-info">
           <div class="bk-l-dow"><span class="sr-only">${formatDateStr(l.date)} · </span>${getDays()[d.getDay()]}</div>
-          <div class="bk-l-time">${l.time} – ${getEndTime(l.time)}</div>
+          <div class="bk-l-time">${l.time} – ${getEndTime(l.time)}${escHtml(bkLocalTimeNote(l.date, l.time))}</div>
         </div>
         <span class="badge ${sc} bk-l-status">${statusLabel}</span>`;
       const acts = document.createElement('div');
@@ -7002,7 +7028,7 @@ async function renderDashboard() {
           // Bu haftanın dersi: saat üstteki blokta değişir — satırda oraya götüren bağlantı
           if (l.self_changed) acts.append(bkSelfMovedBadge(l));
           else if (pendingTc) acts.append(bkTimeChgBadge(pendingTc));
-          else if (!pendingResch && (isPaid || isTrial) && bkTrStart(l.date, l.time).getTime() - Date.now() >= SELF_RESCHED_MIN_MS) {
+          else if (!pendingResch && (isPaid || isTrial) && bkTrStart(l.date, l.time).getTime() - bkNow() >= SELF_RESCHED_MIN_MS) {
             const go = document.createElement('button');
             go.type = 'button';
             go.className = 'btn-link bk-wk-rowlink';
@@ -7029,7 +7055,7 @@ async function renderDashboard() {
           rBtn.type = 'button';
           rBtn.className = 'btn btn-sm btn-subtle bk-resched';
           rBtn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-refresh"/></svg>${(window._i18n?.t('bk_reschedule')||'↺ Ertele').replace(/^↺\s*/, '')}`;
-          const tooSoon = bkTrStart(l.date, l.time).getTime() - Date.now() < 24 * 3600e3;
+          const tooSoon = bkTrStart(l.date, l.time).getTime() - bkNow() < 24 * 3600e3;
           let why = null, whyId = null;
           if (!isPaid) { whyId = 'bkReschHint'; why = bkT('bk_reschedule_disabled', 'Ödemen onaylanınca saat değiştirme ve erteleme açılır.'); }
           else if (tooSoon) why = bkT('bk_resch_why_24h', 'Derse 24 saatten az kaldı');
@@ -7047,7 +7073,7 @@ async function renderDashboard() {
       }
       if (acts.childElementCount) item.append(acts);
       // Biten ders: Zoom katılımı + onay rozeti (açık pencerede panele götüren bağlantı)
-      const proof = bkCfmRowProof(l, Date.now());
+      const proof = bkCfmRowProof(l, bkNow());
       if (proof) item.append(proof);
       if (!isPast && l.status === 'frozen') {
         const frozenNote = document.createElement('div');
@@ -7096,8 +7122,8 @@ async function renderDashboard() {
 
     // Son 14 gün + kararı bekleyen / itirazlı dersler açıkta: öğrenci dersinin yapıldığını ya da
     // itirazının durumunu listeyi açmadan görür. Daha eskiler kapalı "Geçmiş Dersler"de.
-    const _cut = new Date(Date.now() + 3 * 3600e3 - 14 * 864e5).toISOString().slice(0, 10);
-    const _keep = l => l.date >= _cut || ['open', 'disputed'].includes(bkCfmState(l, Date.now()));
+    const _cut = new Date(bkNow() + 3 * 3600e3 - 14 * 864e5).toISOString().slice(0, 10);
+    const _keep = l => l.date >= _cut || ['open', 'disputed'].includes(bkCfmState(l, bkNow()));
     const recentPast = pastItems.filter(l => l.status !== 'cancelled' && _keep(l));
     if (recentPast.length) {
       const rh = document.createElement('h4');
@@ -11004,7 +11030,7 @@ async function initZoomJoinBox(lessons, today, isPaid, isPending, canReadLink) {
   // Update the top summary box (first lesson today, if any)
   const renderTopBox = () => {
     if (!box) return;
-    const nowMs = Date.now();
+    const nowMs = bkNow();
     const cur = todayLessons.find(l => lessonEndMs(l) >= nowMs);
     if (!cur) { renderNextLessonInfo(); return; }
     const [h, m] = cur.time.split(':').map(Number);
@@ -11036,7 +11062,7 @@ async function initZoomJoinBox(lessons, today, isPaid, isPending, canReadLink) {
     document.querySelectorAll('.lesson-zoom-area').forEach(area => {
       const lessonDate = area.dataset.date;
       const [ch, cm] = area.dataset.time.split(':').map(Number);
-      const nowMs = Date.now();
+      const nowMs = bkNow();
       const nowDateStr = toDateStr(new Date());
 
       if (lessonDate < nowDateStr) { area.innerHTML = ''; return; }
@@ -11108,7 +11134,7 @@ async function initZoomJoinBox(lessons, today, isPaid, isPending, canReadLink) {
 
 async function adminCompleteLesson(studentUid, lessonIdx, allLessons, lesson) {
   // Henüz bitmemiş ders için açık uyarı (yanlışlıkla gelecek dersi kapatmasın)
-  const notYet = bkTrStart(lesson.date, lesson.time).getTime() + BK_LESSON_MS > Date.now();
+  const notYet = bkTrStart(lesson.date, lesson.time).getTime() + BK_LESSON_MS > bkNow();
   const ok = await bkConfirm({
     title: bkT('adm_done_t', 'Tamamlandı olarak işaretle'),
     body: `<p class="adm-ask-big"><strong>${escHtml(formatDateStr(lesson.date))} ${escHtml(lesson.time)}–${escHtml(getEndTime(lesson.time))}</strong></p>
