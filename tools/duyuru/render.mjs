@@ -20,7 +20,7 @@ import net from 'node:net';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..', '..');
-const OUT_DIR = join(ROOT, 'assets', 'media', 'duyuru');
+const OUT_DIR = join(ROOT, 'tools', 'duyuru', 'cikti'); // git'e ve siteye GİRMEZ (.gitignore + firebase.json tools/**)
 const SCENE_URL = pathToFileURL(join(HERE, 'scene.html')).href;
 const CHROME = process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const FFMPEG = process.env.FFMPEG_BIN || '/opt/homebrew/bin/ffmpeg';

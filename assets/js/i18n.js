@@ -1982,7 +1982,7 @@
     adm_promo_n: { tr: `Gönderim geri alınamaz.`, en: `Sending cannot be undone.` },   // booking-admin (erteleme hakları + admin onayları)
     adm_promo_ok: { tr: `~{n} kişiye gönder`, en: `Send to ~{n} people` },   // booking-admin (erteleme hakları + admin onayları)
     adm_ev_title: { tr: `Etkinlik duyurusu`, en: `Event announcement` },
-    adm_ev_desc: { tr: `GigBridge lansmanı + masterclass duyurusunu siteye kayıtlı herkese (öğrenciler dahil) gönderir. Önce kendine test gönder.`, en: `Sends the GigBridge launch + masterclass announcement to everyone registered on the site (students included). Send yourself a test first.` },
+    adm_ev_desc: { tr: `Etkinlik duyurusunu siteye kayıtlı herkese (öğrenciler dahil) gönderir. Önce kendine test gönder.`, en: `Sends the event announcement to everyone registered on the site (students included). Send yourself a test first.` },
     adm_ev_test: { tr: `Kendime test gönder`, en: `Send me a test` },
     adm_ev_send: { tr: `Herkese gönder`, en: `Send to everyone` },
     adm_ev_test_ok: { tr: `✓ Test e-postası gönderildi: {to}`, en: `✓ Test email sent: {to}` },

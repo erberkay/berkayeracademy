@@ -37,7 +37,7 @@ NEREDEN DEĞİŞTİRİLİR (hepsi scene.html içinde)
               GIF'te en küçük yazı ~13 px kalsın diye hiçbir yazı 42 tasarım pikselinden küçük olmamalı.
 
 
-ÇIKTILAR (assets/media/duyuru/)
+ÇIKTILAR (tools/duyuru/cikti/ — git'e ve siteye GİRMEZ; Instagram için)
 -------------------------------
   etkinlik-duyuru-mail.gif     600x338, 10 fps, sonsuz döngü. Toplu e-posta kahramanı.
                                Outlook yalnız ilk kareyi gösterir: kare 0 tam okunur bir posterdir.
@@ -45,5 +45,5 @@ NEREDEN DEĞİŞTİRİLİR (hepsi scene.html içinde)
   etkinlik-duyuru-dikey.mp4    1080x1920, 30 fps, H.264 High, sessiz. Story / Reels / WhatsApp durumu.
   etkinlik-duyuru-poster.jpg   1200x675 JPEG (kare 0). Sosyal paylaşım önizlemesi ve GIF/video yedeği.
 
-E-postada GIF'in <img> etiketine width="600" ve alt metin ekleyin; alt metin olarak
-"Çok yakında: klasik bir eğitimden biraz daha fazlası" yeterlidir.
+Bu animasyon Instagram içindir. Siteye ya da e-postaya konmaz: duyuru e-postası görselsizdir
+(functions/announcement-mail.js). cikti/ klasörü .gitignore'dadır, tools/** hosting'e yüklenmez.
