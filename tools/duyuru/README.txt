@@ -45,5 +45,6 @@ NEREDEN DEĞİŞTİRİLİR (hepsi scene.html içinde)
   etkinlik-duyuru-dikey.mp4    1080x1920, 30 fps, H.264 High, sessiz. Story / Reels / WhatsApp durumu.
   etkinlik-duyuru-poster.jpg   1200x675 JPEG (kare 0). Sosyal paylaşım önizlemesi ve GIF/video yedeği.
 
-Bu animasyon Instagram içindir. Siteye ya da e-postaya konmaz: duyuru e-postası görselsizdir
-(functions/announcement-mail.js). cikti/ klasörü .gitignore'dadır, tools/** hosting'e yüklenmez.
+Bu animasyon Instagram içindir, SİTEYE KONMAZ. cikti/ klasörü .gitignore'dadır, tools/** hosting'e
+yüklenmez. Duyuru e-postasına yalnız afiş (poster.jpg) gömülü olarak gider: functions/assets/
+etkinlik-duyuru-hero.jpg (gitignore'da; e-postanın içinde taşınır, herhangi bir adreste barınmaz).

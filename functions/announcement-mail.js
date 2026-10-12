@@ -3,8 +3,12 @@
 // çalıştırılıp önizlenebilir. Gönderim ve kayıt mantığı index.js → sendAnnouncementEmail'dedir.
 //
 // Metni ya da konuyu değiştirmek için bu dosyayı düzenle: SUBJECT ve buildAnnouncementMail().
-// E-posta varsayılan olarak yalnızca yazıdan oluşur (görsel yok): duyuru sitede barınan hiçbir medyaya
-// bağlı değildir. İstenirse buildAnnouncementMail({heroSrc}) ile üstüne herkese açık bir görsel konabilir.
+// Hero görseli e-postanın İÇİNE gömülür (inline ek, cid:) — sitede ya da herhangi bir adreste barınmaz,
+// görseller kapalı istemcilerde de görünür. Dosya: functions/assets/etkinlik-duyuru-hero.jpg
+// (.gitignore'da; yoksa e-posta görselsiz, yalnız yazıyla gider). Düz bir URL için {heroSrc} verilebilir.
+
+const fs = require("fs");
+const path = require("path");
 
 const SITE = "https://berkayeracademy.com";
 const ADMIN_MAIL = "berkayer032@gmail.com";
@@ -15,6 +19,19 @@ const CAMPAIGN_ID = "etkinlik-duyuru-1";
 
 const PREHEADER = "Ultra her şey dahil otel · GigBridge lansman partisi · 2 gece 3 gün masterclass — detaylar çok yakında.";
 const HERO_ALT = "Çok yakında — klasik bir eğitimden biraz daha fazlası.";
+const HERO_CID = "duyuru-hero@berkayeracademy.com";
+const HERO_FILE = path.join(__dirname, "assets", "etkinlik-duyuru-hero.jpg");
+let heroBuf; // undefined = henüz okunmadı, null = dosya yok
+function loadHero() {
+  if (heroBuf === undefined) {
+    try {
+      heroBuf = fs.readFileSync(HERO_FILE);
+    } catch (e) {
+      heroBuf = null;
+    }
+  }
+  return heroBuf;
+}
 
 const FEATURES = [
   ["🏨", "Ultra Her Şey Dahil Otel"],
@@ -89,7 +106,9 @@ function buildAnnouncementMail(opts) {
   const name = firstName(o.name);
   const hello = name ? `Merhaba ${escHtml(name)},` : "Merhaba,";
   const helloText = name ? `Merhaba ${name},` : "Merhaba,";
-  const hero = o.heroSrc || "";
+  // hero: açık URL (heroSrc) > gömülü dosya (cid:) > yok (noHero ya da dosya eksik)
+  const buf = o.heroSrc || o.noHero ? null : loadHero();
+  const hero = o.heroSrc || (buf ? `cid:${HERO_CID}` : "");
   const subject = (o.test ? "[TEST] " : "") + SUBJECT;
   const sans = "'Helvetica Neue',Helvetica,Arial,sans-serif";
   const serif = "'Instrument Serif',Georgia,'Times New Roman',serif";
@@ -141,8 +160,8 @@ ${hero ? `    <tr><td style="padding:0;line-height:0;font-size:0;">
     </td></tr>
 ` : ""}
     <tr><td class="px" style="padding:${hero ? "32px" : "36px"} 32px 6px;font-family:${sans};">
-      <div style="font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;letter-spacing:4px;color:#e8b84b;margin:0 0 22px;">ÇOK YAKINDA</div>
-      <div style="font-size:15px;line-height:1.6;color:#a8a29a;margin:0 0 10px;">${hello}</div>
+${hero ? "" : `      <div style="font-family:'Courier New',Courier,monospace;font-size:12px;font-weight:700;letter-spacing:4px;color:#e8b84b;margin:0 0 22px;">ÇOK YAKINDA</div>
+`}      <div style="font-size:15px;line-height:1.6;color:#a8a29a;margin:0 0 10px;">${hello}</div>
       <div class="h1" style="font-family:${serif};font-size:34px;line-height:1.12;font-weight:400;color:#f3efe6;margin:0 0 14px;">Çok yakında <span style="color:#e8b84b;font-style:italic;">yeni bir etkinlik</span> duyuruyorum.</div>
       <div class="lead" style="font-size:17px;line-height:1.6;color:#d7d1c6;margin:0 0 20px;">Bu kez klasik bir eğitimden biraz daha fazlası olacak.</div>
     </td></tr>
@@ -181,9 +200,9 @@ ${hero ? `    <tr><td style="padding:0;line-height:0;font-size:0;">
       <div style="font-size:12px;letter-spacing:2px;color:#8f897f;margin-top:4px;">BERKAY ER ACADEMY</div>
     </td></tr>
 
-    <tr><td class="px" align="center" style="padding:18px 32px 22px;border-top:1px solid #1c1c22;font-family:${sans};font-size:11px;line-height:1.7;color:#6f6a62;">
-      Bu duyuruyu Berkay Er Academy üyesi olduğunuz için aldınız · <a href="${SITE}" style="color:#8f897f;">berkayeracademy.com</a><br>
-      Bu emaili almak istemiyorsanız <a href="mailto:${ADMIN_MAIL}?subject=unsubscribe" style="color:#8f897f;">buraya tıklayın</a>.
+    <tr><td class="px" align="center" style="padding:18px 32px 22px;border-top:1px solid #1c1c22;font-family:${sans};font-size:12px;line-height:1.7;color:#9a948a;">
+      Bu duyuruyu Berkay Er Academy üyesi olduğunuz için aldınız · <a href="${SITE}" style="color:#b9b3a8;">berkayeracademy.com</a><br>
+      Bu emaili almak istemiyorsanız <a href="mailto:${ADMIN_MAIL}?subject=unsubscribe" style="color:#b9b3a8;">buraya tıklayın</a>.
     </td></tr>
 
   </table>
@@ -227,6 +246,13 @@ ${hero ? `    <tr><td style="padding:0;line-height:0;font-size:0;">
     headers: {"List-Unsubscribe": `<mailto:${ADMIN_MAIL}?subject=unsubscribe>`},
     text,
     html,
+    attachments: buf ? [{
+      filename: "etkinlik-duyuru.jpg",
+      content: buf,
+      cid: HERO_CID,
+      contentType: "image/jpeg",
+      contentDisposition: "inline",
+    }] : [],
   };
 }
 
