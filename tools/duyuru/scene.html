@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Berkay Er Academy - etkinlik duyurusu (animasyon sahnesi)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/*
+  "Çok yakında" duyuru animasyonu — tek dosyalık sahne. Render: tools/duyuru/render.mjs (bkz. README.txt).
+
+  Ölçek: sahne, sabit piksel boyutlu tek bir kökte (#stage) çizilir. 1rem = 1 "tasarım pikseli".
+  Yatay tasarım 1920x1080, dikey tasarım 1080x1920 üzerinden ölçülür; <html> font-size'ı sayfa
+  yüklenirken (W/1920 ya da W/1080) px olarak ayarlanır. Böylece aynı dosya ?w=&h= ile her boyutta
+  aynı kadrajı üretir. Dikey düzen h > w olunca otomatik seçilir (stack: #stage.port).
+
+  Hareket: tamamı zamanın saf fonksiyonudur (Web Animations API + window.seek(t)); gerçek zamanlı
+  CSS geçişi/animasyonu, Math.random, Date.now, rAF yok.
+*/
+:root{
+  --bg:#0b0b0e; --surface:#111114; --fg:#f3efe6; --muted:#a8a29a; --gold:#e8b84b;
+  --line:rgba(255,255,255,.08); --line3:rgba(255,255,255,.1);
+  --ember:linear-gradient(90deg,#e0566b,#e8894a,#e8b84b,#e8894a,#e0566b);
+  --ff:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --ff-disp:'Instrument Serif',Georgia,'Times New Roman',serif;
+  --ff-mono:'Space Mono',ui-monospace,Menlo,monospace;
+}
+html{font-size:1px;background:#0b0b0e}
+body{margin:0;background:#0b0b0e;overflow:hidden}
+#stage{position:relative;overflow:hidden;background:#0b0b0e;color:var(--fg);font-family:var(--ff);
+  -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;font-kerning:normal}
+/* :where() -> özgüllük 0; sınıf kuralları (padding/margin) bunu ezebilsin */
+:where(#stage),:where(#stage *){box-sizing:border-box;margin:0;padding:0}
+#stage .a{position:absolute}
+#stage ul{list-style:none}
+
+/* ---------- arka plan: neredeyse statik (GIF sıkıştırması için) ---------- */
+#bg{position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 62% 58% at 8% 112%, rgba(184,45,69,.30) 0%, rgba(184,45,69,.11) 45%, rgba(184,45,69,0) 78%),
+    radial-gradient(ellipse 54% 50% at 96% -10%, rgba(212,114,42,.17) 0%, rgba(212,114,42,.06) 48%, rgba(212,114,42,0) 78%),
+    #0b0b0e}
+/* film greni: koyu gradyanlardaki bantlanmayı kırar (H.264/JPEG); GIF modunda kapalı */
+#grain{position:absolute;inset:0;background-repeat:repeat;background-size:256px 256px;image-rendering:pixelated}
+#spot{position:absolute;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(224,86,107,.20) 0%, rgba(212,114,42,.09) 52%, rgba(212,114,42,0) 100%)}
+#spot2{position:absolute;border-radius:50%;
+  background:radial-gradient(closest-side, rgba(232,184,75,.15) 0%, rgba(212,114,42,.07) 55%, rgba(212,114,42,0) 100%)}
+
+/* sinema kadrajı: ince altın köşe işaretleri (alt köşe yok: equalizer ile çakışmasın) */
+#frame{position:absolute;inset:0}
+#frame i{position:absolute;width:64rem;height:64rem;border:0 solid rgba(232,184,75,.42)}
+#frame i:nth-child(1){left:56rem;top:56rem;border-left-width:1.5rem;border-top-width:1.5rem}
+#frame i:nth-child(2){right:56rem;top:56rem;border-right-width:1.5rem;border-top-width:1.5rem}
+
+/* ---------- equalizer ---------- */
+#eq{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:center}
+#eq b{display:block;flex:0 0 auto;border-radius:4rem 4rem 0 0;background-repeat:no-repeat;background-position:50% 100%;
+  background-image:linear-gradient(to top, rgba(184,45,69,.35) 0%, rgba(224,86,107,.80) 38%, rgba(232,184,75,.98) 100%)}
+
+/* ---------- ortak metin parçaları ---------- */
+.eb{left:0;right:0;display:flex;align-items:center;justify-content:center;gap:34rem;
+  font-family:var(--ff-mono);font-weight:700;font-size:42rem;line-height:1;letter-spacing:.34em;color:var(--gold);white-space:nowrap}
+.eb span{margin-right:-.34em}
+.eb i{display:block;width:150rem;height:1.5rem}
+.eb i:first-child{background:linear-gradient(90deg,rgba(232,184,75,0),rgba(232,184,75,.8))}
+.eb i:last-child{background:linear-gradient(270deg,rgba(232,184,75,0),rgba(232,184,75,.8))}
+
+/* ember vurgu: italik + gradyan yazı (italik taşmalar için yan boşluk) */
+.ember{font-style:italic;background-image:var(--ember);background-size:200% 100%;background-repeat:repeat;background-position:0% 0;
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  padding:0 .07em;margin:0 -.07em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+
+/* marka işareti (sitedeki .be-mark ile aynı: koyu kare, üstte ember şerit, altın "BE") */
+.mark{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:#060609;border:1.5rem solid rgba(255,255,255,.12)}
+.mark i{position:absolute;left:0;top:0;right:0;background:linear-gradient(90deg,#b82d45,#d4722a,#e8b84b,#d4722a,#b82d45)}
+.mark b{font-family:var(--ff);font-weight:700;color:var(--gold);line-height:1;letter-spacing:-.02em}
+
+/* ---------- 1) başlık kartı ---------- */
+#hook{left:0;right:0;text-align:center;font-family:var(--ff-disp);font-weight:400;letter-spacing:-.02em;color:var(--fg);white-space:nowrap}
+#hook br.p{display:none}
+.port #hook br.p{display:inline}
+#sweep{background:rgba(255,255,255,.12);height:1.5rem;overflow:hidden}
+#sweep i{position:absolute;left:0;top:0;bottom:0;width:440rem;
+  background:linear-gradient(90deg,rgba(232,184,75,0),rgba(232,184,75,.95) 50%,rgba(232,184,75,0))}
+#tbrand{left:0;right:0;display:flex;align-items:center;justify-content:center;gap:24rem}
+#tbrand .mark{width:68rem;height:68rem;border-radius:16rem}
+#tbrand .mark i{height:5rem}
+#tbrand .mark b{font-size:26rem;margin-top:5rem}
+#tbrand span.n{font-family:var(--ff-mono);font-size:42rem;line-height:1;letter-spacing:.22em;color:var(--fg);margin-right:-.22em}
+
+/* ---------- 2) maddeler ---------- */
+#grid{display:grid}
+.card{position:relative;display:flex;align-items:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.048),rgba(255,255,255,.018)),#111114;
+  border:1.5rem solid var(--line3);border-radius:26rem;box-shadow:inset 0 1.5rem 0 rgba(255,255,255,.045)}
+.card .hl{position:absolute;inset:-1.5rem;border-radius:26rem;border:2rem solid rgba(232,184,75,.92);
+  box-shadow:0 0 70rem rgba(232,184,75,.30), inset 0 0 60rem rgba(232,184,75,.10);pointer-events:none}
+.card .edge{position:absolute;left:34rem;right:34rem;top:-1.5rem;height:2.5rem;transform-origin:0 50%;
+  background:linear-gradient(90deg,rgba(232,184,75,0),#f6cf72 18%,#f6cf72 82%,rgba(232,184,75,0))}
+.card .ico{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  background:rgba(232,184,75,.085);border:1.5rem solid rgba(232,184,75,.30);color:var(--gold)}
+.card .ico svg{display:block;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+.card .lab{flex:1 1 auto;min-width:0;font-family:var(--ff);font-weight:600;color:var(--fg);letter-spacing:-.005em;text-wrap:balance}
+
+/* ---------- 3) kapanış ---------- */
+#c-h{left:0;right:0;text-align:center;font-family:var(--ff-disp);font-weight:400;letter-spacing:-.02em;color:var(--fg)}
+#c-note{display:flex;justify-content:center}
+#c-note div{display:block;text-align:center;font-family:var(--ff);font-weight:500;color:var(--fg);letter-spacing:0;text-wrap:balance;
+  background:rgba(232,184,75,.07);border:1.5rem solid rgba(232,184,75,.38)}
+#c-note div b{color:var(--gold);font-weight:700;padding:0 .35em}
+#c-go{left:0;right:0;text-align:center;font-family:var(--ff-disp);font-weight:400;letter-spacing:-.02em}
+#c-brand{left:0;right:0;display:flex;align-items:center;justify-content:center}
+#c-brand .mark{border-radius:20rem}
+#c-brand .mark i{height:6rem}
+#c-brand .tx{display:flex;flex-direction:column;gap:14rem;font-family:var(--ff-mono);line-height:1}
+#c-brand .tx .n{color:var(--fg);letter-spacing:.22em}
+#c-brand .tx .u{color:var(--gold);letter-spacing:.06em}
+
+/* =============== YATAY (1920x1080) =============== */
+.land #spot{left:300rem;top:96rem;width:1320rem;height:820rem}
+.land #spot2{left:420rem;top:210rem;width:1080rem;height:700rem}
+.land #eb1{top:246rem}
+.land #hook{top:322rem;font-size:186rem;line-height:.98}
+.land #sweep{left:160rem;right:160rem;top:756rem}
+.land #tbrand{top:806rem}
+.land #grid{left:120rem;top:232rem;width:1680rem;grid-template-columns:1fr 1fr;gap:40rem}
+.land .card{height:270rem;padding:0 42rem;gap:34rem}
+.land .card .ico{width:122rem;height:122rem;border-radius:28rem}
+.land .card .ico svg{width:70rem;height:70rem}
+.land .card .lab{font-size:56rem;line-height:1.13}
+.land #c-h{top:140rem;font-size:170rem;line-height:1}
+.land #c-note{position:absolute;left:0;right:0;top:372rem}
+.land #c-note div{font-size:44rem;line-height:1.2;padding:22rem 46rem;border-radius:20rem;max-width:1500rem}
+.land #c-go{top:508rem;font-size:200rem;line-height:1}
+.land #c-brand{top:756rem;gap:30rem}
+.land #c-brand .mark{width:92rem;height:92rem}
+.land #c-brand .mark b{font-size:34rem;margin-top:7rem}
+.land #c-brand .tx .n{font-size:44rem}
+.land #c-brand .tx .u{font-size:42rem}
+
+/* =============== DİKEY (1080x1920) =============== */
+.port #spot{left:-120rem;top:520rem;width:1320rem;height:1100rem}
+.port #spot2{left:-40rem;top:700rem;width:1160rem;height:900rem}
+.port #eb1{top:420rem}
+.port #hook{top:496rem;font-size:232rem;line-height:.96}
+.port #sweep{left:72rem;right:72rem;top:1470rem}
+.port #tbrand{top:1534rem}
+.port #grid{left:72rem;top:404rem;width:936rem;grid-template-columns:1fr;gap:34rem}
+.port .card{height:258rem;padding:0 40rem;gap:34rem}
+.port .card .ico{width:128rem;height:128rem;border-radius:30rem}
+.port .card .ico svg{width:74rem;height:74rem}
+.port .card .lab{font-size:60rem;line-height:1.13}
+.port #c-h{top:380rem;font-size:190rem;line-height:.98}
+.port #c-note{position:absolute;left:0;right:0;top:850rem}
+.port #c-note div{font-size:46rem;line-height:1.24;padding:26rem 44rem;border-radius:28rem;max-width:900rem}
+.port #c-go{top:1090rem;font-size:220rem;line-height:1}
+.port #c-brand{top:1420rem;gap:30rem}
+.port #c-brand .mark{width:104rem;height:104rem}
+.port #c-brand .mark b{font-size:40rem;margin-top:8rem}
+.port #c-brand .tx .n{font-size:46rem}
+.port #c-brand .tx .u{font-size:44rem}
+</style>
+</head>
+<body>
+<div id="stage" class="land">
+  <div id="bg"></div>
+  <div id="grain"></div>
+  <div id="spot" class="a"></div>
+  <div id="spot2" class="a"></div>
+  <div id="frame" class="a"><i></i><i></i></div>
+  <div id="eq"></div>
+
+  <!-- 1) başlık kartı: kare 0'dan itibaren tam görünür -->
+  <section id="title">
+    <div id="eb1" class="a eb"><i></i><span>ÇOK YAKINDA</span><i></i></div>
+    <!-- <br class="p"> yalnız dikey düzende satır sonudur -->
+    <h1 id="hook" class="a">Klasik bir<br class="p"> eğitimden<br> biraz <em class="ember" id="em1">daha<br class="p"> fazlası.</em></h1>
+    <div id="sweep" class="a"><i></i></div>
+    <div id="tbrand" class="a"><span class="mark"><i></i><b>BE</b></span><span class="n">BERKAY ER ACADEMY</span></div>
+  </section>
+
+  <!-- 2) dört madde (simgeler: 24x24, stroke 1.75, yuvarlak uçlar; otel simgesi özel çizim) -->
+  <section id="items">
+    <ul id="grid" class="a">
+      <li class="card" id="k1"><span class="hl"></span><span class="edge"></span>
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"/><path d="M7 21V4.5A1.5 1.5 0 0 1 8.5 3h7A1.5 1.5 0 0 1 17 4.5V21"/><path d="M7 10H4.5A1.5 1.5 0 0 0 3 11.5V21"/><path d="M17 10h2.5a1.5 1.5 0 0 1 1.5 1.5V21"/><path d="M10.5 7v1.4M13.5 7v1.4M10.5 11v1.4M13.5 11v1.4"/><path d="M10.2 21v-3.3a1.8 1.8 0 0 1 3.6 0V21"/></svg></span>
+        <span class="lab">Ultra Her Şey Dahil Otel</span></li>
+      <li class="card" id="k2"><span class="hl"></span><span class="edge"></span>
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6"/><rect x="17" y="14" width="4" height="6"/></svg></span>
+        <span class="lab">GigBridge Lansman Partisi</span></li>
+      <li class="card" id="k3"><span class="hl"></span><span class="edge"></span>
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.6 2.7 3 6 3s6-1.4 6-3v-4.5"/><path d="M22 9v6"/></svg></span>
+        <span class="lab">2 gece 3 gün Masterclass &amp; Eğitim</span></li>
+      <li class="card" id="k4"><span class="hl"></span><span class="edge"></span>
+        <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 15.5a5 5 0 0 1 5.5 4.5"/></svg></span>
+        <span class="lab">Networking, müzik ve birlikte üretim</span></li>
+    </ul>
+  </section>
+
+  <!-- 3) kapanış -->
+  <section id="closing">
+    <h2 id="c-h" class="a">Detaylar çok yakında.</h2>
+    <div id="c-note" class="a"><div>Erken rezervasyon dönemine özel indirim<b>·</b>Kontenjan sınırlı</div></div>
+    <p id="c-go" class="a"><em class="ember" id="em2">Hazır olun.</em></p>
+    <div id="c-brand" class="a"><span class="mark"><i></i><b>BE</b></span><span class="tx"><span class="n">BERKAY ER ACADEMY</span><span class="u">berkayeracademy.com</span></span></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------------
+     Boyut / yön:  ?w=1920&h=1080 (yatay)  ya da  ?w=1080&h=1920 (dikey)
+                   ?gif=1  -> GIF modu: film greni yok, arka plan ışığı kıpırdamaz
+     ------------------------------------------------------------------ */
+  var Q = new URLSearchParams(location.search);
+  var W = parseInt(Q.get('w'), 10), H = parseInt(Q.get('h'), 10);
+  if (!(W > 0 && H > 0)) {            // elle önizleme: pencereye sığdır (16:9)
+    W = Math.floor(Math.min(innerWidth, innerHeight * 16 / 9));
+    H = Math.floor(W * 9 / 16);
+  }
+  var LITE = Q.get('gif') === '1';    // büyük arka plan hareketsiz + tane yok => GIF çok daha küçük sıkışır
+  var PORTRAIT = H > W;
+  var U = W / (PORTRAIT ? 1080 : 1920);   // 1 tasarım pikseli = U css pikseli
+  var stage = document.getElementById('stage');
+  document.documentElement.style.fontSize = U + 'px';
+  stage.style.width = W + 'px';
+  stage.style.height = H + 'px';
+  stage.className = PORTRAIT ? 'port' : 'land';
+  var DW = W / U;                          // tasarım birimiyle sahne genişliği
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ------------------------------------------------------------------
+     Zaman çizelgesi (saniye). LOOP = tek döngü; t=0 ve t=LOOP karesi piksel piksel aynı.
+     Süreleri/ritmi değiştirmek için yalnız bu tabloyu düzenleyin.
+     ------------------------------------------------------------------ */
+  var LOOP = 10.0;
+  window.LOOP = LOOP;
+
+  var T = {
+    titleOut: 2.40,                    // başlık kartı çıkışa başlar (0 - 2.40 sn tam görünür)
+    cardIn: [3.05, 3.95, 4.85, 5.75],  // maddelerin giriş zamanı (0.9 sn arayla)
+    itemsOut: 6.75,                    // maddeler geri çekilir
+    closeH: 7.20, closeNote: 7.50, closeGo: 7.80, closeBrand: 8.10,   // kapanış kartı öğeleri
+    closeOut: 9.15,                    // kapanış kartı çıkışa başlar
+    titleIn: 9.50                      // başlık kartı geri gelir (döngü başına yumuşak dönüş)
+  };
+  // "ÇOK YAKINDA" etiketinin başlıktaki konumu (246/420) ile madde ekranındaki üst konumu (118/292) arasındaki fark
+  var EB_UP = -128;
+
+  var EO = 'cubic-bezier(.2,.7,.2,1)';       // sitedeki --ease-out
+  var EIO = 'cubic-bezier(.65,0,.35,1)';
+  var EX = 'cubic-bezier(.45,0,.55,1)';      // çıkışlar: simetrik, hayalet bırakmaz
+  var ANIMS = [];
+
+  /* adım: [t sn, opacity, y (rem), scale, bu adıma giden eğri] */
+  function S(t, o, y, sc, e) {
+    return { t: t, e: e || 'linear', p: { opacity: o, transform: 'translate3d(0,' + (y || 0) + 'rem,0) scale(' + (sc == null ? 1 : sc) + ')' } };
+  }
+  function O(t, o, e) { return { t: t, e: e || 'linear', p: { opacity: o } }; }
+  /* adımlardan tek bir LOOP uzunluğunda, durdurulmuş animasyon üretir (seek currentTime'ı sürer) */
+  function A(el, steps) {
+    if (steps[0].t > 0) steps = [Object.assign({}, steps[0], { t: 0 })].concat(steps);
+    if (steps[steps.length - 1].t < LOOP) steps = steps.concat([Object.assign({}, steps[steps.length - 1], { t: LOOP })]);
+    var kf = steps.map(function (s, i) {
+      var next = steps[i + 1];
+      return Object.assign({ offset: Math.min(1, Math.max(0, s.t / LOOP)), easing: next ? next.e : 'linear' }, s.p);
+    });
+    var a = el.animate(kf, { duration: LOOP * 1000, fill: 'both', easing: 'linear', iterations: 1 });
+    a.pause();
+    a.currentTime = 0;
+    ANIMS.push(a);
+    return a;
+  }
+  /* görünür -> (çıkış) -> gizli -> (giriş) -> görünür: döngü başı/sonu aynı durum */
+  function loopVisible(el, outAt, outDur, inAt, inDur, dyOut, dyIn) {
+    return A(el, [
+      S(0, 1, 0, 1), S(outAt, 1, 0, 1), S(outAt + outDur, 0, dyOut == null ? -44 : dyOut, 1, EX),
+      S(inAt, 0, dyIn == null ? 44 : dyIn, 1), S(inAt + inDur, 1, 0, 1, EO)
+    ]);
+  }
+  /* gizli -> giriş -> görünür -> çıkış -> gizli */
+  function pass(el, inAt, inDur, outAt, outDur, o) {
+    o = o || {};
+    var yIn = o.yIn == null ? 46 : o.yIn, yOut = o.yOut == null ? -30 : o.yOut, sIn = o.sIn == null ? 1 : o.sIn;
+    return A(el, [
+      S(0, 0, yIn, sIn), S(inAt, 0, yIn, sIn), S(inAt + inDur, 1, 0, 1, EO),
+      S(outAt, 1, 0, 1), S(outAt + outDur, 0, yOut, 1, EX)
+    ]);
+  }
+
+  /* ------------------------------------------------------------------
+     Dokuyu hazırla
+     ------------------------------------------------------------------ */
+  // seed'li PRNG (Math.random yok)
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  // film greni: 1-3/255 beyaz alfa; tamamen statik (H.264/JPEG'de koyu gradyan bantlanmasını kırar)
+  (function () {
+    var c = document.createElement('canvas'); c.width = c.height = 256;
+    var g = c.getContext('2d'), id = g.createImageData(256, 256), d = id.data, r = mulberry32(777);
+    for (var i = 0; i < 256 * 256; i++) {
+      var v = r(), a = v < .30 ? 0 : v < .62 ? 1 : v < .86 ? 2 : 3;
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255; d[i * 4 + 3] = a;
+    }
+    g.putImageData(id, 0, 0);
+    if (!LITE) $('grain').style.backgroundImage = 'url(' + c.toDataURL('image/png') + ')';
+  })();
+
+  // equalizer çubukları
+  var EQ = { pitch: 24, bw: 8, hmax: PORTRAIT ? 250 : 168, minh: 10 };
+  var eqEl = $('eq');
+  var bars = [], N = Math.floor(DW / EQ.pitch);
+  var eqP = [];
+  (function () {
+    eqEl.style.height = EQ.hmax + 'rem';
+    eqEl.style.gap = (EQ.pitch - EQ.bw) + 'rem';
+    var r = mulberry32(4242);
+    for (var i = 0; i < N; i++) {
+      var b = document.createElement('b');
+      b.style.width = EQ.bw + 'rem';
+      b.style.backgroundSize = '100% ' + EQ.hmax + 'rem';
+      eqEl.appendChild(b); bars.push(b);
+      var x = i / (N - 1);
+      // sabit "arazi": birkaç sinüsün toplamı (0.16..1)
+      var env = .5 + .26 * Math.sin(2 * Math.PI * (1.6 * x + .13)) + .17 * Math.sin(2 * Math.PI * (4.3 * x + .41)) + .11 * Math.sin(2 * Math.PI * (9.1 * x + .77));
+      env = Math.max(.16, Math.min(1, env));
+      eqP.push({
+        env: env,
+        k1: 3 + Math.floor(r() * 9), p1: r(),     // döngü başına tam sayı devir => periyodik
+        k2: 5 + Math.floor(r() * 12), p2: r()
+      });
+    }
+  })();
+
+  // enerji darbeleri (kart girişleri vb.): kompakt destekli, döngü sınırını aşmaz
+  var PULSES = [T.cardIn[0], T.cardIn[1], T.cardIn[2], T.cardIn[3], T.closeGo, T.closeBrand];
+  var PULSE_LEN = .75;
+  function pulseAt(t) {
+    var s = 0;
+    for (var i = 0; i < PULSES.length; i++) {
+      var d = (t - PULSES[i]) / PULSE_LEN;
+      if (d > 0 && d < 1) s += Math.pow(.5 + .5 * Math.cos(Math.PI * d), 2);
+    }
+    return Math.min(1, s);
+  }
+  var BEATS = 20;                         // 10 sn / 20 vuruş = 120 BPM
+
+  function drawEq(t) {
+    var ph = (t % LOOP) / LOOP;           // t = LOOP -> 0 (kare 0 ile birebir aynı)
+    var beat = .5 + .5 * Math.cos(2 * Math.PI * BEATS * ph);
+    var kick = .90 + .10 * beat * beat * beat;
+    var pu = 1 + .30 * pulseAt(t);
+    for (var i = 0; i < N; i++) {
+      var e = eqP[i];
+      var s = .5 + .5 * (.62 * Math.sin(2 * Math.PI * (e.k1 * ph + e.p1)) + .38 * Math.sin(2 * Math.PI * (e.k2 * ph + e.p2)));
+      var h = EQ.hmax * e.env * (.46 + .54 * s) * kick * pu;
+      bars[i].style.height = Math.min(EQ.hmax, Math.max(EQ.minh, h)).toFixed(2) + 'rem';
+    }
+  }
+
+  // yavaş kayan sıcak ışık (yerel, küçük genlik; sinüs => periyodik). GIF modunda sabit.
+  var spot = $('spot'), spot2 = $('spot2');
+  function drawSpot(t) {
+    var ph = (t % LOOP) / LOOP, tw = 2 * Math.PI;
+    var dx = 18 * Math.sin(tw * ph), dy = 12 * Math.sin(tw * 2 * ph + .6);
+    spot.style.transform = 'translate3d(' + dx.toFixed(2) + 'rem,' + dy.toFixed(2) + 'rem,0)';
+    spot2.style.transform = 'translate3d(' + (-dx * .8).toFixed(2) + 'rem,' + (-dy).toFixed(2) + 'rem,0)';
+  }
+
+  /* ------------------------------------------------------------------
+     Animasyonlar (hepsi LOOP uzunluğunda tek bir zaman çizelgesi)
+     ------------------------------------------------------------------ */
+  // -- başlık kartı
+  // "ÇOK YAKINDA" etiketi kaybolmaz: başlıktan üst konuma süzülür, madde ekranının başlığı olur
+  A($('eb1'), [
+    S(0, 1, 0), S(T.titleOut, 1, 0), S(T.titleOut + .65, 1, EB_UP, 1, EIO), S(T.itemsOut, 1, EB_UP),
+    S(T.itemsOut + .40, 0, EB_UP - 14, 1, EX), S(T.titleIn, 0, 26), S(T.titleIn + .45, 1, 0, 1, EO)
+  ]);
+  loopVisible($('hook'),   T.titleOut + .02, .52, T.titleIn + .04, .46, -48, 42);
+  loopVisible($('sweep'),  T.titleOut,       .40, T.titleIn + .10, .40, 0, 0);
+  loopVisible($('tbrand'), T.titleOut,       .40, T.titleIn + .12, .38, -16, 16);
+
+  // hairline'daki parlak parça: kare 0'da solda görünmez, 0.15-2.25 sn arasında geçer
+  A($('sweep').firstElementChild, [
+    { t: 0,    e: 'linear', p: { transform: 'translate3d(-440rem,0,0)' } },
+    { t: .15,  e: 'linear', p: { transform: 'translate3d(-440rem,0,0)' } },
+    { t: 2.25, e: EIO,      p: { transform: 'translate3d(' + (DW - (PORTRAIT ? 144 : 320)) + 'rem,0,0)' } },
+    { t: LOOP, e: 'linear', p: { transform: 'translate3d(-440rem,0,0)' } }
+  ]);
+
+  // ember vurgu: döngü başına tam bir gradyan periyodu (200% boyut -> position 0%..200%).
+  // 200% ile 0% görsel olarak aynı; son 1 ms'de 0%'a dönmek, t=LOOP karesini t=0 ile piksel piksel
+  // aynı yapar (yüzde->px yuvarlamasından gelen 1 seviyelik farkı da siler).
+  [$('em1'), $('em2')].forEach(function (el) {
+    A(el, [
+      { t: 0,           e: 'linear', p: { backgroundPosition: '0% 0%' } },
+      { t: LOOP - .001, e: 'linear', p: { backgroundPosition: '200% 0%' } },
+      { t: LOOP,        e: 'linear', p: { backgroundPosition: '0% 0%' } }
+    ]);
+  });
+
+  // -- maddeler: sırayla girer, altın vurgu alır, sonra hafifçe sönükleşir; hepsi birlikte geri çekilir
+  ['k1', 'k2', 'k3', 'k4'].map($).forEach(function (card, i) {
+    var E = T.cardIn[i], X = T.itemsOut + .04 * i, last = i === 3;
+    var next = last ? null : T.cardIn[i + 1];
+    var dim = .66;
+    var steps = [S(0, 0, 54, .97), S(E, 0, 54, .97), S(E + .72, 1, 0, 1, EO)];
+    if (!last) { steps.push(S(next + .05, 1, 0, 1)); steps.push(S(next + .55, dim, 0, 1, EIO)); steps.push(S(X, dim, 0, 1)); }
+    else { steps.push(S(X, 1, 0, 1)); }
+    steps.push(S(X + .42, 0, -30, 1, EX));
+    A(card, steps);
+
+    // vurgu halkası: gelirken altın, sonra sönüyor
+    A(card.querySelector('.hl'), [
+      S(0, 0), S(E + .05, 0), S(E + .42, 1, 0, 1, EO), S(E + .85, 1), S(E + 1.55, 0, 0, 1, EIO)
+    ]);
+    // üst kenar altın çizgi: soldan sağa çizilir, sonra solar
+    A(card.querySelector('.edge'), [
+      { t: 0,        e: 'linear', p: { opacity: 0, transform: 'scaleX(0)' } },
+      { t: E + .05,  e: 'linear', p: { opacity: 0, transform: 'scaleX(0)' } },
+      { t: E + .12,  e: 'linear', p: { opacity: 1, transform: 'scaleX(0.02)' } },
+      { t: E + .75,  e: EO,       p: { opacity: 1, transform: 'scaleX(1)' } },
+      { t: E + 1.05, e: 'linear', p: { opacity: 1, transform: 'scaleX(1)' } },
+      { t: E + 1.7,  e: EIO,      p: { opacity: 0, transform: 'scaleX(1)' } }
+    ]);
+    // ikon kutusu: hafif "pop"
+    A(card.querySelector('.ico'), [
+      S(0, 1, 0, .86), S(E + .05, 1, 0, .86), S(E + .85, 1, 0, 1, EO)
+    ]);
+  });
+
+  // -- kapanış
+  pass($('c-h'),    T.closeH,    .62, T.closeOut,       .32, { yIn: 40, yOut: -24 });
+  pass($('c-note'), T.closeNote, .60, T.closeOut + .02, .30, { yIn: 34, yOut: -20 });
+  pass($('c-go'),   T.closeGo,   .70, T.closeOut + .03, .30, { yIn: 40, yOut: -20, sIn: .965 });
+  pass($('c-brand'),T.closeBrand,.62, T.closeOut + .04, .28, { yIn: 30, yOut: -16 });
+
+  // -- ortam: equalizer ve ışık katmanları (yalnız opacity; transform seek() içinde sinüsle sürülür)
+  A(eqEl, [
+    O(0, .92), O(T.titleOut, .92), O(T.cardIn[0] + .3, .48, EIO), O(T.itemsOut, .48), O(T.closeGo, .66, EIO),
+    O(T.closeOut, .66), O(LOOP, .92, EIO)
+  ]);
+  A(spot,  [O(0, 1), O(T.titleOut, 1), O(T.cardIn[0] + .4, .30, EIO), O(T.itemsOut, .30), O(T.closeH + .3, .15, EIO), O(T.closeOut, .15), O(LOOP, 1, EIO)]);
+  A(spot2, [O(0, 0), O(T.itemsOut, 0), O(T.closeGo + .1, 1, EIO), O(T.closeOut, 1), O(T.closeOut + .5, 0, EIO)]);
+
+  /* ------------------------------------------------------------------
+     seek: sayfa tamamen t'nin fonksiyonu
+     ------------------------------------------------------------------ */
+  function seek(t) {
+    t = Math.max(0, Math.min(LOOP, +t || 0));
+    var ms = t * 1000;
+    for (var i = 0; i < ANIMS.length; i++) ANIMS[i].currentTime = ms;
+    drawEq(t);
+    drawSpot(LITE ? 0 : t);
+    void stage.offsetWidth;               // stil/yerleşim temizlensin
+    return t;
+  }
+  window.seek = seek;
+
+  /* ------------------------------------------------------------------
+     Hazır olma: yazı tipleri gerçekten yüklenmeli (Instrument Serif yedek fonta düşmemeli)
+     ve metin taşmamalı (metni düzenleyince sessizce kırpılmasın)
+     ------------------------------------------------------------------ */
+  var ALL_TEXT = stage.textContent + ' ğüşöçıİĞÜŞÖÇ0123456789&·,.';
+  function norm(s) { return String(s).replace(/["']/g, ''); }
+
+  function layoutCheck() {
+    var bad = [];
+    function fit(el, name) {
+      if (el && el.scrollWidth > el.clientWidth + 1) bad.push(name + ' (' + el.scrollWidth + ' > ' + el.clientWidth + ')');
+    }
+    fit($('hook'), 'başlık #hook'); fit($('c-h'), 'kapanış #c-h'); fit($('c-go'), 'kapanış #c-go');
+    fit($('c-note').firstElementChild, 'not #c-note');
+    Array.prototype.forEach.call(document.querySelectorAll('.card .lab'), function (el, i) { fit(el, 'madde ' + (i + 1)); });
+    if (bad.length) throw new Error('Metin taşıyor: ' + bad.join(', ') + ' - metni kısaltın ya da yazı boyutunu küçültün');
+  }
+
+  window.ready = (async function () {
+    var wants = [
+      '400 100px "Instrument Serif"', 'italic 400 100px "Instrument Serif"',
+      '500 40px "Instrument Sans"', '600 40px "Instrument Sans"', '700 40px "Instrument Sans"',
+      '400 40px "Space Mono"', '700 40px "Space Mono"'
+    ];
+    await Promise.all(wants.map(function (w) { return document.fonts.load(w, ALL_TEXT); }));
+    await document.fonts.ready;
+
+    var faces = Array.from(document.fonts).filter(function (f) { return f.status === 'loaded'; })
+      .map(function (f) { return norm(f.family) + '|' + f.style; });
+    function has(fam, style) { return faces.some(function (x) { return x === fam + '|' + style; }); }
+    var missing = [];
+    if (!has('Instrument Serif', 'normal')) missing.push('Instrument Serif (normal)');
+    if (!has('Instrument Serif', 'italic')) missing.push('Instrument Serif (italic)');
+    if (!has('Instrument Sans', 'normal')) missing.push('Instrument Sans');
+    if (!has('Space Mono', 'normal')) missing.push('Space Mono');
+    // ikinci kontrol: serif ölçüsü yedek fontla gerçekten farklı mı
+    var c = document.createElement('canvas').getContext('2d'), probe = 'Klasik bir eğitimden';
+    c.font = '100px "Instrument Serif", monospace'; var wSerif = c.measureText(probe).width;
+    c.font = '100px monospace'; var wMono = c.measureText(probe).width;
+    if (Math.abs(wSerif - wMono) < 1) missing.push('Instrument Serif (ölçüm yedek fonta düşüyor)');
+    if (missing.length) throw new Error('Yazı tipi yüklenemedi: ' + missing.join(', ') + ' - ağ bağlantısını (Google Fonts) kontrol edin');
+
+    seek(0);
+    await new Promise(function (r) { setTimeout(r, 60); });
+    layoutCheck();
+    seek(0);
+    return true;
+  })();
+})();
+</script>
+</body>
+</html>

@@ -7611,7 +7611,10 @@ function admInitChrome() {
   const evTest = document.getElementById('eventMailTest');
   const evSend = document.getElementById('eventMailSend');
   const evStatus = document.getElementById('eventMailStatus');
-  const evCall = (data) => firebase.app().functions('europe-west1').httpsCallable('sendAnnouncementEmail')(data);
+  // Gönderim yüzlerce e-postada dakikalar sürebilir: istemci zaman aşımı sunucununkine (540 sn) eşit
+  // (varsayılan 70 sn olsaydı sunucu sürerken panel yanlış "zaman aşımı" gösterirdi)
+  const evCall = (data) => firebase.app().functions('europe-west1')
+    .httpsCallable('sendAnnouncementEmail', { timeout: data.mode === 'send' ? 540000 : 60000 })(data);
   evTest.onclick = async () => {
     const orig = evTest.textContent;
     evTest.disabled = true; evTest.textContent = bkT('adm_sending', 'Gönderiliyor…');
