@@ -55,7 +55,8 @@ Env vars in use: `GMAIL_PASS`, `Z_ACCOUNT_ID` / `Z_CLIENT_ID` / `Z_CLIENT_SECRET
 - `notifyStudentOnRequestStatus` — `lesson_requests/*` status change
 
 **Callable (`onCall`):**
-- `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle` — email blasts (admin)
+- `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle` — email blasts (admin). Not: `sendPromoEmailAll` yalnız henüz ders almamış üyelere gider (öğrencileri atlar).
+- `sendAnnouncementEmail` — etkinlik duyurusu, **siteye kayıtlı herkese** (öğrenciler dahil; `users.email` + `reservations.student_email`, tekil, `emailOptOut === true` ve admin hariç). Kipler: `count` (alıcı/zaten alan/bekleyen), `test` (yalnız admin adresine, konu `[TEST] …`), `send` (`confirm: true` şart). Şablon + alıcı seçimi + toplu gönderim: `functions/announcement-mail.js` (Firebase'e bağımlı değil; konu `SUBJECT`, metin `buildAnnouncementMail()`, hero görseli `assets/media/duyuru/etkinlik-duyuru-mail.gif` — değişirse `HERO_VERSION` artır, göndermeden önce hosting'e yüklü olmalı). Çift gönderim koruması: gönderilenler `mail_campaigns/etkinlik-duyuru-1.sent`'te tutulur (yalnız Admin SDK), tekrar çağrı yalnız henüz almayanlara gider, 9 dk'lık kilit aynı anda iki gönderimi engeller, tek çalıştırma 450 alıcıyla sınırlıdır (Gmail SMTP günlük ~500), ilk 25'lik partide hiçbiri gitmezse durur. Yeni bir duyuru için `CAMPAIGN_ID`'yi değiştir. Admin panelinde "E-posta & duyurular" → "Etkinlik duyurusu" kartı (test + herkese gönder + onay penceresi).
 - `createZoomMeeting` — admin only, writes `settings/zoom.zoom_link` (and deletes the legacy `settings/global.zoom_link`)
 - `sendWhatsAppMessage`, `sendWhatsAppAdmin` — WhatsApp send (template or freeform)
 - `markWhatsAppConvoRead` — clears unread count on admin panel
@@ -134,6 +135,7 @@ Many pages still have `type="module"` on some script blocks. Before adding share
 | `chats/{chatId}/messages` | DM threads (chatId = sorted uid pair). Collab requests use `type: 'collab_request'` with status update flow. |
 | `whatsapp_conversations/{phone}/messages` | Twilio inbound + outbound persisted (admin-only read/write) |
 | `access_codes` | Booking panel access codes |
+| `mail_campaigns/{id}` | Toplu e-posta gönderim kaydı (`sent` e-posta listesi, `status`, kilit). Kuralda yok = istemciye kapalı; yalnız Cloud Functions yazar/okur |
 | `booking_access_requests/{uid}` | Trial-lesson request queue |
 | `announcements` | Site-wide announcements (admin write, auth read) |
 | `testimonials` | Student testimonials (public read, auth create) |

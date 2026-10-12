@@ -1981,6 +1981,21 @@
     adm_promo_b2: { tr: `Siteye kayıtlı, henüz ders almayan tüm üyelere ders tanıtım e-postası gidecek.`, en: `All registered members who have not taken lessons yet will get the lesson promo email.` },   // booking-admin (erteleme hakları + admin onayları)
     adm_promo_n: { tr: `Gönderim geri alınamaz.`, en: `Sending cannot be undone.` },   // booking-admin (erteleme hakları + admin onayları)
     adm_promo_ok: { tr: `~{n} kişiye gönder`, en: `Send to ~{n} people` },   // booking-admin (erteleme hakları + admin onayları)
+    adm_ev_title: { tr: `Etkinlik duyurusu`, en: `Event announcement` },
+    adm_ev_desc: { tr: `GigBridge lansmanı + masterclass duyurusunu siteye kayıtlı herkese (öğrenciler dahil) gönderir. Önce kendine test gönder.`, en: `Sends the GigBridge launch + masterclass announcement to everyone registered on the site (students included). Send yourself a test first.` },
+    adm_ev_test: { tr: `Kendime test gönder`, en: `Send me a test` },
+    adm_ev_send: { tr: `Herkese gönder`, en: `Send to everyone` },
+    adm_ev_test_ok: { tr: `✓ Test e-postası gönderildi: {to}`, en: `✓ Test email sent: {to}` },
+    adm_ev_none: { tr: `Gönderilecek yeni alıcı yok — herkes duyuruyu zaten almış.`, en: `No new recipients — everyone already received the announcement.` },
+    adm_ev_ct: { tr: `Etkinlik duyurusunu herkese gönder`, en: `Send the event announcement to everyone` },
+    adm_ev_cb: { tr: `Siteye kayıtlı {n} kişiye (öğrenciler dahil) e-posta gidecek.`, en: `An email will go to {n} registered people (students included).` },
+    adm_ev_cb2: { tr: `{k} kişi duyuruyu daha önce almış, atlanacak.`, en: `{k} already received it and will be skipped.` },
+    adm_ev_cn: { tr: `Gönderim geri alınamaz. Önce "Kendime test gönder" ile kontrol ettiğinden emin ol. Gönderim sırasında sayfayı kapatma.`, en: `Sending cannot be undone. Make sure you checked it with "Send me a test" first. Don't close the page while sending.` },
+    adm_ev_ok: { tr: `{n} kişiye gönder`, en: `Send to {n} people` },
+    adm_ev_wait: { tr: `Gönderiliyor — birkaç dakika sürebilir, sayfayı kapatma…`, en: `Sending — this can take a few minutes, don't close the page…` },
+    adm_ev_done: { tr: `✓ {n} kişiye gönderildi.`, en: `✓ Sent to {n} people.` },
+    adm_ev_failed: { tr: `{n} gönderim başarısız.`, en: `{n} failed.` },
+    adm_ev_remaining: { tr: `{n} kişi kaldı — düğmeye tekrar bas (günlük e-posta sınırı için ertesi gün).`, en: `{n} left — press the button again (next day because of the daily email limit).` },
     adm_rq_cr: { tr: `Erteleme hakkı: {a} → {b} olacak`, en: `Reschedule credits: {a} → {b}` },   // booking-admin (erteleme hakları + admin onayları)
     adm_rq_cr_none: { tr: `Hak yok — onaylarsan hak düşmez`, en: `No credits — approving will not deduct one` },   // booking-admin (erteleme hakları + admin onayları)
     adm_rq_cascade: { tr: `+{n} ders de 1 hafta kayar`, en: `+{n} more lessons shift 1 week` },

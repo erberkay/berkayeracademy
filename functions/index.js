@@ -7,6 +7,7 @@ const {getFirestore, FieldValue, Timestamp} = require("firebase-admin/firestore"
 const nodemailer = require("nodemailer");
 const {sendWhatsApp, sendWhatsAppTemplate, TEMPLATES} = require("./whatsapp");
 const att = require("./attendance");
+const announcement = require("./announcement-mail");
 
 
 setGlobalOptions({maxInstances: 10, region: "europe-west1"});
@@ -1171,6 +1172,111 @@ exports.sendPromoEmailSingle = onCall(
       const mail = buildPromoMailOptions(toName || toEmail.split("@")[0], toEmail);
       await transporter.sendMail(mail);
       return {ok: true};
+    },
+);
+
+// ─── Etkinlik duyurusu (siteye kayıtlı herkese) ──────────────────────
+// Admin panelindeki "Etkinlik duyurusu" kartı çağırır; şablon: announcement-mail.js. Kipler:
+//   count → alıcı sayısı (zaten alanlar ayrı sayılır)
+//   test  → yalnız yöneticinin kendi adresine "[TEST]" konulu kopya
+//   send  → herkese (öğrenciler dahil, emailOptOut hariç); data.confirm === true şart
+// Aynı duyuru iki kez gitmesin diye gönderilenler mail_campaigns/{id}.sent'te tutulur (yalnız
+// Admin SDK okur/yazar): tekrar çağrı yalnız henüz almayanlara gider, gönderim kilitlidir.
+const ANNOUNCE_MAX_PER_RUN = 450; // Gmail SMTP günlük ~500 alıcı sınırının altında kal
+const ANNOUNCE_LOCK_MS = 9 * 60 * 1000;
+exports.sendAnnouncementEmail = onCall(
+    {region: "europe-west1", timeoutSeconds: 540},
+    async (request) => {
+      if (!isAdminAuth(request.auth)) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
+      }
+      const data = request.data || {};
+      const mode = String(data.mode || "count");
+      if (mode === "test") {
+        await transporter.sendMail(announcement.buildAnnouncementMail({name: "Berkay", to: ADMIN_EMAIL, test: true}));
+        return {ok: true, to: ADMIN_EMAIL};
+      }
+      if (mode !== "count" && mode !== "send") {
+        throw new HttpsError("invalid-argument", "Geçersiz kip");
+      }
+
+      const db = getFirestore();
+      const campRef = db.collection("mail_campaigns").doc(announcement.CAMPAIGN_ID);
+      const [usersSnap, resSnap, campSnap] = await Promise.all([
+        db.collection("users").get(),
+        db.collection("reservations").get(),
+        campRef.get(),
+      ]);
+      const recipients = announcement.collectRecipients(
+          usersSnap.docs.map((d) => ({id: d.id, data: d.data()})),
+          resSnap.docs.map((d) => ({id: d.id, data: d.data()})),
+          ADMIN_EMAIL);
+      const camp = campSnap.exists ? campSnap.data() : {};
+      const already = new Set(Array.isArray(camp.sent) ? camp.sent : []);
+      const pending = recipients.filter((r) => !already.has(r.email));
+      const state = {
+        total: recipients.length,
+        alreadySent: recipients.length - pending.length,
+        pending: pending.length,
+        status: camp.status || "none",
+      };
+      if (mode === "count") return state;
+
+      if (data.confirm !== true) throw new HttpsError("invalid-argument", "Onay gerekli");
+      if (!pending.length) throw new HttpsError("failed-precondition", "Gönderilecek yeni alıcı yok.");
+
+      // Kilit: aynı anda iki gönderim başlamasın (yarım kalırsa süre dolunca açılır)
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(campRef);
+        const cur = snap.exists ? snap.data() : {};
+        const until = cur.lock_until && cur.lock_until.toMillis ? cur.lock_until.toMillis() : 0;
+        if (cur.status === "sending" && until > Date.now()) {
+          throw new HttpsError("failed-precondition", "Gönderim sürüyor, bitmesini bekle.");
+        }
+        tx.set(campRef, {
+          status: "sending",
+          subject: announcement.SUBJECT,
+          started_at: FieldValue.serverTimestamp(),
+          lock_until: Timestamp.fromMillis(Date.now() + ANNOUNCE_LOCK_MS),
+        }, {merge: true});
+      });
+
+      const batch = pending.slice(0, ANNOUNCE_MAX_PER_RUN);
+      let sent = 0;
+      let failed = 0;
+      let aborted = false;
+      const reasons = {};
+      for (let i = 0; i < batch.length; i += 25) {
+        const chunk = batch.slice(i, i + 25);
+        const res = await announcement.sendInBatches(
+            chunk, (r) => transporter.sendMail(announcement.buildAnnouncementMail({name: r.name, to: r.email})), 4);
+        sent += res.ok.length;
+        failed += res.failed.length;
+        res.failed.forEach((f) => {
+          reasons[f.error] = (reasons[f.error] || 0) + 1;
+        });
+        if (res.ok.length) {
+          await campRef.set({
+            sent: FieldValue.arrayUnion(...res.ok.map((r) => r.email)),
+            lock_until: Timestamp.fromMillis(Date.now() + ANNOUNCE_LOCK_MS),
+          }, {merge: true});
+        }
+        // Hiçbiri gitmediyse (şifre/SMTP sorunu) kalanları yormadan dur
+        if (!res.ok.length && res.failed.length === chunk.length) {
+          aborted = true;
+          break;
+        }
+      }
+      const remaining = pending.length - sent;
+      const status = remaining === 0 ? "done" : "partial";
+      await campRef.set({
+        status,
+        finished_at: FieldValue.serverTimestamp(),
+        lock_until: Timestamp.fromMillis(0),
+        last_run: {sent, failed, aborted, at: new Date().toISOString()},
+      }, {merge: true});
+      console.log("announcement send", {sent, failed, remaining, aborted, status});
+      return {sent, failed, remaining, status, aborted, reasons};
     },
 );
 

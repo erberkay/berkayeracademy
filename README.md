@@ -127,7 +127,7 @@ firebase deploy --only firestore:rules    # Güvenlik kuralları
 |---|---|
 | Zamanlanmış (İstanbul saati) | `paymentReminder`, `lessonReminder24h`, `lessonReminder1h`, `lessonEndFollowUp`, `lessonAttendanceSync`, `lessonAutoConfirm` |
 | Firestore tetikleyici | `notifyAdminOnNewRequest`, `notifyStudentOnRequestStatus`, `notifyAdminOnAssistantQuestion` |
-| Çağrılabilir (`onCall`) | `studentSelfReschedule` (saat değişikliği talebi), `confirmLesson`, `checkTrialEligibility`, `createZoomMeeting`, `sendWhatsAppMessage`, `sendWhatsAppAdmin`, `markWhatsAppConvoRead`, `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle` |
+| Çağrılabilir (`onCall`) | `studentSelfReschedule` (saat değişikliği talebi), `confirmLesson`, `checkTrialEligibility`, `createZoomMeeting`, `sendWhatsAppMessage`, `sendWhatsAppAdmin`, `markWhatsAppConvoRead`, `sendPaymentRemindersManual`, `sendCustomEmail`, `sendWelcomeEmail`, `sendPromoEmailAll`, `sendPromoEmailSingle`, `sendAnnouncementEmail` (etkinlik duyurusu, herkese) |
 | HTTP | `twilioWhatsAppWebhook` |
 
 ## Güvenlik
