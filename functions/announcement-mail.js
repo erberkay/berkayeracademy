@@ -246,10 +246,10 @@ ${hero ? "" : `      <div style="font-family:'Courier New',Courier,monospace;fon
     headers: {"List-Unsubscribe": `<mailto:${ADMIN_MAIL}?subject=unsubscribe>`},
     text,
     html,
-    // filename: false → dosya adı yok (nodemailer yoksa "attachment-1.jpeg" üretir); Gmail gelen kutusu
-    // listesinde "ek" çipi göstermesin diye. Görsel gövdede satır içi (cid) görünür.
+    // Gmail, gömülü (cid) görsel için gelen kutusu listesinde bir "ek" çipi gösterir; dosya adı yoksa
+    // çip "noname" yazar (denendi, daha kötü) — bu yüzden anlamlı bir ad veriyoruz. Görsel gövdede satır içi görünür.
     attachments: buf ? [{
-      filename: false,
+      filename: "etkinlik-duyuru.jpg",
       content: buf,
       cid: HERO_CID,
       contentType: "image/jpeg",
