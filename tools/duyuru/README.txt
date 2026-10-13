@@ -1,7 +1,7 @@
 DUYURU ANİMASYONU — "ÇOK YAKINDA" TEASER
 ========================================
 
-Berkay Er Academy etkinlik duyurusu için sessiz, 14 sn'lik, sonsuz döngülü marka animasyonu.
+Berkay Er Academy etkinlik duyurusu için sessiz, 14 sn'lik, sonsuz döngülü techno teması (siyah-beyaz, kırmızı/beyaz lazer). Dikey çıktı Instagram Reels güvenli alanına göre (metin x 72–1008, y 260–1480).
 Kaynak tek dosya: tools/duyuru/scene.html. Hareketin tamamı zamanın saf fonksiyonudur
 (Web Animations API + window.seek(t)); render.mjs her kareyi seek(t) ile çizip PNG alır,
 ffmpeg GIF / MP4 / JPG'ye çevirir. Döngü kusursuzdur: t=0 ile t=14 sn karesi piksel piksel aynıdır.
