@@ -1,10 +1,10 @@
 DUYURU ANİMASYONU — "ÇOK YAKINDA" TEASER
 ========================================
 
-Berkay Er Academy etkinlik duyurusu için sessiz, 10 sn'lik, sonsuz döngülü marka animasyonu.
+Berkay Er Academy etkinlik duyurusu için sessiz, 14 sn'lik, sonsuz döngülü marka animasyonu.
 Kaynak tek dosya: tools/duyuru/scene.html. Hareketin tamamı zamanın saf fonksiyonudur
 (Web Animations API + window.seek(t)); render.mjs her kareyi seek(t) ile çizip PNG alır,
-ffmpeg GIF / MP4 / JPG'ye çevirir. Döngü kusursuzdur: t=0 ile t=10 sn karesi piksel piksel aynıdır.
+ffmpeg GIF / MP4 / JPG'ye çevirir. Döngü kusursuzdur: t=0 ile t=14 sn karesi piksel piksel aynıdır.
 
 
 YENİDEN ÜRETME
@@ -29,7 +29,7 @@ Geliştirme yardımcıları:
 
 NEREDEN DEĞİŞTİRİLİR (hepsi scene.html içinde)
 ----------------------------------------------
-  Metinler  : <body> içindeki üç bölüm: #title (başlık kartı), #items (dört madde), #closing (kapanış).
+  Metinler  : <body> içindeki bölümler: #topbar (marka + sahne etiketi), #title, #items (dört madde + açıklama), #why (3·2·1), #closing.
               Dikey düzende başlığın satır sonları <br class="p"> ile verilir.
   Süreler   : <script> başındaki LOOP ve T tablosu (saniye). Tüm hareket bu tablodan türer.
   Renk/yazı : <style> başındaki :root değişkenleri (ui.css paletiyle aynı).
