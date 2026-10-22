@@ -155,7 +155,7 @@ function collectUnpaidStudents(snapshot) {
 function reservationPrice(data) {
   if (typeof data.custom_total_price === "number") return data.custom_total_price;
   const totalLessons = (data.lessons || []).length;
-  const unit = data.custom_lesson_price || (data.lesson_type === "single" ? 3000 : 2500);
+  const unit = data.custom_lesson_price || (data.lesson_type === "single" ? 4000 : 2500);
   return totalLessons * unit;
 }
 
