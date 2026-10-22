@@ -15,14 +15,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202610130100">
-  <script src="assets/js/theme-init.js?v=202610130100"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202610130100">
-  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202610130100">
-  <script src="assets/js/auth-ui.js?v=202610130100"></script>
-  <script src="assets/js/trial-intro.js?v=202610130100" defer></script>
-  <script src="assets/js/placement-quiz.js?v=202610130100"></script>
-  <script src="assets/js/be-tour.js?v=202610130100"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202610221400">
+  <script src="assets/js/theme-init.js?v=202610221400"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202610221400">
+  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202610221400">
+  <script src="assets/js/auth-ui.js?v=202610221400"></script>
+  <script src="assets/js/trial-intro.js?v=202610221400" defer></script>
+  <script src="assets/js/placement-quiz.js?v=202610221400"></script>
+  <script src="assets/js/be-tour.js?v=202610221400"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -1091,7 +1091,6 @@
     .adm-rq-acts { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
     .adm-prices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .adm-price { display:flex; flex-direction:column; gap:6px; }
-    .adm-price-val { height:44px; display:flex; align-items:center; padding:0 12px; border-radius:var(--r-12); border:1px solid var(--line-ctl); background:var(--bg); font-family:var(--ff-mono); font-size:var(--fs-ui); color:var(--fg); }
     #adminZoomJoinLink:empty { display:none; }
     .adm-zoom-join { align-self:flex-start; }
 
@@ -1841,8 +1840,8 @@
       .bk-todo-n { width:28px; height:28px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202610130100"></script>
-<script src="assets/js/trial-nav.js?v=202610130100"></script>
+<script src="assets/js/i18n.js?v=202610221400"></script>
+<script src="assets/js/trial-nav.js?v=202610221400"></script>
 </head>
 <body data-be-intro-first>
 <header class="be-header" id="beHeader" data-be-page="booking" data-be-cta="off"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -2308,10 +2307,14 @@
             <section class="adm-panel adm-panel--sm" aria-labelledby="admPriceTitle">
               <h3 class="adm-h3" id="admPriceTitle" data-i18n="adm_price_title">Ders başı ücret (TL)</h3>
               <div class="adm-prices">
-                <div class="adm-price"><span class="adm-k" data-i18n="adm_price_monthly">Aylık · saat başı</span><span class="adm-price-val" id="admPriceMonthly"></span></div>
-                <div class="adm-price"><span class="adm-k" data-i18n="adm_price_single">Tek ders</span><span class="adm-price-val" id="admPriceSingle"></span></div>
+                <div class="adm-price"><label class="adm-k" for="admPriceMonthlyIn" data-i18n="adm_price_monthly">Aylık · saat başı</label><input id="admPriceMonthlyIn" class="input input-sm input-mono" type="text" inputmode="numeric" autocomplete="off"></div>
+                <div class="adm-price"><label class="adm-k" for="admPriceSingleIn" data-i18n="adm_price_single">Tek ders</label><input id="admPriceSingleIn" class="input input-sm input-mono" type="text" inputmode="numeric" autocomplete="off"></div>
               </div>
-              <p class="adm-note" data-i18n="adm_price_note">Liste fiyatları sabittir; kampanya indirimleri bu saat ücretinden hesaplanır.</p>
+              <div class="adm-btn2">
+                <button type="button" id="admPriceSave" class="btn btn-sm btn-primary" data-i18n="adm_save">Kaydet</button>
+              </div>
+              <div id="admPriceStatus" class="form-status" role="status"></div>
+              <p class="adm-note" data-i18n="adm_price_note">Kaydedince fiyat hemen geçerli olur. Kampanya indirimleri aylık saat ücretinden hesaplanır; özel fiyat girilmiş rezervasyonlar değişmez.</p>
             </section>
           </div>
         </div>
@@ -5019,9 +5022,34 @@ function adjustSchedule(rawSlots) {
 // metin olarak çekip değerlendirir). Tek kaynak burası: paket tablosu, özet şeridi,
 // fiyat tahmini, tek ders notu, talep kaydı, admin onayı ve öğrenci paneli buradan
 // türetir; markup'a rakam yazılmaz.
-const LESSON_PRICE        = 2500; // TL per lesson hour — paketlerin liste fiyatı
-const LESSON_PRICE_SINGLE = 4000; // TL per lesson — single booking
+// Liste fiyatları admin panelinden değişir (settings/pricing → loadPricing → setLessonPrices).
+// PRICE_DEFAULTS belge yokken / okunamazken / geçersizken kullanılan varsayılandır.
+const PRICE_DEFAULTS = { monthly: 2500, single: 4000 };
+const PRICE_MIN = 100, PRICE_MAX = 100000; // TL — admin girişinin kabul aralığı (functions/index.js ile aynı)
+let LESSON_PRICE        = PRICE_DEFAULTS.monthly; // TL per lesson hour — paketlerin liste fiyatı
+let LESSON_PRICE_SINGLE = PRICE_DEFAULTS.single;  // TL per lesson — single booking
 const LESSON_PRICE_TRIAL  = 0;    // deneme dersi ücretsiz (özet şeridinde gösterilir)
+
+// "4000", "4.000", "4 000 TL" → 4000. Yalnız tam sayı ya da Türkçe binlik ayraçlı ("." üçerli)
+// biçim kabul edilir: "4000.5" gibi girişi sessizce 40005 yapmak yerine reddeder.
+function parsePriceInput(v) {
+  const t = String(v == null ? '' : v).replace(/\s|TL|₺/gi, '');
+  if (!/^(\d+|\d{1,3}(\.\d{3})+)$/.test(t)) return null;
+  const n = parseInt(t.replace(/\./g, ''), 10);
+  return n >= PRICE_MIN && n <= PRICE_MAX ? n : null;
+}
+// settings/pricing belgesi → { monthly, single }. Her alan ayrı doğrulanır; geçersiz alan
+// varsayılanda kalır. Belge hiç yoksa null (→ iki fiyat da varsayılan).
+function pricingFromDoc(data) {
+  if (!data || typeof data !== 'object') return null;
+  const ok = n => Number.isInteger(n) && n >= PRICE_MIN && n <= PRICE_MAX;
+  return { monthly: ok(data.monthly) ? data.monthly : PRICE_DEFAULTS.monthly,
+           single:  ok(data.single)  ? data.single  : PRICE_DEFAULTS.single };
+}
+function setLessonPrices(p) {
+  LESSON_PRICE = p ? p.monthly : PRICE_DEFAULTS.monthly;
+  LESSON_PRICE_SINGLE = p ? p.single : PRICE_DEFAULTS.single;
+}
 
 // weekly = öğrencinin ızgaradan seçeceği haftalık ders saati; her haftalık saat
 // ayda PKG_LESSONS_PER_MONTH ders üretir (calculateLessonDates slot başına months×4).
@@ -5291,9 +5319,28 @@ function selectedPackage() {
 var _campaignsReq = null;
 // Belgenin durumu (admin editörü "yayında / varsayılan / okunamadı" gösterir)
 var _campaignsMeta = { exists: false, valid: false, updatedAt: null, loaded: false, error: null };
+// Liste fiyatları (settings/pricing; giriş yapan okur, yalnız admin yazar). Belge yoksa /
+// okunamazsa kod varsayılanı kalır; okuma hatasında bellekteki son değer korunur.
+var _pricingMeta = { exists: false, loaded: false, updatedAt: null, error: null };
+function loadPricing() {
+  return db.collection('settings').doc('pricing').get()
+    .then(snap => {
+      const data = snap && snap.exists ? snap.data() : null;
+      const at = data && data.updated_at && typeof data.updated_at.toDate === 'function' ? data.updated_at.toDate() : null;
+      _pricingMeta = { exists: !!data, loaded: true, updatedAt: at, error: null };
+      setLessonPrices(pricingFromDoc(data));
+    })
+    .catch(e => {
+      _pricingMeta = { exists: false, loaded: false, updatedAt: null, error: (e && (e.code || e.message)) || 'error' };
+      console.warn('[pricing]', e && (e.code || e.message));
+    });
+}
 function loadCampaigns(force) {
   if (_campaignsReq && !force) return _campaignsReq;
-  _campaignsReq = db.collection('settings').doc('campaigns').get()
+  // Kampanya indirimleri liste fiyatından hesaplanır: fiyat aynı beklemeyle gelir, böylece
+  // kampanyayı bekleyen her yer (talep formu, bekleme özeti, admin açılışı) güncel fiyatı görür.
+  const pricingReq = loadPricing();
+  const campaignsReq = db.collection('settings').doc('campaigns').get()
     .then(snap => {
       const data = snap && snap.exists ? snap.data() : null;
       const list = data ? campaignsFromDoc(data) : null;
@@ -5305,6 +5352,7 @@ function loadCampaigns(force) {
       _campaignsMeta = { exists: false, valid: false, updatedAt: null, loaded: false, error: (e && (e.code || e.message)) || 'error' };
       console.warn('[campaigns]', e && (e.code || e.message));
     });
+  _campaignsReq = Promise.all([pricingReq, campaignsReq]).then(() => {});
   return _campaignsReq;
 }
 
@@ -7480,6 +7528,7 @@ async function renderAdminPanel() {
   await Promise.all([ptWatchAll(), loadCampaigns(!_admBooted)]);
   _admBooted = true;
   admCampInit();
+  admPriceInit();
 
   // Auto-migrate: set hasLessonRequest:true for existing requesters (runs once per session)
   if (!window._migrationDone) {
@@ -7520,6 +7569,67 @@ async function renderAdminPanel() {
       e => { const c=errId(); studList.innerHTML = `<div class="adm-empty is-err">${escHtml(bkT('adm_stu_err', 'Öğrenciler yüklenemedi'))} (${c}): ${escHtml(e.message||e.code)}</div>`; });
 }
 
+// ── Ders başı ücret kartı (settings/pricing) ──
+// Girişler odakta değilse güncel fiyatla dolar; kampanya editörünün "liste fiyatı" etiketleri de burada yenilenir.
+function admPriceRefresh() {
+  const m = document.getElementById('admPriceMonthlyIn'), s = document.getElementById('admPriceSingleIn');
+  if (m && document.activeElement !== m) m.value = tlNum(LESSON_PRICE);
+  if (s && document.activeElement !== s) s.value = tlNum(LESSON_PRICE_SINGLE);
+  admSet('admCampBase', tlFmt(LESSON_PRICE));
+  admSet('admCampSingle', tlFmt(LESSON_PRICE_SINGLE));
+}
+// Fiyatı gösteren admin bölümlerini yeniden çizer; biri patlarsa diğerleri etkilenmez.
+function admPriceRerender() {
+  const run = fn => { try { fn(); } catch (e) { console.warn('[pricing] yeniden çizim', e && e.message); } };
+  run(admCampRender);
+  run(admRenderStudents);
+  run(admRenderStats);
+  run(admRenderReminders);
+  if (_admLastReqSnap) run(() => renderAdminRequests(_admLastReqSnap));
+}
+var _admPriceBound = false;
+function admPriceInit() {
+  admPriceRefresh();
+  if (_admPriceBound) return;
+  const mIn = document.getElementById('admPriceMonthlyIn'), sIn = document.getElementById('admPriceSingleIn');
+  const btn = document.getElementById('admPriceSave'), status = document.getElementById('admPriceStatus');
+  if (!mIn || !sIn || !btn) return;
+  _admPriceBound = true;
+  [mIn, sIn].forEach(i => i.addEventListener('input', () => i.classList.remove('is-invalid')));
+  btn.onclick = async () => {
+    const monthly = parsePriceInput(mIn.value), single = parsePriceInput(sIn.value);
+    mIn.classList.toggle('is-invalid', monthly == null);
+    sIn.classList.toggle('is-invalid', single == null);
+    if (monthly == null || single == null) {
+      admStatus(status, bkT('adm_price_invalid', 'Geçerli bir tutar yaz ({min}–{max} TL, tam sayı).')
+        .replace('{min}', tlNum(PRICE_MIN)).replace('{max}', tlNum(PRICE_MAX)), 'err');
+      (monthly == null ? mIn : sIn).focus();
+      return;
+    }
+    if (monthly === LESSON_PRICE && single === LESSON_PRICE_SINGLE) { admStatus(status, bkT('adm_price_nochange', 'Değişiklik yok.'), ''); return; }
+    const ok = await admConfirm(
+      bkT('adm_price_confirm_b', 'Yeni liste fiyatı hemen geçerli olur: yeni talepler, paket hesapları ve özel fiyatı olmayan mevcut rezervasyonların toplamı bu fiyattan görünür. Özel fiyat girilmiş rezervasyonlar değişmez.'),
+      { title: bkT('adm_price_confirm_t', 'Fiyatlar güncellensin mi?'), ok: bkT('adm_save', 'Kaydet') });
+    if (!ok) return;
+    const lbl = btn.textContent;
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      await db.collection('settings').doc('pricing').set({ monthly, single, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+      setLessonPrices({ monthly, single });
+      _pricingMeta = { exists: true, loaded: true, updatedAt: new Date(), error: null };
+      admPriceRefresh();
+      admPriceRerender();
+      admStatus(status, '✓ ' + bkT('adm_saved', 'Kaydedildi'), 'ok');
+      setTimeout(() => { admStatus(status, ''); }, 2500);
+    } catch (e) {
+      const c = errId();
+      admStatus(status, `${bkT('adm_price_err', 'Kaydedilemedi')} (${c})`, 'err');
+      console.warn('[pricing]', e && (e.code || e.message));
+    }
+    btn.disabled = false; btn.textContent = lbl;
+  };
+}
+
 // ── Yan panel, sekmeler, ay seçici, kullanıcı kartı (bağlama bir kez) ──
 function admInitChrome() {
   const name = _user.displayName?.trim() || _user.email?.split('@')[0] || '';
@@ -7530,8 +7640,6 @@ function admInitChrome() {
     if (_user.photoURL) { const i = document.createElement('img'); i.src = _user.photoURL; i.alt = ''; ava.append(i); }
     else ava.textContent = admInitial(name);
   }
-  admSet('admPriceMonthly', tlFmt(LESSON_PRICE));
-  admSet('admPriceSingle', tlFmt(LESSON_PRICE_SINGLE));
   admSet('admCampBase', tlFmt(LESSON_PRICE));
   admSet('admCampSingle', tlFmt(LESSON_PRICE_SINGLE));
   admSyncLang();
@@ -12366,9 +12474,9 @@ auth.onAuthStateChanged(user => {
 });
 </script>
 <!-- Site içi asistan: motor + bilgi tabanı + arayüz (window.beAssistant) -->
-<script src="assets/js/be-assistant.js?v=202610130100"></script>
-<script src="assets/js/be-assistant-kb.js?v=202610130100"></script>
-<script src="assets/js/be-assistant-ui.js?v=202610130100"></script>
+<script src="assets/js/be-assistant.js?v=202610221400"></script>
+<script src="assets/js/be-assistant-kb.js?v=202610221400"></script>
+<script src="assets/js/be-assistant-ui.js?v=202610221400"></script>
 <script>(function(){
   // Dil değişince JS'in ürettiği metinler (paket tablosu, slot ipucu, tek ders notu) yeniden çizilir
   function init(){

@@ -151,11 +151,32 @@ function collectUnpaidStudents(snapshot) {
   return result;
 }
 
+// List prices live in settings/pricing ({monthly, single}), edited from the admin
+// panel (booking.html). The defaults apply when the doc is missing or invalid.
+// Keep DEFAULT_LIST_PRICES and the 100–100000 range in sync with booking.html
+// (PRICE_DEFAULTS / PRICE_MIN / PRICE_MAX).
+const DEFAULT_LIST_PRICES = {monthly: 2500, single: 4000};
+async function loadListPrices(db) {
+  try {
+    const snap = await db.collection("settings").doc("pricing").get();
+    const d = snap.exists ? snap.data() : {};
+    const ok = (n) => Number.isInteger(n) && n >= 100 && n <= 100000;
+    return {
+      monthly: ok(d.monthly) ? d.monthly : DEFAULT_LIST_PRICES.monthly,
+      single: ok(d.single) ? d.single : DEFAULT_LIST_PRICES.single,
+    };
+  } catch (e) {
+    console.error("settings/pricing read failed, using defaults", e.message);
+    return {...DEFAULT_LIST_PRICES};
+  }
+}
+
 // Compute total package price for a reservation
-function reservationPrice(data) {
+function reservationPrice(data, prices = DEFAULT_LIST_PRICES) {
   if (typeof data.custom_total_price === "number") return data.custom_total_price;
   const totalLessons = (data.lessons || []).length;
-  const unit = data.custom_lesson_price || (data.lesson_type === "single" ? 4000 : 2500);
+  const unit = data.custom_lesson_price ||
+    (data.lesson_type === "single" ? prices.single : prices.monthly);
   return totalLessons * unit;
 }
 
@@ -169,6 +190,7 @@ exports.paymentReminder = onSchedule(
       const db = getFirestore();
       const snapshot = await db.collection("reservations").get();
       const students = collectUnpaidStudents(snapshot);
+      const prices = await loadListPrices(db);
       const promises = students.map(({doc, data, email, name, nextLesson}) => {
         const nextDateFormatted = new Date(nextLesson.date + "T12:00:00")
             .toLocaleDateString("tr-TR", {day: "numeric", month: "long", year: "numeric"});
@@ -183,7 +205,7 @@ exports.paymentReminder = onSchedule(
         if (data.student_phone) {
           const monthIdx = new Date().getMonth();
           const monthName = MONTHS_TR[monthIdx];
-          const total = reservationPrice(data).toLocaleString("tr-TR");
+          const total = reservationPrice(data, prices).toLocaleString("tr-TR");
           tasks.push(sendAndPersistWA({
             toPhone: data.student_phone,
             contentSid: TEMPLATES.payment_reminder,
