@@ -58,7 +58,7 @@ var size = new THREE.Vector2(1, 1);
 var rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: coarse ? 2 : 4 });
 var composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, cam));
-var bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.55, 1.3);
+var bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.55, 1.6);
 composer.addPass(bloom);
 var vig = new ShaderPass(VignetteShader);
 vig.uniforms.offset.value = 0.9;
