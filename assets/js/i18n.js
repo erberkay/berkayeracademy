@@ -22,6 +22,8 @@
     s3d_wp_desk:    { tr: 'Çalışma masası', en: 'Desk' },
     s3d_wp_screen:  { tr: 'Monitör', en: 'Screen' },
     s3d_wp_gear:    { tr: 'Push 3 & synth', en: 'Push 3 & synths' },
+    s3d_wp_dj:      { tr: 'DJ köşesi', en: 'DJ corner' },
+    s3d_t_dj:       { tr: 'Pioneer DJ konsolu', en: 'Pioneer DJ console' },
     s3d_wp_lounge:  { tr: 'Ders köşesi', en: 'Lesson corner' },
     s3d_wp_shelf:   { tr: 'Plak rafı', en: 'Record shelf' },
     s3d_c_red:      { tr: 'Kırmızı', en: 'Red' },

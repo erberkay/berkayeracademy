@@ -8,6 +8,7 @@
 #   "MacBook Pro M3 Space Black 16\" Free" — EV_car2013, https://sketchfab.com/3d-models/macbook-pro-m3-space-black-16-free-6b46aa09dc4d4e90a79ea06f1d0aa719
 #   "Logitech MX Keys" — ArkinRS, https://sketchfab.com/3d-models/logitech-mx-keys-67901d82781f48349f1f61ce78a6b6e0
 #   "Logitech MX Master 3S - Revopoint Mini 3D Scan" — Sircher, https://sketchfab.com/3d-models/logitech-mx-master-3s-revopoint-mini-3d-scan-9a82df69ffee4c6faa28f75e65ba192c
+#   "Pioneer DJ console" — TwoPixels Studio, https://sketchfab.com/3d-models/pioneer-dj-console-0ba527fa6b164c34aa050dcecbaa2ffb
 #   "Star Wars - Grogu" — ஜCIHIRISஜ, https://sketchfab.com/3d-models/star-wars-grogu-4a57954690eb4377b62a6290b2dee070
 import bpy, sys, os, math
 from mathutils import Vector, Matrix
@@ -126,3 +127,11 @@ elif mode == 'mouse':
     m.data.materials.clear(); m.data.materials.append(mt)
     normalize(m, 0, 0.1249)
     export([m], os.path.join(out, 'mxmaster.glb'))
+elif mode == 'dj':
+    src, out = argv[1], argv[2]
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.gltf(filepath=src)
+    meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+    d = join(meshes, 'dj_console'); normalize(d, 0, 0.795); decimate(d, 40000)
+    shrink_images()
+    export([d], os.path.join(out, 'djconsole.glb'))

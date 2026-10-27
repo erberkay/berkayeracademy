@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610271800';
+var MODEL_V = '202610271900';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -256,7 +256,7 @@ export function buildStudio(renderer, CONFIG) {
 
   // ---------- masa düzeni: Blender modeli (tools/studio3d/build_desk.py → assets/models/studio-desk.glb)
   // Baskılı yüzeyler GLB'de TEX_* / SCREEN_* adlı malzemeler; dokular burada canvas ile çizilip bağlanır.
-  obst(-1.0, 1.0, -3.2, -2.55); obst(-1.0, -0.45, -2.55, -2.3); obst(0.45, 1.0, -2.55, -2.3);
+  obst(-1.0, 1.0, -3.2, -2.55); obst(-2.6, -1.9, -2.1, -0.8); obst(-1.0, -0.45, -2.55, -2.3); obst(0.45, 1.0, -2.55, -2.3);
 
   function gtex(w, h, draw, o) { var t = ctex(w, h, draw, o); t.flipY = false; return t; }
 
@@ -459,16 +459,41 @@ export function buildStudio(renderer, CONFIG) {
     im.onload = function () { var g = pushTex.userData.g; g.drawImage(im, 39, 32, 2000, 1671.66, 0, 0, 2048, 1712); pushTex.needsUpdate = true; };
     im.src = '/assets/img/push3-device.svg';
   })();
-  // Logitech Craft tuş baskıları (saydam; tuş geometrisinin üstünde)
-  var craftTex = gtex(1024, 310, function (g, w, h) {
+  // Logitech Craft tuş baskıları: konumlar Blender'ın yazdığı assets/models/craft-legends.json'dan (saydam, arka ışıklı)
+  var craftTex = gtex(2048, 710, function (g, w, h) { g.clearRect(0, 0, w, h); });
+  fetch('/assets/models/craft-legends.json?v=' + MODEL_V).then(function (r) { return r.json(); }).then(function (keys) {
+    var g = craftTex.userData.g, w = 2048, h = 710;
     g.clearRect(0, 0, w, h);
-    var rows = [15, 14, 14, 13, 11], ch = 'QWERTYUIOPASDFGHJKLZXCVBNM1234567890';
-    rows.forEach(function (n, r) {
-      for (var i = 0; i < n; i++) {
-        var x = -0.175 + i * 0.0182, y = 0.035 - r * 0.0185;
-        label(g, ch[(r * 7 + i) % ch.length], (x + 0.165) / 0.33 * w - 6, (0.05 - y) / 0.1 * h - 6, 15, 'rgba(235,245,240,.9)');
-      }
+    keys.forEach(function (k) {
+      var t = k.t, px = t.length > 2 ? 15 : 22;
+      g.fillStyle = 'rgba(236,246,240,.95)'; g.font = '600 ' + px + 'px "Instrument Sans", sans-serif';
+      g.textBaseline = 'top'; g.textAlign = 'left';
+      var x = k.x * w - k.w * w / 2 + 10, y = k.y * h - 30;
+      if (t) g.fillText(t, x, y);
     });
+    craftTex.needsUpdate = true;
+  }).catch(function () {});
+  // Tascam DR-05X ön paneli (resmî görsel pikselleri: gövde 462..586 x 300..577) ve LCD
+  var drTex = gtex(600, 1263, function (g, w, h) {
+    var U = function (px) { return (((px - 524) / 124 * 0.061) + 0.0285) / 0.057 * w; }, V = function (py) { return (0.06 - (438.5 - py) / 277 * 0.124) / 0.12 * h; };
+    g.fillStyle = '#2b2c30'; g.fillRect(0, 0, w, h);
+    label(g, 'TASCAM', U(524), V(311), 46, '#f2f2f2');
+    label(g, 'PEAK', U(509), V(326), 16, '#c9ccd2'); label(g, 'REC', U(541), V(326), 16, '#c9ccd2');
+    g.fillStyle = '#ff4a3a'; g.fillRect(U(503), V(332), 26, 8); g.fillRect(U(535), V(332), 26, 8);
+    label(g, 'DR-05X', U(524), V(403), 34, '#f2f2f2');
+    label(g, '⏻/ HOME', U(497), V(421), 15, '#c9ccd2'); label(g, 'RECORD', U(552), V(421), 15, '#c9ccd2');
+    g.strokeStyle = '#55575d'; g.lineWidth = 3; g.beginPath(); g.arc(U(525), V(501), (U(565) - U(485)) / 2, 0, 7); g.stroke();
+    label(g, 'MENU', U(500), V(478), 13, '#c9ccd2'); label(g, 'QUICK', U(550), V(478), 13, '#c9ccd2');
+    label(g, 'PB CONT', U(500), V(526), 13, '#c9ccd2'); label(g, 'MARK', U(550), V(526), 13, '#c9ccd2');
+    label(g, 'LINEAR PCM RECORDER', U(524), V(558), 20, '#e6e7ea');
+  });
+  var drLcdTex = gtex(512, 268, function (g, w, h) {
+    g.fillStyle = '#b9d3ff'; g.fillRect(0, 0, w, h);
+    g.fillStyle = '#16233a'; g.font = '700 26px monospace'; g.textBaseline = 'top';
+    g.fillText('■ STOP   00:25:19', 16, 14);
+    for (var i = 0; i < 2; i++) { g.fillRect(16, 60 + i * 26, 300 + i * 40, 14); }
+    g.font = '600 22px monospace'; g.fillText('-48 -30 -18 -12 -6  0dB', 16, 116);
+    g.fillText('DR0000_0005.wav', 16, 160); g.fillText('WAV 16bit 44.1k', 16, 200);
   });
   var mbKeysTex = gtex(1024, 360, function (g, w, h) {
     g.fillStyle = '#0d0d0f'; g.fillRect(0, 0, w, h);
@@ -502,8 +527,8 @@ export function buildStudio(renderer, CONFIG) {
     SCREEN_laptop: { tex: miniTex, screen: 0.95 },
     TEX_drum: { tex: drumTex }, TEX_fuse: { tex: fuseTex }, TEX_fuse_rear: { tex: fuseRearTex }, TEX_td3: { tex: td3Tex },
     TEX_mf: { tex: mfTex }, TEX_push: { tex: pushTex },
-    TEX_craft: { tex: craftTex, alpha: true, emissive: 0.6 }, TEX_mbkeys: { tex: mbKeysTex, emissive: 0.4 },
-    TEX_adam: { tex: adamTex }, TEX_mat: { tex: matTex }
+    TEX_craft: { tex: craftTex, alpha: true, emissive: 0.9 }, TEX_mbkeys: { tex: mbKeysTex, emissive: 0.4 },
+    TEX_adam: { tex: adamTex }, TEX_mat: { tex: matTex }, TEX_dr: { tex: drTex }, TEX_drlcd: { tex: drLcdTex, emissive: 0.7 }
   };
   var swapped = {};
   function swapMat(m) {
@@ -552,8 +577,8 @@ export function buildStudio(renderer, CONFIG) {
       loadGlb('ps5', function (r) { r.position.set(-0.6, DY, -3.06); r.rotation.y = 0.12; }),
       loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.57); r.rotation.y = -0.25; r.rotation.x = -1.0; r.userData.sitOn = DY + 0.002; }),
       loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
-      loadGlb('mxkeys', function (r) { r.position.set(-0.1, DY, -2.615); r.userData.sitOn = DY + 0.001; r.traverse(function (o) { if (o.isMesh) [].concat(o.material).forEach(function (m) { m.roughness = 1; m.metalness = Math.min(m.metalness, 0.15); m.color.multiplyScalar(0.22); }); }); }),
-      loadGlb('mxmaster', function (r) { r.position.set(0.18, DY, -2.62); r.rotation.y = 0.15; r.userData.sitOn = DY + 0.001; }),
+      loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
+      loadGlb('mxmaster', function (r) { r.position.set(0.18, DY, -2.62); r.rotation.y = 0.15 + Math.PI; r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(0.8, DY + 0.055, -2.61); r.rotation.y = -0.15; r.rotation.x = 0.244; })
     ]);
   });
@@ -566,6 +591,7 @@ export function buildStudio(renderer, CONFIG) {
   hot('s3d_t_synth', 0.42, DY + 0.2, -2.62);
   hot('s3d_t_laptop', 0.8, DY + 0.33, -2.61);
   hot('s3d_t_rec', 0.76, DY + 0.06, -2.33);
+  hot('s3d_t_dj', -2.25, 1.08, -1.45);
   // AudioFuse yükselticisinin altındaki kırmızı ışık ve Grogu'nun yanındaki mumlar
   ledLight(-0.02, DY + 0.03, -2.92, 0.22, 1.0);
   box(0.26, 0.008, 0.008, ledMat(1.6), -0.02, DY + 0.02, -2.84, scene, false);

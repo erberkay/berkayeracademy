@@ -566,31 +566,53 @@ parts['microfreak'] = place(microfreak(), 0.42, y, -2.62, -0.22, math.radians(22
 
 # ---------------- Logitech Craft + MX Master 3 + DualSense
 def craft():
-    W, D = 0.43, 0.149
-    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
-    for v in bm.verts: v.co = Vector((v.co.x * W, v.co.y * D, (v.co.z + 0.5) * (0.032 if v.co.y > 0 else 0.016)))
-    bmesh.ops.bevel(bm, geom=bm.edges[:], offset=0.005, segments=2, affect='EDGES', clamp_overlap=True)
-    o = [obj_from_bm(bm, 'kb', M['keyDark'], 30)]
-    slope = math.atan(0.016 / D)
+    import json
+    W, Dp = 0.43, 0.149
+    p = 0.0182; cap = 0.0162
+    x0 = -W / 2 + 0.008; y0 = Dp / 2 - 0.014
+    rows = [
+        [('', 2.0, 'crown'), ('esc', 1)] + [(None, 0.25)] + [('F%d' % i, 0.95) for i in range(1, 5)] + [(None, 0.2)] + [('F%d' % i, 0.95) for i in range(5, 9)] + [(None, 0.2)] + [('F%d' % i, 0.95) for i in range(9, 13)],
+        [('`', 1)] + [(c, 1) for c in '1234567890-='] + [('\u232b', 2)],
+        [('tab', 1.5)] + [(c, 1) for c in 'QWERTYUIOP[]'] + [('\\', 1.5)],
+        [('caps', 1.75)] + [(c, 1) for c in "ASDFGHJKL;'"] + [('enter', 2.25)],
+        [('shift', 2.25)] + [(c, 1) for c in 'ZXCVBNM,./'] + [('shift', 2.75)],
+        [('ctrl', 1.25), ('start', 1.25), ('alt', 1.25), ('', 6.25), ('alt', 1.25), ('fn', 1.25), ('menu', 1.25), ('ctrl', 1.25)],
+    ]
+    vrow = [0, 1.45, 2.45, 3.45, 4.45, 5.45]
+    nav = {0: [('prt', 1), ('scr', 1), ('pause', 1)], 1: [('ins', 1), ('home', 1), ('pgup', 1)], 2: [('del', 1), ('end', 1), ('pgdn', 1)],
+           4: [(None, 1), ('\u2191', 1), (None, 1)], 5: [('\u2190', 1), ('\u2193', 1), ('\u2192', 1)]}
+    num = {1: [('num', 1), ('/', 1), ('*', 1), ('-', 1)], 2: [('7', 1), ('8', 1), ('9', 1), ('+', 1, 'tall')], 3: [('4', 1), ('5', 1), ('6', 1)],
+           4: [('1', 1), ('2', 1), ('3', 1), ('enter', 1, 'tall')], 5: [('0', 2), ('.', 1)]}
     keys = []
-    rows = [(15, 0.0), (14, 0.0), (14, 0.0), (13, 0.0), (11, 0.0)]
-    kw = 0.0175
-    for r, (n, off) in enumerate(rows):
-        for i in range(n):
-            w = kw * (1.6 if (r == 4 and i == 5) else 1.0)
-            keys.append(rbox(kw - 0.003, kw - 0.003, 0.004, 0.0015, M['keyBlack'], -0.175 + i * 0.0182, 0.035 - r * 0.0185, 0.0))
-    for r in range(5):
-        for c in range(4):
-            if r == 0 and c == 3: continue
-            keys.append(rbox(kw - 0.003, kw - 0.003, 0.004, 0.0015, M['keyBlack'], 0.125 + c * 0.0182, 0.035 - r * 0.0185, 0.0))
-    for c in range(3): keys.append(rbox(kw - 0.003, kw - 0.003, 0.004, 0.0015, M['keyBlack'], 0.1 - 0.0182 + c * 0.0182 - 0.0, -0.039, 0.0))
-    keys.append(plane(0.33, 0.1, TEX('TEX_craft', 0x000000, 0.6), 0.0, -0.0, 0.0042))
-    kj = join(keys, 'kb_keys')
-    kj.rotation_euler = (slope, 0, 0); kj.location = (-0.012, -0.012, 0.024)
-    o.append(kj)
-    o.append(cyl(0.02, 0.012, mat('crown', 0x26272b, 0.35, 0.6), -0.185, 0.05, 0.024, segs=32, bevel=0.002))
-    return join(o, 'craft')
-# Klavye → hazır model: assets/models/mxkeys.glb
+    def put(row, u0, items):
+        u = u0
+        for it in items:
+            lab, w = it[0], it[1]; tag = it[2] if len(it) > 2 else ''
+            if tag == 'crown':
+                keys.append(('#crown', x0 + (u + w / 2) * p, y0 - 0.5 * p, 0, 0))
+            elif lab is not None:
+                h = 2 if tag == 'tall' else 1
+                keys.append((lab, x0 + (u + w / 2) * p, y0 - (vrow[row] + h / 2) * p, w * p - (p - cap), h * p - (p - cap)))
+            u += w
+    for r, items in enumerate(rows): put(r, 0, items)
+    for r, items in nav.items(): put(r, 15.4, items)
+    for r, items in num.items(): put(r, 18.8, items)
+    base = mat('craft_base', 0x1a1a1d, 0.5, 0.3)
+    keycap = mat('craft_key', 0x202024, 0.6, 0.05)
+    o = [rbox(W, Dp, 0.012, 0.006, base, 0, 0, 0)]
+    for lab, cx, cy, w, h in keys:
+        if lab == '#crown':
+            o.append(cyl(0.017, 0.012, mat('craft_crown', 0x2c2d31, 0.3, 0.75), cx, cy, 0.012, segs=48, bevel=0.0015))
+            o.append(cyl(0.0125, 0.0125, M['knobBlack'], cx, cy, 0.012, segs=40))
+            continue
+        o.append(rbox(w, h, 0.0055, 0.0022, keycap, cx, cy, 0.012))
+    o.append(plane(W, Dp, TEX('TEX_craft', 0x000000, 0.6), 0, 0, 0.0177))
+    leg = [{'t': k[0], 'x': round((k[1] + W / 2) / W, 5), 'y': round((Dp / 2 - k[2]) / Dp, 5), 'w': round(k[3] / W, 5)} for k in keys if k[0] != '#crown']
+    with open(os.path.join(os.path.dirname(OUT), 'craft-legends.json'), 'w') as f: json.dump(leg, f, ensure_ascii=False)
+    ob = join(o, 'craft')
+    ob.rotation_euler = (math.radians(3), 0, 0)
+    return ob
+parts['craft'] = place(craft(), -0.08, DY + 0.002, -2.62)  # Logitech Craft (kullanıcının klavyesi)
 
 def mx_master():
     o = [sphere(0.05, mat('mx', 0x2c2d31, 0.5, 0.1), 0, 0, 0.0, sx=0.85, sy=1.26, sz=0.5)]
@@ -630,13 +652,32 @@ y = alu_stand('stand_mb', 0.8, -2.61, -0.15, 0.32, 0.28, math.radians(14))
 
 # ---------------- Tascam DR-05X (61x141x26), masada yatık
 def dr05x():
-    o = [rbox(0.061, 0.141, 0.026, 0.006, mat('dr_body', 0x1c1c1e, 0.55, 0.2))]
-    o.append(rbox(0.034, 0.03, 0.0008, 0, mat('dr_lcd', 0x0a120c, 0.2, 0, emit=0x6cff9a, es=0.25), 0, 0.01, 0.026))
-    for i in range(3): o.append(cyl(0.004, 0.003, M['btnGray'], -0.012 + i * 0.012, -0.03, 0.026, segs=12))
-    for s in (-1, 1):
-        m = cyl(0.009, 0.022, M['knobSilver'], s * 0.012, 0.07, 0.013, segs=18, axis='Y')
-        m.rotation_euler = (0, 0, s * 0.5)
-        o.append(m)
+    W, L, T = 0.061, 0.124, 0.026
+    X = lambda px: (px - 524) / 124 * W
+    Y = lambda py: (438.5 - py) / 277 * L
+    body = mat('dr_body', 0x2b2c30, 0.5, 0.35)
+    o = [rbox(W, L, T, 0.009, body, 0, 0, 0)]
+    o.append(plane(W - 0.004, L - 0.004, TEX('TEX_dr', 0x2b2c30, 0.5), 0, 0, T + 0.0003))
+    o.append(rbox(X(576) - X(472), (Y(342) - Y(398)), 0.0012, 0.002, mat('dr_lcdframe', 0x0b0b0d, 0.3, 0.2), X(524), Y(370), T))
+    o.append(plane(X(572) - X(476), Y(346) - Y(394), TEX('TEX_drlcd', 0x9fc3ff, 0.3), X(524), Y(370), T + 0.0013))
+    o.append(cyl(0.0042, 0.003, M['knobBlack'], X(497), Y(438), T, segs=24, bevel=0.0008))
+    o.append(cyl(0.0042, 0.003, M['knobBlack'], X(552), Y(438), T, segs=24, bevel=0.0008))
+    o.append(cyl(0.0022, 0.0035, mat('dr_rec', 0xe0302a, 0.4, 0, emit=0xe0302a, es=0.3), X(552), Y(438), T, segs=18))
+    cx, cy = X(525), Y(501)
+    o.append(cyl(0.0165, 0.0015, mat('dr_ring', 0x3a3b40, 0.45, 0.4), cx, cy, T, segs=40))
+    for dx, dy in ((0, 1), (0, -1), (-1, 0), (1, 0)):
+        o.append(cyl(0.0042, 0.003, M['knobBlack'], cx + dx * 0.0095, cy + dy * 0.0095, T, segs=20, bevel=0.0008))
+    o.append(cyl(0.005, 0.0035, M['knobBlack'], cx, cy, T, segs=24, bevel=0.001))
+    for s_ in (-1, 1):
+        g = []
+        g.append(cyl(0.0082, 0.02, mat('dr_mesh', 0x9ea2a8, 0.55, 0.85), 0, 0, 0, segs=24))
+        g.append(cyl(0.0086, 0.0025, mat('dr_redring', 0xc0282a, 0.4, 0.2), 0, 0, 0.004, segs=24))
+        g.append(cyl(0.0084, 0.003, M['knobBlack'], 0, 0, 0.0, segs=24))
+        capo = join(g, 'mic')
+        capo.rotation_euler = (math.radians(-90), 0, s_ * math.radians(-45))
+        capo.location = (s_ * 0.016, L / 2 + 0.002, T * 0.55)
+        o.append(capo)
+    o.append(rbox(0.036, 0.012, 0.01, 0.003, M['knobBlack'], 0, L / 2 + 0.004, T * 0.55 - 0.005))
     return join(o, 'dr05x')
 parts['dr05x'] = place(dr05x(), 0.76, DY, -2.33, 1.5)
 
@@ -686,6 +727,20 @@ cbl = []
 for i, (x0, dx, m) in enumerate(((-0.075, -0.12, M['cable']), (-0.037, -0.05, M['cable']), (0.0, 0.04, M['cableRed']), (0.038, 0.1, M['cable']))):
     cbl.append(cable('cab%d' % i, [(x0 - 0.02, RB + 0.03, -2.98), (x0 - 0.02 + dx * 0.2, RB - 0.02, -2.8), (x0 + dx * 0.6, DY + 0.006, -2.74), (x0 + dx, DY + 0.004, -2.66), (x0 + dx * 1.3, DY + 0.004, -2.6)], m))
 parts['cables'] = join(cbl, 'cables')
+
+# ---------------- DJ köşesi: sol duvarın önünde siyah DJ masası (90 cm), ön kenarda LED; konsol sayfada yüklenir (djconsole.glb)
+def dj_table():
+    o = []
+    top = mat('dj_top', 0x101012, 0.4, 0.2)
+    leg = mat('dj_leg', 0x1a1a1d, 0.4, 0.7)
+    o.append(rbox(0.65, 1.25, 0.03, 0.006, top, 0, 0, 0.87))
+    for sx in (-0.29, 0.29):
+        for sy in (-0.57, 0.57): o.append(rbox(0.04, 0.04, 0.87, 0.004, leg, sx, sy, 0))
+    o.append(rbox(0.04, 1.1, 0.04, 0.004, leg, -0.29, 0, 0.3))
+    o.append(rbox(0.6, 0.02, 0.18, 0.004, top, 0, -0.6, 0.66))
+    o.append(rbox(0.004, 1.2, 0.008, 0, mat('RGB_strip', 0xff2418, 0.4, 0.0, emit=0xff2418, es=1.0), 0.327, 0, 0.875))
+    parts['dj_table'] = place(join(o, 'dj_table'), -2.25, 0.0, -1.45, math.pi / 2)
+dj_table()
 
 # ---------------- dışa aktar
 for o in bpy.context.scene.objects:

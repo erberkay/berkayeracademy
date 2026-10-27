@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610271800';
+import { buildStudio, LED } from './studio-scene.js?v=202610271900';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [] };
@@ -16,6 +16,7 @@ var WPS = [
   { k: 's3d_wp_desk', p: [0.0, 1.28, -1.6], l: [0.0, 0.95, -2.95] },
   { k: 's3d_wp_screen', p: [-0.05, 1.2, -2.2], l: [-0.05, 1.13, -3.08] },
   { k: 's3d_wp_gear', p: [0.0, 1.5, -1.9], l: [0.0, 0.85, -2.78] },
+  { k: 's3d_wp_dj', p: [-1.25, 1.62, -1.45], l: [-2.3, 0.92, -1.45] },
   { k: 's3d_wp_lounge', p: [-0.1, 1.55, -0.2], l: [2.6, 0.7, 0.9] },
   { k: 's3d_wp_shelf', p: [0.3, 1.6, 1.0], l: [-3, 1.2, 1.6] }
 ];
