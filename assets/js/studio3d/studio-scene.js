@@ -942,7 +942,8 @@ export function buildStudio(renderer, CONFIG, OPT) {
 
     // 4. kat: açıklığı dolduran geniş ekran (1.88 x 0.3525 m = yan yana üç 16:9). Sitenin ana sayfası üç sütunda yavaşça kayar
     // (assets/img/studio/tv: canlı sayfanın ardışık ekranları); tıklayınca ana sayfa açılır.
-    var tv = new THREE.Group(); tv.position.set(0, 1.715, 0.08); g.add(tv);
+    // raf derinliği 0.4 (ön yüz z=+0.2): ekran ön kenarla aynı hizada, içeri gömük durmasın
+    var tv = new THREE.Group(); tv.position.set(0, 1.715, 0.19); g.add(tv);
     var tvBlack = std(0x0b0b0c, 0.35, 0.2);
     rbox(1.92, 0.366, 0.03, 0.006, tvBlack, 0, 0.184, 0, tv);
     var TW = LITE ? 1024 : 2048, TH = LITE ? 192 : 384, CW = TW / 3;

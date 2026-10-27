@@ -51,7 +51,23 @@ body.s3d-page { display: flex; flex-direction: column; min-height: 0; overflow: 
 .s3d-tag--track .s3d-tag-dot { border-color: #1db954; }
 .s3d-player { position: absolute; right: var(--page-x); bottom: calc(var(--s4) + 96px); width: min(380px, calc(100% - 2 * var(--page-x))); z-index: 4; background: var(--bg-ink); border: 1px solid var(--line); padding: var(--s2); }
 .s3d-player iframe { display: block; border: 0; width: 100%; }
-.s3d-player-close { margin-bottom: var(--s2); }
+.s3d-player-close { margin: 0; }
+/* küçük oynatıcı: müzik çalarken yalnız başlık + Durdur/Büyüt; gömülü oynatıcı görünmez ama çalışır */
+.s3d-mini { display: none; align-items: center; gap: var(--s2); }
+.s3d-player.is-mini { width: auto; max-width: calc(100% - 2 * var(--page-x)); padding: var(--s1) var(--s1) var(--s1) var(--s3); }
+.s3d-player.is-mini .s3d-mini { display: flex; }
+.s3d-player.is-mini .s3d-player-close, .s3d-player.is-mini .s3d-player-hint { display: none; }
+.s3d-player.is-mini .s3d-player-body, .s3d-player.is-mini .s3d-apple { position: absolute; left: 0; top: 0; width: 300px; height: 80px; opacity: 0; clip-path: inset(50%); pointer-events: none; }
+.s3d-player:not(.is-mini) .s3d-mini-full { display: flex; justify-content: flex-end; gap: var(--s2); margin-bottom: var(--s2); }
+.s3d-player.is-mini .s3d-mini-full { display: none; }
+.s3d-mini-t { font-size: var(--fs-small); color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16ch; }
+.s3d-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+.s3d-eq i { width: 3px; height: 4px; background: var(--accent); }
+.s3d-player.is-playing .s3d-eq i { animation: s3dEq .9s ease-in-out infinite; }
+.s3d-player.is-playing .s3d-eq i:nth-child(2) { animation-delay: -.3s; }
+.s3d-player.is-playing .s3d-eq i:nth-child(3) { animation-delay: -.6s; }
+@keyframes s3dEq { 0%, 100% { height: 4px; } 50% { height: 14px; } }
+@media (prefers-reduced-motion: reduce) { .s3d-player.is-playing .s3d-eq i { animation: none; height: 10px; } }
 .s3d-player-hint { margin: 0 0 var(--s2); font-size: var(--fs-micro); color: var(--fg-2); }
 /* dokunmatik yürüme kolu: başparmakla sürükle, kol yönünde yürür */
 .s3d-joy { position: absolute; left: var(--page-x); bottom: calc(var(--s4) + 104px); z-index: 3; width: 120px; height: 120px; border-radius: 50%; border: 2px solid var(--accent); background: var(--bg-ink); opacity: .9; touch-action: none; }
@@ -123,10 +139,19 @@ body.s3d-page { display: flex; flex-direction: column; min-height: 0; overflow: 
 
   <div class="s3d-joy" id="s3dJoy" hidden aria-hidden="true"><span data-i18n="s3d_walk">YÜRÜ</span><b>▲</b><b>▼</b><b>◀</b><b>▶</b><i></i></div>
 
-  <div class="s3d-player" id="s3dPlayer" hidden>
-    <button type="button" class="btn btn-sm btn-ghost s3d-player-close" id="s3dPlayerClose" data-i18n="s3d_close">Kapat</button>
+  <div class="s3d-player is-mini" id="s3dPlayer" hidden>
+    <div class="s3d-mini">
+      <span class="s3d-eq" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="s3d-mini-t" id="s3dMiniTitle">Golden Sound</span>
+      <button type="button" class="btn btn-sm btn-ghost" id="s3dMiniToggle" data-i18n="s3d_pause">Durdur</button>
+      <button type="button" class="btn btn-sm btn-ghost" id="s3dMiniSize" data-i18n="s3d_expand">Büyüt</button>
+    </div>
+    <div class="s3d-mini-full">
+      <button type="button" class="btn btn-sm btn-ghost" id="s3dMiniShrink" data-i18n="s3d_shrink">Küçült</button>
+      <button type="button" class="btn btn-sm btn-ghost s3d-player-close" id="s3dPlayerClose" data-i18n="s3d_close">Kapat</button>
+    </div>
     <p class="s3d-player-hint" id="s3dPlayerHint" data-i18n="s3d_tap_play" hidden>Çalmak için oynatıcıdaki ▶ düğmesine dokun</p>
-    <div id="s3dPlayerEmbed"></div>
+    <div class="s3d-player-body"><div id="s3dPlayerEmbed"></div></div>
   </div>
 
   <div class="s3d-load" id="s3dLoad" role="status">
@@ -138,6 +163,6 @@ body.s3d-page { display: flex; flex-direction: column; min-height: 0; overflow: 
   </div>
 </main>
 
-<script type="module" src="/assets/js/studio3d/studio-3d.js?v=202610281100"></script>
+<script type="module" src="/assets/js/studio3d/studio-3d.js?v=202610281300"></script>
 </body>
 </html>

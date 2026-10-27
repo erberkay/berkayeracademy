@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610281100';
+import { buildStudio, LED } from './studio-scene.js?v=202610281300';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
@@ -296,6 +296,7 @@ function spLoad() {
     spApi.createController(playerEl, { uri: uri, width: '100%', height: coarse ? 80 : 152 }, function (ctl) {
       spCtl = ctl; spUri = uri;
       ctl.addListener('ready', function () { if (spPlay) ctl.play(); });
+      ctl.addListener('playback_update', function (e) { setPlaying(!(e && e.data && e.data.isPaused)); });
     });
   };
   var sc = document.createElement('script'); sc.src = 'https://open.spotify.com/embed/iframe-api/v1'; sc.async = true; document.body.appendChild(sc);
@@ -303,8 +304,29 @@ function spLoad() {
 // Apple Music: aynı panelde Spotify'ın yerine gömülü oynatıcı (çalmak için oynatıcıdaki düğmeye basılır)
 function appleFrame() { return player.querySelector('.s3d-apple'); }
 function spotifyFrame() { return player.querySelector('iframe:not(.s3d-apple)'); }
+// küçük oynatıcı: varsayılan küçük; başlık, Durdur/Çal ve Büyüt/Küçült
+var miniTitle = $('s3dMiniTitle'), miniToggle = $('s3dMiniToggle'), playing = false;
+function setLabel(btn, key) { btn.setAttribute('data-i18n', key); btn.textContent = T(key); }
+function setMini(on) { player.classList.toggle('is-mini', on); }
+function setPlaying(on) {
+  playing = on; player.classList.toggle('is-playing', on);
+  setLabel(miniToggle, on ? 's3d_pause' : 's3d_play');
+}
+function titleFor(uri) {
+  var all = (CONFIG.photos || []).concat(CONFIG.records || []);
+  for (var i = 0; i < all.length; i++) if (all[i] && (all[i].uri === uri || all[i].apple === uri) && all[i].title) return all[i].title;
+  return 'Golden Sound';
+}
+$('s3dMiniSize').addEventListener('click', function () { setMini(false); });
+$('s3dMiniShrink').addEventListener('click', function () { setMini(true); });
+miniToggle.addEventListener('click', function () {
+  // telefonda gömülü oynatıcı koddan başlatılamaz: çalmak için büyütüp ▶ gösterilir
+  if (!playing && (coarse || appleFrame())) { setMini(false); return; }
+  if (spCtl) spCtl.togglePlay();
+});
 function openApple(url) {
-  player.hidden = false; spPlay = false;
+  player.hidden = false; spPlay = false; setPlaying(false);
+  miniTitle.textContent = titleFor(url); setMini(false);
   if (spCtl) spCtl.pause();
   var sf = spotifyFrame(); if (sf) sf.style.display = 'none';
   var f = appleFrame();
@@ -320,6 +342,8 @@ function closeApple() { var f = appleFrame(); if (f) f.remove(); var sf = spotif
 function openPlayer(uri) {
   closeApple();
   player.hidden = false; spPlay = true;
+  miniTitle.textContent = titleFor(uri);
+  if (coarse) setMini(false);
   if (!spCtl) { spWant = uri; spLoad(); return; }
   if (uri !== spUri) { spCtl.loadUri(uri); spUri = uri; }
   spCtl.play();
@@ -339,7 +363,7 @@ if (PLAYLIST) {
     window.addEventListener('keydown', autoPlay, true);
   }
 }
-$('s3dPlayerClose').addEventListener('click', function () { spClosed = true; player.hidden = true; closeApple(); if (spCtl) spCtl.pause(); });
+$('s3dPlayerClose').addEventListener('click', function () { spClosed = true; player.hidden = true; closeApple(); if (spCtl) spCtl.pause(); setPlaying(false); setMini(true); });
 // çerçeveye tıklama (sürüklemeden): ışın ile hangi çerçeve
 var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), downAt = null;
 canvas.addEventListener('pointerdown', function (e) { downAt = { x: e.clientX, y: e.clientY }; });
