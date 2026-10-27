@@ -137,7 +137,7 @@ M = dict(
     lego=mat('lego_yellow', 0xf2c230, 0.4, 0.0),
     legoBrown=mat('lego_brown', 0x6b4a2a, 0.6, 0.0),
     legoOrange=mat('lego_orange', 0xe0861e, 0.5, 0.0),
-    grogSkin=mat('grogu_skin', 0x9fb27a, 0.75, 0.0),
+    grogSkin=mat('grogu_skin', 0x8aa862, 0.75, 0.0),
     grogRobe=mat('grogu_robe', 0xb39a78, 0.95, 0.0),
     eye=mat('eye', 0x0a0806, 0.15, 0.0),
     flame=mat('candle_flame', 0xffb050, 0.5, 0.0, emit=0xffa040, es=2.5),
@@ -407,12 +407,11 @@ def audiofuse():
     W, D, H = 0.265, 0.16, 0.072
     o = [rbox(W, D, H, 0.008, mat('fuse_body', 0x141416, 0.4, 0.7))]
     o.append(plane(W - 0.01, D - 0.01, TEX('TEX_fuse', 0x1b1b1f, 0.45), 0, 0, H + 0.0003))
-    for i in range(4):
-        x = -0.1 + i * 0.03
-        o.append(rbox(0.005, 0.07, 0.0012, 0, M['meter'], x + 0.009, 0.02, H))
-        o += knob(0.0085, 0.01, x, -0.045, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
-    o += knob(0.024, 0.016, 0.08, 0.02, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
-    for x in (0.06, 0.1): o += knob(0.008, 0.01, x, -0.05, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
+    for x in (-0.093, -0.057, -0.022, 0.014):
+        o += knob(0.0105, 0.013, x, -0.037, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
+    for x in (0.051, 0.088):
+        o += knob(0.0105, 0.013, x, -0.036, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
+    o += knob(0.019, 0.016, 0.066, 0.026, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
     # ön panel: 4 kombo giriş + kulaklık çıkışları
     fy = -D / 2 - 0.001
     for i in range(4):
@@ -450,14 +449,22 @@ def microfreak():
     kd = 0.088
     o.append(plane(W - 0.01, D - kd - 0.012, TEX('TEX_mf', 0x1c1d21, 0.5), 0, kd / 2, H + 0.0003))
     o.append(plane(W - 0.012, kd, TEX('TEX_mfkeys', 0xdedede, 0.55), 0, -D / 2 + kd / 2 + 0.004, H + 0.0004))
-    o.append(rbox(0.05, 0.022, 0.0012, 0, mat('mf_oled', 0x020203, 0.2, 0.0, emit=0x9fd8ff, es=0.4), 0.105, 0.075, H))
-    orange = {(0, 1), (0, 2), (0, 3), (0, 4)}
-    for r in range(3):
-        for c in range(7):
-            x = -0.13 + c * 0.03; yy = 0.085 - r * 0.03
-            if c == 6 and r == 0: continue
-            cap = M['knobOrange'] if (r, c) in orange else (M['knobWhite'] if (r + c) % 5 == 0 else M['knobBlack'])
-            o += knob(0.0072, 0.011, x, yy, H, M['knobBlack'], cap, M['line'])
+    o.append(rbox(0.024, 0.014, 0.0012, 0, mat('mf_oled', 0x020203, 0.2, 0.0, emit=0x9fd8ff, es=0.4), -0.1505 + 0.605 * 0.301, 0.1105 - 0.2 * 0.133, H))
+    # panel bölgesi y: -0.0225..0.1105 (arka); x: -0.1505..0.1505
+    X = lambda f: -0.1505 + f * 0.301
+    Y = lambda f: 0.1105 - f * 0.133
+    K = [  # (x oranı, y oranı, yarıçap, kapak)
+        (0.34, 0.2, 0.0075, 'w'), (0.69, 0.2, 0.0075, 'b'), (0.75, 0.2, 0.0065, 'b'), (0.81, 0.2, 0.0065, 'b'), (0.9, 0.2, 0.0075, 'b'),
+        (0.05, 0.47, 0.0065, 'b'), (0.16, 0.47, 0.0075, 'o'), (0.23, 0.47, 0.0075, 'o'), (0.3, 0.47, 0.0075, 'o'), (0.37, 0.47, 0.0075, 'o'),
+        (0.46, 0.47, 0.0065, 'b'), (0.53, 0.47, 0.0085, 'b'), (0.6, 0.47, 0.0075, 'b'), (0.72, 0.47, 0.0065, 'b'),
+        (0.79, 0.47, 0.0075, 'b'), (0.86, 0.47, 0.0075, 'b'), (0.93, 0.47, 0.0075, 'b'),
+        (0.04, 0.73, 0.0065, 'b'), (0.1, 0.73, 0.0065, 'b'), (0.18, 0.73, 0.006, 'b'), (0.25, 0.73, 0.006, 'b'),
+        (0.33, 0.73, 0.0075, 'w'), (0.45, 0.73, 0.0065, 'b'), (0.56, 0.73, 0.0075, 'b'), (0.63, 0.73, 0.0075, 'w'),
+        (0.72, 0.73, 0.0065, 'b'), (0.79, 0.73, 0.0065, 'b'), (0.86, 0.73, 0.0065, 'b'), (0.93, 0.73, 0.0065, 'b'),
+    ]
+    caps = {'o': M['knobOrange'], 'w': M['knobWhite'], 'b': M['knobBlack']}
+    for fx, fy, r, c in K:
+        o += knob(r, 0.012, X(fx), Y(fy), H, M['knobBlack'], caps[c], M['line'])
     return join(o, 'microfreak')
 y = alu_stand('stand_mf', 0.6, -2.62, -0.22, 0.32, 0.23, math.radians(22))
 parts['microfreak'] = place(microfreak(), 0.6, y, -2.62, -0.22, math.radians(22))
@@ -477,9 +484,14 @@ def craft():
         for i in range(n):
             w = kw * (1.6 if (r == 4 and i == 5) else 1.0)
             keys.append(rbox(kw - 0.003, kw - 0.003, 0.004, 0.0015, M['keyBlack'], -0.175 + i * 0.0182, 0.035 - r * 0.0185, 0.0))
+    for r in range(5):
+        for c in range(4):
+            if r == 0 and c == 3: continue
+            keys.append(rbox(kw - 0.003, kw - 0.003, 0.004, 0.0015, M['keyBlack'], 0.125 + c * 0.0182, 0.035 - r * 0.0185, 0.0))
+    for c in range(3): keys.append(rbox(kw - 0.003, kw - 0.003, 0.004, 0.0015, M['keyBlack'], 0.1 - 0.0182 + c * 0.0182 - 0.0, -0.039, 0.0))
     keys.append(plane(0.33, 0.1, TEX('TEX_craft', 0x000000, 0.6), 0.0, -0.0, 0.0042))
     kj = join(keys, 'kb_keys')
-    kj.rotation_euler = (slope, 0, 0); kj.location = (0.02, -0.012, 0.024)
+    kj.rotation_euler = (slope, 0, 0); kj.location = (-0.012, -0.012, 0.024)
     o.append(kj)
     o.append(cyl(0.02, 0.012, mat('crown', 0x26272b, 0.35, 0.6), -0.185, 0.05, 0.024, segs=32, bevel=0.002))
     return join(o, 'craft')
@@ -505,21 +517,21 @@ parts['dualsense'] = place(dualsense(), -0.38, DY + 0.006, -2.64, -0.25)
 
 # ---------------- MacBook Pro 14 (standda)
 def macbook():
-    o = [rbox(0.312, 0.221, 0.0155, 0.005, M['mbGray'])]
-    o.append(plane(0.27, 0.095, TEX('TEX_mbkeys', 0x0d0d0f, 0.5), 0, 0.035, 0.0158))
-    o.append(rbox(0.12, 0.075, 0.0003, 0, mat('trackpad', 0x26272a, 0.4, 0.7), 0, -0.065, 0.0155))
+    o = [rbox(0.3557, 0.2481, 0.0168, 0.005, M['mbGray'])]
+    o.append(plane(0.3, 0.105, TEX('TEX_mbkeys', 0x0d0d0f, 0.5), 0, 0.04, 0.0171))
+    o.append(rbox(0.16, 0.09, 0.0003, 0, mat('trackpad', 0x26272a, 0.4, 0.7), 0, -0.07, 0.0168))
     # kapak kapalıyken hem menteşeden öne (-Y) uzanır; ekran alt yüzde (-Z)
-    lid = [rbox(0.312, 0.215, 0.007, 0.004, M['mbGray'], 0, -0.1075, 0)]
-    scr = plane(0.296, 0.19, TEX('SCREEN_laptop', 0x111111, 0.3), 0, -0.1075, -0.0004)
+    lid = [rbox(0.3557, 0.24, 0.007, 0.004, M['mbGray'], 0, -0.12, 0)]
+    scr = plane(0.343, 0.222, TEX('SCREEN_laptop', 0x111111, 0.3), 0, -0.121, -0.0004)
     scr.data.flip_normals()
     lid.append(scr)
     lj = join(lid, 'mb_lid')
     lj.rotation_euler = (math.radians(-110), 0, 0)
-    lj.location = (0, 0.105, 0.0155)
+    lj.location = (0, 0.118, 0.0168)
     o.append(lj)
     return join(o, 'macbook')
-y = alu_stand('stand_mb', 0.84, -2.48, -0.6, 0.3, 0.26, math.radians(14))
-parts['macbook'] = place(macbook(), 0.84, y, -2.48, -0.6, math.radians(14))
+y = alu_stand('stand_mb', 0.82, -2.47, -0.6, 0.32, 0.28, math.radians(14))
+parts['macbook'] = place(macbook(), 0.82, y, -2.47, -0.6, math.radians(14))
 
 # ---------------- Tascam DR-05X (61x141x26), masada yatık
 def dr05x():
