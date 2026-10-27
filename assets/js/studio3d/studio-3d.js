@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610272800';
+import { buildStudio, LED } from './studio-scene.js?v=202610272900';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
@@ -269,7 +269,10 @@ canvas.addEventListener('pointerup', function (e) {
   ray.setFromCamera(ndc, cam);
   var list = studio.clickables || [], hit = ray.intersectObjects(list.map(function (c) { return c.mesh; }), false)[0];
   if (!hit || hit.distance > 6) return;
-  for (var i = 0; i < list.length; i++) if (list[i].mesh === hit.object) { openPlayer(list[i].uri, list[i].title); break; }
+  for (var i = 0; i < list.length; i++) if (list[i].mesh === hit.object) {
+    if (list[i].href) window.open(list[i].href, '_blank', 'noopener'); else openPlayer(list[i].uri);
+    break;
+  }
 });
 var tagsOn = true;
 var tagBtn = $('s3dTagBtn');

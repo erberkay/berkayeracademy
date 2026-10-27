@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610272800';
+var MODEL_V = '202610272900';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -557,7 +557,7 @@ export function buildStudio(renderer, CONFIG) {
   }
   // kedi (oturur pozda): kamera bakmıyorken odanın başka bir köşesine geçer
   var CAT_SPOTS = [[1.0, 0.004, 1.8], [2.45, 0.48, 0.25], [-1.75, 0, -0.6], [0.95, 0, -1.95], [-0.2, 0, 2.45], [-2.2, 0, 0.9]];
-  var cat = null, catAt = 0, catNext = 25;
+  var cat = null, catAt = 0, catNext = 25, tvDraw = null, tvLast = -1;
   function catMove(i) {
     catAt = i; var p = CAT_SPOTS[i];
     cat.position.set(p[0], p[1], p[2]);
@@ -582,15 +582,15 @@ export function buildStudio(renderer, CONFIG) {
   ready.then(function () {
     return Promise.all([
       loadGlb('ps5', function (r) { r.position.set(-0.6, DY, -3.06); r.rotation.y = 0.12; }),
-      loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.59); r.rotation.order = 'YZX'; r.rotation.set(-0.9, -0.25, -0.25); r.userData.sitOn = DY + 0.002; }),
+      loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.59); r.rotation.y = -0.25; r.userData.sitOn = DY; }),
       loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
       // koleksiyon rafı (ön duvar; raf yüzü -z), plak masası (sol duvar), duvar tabloları
       loadGlb('db01', function (r) { r.position.set(-0.05, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
       loadGlb('batman', function (r) { r.position.set(0.45, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
       loadGlb('avata', function (r) { r.position.set(1.05, 1.316, 2.96); r.userData.sitOn = 1.316; }),
-      loadGlb('mando', function (r) { r.position.set(0.2, 1.716, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.716; }),
+      loadGlb('mando', function (r) { r.position.set(0.55, 1.716, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.716; }),
       loadGlb('avatadrone', function (r) { r.position.set(0.95, 1.716, 2.96); r.rotation.y = 0.26; r.userData.sitOn = 1.716; }),
-      loadGlb('om5', function (r) { r.position.set(1.15, 2.116, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 2.116; }),
+      loadGlb('om5', function (r) { r.position.set(1.35, 1.716, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.716; }),
       loadGlb('recordrack', function (r) { r.position.set(-2.77, 0, 1.6); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0; }),
       loadGlb('art', function (r) {
         // seçilen tablolar (tools/studio3d/tablolar.png numaraları): [x, y, z, ry]; düğüm orijini arka yüzün ortası
@@ -906,19 +906,44 @@ export function buildStudio(renderer, CONFIG) {
     var disc = new THREE.Mesh(new THREE.CylinderGeometry(0.1505, 0.1505, 0.0016, 96), [std(0x050506, 0.4), vinylFace, vinylFace]);
     disc.rotation.x = Math.PI / 2; disc.castShadow = true;
 
-    // rafın üstü: duvara yaslı Can't Sleep kapağı, plak kılıftan yarı çıkmış
-    var top = 2.115, tilt = -0.27;
-    var lean = new THREE.Group(); lean.position.set(0.35, top, -0.1); lean.rotation.x = tilt; g.add(lean);
+    // 4. kat: duvara yaslı Can't Sleep kapağı, plak kılıftan yana doğru yarı çıkmış
+    var tilt = -0.27;
+    var lean = new THREE.Group(); lean.position.set(0.55, 1.715, -0.1); lean.rotation.x = tilt; g.add(lean);
     var sl = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.315, 0.004), coverMat(pick(function (p) { return p.src && /cant-sleep/.test(p.src); })));
     sl.position.set(0, 0.1575, 0); sl.castShadow = true; lean.add(sl);
-    disc.position.set(0.05, 0.1575 + 0.19, -0.004); lean.add(disc);
-    // üstte küçük yatay yığın
-    var stackY = top;
+    disc.position.set(0.17, 0.1575, -0.004); lean.add(disc);
+    // 3. kat: küçük yatay yığın
+    var stackY = 1.315;
     for (var si = 0; si < 4; si++) {
       var st2 = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.004, 0.315), std(new THREE.Color(COLS[Math.floor(R() * COLS.length)]), 0.7));
-      st2.position.set(0.78 + (R() - 0.5) * 0.015, stackY + 0.002, 0.0 + (R() - 0.5) * 0.015); st2.rotation.y = (R() - 0.5) * 0.1;
+      st2.position.set(-0.8 + (R() - 0.5) * 0.012, stackY + 0.002, 0.0 + (R() - 0.5) * 0.012); st2.rotation.y = (R() - 0.5) * 0.08;
       st2.castShadow = true; g.add(st2); stackY += 0.0044;
     }
+
+    // rafın üstü: 42" TV, ekranda sitenin ana sayfası yavaşça kayar (assets/img/studio/tv: canlı sayfanın ardışık ekranları)
+    var tv = new THREE.Group(); tv.position.set(0, 2.115, -0.02); g.add(tv);
+    var tvBlack = std(0x0b0b0c, 0.35, 0.2);
+    rbox(0.96, 0.55, 0.03, 0.006, tvBlack, 0, 0.06 + 0.275, 0, tv);
+    rbox(0.3, 0.012, 0.16, 0.004, tvBlack, 0, 0.006, 0.0, tv);
+    box(0.05, 0.06, 0.02, tvBlack, 0, 0.04, -0.005, tv);
+    var tvC = document.createElement('canvas'); tvC.width = 1024; tvC.height = 576;
+    var tvX = tvC.getContext('2d'); tvX.fillStyle = '#0b0b0e'; tvX.fillRect(0, 0, 1024, 576);
+    var tvTex = new THREE.CanvasTexture(tvC); tvTex.colorSpace = THREE.SRGBColorSpace; tvTex.anisotropy = 8;
+    var tvScreen = plane(0.94, 0.53, new THREE.MeshBasicMaterial({ map: tvTex, color: 0xcfcfcf }), 0, 0.06 + 0.275, 0.0155, tv);
+    var tvImgs = [], TV_N = 7;
+    for (var ti = 0; ti < TV_N; ti++) { var im = new Image(); im.src = '/assets/img/studio/tv/home-' + ti + '.jpg?v=' + MODEL_V; tvImgs.push(im); }
+    var tvGlow = new THREE.PointLight(0x9fb0ff, 0.25, 2.2, 2); tvGlow.position.set(0.6, 2.45, 2.6); scene.add(tvGlow);
+    clickables.push({ mesh: tvScreen, href: '/' });
+    tvDraw = function (t) {
+      // her ekran 3 sn durur, 1.6 sn'de bir sonrakine kayar; sonda başa döner
+      var cyc = 4.6, k = Math.floor(t / cyc) % TV_N, f = Math.max(0, (t % cyc) - 3) / 1.6;
+      f = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
+      var a = tvImgs[k], b = tvImgs[(k + 1) % TV_N];
+      if (!a.complete || !a.naturalWidth) return;
+      if (k === TV_N - 1) { tvX.globalAlpha = 1; tvX.drawImage(a, 0, 0, 1024, 576); if (f > 0 && b.complete) { tvX.globalAlpha = f; tvX.drawImage(b, 0, 0, 1024, 576); tvX.globalAlpha = 1; } }
+      else { tvX.drawImage(a, 0, -f * 576, 1024, 576); if (f > 0 && b.complete) tvX.drawImage(b, 0, 576 - f * 576, 1024, 576); }
+      tvTex.needsUpdate = true;
+    };
     obst(-0.45, 1.65, 2.75, 3.2);
   })();
 
@@ -953,6 +978,7 @@ export function buildStudio(renderer, CONFIG) {
   var lastTex = -1;
   function update(t, cam) {
     catTick(t, cam);
+    if (tvDraw && t - tvLast > 1 / 30) { tvLast = t; tvDraw(t); }
     if (t - lastTex > 0.1) {
       lastTex = t;
       redraw(screenTex, t); redraw(miniTex, t);
