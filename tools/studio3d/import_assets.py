@@ -167,34 +167,63 @@ elif mode == 'generic':
     shrink_images()
     export([g], os.path.join(out, name + '.glb'))
 elif mode == 'paintings':
-    # Paintings and Posters Collection: gevşek parçalara ayır, seçilen tabloları ayrı düğüm olarak (merkez/arka yüz orijinde) yaz
-    src, out, scale = argv[1], argv[2], float(argv[3])
+    # paintings <fbx> <out> <texdir> <spec.json>
+    # Paintings and Posters Collection: gevşek parçaları tablo tablo grupla (tools/studio3d/tablolar.png numaraları),
+    # seçilenleri art_<no> düğümü olarak yaz: merkez x/z ve arka yüz orijinde, ön yüz -Y (three'de +z).
+    # spec: [{"no": 5, "c": [cx, cz], "s": ölçek, "frame": true}] — frame: çerçevesiz postere siyah çerçeve ekle
+    import json, bmesh
+    src, out, td, spec = argv[1], argv[2], argv[3], json.load(open(argv[4]))
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=src)
     o = [o for o in bpy.context.scene.objects if o.type == 'MESH'][0]
     bpy.context.view_layer.objects.active = o; o.select_set(True)
     bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT'); bpy.ops.mesh.separate(type='LOOSE'); bpy.ops.object.mode_set(mode='OBJECT')
-    want = {'art_a': (8.19, 5.84), 'art_b': (0.74, 6.79), 'art_c': (2.31, 6.79), 'art_d': (-11.08, 8.74), 'art_e': (4.26, 2.73), 'art_f': (6.61, 2.73)}
+    parts = []
+    for m in [x for x in bpy.context.scene.objects if x.type == 'MESH']:
+        b = [m.matrix_world @ Vector(c) for c in m.bound_box]
+        parts.append((m, min(v.x for v in b), max(v.x for v in b), min(v.z for v in b), max(v.z for v in b)))
+    par = list(range(len(parts)))
+    def root(i):
+        while par[i] != i: par[i] = par[par[i]]; i = par[i]
+        return i
+    for i, a in enumerate(parts):
+        for j, c in enumerate(parts[:i]):
+            ix = min(a[2], c[2]) - max(a[1], c[1]); iz = min(a[4], c[4]) - max(a[3], c[3])
+            if ix > 0 and iz > 0 and ix * iz > 0.5 * min((a[2] - a[1]) * (a[4] - a[3]), (c[2] - c[1]) * (c[4] - c[3])): par[root(i)] = root(j)
+    groups = {}
+    for i, pt in enumerate(parts): groups.setdefault(root(i), []).append(pt)
+    fm = bpy.data.materials.new('frame'); fm.use_nodes = True
+    fb = fm.node_tree.nodes['Principled BSDF']; fb.inputs['Base Color'].default_value = (0.02, 0.02, 0.022, 1); fb.inputs['Roughness'].default_value = 0.45
     keep = []
-    for nm, (cx, cz) in want.items():
-        best = None
-        for m in [x for x in bpy.context.scene.objects if x.type == 'MESH' and not x.name.startswith('art_')]:
-            b = [m.matrix_world @ Vector(c) for c in m.bound_box]
-            mx = sum(v.x for v in b) / 8; mz = sum(v.z for v in b) / 8
-            area = (max(v.x for v in b) - min(v.x for v in b)) * (max(v.z for v in b) - min(v.z for v in b))
-            dd = (mx - cx) ** 2 + (mz - cz) ** 2
-            if dd < 0.05 and (best is None or area > best[1]): best = (m, area)
-        if not best: print('MISSING', nm); continue
-        m = best[0]; m.name = nm
-        mw = m.matrix_world.copy(); m.parent = None; m.matrix_world = mw
-        m.data.transform(m.matrix_world); m.matrix_world = Matrix()
-        vs = [v.co for v in m.data.vertices]
+    for it in spec:
+        cx, cz = it['c']; best = None
+        for g in groups.values():
+            gx = (min(p[1] for p in g) + max(p[2] for p in g)) / 2; gz = (min(p[3] for p in g) + max(p[4] for p in g)) / 2
+            d = (gx - cx) ** 2 + (gz - cz) ** 2
+            if d < 0.01 and (best is None or d < best[0]): best = (d, g)
+        if not best: print('MISSING', it['no']); continue
+        objs = [p[0] for p in best[1]]
+        for m in objs:
+            mw = m.matrix_world.copy(); m.parent = None; m.data.transform(mw); m.matrix_world = Matrix()
+        g = join(objs, 'art_%d' % it['no'])
+        vs = [v.co for v in g.data.vertices]
         c = Vector(((min(v.x for v in vs) + max(v.x for v in vs)) / 2, max(v.y for v in vs), (min(v.z for v in vs) + max(v.z for v in vs)) / 2))
-        m.data.transform(Matrix.Scale(scale, 4) @ Matrix.Translation(-c))
-        keep.append(m)
+        g.data.transform(Matrix.Scale(it['s'], 4) @ Matrix.Translation(-c))
+        if it.get('frame'):
+            vs = [v.co for v in g.data.vertices]
+            w = max(v.x for v in vs) - min(v.x for v in vs); h = max(v.z for v in vs) - min(v.z for v in vs)
+            bw, dp = 0.022, 0.03
+            g.data.materials.append(fm); mi = len(g.data.materials) - 1
+            bm = bmesh.new(); bm.from_mesh(g.data)
+            for (x, z, sx, sz) in [(0, h / 2 + bw / 2, w + 2 * bw, bw), (0, -h / 2 - bw / 2, w + 2 * bw, bw), (-w / 2 - bw / 2, 0, bw, h), (w / 2 + bw / 2, 0, bw, h)]:
+                r = bmesh.ops.create_cube(bm, size=1.0)
+                bmesh.ops.transform(bm, verts=r['verts'], matrix=Matrix.Translation(Vector((x, -dp / 2, z))) @ Matrix.Diagonal((sx, dp, sz, 1)))
+                for f in {f for v in r['verts'] for f in v.link_faces}: f.material_index = mi
+            bm.to_mesh(g.data); bm.free()
+        print('ART', it['no'], [round(x, 3) for x in g.dimensions])
+        keep.append(g)
     for x in list(bpy.context.scene.objects):
         if x.type == 'MESH' and x not in keep: bpy.data.objects.remove(x, do_unlink=True)
-    td = argv[4]
     for m in bpy.data.materials:
         if m.name == '1': apply_tex([m], os.path.join(td, 'T_Asset_01_C.tga.png'), os.path.join(td, 'T_Asset_01_N.tga.png'), os.path.join(td, 'T_Asset_01_R.png'))
         elif m.name == '2': apply_tex([m], os.path.join(td, 'T_Asset_02_C.tga.png'), os.path.join(td, 'T_Asset_02_N.tga.png'), os.path.join(td, 'T_Asset_02_R.png'))

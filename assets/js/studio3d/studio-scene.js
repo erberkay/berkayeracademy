@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610272600';
+var MODEL_V = '202610272700';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -592,9 +592,13 @@ export function buildStudio(renderer, CONFIG) {
       loadGlb('om5', function (r) { r.position.set(1.15, 2.116, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 2.116; }),
       loadGlb('recordrack', function (r) { r.position.set(-2.77, 0, 1.6); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0; }),
       loadGlb('art', function (r) {
-        var W = { art_c: [2.15, 1.6, 3.198, Math.PI], art_f: [-2.45, 1.75, 3.198, Math.PI],
-                  art_a: [-2.998, 1.75, 1.6, Math.PI / 2], art_d: [-2.998, 1.6, 2.75, Math.PI / 2],
-                  art_b: [2.998, 1.6, -2.0, -Math.PI / 2], art_e: [2.998, 1.75, -1.2, -Math.PI / 2] };
+        // seçilen tablolar (tools/studio3d/tablolar.png numaraları): [x, y, z, ry]; düğüm orijini arka yüzün ortası
+        var F = Math.PI, L = Math.PI / 2, Rw = -Math.PI / 2;
+        var W = { art_14: [-2.998, 2.08, 0.45, L], art_15: [-2.998, 2.08, 1.6, L], art_18: [-2.998, 2.08, 2.75, L],
+                  art_43: [-2.998, 1.27, 0.45, L], art_46: [-2.998, 1.27, 1.6, L], art_49: [-2.998, 1.27, 2.75, L],
+                  art_10: [2.998, 1.6, -2.3, Rw], art_11: [2.998, 1.6, -1.75, Rw], art_12: [2.998, 1.6, -1.2, Rw], art_36: [2.998, 1.6, -0.65, Rw],
+                  art_5: [1.98, 2.0, 3.198, F], art_25: [2.56, 2.0, 3.198, F], art_28: [1.98, 1.28, 3.198, F], art_31: [2.56, 1.28, 3.198, F],
+                  art_58: [-2.55, 1.95, 3.198, F], art_53: [-2.55, 1.3, 3.198, F], art_44: [-0.76, 1.6, 3.198, F] };
         r.traverse(function (o) { var w = W[o.name]; if (w && o.isMesh || (w && o.children.length)) { o.position.set(w[0], w[1], w[2]); o.rotation.set(0, w[3], 0); } });
       }),
       loadGlb('cat', function (r) { cat = r; catMove(0); }),
@@ -675,7 +679,6 @@ export function buildStudio(renderer, CONFIG) {
     [-1.05, 1.05].forEach(function (x) { rbox(0.14, 0.34, 0.9, 0.06, fab, x, 0.4, 0, g); });
     [[-1, -0.35], [1, -0.35], [-1, 0.35], [1, 0.35]].forEach(function (p) { cyl(0.025, 0.02, 0.12, M.black, p[0], 0.06, p[1], g, 10, false); });
     obst(2.05, 3.0, -0.25, 2.05);
-    hot('s3d_t_lounge', 2.45, 1.0, 0.9);
   })();
   (function () {
     var wood = std(0xffffff, 0.45, 0, { map: woodTex });
