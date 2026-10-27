@@ -200,3 +200,50 @@ elif mode == 'paintings':
         elif m.name == '2': apply_tex([m], os.path.join(td, 'T_Asset_02_C.tga.png'), os.path.join(td, 'T_Asset_02_N.tga.png'), os.path.join(td, 'T_Asset_02_R.png'))
     shrink_images(2048)
     export(keep, os.path.join(out, 'art.glb'))
+elif mode == 'scan':
+    # scan <src.fbx> <out_name> <size_m> <max_tris> <out> <base> [normal]
+    # Fotogrametri taraması: üstünde durduğu zemini (kenar halkasına oturtulan düzlem) ve kenar şeridini kes, en büyük parçayı tut
+    import bmesh, random
+    src, name, size, maxt, out = argv[1], argv[2], float(argv[3]), int(argv[4]), argv[5]
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=src)
+    meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+    apply_tex([m for m in bpy.data.materials], argv[6], argv[7] if len(argv) > 7 else None)
+    o = join(meshes, name)
+    vs = [v.co.copy() for v in o.data.vertices]
+    mn = Vector([min(v[i] for v in vs) for i in range(3)]); mx = Vector([max(v[i] for v in vs) for i in range(3)]); sz = mx - mn
+    up = min(range(3), key=lambda i: sz[i]); ax = [i for i in range(3) if i != up]
+    def edge(v): return min(min((v[a] - mn[a]) / sz[a], (mx[a] - v[a]) / sz[a]) for a in ax)
+    ring = [v for v in vs if edge(v) < 0.12]
+    random.seed(1); best = None
+    for _ in range(300):
+        p = random.sample(ring, 3); n = (p[1] - p[0]).cross(p[2] - p[0])
+        if n.length < 1e-12: continue
+        n.normalize()
+        if n[up] < 0: n = -n
+        d = -n.dot(p[0]); c = sum(1 for v in ring[::7] if abs(n.dot(v) + d) < sz[up] * 0.03)
+        if not best or c > best[0]: best = (c, n, d)
+    _, n, d = best
+    H = max(n.dot(v) + d for v in vs)
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if n.dot(v.co) + d < H * 0.06 or edge(v.co) < 0.05], context='VERTS')
+    bm.verts.ensure_lookup_table(); seen = set(); comps = []
+    for v in bm.verts:
+        if v.index in seen: continue
+        st = [v]; comp = []; seen.add(v.index)
+        while st:
+            x = st.pop(); comp.append(x)
+            for e in x.link_edges:
+                y = e.other_vert(x)
+                if y.index not in seen: seen.add(y.index); st.append(y)
+        comps.append(comp)
+    comps.sort(key=len, reverse=True)
+    keep = set(); [keep.update(c) for c in comps if len(c) > len(comps[0]) * 0.15]
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v not in keep], context='VERTS')
+    bm.to_mesh(o.data); bm.free()
+    o.data.transform(n.to_track_quat('Z', 'Y').to_matrix().to_4x4().inverted())
+    vs = [v.co for v in o.data.vertices]
+    ext = [max(v[i] for v in vs) - min(v[i] for v in vs) for i in range(2)]
+    normalize(o, 0 if ext[0] >= ext[1] else 1, size); decimate(o, maxt)
+    shrink_images()
+    export([o], os.path.join(out, name + '.glb'))

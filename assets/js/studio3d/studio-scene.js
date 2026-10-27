@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610272520';
+var MODEL_V = '202610272600';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -227,7 +227,7 @@ export function buildStudio(renderer, CONFIG) {
   var screenSpill = new THREE.PointLight(0xcfe0ff, 0.6, 2.4, 2); screenSpill.position.set(0, 1.05, -2.75); scene.add(screenSpill);
   var pushGlow = new THREE.PointLight(0xffd8a8, 0.15, 0.9, 2); pushGlow.position.set(-0.74, 1.0, -2.45); scene.add(pushGlow);
   var lamp = new THREE.PointLight(0xffb070, 6, 7, 2); lamp.position.set(2.5, 1.62, 2.4); scene.add(lamp);
-  var shelfLight = new THREE.PointLight(0xffc890, 4, 4.5, 2); shelfLight.position.set(-2.1, 1.9, 1.6); scene.add(shelfLight);
+  var shelfLight = new THREE.PointLight(0xffc890, 4, 4.5, 2); shelfLight.position.set(0.6, 1.9, 2.3); scene.add(shelfLight);
   var fill = new THREE.PointLight(0x5a70ff, 6, 10, 2); fill.position.set(0, 2.45, 1.2); scene.add(fill);
 
   // LED şeritleri
@@ -238,25 +238,9 @@ export function buildStudio(renderer, CONFIG) {
   box(0.022, 1.0, 0.022, strip, 1.3, 1.62, -3.19, scene, false);
   box(5.4, 0.022, 0.022, strip, 0, 2.74, -3.18, scene, false);
 
-  // neon yazı
-  var neonTex = ctex(1024, 256, function (g, w, h) {
-    g.clearRect(0, 0, w, h);
-    g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
-    g.font = '700 86px "Space Mono", monospace';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.shadowColor = '#fff'; g.shadowBlur = 24; g.fillStyle = '#fff';
-    g.fillText('BERKAY ER ACADEMY', w / 2, h * 0.44);
-    g.shadowBlur = 0; g.lineWidth = 4; g.strokeStyle = '#fff';
-    g.beginPath(); g.moveTo(w * 0.16, h * 0.78); g.lineTo(w * 0.84, h * 0.78); g.stroke();
-  });
-  var neonMat = new THREE.MeshBasicMaterial({ map: neonTex, color: new THREE.Color(LED.red).multiplyScalar(2.2), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-  neonMat.userData.boost = 1.3; ledMats.push(neonMat);
-  plane(1.9, 0.475, neonMat, 0, 2.5, -3.04);
-  if (document.fonts && document.fonts.load) document.fonts.load('700 86px "Space Mono"').then(function () { redraw(neonTex, 0); });
-
   // ---------- masa düzeni: Blender modeli (tools/studio3d/build_desk.py → assets/models/studio-desk.glb)
   // Baskılı yüzeyler GLB'de TEX_* / SCREEN_* adlı malzemeler; dokular burada canvas ile çizilip bağlanır.
-  obst(-1.2, 1.2, -3.2, -2.55); obst(-2.85, -2.05, 2.65, 3.2); obst(-2.6, -1.9, -2.1, -0.8); obst(-1.2, -0.45, -2.55, -2.3); obst(0.45, 1.2, -2.55, -2.3); obst(-2.65, -2.25, -2.6, -2.2); obst(-2.65, -2.25, -0.7, -0.3);
+  obst(-1.2, 1.2, -3.2, -2.55); obst(-3.0, -2.5, 1.2, 2.0); obst(-2.6, -1.9, -2.1, -0.8); obst(-1.2, -0.45, -2.55, -2.3); obst(0.45, 1.2, -2.55, -2.3); obst(-2.65, -2.25, -2.6, -2.2); obst(-2.65, -2.25, -0.7, -0.3);
 
   function gtex(w, h, draw, o) { var t = ctex(w, h, draw, o); t.flipY = false; return t; }
 
@@ -570,6 +554,28 @@ export function buildStudio(renderer, CONFIG) {
       }, undefined, function (e) { console.warn('[s3d] model yüklenemedi: ' + name, e); resolve(false); });
     });
   }
+  // kedi (oturur pozda): kamera bakmıyorken odanın başka bir köşesine geçer
+  var CAT_SPOTS = [[1.0, 0.004, 1.8], [2.45, 0.48, 0.25], [-1.75, 0, -0.6], [0.95, 0, -1.95], [-0.2, 0, 2.45], [-2.2, 0, 0.9]];
+  var cat = null, catAt = 0, catNext = 25;
+  function catMove(i) {
+    catAt = i; var p = CAT_SPOTS[i];
+    cat.position.set(p[0], p[1], p[2]);
+    cat.rotation.y = Math.atan2(0.2 - p[0], 0.3 - p[2]);
+  }
+  var catV = new THREE.Vector3(), catF = new THREE.Vector3();
+  function catTick(t, cam) {
+    if (!cat) return;
+    cat.scale.y = 1 + Math.sin(t * 2.1) * 0.006;
+    if (!cam || t < catNext) return;
+    cam.getWorldDirection(catF);
+    catV.copy(cat.position).sub(cam.position);
+    var seen = catV.dot(catF) > 0 && (catV.normalize(), catV.dot(catF) > 0.55);
+    if (seen) { catNext = t + 4; return; }
+    var j = (catAt + 1 + Math.floor(Math.random() * (CAT_SPOTS.length - 1))) % CAT_SPOTS.length;
+    catV.set(CAT_SPOTS[j][0], 0.2, CAT_SPOTS[j][2]).sub(cam.position);
+    if (catV.dot(catF) > 0 && (catV.normalize(), catV.dot(catF) > 0.55)) { catNext = t + 4; return; }
+    catMove(j); catNext = t + 30 + Math.random() * 30;
+  }
   // sahne masa yüklenince açılır; hazır modeller arkadan eklenir
   var ready = loadGlb('studio-desk');
   ready.then(function () {
@@ -577,18 +583,21 @@ export function buildStudio(renderer, CONFIG) {
       loadGlb('ps5', function (r) { r.position.set(-0.6, DY, -3.06); r.rotation.y = 0.12; }),
       loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.59); r.rotation.order = 'YZX'; r.rotation.set(-0.9, -0.25, -0.25); r.userData.sitOn = DY + 0.002; }),
       loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
-      // koleksiyon rafı (sol duvar; raf yüzü +x), plak masası, duvar tabloları
-      loadGlb('db01', function (r) { r.position.set(-2.8, 1.316, 0.95); r.rotation.y = Math.PI / 2; r.userData.sitOn = 1.316; }),
-      loadGlb('batman', function (r) { r.position.set(-2.8, 1.316, 1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 1.316; }),
-      loadGlb('avata', function (r) { r.position.set(-2.8, 1.316, 2.05); r.rotation.y = -Math.PI / 2; r.userData.sitOn = 1.316; }),
-      loadGlb('mando', function (r) { r.position.set(-2.8, 1.716, 1.2); r.rotation.y = Math.PI / 2; r.userData.sitOn = 1.716; }),
-      loadGlb('om5', function (r) { r.position.set(-2.8, 2.116, 2.15); r.rotation.y = Math.PI / 2; r.userData.sitOn = 2.116; }),
-      loadGlb('recordrack', function (r) { r.position.set(-2.45, 0, 2.945); r.rotation.y = Math.PI; r.userData.sitOn = 0; }),
+      // koleksiyon rafı (ön duvar; raf yüzü -z), plak masası (sol duvar), duvar tabloları
+      loadGlb('db01', function (r) { r.position.set(-0.05, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
+      loadGlb('batman', function (r) { r.position.set(0.45, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
+      loadGlb('avata', function (r) { r.position.set(1.05, 1.316, 2.96); r.userData.sitOn = 1.316; }),
+      loadGlb('mando', function (r) { r.position.set(0.2, 1.716, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.716; }),
+      loadGlb('avatadrone', function (r) { r.position.set(0.95, 1.716, 2.96); r.rotation.y = 0.26; r.userData.sitOn = 1.716; }),
+      loadGlb('om5', function (r) { r.position.set(1.15, 2.116, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 2.116; }),
+      loadGlb('recordrack', function (r) { r.position.set(-2.77, 0, 1.6); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0; }),
       loadGlb('art', function (r) {
-        var W = { art_a: [0.9, 1.65, 3.198, Math.PI], art_d: [-0.5, 1.55, 3.198, Math.PI], art_f: [-2.45, 1.75, 3.198, Math.PI], art_c: [2.15, 1.6, 3.198, Math.PI],
+        var W = { art_c: [2.15, 1.6, 3.198, Math.PI], art_f: [-2.45, 1.75, 3.198, Math.PI],
+                  art_a: [-2.998, 1.75, 1.6, Math.PI / 2], art_d: [-2.998, 1.6, 2.75, Math.PI / 2],
                   art_b: [2.998, 1.6, -2.0, -Math.PI / 2], art_e: [2.998, 1.75, -1.2, -Math.PI / 2] };
         r.traverse(function (o) { var w = W[o.name]; if (w && o.isMesh || (w && o.children.length)) { o.position.set(w[0], w[1], w[2]); o.rotation.set(0, w[3], 0); } });
       }),
+      loadGlb('cat', function (r) { cat = r; catMove(0); }),
       loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
       loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.order = 'YZX'; r.rotation.set(1.26, Math.PI / 2 + 0.12, 0.16); r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(1.0052, DY + 0.0637, -2.6446); r.rotation.y = -0.15;  /* standın eğimli yüzeyine, ön tırnakların arkasına oturur */ r.rotation.x = 0.244; })
@@ -711,8 +720,6 @@ export function buildStudio(renderer, CONFIG) {
       g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 3; g.beginPath();
       for (var x = 20; x < w - 20; x += 3) { var amp = (Math.sin(x * 0.04 + i) * 0.5 + 0.5) * 70 * (0.3 + R()); g.moveTo(x, h * 0.55 - amp); g.lineTo(x, h * 0.55 + amp); }
       g.stroke();
-      g.fillStyle = 'rgba(255,255,255,.9)'; g.font = '700 22px monospace'; g.textAlign = 'center';
-      g.fillText('BERKAY ER ACADEMY', w / 2, h * 0.9);
     });
   }
   var frameMat = std(0xffffff, 0.5, 0, { map: woodTex });
@@ -763,9 +770,9 @@ export function buildStudio(renderer, CONFIG) {
     }
   });
 
-  // sol duvar: plak rafı
+  // ön duvar: plak rafı (raf yüzü -z, odaya bakar)
   (function () {
-    var g = grp(-2.82, 0, 1.6, Math.PI / 2);
+    var g = grp(0.6, 0, 2.98, Math.PI);
     var wood = std(0xffffff, 0.5, 0, { map: woodTex });
     box(0.04, 2.1, 0.4, wood, -1.0, 1.05, 0, g); box(0.04, 2.1, 0.4, wood, 1.0, 1.05, 0, g);
     for (var s = 0; s < 6; s++) box(2.0, 0.03, 0.4, wood, 0, 0.1 + s * 0.4, 0, g);
@@ -784,8 +791,7 @@ export function buildStudio(renderer, CONFIG) {
       }
     }
     inst.count = idx; inst.castShadow = true; g.add(inst);
-    // üst raflarda dekor
-    obst(-3.0, -2.5, 0.5, 2.7);
+    obst(-0.45, 1.65, 2.75, 3.2);
   })();
 
   // kapı (ön duvar)
@@ -817,15 +823,14 @@ export function buildStudio(renderer, CONFIG) {
 
   // ---------- animasyon
   var lastTex = -1;
-  function update(t) {
+  function update(t, cam) {
+    catTick(t, cam);
     if (t - lastTex > 0.1) {
       lastTex = t;
       redraw(screenTex, t); redraw(miniTex, t);
     }
     var pulse = 0.94 + Math.sin(t * 1.7) * 0.06;
     strip.color.set(LED[ledKey]).multiplyScalar(1.6 * pulse);
-    var f = 1 + Math.sin(t * 0.9) * 0.03 + (Math.sin(t * 37) > 0.995 ? -0.1 : 0);
-    neonMat.color.set(LED[ledKey]).multiplyScalar(1.3 * f);
     pushGlow.intensity = 0.15;
     screenSpill.intensity = 0.58 + Math.sin(t * 1.1) * 0.04;
     var p = dust.geometry.attributes.position.array;

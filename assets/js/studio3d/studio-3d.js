@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610272520';
+import { buildStudio, LED } from './studio-scene.js?v=202610272600';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
@@ -16,13 +16,13 @@ var CONFIG = { photos: [
 ] };
 
 var WPS = [
-  { k: 's3d_wp_entry', p: [0.2, 1.55, 1.4], l: [0, 1.0, -2.9] },
+  { k: 's3d_wp_entry', p: [0.2, 1.4, 1.4], l: [0, 1.0, -2.9] },
   { k: 's3d_wp_desk', p: [0.0, 1.28, -1.6], l: [0.0, 0.95, -2.95] },
   { k: 's3d_wp_screen', p: [-0.05, 1.2, -2.2], l: [-0.05, 1.13, -3.08] },
-  { k: 's3d_wp_gear', p: [0.0, 1.5, -1.9], l: [0.0, 0.85, -2.78] },
-  { k: 's3d_wp_dj', p: [-1.25, 1.62, -1.45], l: [-2.3, 0.92, -1.45] },
-  { k: 's3d_wp_lounge', p: [-0.1, 1.55, -0.2], l: [2.6, 0.7, 0.9] },
-  { k: 's3d_wp_shelf', p: [0.3, 1.6, 1.0], l: [-3, 1.2, 1.6] }
+  { k: 's3d_wp_gear', p: [0.0, 1.4, -1.9], l: [0.0, 0.85, -2.78] },
+  { k: 's3d_wp_dj', p: [-1.25, 1.45, -1.45], l: [-2.3, 0.92, -1.45] },
+  { k: 's3d_wp_lounge', p: [-0.1, 1.4, -0.2], l: [2.6, 0.7, 0.9] },
+  { k: 's3d_wp_shelf', p: [0.6, 1.4, 0.95], l: [0.6, 1.3, 3.0] }
 ];
 var LEDS = [['red', 's3d_c_red'], ['violet', 's3d_c_violet'], ['cyan', 's3d_c_cyan'], ['amber', 's3d_c_amber']];
 
@@ -111,14 +111,14 @@ function snapTo(w) {
 }
 snapTo(WPS[0]);
 // açılış: tavana yakın yukarıdan girişe süzülür
-st.y = 2.2; st.z = 2.9; st.pitch = -0.2;
+st.y = 1.9; st.z = 2.4; st.pitch = -0.2;
 
 var wpBtns = [];
 function markWp(i) { wpBtns.forEach(function (b, j) { b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); }); }
 function goWp(i) { markWp(i); flyTo(WPS[i].p, WPS[i].l); }
 
 // ---------- çarpışma
-var R = 0.28;
+var R = 0.28, EYE = 1.4; // yürürken göz yüksekliği
 function inBox(o, x, z) { return x > o.x0 - R && x < o.x1 + R && z > o.z0 - R && z < o.z1 + R; }
 function blocked(ox, oz, nx, nz) {
   if (nx < -3 + R || nx > 3 - R || nz < -3.2 + R || nz > 3.2 - R) return true;
@@ -133,6 +133,7 @@ function walk(dt) {
   var s = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
   if (!f && !s) return;
   tw = null;
+  st.y += (EYE - st.y) * Math.min(1, dt * 3);
   var sp = (keys.ShiftLeft || keys.ShiftRight ? 3.0 : 1.5) * dt;
   var fx = -Math.sin(st.yaw), fz = -Math.cos(st.yaw), rx = Math.cos(st.yaw), rz = -Math.sin(st.yaw);
   var dx = (fx * f + rx * s) * sp, dz = (fz * f + rz * s) * sp;
@@ -226,23 +227,38 @@ var tags = studio.hotspots.map(function (h) {
 });
 // Spotify oynatıcısı (Spotify iFrame API: tıklayınca seçilen parça/liste çalar)
 var player = $('s3dPlayer'), playerEl = $('s3dPlayerEmbed');
-var spApi = null, spCtl = null, spWant = null, spLoading = false;
+// Golden Sound listesi açılışta yüklenir ve ziyaretçinin ilk dokunuşunda çalar (tarayıcılar sesi ancak bir etkileşimden sonra başlatır)
+var spApi = null, spCtl = null, spUri = null, spWant = null, spPlay = false, spLoading = false, spClosed = false;
+var PLAYLIST = (CONFIG.photos.filter(function (p) { return p.art === 'golden'; })[0] || {}).uri;
 function spLoad() {
   if (spLoading) return; spLoading = true;
-  window.onSpotifyIframeApiReady = function (api) { spApi = api; if (spWant) openPlayer(spWant.uri, spWant.title); };
+  window.onSpotifyIframeApiReady = function (api) {
+    spApi = api;
+    var uri = spWant || PLAYLIST;
+    spApi.createController(playerEl, { uri: uri, width: '100%', height: 152 }, function (ctl) {
+      spCtl = ctl; spUri = uri;
+      ctl.addListener('ready', function () { if (spPlay) ctl.play(); });
+    });
+  };
   var sc = document.createElement('script'); sc.src = 'https://open.spotify.com/embed/iframe-api/v1'; sc.async = true; document.body.appendChild(sc);
 }
-function openPlayer(uri, title) {
-  player.hidden = false;
-  if (!spApi) { spWant = { uri: uri, title: title }; spLoad(); return; }
-  if (!spCtl) {
-    spApi.createController(playerEl, { uri: uri, width: '100%', height: 152 }, function (ctl) {
-      spCtl = ctl;
-      ctl.addListener('ready', function () { ctl.play(); });
-    });
-  } else { spCtl.loadUri(uri); spCtl.play(); }
+function openPlayer(uri) {
+  player.hidden = false; spPlay = true;
+  if (!spCtl) { spWant = uri; spLoad(); return; }
+  if (uri !== spUri) { spCtl.loadUri(uri); spUri = uri; }
+  spCtl.play();
 }
-$('s3dPlayerClose').addEventListener('click', function () { player.hidden = true; if (spCtl) spCtl.pause(); });
+function autoPlay() {
+  window.removeEventListener('pointerdown', autoPlay, true);
+  window.removeEventListener('keydown', autoPlay, true);
+  if (!spClosed && !spPlay && PLAYLIST) openPlayer(PLAYLIST);
+}
+if (PLAYLIST) {
+  spLoad();
+  window.addEventListener('pointerdown', autoPlay, true);
+  window.addEventListener('keydown', autoPlay, true);
+}
+$('s3dPlayerClose').addEventListener('click', function () { spClosed = true; player.hidden = true; if (spCtl) spCtl.pause(); });
 // çerçeveye tıklama (sürüklemeden): ışın ile hangi çerçeve
 var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), downAt = null;
 canvas.addEventListener('pointerdown', function (e) { downAt = { x: e.clientX, y: e.clientY }; });
@@ -312,7 +328,7 @@ function frame() {
   cam.position.set(st.x, st.y + Math.sin(t * 0.9) * 0.0035, st.z);
   cam.rotation.set(st.pitch + sway, st.yaw + sway * 0.6, 0);
 
-  studio.update(t);
+  studio.update(t, cam);
   composer.render();
   updateTags();
 
