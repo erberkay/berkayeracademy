@@ -5,7 +5,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-var MODEL_V = '202610270600';
+var MODEL_V = '202610270700';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -224,7 +224,7 @@ export function buildStudio(renderer, CONFIG) {
   ledLight(-0.6, 0.15, -2.0, 0.7, 2.5);
   (function () { var sp = new THREE.SpotLight(LED.red, 5, 6, 0.95, 1, 2); sp.position.set(0, 2.3, -2.0); sp.target.position.set(0, 1.1, -3.1); scene.add(sp, sp.target); ledLights.push(sp); })();
   var screenSpill = new THREE.PointLight(0xcfe0ff, 0.6, 2.4, 2); screenSpill.position.set(0, 1.05, -2.75); scene.add(screenSpill);
-  var pushGlow = new THREE.PointLight(0xffd8a8, 0.15, 0.9, 2); pushGlow.position.set(-0.56, 1.0, -2.55); scene.add(pushGlow);
+  var pushGlow = new THREE.PointLight(0xffd8a8, 0.15, 0.9, 2); pushGlow.position.set(-0.74, 1.0, -2.45); scene.add(pushGlow);
   var lamp = new THREE.PointLight(0xffb070, 6, 7, 2); lamp.position.set(2.5, 1.62, 2.4); scene.add(lamp);
   var shelfLight = new THREE.PointLight(0xffc890, 4, 4.5, 2); shelfLight.position.set(-2.1, 1.9, 1.6); scene.add(shelfLight);
   var fill = new THREE.PointLight(0x5a70ff, 6, 10, 2); fill.position.set(0, 2.45, 1.2); scene.add(fill);
@@ -255,7 +255,7 @@ export function buildStudio(renderer, CONFIG) {
 
   // ---------- masa düzeni: Blender modeli (tools/studio3d/build_desk.py → assets/models/studio-desk.glb)
   // Baskılı yüzeyler GLB'de TEX_* / SCREEN_* adlı malzemeler; dokular burada canvas ile çizilip bağlanır.
-  obst(-0.8, 0.8, -3.2, -2.6); obst(-0.8, -0.45, -2.6, -2.45); obst(0.45, 0.8, -2.6, -2.45);
+  obst(-1.0, 1.0, -3.2, -2.55); obst(-1.0, -0.45, -2.55, -2.3); obst(0.45, 1.0, -2.55, -2.3);
 
   function gtex(w, h, draw, o) { var t = ctex(w, h, draw, o); t.flipY = false; return t; }
 
@@ -433,19 +433,19 @@ export function buildStudio(renderer, CONFIG) {
       resolve(true);
     }, undefined, function (e) { console.warn('[s3d] masa modeli yüklenemedi', e); resolve(false); });
   });
-  hot('s3d_t_push', -0.56, DY + 0.2, -2.66);
-  hot('s3d_t_screen', 0, DY + 0.52, -3.04);
-  hot('s3d_t_mon', -0.63, DY + 0.62, -2.98);
-  hot('s3d_t_iface', 0.0, DY + 0.22, -2.95);
-  hot('s3d_t_drum', -0.3, DY + 0.22, -2.86);
-  hot('s3d_t_303', 0.3, DY + 0.1, -2.86);
-  hot('s3d_t_synth', 0.4, DY + 0.17, -2.72);
-  hot('s3d_t_laptop', 0.68, DY + 0.32, -2.66);
-  hot('s3d_t_rec', 0.5, DY + 0.06, -2.52);
+  hot('s3d_t_push', -0.74, DY + 0.2, -2.56);
+  hot('s3d_t_screen', -0.05, DY + 0.62, -3.06);
+  hot('s3d_t_mon', -0.85, DY + 0.68, -2.98);
+  hot('s3d_t_iface', -0.02, DY + 0.24, -2.9);
+  hot('s3d_t_drum', -0.4, DY + 0.22, -2.82);
+  hot('s3d_t_303', 0.33, DY + 0.1, -2.86);
+  hot('s3d_t_synth', 0.6, DY + 0.2, -2.62);
+  hot('s3d_t_laptop', 0.84, DY + 0.33, -2.48);
+  hot('s3d_t_rec', 0.62, DY + 0.06, -2.36);
   // AudioFuse yükselticisinin altındaki kırmızı ışık ve Grogu'nun yanındaki mumlar
-  ledLight(0.0, DY + 0.03, -2.9, 0.22, 1.0);
-  box(0.28, 0.008, 0.008, ledMat(1.6), 0.0, DY + 0.02, -2.86, scene, false);
-  var candleLight = new THREE.PointLight(0xffa040, 0.22, 1.2, 2); candleLight.position.set(0.2, DY + 0.1, -2.97); scene.add(candleLight);
+  ledLight(-0.02, DY + 0.03, -2.92, 0.22, 1.0);
+  box(0.26, 0.008, 0.008, ledMat(1.6), -0.02, DY + 0.02, -2.84, scene, false);
+  var candleLight = new THREE.PointLight(0xffa040, 0.22, 1.2, 2); candleLight.position.set(0.27, DY + 0.1, -2.95); scene.add(candleLight);
 
   // masanın arkasında siyah perde (fotoğraftaki gibi), çubuk ve halkalar
   (function () {
@@ -482,7 +482,7 @@ export function buildStudio(renderer, CONFIG) {
     }
     return g;
   }
-  chair(0.0, -2.05, 0.25, 0xd5352a);
+  chair(-0.05, -1.95, 0.2, 0xd5352a);
 
   // ---------- ders köşesi: halı, kanepe, sehpa, lamba, bitki
   var rugTex = ctex(512, 448, function (g, w, h) {

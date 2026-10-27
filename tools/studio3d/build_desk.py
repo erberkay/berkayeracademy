@@ -158,7 +158,7 @@ parts = {}
 def build_desk():
     # Adore Gaming Commander (160 x 75 cm, H 75 / raflarla 95). Ön orta kısım sığ, iki yan kanat öne çıkar (45° pah).
     # sahne (x,z): arka z=-3.2; orta ön z=-2.6; kanat önü z=-2.45
-    pts = [(-0.8, -3.2), (0.8, -3.2), (0.8, -2.45), (0.55, -2.45), (0.4, -2.6), (-0.4, -2.6), (-0.55, -2.45), (-0.8, -2.45)]
+    pts = [(-1.0, -3.2), (1.0, -3.2), (1.0, -2.3), (0.7, -2.3), (0.45, -2.55), (-0.45, -2.55), (-0.7, -2.3), (-1.0, -2.3)]
     bm = bmesh.new()
     vs = [bm.verts.new((x, -z, DY - 0.025)) for x, z in pts]
     f = bm.faces.new(vs)
@@ -170,30 +170,31 @@ def build_desk():
     fr = mat('desk_frame', 0x111113, 0.45, 0.6)
     o = [top]
     # metal çerçeve: iki yan ayak + arka bağlantılar
-    for sx in (-0.74, 0.74):
-        o.append(rbox(0.05, 0.05, DY - 0.07, 0.004, fr, sx, 2.83, 0.04))
-        o.append(rbox(0.06, 0.62, 0.04, 0.004, fr, sx, 2.83, 0.0))
-        o.append(rbox(0.04, 0.62, 0.04, 0.004, fr, sx, 2.83, DY - 0.065))
-    o.append(rbox(1.44, 0.04, 0.05, 0.004, fr, 0, 3.12, DY - 0.075))
-    o.append(rbox(1.44, 0.03, 0.03, 0.004, fr, 0, 3.0, 0.2))
+    for sx in (-0.94, 0.94):
+        o.append(rbox(0.05, 0.05, DY - 0.07, 0.004, fr, sx, 2.75, 0.04))
+        o.append(rbox(0.06, 0.8, 0.04, 0.004, fr, sx, 2.75, 0.0))
+        o.append(rbox(0.04, 0.8, 0.04, 0.004, fr, sx, 2.75, DY - 0.065))
+    o.append(rbox(1.84, 0.04, 0.05, 0.004, fr, 0, 3.12, DY - 0.075))
+    o.append(rbox(1.84, 0.03, 0.03, 0.004, fr, 0, 3.0, 0.2))
     # alt kablo bölmesi ve ön tablet yuvası
     o.append(rbox(0.9, 0.16, 0.06, 0.004, fr, 0, 3.08, DY - 0.09))
-    o.append(rbox(0.4, 0.012, 0.004, 0.001, mat('slot', 0x050505, 0.8), 0, 2.64, DY - 0.0005))
+    o.append(rbox(0.4, 0.012, 0.004, 0.001, mat('slot', 0x050505, 0.8), 0, 2.59, DY - 0.0005))
     # kulaklık askısı (sol) ve bardak tutucu (sağ)
-    o.append(rbox(0.012, 0.012, 0.06, 0.002, fr, -0.8 - 0.006, 2.6, DY - 0.09))
-    o.append(rbox(0.06, 0.012, 0.012, 0.002, fr, -0.83, 2.6, DY - 0.09))
-    o.append(cyl(0.045, 0.006, fr, 0.85, 2.6, DY - 0.1, segs=24))
-    o.append(rbox(0.012, 0.03, 0.012, 0.002, fr, 0.8 + 0.006, 2.6, DY - 0.1))
+    o.append(rbox(0.012, 0.012, 0.06, 0.002, fr, -1.006, 2.5, DY - 0.09))
+    o.append(rbox(0.06, 0.012, 0.012, 0.002, fr, -1.03, 2.5, DY - 0.09))
+    o.append(cyl(0.045, 0.006, fr, 1.05, 2.5, DY - 0.1, segs=24))
+    o.append(rbox(0.012, 0.03, 0.012, 0.002, fr, 1.006, 2.5, DY - 0.1))
     parts['desk'] = join(o, 'desk')
     # RGB: yan köşelerde ince şerit (sayfada LED rengine göre boyanır)
     rgb = mat('RGB_strip', 0xff2418, 0.4, 0.0, emit=0xff2418, es=1.0)
-    s1 = rbox(0.004, 0.25, 0.006, 0, rgb, -0.802, 2.58, DY - 0.018)
-    s2 = rbox(0.004, 0.25, 0.006, 0, rgb, 0.802, 2.58, DY - 0.018)
-    s3 = rbox(0.25, 0.004, 0.006, 0, rgb, -0.675, 2.448, DY - 0.018)
-    s4 = rbox(0.25, 0.004, 0.006, 0, rgb, 0.675, 2.448, DY - 0.018)
-    parts['desk_rgb'] = join([s1, s2, s3, s4], 'desk_rgb')
+    s1 = rbox(0.004, 0.3, 0.006, 0, rgb, -1.002, 2.45, DY - 0.018)
+    s2 = rbox(0.004, 0.3, 0.006, 0, rgb, 1.002, 2.45, DY - 0.018)
+    s3 = rbox(0.3, 0.004, 0.006, 0, rgb, -0.85, 2.298, DY - 0.018)
+    s4 = rbox(0.3, 0.004, 0.006, 0, rgb, 0.85, 2.298, DY - 0.018)
+    s5 = rbox(0.9, 0.004, 0.006, 0, rgb, 0, 2.6, 0.12)
+    parts['desk_rgb'] = join([s1, s2, s3, s4, s5], 'desk_rgb')
     # iki parça yükseltilmiş raf (masa ile gelir) — hoparlörlerin altında, arka köşelerde
-    for nm, sx in (('shelf_left', -0.62), ('shelf_right', 0.62)):
+    for nm, sx in (('shelf_left', -0.85), ('shelf_right', 0.85)):
         q = [rbox(0.34, 0.26, 0.018, 0.004, M['riser'], 0, 0, 0.1)]
         for lx in (-0.15, 0.15): q.append(rbox(0.03, 0.22, 0.1, 0.003, M['riser'], lx, 0, 0))
         parts[nm] = place(join(q, nm), sx, DY, -3.05)
@@ -238,12 +239,12 @@ def adam(name, x, z, ry):
     o.append(cyl(0.003, 0.002, M['meter'], 0.1, fy - 0.001, z0 + 0.03, segs=10, axis='Y'))
     parts[name] = place(join(o, name), x, SHELF, z, ry)
 SHELF = DY + 0.118
-adam('adam_left', -0.63, -3.04, 0.22)
-adam('adam_right', 0.63, -3.04, -0.22)
+adam('adam_left', -0.85, -3.04, 0.25)
+adam('adam_right', 0.85, -3.04, -0.25)
 TOP_SPK = SHELF + 0.40
 
 # beyaz silindir (sol hoparlör üstü) ve Lego figürü (sağ hoparlör üstü)
-parts['router'] = place(join([cyl(0.058, 0.215, M['plasticWhite'], segs=36, bevel=0.01)], 'router'), -0.63, TOP_SPK, -3.04)
+parts['router'] = place(join([cyl(0.058, 0.215, M['plasticWhite'], segs=36, bevel=0.01)], 'router'), -0.85, TOP_SPK, -3.04)
 def lego():
     o = [rbox(0.09, 0.06, 0.012, 0.002, M['legoBrown'])]
     o.append(rbox(0.05, 0.03, 0.05, 0.004, M['lego'], 0, 0, 0.012))
@@ -254,7 +255,7 @@ def lego():
         w = rbox(0.055, 0.012, 0.008, 0.002, M['legoOrange'], s * 0.05, 0.0, 0.058); w.rotation_euler = (0, s * -0.4, 0)
         o.append(w)
         o.append(sphere(0.004, M['eye'], s * 0.008, -0.019, 0.082))
-    parts['lego'] = place(join(o, 'lego'), 0.63, TOP_SPK, -3.04, -0.22)
+    parts['lego'] = place(join(o, 'lego'), 0.85, TOP_SPK, -3.04, -0.25)
 lego()
 
 # ---------------- PS5 (dikey, beyaz paneller + siyah gövde)
@@ -263,7 +264,7 @@ def ps5():
     o.append(rbox(0.07, 0.2, 0.35, 0.01, M['ps5Core'], 0, 0, 0.014))
     for s in (-1, 1):
         o.append(rbox(0.012, 0.215, 0.358, 0.006, M['plasticWhite'], s * 0.0425, 0, 0.012))
-    parts['ps5'] = place(join(o, 'ps5'), -0.4, DY, -3.08, 0.1)
+    parts['ps5'] = place(join(o, 'ps5'), -0.56, DY, -3.06, 0.12)
 ps5()
 
 # ---------------- kavisli monitör (1500R, ~32")
@@ -271,8 +272,8 @@ def monitor():
     o = []
     st = M['darkAlu']
     o.append(rbox(0.32, 0.2, 0.012, 0.004, st, 0, 0.02, 0))
-    o.append(rbox(0.05, 0.025, 0.22, 0.006, st, 0, 0.05, 0.01))
-    R, W, H, zc = 1.5, 0.61, 0.35, 0.31
+    o.append(rbox(0.05, 0.025, 0.26, 0.006, st, 0, 0.05, 0.01))
+    R, W, H, zc = 1.5, 0.71, 0.4, 0.37
     ang = W / R; n = 40
     # ekran (iç yüzey, UV 0..1), kabuk (arka)
     def arc(radius, height, mname, uv):
@@ -302,7 +303,7 @@ def monitor():
     for v in shell.data.vertices: v.co.y += 0.004
     o.append(shell)
     o.append(rbox(0.42, 0.03, 0.26, 0.01, M['blackBody'], 0, 0.035, zc - 0.13))
-    parts['monitor'] = place(join(o, 'monitor'), 0.0, DY, -3.06)
+    parts['monitor'] = place(join(o, 'monitor'), -0.05, DY, -3.08)
 monitor()
 
 # ---------------- siyah yükselticiler (DrumBrute ve AudioFuse altında, ~9 cm)
@@ -312,16 +313,14 @@ def riser(name, x, z, w, d, h=0.09):
         o.append(rbox(0.018, d - 0.02, h - 0.012, 0.003, M['riser'], sx, 0, 0))
     parts[name] = place(join(o, name), x, DY, z)
     return DY + h
-RA = riser('riser_drum', -0.3, -2.86, 0.36, 0.3)
-RB = riser('riser_fuse', 0.0, -2.95, 0.31, 0.2)
 
 # ---------------- gümüş laptop standı (yan kamalar + ön tırnak)
-def alu_stand(name, x, z, ry, w, d, tilt, h0=0.02):
+def alu_stand(name, x, z, ry, w, d, tilt, h0=0.02, m=None):
     t = math.tan(tilt); hb = h0 + d * t
     o = []
     for sx in (-w / 2 + 0.03, w / 2 - 0.03):
-        o.append(prism([(-d / 2, 0), (d / 2, 0), (d / 2, hb), (-d / 2 + 0.03, h0 + 0.03 * t), (-d / 2, h0)], 0.014, M['alu'], sx))
-        lip = rbox(0.03, 0.012, 0.02, 0.003, M['alu'], sx, -d / 2 + 0.006, h0)
+        o.append(prism([(-d / 2, 0), (d / 2, 0), (d / 2, hb), (-d / 2 + 0.03, h0 + 0.03 * t), (-d / 2, h0)], 0.014, m or M['alu'], sx))
+        lip = rbox(0.03, 0.012, 0.02, 0.003, m or M['alu'], sx, -d / 2 + 0.006, h0)
         o.append(lip)
     parts[name] = place(join(o, name), x, DY, z, ry)
     return DY + h0 + (d / 2) * t
@@ -353,8 +352,8 @@ def push3():
     for i in range(8): o += knob(0.0085, 0.01, -0.135 + i * 0.03, 0.143, top, M['knobBlack'], M['darkAlu'], M['line'])
     for i in range(8): o.append(rbox(0.022, 0.009, 0.003, 0.001, M['btnDark'], -0.135 + i * 0.03, 0.093, top))
     return join(o, 'push3')
-y = alu_stand('stand_push', -0.56, -2.66, 0.1, 0.42, 0.33, math.radians(20))
-parts['push3'] = place(push3(), -0.56, y, -2.66, 0.1, math.radians(20))
+y = alu_stand('stand_push', -0.74, -2.56, 0.18, 0.42, 0.33, math.radians(20))
+parts['push3'] = place(push3(), -0.74, y, -2.56, 0.18, math.radians(20))
 
 # ---------------- Arturia DrumBrute Impact 1984 (beyaz, 320x290x90 kama)
 def drumbrute():
@@ -371,28 +370,37 @@ def drumbrute():
     comp = []
     tp = plane(W - 0.01, D / math.cos(slope) - 0.01, TEX('TEX_drum', 0xe7e4dc, 0.5), 0, 0, 0.0003, name='dbtop')
     comp.append(tp)
-    # üst sol: siyah panel (ekran + taşıma düğmeleri)
-    comp.append(rbox(0.12, 0.05, 0.001, 0, M['btnDark'], -0.09, 0.115, 0.0005))
-    for i in range(4): comp.append(rbox(0.014, 0.014, 0.004, 0.0015, M['btnWhite'], -0.12 + i * 0.02, 0.1, 0.0005))
-    # üst sağ: distorsiyon (turuncu halkalı) + ana ses
-    comp += knob(0.013, 0.012, 0.085, 0.118, 0, M['knobOrange'], M['knobWhite'], M['line'])
-    comp += knob(0.013, 0.012, 0.125, 0.118, 0, M['knobGray'], M['knobWhite'], M['line'])
-    # 16 adım düğmesi (mor LED)
-    for i in range(16):
-        comp.append(rbox(0.013, 0.011, 0.004, 0.0015, M['stepLed'] if i % 4 == 0 else M['btnWhite'], -0.142 + i * 0.019, 0.07, 0.0005))
-    # 10 enstrüman sütunu: 2 düğme + siyah ped
-    for c in range(10):
-        x = -0.125 + c * 0.0275
-        for r in range(2):
-            comp += knob(0.0078, 0.011, x, 0.035 - r * 0.032, 0.0005, M['knobGray'], M['knobWhite'], M['line'])
-        comp.append(rbox(0.021, 0.021, 0.005, 0.002, M['padRim'], x, -0.06, 0.0005))
-    comp += knob(0.009, 0.011, -0.148, 0.0, 0.0005, M['knobGray'], M['knobWhite'], M['line'])
-    comp.append(cyl(0.006, 0.005, M['cyan'], -0.148, -0.05, 0.0005, segs=18, bevel=0.0015))
+    # fotoğraftaki 1984 paneli: sol üst siyah şerit (ekran + 4 beyaz düğme), üst ortada 2x8 adım düğmesi,
+    # sağ üstte turuncu halkalı + gri büyük düğme, solda düğme sütunu + camgöbeği shift, 8 enstrüman sütunu, önde turuncu şerit
+    capG = mat('drum_knob', 0xd2d0ca, 0.45, 0.05)
+    comp.append(rbox(0.13, 0.034, 0.0012, 0, M['btnDark'], -0.085, 0.118, 0.0005))
+    comp.append(rbox(0.026, 0.014, 0.0015, 0.0005, mat('db_disp', 0x200606, 0.3, 0, emit=0xff3020, es=0.6), -0.13, 0.118, 0.0016))
+    for i in range(4): comp.append(rbox(0.016, 0.011, 0.004, 0.0015, M['btnWhite'], -0.104 + i * 0.022, 0.118, 0.0016))
+    comp += knob(0.006, 0.014, -0.012, 0.112, 0.0005, M['knobBlack'], M['knobBlack'], M['line'])
+    ring = cyl(0.0125, 0.002, M['orange'], 0.068, 0.122, 0.0005, segs=28)
+    comp.append(ring)
+    comp += knob(0.0095, 0.018, 0.068, 0.122, 0.0025, capG, capG, M['line'])
+    comp += knob(0.0095, 0.018, 0.108, 0.122, 0.0005, capG, capG, M['line'])
+    for r in range(2):
+        for i in range(8):
+            lit = (r == 0 and i in (0, 2, 4, 5, 7))
+            comp.append(rbox(0.012, 0.01, 0.0035, 0.0015, M['stepLed'] if lit else M['btnWhite'], -0.088 + i * 0.019, 0.085 - r * 0.017, 0.0005))
+    comp += knob(0.0075, 0.014, -0.138, 0.075, 0.0005, M['knobBlack'], M['knobBlack'], M['line'])
+    for i in range(4): comp.append(rbox(0.016, 0.009, 0.003, 0.0012, M['btnWhite'], -0.138, 0.04 - i * 0.02, 0.0005))
+    comp.append(cyl(0.0068, 0.005, M['cyan'], -0.138, -0.09, 0.0005, segs=20, bevel=0.0015))
+    comp.append(cyl(0.0045, 0.0055, M['knobBlack'], -0.138, -0.09, 0.0005, segs=16))
+    for c in range(8):
+        x = -0.1 + c * 0.0335
+        for r, yy in enumerate((0.038, 0.005, -0.03)):
+            comp += knob(0.0072, 0.016, x + (0.006 if r == 1 else 0), yy, 0.0005, capG, capG, M['line'])
+        comp.append(rbox(0.022, 0.019, 0.006, 0.002, M['padRim'], x, -0.082, 0.0005))
+    comp.append(rbox(W - 0.012, 0.009, 0.0008, 0, M['orange'], 0, -0.112, 0.0005))
     tj = join(comp, 'db_top')
     tj.rotation_euler = (slope, 0, 0); tj.location = (0, 0, (Hf + Hb) / 2)
     o.append(tj)
     return join(o, 'drumbrute')
-parts['drumbrute'] = place(drumbrute(), -0.3, RA, -2.86, -0.06)
+y = alu_stand('stand_drum', -0.4, -2.82, 0.08, 0.34, 0.3, math.radians(12), 0.05, M['riser'])
+parts['drumbrute'] = place(drumbrute(), -0.4, y, -2.82, 0.08, math.radians(12))
 
 # ---------------- Arturia AudioFuse Studio (265x160x72)
 def audiofuse():
@@ -414,7 +422,9 @@ def audiofuse():
     for x in (0.075, 0.105):
         o.append(cyl(0.005, 0.004, M['knobSilver'], x, fy, H / 2 - 0.01, segs=16, axis='Y'))
     return join(o, 'audiofuse')
-parts['audiofuse'] = place(audiofuse(), 0.0, RB, -2.95, 0.0, math.radians(6))
+y = alu_stand('stand_fuse', -0.02, -2.9, 0.0, 0.28, 0.18, math.radians(14), 0.06, M['riser'])
+RB = y
+parts['audiofuse'] = place(audiofuse(), -0.02, y, -2.9, 0.0, math.radians(14))
 
 # ---------------- Acid 303 / Behringer TD-3 (305x165x56)
 def td3():
@@ -431,7 +441,7 @@ def td3():
     for i in (0, 1, 3, 4, 5): o.append(rbox(0.011, 0.016, 0.007, 0.0015, M['keyBlack'], -0.026 + i * 0.019, -0.03, H))
     for i in range(6): o.append(rbox(0.014, 0.012, 0.005, 0.0015, M['btnDark'], -0.135 + (i % 3) * 0.022, -0.035 - (i // 3) * 0.02, H))
     return join(o, 'td3')
-parts['td3'] = place(td3(), 0.3, DY + 0.006, -2.86, -0.05)
+parts['td3'] = place(td3(), 0.33, DY + 0.006, -2.86, -0.06)
 
 # ---------------- Arturia MicroFreak (311x233x55)
 def microfreak():
@@ -449,8 +459,8 @@ def microfreak():
             cap = M['knobOrange'] if (r, c) in orange else (M['knobWhite'] if (r + c) % 5 == 0 else M['knobBlack'])
             o += knob(0.0072, 0.011, x, yy, H, M['knobBlack'], cap, M['line'])
     return join(o, 'microfreak')
-y = alu_stand('stand_mf', 0.4, -2.72, -0.12, 0.32, 0.23, math.radians(16))
-parts['microfreak'] = place(microfreak(), 0.4, y, -2.72, -0.12, math.radians(16))
+y = alu_stand('stand_mf', 0.6, -2.62, -0.22, 0.32, 0.23, math.radians(22))
+parts['microfreak'] = place(microfreak(), 0.6, y, -2.62, -0.22, math.radians(22))
 
 # ---------------- Logitech Craft + MX Master 3 + DualSense
 def craft():
@@ -473,14 +483,14 @@ def craft():
     o.append(kj)
     o.append(cyl(0.02, 0.012, mat('crown', 0x26272b, 0.35, 0.6), -0.185, 0.05, 0.024, segs=32, bevel=0.002))
     return join(o, 'craft')
-parts['craft'] = place(craft(), 0.02, DY + 0.002, -2.7)
+parts['craft'] = place(craft(), -0.06, DY + 0.002, -2.66)
 
 def mx_master():
     o = [sphere(0.05, mat('mx', 0x2c2d31, 0.5, 0.1), 0, 0, 0.0, sx=0.85, sy=1.26, sz=0.5)]
     o.append(cyl(0.009, 0.006, M['knobSilver'], 0.0, 0.03, 0.022, segs=20, axis='Y'))
     o.append(rbox(0.02, 0.05, 0.006, 0.002, mat('mx_thumb', 0x1d1e21, 0.5), -0.042, -0.0, 0.0))
     return join(o, 'mx_master')
-parts['mx'] = place(mx_master(), 0.3, DY + 0.004, -2.7, 0.15)
+parts['mx'] = place(mx_master(), 0.28, DY + 0.004, -2.64, 0.15)
 
 def dualsense():
     o = [rbox(0.1, 0.07, 0.03, 0.012, M['ps5Core'], 0, 0.01, 0.012)]
@@ -491,7 +501,7 @@ def dualsense():
         o.append(cyl(0.009, 0.012, M['knobBlack'], s * 0.022, -0.01, 0.035, segs=18, bevel=0.002))
     o.append(rbox(0.05, 0.03, 0.004, 0.002, M['ps5Core'], 0, 0.025, 0.04))
     return join(o, 'dualsense')
-parts['dualsense'] = place(dualsense(), -0.26, DY + 0.006, -2.7, -0.25)
+parts['dualsense'] = place(dualsense(), -0.38, DY + 0.006, -2.64, -0.25)
 
 # ---------------- MacBook Pro 14 (standda)
 def macbook():
@@ -508,8 +518,8 @@ def macbook():
     lj.location = (0, 0.105, 0.0155)
     o.append(lj)
     return join(o, 'macbook')
-y = alu_stand('stand_mb', 0.68, -2.66, -0.45, 0.3, 0.26, math.radians(14))
-parts['macbook'] = place(macbook(), 0.68, y, -2.66, -0.45, math.radians(14))
+y = alu_stand('stand_mb', 0.84, -2.48, -0.6, 0.3, 0.26, math.radians(14))
+parts['macbook'] = place(macbook(), 0.84, y, -2.48, -0.6, math.radians(14))
 
 # ---------------- Tascam DR-05X (61x141x26), masada yatık
 def dr05x():
@@ -521,10 +531,10 @@ def dr05x():
         m.rotation_euler = (0, 0, s * 0.5)
         o.append(m)
     return join(o, 'dr05x')
-parts['dr05x'] = place(dr05x(), 0.5, DY, -2.52, 0.8)
+parts['dr05x'] = place(dr05x(), 0.62, DY, -2.36, 0.62)
 
 # ---------------- mat (masa önü boyunca)
-parts['mat'] = place(join([plane(0.9, 0.38, TEX('TEX_mat', 0xe8601c, 0.9), 0, 0, 0.0015)], 'mat'), 0.0, DY, -2.8)
+parts['mat'] = place(join([plane(0.95, 0.42, TEX('TEX_mat', 0xe8601c, 0.9), 0, 0, 0.0015)], 'mat'), -0.02, DY, -2.77)
 
 # ---------------- Grogu + LED mumlar (monitörün sağı)
 def grogu():
@@ -534,15 +544,15 @@ def grogu():
     for s in (-1, 1):
         bm = bmesh.new()
         bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.024, radius2=0.002, depth=0.11)
-        for v in bm.verts: v.co = Vector((v.co.z + 0.055, v.co.y * 0.4, v.co.x * 0.9))
+        for v in bm.verts: v.co = Vector((s * (v.co.z + 0.055), v.co.y * 0.4, v.co.x * 0.9))
         e = obj_from_bm(bm, 'ear', M['grogSkin'], 60)
         e.location = (s * 0.04, 0, 0.125)
-        e.rotation_euler = (0, -0.25 if s > 0 else 0.25, 0 if s > 0 else math.pi)
+        e.rotation_euler = (0, -s * 0.3, 0)
         o.append(e)
         o.append(sphere(0.0105, M['eye'], s * 0.017, -0.038, 0.118))
         o.append(sphere(0.012, M['grogSkin'], s * 0.035, -0.03, 0.04, sz=1.6))
     return join(o, 'grogu')
-parts['grogu'] = place(grogu(), 0.37, DY, -3.06, -0.25)
+parts['grogu'] = place(grogu(), 0.42, DY, -3.02, -0.3)
 parts['grogu'].scale = (1.8, 1.8, 1.8)
 def candles():
     o = []
@@ -550,7 +560,7 @@ def candles():
         o.append(cyl(0.013, h, M['candle'], x, y, 0, segs=18))
         o.append(sphere(0.006, M['flame'], x, y, h + 0.008, sz=1.7, segs=10))
     return join(o, 'candles')
-parts['candles'] = place(candles(), 0.2, DY, -3.0)
+parts['candles'] = place(candles(), 0.27, DY, -2.98)
 
 # ---------------- kablolar (arayüzden matın üstüne; siyah ve kırmızı)
 def cable(name, pts, m, r=0.0035):
@@ -568,7 +578,7 @@ def cable(name, pts, m, r=0.0035):
     return mo
 cbl = []
 for i, (x0, dx, m) in enumerate(((-0.075, -0.12, M['cable']), (-0.037, -0.05, M['cable']), (0.0, 0.04, M['cableRed']), (0.038, 0.1, M['cable']))):
-    cbl.append(cable('cab%d' % i, [(x0, RB + 0.035, -3.03 + 0.16), (x0 + dx * 0.2, RB - 0.01, -2.82), (x0 + dx * 0.6, DY + 0.006, -2.76), (x0 + dx, DY + 0.004, -2.68), (x0 + dx * 1.3, DY + 0.004, -2.62)], m))
+    cbl.append(cable('cab%d' % i, [(x0 - 0.02, RB + 0.03, -2.98), (x0 - 0.02 + dx * 0.2, RB - 0.02, -2.8), (x0 + dx * 0.6, DY + 0.006, -2.74), (x0 + dx, DY + 0.004, -2.66), (x0 + dx * 1.3, DY + 0.004, -2.6)], m))
 parts['cables'] = join(cbl, 'cables')
 
 # ---------------- dışa aktar
