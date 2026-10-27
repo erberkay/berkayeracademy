@@ -5,8 +5,9 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610272700';
+var MODEL_V = '202610272800';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -773,27 +774,151 @@ export function buildStudio(renderer, CONFIG) {
     }
   });
 
-  // ön duvar: plak rafı (raf yüzü -z, odaya bakar)
+  // ön duvar: plak rafı (raf yüzü -z, odaya bakar). Alt üç kat 4'er hücre; 31.5 cm LP kılıfları sırtı öne dönük dik durur,
+  // yarım dolu hücrelerde son plaklar yana yaslanır, bir hücrede yatay yığın, ikisinde kapağı öne dönük plak; rafın üstünde
+  // duvara yaslı kapak ve kılıfından yarı çıkmış plak.
   (function () {
     var g = grp(0.6, 0, 2.98, Math.PI);
     var wood = std(0xffffff, 0.5, 0, { map: woodTex });
     box(0.04, 2.1, 0.4, wood, -1.0, 1.05, 0, g); box(0.04, 2.1, 0.4, wood, 1.0, 1.05, 0, g);
     for (var s = 0; s < 6; s++) box(2.0, 0.03, 0.4, wood, 0, 0.1 + s * 0.4, 0, g);
-    var R = rng(77), pal = [0xc0392b, 0xe8b84b, 0x2c3e50, 0x16a085, 0x8e44ad, 0xecf0f1, 0xd35400, 0x1b1b1b, 0x3a86c8];
-    var n = 420, inst = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), std(0xffffff, 0.7), n);
-    var d = new THREE.Object3D(), col = new THREE.Color(), idx = 0;
-    for (var lv = 0; lv < 3; lv++) {
-      var x = -0.94;
-      while (x < 0.94 && idx < n) {
-        var th = 0.008 + R() * 0.012;
-        d.position.set(x + th / 2, 0.1 + lv * 0.4 + 0.145 + 0.02, 0.0);
-        d.scale.set(th, 0.3, 0.3);
-        d.updateMatrix(); inst.setMatrixAt(idx, d.matrix);
-        col.setHex(pal[Math.floor(R() * pal.length)]); inst.setColorAt(idx, col);
-        x += th + 0.002; idx++;
+    for (var lv = 0; lv < 3; lv++) [-0.49, 0, 0.49].forEach(function (x) { box(0.03, 0.37, 0.4, wood, x, 0.3 + lv * 0.4, 0, g); });
+
+    // sırt atlası: 256 şerit (16 x 512 px), her biri bir kılıf sırtı (zemin rengi + dikey yazı + katalog no)
+    var R = rng(77);
+    var COLS = ['#111113', '#141416', '#1c1c1f', '#efe9dc', '#f4f1ea', '#d9d2c3', '#5a5a5e', '#8a8a8e', '#a07b52', '#6b4a2e',
+                '#9c2a22', '#c43a2c', '#1f2f4f', '#2a4a7a', '#c99a2e', '#1f6b62', '#d0662a', '#3d5a2a', '#4b2a5a', '#c76a8a'];
+    var WORDS = ['NIGHT', 'SIGNAL', 'DUB', 'ECHO', 'ACID', 'DEEP', 'HOUSE', 'TAPE', 'VOL. 2', 'NOIR', 'LOOP', 'MOON', 'DRIFT', 'GOLD', 'RAVE',
+                 'SOUL', 'JAZZ', 'MODE', 'PULSE', 'ORBIT', 'LIVE', 'DUST', 'BLUE', 'NOVA', 'SESSIONS', 'RIDDIM', 'SKY', 'TIDE', 'LP', 'EP'];
+    var atlas = ctex(2048, 1024, function (c, w, h) {
+      var r = rng(301);
+      for (var k = 0; k < 256; k++) {
+        var x = (k % 128) * 16, y = Math.floor(k / 128) * 512;
+        var bg = COLS[Math.floor(r() * COLS.length)];
+        c.fillStyle = bg; c.fillRect(x, y, 16, 512);
+        var light = /^#[c-f]/i.test(bg) || bg === '#a07b52';
+        var ink = light ? '#1a1a1a' : (r() < 0.3 ? '#e8c46a' : '#f2f0ea');
+        if (r() < 0.35) { c.fillStyle = ink; c.globalAlpha = 0.85; c.fillRect(x, y + 20 + r() * 40, 16, 6 + r() * 10); c.globalAlpha = 1; }
+        c.save(); c.translate(x + 11.5, y + 492); c.rotate(-Math.PI / 2);
+        c.fillStyle = ink; c.font = (r() < 0.5 ? '700 ' : '500 ') + (9 + Math.floor(r() * 3)) + 'px "Instrument Sans", sans-serif';
+        var t = WORDS[Math.floor(r() * WORDS.length)] + (r() < 0.6 ? ' · ' + WORDS[Math.floor(r() * WORDS.length)] : '');
+        c.fillText(t, 70, 0);
+        c.font = '400 7px monospace'; c.globalAlpha = 0.7; c.fillText('BE-' + (100 + k), 4, 0); c.globalAlpha = 1;
+        c.restore();
       }
+    });
+    atlas.anisotropy = 16;
+    var base = new THREE.BoxGeometry(1, 1, 1), parts = [];
+    var m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e3 = new THREE.Euler(), pv = new THREE.Vector3(), sv = new THREE.Vector3();
+    function rec(th, x, y, z, rz, ry, flat) {
+      var gm = base.clone(), uv = gm.attributes.uv, k = Math.floor(R() * 256);
+      var u0 = (k % 128) * 16 / 2048, u1 = u0 + 16 / 2048, v1 = 1 - Math.floor(k / 128) * 0.5, v0 = v1 - 0.5;
+      for (var i = 0; i < uv.count; i++) {
+        if (i >= 16 && i < 20) uv.setXY(i, uv.getX(i) ? u1 : u0, uv.getY(i) ? v1 : v0);
+        else uv.setXY(i, (u0 + u1) / 2, v0 + 0.004);
+      }
+      sv.set(th, 0.315, 0.315); pv.set(x, y, z);
+      q.setFromEuler(e3.set(0, ry || 0, (rz || 0) + (flat ? Math.PI / 2 : 0)));
+      gm.applyMatrix4(m4.compose(pv, q, sv)); parts.push(gm);
     }
-    inst.count = idx; inst.castShadow = true; g.add(inst);
+    function thick() { var r = R(); return r < 0.01 ? 0.024 : r < 0.1 ? 0.007 + R() * 0.004 : 0.0032 + R() * 0.0022; }
+    var CELLS = [[-0.98, -0.505], [-0.475, -0.015], [0.015, 0.475], [0.505, 0.98]];
+    var ZC = 0.2 - 0.025 - 0.1575, H2 = 0.1575;
+    // hücre içeriği: 'full' | 'lean' (yarım + yaslananlar) | 'stack' (yatay yığın) | 'face' (önde kapak)
+    var PLAN = [['full', 'lean', 'full', 'full'], ['full', 'face', 'full', 'stack'], ['lean', 'full', 'face', 'full']];
+    var faces = [];
+    PLAN.forEach(function (row, lv) {
+      var y0 = 0.1 + lv * 0.4 + 0.015;
+      row.forEach(function (kind, ci) {
+        var x0 = CELLS[ci][0], x1 = CELLS[ci][1], x = x0 + 0.002;
+        if (kind === 'stack') {
+          var yy = y0, n = 6 + Math.floor(R() * 4);
+          for (var i = 0; i < n; i++) { var t = thick(); rec(t, (x0 + x1) / 2 + (R() - 0.5) * 0.02, yy + t / 2, ZC + (R() - 0.5) * 0.02, 0, (R() - 0.5) * 0.08, true); yy += t + 0.0004; }
+          return;
+        }
+        var stop = kind === 'lean' ? x0 + (x1 - x0) * (0.45 + R() * 0.2) : x1 - 0.004;
+        while (true) {
+          var t = thick(); if (x + t > stop) break;
+          rec(t, x + t / 2, y0 + H2 + (R() - 0.5) * 0.002, ZC + (R() - 0.5) * 0.008, 0, (R() - 0.5) * 0.01);
+          x += t + 0.0003;
+        }
+        if (kind === 'lean') {
+          // son plaklar dik duranlara yaslanır: alt kenar sabit, üst kenar sola yatık
+          var a = 0.16 + R() * 0.1, px = x + 0.315 * Math.sin(a) * 0.98;
+          for (var j = 0; j < 9 && px < x1 - 0.01; j++) {
+            var tl = thick();
+            rec(tl, px - Math.sin(a) * H2 + Math.cos(a) * tl / 2, y0 + Math.cos(a) * H2 + Math.sin(a) * tl / 2, ZC + (R() - 0.5) * 0.008, a, 0);
+            px += tl / Math.cos(a) + 0.0004;
+          }
+        }
+        if (kind === 'face') faces.push([(x0 + x1) / 2, y0]);
+      });
+    });
+    var recMesh = new THREE.Mesh(mergeGeometries(parts), std(0xffffff, 0.72, 0, { map: atlas }));
+    recMesh.castShadow = true; recMesh.receiveShadow = true; g.add(recMesh);
+
+    // kapaklar: CONFIG.photos kapakları (With You, Golden Sound, Can't Sleep)
+    var edge = std(0x141414, 0.7);
+    function coverMat(p) {
+      var c = document.createElement('canvas'); c.width = c.height = 512;
+      var tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8;
+      var cx = c.getContext('2d');
+      function paint(im) {
+        if (im) cx.drawImage(im, 0, 0, 512, 512);
+        else {
+          var gr = cx.createLinearGradient(0, 0, 512, 512);
+          gr.addColorStop(0, '#2a1a05'); gr.addColorStop(0.45, '#b8862b'); gr.addColorStop(0.7, '#f3d27a'); gr.addColorStop(1, '#5a3a0c');
+          cx.fillStyle = gr; cx.fillRect(0, 0, 512, 512);
+          cx.strokeStyle = 'rgba(255,240,200,.55)'; cx.lineWidth = 2;
+          for (var r = 24; r < 260; r += 22) { cx.beginPath(); cx.arc(256, 256, r, 0, 7); cx.stroke(); }
+          cx.fillStyle = '#1a1005'; cx.textAlign = 'center'; cx.font = '400 84px "Instrument Serif", serif';
+          cx.fillText('Golden', 256, 236); cx.fillText('Sound', 256, 318);
+        }
+        tx.needsUpdate = true;
+      }
+      paint(null);
+      if (p && p.src) { var im = new Image(); im.onload = function () { paint(im); }; im.src = p.src; }
+      else if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { paint(null); });
+      return [edge, edge, edge, edge, std(0xffffff, 0.55, 0, { map: tx }), edge];
+    }
+    var ph = CONFIG.photos || [];
+    function pick(fn) { return ph.filter(fn)[0]; }
+    var covers = [pick(function (p) { return p.src && /with-you/.test(p.src); }), pick(function (p) { return p.art === 'golden'; })];
+    faces.forEach(function (f, i) {
+      var cm = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.315, 0.004), coverMat(covers[i]));
+      cm.position.set(f[0], f[1] + 0.1575 * Math.cos(0.05), 0.186); cm.rotation.x = -0.05;
+      cm.castShadow = true; g.add(cm);
+    });
+
+    // plak: oluklu siyah vinil + orta etiket
+    var grooveTex = ctex(512, 512, function (c, w, h) {
+      c.fillStyle = '#060607'; c.fillRect(0, 0, w, h);
+      var r = rng(5);
+      for (var rad = 70; rad < 252; rad += 1.1) { c.strokeStyle = 'rgba(255,255,255,' + (0.06 + r() * 0.1) + ')'; c.lineWidth = 0.6; c.beginPath(); c.arc(256, 256, rad, 0, 7); c.stroke(); }
+      [130, 168, 205].forEach(function (rad) { c.strokeStyle = '#000'; c.lineWidth = 2.5; c.beginPath(); c.arc(256, 256, rad, 0, 7); c.stroke(); });
+      c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 3; c.beginPath(); c.arc(256, 256, 251, 0, 7); c.stroke();
+      c.fillStyle = '#c8962e'; c.beginPath(); c.arc(256, 256, 58, 0, 7); c.fill();
+      c.fillStyle = '#1a1005'; c.textAlign = 'center'; c.font = '600 13px "Instrument Sans", sans-serif'; c.fillText(`CAN'T SLEEP`, 256, 236);
+      c.font = '400 10px "Instrument Sans", sans-serif'; c.fillText('MARSIAS · BERKAEL', 256, 286);
+      c.fillStyle = '#060607'; c.beginPath(); c.arc(256, 256, 4, 0, 7); c.fill();
+    });
+    var vinylFace = std(0xffffff, 0.26, 0, { map: grooveTex, envMapIntensity: 1.6 });
+    var disc = new THREE.Mesh(new THREE.CylinderGeometry(0.1505, 0.1505, 0.0016, 96), [std(0x050506, 0.4), vinylFace, vinylFace]);
+    disc.rotation.x = Math.PI / 2; disc.castShadow = true;
+
+    // rafın üstü: duvara yaslı Can't Sleep kapağı, plak kılıftan yarı çıkmış
+    var top = 2.115, tilt = -0.27;
+    var lean = new THREE.Group(); lean.position.set(0.35, top, -0.1); lean.rotation.x = tilt; g.add(lean);
+    var sl = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.315, 0.004), coverMat(pick(function (p) { return p.src && /cant-sleep/.test(p.src); })));
+    sl.position.set(0, 0.1575, 0); sl.castShadow = true; lean.add(sl);
+    disc.position.set(0.05, 0.1575 + 0.19, -0.004); lean.add(disc);
+    // üstte küçük yatay yığın
+    var stackY = top;
+    for (var si = 0; si < 4; si++) {
+      var st2 = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.004, 0.315), std(new THREE.Color(COLS[Math.floor(R() * COLS.length)]), 0.7));
+      st2.position.set(0.78 + (R() - 0.5) * 0.015, stackY + 0.002, 0.0 + (R() - 0.5) * 0.015); st2.rotation.y = (R() - 0.5) * 0.1;
+      st2.castShadow = true; g.add(st2); stackY += 0.0044;
+    }
     obst(-0.45, 1.65, 2.75, 3.2);
   })();
 
