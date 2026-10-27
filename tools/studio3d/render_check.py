@@ -8,8 +8,8 @@ bpy.ops.import_scene.gltf(filepath=glb)
 sc = bpy.context.scene
 cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.objects.link(cam)
 cam.data.lens = 18
-cam.location = Vector((0.05, 1.05, 1.3))   # sahne (0.05, 1.3, -1.05)
-d = Vector((0.05, 2.85, 0.92)) - cam.location
+cam.location = Vector((0.02, 1.95, 1.22))   # sahne (0.02, 1.22, -1.95)
+d = Vector((0.0, 2.95, 0.98)) - cam.location
 cam.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
 sc.camera = cam
 def light(kind, loc, energy, color, size=0.5):
@@ -17,7 +17,7 @@ def light(kind, loc, energy, color, size=0.5):
     if kind == 'AREA': l.size = size
     o = bpy.data.objects.new(kind, l); o.location = loc; sc.collection.objects.link(o)
     return o
-a = light('AREA', Vector((0, 1.8, 2.4)), 220, (1, 0.9, 0.8), 1.6); a.rotation_euler = (math.radians(35), 0, 0)
+a = light('AREA', Vector((0, 2.3, 2.4)), 160, (1, 0.9, 0.8), 1.6); a.rotation_euler = (math.radians(35), 0, 0)
 light('POINT', Vector((0, 3.05, 1.1)), 60, (1, 0.25, 0.3))
 light('POINT', Vector((0.3, 2.8, 0.9)), 8, (1, 0.6, 0.3))
 w = bpy.data.worlds.new('w'); w.use_nodes = True; w.node_tree.nodes['Background'].inputs[0].default_value = (0.02, 0.02, 0.025, 1); sc.world = w
