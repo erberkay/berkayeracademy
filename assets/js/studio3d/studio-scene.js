@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610272900';
+var MODEL_V = '202610273000';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -555,28 +555,106 @@ export function buildStudio(renderer, CONFIG) {
       }, undefined, function (e) { console.warn('[s3d] model yüklenemedi: ' + name, e); resolve(false); });
     });
   }
-  // kedi (oturur pozda): kamera bakmıyorken odanın başka bir köşesine geçer
-  var CAT_SPOTS = [[1.0, 0.004, 1.8], [2.45, 0.48, 0.25], [-1.75, 0, -0.6], [0.95, 0, -1.95], [-0.2, 0, 2.45], [-2.2, 0, 0.9]];
-  var cat = null, catAt = 0, catNext = 25, tvDraw = null, tvLast = -1;
-  function catMove(i) {
-    catAt = i; var p = CAT_SPOTS[i];
-    cat.position.set(p[0], p[1], p[2]);
-    cat.rotation.y = Math.atan2(0.2 - p[0], 0.3 - p[2]);
-  }
-  var catV = new THREE.Vector3(), catF = new THREE.Vector3();
-  function catTick(t, cam) {
-    if (!cat) return;
-    cat.scale.y = 1 + Math.sin(t * 2.1) * 0.006;
-    if (!cam || t < catNext) return;
-    cam.getWorldDirection(catF);
-    catV.copy(cat.position).sub(cam.position);
-    var seen = catV.dot(catF) > 0 && (catV.normalize(), catV.dot(catF) > 0.55);
-    if (seen) { catNext = t + 4; return; }
-    var j = (catAt + 1 + Math.floor(Math.random() * (CAT_SPOTS.length - 1))) % CAT_SPOTS.length;
-    catV.set(CAT_SPOTS[j][0], 0.2, CAT_SPOTS[j][2]).sub(cam.position);
-    if (catV.dot(catF) > 0 && (catV.normalize(), catV.dot(catF) > 0.55)) { catNext = t + 4; return; }
-    catMove(j); catNext = t + 30 + Math.random() * 30;
-  }
+  var cat = null, tvDraw = null, tvLast = -1, walkerTick = null, spin = null;
+  // gezen kedi (Somali Cat Animated — DreamNoms, CC BY; tools/studio3d/export_cat.py): odanın boş zemininde rastgele
+  // bir noktaya yürür, orada durur ya da oturup bir süre bekler, sonra kalkıp başka yere gider. Model -z'ye bakar.
+  (function () {
+    var SC = 0.125, TS = 1.5, SPEED = 1.38 * SC * TS, PAD = 0.2;
+    var BLOCK = [{ x0: -0.35, x1: 0.25, z0: -2.25, z1: -1.65 }]; // sandalye ayağı
+    var walker = null, nodes = null;
+    function free(x, z) {
+      if (x < -2.72 || x > 2.72 || z < -2.92 || z > 2.92) return false;
+      var L = obstacles.concat(BLOCK);
+      for (var i = 0; i < L.length; i++) { var o = L[i]; if (x > o.x0 - PAD && x < o.x1 + PAD && z > o.z0 - PAD && z < o.z1 + PAD) return false; }
+      return true;
+    }
+    function clear(a, b) {
+      var n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.05);
+      for (var i = 1; i < n; i++) if (!free(a.x + (b.x - a.x) * i / n, a.z + (b.z - a.z) * i / n)) return false;
+      return true;
+    }
+    function graph() {
+      nodes = [];
+      for (var x = -2.7; x <= 2.71; x += 0.3) for (var z = -2.9; z <= 2.91; z += 0.3) if (free(x, z)) nodes.push({ x: x, z: z, nb: [] });
+      for (var i = 0; i < nodes.length; i++) for (var j = i + 1; j < nodes.length; j++) {
+        var a = nodes[i], b = nodes[j];
+        if (Math.hypot(a.x - b.x, a.z - b.z) < 0.45 && clear(a, b)) { a.nb.push(j); b.nb.push(i); }
+      }
+    }
+    function nearest(x, z) {
+      var bi = 0, bd = 1e9;
+      nodes.forEach(function (n, i) { var d = Math.hypot(n.x - x, n.z - z); if (d < bd && n.nb.length) { bd = d; bi = i; } });
+      return bi;
+    }
+    function route(from) {
+      // ulaşılabilen düğümlerden en az 1.5 m uzaktakine git; yolu düz görüşle kısalt
+      var prev = {}, q = [from], seen = {}; seen[from] = 1;
+      while (q.length) { var c = q.shift(); nodes[c].nb.forEach(function (n) { if (!seen[n]) { seen[n] = 1; prev[n] = c; q.push(n); } }); }
+      var far = Object.keys(seen).map(Number).filter(function (i) { return Math.hypot(nodes[i].x - nodes[from].x, nodes[i].z - nodes[from].z) > 1.5; });
+      if (!far.length) return [];
+      var t = far[Math.floor(Math.random() * far.length)], p = [];
+      while (t !== from && t != null) { p.unshift(nodes[t]); t = prev[t]; }
+      var out = [], cur = { x: walker.root.position.x, z: walker.root.position.z }, k = 0;
+      while (k < p.length) { var j = p.length - 1; while (j > k && !clear(cur, p[j])) j--; out.push(p[j]); cur = p[j]; k = j + 1; }
+      return out;
+    }
+    function play(n) {
+      var a = walker.A[n]; if (!a || walker.cur === a) return;
+      a.reset().play();
+      if (walker.cur) walker.cur.crossFadeTo(a, 0.35, false);
+      walker.cur = a;
+    }
+    gltf.load('/assets/models/somalicat.glb?v=' + MODEL_V, function (gl) {
+      graph();
+      var root = new THREE.Group(), body = gl.scene;
+      body.scale.setScalar(SC); body.position.y = 1.62 * SC;
+      body.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+      root.add(body); root.name = 'somalicat'; scene.add(root);
+      var mixer = new THREE.AnimationMixer(body), A = {};
+      gl.animations.forEach(function (c) { A[c.name] = mixer.clipAction(c); });
+      ['SitDown', 'StandUp'].forEach(function (n) { if (A[n]) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; } });
+      var start = nodes.filter(function (n) { return n.nb.length > 2; });
+      var s0 = start[Math.floor(Math.random() * start.length)];
+      root.position.set(s0.x, 0, s0.z); root.rotation.y = Math.random() * 6.28;
+      walker = { root: root, mixer: mixer, A: A, cur: null, state: 'idle', until: 2 + Math.random() * 3, path: [] };
+      play('Idle');
+    }, undefined, function (e) { console.warn('[s3d] kedi yüklenemedi', e); });
+    var clock = 0;
+    walkerTick = function (dt) {
+      if (!walker) return;
+      clock += dt; walker.mixer.update(dt);
+      var w = walker, r = w.root;
+      if (w.state === 'walk') {
+        var p = w.path[0];
+        if (!p) {
+          w.state = Math.random() < 0.55 ? 'sitdown' : 'idle';
+          w.until = clock + (w.state === 'idle' ? 2.5 + Math.random() * 4 : 1.5);
+          play(w.state === 'idle' ? 'Idle' : 'SitDown');
+          return;
+        }
+        var dx = p.x - r.position.x, dz = p.z - r.position.z, d = Math.hypot(dx, dz);
+        if (d < 0.06) { w.path.shift(); return; }
+        var diff = Math.atan2(-dx, -dz) - r.rotation.y;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        r.rotation.y += diff * Math.min(1, dt * 3.2);
+        // dönerken yavaşlar; adım hızı yürüme hızına bağlı, ayak kaymaz
+        var sp = SPEED * Math.max(0.2, Math.cos(Math.min(1.37, Math.abs(diff))));
+        w.A.Walk.timeScale = TS * sp / SPEED;
+        var step = Math.min(d, sp * dt);
+        r.position.x -= Math.sin(r.rotation.y) * step; r.position.z -= Math.cos(r.rotation.y) * step;
+        return;
+      }
+      if (clock < w.until) return;
+      if (w.state === 'sitdown') { w.state = 'sit'; w.until = clock + 6 + Math.random() * 10; play('SittingIdle'); }
+      else if (w.state === 'sit') { w.state = 'standup'; w.until = clock + 1.5; play('StandUp'); }
+      else {
+        w.path = route(nearest(r.position.x, r.position.z));
+        if (w.path.length) { w.state = 'walk'; play('Walk'); } else { w.state = 'idle'; w.until = clock + 3; play('Idle'); }
+      }
+    };
+    window.__s3dCat = function () { return walker; };
+  })();
   // sahne masa yüklenince açılır; hazır modeller arkadan eklenir
   var ready = loadGlb('studio-desk');
   ready.then(function () {
@@ -585,12 +663,12 @@ export function buildStudio(renderer, CONFIG) {
       loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.59); r.rotation.y = -0.25; r.userData.sitOn = DY; }),
       loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
       // koleksiyon rafı (ön duvar; raf yüzü -z), plak masası (sol duvar), duvar tabloları
-      loadGlb('db01', function (r) { r.position.set(-0.05, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
-      loadGlb('batman', function (r) { r.position.set(0.45, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
-      loadGlb('avata', function (r) { r.position.set(1.05, 1.316, 2.96); r.userData.sitOn = 1.316; }),
-      loadGlb('mando', function (r) { r.position.set(0.55, 1.716, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.716; }),
-      loadGlb('avatadrone', function (r) { r.position.set(0.95, 1.716, 2.96); r.rotation.y = 0.26; r.userData.sitOn = 1.716; }),
-      loadGlb('om5', function (r) { r.position.set(1.35, 1.716, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.716; }),
+      loadGlb('db01', function (r) { r.position.set(0.34, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
+      loadGlb('batman', function (r) { r.position.set(0.57, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
+      loadGlb('avata', function (r) { r.position.set(1.2, 1.316, 2.96); r.userData.sitOn = 1.316; }),
+      loadGlb('mando', function (r) { r.position.set(0.75, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
+      loadGlb('avatadrone', function (r) { r.position.set(0.97, 1.316, 2.96); r.rotation.y = 0.26; r.userData.sitOn = 1.316; }),
+      loadGlb('om5', function (r) { r.position.set(1.45, 1.316, 2.96); r.rotation.y = Math.PI; r.userData.sitOn = 1.316; }),
       loadGlb('recordrack', function (r) { r.position.set(-2.77, 0, 1.6); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0; }),
       loadGlb('art', function (r) {
         // seçilen tablolar (tools/studio3d/tablolar.png numaraları): [x, y, z, ry]; düğüm orijini arka yüzün ortası
@@ -602,7 +680,7 @@ export function buildStudio(renderer, CONFIG) {
                   art_58: [-2.55, 1.95, 3.198, F], art_53: [-2.55, 1.3, 3.198, F], art_44: [-0.76, 1.6, 3.198, F] };
         r.traverse(function (o) { var w = W[o.name]; if (w && o.isMesh || (w && o.children.length)) { o.position.set(w[0], w[1], w[2]); o.rotation.set(0, w[3], 0); } });
       }),
-      loadGlb('cat', function (r) { cat = r; catMove(0); }),
+      loadGlb('cat', function (r) { cat = r; r.position.set(2.45, 0.48, 0.25); r.rotation.y = Math.atan2(0.2 - 2.45, 0.3 - 0.25); }),
       loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
       loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.order = 'YZX'; r.rotation.set(1.26, Math.PI / 2 + 0.12, 0.16); r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(1.0052, DY + 0.0637, -2.6446); r.rotation.y = -0.15;  /* standın eğimli yüzeyine, ön tırnakların arkasına oturur */ r.rotation.x = 0.244; })
@@ -774,6 +852,21 @@ export function buildStudio(renderer, CONFIG) {
     }
   });
 
+  // oluklu vinil yüzü (plak rafı ve pikap ortak kullanır)
+  function grooveTexFor(title, sub, label) {
+    return ctex(512, 512, function (c, w, h) {
+      c.fillStyle = '#060607'; c.fillRect(0, 0, w, h);
+      var r = rng(5);
+      for (var rad = 70; rad < 252; rad += 1.1) { c.strokeStyle = 'rgba(255,255,255,' + (0.06 + r() * 0.1) + ')'; c.lineWidth = 0.6; c.beginPath(); c.arc(256, 256, rad, 0, 7); c.stroke(); }
+      [130, 168, 205].forEach(function (rad) { c.strokeStyle = '#000'; c.lineWidth = 2.5; c.beginPath(); c.arc(256, 256, rad, 0, 7); c.stroke(); });
+      c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 3; c.beginPath(); c.arc(256, 256, 251, 0, 7); c.stroke();
+      c.fillStyle = label; c.beginPath(); c.arc(256, 256, 58, 0, 7); c.fill();
+      c.fillStyle = '#1a1005'; c.textAlign = 'center'; c.font = '600 13px "Instrument Sans", sans-serif'; c.fillText(title, 256, 236);
+      c.font = '400 10px "Instrument Sans", sans-serif'; c.fillText(sub, 256, 286);
+      c.fillStyle = '#060607'; c.beginPath(); c.arc(256, 256, 4, 0, 7); c.fill();
+    });
+  }
+
   // ön duvar: plak rafı (raf yüzü -z, odaya bakar). Alt üç kat 4'er hücre; 31.5 cm LP kılıfları sırtı öne dönük dik durur,
   // yarım dolu hücrelerde son plaklar yana yaslanır, bir hücrede yatay yığın, ikisinde kapağı öne dönük plak; rafın üstünde
   // duvara yaslı kapak ve kılıfından yarı çıkmış plak.
@@ -891,60 +984,118 @@ export function buildStudio(renderer, CONFIG) {
     });
 
     // plak: oluklu siyah vinil + orta etiket
-    var grooveTex = ctex(512, 512, function (c, w, h) {
-      c.fillStyle = '#060607'; c.fillRect(0, 0, w, h);
-      var r = rng(5);
-      for (var rad = 70; rad < 252; rad += 1.1) { c.strokeStyle = 'rgba(255,255,255,' + (0.06 + r() * 0.1) + ')'; c.lineWidth = 0.6; c.beginPath(); c.arc(256, 256, rad, 0, 7); c.stroke(); }
-      [130, 168, 205].forEach(function (rad) { c.strokeStyle = '#000'; c.lineWidth = 2.5; c.beginPath(); c.arc(256, 256, rad, 0, 7); c.stroke(); });
-      c.strokeStyle = 'rgba(255,255,255,.12)'; c.lineWidth = 3; c.beginPath(); c.arc(256, 256, 251, 0, 7); c.stroke();
-      c.fillStyle = '#c8962e'; c.beginPath(); c.arc(256, 256, 58, 0, 7); c.fill();
-      c.fillStyle = '#1a1005'; c.textAlign = 'center'; c.font = '600 13px "Instrument Sans", sans-serif'; c.fillText(`CAN'T SLEEP`, 256, 236);
-      c.font = '400 10px "Instrument Sans", sans-serif'; c.fillText('MARSIAS · BERKAEL', 256, 286);
-      c.fillStyle = '#060607'; c.beginPath(); c.arc(256, 256, 4, 0, 7); c.fill();
-    });
+    var grooveTex = grooveTexFor(`CAN'T SLEEP`, 'MARSIAS · BERKAEL', '#c8962e');
     var vinylFace = std(0xffffff, 0.26, 0, { map: grooveTex, envMapIntensity: 1.6 });
     var disc = new THREE.Mesh(new THREE.CylinderGeometry(0.1505, 0.1505, 0.0016, 96), [std(0x050506, 0.4), vinylFace, vinylFace]);
     disc.rotation.x = Math.PI / 2; disc.castShadow = true;
 
-    // 4. kat: duvara yaslı Can't Sleep kapağı, plak kılıftan yana doğru yarı çıkmış
+    // 3. kat: duvara yaslı Can't Sleep kapağı, plak kılıftan yana doğru yarı çıkmış
     var tilt = -0.27;
-    var lean = new THREE.Group(); lean.position.set(0.55, 1.715, -0.1); lean.rotation.x = tilt; g.add(lean);
+    var lean = new THREE.Group(); lean.position.set(0.8, 1.315, -0.1); lean.rotation.x = tilt; g.add(lean);
     var sl = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.315, 0.004), coverMat(pick(function (p) { return p.src && /cant-sleep/.test(p.src); })));
     sl.position.set(0, 0.1575, 0); sl.castShadow = true; lean.add(sl);
-    disc.position.set(0.17, 0.1575, -0.004); lean.add(disc);
-    // 3. kat: küçük yatay yığın
-    var stackY = 1.315;
-    for (var si = 0; si < 4; si++) {
-      var st2 = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.004, 0.315), std(new THREE.Color(COLS[Math.floor(R() * COLS.length)]), 0.7));
-      st2.position.set(-0.8 + (R() - 0.5) * 0.012, stackY + 0.002, 0.0 + (R() - 0.5) * 0.012); st2.rotation.y = (R() - 0.5) * 0.08;
-      st2.castShadow = true; g.add(st2); stackY += 0.0044;
-    }
+    disc.position.set(-0.17, 0.1575, -0.004); lean.add(disc);
 
-    // rafın üstü: 42" TV, ekranda sitenin ana sayfası yavaşça kayar (assets/img/studio/tv: canlı sayfanın ardışık ekranları)
-    var tv = new THREE.Group(); tv.position.set(0, 2.115, -0.02); g.add(tv);
+    // 4. kat: açıklığı dolduran geniş ekran (1.88 x 0.3525 m = yan yana üç 16:9). Sitenin ana sayfası üç sütunda yavaşça kayar
+    // (assets/img/studio/tv: canlı sayfanın ardışık ekranları); tıklayınca ana sayfa açılır.
+    var tv = new THREE.Group(); tv.position.set(0, 1.715, 0.08); g.add(tv);
     var tvBlack = std(0x0b0b0c, 0.35, 0.2);
-    rbox(0.96, 0.55, 0.03, 0.006, tvBlack, 0, 0.06 + 0.275, 0, tv);
-    rbox(0.3, 0.012, 0.16, 0.004, tvBlack, 0, 0.006, 0.0, tv);
-    box(0.05, 0.06, 0.02, tvBlack, 0, 0.04, -0.005, tv);
-    var tvC = document.createElement('canvas'); tvC.width = 1024; tvC.height = 576;
-    var tvX = tvC.getContext('2d'); tvX.fillStyle = '#0b0b0e'; tvX.fillRect(0, 0, 1024, 576);
+    rbox(1.92, 0.366, 0.03, 0.006, tvBlack, 0, 0.184, 0, tv);
+    var TW = 2048, TH = 384, CW = TW / 3;
+    var tvC = document.createElement('canvas'); tvC.width = TW; tvC.height = TH;
+    var tvX = tvC.getContext('2d'); tvX.fillStyle = '#0b0b0e'; tvX.fillRect(0, 0, TW, TH);
     var tvTex = new THREE.CanvasTexture(tvC); tvTex.colorSpace = THREE.SRGBColorSpace; tvTex.anisotropy = 8;
-    var tvScreen = plane(0.94, 0.53, new THREE.MeshBasicMaterial({ map: tvTex, color: 0xcfcfcf }), 0, 0.06 + 0.275, 0.0155, tv);
+    var tvScreen = plane(1.88, 0.3525, new THREE.MeshBasicMaterial({ map: tvTex, color: 0xcfcfcf }), 0, 0.184, 0.0155, tv);
     var tvImgs = [], TV_N = 7;
     for (var ti = 0; ti < TV_N; ti++) { var im = new Image(); im.src = '/assets/img/studio/tv/home-' + ti + '.jpg?v=' + MODEL_V; tvImgs.push(im); }
-    var tvGlow = new THREE.PointLight(0x9fb0ff, 0.25, 2.2, 2); tvGlow.position.set(0.6, 2.45, 2.6); scene.add(tvGlow);
+    var tvGlow = new THREE.PointLight(0x9fb0ff, 0.3, 2.2, 2); tvGlow.position.set(0.6, 1.9, 2.6); scene.add(tvGlow);
     clickables.push({ mesh: tvScreen, href: '/' });
     tvDraw = function (t) {
-      // her ekran 3 sn durur, 1.6 sn'de bir sonrakine kayar; sonda başa döner
-      var cyc = 4.6, k = Math.floor(t / cyc) % TV_N, f = Math.max(0, (t % cyc) - 3) / 1.6;
+      // sütun c, sayfanın k+c. ekranını gösterir; 3 sn durur, 1.6 sn'de hepsi birer ekran aşağı kayar
+      var cyc = 4.6, k = Math.floor(t / cyc), f = Math.max(0, (t % cyc) - 3) / 1.6;
       f = f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2;
-      var a = tvImgs[k], b = tvImgs[(k + 1) % TV_N];
-      if (!a.complete || !a.naturalWidth) return;
-      if (k === TV_N - 1) { tvX.globalAlpha = 1; tvX.drawImage(a, 0, 0, 1024, 576); if (f > 0 && b.complete) { tvX.globalAlpha = f; tvX.drawImage(b, 0, 0, 1024, 576); tvX.globalAlpha = 1; } }
-      else { tvX.drawImage(a, 0, -f * 576, 1024, 576); if (f > 0 && b.complete) tvX.drawImage(b, 0, 576 - f * 576, 1024, 576); }
+      for (var c = 0; c < 3; c++) {
+        var a = tvImgs[(k + c) % TV_N], b = tvImgs[(k + c + 1) % TV_N], x = c * CW;
+        if (!a.complete || !a.naturalWidth) continue;
+        tvX.save(); tvX.beginPath(); tvX.rect(x, 0, CW, TH); tvX.clip();
+        tvX.drawImage(a, x, -f * TH, CW, TH);
+        if (f > 0 && b.complete) tvX.drawImage(b, x, TH - f * TH, CW, TH);
+        tvX.restore();
+        if (c) { tvX.fillStyle = '#000'; tvX.fillRect(x - 2, 0, 4, TH); }
+      }
       tvTex.needsUpdate = true;
     };
     obst(-0.45, 1.65, 2.75, 3.2);
+  })();
+
+  // sağ duvar, posterlerin altı: konsol masası + pikap (33⅓ devirde döner; plağa tıklayınca Golden Sound çalar)
+  (function () {
+    var g = grp(2.75, 0, -1.85, -Math.PI / 2);
+    var wood = std(0xffffff, 0.5, 0, { map: woodTex }), metal = std(0x18181a, 0.4, 0.6);
+    rbox(1.2, 0.035, 0.42, 0.006, wood, 0, 0.7025, 0, g);
+    [[-0.57, -0.18], [0.57, -0.18], [-0.57, 0.18], [0.57, 0.18]].forEach(function (p) { box(0.025, 0.685, 0.025, metal, p[0], 0.3425, p[1], g); });
+    rbox(1.14, 0.02, 0.38, 0.004, wood, 0, 0.22, 0, g);
+    // alt rafta yatay plak yığını ve dik duran birkaç plak
+    var R = rng(41), cols = [0x111113, 0xefe9dc, 0x9c2a22, 0x1f2f4f, 0xc99a2e, 0x5a5a5e];
+    for (var i = 0, y = 0.23; i < 7; i++, y += 0.0045) {
+      var r = box(0.315, 0.004, 0.315, std(cols[i % cols.length], 0.7), -0.33 + (R() - 0.5) * 0.015, y + 0.002, (R() - 0.5) * 0.015, g);
+      r.rotation.y = (R() - 0.5) * 0.1;
+    }
+    for (var j = 0; j < 9; j++) box(0.004, 0.315, 0.315, std(cols[Math.floor(R() * cols.length)], 0.7), 0.15 + j * 0.006, 0.23 + 0.1575, 0, g);
+
+    // pikap: gövde, ayaklar, tabla, plak, iğne kolu, düğmeler
+    var tt = new THREE.Group(); tt.position.set(-0.08, 0.72, 0); g.add(tt);
+    var body = std(0x111113, 0.3, 0.3), alu = std(0xc8c8cc, 0.28, 1), dark = std(0x070708, 0.5);
+    [[-0.2, -0.15], [0.2, -0.15], [-0.2, 0.15], [0.2, 0.15]].forEach(function (p) { cyl(0.025, 0.028, 0.016, alu, p[0], 0.008, p[1], tt, 20); });
+    rbox(0.45, 0.085, 0.355, 0.008, body, 0, 0.0585, 0, tt);
+    var TOP = 0.101;
+    var rot = new THREE.Group(); rot.position.set(-0.07, TOP, 0.005); tt.add(rot);
+    cyl(0.153, 0.153, 0.026, alu, 0, 0.013, 0, rot, 72);
+    var vt = grooveTexFor('GOLDEN SOUND', 'BERKAY ER', '#e0b04a');
+    var vf = std(0xffffff, 0.26, 0, { map: vt, envMapIntensity: 1.6 });
+    var platter = mesh(new THREE.CylinderGeometry(0.1505, 0.1505, 0.0018, 96), [std(0x050506, 0.4), vf, vf], 0, 0.027, 0, rot);
+    cyl(0.0035, 0.0035, 0.018, alu, 0, 0.035, 0, rot, 10);
+    // iğne kolu: pivot sağ arkada, kafa plağın dış oluklarında
+    var arm = new THREE.Group(); arm.position.set(0.15, TOP, -0.11); tt.add(arm);
+    cyl(0.028, 0.03, 0.03, alu, 0, 0.015, 0, arm, 28);
+    cyl(0.012, 0.012, 0.03, dark, 0, 0.045, 0, arm, 16);
+    var tip = new THREE.Vector3(-0.07 - 0.15 + 0.115 * Math.cos(2.2), 0, 0.005 + 0.11 + 0.115 * Math.sin(2.2));
+    var len = Math.hypot(tip.x, tip.z), ang = Math.atan2(tip.x, tip.z);
+    var beam = new THREE.Group(); beam.position.set(0, 0.055, 0); beam.rotation.y = ang; arm.add(beam);
+    var tube = cyl(0.0035, 0.0035, len, alu, 0, -0.012, len / 2, beam, 10); tube.rotation.x = Math.PI / 2 - 0.05;
+    box(0.016, 0.008, 0.03, dark, 0, -0.026, len, beam);
+    var cw = cyl(0.016, 0.016, 0.035, dark, 0, 0.001, -0.045, beam, 20); cw.rotation.x = Math.PI / 2;
+    cyl(0.006, 0.006, 0.05, alu, 0.06, 0.025, -0.06, arm, 10);
+    box(0.06, 0.006, 0.012, alu, 0.17, TOP + 0.003, 0.12, tt);
+    cyl(0.018, 0.018, 0.006, alu, -0.18, TOP + 0.003, 0.14, tt, 20);
+    [-0.135, -0.105].forEach(function (x) { box(0.022, 0.005, 0.012, dark, x, TOP + 0.0025, 0.155, tt); });
+    var ph = (CONFIG.photos || []).filter(function (p) { return p.art === 'golden'; })[0];
+    if (ph && ph.uri) clickables.push({ mesh: platter, uri: ph.uri, title: ph.title });
+    spin = function (dt) { rot.rotation.y -= 3.49 * dt; };
+    obst(2.5, 3.0, -2.5, -1.2);
+  })();
+
+  // sehpa: Hasselblad 500C/M (kendi modelimiz): krom gövde, siyah deri, 80 mm Planar, bel hizası vizör, A12 film kartuşu
+  (function () {
+    var g = grp(1.74, 0.42, 1.0, -2.2);
+    var chrome = std(0xd6d6d8, 0.22, 1), leather = std(0x121212, 0.85), black = std(0x0a0a0b, 0.45, 0.2);
+    rbox(0.088, 0.088, 0.072, 0.004, chrome, 0, 0.044, 0, g);
+    [0.0365, -0.0365].forEach(function (x) { box(0.002, 0.07, 0.06, leather, x * 1.24, 0.044, 0, g); });
+    rbox(0.09, 0.09, 0.04, 0.004, chrome, 0, 0.045, -0.056, g);
+    box(0.08, 0.08, 0.002, leather, 0, 0.045, -0.077, g);
+    [-1, 1].forEach(function (s) { box(0.002, 0.075, 0.032, leather, s * 0.0455, 0.045, -0.056, g); });
+    rbox(0.07, 0.03, 0.07, 0.003, black, 0, 0.103, -0.004, g);
+    box(0.066, 0.002, 0.066, chrome, 0, 0.119, -0.004, g);
+    var L = new THREE.Group(); L.position.set(0, 0.046, 0.036); L.rotation.x = Math.PI / 2; g.add(L);
+    cyl(0.036, 0.036, 0.012, chrome, 0, 0.006, 0, L, 40);
+    cyl(0.034, 0.034, 0.022, black, 0, 0.023, 0, L, 40);
+    for (var i = 0; i < 24; i++) { var a = i / 24 * Math.PI * 2; box(0.003, 0.02, 0.003, chrome, Math.cos(a) * 0.0345, 0.023, Math.sin(a) * 0.0345, L).rotation.y = -a; }
+    cyl(0.033, 0.033, 0.016, chrome, 0, 0.042, 0, L, 40);
+    cyl(0.031, 0.031, 0.014, black, 0, 0.057, 0, L, 40);
+    var glass = new THREE.Mesh(new THREE.CircleGeometry(0.024, 32), std(0x0a1830, 0.05, 0.8));
+    glass.position.set(0, 0.0645, 0); glass.rotation.x = -Math.PI / 2; L.add(glass);
+    var knob = cyl(0.022, 0.022, 0.014, chrome, 0.051, 0.05, -0.004, g, 30); knob.rotation.z = Math.PI / 2;
+    cyl(0.005, 0.005, 0.01, chrome, 0.03, 0.075, 0.038, g, 12).rotation.x = Math.PI / 2;
   })();
 
   // kapı (ön duvar)
@@ -976,8 +1127,12 @@ export function buildStudio(renderer, CONFIG) {
 
   // ---------- animasyon
   var lastTex = -1;
+  var lastT = 0;
   function update(t, cam) {
-    catTick(t, cam);
+    if (walkerTick) walkerTick(Math.min(0.05, t - lastT));
+    if (cat) cat.scale.y = 1 + Math.sin(t * 2.1) * 0.006;
+    if (spin) spin(t - lastT);
+    lastT = t;
     if (tvDraw && t - tvLast > 1 / 30) { tvLast = t; tvDraw(t); }
     if (t - lastTex > 0.1) {
       lastTex = t;
