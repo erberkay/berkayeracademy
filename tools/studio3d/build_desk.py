@@ -265,7 +265,7 @@ def ps5():
     for s in (-1, 1):
         o.append(rbox(0.012, 0.215, 0.358, 0.006, M['plasticWhite'], s * 0.0425, 0, 0.012))
     parts['ps5'] = place(join(o, 'ps5'), -0.56, DY, -3.06, 0.12)
-ps5()
+# ps5()  → hazır model: assets/models/ps5.glb
 
 # ---------------- kavisli monitör (1500R, ~32")
 def monitor():
@@ -513,7 +513,7 @@ def dualsense():
         o.append(cyl(0.009, 0.012, M['knobBlack'], s * 0.022, -0.01, 0.035, segs=18, bevel=0.002))
     o.append(rbox(0.05, 0.03, 0.004, 0.002, M['ps5Core'], 0, 0.025, 0.04))
     return join(o, 'dualsense')
-parts['dualsense'] = place(dualsense(), -0.38, DY + 0.006, -2.64, -0.25)
+# DualSense → hazır model: assets/models/dualsense.glb
 
 # ---------------- MacBook Pro 14 (standda)
 def macbook():
@@ -531,7 +531,7 @@ def macbook():
     o.append(lj)
     return join(o, 'macbook')
 y = alu_stand('stand_mb', 0.82, -2.47, -0.6, 0.32, 0.28, math.radians(14))
-parts['macbook'] = place(macbook(), 0.82, y, -2.47, -0.6, math.radians(14))
+# MacBook → hazır model: assets/models/macbook.glb (standın üstü: y)
 
 # ---------------- Tascam DR-05X (61x141x26), masada yatık
 def dr05x():
@@ -564,8 +564,7 @@ def grogu():
         o.append(sphere(0.0105, M['eye'], s * 0.017, -0.038, 0.118))
         o.append(sphere(0.012, M['grogSkin'], s * 0.035, -0.03, 0.04, sz=1.6))
     return join(o, 'grogu')
-parts['grogu'] = place(grogu(), 0.42, DY, -3.02, -0.3)
-parts['grogu'].scale = (1.8, 1.8, 1.8)
+# Grogu → hazır model: assets/models/grogu.glb
 def candles():
     o = []
     for i, (x, y, h) in enumerate(((0, 0, 0.06), (0.03, 0.015, 0.045), (-0.025, 0.02, 0.05))):
@@ -598,6 +597,7 @@ for o in bpy.context.scene.objects:
     if o.type == 'MESH': o.data.update()
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 bpy.ops.export_scene.gltf(filepath=OUT, export_format='GLB', export_apply=True, export_yup=True,
-                          export_cameras=False, export_lights=False, export_materials='EXPORT')
+                          export_cameras=False, export_lights=False, export_materials='EXPORT',
+                          export_draco_mesh_compression_enable=True, export_draco_mesh_compression_level=6)
 print('EXPORTED', OUT, os.path.getsize(OUT), 'bytes')
 for k, o in parts.items(): print('PART', k, o.name)

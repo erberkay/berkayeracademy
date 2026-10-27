@@ -4,8 +4,9 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610270900';
+var MODEL_V = '202610271300';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -481,16 +482,36 @@ export function buildStudio(renderer, CONFIG) {
     swapped[m.uuid] = out;
     return out;
   }
-  var ready = new Promise(function (resolve) {
-    new GLTFLoader().load('/assets/models/studio-desk.glb?v=' + MODEL_V, function (gl) {
-      gl.scene.traverse(function (o) {
-        if (!o.isMesh) return;
-        o.castShadow = true; o.receiveShadow = true;
-        if (Array.isArray(o.material)) o.material = o.material.map(swapMat); else o.material = swapMat(o.material);
-      });
-      scene.add(gl.scene);
-      resolve(true);
-    }, undefined, function (e) { console.warn('[s3d] masa modeli yüklenemedi', e); resolve(false); });
+  // masa (Blender) + hazır modeller (CC BY, kaynaklar sayfada): PS5, DualSense, Grogu, MacBook
+  var draco = new DRACOLoader(); draco.setDecoderPath('/assets/vendor/three/addons/libs/draco/gltf/');
+  var gltf = new GLTFLoader(); gltf.setDRACOLoader(draco);
+  function prep(root) {
+    root.traverse(function (o) {
+      if (!o.isMesh) return;
+      o.castShadow = true; o.receiveShadow = true;
+      if (Array.isArray(o.material)) o.material = o.material.map(swapMat); else o.material = swapMat(o.material);
+    });
+    return root;
+  }
+  function loadGlb(name, place) {
+    return new Promise(function (resolve) {
+      gltf.load('/assets/models/' + name + '.glb?v=' + MODEL_V, function (gl) {
+        var r = prep(gl.scene);
+        if (place) { r.rotation.order = 'YXZ'; place(r); }
+        if (r.userData.sitOn != null) { r.updateMatrixWorld(true); var bb = new THREE.Box3().setFromObject(r); r.position.y += r.userData.sitOn - bb.min.y; }
+        scene.add(r); resolve(true);
+      }, undefined, function (e) { console.warn('[s3d] model yüklenemedi: ' + name, e); resolve(false); });
+    });
+  }
+  // sahne masa yüklenince açılır; hazır modeller arkadan eklenir
+  var ready = loadGlb('studio-desk');
+  ready.then(function () {
+    return Promise.all([
+      loadGlb('ps5', function (r) { r.position.set(-0.56, DY, -3.06); r.rotation.y = 0.12; }),
+      loadGlb('dualsense', function (r) { r.position.set(-0.38, DY, -2.64); r.rotation.y = -0.25; r.rotation.x = -1.0; r.userData.sitOn = DY + 0.002; }),
+      loadGlb('grogu', function (r) { r.position.set(0.42, DY, -3.02); r.rotation.y = -0.3; }),
+      loadGlb('macbook', function (r) { r.position.set(0.82, DY + 0.056, -2.47); r.rotation.y = -0.6; r.rotation.x = 0.244; })
+    ]);
   });
   hot('s3d_t_push', -0.74, DY + 0.2, -2.56);
   hot('s3d_t_screen', -0.05, DY + 0.62, -3.06);
