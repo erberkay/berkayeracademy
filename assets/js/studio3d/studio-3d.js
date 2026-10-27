@@ -6,10 +6,14 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610272000';
+import { buildStudio, LED } from './studio-scene.js?v=202610272100';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
-var CONFIG = { photos: [] };
+var CONFIG = { photos: [
+  { src: '/assets/img/studio/with-you.jpg', title: 'With You', track: '5WEQl4cZ78p41LWwIni8yJ' },
+  null,
+  { src: '/assets/img/studio/cant-sleep.jpg', title: `Can't Sleep`, track: '3qPfzaAnQWUP9W7JlIGB6I' }
+] };
 
 var WPS = [
   { k: 's3d_wp_entry', p: [0.2, 1.55, 1.4], l: [0, 1.0, -2.9] },
@@ -207,9 +211,11 @@ var tags = studio.hotspots.map(function (h) {
   var b = document.createElement('button');
   b.type = 'button'; b.className = 's3d-tag';
   b.innerHTML = '<span class="s3d-tag-dot"></span><span class="s3d-tag-txt"></span>';
-  b.lastChild.textContent = T(h.key);
-  b.setAttribute('data-i18n-tag', h.key);
+  b.lastChild.textContent = h.text || T(h.key);
+  if (h.key) b.setAttribute('data-i18n-tag', h.key);
+  if (h.spotify) b.classList.add('s3d-tag--track');
   b.addEventListener('click', function () {
+    if (h.spotify) { openPlayer(h.spotify, h.text); return; }
     var dx = st.x - h.pos.x, dz = st.z - h.pos.z, d = Math.hypot(dx, dz) || 1;
     var p = [h.pos.x + dx / d * 0.95, Math.max(1.05, h.pos.y + 0.4), h.pos.z + dz / d * 0.95];
     markWp(-1);
@@ -218,6 +224,14 @@ var tags = studio.hotspots.map(function (h) {
   tagsEl.appendChild(b);
   return { el: b, h: h };
 });
+// Spotify oynatıcısı (çerçevelerdeki parçalar)
+var player = $('s3dPlayer'), playerFrame = $('s3dPlayerFrame');
+function openPlayer(id, title) {
+  playerFrame.src = 'https://open.spotify.com/embed/track/' + encodeURIComponent(id) + '?utm_source=generator&theme=0';
+  playerFrame.title = title || 'Spotify';
+  player.hidden = false;
+}
+$('s3dPlayerClose').addEventListener('click', function () { player.hidden = true; playerFrame.src = 'about:blank'; });
 var tagsOn = true;
 var tagBtn = $('s3dTagBtn');
 tagBtn.addEventListener('click', function () {

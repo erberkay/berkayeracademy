@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610272000';
+var MODEL_V = '202610272100';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -713,15 +713,29 @@ export function buildStudio(renderer, CONFIG) {
     plane(0.54, 0.74, pm2, 0, 0, 0.0165, g);
     photoSlots.push(pm2);
   });
-  var tl = new THREE.TextureLoader();
+  // duvardaki çerçeveler: parça kapağı + adı (CONFIG.photos: { src, title, track }); etiketine tıklayınca Spotify oynatıcısı açılır
+  var FRAME_Z = [0.0, 0.95, 1.9];
   (CONFIG.photos || []).forEach(function (p, i) {
     if (!photoSlots[i] || !p || !p.src) return;
-    tl.load(p.src, function (tx) {
-      tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8;
-      var ia = tx.image.width / tx.image.height, sa = 0.54 / 0.74;
-      if (ia > sa) { tx.repeat.set(sa / ia, 1); tx.offset.set((1 - sa / ia) / 2, 0); } else { tx.repeat.set(1, ia / sa); tx.offset.set(0, (1 - ia / sa) / 2); }
-      photoSlots[i].map = tx; photoSlots[i].emissiveMap = tx; photoSlots[i].needsUpdate = true;
-    });
+    var im = new Image();
+    im.onload = function () {
+      var c = document.createElement('canvas'); c.width = 600; c.height = 822;
+      var g = c.getContext('2d');
+      g.fillStyle = '#0d0d10'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(im, 20, 20, 560, 560);
+      g.fillStyle = '#f2f2f2'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '400 58px "Instrument Serif", serif'; g.fillText(p.title || '', 300, 652);
+      if (p.track) {
+        g.fillStyle = '#1db954'; g.beginPath(); g.arc(196, 742, 20, 0, 7); g.fill();
+        g.fillStyle = '#0d0d10'; g.beginPath(); g.moveTo(189, 731); g.lineTo(189, 753); g.lineTo(207, 742); g.closePath(); g.fill();
+        g.fillStyle = '#cfd2d8'; g.font = '600 30px "Instrument Sans", sans-serif'; g.textAlign = 'left';
+        g.fillText(`Spotify'da dinle`, 228, 744);
+      }
+      var tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8;
+      photoSlots[i].map = tx; photoSlots[i].emissiveMap = tx; photoSlots[i].emissiveIntensity = 0.22; photoSlots[i].needsUpdate = true;
+    };
+    im.src = p.src;
+    if (p.track) hotspots.push({ text: p.title, spotify: p.track, pos: new THREE.Vector3(2.9, 1.12, FRAME_Z[i]) });
   });
 
   // sol duvar: plak rafı
