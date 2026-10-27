@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610272200';
+var MODEL_V = '202610272300';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -578,7 +578,7 @@ export function buildStudio(renderer, CONFIG) {
       loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.59); r.rotation.order = 'YZX'; r.rotation.set(-0.9, -0.25, -0.25); r.userData.sitOn = DY + 0.002; }),
       loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
       loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
-      loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.y = 0.15 + Math.PI; r.userData.sitOn = DY + 0.001; }),
+      loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.order = 'YZX'; r.rotation.set(1.26, Math.PI / 2 + 0.12, 0.16); r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(1.0, DY + 0.055, -2.61); r.rotation.y = -0.15; r.rotation.x = 0.244; })
     ]);
   });
