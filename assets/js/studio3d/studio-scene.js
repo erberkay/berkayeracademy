@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610271300';
+var MODEL_V = '202610271400';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -321,46 +321,60 @@ export function buildStudio(renderer, CONFIG) {
     label(g, 'DISTORTION', U(0.068), V(0.1), 10, '#e8561e'); label(g, 'MASTER', U(0.108), V(0.1), 10, '#6d6a62');
     label(g, 'SWING', U(-0.012), V(0.095), 9, '#6d6a62');
   });
-  // AudioFuse Studio: resmî üst görünümün düzeni (oranlar), düğmeler Blender'da aynı oranlarda
-  var fuseTex = gtex(1024, 602, function (g, w, h) {
-    g.fillStyle = '#1d1e22'; g.fillRect(0, 0, w, h);
-    g.lineWidth = 1.5;
-    for (var i = 0; i < 4; i++) {
-      var x0 = (0.04 + i * 0.142) * w, bw = 0.125 * w;
-      rr(g, x0, 0.1 * h, bw, 0.48 * h, null, '#8a8d94');
-      g.fillStyle = '#1d1e22'; g.fillRect(x0 + bw * 0.08, 0.1 * h - 8, bw * 0.84, 16);
-      label(g, 'INPUT CHANNEL ' + (i + 1), x0 + bw / 2, 0.1 * h, 11, '#e6e7ea');
+  // AudioFuse Studio: resmî ürün görselinin piksel düzeni (Blender'daki düğmelerle aynı koordinatlar)
+  function lbl(g, t, x, y, px, col, al) { label(g, t, x, y, px, col || '#d9dbe0', al); }
+  var fuseTex = gtex(1188, 716, function (g, w, h) {
+    var P = function (x) { return (x - 721) * 2; }, Q = function (y) { return (y - 307.5) * 2; };
+    g.fillStyle = '#1c1d21'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#d9dbe0'; g.lineWidth = 2;
+    g.beginPath(); g.arc(P(735), Q(316), 14, 0, 7); g.stroke(); lbl(g, 'A', P(735), Q(316), 16);
+    lbl(g, 'AUDIOFUSE STUDIO', P(840), Q(333), 22, '#eceef2');
+    ['INTERNAL', 'ADAT', 'SPDIF', 'WORD', 'USB'].forEach(function (t, i) {
+      var x = P(1130 + i * 22); g.fillStyle = i === 0 ? '#9fd8ff' : '#3a3d44'; g.beginPath(); g.arc(x, Q(331), 4, 0, 7); g.fill(); lbl(g, t, x, Q(341), 8, '#9a9ea6');
+    });
+    g.strokeStyle = '#2c2e34'; g.beginPath(); g.moveTo(0, Q(362)); g.lineTo(w, Q(362)); g.stroke();
+    g.strokeStyle = '#8a8d94'; g.lineWidth = 2;
+    [733, 822, 911, 999].forEach(function (x0, i) {
+      g.strokeRect(P(x0), Q(380), 154, Q(517) - Q(380));
+      g.fillStyle = '#1c1d21'; g.fillRect(P(x0 + 10), Q(380) - 9, 134, 18);
+      lbl(g, 'INPUT CHANNEL ' + (i + 1), P(x0 + 38.5), Q(380), 12, '#e6e7ea');
       ['MIC', 'LINE', 'INST'].forEach(function (t, k) {
-        g.fillStyle = k === (i % 3 === 0 ? 1 : 0) ? '#9fd8ff' : '#3a3c42';
-        g.beginPath(); g.arc(x0 + bw * (0.2 + k * 0.25), 0.17 * h, 4, 0, 7); g.fill();
-        label(g, t, x0 + bw * (0.2 + k * 0.25), 0.21 * h, 9, '#c9ccd2');
+        var x = P(x0 + 18 + k * 19);
+        g.fillStyle = k === (i === 2 ? 0 : 1) ? '#9fd8ff' : '#33363c'; g.beginPath(); g.arc(x, Q(404), 4, 0, 7); g.fill();
+        lbl(g, t, x, Q(412), 9, '#c9ccd2');
       });
-      ['48V', 'INST', 'RANGE', 'PHASE INV.'].forEach(function (t, k) {
-        rr(g, x0 + bw * 0.08, (0.27 + k * 0.075) * h, bw * 0.5, 0.05 * h, '#2c2e34', '#4a4d55');
-        label(g, t, x0 + bw * 0.33, (0.295 + k * 0.075) * h, 9, '#e6e7ea');
+      ['CLIP', '3', '6', '10', '16', '20', '26', '42', '60'].forEach(function (t, m) {
+        var y = Q(426 + m * 10); lbl(g, t, P(x0 + 55), y, 8, '#8a8d94');
+        g.fillStyle = m >= 4 + (i % 3) ? '#4fd46e' : '#22392a'; g.fillRect(P(x0 + 62), y - 6, 12, 12);
       });
-      for (var m = 0; m < 10; m++) {
-        g.fillStyle = m >= 5 + (i % 3) ? '#55e07a' : '#23402c';
-        g.fillRect(x0 + bw * 0.74, (0.27 + m * 0.03) * h, bw * 0.12, 0.018 * h);
-      }
-      rr(g, x0, 0.63 * h, bw, 0.27 * h, null, '#5e6168');
-      label(g, 'GAIN ' + (i + 1), x0 + bw * 0.2, 0.66 * h, 9, '#c9ccd2', 'left');
-      rr(g, x0 + bw * 0.3, 0.92 * h, bw * 0.4, 0.05 * h, '#2c2e34', '#4a4d55');
-      label(g, 'LISTEN', x0 + bw / 2, 0.945 * h, 8, '#e6e7ea');
+      g.strokeRect(P(x0), Q(548), 154, Q(617) - Q(548));
+      lbl(g, 'GAIN ' + (i + 1), P(x0 + 14), Q(556), 9, '#a9adb5', 'left');
+      g.fillStyle = '#c9ccd2'; [x0 + 22, x0 + 55].forEach(function (x) { g.beginPath(); g.arc(P(x), Q(609), 3, 0, 7); g.fill(); });
+    });
+    lbl(g, 'OUTPUT LEVEL', P(1182), Q(385), 12, '#e6e7ea');
+    for (var d = 0; d < 26; d++) {
+      var a = Math.PI * 0.72 + d / 25 * Math.PI * 1.56, x = P(1182) + Math.cos(a) * 124, y = Q(441) + Math.sin(a) * 124;
+      g.fillStyle = d < 18 ? '#55e07a' : '#23392a'; g.fillRect(x - 5, y - 5, 10, 10);
     }
-    var ox = 0.76 * w, oy = 0.33 * h;
-    label(g, 'OUTPUT LEVEL', ox, 0.1 * h, 11, '#e6e7ea');
-    for (var d = 0; d < 22; d++) {
-      var a = Math.PI * 0.75 + d / 21 * Math.PI * 1.5;
-      g.fillStyle = d < 15 ? '#55e07a' : '#23402c';
-      g.beginPath(); g.arc(ox + Math.cos(a) * 0.105 * w, oy + Math.sin(a) * 0.105 * w * (h / w) * (w / h), 4, 0, 7); g.fill();
-    }
-    ['DIM', 'MUTE', 'MONO'].forEach(function (t, k) { rr(g, (0.65 + k * 0.08) * w, 0.56 * h, 0.06 * w, 0.05 * h, '#2c2e34', '#4a4d55'); label(g, t, (0.68 + k * 0.08) * w, 0.585 * h, 9, '#e6e7ea'); });
-    label(g, 'SPEAKER A', 0.9 * w, 0.18 * h, 8, '#c9ccd2'); label(g, 'SPEAKER B', 0.9 * w, 0.22 * h, 8, '#c9ccd2');
-    ['MAIN', 'CUE 1', 'CUE 2'].forEach(function (t, k) { rr(g, 0.885 * w, (0.34 + k * 0.08) * h, 0.07 * w, 0.055 * h, '#2c2e34', '#4a4d55'); label(g, t, 0.92 * w, (0.367 + k * 0.08) * h, 9, '#e6e7ea'); });
-    label(g, 'PHONES', 0.775 * w, 0.72 * h, 10, '#e6e7ea');
-    rr(g, 0.93 * w, 0.72 * h, 0.045 * w, 0.06 * h, '#2c2e34', '#4a4d55'); label(g, 'TALK', 0.952 * w, 0.75 * h, 8, '#e6e7ea');
-    ['MONO', '', '', 'MONO'].forEach(function (t, k) { rr(g, (0.65 + k * 0.075) * w, 0.92 * h, 0.05 * w, 0.05 * h, '#2c2e34', '#4a4d55'); if (t) label(g, t, (0.675 + k * 0.075) * w, 0.945 * h, 8, '#e6e7ea'); });
+    lbl(g, 'SPEAKER A', P(1270), Q(405), 9); lbl(g, 'SPEAKER B', P(1270), Q(413), 9);
+    g.fillStyle = '#9fd8ff'; g.beginPath(); g.arc(P(1293), Q(413), 4, 0, 7); g.fill();
+    lbl(g, 'PHONES', P(1182), Q(567), 12, '#e6e7ea'); lbl(g, 'TALK', P(1284), Q(562), 8); lbl(g, 'BACK', P(1284), Q(592), 8);
+    ['MAIN', 'CUE 1', 'CUE 2'].forEach(function (t, k) { lbl(g, t, P(1142), Q(600 + k * 8), 8); lbl(g, t, P(1222), Q(600 + k * 8), 8); });
+    g.fillStyle = '#9fd8ff'; [[1167, 616], [1197, 608]].forEach(function (p2) { g.beginPath(); g.arc(P(p2[0]), Q(p2[1]), 4, 0, 7); g.fill(); });
+  });
+  var fuseRearTex = gtex(1222, 292, function (g, w, h) {
+    var P = function (x) { return (x - 712) * 2; }, Q = function (y) { return (y - 417) * 2; };
+    g.fillStyle = '#1a1b1e'; g.fillRect(0, 0, w, h);
+    lbl(g, 'ARTURIA', P(767), Q(426), 22, '#eceef2');
+    lbl(g, 'AUDIOFUSE STUDIO', P(840), Q(551), 16, '#d9dbe0');
+    g.fillStyle = '#0c0c0e';
+    [[748, 445], [748, 460], [748, 475], [897, 445], [897, 460], [918, 445], [918, 460], [1053, 445], [1053, 460], [1077, 445], [1077, 460], [1100, 445], [1100, 460], [1287, 445], [1287, 460], [1287, 475], [1287, 490]].forEach(function (v) { g.fillRect(P(v[0]) - 14, Q(v[1]), 28, 7); });
+    [['MIDI', 841], ['WCLK | S/PDIF', 988], ['OPTICAL IN', 1159], ['OPTICAL OUT', 1234]].forEach(function (t) { lbl(g, t[0], P(t[1]), Q(423), 10); });
+    g.strokeStyle = '#9a9ea6'; g.lineWidth = 1.5;
+    [[897, 980, 'SPEAKERS  A  B'], [993, 1033, 'AUX OUT'], [1048, 1130, 'INSERT'], [1145, 1225, 'LINE INPUTS'], [1230, 1272, 'PHONO / LINE']].forEach(function (b) {
+      g.strokeRect(P(b[0]), Q(478), P(b[1]) - P(b[0]), Q(553) - Q(478)); lbl(g, b[2], (P(b[0]) + P(b[1])) / 2, Q(556), 9);
+    });
+    lbl(g, 'USB HUB', P(860), Q(474), 9); lbl(g, 'USB-C', P(805), Q(492), 9); lbl(g, 'DC', P(773), Q(521), 9);
   });
   var td3Tex = gtex(1024, 554, function (g, w, h) {
     g.fillStyle = '#1b1c1f'; g.fillRect(0, 0, w, h);
@@ -372,45 +386,62 @@ export function buildStudio(renderer, CONFIG) {
     label(g, 'TEMPO', w * 0.4, h * 0.58, 14, '#cfd2d8'); label(g, 'WAVEFORM', w * 0.6, h * 0.58, 14, '#cfd2d8');
     label(g, 'ANALOG BASS LINE SYNTHESIZER', w * 0.32, h * 0.92, 15, '#9a9ea6');
   });
-  // MicroFreak paneli: resmî üst görünümdeki bölümler (Blender'daki düğme oranlarıyla aynı)
-  var mfTex = gtex(1024, 452, function (g, w, h) {
-    g.fillStyle = '#202126'; g.fillRect(0, 0, w, h);
-    // sol üst: matris/mod alanı
-    g.strokeStyle = '#5b6170'; g.lineWidth = 1;
-    for (var i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(0.02 * w + i * 0.032 * w, 0.06 * h); g.lineTo(0.02 * w + i * 0.032 * w, 0.32 * h); g.stroke(); }
-    for (var j = 0; j <= 4; j++) { g.beginPath(); g.moveTo(0.02 * w, 0.06 * h + j * 0.065 * h); g.lineTo(0.276 * w, 0.06 * h + j * 0.065 * h); g.stroke(); }
-    [[1, 1], [3, 2], [5, 0], [6, 3]].forEach(function (p) { g.fillStyle = '#4fc3e8'; g.beginPath(); g.arc(0.02 * w + p[0] * 0.032 * w + 0.016 * w, 0.06 * h + p[1] * 0.065 * h + 0.032 * h, 4, 0, 7); g.fill(); });
-    function head(t, a, b, y) { g.strokeStyle = '#8b909c'; g.beginPath(); g.moveTo(a * w, y * h); g.lineTo(b * w, y * h); g.stroke(); g.fillStyle = '#202126'; var tw = t.length * 9; g.fillRect(((a + b) / 2) * w - tw / 2 - 6, y * h - 8, tw + 12, 16); label(g, t, ((a + b) / 2) * w, y * h, 11, '#e9eaee'); }
-    head('DIGITAL OSCILLATOR', 0.12, 0.41, 0.36); head('ANALOG FILTER', 0.44, 0.64, 0.36); head('CYCLING ENVELOPE', 0.69, 0.97, 0.36);
-    head('ARP / SEQ', 0.02, 0.29, 0.62); head('LFO', 0.4, 0.5, 0.62); head('ENVELOPE', 0.68, 0.97, 0.62);
-    var lb = [[0.16, 'Type'], [0.23, 'Wave'], [0.3, 'Timbre'], [0.37, 'Shape'], [0.53, 'Cutoff'], [0.6, 'Resonance'], [0.79, 'Rise'], [0.86, 'Fall'], [0.93, 'Hold']];
-    lb.forEach(function (q) { label(g, q[1], q[0] * w, 0.565 * h, 10, '#c9ccd2'); });
-    var lb2 = [[0.04, 'Rate'], [0.1, 'Swing'], [0.33, 'Glide'], [0.45, 'Rate'], [0.56, 'Amount'], [0.63, 'Amount'], [0.72, 'Attack'], [0.79, 'Decay'], [0.86, 'Sustain'], [0.93, 'Release']];
-    lb2.forEach(function (q) { label(g, q[1], q[0] * w, 0.82 * h, 10, '#c9ccd2'); });
-    // mermer bant + logo
+  // MicroFreak: resmî ürün görselinin piksel düzeni (Blender'daki düğmelerle aynı koordinatlar), tuşlar düz dokunmatik
+  var mfTex = gtex(1769, 1315, function (g, w, h) {
+    var P = function (x) { return (x - 559.7) * 2; }, Q = function (y) { return (y - 278.7) * 2; };
+    g.fillStyle = '#1f2024'; g.fillRect(0, 0, w, h);
+    // modülasyon matrisi
+    g.strokeStyle = '#7d8290'; g.lineWidth = 2;
+    for (var c = 0; c < 8; c++) { var x = P(622 + c * 27); g.beginPath(); g.moveTo(x, Q(318)); g.lineTo(x, Q(382)); g.stroke(); g.beginPath(); g.moveTo(x, Q(318)); g.lineTo(x + 30, Q(298)); g.stroke(); }
+    ['CycEnv', 'Env', 'LFO', 'Press', 'Key/Arp'].forEach(function (t, r) { var y = Q(335 + r * 11.5); lbl(g, t, P(612), y, 11, '#c9ccd2', 'right'); g.beginPath(); g.moveTo(P(616), y); g.lineTo(P(812), y); g.stroke(); });
+    ['Pitch', 'Wave', 'Timbre', 'Cutoff', 'Assign1', 'Assign2', 'Assign3'].forEach(function (t, c) { g.save(); g.translate(P(634 + c * 27), Q(305)); g.rotate(-0.9); lbl(g, t, 0, 0, 11, '#e6e7ea'); g.restore(); });
+    function sec(t, a, b, y) { g.strokeStyle = '#cfd2d8'; g.lineWidth = 2; g.beginPath(); g.moveTo(P(a), Q(y)); g.lineTo(P(b), Q(y)); g.stroke(); g.fillStyle = '#1f2024'; var tw = t.length * 12 + 20; g.fillRect((P(a) + P(b)) / 2 - tw / 2, Q(y) - 12, tw, 24); lbl(g, t, (P(a) + P(b)) / 2, Q(y), 17, '#f0f1f4'); }
+    sec('DIGITAL OSCILLATOR', 662, 925, 406); sec('ANALOG FILTER', 932, 1117, 406); sec('CYCLING ENVELOPE', 1125, 1443, 406);
+    sec('ARP / SEQ', 742, 925, 509); sec('LFO', 932, 1117, 509); sec('ENVELOPE', 1133, 1443, 509);
+    g.fillStyle = '#0c0c0e'; g.fillRect(P(562), Q(512), P(670) - P(562), Q(594) - Q(512)); lbl(g, 'OCTAVE', P(616), Q(502), 17, '#f0f1f4');
+    var L = [[863, 'Matrix'], [1021, 'Panel'], [1183, 'Preset'], [1255, 'Save'], [1320, 'Utility'], [1398, 'Master']];
+    L.forEach(function (q) { lbl(g, q[1], P(q[0]), Q(377), 13, '#e6e7ea'); });
+    g.strokeStyle = '#e6e7ea'; g.strokeRect(P(918), Q(364), P(972) - P(918), 22); lbl(g, 'Paraphonic', P(945), Q(371), 12, '#e6e7ea');
+    [[606, 'Glide'], [697, 'Type'], [760, 'Wave'], [822, 'Timbre'], [884, 'Shape'], [945, 'Type'], [1021, 'Cutoff'], [1086, 'Resonance'], [1142, 'Mode'], [1216, 'Rise / Shape'], [1280, 'Fall / Shape'], [1345, 'Hold / Sustain'], [1410, 'Amount']].forEach(function (q) { lbl(g, q[1], P(q[0]), Q(480), 13, '#e6e7ea'); });
+    [[699, 'Shift'], [761, 'Arp | Seq'], [808, 'Oct | Mod'], [884, 'Rate / Swing'], [959, 'Shape'], [1087, 'Rate'], [1157, 'Amp Mod'], [1217, 'Attack'], [1282, 'Decay / Rel'], [1347, 'Sustain'], [1411, 'Filter Amt']].forEach(function (q) { lbl(g, q[1], P(q[0]), Q(583), 13, '#e6e7ea'); });
+    [['LPF', 430], ['BPF', 445], ['HPF', 460]].forEach(function (q, i) { lbl(g, q[0], P(985), Q(q[1]), 10, '#c9ccd2'); g.fillStyle = i === 1 ? '#7fdcff' : '#3a3d44'; g.beginPath(); g.arc(P(972), Q(q[1]), 4, 0, 7); g.fill(); });
+    [['Env', 430], ['Run', 445], ['Loop', 460]].forEach(function (q, i) { lbl(g, q[0], P(1182), Q(q[1]), 10, '#c9ccd2'); g.fillStyle = i === 2 ? '#7fdcff' : '#3a3d44'; g.beginPath(); g.arc(P(1170), Q(q[1]), 4, 0, 7); g.fill(); });
+    // mermer bant + ARTURIA
     var R = rng(33);
-    g.save(); g.beginPath(); g.rect(0, 0.86 * h, w, 0.14 * h); g.clip();
-    g.fillStyle = '#17181c'; g.fillRect(0, 0.86 * h, w, 0.14 * h);
-    for (var k = 0; k < 70; k++) {
-      g.strokeStyle = 'rgba(230,232,238,' + (0.12 + R() * 0.45) + ')'; g.lineWidth = 1 + R() * 3;
-      g.beginPath(); var x = R() * w, y = 0.86 * h + R() * 0.14 * h; g.moveTo(x, y);
-      g.bezierCurveTo(x + 30, y - 18 + R() * 36, x + 60, y - 18 + R() * 36, x + 90 + R() * 40, y - 10 + R() * 20); g.stroke();
+    g.save(); g.beginPath(); g.rect(0, Q(600), w, Q(640) - Q(600)); g.clip();
+    g.fillStyle = '#111215'; g.fillRect(0, Q(600), w, Q(640) - Q(600));
+    for (var k = 0; k < 160; k++) {
+      g.strokeStyle = 'rgba(235,237,242,' + (0.25 + R() * 0.6) + ')'; g.lineWidth = 1.5 + R() * 4;
+      var x0 = R() * w, y0 = Q(600) + R() * (Q(640) - Q(600)); g.beginPath(); g.moveTo(x0, y0);
+      g.bezierCurveTo(x0 + 20 + R() * 30, y0 - 20 + R() * 40, x0 + 40 + R() * 30, y0 - 20 + R() * 40, x0 + 70 + R() * 30, y0 - 10 + R() * 20); g.stroke();
     }
     g.restore();
-    g.fillStyle = '#17181c'; g.fillRect(0.43 * w, 0.88 * h, 0.14 * w, 0.1 * h);
-    label(g, 'ARTURIA', 0.5 * w, 0.93 * h, 18, '#f2f2f2');
-  });
-  // dokunmatik klavye: noktalı açık tuşlar, aralarında mavi çizgi, koyu kahve siyah tuşlar (kullanıcının fotoğrafı)
-  var mfKeysTex = gtex(1024, 302, function (g, w, h) {
-    g.fillStyle = '#1b1c20'; g.fillRect(0, 0, w, h);
-    var kw = w / 15;
-    for (var k = 0; k < 15; k++) {
-      g.fillStyle = '#e6e6e3'; g.fillRect(k * kw + 3, 4, kw - 6, h - 8);
-      g.fillStyle = '#9a9aa0';
-      for (var dy = 0; dy < 16; dy++) for (var dx = 0; dx < 7; dx++) g.fillRect(k * kw + kw * 0.16 + dx * kw * 0.1, h * 0.06 + dy * h * 0.055, 2, 2);
-      g.fillStyle = '#3b5cc4'; g.fillRect(k * kw + 2, 4, 2, h - 8);
+    g.fillStyle = '#111215'; g.fillRect(P(935), Q(605), P(1075) - P(935), Q(635) - Q(605));
+    label(g, 'ARTURIA', P(1005), Q(620), 40, '#f4f4f4');
+    // dokunmatik şerit: turuncu çerçeveli ikonlar + uzun zikzak
+    g.fillStyle = '#18191c'; g.fillRect(0, Q(640), w, Q(688) - Q(640));
+    g.strokeStyle = '#e8861e'; g.lineWidth = 3;
+    [595, 646, 696, 746, 796, 872, 922, 972].forEach(function (x) { g.strokeRect(P(x) - 34, Q(644), 68, 76); g.beginPath(); g.moveTo(P(x) - 16, Q(670)); g.lineTo(P(x), Q(655)); g.lineTo(P(x) + 16, Q(670)); g.stroke(); });
+    g.strokeRect(P(1040), Q(644), P(1410) - P(1040), 76);
+    g.beginPath(); for (var z = 0; z < 12; z++) { var zx = P(1050) + z * 60; g.lineTo(zx, Q(z % 2 ? 650 : 678)); } g.stroke();
+    // 25 düz dokunmatik tuş: turuncu noktalı beyaz, koyu noktalı siyah tuşlar
+    var k0 = P(566), k1 = P(1362), ky0 = Q(690), ky1 = Q(942), kw = (k1 - k0) / 15;
+    g.fillStyle = '#121214'; g.fillRect(k0 - 6, ky0, P(1445) - k0, ky1 - ky0);
+    for (var i = 0; i < 15; i++) {
+      var x1 = k0 + i * kw;
+      g.fillStyle = '#f4f2ee'; g.fillRect(x1 + 3, ky0 + 2, kw - 6, ky1 - ky0 - 4);
+      g.fillStyle = '#e9a06a';
+      for (var yy = ky0 + 14; yy < ky1 - 10; yy += 13) for (var xx = x1 + 12; xx < x1 + kw - 10; xx += 13) g.fillRect(xx, yy, 7, 7);
     }
-    [0, 1, 3, 4, 5, 7, 8, 10, 11, 12].forEach(function (i) { g.fillStyle = '#2e2019'; g.fillRect((i + 1) * kw - kw * 0.3, 0, kw * 0.6, h * 0.6); });
+    [0, 1, 3, 4, 5, 7, 8, 10, 11, 12].forEach(function (i) {
+      var bx = k0 + (i + 1) * kw - kw * 0.32, bw = kw * 0.64, by = ky0, bh = (ky1 - ky0) * 0.52;
+      g.fillStyle = '#2a1e18'; g.fillRect(bx, by, bw, bh);
+      g.fillStyle = '#b8642c';
+      for (var yy2 = by + 10; yy2 < by + bh - 8; yy2 += 13) for (var xx2 = bx + 8; xx2 < bx + bw - 8; xx2 += 13) g.fillRect(xx2, yy2, 6, 6);
+    });
+    g.fillStyle = '#f4f2ee'; g.fillRect(k1 + 4, ky0 + 2, P(1440) - k1 - 6, ky1 - ky0 - 4);
+    g.fillStyle = '#e9a06a'; for (var yy3 = ky0 + 120; yy3 < ky1 - 10; yy3 += 13) for (var xx3 = k1 + 20; xx3 < P(1430); xx3 += 13) g.fillRect(xx3, yy3, 7, 7);
+    label(g, 'MICRO', P(1391), Q(712), 24, '#e8761e'); label(g, 'FREAK', P(1391), Q(728), 24, '#e8761e');
   });
   var pushTex = gtex(1024, 860, function (g, w, h) {
     g.fillStyle = '#141416'; g.fillRect(0, 0, w, h);
@@ -458,8 +489,8 @@ export function buildStudio(renderer, CONFIG) {
   var TEXMAP = {
     SCREEN_main: { tex: screenTex, screen: 1.0 },
     SCREEN_laptop: { tex: miniTex, screen: 0.95 },
-    TEX_drum: { tex: drumTex }, TEX_fuse: { tex: fuseTex }, TEX_td3: { tex: td3Tex },
-    TEX_mf: { tex: mfTex }, TEX_mfkeys: { tex: mfKeysTex }, TEX_push: { tex: pushTex },
+    TEX_drum: { tex: drumTex }, TEX_fuse: { tex: fuseTex }, TEX_fuse_rear: { tex: fuseRearTex }, TEX_td3: { tex: td3Tex },
+    TEX_mf: { tex: mfTex }, TEX_push: { tex: pushTex },
     TEX_craft: { tex: craftTex, alpha: true, emissive: 0.6 }, TEX_mbkeys: { tex: mbKeysTex, emissive: 0.4 },
     TEX_adam: { tex: adamTex }, TEX_mat: { tex: matTex }
   };

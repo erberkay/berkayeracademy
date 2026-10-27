@@ -93,6 +93,26 @@ def knob(r, h, x, y, z, body, cap=None, line=None, name='k'):
         out.append(rbox(r * 0.16, r * 0.7, 0.0012, 0, line, x, y + r * 0.35, z + h, name=name))
     return out
 
+def knob2(r, h, x, y, z, cap, body=None, line=None, knurl=True, name='k'):
+    """tırtıklı gövde + pahlı kapak + gösterge çizgisi (MicroFreak/AudioFuse için)"""
+    body = body or M['knobBlack']
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=40, radius1=r, radius2=r * 0.96, depth=h * 0.62)
+    if knurl:
+        for v in bm.verts:
+            if abs(v.co.x) + abs(v.co.y) < 1e-6: continue
+            k = round(math.atan2(v.co.y, v.co.x) / (2 * math.pi / 40))
+            if k % 2: v.co.x *= 0.93; v.co.y *= 0.93
+    for v in bm.verts: v.co += Vector((x, y, z + h * 0.31))
+    out = [obj_from_bm(bm, name, body, 25)]
+    out.append(cyl(r * 0.84, h * 0.38, cap, x, y, z + h * 0.62, segs=36, r2=r * 0.8, bevel=r * 0.14, name=name))
+    if line is not None:
+        out.append(rbox(r * 0.13, r * 0.62, 0.0012, 0, line, x, y + r * 0.42, z + h, name=name))
+    return out
+
+def pill(w, d, h, m, x, y, z, name='btn'):
+    return rbox(w, d, h, min(w, d) * 0.28, m, x, y, z, segs=2, name=name)
+
 def join(objs, name):
     objs = [o for o in objs if o is not None]
     with bpy.context.temp_override(active_object=objs[0], selected_editable_objects=objs, selected_objects=objs):
@@ -404,22 +424,61 @@ parts['drumbrute'] = place(drumbrute(), -0.4, y, -2.82, 0.08, math.radians(12))
 
 # ---------------- Arturia AudioFuse Studio (265x160x72)
 def audiofuse():
-    W, D, H = 0.265, 0.16, 0.072
-    o = [rbox(W, D, H, 0.008, mat('fuse_body', 0x141416, 0.4, 0.7))]
-    o.append(plane(W - 0.01, D - 0.01, TEX('TEX_fuse', 0x1b1b1f, 0.45), 0, 0, H + 0.0003))
-    for x in (-0.093, -0.057, -0.022, 0.014):
-        o += knob(0.0105, 0.013, x, -0.037, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
-    for x in (0.051, 0.088):
-        o += knob(0.0105, 0.013, x, -0.036, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
-    o += knob(0.019, 0.016, 0.066, 0.026, H, M['knobSilver'], M['knobSilver'], M['knobBlack'])
-    # ön panel: 4 kombo giriş + kulaklık çıkışları
-    fy = -D / 2 - 0.001
+    # referans görsel pikselleri → metre (üst görünüm 707..1329 x 293..680 px)
+    W, D, H = 0.265, 0.16, 0.066
+    X = lambda px: (px - 1018) / 621 * W
+    Y = lambda py: (486.5 - py) / 387 * D
+    R = lambda r: r / 621 * W
+    body = mat('fuse_body', 0x17181b, 0.42, 0.75)
+    o = [rbox(W, D, H - 0.004, 0.014, body, 0, 0, 0.004)]
+    # alt turuncu çizgi + ayaklar
+    o.append(rbox(W - 0.004, D - 0.004, 0.004, 0.012, M['orange'], 0, 0, 0.0))
+    o.append(plane(W - 0.012, D - 0.012, TEX('TEX_fuse', 0x1c1d21, 0.45), 0, 0, H + 0.0003))
+    btn = mat('fuse_btn', 0x34363c, 0.55, 0.2)
+    silver = mat('fuse_knob', 0xc7cad0, 0.25, 0.95)
+    # giriş kanalları: 4 düğme sütunu (48V, INST, RANGE, PHASE)
+    for cx in (758, 847, 936, 1024):
+        for py in (430, 455, 479, 503):
+            o.append(pill(R(28), R(14), 0.0022, btn, X(cx), Y(py), H))
+    # sağ sütun + DIM/MUTE/MONO + LISTEN + alt düğmeler
+    for py in (431, 455, 479, 503): o.append(pill(R(30), R(14), 0.0022, btn, X(1279), Y(py), H))
+    for px in (1142, 1182, 1222): o.append(pill(R(26), R(13), 0.0022, btn, X(px), Y(520), H))
+    for px in (769, 858, 948, 1037): o.append(pill(R(22), R(11), 0.0022, btn, X(px), Y(632), H))
+    for px in (1117, 1155, 1212, 1250): o.append(pill(R(24), R(12), 0.0022, btn, X(px), Y(632), H))
+    o.append(pill(R(18), R(20), 0.0022, btn, X(1285), Y(578), H))
+    o.append(cyl(R(9), 0.0018, btn, X(1240), Y(334), H, segs=20))
+    # düğmeler: 4 GAIN, 2 PHONES, büyük OUTPUT LEVEL
+    for px in (768, 858, 948, 1037): o += knob2(R(25), 0.016, X(px), Y(575), H, silver, silver, M['knobBlack'], knurl=False)
+    for px in (1139, 1228): o += knob2(R(25), 0.016, X(px), Y(575), H, silver, silver, M['knobBlack'], knurl=False)
+    o += knob2(R(47), 0.018, X(1182), Y(441), H, silver, silver, None, knurl=False)
+    o.append(cyl(R(3), 0.001, mat('fuse_dot', 0x9fd8ff, 0.4, 0, emit=0x9fd8ff, es=1.2), X(1207), Y(497), H, segs=10))
+    # ön yüz: 4 kombo giriş + 2 kulaklık
+    fy = -D / 2 - 0.0005
     for i in range(4):
-        x = -0.095 + i * 0.038
-        o.append(cyl(0.012, 0.004, M['darkAlu'], x, fy, H / 2, segs=24, axis='Y'))
-        o.append(cyl(0.0055, 0.006, M['knobBlack'], x, fy - 0.001, H / 2, segs=16, axis='Y'))
-    for x in (0.075, 0.105):
-        o.append(cyl(0.005, 0.004, M['knobSilver'], x, fy, H / 2 - 0.01, segs=16, axis='Y'))
+        x = -0.096 + i * 0.038
+        o.append(cyl(0.0115, 0.004, M['darkAlu'], x, fy, H * 0.48, segs=28, axis='Y'))
+        o.append(cyl(0.0068, 0.005, M['knobBlack'], x, fy - 0.001, H * 0.48, segs=20, axis='Y'))
+        for k in range(3):
+            a = math.radians(90 + k * 120)
+            o.append(cyl(0.0012, 0.006, M['knobSilver'], x + math.cos(a) * 0.0048, fy - 0.001, H * 0.48 + math.sin(a) * 0.0048, segs=8, axis='Y'))
+    for x in (0.068, 0.1):
+        o.append(cyl(0.0058, 0.004, M['knobSilver'], x, fy, H * 0.45, segs=20, axis='Y'))
+        o.append(cyl(0.0035, 0.005, M['knobBlack'], x, fy - 0.001, H * 0.45, segs=16, axis='Y'))
+    # arka yüz (referans arka görsel 706..1329 px): baskı + jaklar
+    by = D / 2 + 0.0004
+    rear = plane(W - 0.012, H - 0.01, TEX('TEX_fuse_rear', 0x16171a, 0.5), 0, 0, 0, name='rear')
+    rear.rotation_euler = (math.pi / 2, 0, math.pi); rear.location = (0, by, H / 2 + 0.002)
+    o.append(rear)
+    XR = lambda px: -(px - 1017.5) / 623 * W   # arkadan bakınca sağ-sol ters
+    ZR = lambda py: (568 - py) / 156 * H
+    for px, py in ((917, 494), (959, 494), (917, 533), (959, 533), (1014, 494), (1014, 533), (1069, 494), (1111, 494), (1069, 533), (1111, 533), (1165, 494), (1207, 494), (1165, 533), (1207, 533)):
+        o.append(cyl(0.0062, 0.003, M['darkAlu'], XR(px), by, ZR(py), segs=20, axis='Y'))
+        o.append(cyl(0.0034, 0.004, M['knobBlack'], XR(px), by + 0.0005, ZR(py), segs=16, axis='Y'))
+    for px, py in ((1252, 499), (1252, 533), (961, 449), (1014, 449)):
+        o.append(cyl(0.0048, 0.006, M['knobSilver'], XR(px), by, ZR(py), segs=18, axis='Y'))
+    for px in (838, 859, 881):
+        o.append(rbox(0.004, 0.003, 0.012, 0.0008, M['knobSilver'], XR(px), by, ZR(497) - 0.006))
+    for i in range(4): o.append(rbox(0.008, 0.002, 0.007, 0.001, M['knobBlack'], XR(1140 + i * 37), by, ZR(452) - 0.0035))
     return join(o, 'audiofuse')
 y = alu_stand('stand_fuse', -0.02, -2.9, 0.0, 0.28, 0.18, math.radians(14), 0.06, M['riser'])
 RB = y
@@ -444,30 +503,36 @@ parts['td3'] = place(td3(), 0.33, DY + 0.006, -2.86, -0.06)
 
 # ---------------- Arturia MicroFreak (311x233x55)
 def microfreak():
-    W, D, H = 0.311, 0.233, 0.055
-    o = [rbox(W, D, H, 0.008, mat('mf_body', 0x1c1d21, 0.45, 0.35))]
-    kd = 0.088
-    o.append(plane(W - 0.01, D - kd - 0.012, TEX('TEX_mf', 0x1c1d21, 0.5), 0, kd / 2, H + 0.0003))
-    o.append(plane(W - 0.012, kd, TEX('TEX_mfkeys', 0xdedede, 0.55), 0, -D / 2 + kd / 2 + 0.004, H + 0.0004))
-    o.append(rbox(0.024, 0.014, 0.0012, 0, mat('mf_oled', 0x020203, 0.2, 0.0, emit=0x9fd8ff, es=0.4), -0.1505 + 0.605 * 0.301, 0.1105 - 0.2 * 0.133, H))
-    # panel bölgesi y: -0.0225..0.1105 (arka); x: -0.1505..0.1505
-    X = lambda f: -0.1505 + f * 0.301
-    Y = lambda f: 0.1105 - f * 0.133
-    K = [  # (x oranı, y oranı, yarıçap, kapak)
-        (0.34, 0.2, 0.0075, 'w'), (0.69, 0.2, 0.0075, 'b'), (0.75, 0.2, 0.0065, 'b'), (0.81, 0.2, 0.0065, 'b'), (0.9, 0.2, 0.0075, 'b'),
-        (0.05, 0.47, 0.0065, 'b'), (0.16, 0.47, 0.0075, 'o'), (0.23, 0.47, 0.0075, 'o'), (0.3, 0.47, 0.0075, 'o'), (0.37, 0.47, 0.0075, 'o'),
-        (0.46, 0.47, 0.0065, 'b'), (0.53, 0.47, 0.0085, 'b'), (0.6, 0.47, 0.0075, 'b'), (0.72, 0.47, 0.0065, 'b'),
-        (0.79, 0.47, 0.0075, 'b'), (0.86, 0.47, 0.0075, 'b'), (0.93, 0.47, 0.0075, 'b'),
-        (0.04, 0.73, 0.0065, 'b'), (0.1, 0.73, 0.0065, 'b'), (0.18, 0.73, 0.006, 'b'), (0.25, 0.73, 0.006, 'b'),
-        (0.33, 0.73, 0.0075, 'w'), (0.45, 0.73, 0.0065, 'b'), (0.56, 0.73, 0.0075, 'b'), (0.63, 0.73, 0.0075, 'w'),
-        (0.72, 0.73, 0.0065, 'b'), (0.79, 0.73, 0.0065, 'b'), (0.86, 0.73, 0.0065, 'b'), (0.93, 0.73, 0.0065, 'b'),
-    ]
-    caps = {'o': M['knobOrange'], 'w': M['knobWhite'], 'b': M['knobBlack']}
-    for fx, fy, r, c in K:
-        o += knob(r, 0.012, X(fx), Y(fy), H, M['knobBlack'], caps[c], M['line'])
+    # referans görsel pikselleri → metre (üst görünüm 551..1453 x 270..945 px)
+    W, D, H = 0.311, 0.233, 0.04
+    X = lambda px: (px - 1002) / 902 * W
+    Y = lambda py: (607.5 - py) / 675 * D
+    R = lambda r: r / 902 * W
+    o = [rbox(W, D, H, 0.006, mat('mf_body', 0x1e1f23, 0.45, 0.35))]
+    o.append(plane(W - 0.006, D - 0.006, TEX('TEX_mf', 0x1e1f23, 0.5), 0, 0, H + 0.0003))
+    # ekran bölmesi + OLED
+    o.append(rbox(R(290), R(88), 0.0012, 0.002, mat('mf_screenpanel', 0x101114, 0.3, 0.3), X(1210), Y(344), H))
+    o.append(rbox(R(64), R(40), 0.0008, 0.001, mat('mf_oled', 0x050608, 0.2, 0.0, emit=0x9fd8ff, es=0.35), X(1108), Y(342), H + 0.0012))
+    blk, wht, org = M['knobBlack'], M['knobWhite'], M['knobOrange']
+    gray = mat('mf_btn', 0x55575d, 0.5, 0.2)
+    big = [(863, 342, wht), (1183, 343, wht), (1398, 342, blk),
+           (606, 445, blk), (1021, 445, blk), (1086, 445, blk), (1216, 445, blk), (1280, 445, blk), (1345, 445, blk), (1410, 445, blk),
+           (884, 548, wht), (1087, 548, wht), (1217, 548, blk), (1282, 548, blk), (1347, 548, blk), (1411, 548, blk)]
+    for px, py, cap in big:
+        o += knob2(R(23), 0.017, X(px), Y(py), H, cap, M['knobBlack'], M['line'] if cap is blk else M['knobBlack'])
+    for px in (697, 760, 822, 884):
+        o += knob2(R(21), 0.016, X(px), Y(445), H, org, org, M['knobWhite'])
+    for px, py, r in ((945, 343, 16), (1021, 343, 12), (1255, 345, 15), (1320, 345, 15), (945, 445, 12), (1142, 445, 12),
+                      (590, 548, 18), (638, 548, 18), (761, 548, 13), (808, 548, 13), (959, 548, 13), (1157, 548, 13)):
+        o.append(cyl(R(r), 0.004, gray, X(px), Y(py), H, segs=28, bevel=R(r) * 0.25))
+    o.append(cyl(R(18), 0.0035, mat('mf_shift', 0x4fc3e8, 0.4, 0.0, emit=0x4fc3e8, es=0.9), X(699), Y(548), H, segs=28))
+    o.append(cyl(R(14), 0.0045, M['knobBlack'], X(699), Y(548), H, segs=28, bevel=0.0008))
+    # matris LED'leri
+    for px, py in ((647, 348), (706, 358), (765, 381), (760, 300), (790, 300), (818, 300)):
+        o.append(cyl(R(4), 0.0008, mat('mf_led', 0x7fdcff, 0.4, 0, emit=0x7fdcff, es=1.0), X(px), Y(py), H, segs=10))
     return join(o, 'microfreak')
 y = alu_stand('stand_mf', 0.6, -2.62, -0.22, 0.32, 0.23, math.radians(22))
-parts['microfreak'] = place(microfreak(), 0.6, y, -2.62, -0.22, math.radians(22))
+parts['microfreak'] = place(microfreak(), 0.6, y, -2.62, -0.22, math.radians(22))  # 40 mm kasa + düğmeler ≈ 55 mm
 
 # ---------------- Logitech Craft + MX Master 3 + DualSense
 def craft():
