@@ -14,6 +14,7 @@
     s3d_loading:    { tr: 'Stüdyo kuruluyor…', en: 'Building the studio…' },
     s3d_enter:      { tr: 'Stüdyoya gir', en: 'Enter the studio' },
     s3d_hint:       { tr: 'Sürükle: bak · W A S D / oklar: yürü · Tekerlek: yakınlaş', en: 'Drag: look · W A S D / arrows: walk · Wheel: zoom' },
+    s3d_walk:       { tr: 'YÜRÜ', en: 'WALK' },
     s3d_hint_touch: { tr: 'Sol alttaki kol: yürü · Sürükle: bak', en: 'Bottom-left pad: walk · Drag: look' },
     s3d_tap_play:   { tr: 'Çalmak için oynatıcıdaki ▶ düğmesine dokun', en: 'Tap ▶ in the player to start' },
     s3d_labels:     { tr: 'Etiketler', en: 'Labels' },

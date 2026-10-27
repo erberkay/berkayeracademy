@@ -225,7 +225,7 @@ function joyEnd(e) {
   if (e.pointerId !== joyId) return;
   joyId = null; joy.f = joy.s = 0; joyThumb.style.transform = ''; joyEl.classList.remove('is-on');
 }
-if (joyEl && coarse) {
+if (joyEl && (coarse || navigator.maxTouchPoints > 0)) {
   joyEl.hidden = false;
   joyEl.addEventListener('pointerdown', function (e) { e.preventDefault(); joyId = e.pointerId; joyEl.setPointerCapture(e.pointerId); joyEl.classList.add('is-on'); joyMove(e); });
   joyEl.addEventListener('pointermove', function (e) { if (e.pointerId === joyId) joyMove(e); });
