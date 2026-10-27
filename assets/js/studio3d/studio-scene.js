@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610273000';
+var MODEL_V = '202610273100';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -555,9 +555,10 @@ export function buildStudio(renderer, CONFIG) {
       }, undefined, function (e) { console.warn('[s3d] model yüklenemedi: ' + name, e); resolve(false); });
     });
   }
-  var cat = null, tvDraw = null, tvLast = -1, walkerTick = null, spin = null;
-  // gezen kedi (Somali Cat Animated — DreamNoms, CC BY; tools/studio3d/export_cat.py): odanın boş zemininde rastgele
-  // bir noktaya yürür, orada durur ya da oturup bir süre bekler, sonra kalkıp başka yere gider. Model -z'ye bakar.
+  var tvDraw = null, tvLast = -1, walkerTick = null, spin = null;
+  // gezen kedi Fred: Fred – The Cat taramasına Somali Cat Animated'in (DreamNoms, CC BY) iskeleti ve animasyonları
+  // aktarıldı (tools/studio3d/rig_fred.py). Odanın boş zemininde rastgele bir noktaya yürür, orada durur ya da oturup
+  // bir süre bekler, sonra kalkıp başka yere gider. Model -z'ye bakar.
   (function () {
     var SC = 0.125, TS = 1.5, SPEED = 1.38 * SC * TS, PAD = 0.2;
     var BLOCK = [{ x0: -0.35, x1: 0.25, z0: -2.25, z1: -1.65 }]; // sandalye ayağı
@@ -604,12 +605,12 @@ export function buildStudio(renderer, CONFIG) {
       if (walker.cur) walker.cur.crossFadeTo(a, 0.35, false);
       walker.cur = a;
     }
-    gltf.load('/assets/models/somalicat.glb?v=' + MODEL_V, function (gl) {
+    gltf.load('/assets/models/fred-walk.glb?v=' + MODEL_V, function (gl) {
       graph();
       var root = new THREE.Group(), body = gl.scene;
       body.scale.setScalar(SC); body.position.y = 1.62 * SC;
       body.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
-      root.add(body); root.name = 'somalicat'; scene.add(root);
+      root.add(body); root.name = 'fred'; scene.add(root);
       var mixer = new THREE.AnimationMixer(body), A = {};
       gl.animations.forEach(function (c) { A[c.name] = mixer.clipAction(c); });
       ['SitDown', 'StandUp'].forEach(function (n) { if (A[n]) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; } });
@@ -680,7 +681,6 @@ export function buildStudio(renderer, CONFIG) {
                   art_58: [-2.55, 1.95, 3.198, F], art_53: [-2.55, 1.3, 3.198, F], art_44: [-0.76, 1.6, 3.198, F] };
         r.traverse(function (o) { var w = W[o.name]; if (w && o.isMesh || (w && o.children.length)) { o.position.set(w[0], w[1], w[2]); o.rotation.set(0, w[3], 0); } });
       }),
-      loadGlb('cat', function (r) { cat = r; r.position.set(2.45, 0.48, 0.25); r.rotation.y = Math.atan2(0.2 - 2.45, 0.3 - 0.25); }),
       loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
       loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.order = 'YZX'; r.rotation.set(1.26, Math.PI / 2 + 0.12, 0.16); r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(1.0052, DY + 0.0637, -2.6446); r.rotation.y = -0.15;  /* standın eğimli yüzeyine, ön tırnakların arkasına oturur */ r.rotation.x = 0.244; })
@@ -1130,7 +1130,6 @@ export function buildStudio(renderer, CONFIG) {
   var lastT = 0;
   function update(t, cam) {
     if (walkerTick) walkerTick(Math.min(0.05, t - lastT));
-    if (cat) cat.scale.y = 1 + Math.sin(t * 2.1) * 0.006;
     if (spin) spin(t - lastT);
     lastT = t;
     if (tvDraw && t - tvLast > 1 / 30) { tvLast = t; tvDraw(t); }
