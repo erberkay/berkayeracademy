@@ -286,7 +286,7 @@ adam('adam_right', 0.85, -3.04, -0.25)
 TOP_SPK = SHELF + 0.40
 
 # beyaz silindir (sol hoparlör üstü) ve Lego figürü (sağ hoparlör üstü)
-parts['router'] = place(join([cyl(0.058, 0.215, M['plasticWhite'], segs=36, bevel=0.01)], 'router'), -0.85, TOP_SPK, -3.04)
+# (sol hoparlör üstündeki beyaz silindir kullanıcı isteğiyle kaldırıldı)
 def lego():
     o = [rbox(0.09, 0.06, 0.012, 0.002, M['legoBrown'])]
     o.append(rbox(0.05, 0.03, 0.05, 0.004, M['lego'], 0, 0, 0.012))
@@ -386,8 +386,8 @@ def push3():
     # ön kenar: ince parlak şerit (gövde birleşimi)
     o.append(rbox(W - 0.02, 0.002, 0.004, 0.001, mat('push_trim', 0x3a3a40, 0.3, 0.7), 0, -D / 2 - 0.0005, H * 0.55))
     return join(o, 'push3')
-y = alu_stand('stand_push', -0.74, -2.56, 0.18, 0.42, 0.33, math.radians(20))
-parts['push3'] = place(push3(), -0.74, y, -2.56, 0.18, math.radians(20))
+y = alu_stand('stand_push', -0.78, -2.53, 0.18, 0.42, 0.33, math.radians(20))
+parts['push3'] = place(push3(), -0.78, y, -2.53, 0.18, math.radians(20))
 
 # ---------------- Arturia DrumBrute Impact 1984 (beyaz, 320x290x90 kama)
 def drumbrute():
@@ -433,8 +433,8 @@ def drumbrute():
     tj.rotation_euler = (slope, 0, 0); tj.location = (0, 0, (Hf + Hb) / 2)
     o.append(tj)
     return join(o, 'drumbrute')
-y = alu_stand('stand_drum', -0.4, -2.82, 0.08, 0.34, 0.3, math.radians(12), 0.05, M['riser'])
-parts['drumbrute'] = place(drumbrute(), -0.4, y, -2.82, 0.08, math.radians(12))
+y = alu_stand('stand_drum', -0.34, -2.84, 0.08, 0.34, 0.3, math.radians(12), 0.05, M['riser'])
+parts['drumbrute'] = place(drumbrute(), -0.34, y, -2.84, 0.08, math.radians(12))
 
 # ---------------- Arturia AudioFuse Studio (265x160x72)
 def audiofuse():
@@ -529,7 +529,7 @@ def td3():
     by = D / 2 + 0.0005
     for i in range(6): o.append(cyl(0.0042, 0.004, M['knobSilver'], -0.1 + i * 0.035, by, 0.026, segs=16, axis='Y'))
     return join(o, 'td3')
-parts['td3'] = place(td3(), 0.33, DY + 0.006, -2.86, -0.06)
+parts['td3'] = place(td3(), 0.34, DY + 0.006, -2.86, -0.06)
 
 # ---------------- Arturia MicroFreak (311x233x55)
 def microfreak():
@@ -561,8 +561,8 @@ def microfreak():
     for px, py in ((647, 348), (706, 358), (765, 381), (760, 300), (790, 300), (818, 300)):
         o.append(cyl(R(4), 0.0008, mat('mf_led', 0x7fdcff, 0.4, 0, emit=0x7fdcff, es=1.0), X(px), Y(py), H, segs=10))
     return join(o, 'microfreak')
-y = alu_stand('stand_mf', 0.6, -2.62, -0.22, 0.32, 0.23, math.radians(22))
-parts['microfreak'] = place(microfreak(), 0.6, y, -2.62, -0.22, math.radians(22))  # 40 mm kasa + düğmeler ≈ 55 mm
+y = alu_stand('stand_mf', 0.42, -2.62, -0.22, 0.32, 0.23, math.radians(22))
+parts['microfreak'] = place(microfreak(), 0.42, y, -2.62, -0.22, math.radians(22))  # 40 mm kasa + düğmeler ≈ 55 mm
 
 # ---------------- Logitech Craft + MX Master 3 + DualSense
 def craft():
@@ -625,7 +625,7 @@ def macbook():
     lj.location = (0, 0.118, 0.0168)
     o.append(lj)
     return join(o, 'macbook')
-y = alu_stand('stand_mb', 0.82, -2.47, -0.6, 0.32, 0.28, math.radians(14))
+y = alu_stand('stand_mb', 0.8, -2.61, -0.15, 0.32, 0.28, math.radians(14))
 # MacBook → hazır model: assets/models/macbook.glb (standın üstü: y)
 
 # ---------------- Tascam DR-05X (61x141x26), masada yatık
@@ -638,7 +638,7 @@ def dr05x():
         m.rotation_euler = (0, 0, s * 0.5)
         o.append(m)
     return join(o, 'dr05x')
-parts['dr05x'] = place(dr05x(), 0.62, DY, -2.36, 0.62)
+parts['dr05x'] = place(dr05x(), 0.76, DY, -2.33, 1.5)
 
 # ---------------- mat (masa önü boyunca)
 parts['mat'] = place(join([plane(0.95, 0.42, TEX('TEX_mat', 0xe8601c, 0.9), 0, 0, 0.0015)], 'mat'), -0.02, DY, -2.77)
@@ -666,7 +666,7 @@ def candles():
         o.append(cyl(0.013, h, M['candle'], x, y, 0, segs=18))
         o.append(sphere(0.006, M['flame'], x, y, h + 0.008, sz=1.7, segs=10))
     return join(o, 'candles')
-parts['candles'] = place(candles(), 0.27, DY, -2.98)
+parts['candles'] = place(candles(), 0.62, DY, -3.05)
 
 # ---------------- kablolar (arayüzden matın üstüne; siyah ve kırmızı)
 def cable(name, pts, m, r=0.0035):

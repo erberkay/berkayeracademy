@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610271700';
+var MODEL_V = '202610271800';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -538,7 +538,7 @@ export function buildStudio(renderer, CONFIG) {
   function loadGlb(name, place) {
     return new Promise(function (resolve) {
       gltf.load('/assets/models/' + name + '.glb?v=' + MODEL_V, function (gl) {
-        var r = prep(gl.scene);
+        var r = prep(gl.scene); r.name = name;
         if (place) { r.rotation.order = 'YXZ'; place(r); }
         if (r.userData.sitOn != null) { r.updateMatrixWorld(true); var bb = new THREE.Box3().setFromObject(r); r.position.y += r.userData.sitOn - bb.min.y; }
         scene.add(r); resolve(true);
@@ -549,27 +549,27 @@ export function buildStudio(renderer, CONFIG) {
   var ready = loadGlb('studio-desk');
   ready.then(function () {
     return Promise.all([
-      loadGlb('ps5', function (r) { r.position.set(-0.56, DY, -3.06); r.rotation.y = 0.12; }),
-      loadGlb('dualsense', function (r) { r.position.set(-0.38, DY, -2.64); r.rotation.y = -0.25; r.rotation.x = -1.0; r.userData.sitOn = DY + 0.002; }),
-      loadGlb('grogu', function (r) { r.position.set(0.42, DY, -3.02); r.rotation.y = -0.3; }),
-      loadGlb('mxkeys', function (r) { r.position.set(-0.06, DY, -2.66); r.userData.sitOn = DY + 0.001; r.traverse(function (o) { if (o.isMesh) [].concat(o.material).forEach(function (m) { m.roughness = 1; m.metalness = Math.min(m.metalness, 0.15); m.color.multiplyScalar(0.22); }); }); }),
-      loadGlb('mxmaster', function (r) { r.position.set(0.28, DY, -2.64); r.rotation.y = 0.15; r.userData.sitOn = DY + 0.001; }),
-      loadGlb('macbook', function (r) { r.position.set(0.82, DY + 0.056, -2.47); r.rotation.y = -0.6; r.rotation.x = 0.244; })
+      loadGlb('ps5', function (r) { r.position.set(-0.6, DY, -3.06); r.rotation.y = 0.12; }),
+      loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.57); r.rotation.y = -0.25; r.rotation.x = -1.0; r.userData.sitOn = DY + 0.002; }),
+      loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
+      loadGlb('mxkeys', function (r) { r.position.set(-0.1, DY, -2.615); r.userData.sitOn = DY + 0.001; r.traverse(function (o) { if (o.isMesh) [].concat(o.material).forEach(function (m) { m.roughness = 1; m.metalness = Math.min(m.metalness, 0.15); m.color.multiplyScalar(0.22); }); }); }),
+      loadGlb('mxmaster', function (r) { r.position.set(0.18, DY, -2.62); r.rotation.y = 0.15; r.userData.sitOn = DY + 0.001; }),
+      loadGlb('macbook', function (r) { r.position.set(0.8, DY + 0.055, -2.61); r.rotation.y = -0.15; r.rotation.x = 0.244; })
     ]);
   });
-  hot('s3d_t_push', -0.74, DY + 0.2, -2.56);
+  hot('s3d_t_push', -0.78, DY + 0.2, -2.53);
   hot('s3d_t_screen', -0.05, DY + 0.62, -3.06);
   hot('s3d_t_mon', -0.85, DY + 0.68, -2.98);
   hot('s3d_t_iface', -0.02, DY + 0.24, -2.9);
-  hot('s3d_t_drum', -0.4, DY + 0.22, -2.82);
-  hot('s3d_t_303', 0.33, DY + 0.1, -2.86);
-  hot('s3d_t_synth', 0.6, DY + 0.2, -2.62);
-  hot('s3d_t_laptop', 0.84, DY + 0.33, -2.48);
-  hot('s3d_t_rec', 0.62, DY + 0.06, -2.36);
+  hot('s3d_t_drum', -0.34, DY + 0.22, -2.84);
+  hot('s3d_t_303', 0.34, DY + 0.1, -2.86);
+  hot('s3d_t_synth', 0.42, DY + 0.2, -2.62);
+  hot('s3d_t_laptop', 0.8, DY + 0.33, -2.61);
+  hot('s3d_t_rec', 0.76, DY + 0.06, -2.33);
   // AudioFuse yükselticisinin altındaki kırmızı ışık ve Grogu'nun yanındaki mumlar
   ledLight(-0.02, DY + 0.03, -2.92, 0.22, 1.0);
   box(0.26, 0.008, 0.008, ledMat(1.6), -0.02, DY + 0.02, -2.84, scene, false);
-  var candleLight = new THREE.PointLight(0xffa040, 0.22, 1.2, 2); candleLight.position.set(0.27, DY + 0.1, -2.95); scene.add(candleLight);
+  var candleLight = new THREE.PointLight(0xffa040, 0.22, 1.2, 2); candleLight.position.set(0.62, DY + 0.1, -3.02); scene.add(candleLight);
 
   // masanın arkasında siyah perde (fotoğraftaki gibi), çubuk ve halkalar
   (function () {
