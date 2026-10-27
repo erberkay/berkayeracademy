@@ -44,7 +44,7 @@ try {
 } catch (e) { fail(); throw e; }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.95;
+renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
@@ -58,7 +58,7 @@ var size = new THREE.Vector2(1, 1);
 var rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: coarse ? 2 : 4 });
 var composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, cam));
-var bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.5, 0.55, 1.6);
+var bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.4, 1.7);
 composer.addPass(bloom);
 var vig = new ShaderPass(VignetteShader);
 vig.uniforms.offset.value = 0.9;
@@ -249,7 +249,8 @@ function updateTags() {
 
 // ---------- döngü
 var last = performance.now(), elapsed = 0;
-var first = true, running = true;
+var first = true, running = true, modelReady = false;
+studio.ready.then(function () { modelReady = true; });
 document.addEventListener('visibilitychange', function () { running = !document.hidden; last = performance.now(); });
 
 function frame() {
@@ -277,7 +278,7 @@ function frame() {
   composer.render();
   updateTags();
 
-  if (first) {
+  if (first && modelReady) {
     first = false;
     var L = $('s3dLoad');
     L.classList.add('is-done');

@@ -3,6 +3,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+var MODEL_V = '202610270500';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -202,10 +205,10 @@ export function buildStudio(renderer, CONFIG) {
   });
 
   // ---------- ışıklar
-  scene.add(new THREE.AmbientLight(0x2a2e44, 1.15));
-  scene.add(new THREE.HemisphereLight(0x4a5478, 0x1a1210, 0.7));
+  scene.add(new THREE.AmbientLight(0x2a2e44, 0.95));
+  scene.add(new THREE.HemisphereLight(0x4a5478, 0x1a1210, 0.55));
 
-  var spot = new THREE.SpotLight(0xffd9ac, 8, 9, 0.62, 0.85, 2);
+  var spot = new THREE.SpotLight(0xffd9ac, 5, 9, 0.75, 1, 2);
   spot.position.set(0, 2.6, -1.1);
   spot.target.position.set(0, 0.8, -2.75);
   spot.castShadow = true;
@@ -218,17 +221,16 @@ export function buildStudio(renderer, CONFIG) {
     var l = new THREE.PointLight(LED.red, i, d, 2);
     l.position.set(x, y, z); scene.add(l); ledLights.push(l); return l;
   }
-  ledLight(0, 0.45, -2.95, 1.3, 5);
-  (function () { var sp = new THREE.SpotLight(LED.red, 7, 6, 0.95, 1, 2); sp.position.set(0, 2.3, -2.0); sp.target.position.set(0, 1.1, -3.1); scene.add(sp, sp.target); ledLights.push(sp); })();
-  ledLight(-1.4, 0.35, -2.0, 1.4, 3);
-  var screenSpill = new THREE.PointLight(0xcfe0ff, 1.0, 2.6, 2); screenSpill.position.set(0.05, 1.08, -2.5); scene.add(screenSpill);
-  var pushGlow = new THREE.PointLight(0xff8a30, 0.8, 1.3, 2); pushGlow.position.set(-0.55, 1.05, -2.3); scene.add(pushGlow);
+  ledLight(-0.6, 0.15, -2.0, 0.7, 2.5);
+  (function () { var sp = new THREE.SpotLight(LED.red, 5, 6, 0.95, 1, 2); sp.position.set(0, 2.3, -2.0); sp.target.position.set(0, 1.1, -3.1); scene.add(sp, sp.target); ledLights.push(sp); })();
+  var screenSpill = new THREE.PointLight(0xcfe0ff, 0.6, 2.4, 2); screenSpill.position.set(0, 1.08, -2.55); scene.add(screenSpill);
+  var pushGlow = new THREE.PointLight(0xffd8a8, 0.15, 0.9, 2); pushGlow.position.set(-0.56, 1.0, -2.4); scene.add(pushGlow);
   var lamp = new THREE.PointLight(0xffb070, 6, 7, 2); lamp.position.set(2.5, 1.62, 2.4); scene.add(lamp);
   var shelfLight = new THREE.PointLight(0xffc890, 4, 4.5, 2); shelfLight.position.set(-2.1, 1.9, 1.6); scene.add(shelfLight);
   var fill = new THREE.PointLight(0x5a70ff, 6, 10, 2); fill.position.set(0, 2.45, 1.2); scene.add(fill);
 
   // LED şeritleri
-  var strip = ledMat(3.0);
+  var strip = ledMat(1.6);
   box(2.5, 0.022, 0.022, strip, 0, 0.36, -3.18, scene, false);
   box(1.7, 0.022, 0.022, strip, 0, 1.22, -3.19, scene, false);
   box(0.022, 1.0, 0.022, strip, -1.3, 1.62, -3.19, scene, false);
@@ -247,38 +249,16 @@ export function buildStudio(renderer, CONFIG) {
     g.beginPath(); g.moveTo(w * 0.16, h * 0.78); g.lineTo(w * 0.84, h * 0.78); g.stroke();
   });
   var neonMat = new THREE.MeshBasicMaterial({ map: neonTex, color: new THREE.Color(LED.red).multiplyScalar(2.2), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-  neonMat.userData.boost = 2.2; ledMats.push(neonMat);
+  neonMat.userData.boost = 1.3; ledMats.push(neonMat);
   plane(1.9, 0.475, neonMat, 0, 2.5, -3.04);
   if (document.fonts && document.fonts.load) document.fonts.load('700 86px "Space Mono"').then(function () { redraw(neonTex, 0); });
 
-  // ---------- masa (L)
-  var deskMat = new THREE.MeshPhysicalMaterial({ color: 0xb4b2ae, roughness: 0.52, metalness: 0.0, clearcoat: 0.08, clearcoatRoughness: 0.5 });
-  var legMat = std(0x0c0c0e, 0.5, 0.5);
-  rbox(2.5, 0.04, 1.0, 0.012, deskMat, 0, 0.74, -2.7);
-  rbox(0.75, 0.04, 1.1, 0.012, deskMat, 0.875, 0.74, -1.65);
-  box(0.05, 0.72, 0.9, legMat, -1.2, 0.36, -2.7);
-  box(0.05, 0.72, 0.9, legMat, 1.2, 0.36, -2.7);
-  box(0.65, 0.72, 0.05, legMat, 0.875, 0.36, -1.15);
-  box(2.4, 0.3, 0.02, legMat, 0, 0.52, -3.12);
-  obst(-1.3, 1.3, -3.2, -2.2); obst(0.45, 1.3, -2.2, -1.1);
+  // ---------- masa düzeni: Blender modeli (tools/studio3d/build_desk.py → assets/models/studio-desk.glb)
+  // Baskılı yüzeyler GLB'de TEX_* / SCREEN_* adlı malzemeler; dokular burada canvas ile çizilip bağlanır.
+  obst(-1.15, 1.55, -3.2, -2.2); obst(0.52, 1.55, -2.2, -1.82);
 
-  // masa matı (turuncu/sarı/kırmızı ışın deseni)
-  var matTex = ctex(1024, 460, function (g, w, h) {
-    var cols = ['#e8601c', '#f2b01e', '#c0281c', '#e8601c', '#f2b01e', '#1f5fa8', '#e8601c', '#c0281c'];
-    var bw = w / cols.length, R = rng(3);
-    cols.forEach(function (c, i) { g.fillStyle = c; g.fillRect(i * bw, 0, bw + 1, h); });
-    g.fillStyle = 'rgba(20,6,2,.8)';
-    for (var i = 0; i < cols.length; i++) {
-      var cx = i * bw + bw / 2;
-      for (var s = 0; s < 7; s++) { g.beginPath(); g.moveTo(cx - 34 + s * 11, h * 0.5); g.lineTo(cx - 40 + s * 12 + R() * 14, h * 0.5 - 70 - R() * 60); g.lineTo(cx - 24 + s * 11, h * 0.5); g.closePath(); g.fill(); }
-      g.fillRect(cx - 26, h * 0.5, 52, h * 0.3);
-    }
-    g.fillStyle = '#18090a'; g.fillRect(0, h - 16, w, 16);
-  });
-  var deskMatMesh = plane(1.0, 0.44, std(0xffffff, 0.9, 0, { map: matTex }), 0.0, DY + 0.003, -2.5);
-  deskMatMesh.rotation.x = -Math.PI / 2;
+  function gtex(w, h, draw, o) { var t = ctex(w, h, draw, o); t.flipY = false; return t; }
 
-  // ---------- Ableton ekranı
   function drawLive(g, w, h, t) {
     g.fillStyle = '#cfcfd2'; g.fillRect(0, 0, w, h);
     g.fillStyle = '#b4b4b9'; g.fillRect(0, 0, w, h * 0.055);
@@ -296,18 +276,12 @@ export function buildStudio(renderer, CONFIG) {
         var x = gx + c * cw, y = gy + h * 0.055 + r * chh;
         var on = (c + r * 2) % 3 !== 1 && c > 1 && r > 0 && r < 7;
         if (on) {
-          g.fillStyle = '#ef5b43'; g.fillRect(x, y, cw - pad, chh - pad);
+          g.fillStyle = '#e6553f'; g.fillRect(x, y, cw - pad, chh - pad);
           var p = ((t * 0.35 + c * 0.17) % 1);
-          if (r === 1 + (c % 3)) { g.fillStyle = '#ffb09f'; g.fillRect(x, y, (cw - pad) * p, chh - pad); }
+          if (r === 1 + (c % 3)) { g.fillStyle = '#f39c8a'; g.fillRect(x, y, (cw - pad) * p, chh - pad); }
           g.fillStyle = '#fff'; g.beginPath(); g.moveTo(x + 6, y + chh * 0.28); g.lineTo(x + 6, y + chh * 0.62); g.lineTo(x + 16, y + chh * 0.45); g.fill();
-        } else {
-          g.fillStyle = '#bdbdc3'; g.fillRect(x, y, cw - pad, chh - pad);
-        }
+        } else { g.fillStyle = '#bdbdc3'; g.fillRect(x, y, cw - pad, chh - pad); }
       }
-    }
-    for (var s = 0; s < rows; s++) {
-      g.fillStyle = '#b0b0b6'; g.fillRect(gx + cols * cw + 4, gy + h * 0.055 + s * chh, w * 0.035, chh - pad);
-      g.fillStyle = '#666'; g.beginPath(); g.moveTo(gx + cols * cw + 12, gy + h * 0.055 + s * chh + chh * 0.28); g.lineTo(gx + cols * cw + 12, gy + h * 0.055 + s * chh + chh * 0.62); g.lineTo(gx + cols * cw + 22, gy + h * 0.055 + s * chh + chh * 0.45); g.fill();
     }
     g.fillStyle = '#d9d9dc'; g.fillRect(w * 0.85, h * 0.055, w * 0.15, h * 0.745);
     for (var q = 0; q < 10; q++) { g.fillStyle = '#b3b3b9'; g.fillRect(w * 0.865, h * (0.09 + q * 0.06), w * 0.1, h * 0.025); }
@@ -316,311 +290,160 @@ export function buildStudio(renderer, CONFIG) {
     g.fillStyle = '#3f9be6'; g.beginPath();
     for (var k = 0; k < 6; k++) { var a = k * Math.PI / 3 + Math.PI / 6; var px = w * 0.35 + Math.cos(a) * h * 0.06, py = h * 0.9 + Math.sin(a) * h * 0.06; if (k) g.lineTo(px, py); else g.moveTo(px, py); }
     g.closePath(); g.fill();
-    g.fillStyle = '#d9d2c0';
-    [0.25, 0.28, 0.42, 0.45].forEach(function (kx, ki) { g.beginPath(); g.arc(w * kx, h * (ki % 2 ? 0.94 : 0.86), h * 0.018, 0, 7); g.fill(); });
     g.fillStyle = '#555'; g.font = '700 ' + Math.round(h * 0.022) + 'px sans-serif'; g.fillText('RAUM', w * 0.325, h * 0.975);
   }
-  var screenTex = ctex(1280, 720, drawLive);
-  var miniTex = ctex(640, 400, drawLive);
-  var screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, color: new THREE.Color(1.7, 1.7, 1.7) });
-  var miniMat = new THREE.MeshBasicMaterial({ map: miniTex, toneMapped: false, color: new THREE.Color(1.5, 1.5, 1.5) });
+  var screenTex = gtex(1280, 720, drawLive);
+  var miniTex = gtex(800, 520, drawLive);
 
-  // ---------- masa üstü: kullanıcının masa fotoğrafındaki düzen (soldan sağa)
-  var riser = std(0x111113, 0.5, 0.6);
-  // Eğimli siyah metal stand: üst grubu döndürür (arka yüksek). Cihazlar dönen grubun içine konur.
-  function stand(x, z, ry, w, d, tilt) {
-    var g = grp(x, DY, z, ry);
-    var top = grp(0, 0.06, 0, 0, g); top.rotation.x = tilt;
-    box(w, 0.005, d, riser, 0, 0, 0, top);
-    var hb = 0.06 + (d / 2) * Math.sin(tilt), hf = 0.06 - (d / 2) * Math.sin(tilt);
-    [-1, 1].forEach(function (sx) {
-      box(0.01, hb, 0.01, riser, sx * (w / 2 - 0.03), hb / 2, -d / 2 + 0.03, g, false);
-      box(0.01, hf, 0.01, riser, sx * (w / 2 - 0.03), hf / 2, d / 2 - 0.03, g, false);
-    });
-    return top;
+  function label(g, txt, x, y, px, col, align) {
+    g.fillStyle = col || '#fff'; g.font = '600 ' + px + 'px "Space Mono", monospace';
+    g.textAlign = align || 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, y);
   }
-
-  // kavisli monitör (1500R)
-  (function () {
-    var g = grp(0, DY, -3.0, 0), R = 1.5, W = 0.72, H = 0.4, len = W / R;
-    rbox(0.3, 0.014, 0.2, 0.006, M.graphite, 0, 0.007, 0.0, g);
-    box(0.05, 0.2, 0.025, M.graphite, 0, 0.11, -0.045, g);
-    var shell = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.012, R + 0.012, H + 0.016, 48, 1, true, Math.PI - len / 2 - 0.006, len + 0.012), std(0x0a0a0c, 0.45, 0.4, { side: THREE.DoubleSide }));
-    shell.position.set(0, 0.32, R); shell.castShadow = true; g.add(shell);
-    var back = box(W * 0.8, H * 0.8, 0.03, M.black, 0, 0.32, -0.05, g);
-    var st = screenTex; st.wrapS = THREE.RepeatWrapping; st.repeat.x = -1; st.offset.x = 1;
-    var scr = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 48, 1, true, Math.PI - len / 2, len), new THREE.MeshBasicMaterial({ map: screenTex, side: THREE.BackSide, toneMapped: false, color: new THREE.Color(1.7, 1.7, 1.7) }));
-    scr.position.set(0, 0.32, R - 0.001); g.add(scr);
-    hot('s3d_t_screen', 0, DY + 0.58, -2.98);
-  })();
-
-  // ---------- ADAM T8V (X-ART altın şerit tweeter)
-  function speaker(x, z, ry) {
-    var g = grp(x, DY, z, ry), zo = 0.0175;
-    box(0.27, 0.035, 0.355, M.foam, 0, 0.0175, 0, g, false);
-    rbox(0.25, 0.40, 0.335, 0.012, M.black, 0, 0.235, 0, g);
-    plane(0.226, 0.376, std(0x111113, 0.6, 0.2), 0, 0.235, 0.1515 + zo, g);
-    var wy = 0.15;
-    var cone = new THREE.Mesh(new THREE.CylinderGeometry(0.088, 0.032, 0.035, 36, 1, true), std(0x1d1d20, 0.5, 0.35, { side: THREE.DoubleSide }));
-    cone.rotation.x = Math.PI / 2; cone.position.set(0, wy, 0.145 + zo); g.add(cone);
-    var ring = new THREE.Mesh(new THREE.TorusGeometry(0.098, 0.009, 10, 40), M.rubber); ring.position.set(0, wy, 0.158 + zo); g.add(ring);
-    var cap = new THREE.Mesh(new THREE.SphereGeometry(0.03, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), std(0x222226, 0.4, 0.5)); cap.rotation.x = Math.PI / 2; cap.position.set(0, wy, 0.158 + zo); g.add(cap);
-    rbox(0.1, 0.07, 0.014, 0.004, M.black, 0, 0.325, 0.153 + zo, g);
-    plane(0.074, 0.05, std(0x0a0a0a, 0.8), 0, 0.325, 0.1605 + zo, g);
-    var rib = std(0xb98a3a, 0.35, 0.9);
-    for (var i = 0; i < 5; i++) box(0.062, 0.0045, 0.002, rib, 0, 0.305 + i * 0.0105, 0.1612 + zo, g, false);
-    var lg = ctex(128, 32, function (c, w, h) { c.fillStyle = '#111'; c.fillRect(0, 0, w, h); c.fillStyle = '#e8e8e8'; c.font = '700 20px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('ADAM AUDIO', w / 2, h / 2); });
-    plane(0.07, 0.0175, std(0xffffff, 0.8, 0, { map: lg }), 0, 0.055, 0.1518 + zo, g);
-    return g;
-  }
-  speaker(-0.87, -2.93, 0.3);
-  speaker(0.87, -2.93, -0.3);
-  hot('s3d_t_mon', -0.87, DY + 0.5, -2.84);
-
-  // sol hoparlör üstü: beyaz silindir cihaz; sağ hoparlör üstü: sarı Lego figürü
-  cyl(0.055, 0.055, 0.2, std(0xc8c8c4, 0.55), -0.87, DY + 0.435 + 0.1, -2.93, scene, 28);
-  (function () {
-    var g = grp(0.87, DY + 0.435, -2.93, -0.3);
-    var y = std(0xf2c230, 0.45), br = std(0x6b4a2a, 0.6);
-    box(0.09, 0.012, 0.06, br, 0, 0.006, 0, g);
-    box(0.05, 0.05, 0.03, y, 0, 0.037, 0, g);
-    cyl(0.021, 0.021, 0.035, y, 0, 0.078, 0, g, 18);
-    [-1, 1].forEach(function (s) {
-      box(0.012, 0.04, 0.012, y, s * 0.032, 0.04, 0, g, false);
-      box(0.055, 0.008, 0.012, std(0xe0861e, 0.5), s * 0.05, 0.062, -0.012, g, false).rotation.z = s * 0.4;
-      mesh(new THREE.SphereGeometry(0.004, 8, 6), M.rubber, s * 0.008, 0.082, 0.019, g, false);
-    });
-  })();
-
-  // PS5 (dikey, hoparlör ile monitör arasında)
-  (function () {
-    var g = grp(-0.59, DY, -3.0, 0.15);
-    box(0.12, 0.012, 0.22, M.plastic, 0, 0.006, 0, g, false);
-    box(0.07, 0.35, 0.2, std(0x0f0f12, 0.4, 0.3), 0, 0.19, 0, g);
-    [-1, 1].forEach(function (s) { rbox(0.012, 0.35, 0.215, 0.006, std(0xc9c9c5, 0.5, 0.05), s * 0.0425, 0.19, 0, g); });
-  })();
-
-  // ---------- Push 3 (krem pedler; eğimli standda, sol ön)
-  function drawPush(g, w, h, t) {
-    g.fillStyle = '#0c0c0d'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#16161a'; g.fillRect(w * 0.04, h * 0.05, w * 0.92, h * 0.16);
-    g.fillStyle = '#2a2a30';
-    for (var d = 0; d < 8; d++) { g.beginPath(); g.arc(w * (0.12 + d * 0.105), h * 0.13, h * 0.032, 0, 7); g.fill(); }
-    g.fillStyle = 'rgba(255,200,120,.75)'; g.font = '600 ' + Math.round(h * 0.03) + 'px monospace'; g.textBaseline = 'middle';
-    g.fillText('Wavetable   Cutoff  Res  Drive', w * 0.1, h * 0.095);
-    var px = w * 0.1, py = h * 0.27, ps = h * 0.085, pg = h * 0.01;
-    for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) {
-      var v = Math.sin(c * 0.9 + t * 1.2) * Math.cos(r * 0.7 - t * 0.9);
-      var k = 0.82 + v * 0.12;
-      g.fillStyle = 'rgb(' + Math.round(236 * k) + ',' + Math.round(226 * k) + ',' + Math.round(200 * k) + ')';
-      g.fillRect(px + c * (ps + pg), py + r * (ps + pg), ps, ps);
-    }
-    g.fillStyle = '#26262b';
-    for (var b = 0; b < 8; b++) { g.fillRect(w * 0.025, py + b * (ps + pg), w * 0.04, ps * 0.8); g.fillRect(w * 0.93, py + b * (ps + pg), w * 0.04, ps * 0.8); }
-  }
-  var pushTex = ctex(1024, 860, drawPush);
-  (function () {
-    var top = stand(-0.55, -2.42, 0.12, 0.42, 0.34, 0.32);
-    rbox(0.38, 0.0445, 0.318, 0.012, std(0x101012, 0.5, 0.3), 0, 0.0275, 0, top);
-    var pl = plane(0.365, 0.3, new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, map: pushTex, emissive: 0xffffff, emissiveMap: pushTex, emissiveIntensity: 0.55 }), 0, 0.0503, 0, top);
-    pl.rotation.x = -Math.PI / 2;
-    hot('s3d_t_push', -0.55, DY + 0.2, -2.42);
-  })();
-
-  // ---------- Arturia DrumBrute Impact (beyaz, turuncu çizgili, fader'lı)
-  function drawDrumBody(g, w, h) {
-    g.fillStyle = '#ecebe6'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#d8d6d0'; g.fillRect(w * 0.03, h * 0.04, w * 0.94, h * 0.2);
-    for (var k = 0; k < 5; k++) { g.fillStyle = k % 2 ? '#e8561e' : '#8d8b86'; g.beginPath(); g.arc(w * (0.12 + k * 0.1), h * 0.14, h * 0.045, 0, 7); g.fill(); }
-    for (var c = 0; c < 9; c++) {
-      var x = w * (0.06 + c * 0.1);
-      g.fillStyle = '#2a2a2c'; g.fillRect(x + w * 0.012, h * 0.3, w * 0.016, h * 0.58);
-      var cy = h * (0.38 + ((c * 37) % 5) * 0.07);
-      g.fillStyle = '#f6f6f3'; g.fillRect(x - w * 0.004, cy, w * 0.056, h * 0.07);
-      g.fillStyle = '#c9c7c2'; g.fillRect(x - w * 0.004, cy + h * 0.03, w * 0.056, h * 0.012);
-    }
-    g.fillStyle = '#e8561e'; g.fillRect(0, h * 0.93, w, h * 0.07);
-  }
-  function drawDrumLed(g, w, h, t) {
-    g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
-    for (var c = 0; c < 9; c++) {
-      var x = w * (0.06 + c * 0.1) + w * 0.062;
-      for (var i = 0; i < 8; i++) {
-        var lvl = (Math.sin(t * 2.0 + c * 0.9) + 1) * 4;
-        g.fillStyle = i < lvl ? '#c060ff' : '#1a0c22';
-        g.fillRect(x, h * (0.84 - i * 0.065), w * 0.016, h * 0.04);
-      }
-    }
-  }
-  var drumBodyTex = ctex(768, 690, drawDrumBody);
-  var drumLedTex = ctex(768, 690, drawDrumLed);
-  (function () {
-    var top = stand(-0.32, -2.7, -0.08, 0.36, 0.31, 0.16);
-    rbox(0.32, 0.055, 0.29, 0.01, M.white, 0, 0.0325, 0, top);
-    var pl = plane(0.305, 0.275, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, map: drumBodyTex, emissive: 0xffffff, emissiveMap: drumLedTex, emissiveIntensity: 0.5 }), 0, 0.0605, 0, top);
-    pl.rotation.x = -Math.PI / 2;
-    hot('s3d_t_drum', -0.32, DY + 0.18, -2.7);
-  })();
-
-  // ---------- Arturia AudioFuse Studio (siyah platformda, altında kırmızı ışık)
-  var fuseTex = ctex(768, 460, function (g, w, h) {
-    g.fillStyle = '#101012'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#1b1b1f'; g.fillRect(w * 0.03, h * 0.05, w * 0.94, h * 0.9);
-    for (var c = 0; c < 4; c++) {
-      var x = w * (0.07 + c * 0.075);
-      g.fillStyle = '#050505'; g.fillRect(x, h * 0.2, w * 0.018, h * 0.62);
-      g.fillStyle = '#b8bcc4'; g.fillRect(x - w * 0.012, h * (0.3 + ((c * 31) % 4) * 0.1), w * 0.042, h * 0.07);
-    }
-    g.fillStyle = '#2e3036'; g.beginPath(); g.arc(w * 0.74, h * 0.52, h * 0.3, 0, 7); g.fill();
-    g.fillStyle = '#c9ccd2'; g.beginPath(); g.arc(w * 0.74, h * 0.52, h * 0.25, 0, 7); g.fill();
-    g.fillStyle = '#4b4e55'; g.beginPath(); g.arc(w * 0.74, h * 0.52, h * 0.19, 0, 7); g.fill();
-    g.fillStyle = '#1e2d1e'; g.fillRect(w * 0.43, h * 0.14, w * 0.2, h * 0.16);
-    g.fillStyle = '#7dffa2'; g.fillRect(w * 0.45, h * 0.2, w * 0.1, h * 0.03);
-    for (var k = 0; k < 6; k++) { g.fillStyle = '#d8dade'; g.beginPath(); g.arc(w * (0.46 + k * 0.03), h * 0.65, h * 0.028, 0, 7); g.fill(); }
+  // DrumBrute Impact 1984: plaka .31 x .284 m; sütun merkezleri x = -0.125 + c*0.0275
+  var drumTex = gtex(1024, 938, function (g, w, h) {
+    g.fillStyle = '#e7e4dc'; g.fillRect(0, 0, w, h);
+    var U = function (x) { return (x + 0.155) / 0.31 * w; }, V = function (y) { return (0.142 - y) / 0.284 * h; };
+    g.strokeStyle = '#b9b5ab'; g.lineWidth = 2;
+    for (var c = 0; c <= 10; c++) { var x = U(-0.139 + c * 0.0275); g.beginPath(); g.moveTo(x, V(0.055)); g.lineTo(x, V(-0.085)); g.stroke(); }
+    g.strokeStyle = '#e8561e'; g.lineWidth = 4; g.strokeRect(U(-0.14), V(0.088), U(0.16) - U(-0.14), V(0.052) - V(0.088));
+    var nm = ['KICK1', 'KICK2', 'SNARE', 'CLAP', 'RIM', 'C.HAT', 'O.HAT', 'TOM HI', 'TOM LO', 'CYMBAL'];
+    for (var i = 0; i < 10; i++) label(g, nm[i], U(-0.125 + i * 0.0275), V(-0.078), 15, '#3a3a3a');
+    for (var r = 0; r < 2; r++) for (var j = 0; j < 10; j++) label(g, r ? 'DECAY' : 'LEVEL', U(-0.125 + j * 0.0275), V(0.035 - r * 0.032) + 34, 11, '#55524c');
+    label(g, 'DRUMBRUTE IMPACT', U(-0.09), V(0.135), 22, '#fff');
+    label(g, 'ARTURIA', U(0.11), V(-0.105), 26, '#e8561e');
+    label(g, '1984', U(0.145), V(-0.105), 18, '#3a3a3a');
   });
-  (function () {
-    var g = grp(0, DY, -2.86, 0);
-    box(0.36, 0.012, 0.19, std(0x0b0b0d, 0.3, 0.5), 0, 0.075, 0, g);
-    [[-0.165, -0.08], [0.165, -0.08], [-0.165, 0.08], [0.165, 0.08]].forEach(function (p) { box(0.012, 0.07, 0.012, riser, p[0], 0.035, p[1], g, false); });
-    box(0.36, 0.012, 0.012, ledMat(3.2), 0, 0.02, 0.09, g, false);
-    var top = grp(0, 0.081, 0, 0, g); top.rotation.x = 0.14;
-    rbox(0.265, 0.072, 0.16, 0.008, std(0x141416, 0.4, 0.7), 0, 0.036, 0, top);
-    var pl = plane(0.255, 0.15, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: fuseTex }), 0, 0.0725, 0, top);
-    pl.rotation.x = -Math.PI / 2;
-    cyl(0.03, 0.03, 0.02, M.alu, 0.065, 0.082, 0.0, top, 32);
-    hot('s3d_t_iface', 0, DY + 0.24, -2.82);
-    ledLight(0, DY + 0.03, -2.7, 0.35, 1.2);
-  })();
-
-  // ---------- Acid 303 (TD-3 tarzı, koyu gri)
-  var tdTex = ctex(768, 400, function (g, w, h) {
-    g.fillStyle = '#25262a'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#c3c6cc'; g.fillRect(0, 0, w, h * 0.06); g.fillRect(0, h * 0.94, w, h * 0.06);
-    g.fillStyle = '#d8dade'; g.font = '700 ' + Math.round(h * 0.07) + 'px monospace'; g.textBaseline = 'middle';
-    g.fillText('TD-3', w * 0.04, h * 0.17);
-    g.font = '600 ' + Math.round(h * 0.045) + 'px monospace'; g.fillText('CUT OFF   RES   ENV MOD   DECAY   ACCENT', w * 0.2, h * 0.3);
-    for (var k = 0; k < 6; k++) { g.fillStyle = '#9a9ca2'; g.beginPath(); g.arc(w * (0.22 + k * 0.13), h * 0.5, h * 0.085, 0, 7); g.fill(); g.fillStyle = '#17171a'; g.beginPath(); g.arc(w * (0.22 + k * 0.13), h * 0.5, h * 0.062, 0, 7); g.fill(); }
-    for (var s = 0; s < 16; s++) { g.fillStyle = s % 4 === 0 ? '#e8561e' : '#d6d8dc'; g.fillRect(w * (0.05 + s * 0.057), h * 0.74, w * 0.04, h * 0.13); }
+  var fuseTex = gtex(1024, 600, function (g, w, h) {
+    g.fillStyle = '#1b1b1f'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#3a3a40'; g.lineWidth = 2; g.strokeRect(w * 0.03, h * 0.08, w * 0.5, h * 0.84);
+    for (var i = 0; i < 4; i++) label(g, String(i + 1), w * (0.1 + i * 0.113), h * 0.12, 22, '#cfd2d8');
+    label(g, 'AUDIOFUSE STUDIO', w * 0.78, h * 0.86, 22, '#cfd2d8');
+    label(g, 'MONITOR', w * 0.8, h * 0.12, 18, '#9a9ea6');
+    label(g, 'ARTURIA', w * 0.78, h * 0.94, 18, '#e8561e');
   });
-  (function () {
-    var top = stand(0.33, -2.72, 0.04, 0.33, 0.19, 0.12);
-    rbox(0.305, 0.056, 0.165, 0.006, std(0x1f2024, 0.45, 0.6), 0, 0.031, 0, top);
-    var pl = plane(0.29, 0.15, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: tdTex }), 0, 0.0595, 0, top);
-    pl.rotation.x = -Math.PI / 2;
-    hot('s3d_t_303', 0.33, DY + 0.16, -2.72);
-  })();
-
-  // Grogu (monitörün sağında, TD-3'ün arkasında)
-  (function () {
-    var g = grp(0.47, DY, -2.96, -0.25);
-    var robe = std(0x8a6b4a, 0.95), skin = std(0xa9bd80, 0.8);
-    var body = cyl(0.026, 0.055, 0.1, robe, 0, 0.05, 0, g, 18);
-    var head = mesh(new THREE.SphereGeometry(0.046, 22, 16), skin, 0, 0.13, 0, g); head.scale.set(1, 0.94, 0.95);
-    [-1, 1].forEach(function (s) {
-      var ear = mesh(new THREE.ConeGeometry(0.026, 0.115, 12), skin, s * 0.085, 0.145, 0, g);
-      ear.rotation.z = -s * 1.4;
-      mesh(new THREE.SphereGeometry(0.0085, 10, 8), std(0x050505, 0.15), s * 0.017, 0.133, 0.041, g, false);
-      box(0.014, 0.05, 0.014, robe, s * 0.05, 0.065, 0.015, g, false).rotation.z = s * 0.3;
-    });
-  })();
-
-  // ---------- Arturia MicroFreak (siyah mermer panel, turuncu düğmeler, noktalı dokunmatik tuşlar)
-  var mfTex = ctex(1024, 750, function (g, w, h) {
-    g.fillStyle = '#17181b'; g.fillRect(0, 0, w, h * 0.62);
+  var td3Tex = gtex(1024, 554, function (g, w, h) {
+    g.fillStyle = '#1b1c1f'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#d8dade'; g.lineWidth = 2; g.strokeRect(w * 0.02, h * 0.04, w * 0.96, h * 0.92);
+    label(g, 'TD-3', w * 0.08, h * 0.12, 44, '#e8e8e8', 'left');
+    label(g, 'behringer', w * 0.9, h * 0.12, 30, '#e8e8e8', 'right');
+    var kn = ['TUNING', 'CUT OFF', 'RESONANCE', 'ENV MOD', 'DECAY', 'ACCENT', 'VOLUME'];
+    for (var i = 0; i < 7; i++) label(g, kn[i], w * ((0.03 + i * 0.033 + 0.1475) / 0.295), h * 0.38, 13, '#cfd2d8');
+    label(g, 'TEMPO', w * 0.4, h * 0.58, 14, '#cfd2d8'); label(g, 'WAVEFORM', w * 0.6, h * 0.58, 14, '#cfd2d8');
+    label(g, 'ANALOG BASS LINE SYNTHESIZER', w * 0.32, h * 0.92, 15, '#9a9ea6');
+  });
+  var mfTex = gtex(1024, 452, function (g, w, h) {
+    g.fillStyle = '#1c1d21'; g.fillRect(0, 0, w, h);
     var R = rng(33);
-    for (var i = 0; i < 30; i++) { g.strokeStyle = 'rgba(' + (120 + R() * 80 | 0) + ',' + (120 + R() * 80 | 0) + ',' + (125 + R() * 80 | 0) + ',' + (0.05 + R() * 0.12) + ')'; g.lineWidth = 1 + R() * 3; g.beginPath(); g.moveTo(R() * w, 0); g.bezierCurveTo(R() * w, h * 0.2, R() * w, h * 0.4, R() * w, h * 0.62); g.stroke(); }
-    for (var r = 0; r < 2; r++) for (var c = 0; c < 8; c++) {
-      var x = w * (0.08 + c * 0.075), y = h * (0.14 + r * 0.2);
-      g.fillStyle = (c + r) % 3 === 0 ? '#f08a1e' : '#0a0a0b'; g.beginPath(); g.arc(x, y, h * 0.055, 0, 7); g.fill();
-      g.fillStyle = '#ddd'; g.fillRect(x - 1.5, y - h * 0.05, 3, h * 0.03);
+    for (var i = 0; i < 46; i++) {
+      g.strokeStyle = 'rgba(225,228,235,' + (0.06 + R() * 0.22) + ')'; g.lineWidth = 1 + R() * 4;
+      g.beginPath(); var x = R() * w; g.moveTo(x, 0);
+      g.bezierCurveTo(x + R() * 160 - 80, h * 0.3, x + R() * 220 - 110, h * 0.7, x + R() * 160 - 80, h); g.stroke();
     }
-    g.fillStyle = '#0a0a0b'; g.fillRect(w * 0.72, h * 0.08, w * 0.22, h * 0.26);
-    g.fillStyle = '#e8e8e6'; g.fillRect(0, h * 0.62, w, h * 0.38);
+    label(g, 'MicroFreak', w * 0.84, h * 0.88, 30, '#f0f0f0');
+    label(g, 'ARTURIA', w * 0.08, h * 0.92, 18, '#e8561e', 'left');
+  });
+  var mfKeysTex = gtex(1024, 302, function (g, w, h) {
+    g.fillStyle = '#2a2a2c'; g.fillRect(0, 0, w, h);
     var kw = w / 15;
     for (var k = 0; k < 15; k++) {
-      g.fillStyle = '#dcdcda'; g.fillRect(k * kw + 2, h * 0.64, kw - 4, h * 0.34);
-      g.fillStyle = '#9d9d9b';
-      for (var dy = 0; dy < 5; dy++) for (var dx = 0; dx < 4; dx++) g.fillRect(k * kw + kw * 0.2 + dx * kw * 0.16, h * 0.7 + dy * h * 0.05, 2, 2);
+      g.fillStyle = '#e2e2e0'; g.fillRect(k * kw + 3, 4, kw - 6, h - 8);
+      g.fillStyle = '#8e8e8c';
+      for (var dy = 0; dy < 9; dy++) for (var dx = 0; dx < 5; dx++) g.fillRect(k * kw + kw * 0.18 + dx * kw * 0.15, h * 0.12 + dy * h * 0.09, 3, 3);
     }
-    [0, 1, 3, 4, 5, 7, 8, 10, 11, 12].forEach(function (i) { g.fillStyle = '#1a1a1c'; g.fillRect((i + 1) * kw - kw * 0.3, h * 0.62, kw * 0.6, h * 0.2); });
+    [0, 1, 3, 4, 5, 7, 8, 10, 11, 12].forEach(function (i) { g.fillStyle = '#3a2a22'; g.fillRect((i + 1) * kw - kw * 0.3, 0, kw * 0.6, h * 0.58); });
   });
-  (function () {
-    var top = stand(0.52, -2.5, 0.12, 0.34, 0.25, 0.26);
-    rbox(0.311, 0.055, 0.233, 0.01, std(0x2a2b30, 0.45, 0.4), 0, 0.0275, 0, top);
-    var pl = plane(0.295, 0.215, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, map: mfTex }), 0, 0.0555, 0, top);
-    pl.rotation.x = -Math.PI / 2;
-    hot('s3d_t_synth', 0.52, DY + 0.2, -2.5);
-  })();
-
-  // ---------- klavye (Logitech Craft tarzı) + mouse + DualSense
-  var kbMap = ctex(768, 256, function (g, w, h) {
-    g.fillStyle = '#101012'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#26262b';
-    var rows = [15, 14, 14, 13, 12], y = h * 0.06;
-    rows.forEach(function (n) { var kw = w * 0.92 / n; for (var i = 0; i < n; i++) { g.fillRect(w * 0.04 + i * kw + 2, y, kw - 4, h * 0.15); } y += h * 0.18; });
+  var pushTex = gtex(1024, 860, function (g, w, h) {
+    g.fillStyle = '#141416'; g.fillRect(0, 0, w, h);
+    label(g, 'PUSH', w * 0.06, h * 0.05, 22, '#8a8a90', 'left');
+    label(g, 'Ableton', w * 0.94, h * 0.05, 22, '#8a8a90', 'right');
   });
-  var kbEm = ctex(768, 256, function (g, w, h) {
-    g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
-    g.fillStyle = '#b7e6c8';
-    var rows = [15, 14, 14, 13, 12], y = h * 0.06;
-    rows.forEach(function (n) { var kw = w * 0.92 / n; for (var i = 0; i < n; i++) { g.fillRect(w * 0.04 + i * kw + kw * 0.3, y + h * 0.05, kw * 0.34, h * 0.05); } y += h * 0.18; });
-  });
-  (function () {
-    var g = grp(-0.02, DY + 0.003, -2.42, 0);
-    rbox(0.43, 0.014, 0.135, 0.004, M.plastic, 0, 0.007, 0, g);
-    var top = plane(0.41, 0.125, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: kbMap, emissive: 0xffffff, emissiveMap: kbEm, emissiveIntensity: 1.6 }), 0, 0.0145, 0.003, g);
-    top.rotation.x = -Math.PI / 2;
-    cyl(0.017, 0.017, 0.012, std(0x1c1c1f, 0.4, 0.6), -0.18, 0.02, -0.04, g, 24);
-    var ms = rbox(0.085, 0.05, 0.126, 0.025, M.knob, 0.3, 0.018, -0.0, scene);
-    ms.position.set(0.31, DY + 0.028, -2.43); ms.rotation.y = 0.15;
-    var dc = grp(-0.37, DY + 0.003, -2.43, -0.3);
-    var wh = std(0xf2f2f0, 0.35);
-    rbox(0.16, 0.04, 0.1, 0.02, wh, 0, 0.022, 0, dc);
-    [-1, 1].forEach(function (s) { rbox(0.045, 0.036, 0.085, 0.02, wh, s * 0.062, 0.015, 0.032, dc).rotation.y = -s * 0.25; });
-    rbox(0.07, 0.01, 0.06, 0.005, std(0x111113, 0.3), 0, 0.044, -0.005, dc);
-  })();
-
-  // ---------- MacBook Pro (sağ uçta, standda, kullanıcıya dönük)
-  (function () {
-    var top = stand(1.0, -2.44, -0.45, 0.36, 0.28, 0.2);
-    var g = grp(0, 0.003, 0, 0, top);
-    rbox(0.31, 0.016, 0.22, 0.006, std(0x2f3033, 0.35, 0.92), 0, 0.008, 0, g);
-    var kk = plane(0.27, 0.085, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: kbMap, emissive: 0xffffff, emissiveMap: kbEm, emissiveIntensity: 1.3 }), 0, 0.0165, 0.03, g);
-    kk.rotation.x = -Math.PI / 2;
-    box(0.1, 0.0006, 0.07, std(0x232426, 0.5, 0.8), 0, 0.0166, 0.085, g, false);
-    var hinge = grp(0, 0.014, -0.11, 0, g);
-    hinge.rotation.x = -1.83;
-    rbox(0.31, 0.008, 0.215, 0.004, std(0x2f3033, 0.35, 0.92), 0, 0, 0.1075, hinge);
-    var sc = new THREE.Mesh(new THREE.PlaneGeometry(0.296, 0.2), miniMat);
-    sc.rotation.x = Math.PI / 2; sc.position.set(0, -0.0042, 0.1075); hinge.add(sc);
-    hot('s3d_t_laptop', 1.0, DY + 0.3, -2.45);
-  })();
-
-  // ---------- Tascam DR-05X
-  (function () {
-    var g = grp(0.78, DY, -2.27, 0.7);
-    rbox(0.061, 0.026, 0.141, 0.006, std(0x1f1f21, 0.55, 0.3), 0, 0.013, 0, g);
-    box(0.028, 0.001, 0.034, fixedGlow(0x6cff9a, 0.7), 0, 0.0268, -0.03, g, false);
-    for (var b = 0; b < 3; b++) cyl(0.004, 0.004, 0.003, M.alu, -0.012 + b * 0.012, 0.027, 0.02, g, 10, false);
-    [-0.012, 0.012].forEach(function (x) { cyl(0.0085, 0.0085, 0.02, M.alu, x, 0.02, -0.075, g, 14); });
-    hot('s3d_t_rec', 0.78, DY + 0.1, -2.27);
-  })();
-
-  // telefon
-  rbox(0.07, 0.008, 0.15, 0.006, std(0x101113, 0.3, 0.6), 0.7, DY + 0.004, -1.5, scene, false).rotation.y = 0.5;
-
-  // kablolar (arayüzden matın üstüne sarkan)
-  (function () {
-    var cm = std(0x050505, 0.8);
-    [[-0.2, 0.12], [-0.12, -0.05], [0.0, 0.08], [0.08, -0.1]].forEach(function (p) {
-      var pts = [new THREE.Vector3(p[0], DY + 0.07, -2.78), new THREE.Vector3(p[0] + p[1] * 0.3, DY + 0.03, -2.66), new THREE.Vector3(p[0] + p[1], DY + 0.006, -2.58), new THREE.Vector3(p[0] + p[1] * 1.6, DY + 0.004, -2.5)];
-      mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.004, 6), cm, 0, 0, 0, scene, false, false);
+  // Logitech Craft tuş baskıları (saydam; tuş geometrisinin üstünde)
+  var craftTex = gtex(1024, 310, function (g, w, h) {
+    g.clearRect(0, 0, w, h);
+    var rows = [15, 14, 14, 13, 11], ch = 'QWERTYUIOPASDFGHJKLZXCVBNM1234567890';
+    rows.forEach(function (n, r) {
+      for (var i = 0; i < n; i++) {
+        var x = -0.175 + i * 0.0182, y = 0.035 - r * 0.0185;
+        label(g, ch[(r * 7 + i) % ch.length], (x + 0.165) / 0.33 * w - 6, (0.05 - y) / 0.1 * h - 6, 15, 'rgba(235,245,240,.9)');
+      }
     });
-    [[-0.5, DY, -3.1, 0], [0.55, DY, -3.1, -0.3]].forEach(function (p) {
-      var pts = [new THREE.Vector3(p[0], p[1], p[2]), new THREE.Vector3(p[0] + p[3] * 0.5, p[1] - 0.25, p[2] - 0.0), new THREE.Vector3(p[0] + p[3], 0.05, -3.0), new THREE.Vector3(p[0] + p[3] + 0.3, 0.012, -2.5)];
-      mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.006, 6), cm, 0, 0, 0, scene, false, false);
+  });
+  var mbKeysTex = gtex(1024, 360, function (g, w, h) {
+    g.fillStyle = '#0d0d0f'; g.fillRect(0, 0, w, h);
+    var rows = [14, 14, 13, 12, 11];
+    rows.forEach(function (n, r) {
+      var kw = w / 14.5;
+      for (var i = 0; i < n; i++) {
+        g.fillStyle = '#1d1d21'; g.fillRect(8 + i * kw, 8 + r * h / 5.2, kw - 8, h / 5.2 - 10);
+        g.fillStyle = 'rgba(220,240,230,.55)'; g.fillRect(8 + i * kw + kw * 0.38, 8 + r * h / 5.2 + 12, 8, 4);
+      }
     });
-  })();
+  });
+  var adamTex = gtex(256, 64, function (g, w, h) { g.fillStyle = '#111'; g.fillRect(0, 0, w, h); label(g, 'ADAM AUDIO', w / 2, h / 2, 30, '#e8e8e8'); });
+  // masa matı: dikey renk bantları ve turuncu giysili figür siluetleri (fotoğraftaki renkler)
+  var matTex = gtex(1024, 432, function (g, w, h) {
+    var cols = ['#c7301e', '#e8601c', '#f2b01e', '#e8601c', '#c7301e', '#f2b01e', '#2a6fc0', '#e8601c'];
+    var bw = w / cols.length, R = rng(3);
+    cols.forEach(function (c, i) { g.fillStyle = c; g.fillRect(i * bw, 0, bw + 1, h); });
+    for (var i = 0; i < 9; i++) {
+      var cx = i * w / 8.5 + 40, by = h * 0.98;
+      g.fillStyle = '#e46b16'; g.beginPath(); g.ellipse(cx, by - 70, 44, 80, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2b4f9e'; g.fillRect(cx - 44, by - 72, 88, 12);
+      g.fillStyle = '#f0c9a0'; g.beginPath(); g.arc(cx, by - 170, 24, 0, Math.PI * 2); g.fill();
+      g.fillStyle = i % 3 === 0 ? '#f6d23a' : '#141414';
+      for (var s = 0; s < 6; s++) { g.beginPath(); g.moveTo(cx - 26 + s * 10, by - 182); g.lineTo(cx - 34 + s * 13 + R() * 10, by - 230 - R() * 30); g.lineTo(cx - 18 + s * 10, by - 186); g.closePath(); g.fill(); }
+    }
+  });
+
+  var TEXMAP = {
+    SCREEN_main: { tex: screenTex, screen: 1.0 },
+    SCREEN_laptop: { tex: miniTex, screen: 0.95 },
+    TEX_drum: { tex: drumTex }, TEX_fuse: { tex: fuseTex }, TEX_td3: { tex: td3Tex },
+    TEX_mf: { tex: mfTex }, TEX_mfkeys: { tex: mfKeysTex }, TEX_push: { tex: pushTex },
+    TEX_craft: { tex: craftTex, alpha: true, emissive: 0.6 }, TEX_mbkeys: { tex: mbKeysTex, emissive: 0.4 },
+    TEX_adam: { tex: adamTex }, TEX_mat: { tex: matTex }
+  };
+  var swapped = {};
+  function swapMat(m) {
+    if (swapped[m.uuid]) return swapped[m.uuid];
+    var sp = TEXMAP[m.name], out = m;
+    // fotoğraftaki gibi loş: ped/LED kendinden ışımalarını kıs
+    if (m.emissive && !sp) m.emissive.multiplyScalar(m.name === 'push_pad' ? 0.25 : 0.6);
+    if (sp && sp.screen) {
+      out = new THREE.MeshBasicMaterial({ map: sp.tex, toneMapped: false, color: new THREE.Color(sp.screen, sp.screen, sp.screen) });
+    } else if (sp) {
+      m.map = sp.tex; m.color.set(0xffffff);
+      if (sp.emissive) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = sp.tex; m.emissiveIntensity = sp.emissive; }
+      if (sp.alpha) { m.transparent = true; m.alphaTest = 0.25; m.depthWrite = false; }
+      m.needsUpdate = true;
+    }
+    swapped[m.uuid] = out;
+    return out;
+  }
+  var ready = new Promise(function (resolve) {
+    new GLTFLoader().load('/assets/models/studio-desk.glb?v=' + MODEL_V, function (gl) {
+      gl.scene.traverse(function (o) {
+        if (!o.isMesh) return;
+        o.castShadow = true; o.receiveShadow = true;
+        if (Array.isArray(o.material)) o.material = o.material.map(swapMat); else o.material = swapMat(o.material);
+      });
+      scene.add(gl.scene);
+      resolve(true);
+    }, undefined, function (e) { console.warn('[s3d] masa modeli yüklenemedi', e); resolve(false); });
+  });
+  hot('s3d_t_push', -0.56, DY + 0.17, -2.47);
+  hot('s3d_t_screen', 0, DY + 0.58, -2.98);
+  hot('s3d_t_mon', -0.87, DY + 0.5, -2.88);
+  hot('s3d_t_iface', 0.02, DY + 0.2, -2.86);
+  hot('s3d_t_drum', -0.31, DY + 0.2, -2.69);
+  hot('s3d_t_303', 0.29, DY + 0.1, -2.71);
+  hot('s3d_t_synth', 0.52, DY + 0.16, -2.48);
+  hot('s3d_t_laptop', 1.06, DY + 0.3, -2.38);
+  hot('s3d_t_rec', 0.72, DY + 0.06, -2.27);
+  // AudioFuse yükselticisinin altındaki kırmızı ışık ve Grogu'nun yanındaki mumlar
+  ledLight(0.02, DY + 0.03, -2.8, 0.22, 1.0);
+  box(0.3, 0.008, 0.008, ledMat(1.6), 0.02, DY + 0.02, -2.76, scene, false);
+  var candleLight = new THREE.PointLight(0xffa040, 0.22, 1.2, 2); candleLight.position.set(0.24, DY + 0.1, -2.9); scene.add(candleLight);
 
   // masanın arkasında siyah perde (fotoğraftaki gibi), çubuk ve halkalar
   (function () {
@@ -658,8 +481,6 @@ export function buildStudio(renderer, CONFIG) {
     return g;
   }
   chair(-0.15, -1.82, 0.35, 0xd5352a);
-  chair(1.75, -1.85, -1.4, 0xd5352a);
-  obst(1.45, 2.05, -2.2, -1.5);
 
   // ---------- ders köşesi: halı, kanepe, sehpa, lamba, bitki
   var rugTex = ctex(512, 448, function (g, w, h) {
@@ -810,14 +631,14 @@ export function buildStudio(renderer, CONFIG) {
   function update(t) {
     if (t - lastTex > 0.1) {
       lastTex = t;
-      redraw(screenTex, t); redraw(miniTex, t); redraw(pushTex, t); redraw(drumLedTex, t);
+      redraw(screenTex, t); redraw(miniTex, t);
     }
     var pulse = 0.94 + Math.sin(t * 1.7) * 0.06;
-    strip.color.set(LED[ledKey]).multiplyScalar(3.0 * pulse);
+    strip.color.set(LED[ledKey]).multiplyScalar(1.6 * pulse);
     var f = 1 + Math.sin(t * 0.9) * 0.03 + (Math.sin(t * 37) > 0.995 ? -0.1 : 0);
-    neonMat.color.set(LED[ledKey]).multiplyScalar(2.2 * f);
-    pushGlow.intensity = 0.3 + Math.sin(t * 2.4) * 0.08;
-    screenSpill.intensity = 0.95 + Math.sin(t * 1.1) * 0.1;
+    neonMat.color.set(LED[ledKey]).multiplyScalar(1.3 * f);
+    pushGlow.intensity = 0.15;
+    screenSpill.intensity = 0.58 + Math.sin(t * 1.1) * 0.04;
     var p = dust.geometry.attributes.position.array;
     for (var i = 0; i < p.length; i += 3) {
       p[i + 1] += Math.sin(t * 0.3 + i) * 0.0003 + 0.00008;
@@ -827,5 +648,5 @@ export function buildStudio(renderer, CONFIG) {
     dust.geometry.attributes.position.needsUpdate = true;
   }
 
-  return { scene: scene, update: update, setLed: setLed, hotspots: hotspots, obstacles: obstacles, spot: spot };
+  return { scene: scene, ready: ready, update: update, setLed: setLed, hotspots: hotspots, obstacles: obstacles, spot: spot };
 }
