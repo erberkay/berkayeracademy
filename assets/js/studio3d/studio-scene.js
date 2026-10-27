@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610273500';
+var MODEL_V = '202610280900';
 
 var DY = 0.76; // masa üst yüzeyi
 

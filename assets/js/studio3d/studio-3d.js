@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610273500';
+import { buildStudio, LED } from './studio-scene.js?v=202610280900';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
@@ -39,7 +39,7 @@ function hex(n) { return '#' + ('000000' + n.toString(16)).slice(-6); }
 
 var stage = $('s3dStage') || document.querySelector('.s3d');
 var canvas = $('s3dCanvas');
-var coarse = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+var coarse = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || /[?&]touch=1/.test(location.search);
 // hafif mod: dokunmatik, dar ekran ya da az bellekli cihaz (telefon, tablet)
 var LITE = coarse || window.innerWidth < 900 || (navigator.deviceMemory && navigator.deviceMemory <= 4) || /[?&]lite=1/.test(location.search);
 var PR_MAX = Math.min(window.devicePixelRatio || 1, LITE ? 1.25 : 2), pr = PR_MAX;
@@ -158,9 +158,11 @@ function blocked(ox, oz, nx, nz) {
   }
   return false;
 }
+var joy = { f: 0, s: 0 };
 function walk(dt) {
-  var f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
-  var s = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+  var f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joy.f;
+  var s = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.s;
+  f = Math.max(-1, Math.min(1, f)); s = Math.max(-1, Math.min(1, s));
   if (!f && !s) return;
   tw = null;
   st.y += (EYE - st.y) * Math.min(1, dt * 3);
@@ -209,6 +211,27 @@ window.addEventListener('keydown', function (e) {
 });
 window.addEventListener('keyup', function (e) { keys[e.code] = false; });
 window.addEventListener('blur', function () { keys = {}; });
+
+// dokunmatik yürüme kolu (sol alt): merkezden uzaklık hız, yön yürüyüş yönü; aynı anda diğer parmakla bakılabilir
+var joyEl = $('s3dJoy'), joyThumb = joyEl && joyEl.firstElementChild, joyId = null, JR = 40;
+function joyMove(e) {
+  var r = joyEl.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  var d = Math.hypot(dx, dy); if (d > JR) { dx *= JR / d; dy *= JR / d; d = JR; }
+  var k = d < JR * 0.15 ? 0 : 1;
+  joy.s = k * dx / JR; joy.f = -k * dy / JR;
+  joyThumb.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
+}
+function joyEnd(e) {
+  if (e.pointerId !== joyId) return;
+  joyId = null; joy.f = joy.s = 0; joyThumb.style.transform = ''; joyEl.classList.remove('is-on');
+}
+if (joyEl && coarse) {
+  joyEl.hidden = false;
+  joyEl.addEventListener('pointerdown', function (e) { e.preventDefault(); joyId = e.pointerId; joyEl.setPointerCapture(e.pointerId); joyEl.classList.add('is-on'); joyMove(e); });
+  joyEl.addEventListener('pointermove', function (e) { if (e.pointerId === joyId) joyMove(e); });
+  joyEl.addEventListener('pointerup', joyEnd);
+  joyEl.addEventListener('pointercancel', joyEnd);
+}
 
 // ---------- arayüz
 var wps = $('s3dWps');
@@ -266,7 +289,7 @@ function spLoad() {
   window.onSpotifyIframeApiReady = function (api) {
     spApi = api;
     var uri = spWant || PLAYLIST;
-    spApi.createController(playerEl, { uri: uri, width: '100%', height: 152 }, function (ctl) {
+    spApi.createController(playerEl, { uri: uri, width: '100%', height: coarse ? 80 : 152 }, function (ctl) {
       spCtl = ctl; spUri = uri;
       ctl.addListener('ready', function () { if (spPlay) ctl.play(); });
     });
@@ -302,10 +325,15 @@ function autoPlay() {
   window.removeEventListener('keydown', autoPlay, true);
   if (!spClosed && !spPlay && PLAYLIST) openPlayer(PLAYLIST);
 }
+// telefonda gömülü oynatıcı koddan başlatılamaz (iOS/Android yalnız oynatıcıdaki ▶'e dokunuşla çalar):
+// orada otomatik çalma yok, kayda dokununca oynatıcı açılır ve ▶ uyarısı görünür
+if (coarse) $('s3dPlayerHint').hidden = false;
 if (PLAYLIST) {
   spLoad();
-  window.addEventListener('pointerdown', autoPlay, true);
-  window.addEventListener('keydown', autoPlay, true);
+  if (!coarse) {
+    window.addEventListener('pointerdown', autoPlay, true);
+    window.addEventListener('keydown', autoPlay, true);
+  }
 }
 $('s3dPlayerClose').addEventListener('click', function () { spClosed = true; player.hidden = true; closeApple(); if (spCtl) spCtl.pause(); });
 // çerçeveye tıklama (sürüklemeden): ışın ile hangi çerçeve
