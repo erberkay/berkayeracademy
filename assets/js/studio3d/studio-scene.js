@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610273200';
+var MODEL_V = '202610273300';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -555,107 +555,7 @@ export function buildStudio(renderer, CONFIG) {
       }, undefined, function (e) { console.warn('[s3d] model yüklenemedi: ' + name, e); resolve(false); });
     });
   }
-  var tvDraw = null, tvLast = -1, walkerTick = null, spin = null;
-  // gezen kedi Fred: Fred – The Cat taramasına Somali Cat Animated'in (DreamNoms, CC BY) iskeleti ve animasyonları
-  // aktarıldı (tools/studio3d/rig_fred.py). Odanın boş zemininde rastgele bir noktaya yürür, orada durur ya da oturup
-  // bir süre bekler, sonra kalkıp başka yere gider. Model -z'ye bakar.
-  (function () {
-    var SC = 0.125, TS = 1.5, SPEED = 1.38 * SC * TS, PAD = 0.2;
-    var BLOCK = [{ x0: -0.35, x1: 0.25, z0: -2.25, z1: -1.65 }]; // sandalye ayağı
-    var walker = null, nodes = null;
-    function free(x, z) {
-      if (x < -2.72 || x > 2.72 || z < -2.92 || z > 2.92) return false;
-      var L = obstacles.concat(BLOCK);
-      for (var i = 0; i < L.length; i++) { var o = L[i]; if (x > o.x0 - PAD && x < o.x1 + PAD && z > o.z0 - PAD && z < o.z1 + PAD) return false; }
-      return true;
-    }
-    function clear(a, b) {
-      var n = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.05);
-      for (var i = 1; i < n; i++) if (!free(a.x + (b.x - a.x) * i / n, a.z + (b.z - a.z) * i / n)) return false;
-      return true;
-    }
-    function graph() {
-      nodes = [];
-      for (var x = -2.7; x <= 2.71; x += 0.3) for (var z = -2.9; z <= 2.91; z += 0.3) if (free(x, z)) nodes.push({ x: x, z: z, nb: [] });
-      for (var i = 0; i < nodes.length; i++) for (var j = i + 1; j < nodes.length; j++) {
-        var a = nodes[i], b = nodes[j];
-        if (Math.hypot(a.x - b.x, a.z - b.z) < 0.45 && clear(a, b)) { a.nb.push(j); b.nb.push(i); }
-      }
-    }
-    function nearest(x, z) {
-      var bi = 0, bd = 1e9;
-      nodes.forEach(function (n, i) { var d = Math.hypot(n.x - x, n.z - z); if (d < bd && n.nb.length) { bd = d; bi = i; } });
-      return bi;
-    }
-    function route(from) {
-      // ulaşılabilen düğümlerden en az 1.5 m uzaktakine git; yolu düz görüşle kısalt
-      var prev = {}, q = [from], seen = {}; seen[from] = 1;
-      while (q.length) { var c = q.shift(); nodes[c].nb.forEach(function (n) { if (!seen[n]) { seen[n] = 1; prev[n] = c; q.push(n); } }); }
-      var far = Object.keys(seen).map(Number).filter(function (i) { return Math.hypot(nodes[i].x - nodes[from].x, nodes[i].z - nodes[from].z) > 1.5; });
-      if (!far.length) return [];
-      var t = far[Math.floor(Math.random() * far.length)], p = [];
-      while (t !== from && t != null) { p.unshift(nodes[t]); t = prev[t]; }
-      var out = [], cur = { x: walker.root.position.x, z: walker.root.position.z }, k = 0;
-      while (k < p.length) { var j = p.length - 1; while (j > k && !clear(cur, p[j])) j--; out.push(p[j]); cur = p[j]; k = j + 1; }
-      return out;
-    }
-    function play(n) {
-      var a = walker.A[n]; if (!a || walker.cur === a) return;
-      a.reset().play();
-      if (walker.cur) walker.cur.crossFadeTo(a, 0.35, false);
-      walker.cur = a;
-    }
-    gltf.load('/assets/models/fred-walk.glb?v=' + MODEL_V, function (gl) {
-      graph();
-      var root = new THREE.Group(), body = gl.scene;
-      body.scale.setScalar(SC); body.position.y = 1.62 * SC;
-      body.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
-      root.add(body); root.name = 'fred'; scene.add(root);
-      var mixer = new THREE.AnimationMixer(body), A = {};
-      gl.animations.forEach(function (c) { A[c.name] = mixer.clipAction(c); });
-      ['SitDown', 'StandUp'].forEach(function (n) { if (A[n]) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; } });
-      var start = nodes.filter(function (n) { return n.nb.length > 2; });
-      var s0 = start[Math.floor(Math.random() * start.length)];
-      root.position.set(s0.x, 0, s0.z); root.rotation.y = Math.random() * 6.28;
-      walker = { root: root, mixer: mixer, A: A, cur: null, state: 'idle', until: 2 + Math.random() * 3, path: [] };
-      play('Idle');
-    }, undefined, function (e) { console.warn('[s3d] kedi yüklenemedi', e); });
-    var clock = 0;
-    walkerTick = function (dt) {
-      if (!walker) return;
-      clock += dt; walker.mixer.update(dt);
-      var w = walker, r = w.root;
-      if (w.state === 'walk') {
-        var p = w.path[0];
-        if (!p) {
-          w.state = Math.random() < 0.55 ? 'sitdown' : 'idle';
-          w.until = clock + (w.state === 'idle' ? 2.5 + Math.random() * 4 : 1.5);
-          play(w.state === 'idle' ? 'Idle' : 'SitDown');
-          return;
-        }
-        var dx = p.x - r.position.x, dz = p.z - r.position.z, d = Math.hypot(dx, dz);
-        if (d < 0.06) { w.path.shift(); return; }
-        var diff = Math.atan2(-dx, -dz) - r.rotation.y;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        r.rotation.y += diff * Math.min(1, dt * 3.2);
-        // dönerken yavaşlar; adım hızı yürüme hızına bağlı, ayak kaymaz
-        var sp = SPEED * Math.max(0.2, Math.cos(Math.min(1.37, Math.abs(diff))));
-        w.A.Walk.timeScale = TS * sp / SPEED;
-        var step = Math.min(d, sp * dt);
-        r.position.x -= Math.sin(r.rotation.y) * step; r.position.z -= Math.cos(r.rotation.y) * step;
-        return;
-      }
-      if (clock < w.until) return;
-      if (w.state === 'sitdown') { w.state = 'sit'; w.until = clock + 6 + Math.random() * 10; play('SittingIdle'); }
-      else if (w.state === 'sit') { w.state = 'standup'; w.until = clock + 1.5; play('StandUp'); }
-      else {
-        w.path = route(nearest(r.position.x, r.position.z));
-        if (w.path.length) { w.state = 'walk'; play('Walk'); } else { w.state = 'idle'; w.until = clock + 3; play('Idle'); }
-      }
-    };
-    window.__s3dCat = function () { return walker; };
-  })();
+  var tvDraw = null, tvLast = -1, spin = null;
   // sahne masa yüklenince açılır; hazır modeller arkadan eklenir
   var ready = loadGlb('studio-desk');
   ready.then(function () {
@@ -681,6 +581,8 @@ export function buildStudio(renderer, CONFIG) {
                   art_58: [-2.55, 1.95, 3.198, F], art_53: [-2.55, 1.3, 3.198, F], art_44: [-0.76, 1.6, 3.198, F] };
         r.traverse(function (o) { var w = W[o.name]; if (w && o.isMesh || (w && o.children.length)) { o.position.set(w[0], w[1], w[2]); o.rotation.set(0, w[3], 0); } });
       }),
+      // kedi Fred (oturur pozda tarama): kanepede dik oturur, odaya bakar
+      loadGlb('cat', function (r) { r.position.set(2.45, 0.48, 0.25); r.rotation.y = Math.atan2(0.2 - 2.45, 0.3 - 0.25); r.userData.sitOn = 0.48; }),
       loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
       loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.order = 'YZX'; r.rotation.set(1.26, Math.PI / 2 + 0.12, 0.16); r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(1.0052, DY + 0.0637, -2.6446); r.rotation.y = -0.15;  /* standın eğimli yüzeyine, ön tırnakların arkasına oturur */ r.rotation.x = 0.244; })
@@ -1134,7 +1036,6 @@ export function buildStudio(renderer, CONFIG) {
   var lastTex = -1;
   var lastT = 0;
   function update(t, cam) {
-    if (walkerTick) walkerTick(Math.min(0.05, t - lastT));
     if (spin) spin(t - lastT);
     lastT = t;
     if (tvDraw && t - tvLast > 1 / 30) { tvLast = t; tvDraw(t); }
