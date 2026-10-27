@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610280900';
+import { buildStudio, LED } from './studio-scene.js?v=202610281100';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
@@ -42,7 +42,10 @@ var canvas = $('s3dCanvas');
 var coarse = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || /[?&]touch=1/.test(location.search);
 // hafif mod: dokunmatik, dar ekran ya da az bellekli cihaz (telefon, tablet)
 var LITE = coarse || window.innerWidth < 900 || (navigator.deviceMemory && navigator.deviceMemory <= 4) || /[?&]lite=1/.test(location.search);
-var PR_MAX = Math.min(window.devicePixelRatio || 1, LITE ? 1.25 : 2), pr = PR_MAX;
+// LOW: bu cihazda GPU belleği daha önce yetmediyse (oturum boyunca) en hafif ayarlar; aksi halde telefonda da yüksek kalite
+var LOW = /[?&]lite=1/.test(location.search);
+try { LOW = LOW || sessionStorage.getItem('s3dLow') === '1'; } catch (x) {}
+var PR_MAX = Math.min(window.devicePixelRatio || 1, LOW ? 1.25 : 2), pr = PR_MAX;
 
 function fail() {
   var e = $('s3dErr'); if (e) e.hidden = false;
@@ -62,6 +65,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 // GPU bağlamı düşerse (telefonda bellek baskısı) sahne donmasın: kullanıcıya yenileme sun, bağlam dönerse sayfayı yenile
 canvas.addEventListener('webglcontextlost', function (e) {
   e.preventDefault(); running = false;
+  try { sessionStorage.setItem('s3dLow', '1'); } catch (x) {}
   var en = false; try { en = localStorage.getItem('_lang') === 'en'; } catch (x) {}
   var L = $('s3dLoad'), err = $('s3dErr'), bar = document.querySelector('.s3d-load-bar');
   L.hidden = false; L.classList.remove('is-done');
@@ -78,18 +82,18 @@ canvas.addEventListener('webglcontextlost', function (e) {
 });
 canvas.addEventListener('webglcontextrestored', function () { location.reload(); });
 
-var studio = buildStudio(renderer, CONFIG, { lite: LITE });
+var studio = buildStudio(renderer, CONFIG, { lite: LITE, low: LOW });
 var scene = studio.scene;
 
 var cam = new THREE.PerspectiveCamera(62, 1, 0.05, 40);
 cam.rotation.order = 'YXZ';
 
 var size = new THREE.Vector2(1, 1);
-var rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: LITE ? 0 : 4 });
+var rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: LOW ? 0 : (LITE ? 2 : 4) });
 var composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, cam));
-// bloom hafif modda yok (mip zinciri hem bellek hem kare süresi)
-var bloom = LITE ? null : new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.4, 1.7);
+// bloom yalnız en hafif modda yok; telefonda düşük çözünürlüklü mip zinciriyle açık
+var bloom = LOW ? null : new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.4, 1.7);
 if (bloom) composer.addPass(bloom);
 var vig = new ShaderPass(VignetteShader);
 vig.uniforms.offset.value = 0.9;
@@ -108,7 +112,7 @@ function resize() {
   renderer.setSize(w, h, false);
   composer.setPixelRatio(renderer.getPixelRatio());
   composer.setSize(w, h);
-  if (bloom) bloom.resolution.set(w / 2, h / 2);
+  if (bloom) bloom.resolution.set(w / (LITE ? 3 : 2), h / (LITE ? 3 : 2));
   cam.aspect = w / h;
   cam.updateProjectionMatrix();
 }

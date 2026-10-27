@@ -58,8 +58,10 @@ export var LED = { red: 0xff2418, violet: 0x8a3dff, cyan: 0x18c8ff, amber: 0xff9
 // gölge haritası 1024 (GPU belleği masaüstünün ~1/5'i; iOS Safari sekmeyi bellek yüzünden kapatmasın)
 export function buildStudio(renderer, CONFIG, OPT) {
   OPT = OPT || {};
-  var LITE = !!OPT.lite, TEX_MAX = LITE ? 512 : 1024;
-  CANVAS_MAX = LITE ? 1024 : 4096;
+  // LOW (GPU belleği yetmemiş cihaz): 512 px dokular, detay haritası yok. Telefon/tablet (LITE): 1024 px dokular ve normal
+  // haritaları kalır, yalnız pürüzlülük/metal/AO haritaları atılır (bellek ~1/3); masaüstü: hepsi.
+  var LITE = !!OPT.lite, LOW = !!OPT.low, TEX_MAX = LOW ? 512 : 1024;
+  CANVAS_MAX = LOW ? 1024 : (LITE ? 2048 : 4096);
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x040406);
   scene.fog = new THREE.FogExp2(0x06060a, 0.05);
@@ -231,7 +233,7 @@ export function buildStudio(renderer, CONFIG, OPT) {
   spot.position.set(0, 2.6, -1.6);
   spot.target.position.set(0, 0.8, -2.85);
   spot.castShadow = true;
-  spot.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
+  spot.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048);
   spot.shadow.bias = -0.0004;
   spot.shadow.normalBias = 0.02;
   scene.add(spot, spot.target);
@@ -568,7 +570,7 @@ export function buildStudio(renderer, CONFIG, OPT) {
   }
   var DETAIL = ['normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap'];
   function slim(m) {
-    if (LITE) DETAIL.forEach(function (k) { if (m[k] && !m[k].isCanvasTexture) { m[k] = null; m.needsUpdate = true; } });
+    if (LITE) DETAIL.forEach(function (k) { if ((LOW || k !== 'normalMap') && m[k] && !m[k].isCanvasTexture) { m[k] = null; m.needsUpdate = true; } });
     ['map', 'emissiveMap', 'alphaMap'].concat(DETAIL).forEach(function (k) { if (m[k]) shrinkTex(m[k]); });
     return m;
   }
