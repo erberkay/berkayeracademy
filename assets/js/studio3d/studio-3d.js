@@ -6,13 +6,13 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610272100';
+import { buildStudio, LED } from './studio-scene.js?v=202610272200';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
-  { src: '/assets/img/studio/with-you.jpg', title: 'With You', track: '5WEQl4cZ78p41LWwIni8yJ' },
-  null,
-  { src: '/assets/img/studio/cant-sleep.jpg', title: `Can't Sleep`, track: '3qPfzaAnQWUP9W7JlIGB6I' }
+  { src: '/assets/img/studio/with-you.jpg', title: 'With You', sub: 'Marsias, Berkael', uri: 'spotify:track:5WEQl4cZ78p41LWwIni8yJ' },
+  { art: 'golden', title: 'Golden Sound', sub: 'Berkay Er · Playlist', uri: 'spotify:playlist:2DAH389gTrBgFEaVTSuQPD' },
+  { src: '/assets/img/studio/cant-sleep.jpg', title: `Can't Sleep`, sub: 'Marsias, Berkael & Woosa', uri: 'spotify:track:3qPfzaAnQWUP9W7JlIGB6I' }
 ] };
 
 var WPS = [
@@ -224,14 +224,37 @@ var tags = studio.hotspots.map(function (h) {
   tagsEl.appendChild(b);
   return { el: b, h: h };
 });
-// Spotify oynatıcısı (çerçevelerdeki parçalar)
-var player = $('s3dPlayer'), playerFrame = $('s3dPlayerFrame');
-function openPlayer(id, title) {
-  playerFrame.src = 'https://open.spotify.com/embed/track/' + encodeURIComponent(id) + '?utm_source=generator&theme=0';
-  playerFrame.title = title || 'Spotify';
-  player.hidden = false;
+// Spotify oynatıcısı (Spotify iFrame API: tıklayınca seçilen parça/liste çalar)
+var player = $('s3dPlayer'), playerEl = $('s3dPlayerEmbed');
+var spApi = null, spCtl = null, spWant = null, spLoading = false;
+function spLoad() {
+  if (spLoading) return; spLoading = true;
+  window.onSpotifyIframeApiReady = function (api) { spApi = api; if (spWant) openPlayer(spWant.uri, spWant.title); };
+  var sc = document.createElement('script'); sc.src = 'https://open.spotify.com/embed/iframe-api/v1'; sc.async = true; document.body.appendChild(sc);
 }
-$('s3dPlayerClose').addEventListener('click', function () { player.hidden = true; playerFrame.src = 'about:blank'; });
+function openPlayer(uri, title) {
+  player.hidden = false;
+  if (!spApi) { spWant = { uri: uri, title: title }; spLoad(); return; }
+  if (!spCtl) {
+    spApi.createController(playerEl, { uri: uri, width: '100%', height: 152 }, function (ctl) {
+      spCtl = ctl;
+      ctl.addListener('ready', function () { ctl.play(); });
+    });
+  } else { spCtl.loadUri(uri); spCtl.play(); }
+}
+$('s3dPlayerClose').addEventListener('click', function () { player.hidden = true; if (spCtl) spCtl.pause(); });
+// çerçeveye tıklama (sürüklemeden): ışın ile hangi çerçeve
+var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), downAt = null;
+canvas.addEventListener('pointerdown', function (e) { downAt = { x: e.clientX, y: e.clientY }; });
+canvas.addEventListener('pointerup', function (e) {
+  if (!downAt || Math.abs(e.clientX - downAt.x) + Math.abs(e.clientY - downAt.y) > 6) return;
+  var r = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, cam);
+  var list = studio.clickables || [], hit = ray.intersectObjects(list.map(function (c) { return c.mesh; }), false)[0];
+  if (!hit || hit.distance > 6) return;
+  for (var i = 0; i < list.length; i++) if (list[i].mesh === hit.object) { openPlayer(list[i].uri, list[i].title); break; }
+});
 var tagsOn = true;
 var tagBtn = $('s3dTagBtn');
 tagBtn.addEventListener('click', function () {

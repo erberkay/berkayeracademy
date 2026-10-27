@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610272100';
+var MODEL_V = '202610272200';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -704,38 +704,51 @@ export function buildStudio(renderer, CONFIG) {
     });
   }
   var frameMat = std(0xffffff, 0.5, 0, { map: woodTex });
-  var photoSlots = [];
+  var photoSlots = [], photoMeshes = [], clickables = [];
   [0.0, 0.95, 1.9].forEach(function (z, i) {
     var g = grp(2.965, 1.58, z, -Math.PI / 2);
     box(0.62, 0.82, 0.03, frameMat, 0, 0, 0, g);
     var pm2 = new THREE.MeshStandardMaterial({ map: placeholder(i), roughness: 0.6, emissive: 0xffffff, emissiveIntensity: 0.12 });
     pm2.emissiveMap = pm2.map;
-    plane(0.54, 0.74, pm2, 0, 0, 0.0165, g);
-    photoSlots.push(pm2);
+    var pmesh = plane(0.54, 0.74, pm2, 0, 0, 0.0165, g);
+    photoSlots.push(pm2); photoMeshes.push(pmesh);
   });
-  // duvardaki çerçeveler: parça kapağı + adı (CONFIG.photos: { src, title, track }); etiketine tıklayınca Spotify oynatıcısı açılır
+  // duvardaki çerçeveler: kapak + ad (CONFIG.photos: { src | art, title, sub, uri }); çerçeveye ya da etiketine tıklayınca Spotify'da çalar
   var FRAME_Z = [0.0, 0.95, 1.9];
+  function frameArt(g, p, im) {
+    g.fillStyle = '#0d0d10'; g.fillRect(0, 0, 600, 822);
+    if (im) g.drawImage(im, 20, 20, 560, 560);
+    else if (p.art === 'golden') {
+      var gr = g.createLinearGradient(20, 20, 580, 580);
+      gr.addColorStop(0, '#2a1a05'); gr.addColorStop(0.45, '#b8862b'); gr.addColorStop(0.7, '#f3d27a'); gr.addColorStop(1, '#5a3a0c');
+      g.fillStyle = gr; g.fillRect(20, 20, 560, 560);
+      g.strokeStyle = 'rgba(255,240,200,.55)'; g.lineWidth = 2;
+      for (var r = 40; r < 300; r += 26) { g.beginPath(); g.arc(300, 300, r, 0, Math.PI * 2); g.stroke(); }
+      g.fillStyle = '#1a1005'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '400 92px "Instrument Serif", serif'; g.fillText('Golden', 300, 270); g.fillText('Sound', 300, 360);
+    }
+    g.fillStyle = '#f2f2f2'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '400 54px "Instrument Serif", serif'; g.fillText(p.title || '', 300, 640);
+    if (p.sub) { g.fillStyle = '#9a9ea6'; g.font = '500 24px "Instrument Sans", sans-serif'; g.fillText(p.sub, 300, 690); }
+    g.fillStyle = '#1db954'; g.beginPath(); g.arc(196, 752, 20, 0, 7); g.fill();
+    g.fillStyle = '#0d0d10'; g.beginPath(); g.moveTo(189, 741); g.lineTo(189, 763); g.lineTo(207, 752); g.closePath(); g.fill();
+    g.fillStyle = '#cfd2d8'; g.font = '600 30px "Instrument Sans", sans-serif'; g.textAlign = 'left';
+    g.fillText(`Tıkla, çalsın`, 228, 754);
+  }
   (CONFIG.photos || []).forEach(function (p, i) {
-    if (!photoSlots[i] || !p || !p.src) return;
-    var im = new Image();
-    im.onload = function () {
-      var c = document.createElement('canvas'); c.width = 600; c.height = 822;
-      var g = c.getContext('2d');
-      g.fillStyle = '#0d0d10'; g.fillRect(0, 0, c.width, c.height);
-      g.drawImage(im, 20, 20, 560, 560);
-      g.fillStyle = '#f2f2f2'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.font = '400 58px "Instrument Serif", serif'; g.fillText(p.title || '', 300, 652);
-      if (p.track) {
-        g.fillStyle = '#1db954'; g.beginPath(); g.arc(196, 742, 20, 0, 7); g.fill();
-        g.fillStyle = '#0d0d10'; g.beginPath(); g.moveTo(189, 731); g.lineTo(189, 753); g.lineTo(207, 742); g.closePath(); g.fill();
-        g.fillStyle = '#cfd2d8'; g.font = '600 30px "Instrument Sans", sans-serif'; g.textAlign = 'left';
-        g.fillText(`Spotify'da dinle`, 228, 744);
-      }
-      var tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8;
-      photoSlots[i].map = tx; photoSlots[i].emissiveMap = tx; photoSlots[i].emissiveIntensity = 0.22; photoSlots[i].needsUpdate = true;
-    };
-    im.src = p.src;
-    if (p.track) hotspots.push({ text: p.title, spotify: p.track, pos: new THREE.Vector3(2.9, 1.12, FRAME_Z[i]) });
+    if (!photoSlots[i] || !p) return;
+    var c = document.createElement('canvas'); c.width = 600; c.height = 822;
+    var tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8;
+    var cover = null;
+    function paint() { frameArt(c.getContext('2d'), p, cover); tx.needsUpdate = true; }
+    paint();
+    if (p.src) { var im = new Image(); im.onload = function () { cover = im; paint(); }; im.src = p.src; }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(paint);
+    photoSlots[i].map = tx; photoSlots[i].emissiveMap = tx; photoSlots[i].emissiveIntensity = 0.22; photoSlots[i].needsUpdate = true;
+    if (p.uri) {
+      hotspots.push({ text: p.title, spotify: p.uri, pos: new THREE.Vector3(2.9, 1.12, FRAME_Z[i]) });
+      clickables.push({ mesh: photoMeshes[i], uri: p.uri, title: p.title });
+    }
   });
 
   // sol duvar: plak rafı
@@ -814,5 +827,5 @@ export function buildStudio(renderer, CONFIG) {
     dust.geometry.attributes.position.needsUpdate = true;
   }
 
-  return { scene: scene, ready: ready, update: update, setLed: setLed, hotspots: hotspots, obstacles: obstacles, spot: spot };
+  return { scene: scene, ready: ready, clickables: clickables, update: update, setLed: setLed, hotspots: hotspots, obstacles: obstacles, spot: spot };
 }
