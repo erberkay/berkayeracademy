@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<script>if(window.location.pathname==='/studio-3d.html')window.location.replace('/studio-3d'+window.location.search+window.location.hash);</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Berkeal Studio Room 3D · Berkay Er Academy</title>
+<meta name="description" content="Berkay Er Academy stüdyosunu tarayıcında 3D gez: Push 3, synth'ler, ADAM T8V monitörler ve ders köşesi.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0b0b0e">
+<meta property="og:title" content="Berkeal Studio Room 3D · Berkay Er Academy">
+<meta property="og:description" content="Stüdyoyu tarayıcında 3D gez.">
+<meta property="og:url" content="https://berkayeracademy.com/studio-3d">
+<link rel="canonical" href="https://berkayeracademy.com/studio-3d">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/img/favicon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="assets/img/favicon-192.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+<link rel="stylesheet" href="assets/css/ui.css?v=202610270100">
+<script src="assets/js/theme-init.js?v=202610270100"></script>
+<link rel="stylesheet" href="assets/css/themes.css?v=202610270100">
+<script src="assets/js/auth-ui.js?v=202610270100"></script>
+<script src="assets/js/i18n.js?v=202610270100" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="assets/js/trial-nav.js?v=202610270100"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "/assets/vendor/three/three.module.js",
+  "three/addons/": "/assets/vendor/three/addons/"
+} }
+</script>
+<style>
+html, body { height: 100%; }
+body.s3d-page { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--bg-ink); }
+.s3d { position: relative; flex: 1 1 auto; min-height: 0; background: var(--bg-ink); }
+.s3d-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; outline: none; }
+.s3d-canvas.is-drag { cursor: grabbing; }
+
+.s3d-tags { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.s3d-tag { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: var(--s2); pointer-events: auto; cursor: pointer; padding: 0; border: 0; background: none; color: var(--fg); font: inherit; opacity: 0; transition: opacity .25s; will-change: transform; }
+.s3d-tag.is-on { opacity: 1; }
+.s3d-tag-dot { width: 10px; height: 10px; border: 2px solid var(--accent); background: var(--bg-ink); flex: 0 0 auto; }
+.s3d-tag-txt { font-size: var(--fs-label); letter-spacing: .04em; padding: var(--s1) var(--s2); background: var(--bg-ink); border: 1px solid var(--line); white-space: nowrap; }
+.s3d-tag:hover .s3d-tag-txt, .s3d-tag:focus-visible .s3d-tag-txt { border-color: var(--accent); color: var(--accent); }
+.s3d.no-tags .s3d-tags { display: none; }
+
+.s3d-top { position: absolute; left: var(--page-x); right: var(--page-x); top: var(--s4); display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); pointer-events: none; }
+.s3d-top > * { pointer-events: auto; }
+.s3d-title { margin: 0; font-family: var(--font-serif, 'Instrument Serif', serif); font-weight: 400; font-size: var(--fs-h3); line-height: 1.1; color: var(--fg); }
+.s3d-sub { margin: var(--s1) 0 0; font-size: var(--fs-small); color: var(--fg-2); max-width: 34ch; }
+.s3d-tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--s2); }
+.s3d-leds { display: inline-flex; align-items: center; gap: var(--s2); }
+.s3d-led { width: var(--ctl-md); height: var(--ctl-md); padding: 0; border: 1px solid var(--line); background: var(--bg-ink); display: inline-grid; place-items: center; cursor: pointer; }
+.s3d-led i { width: 14px; height: 14px; display: block; background: var(--c); }
+.s3d-led[aria-pressed="true"] { border-color: var(--fg); }
+
+.s3d-bottom { position: absolute; left: var(--page-x); right: var(--page-x); bottom: var(--s4); display: flex; flex-direction: column; align-items: center; gap: var(--s3); pointer-events: none; }
+.s3d-bottom > * { pointer-events: auto; }
+.s3d-wps { display: flex; flex-wrap: wrap; justify-content: center; max-width: 100%; background: var(--bg-ink); }
+.s3d-hint { margin: 0; font-size: var(--fs-micro); letter-spacing: .06em; color: var(--fg-3); text-align: center; }
+
+.s3d-load { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg-ink); z-index: 5; transition: opacity .6s; }
+.s3d-load.is-done { opacity: 0; pointer-events: none; }
+.s3d-load-in { text-align: center; padding: var(--s6); }
+.s3d-load-bar { width: 220px; height: 2px; margin: var(--s4) auto 0; background: var(--line); overflow: hidden; }
+.s3d-load-bar i { display: block; height: 100%; width: 40%; background: var(--accent); animation: s3dBar 1.1s ease-in-out infinite; }
+@keyframes s3dBar { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.s3d-err { max-width: 36ch; color: var(--fg-2); }
+
+@media (max-width: 600px) {
+  .s3d-sub { display: none; }
+  .s3d-top { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+  .s3d-tools { justify-content: flex-start; }
+  .s3d-wps { overflow-x: auto; flex-wrap: nowrap; justify-content: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .s3d-load-bar i { animation: none; width: 100%; } .s3d-tag { transition: none; } }
+</style>
+</head>
+<body class="s3d-page">
+<header class="be-header" id="beHeader" data-be-page="studio-3d" data-be-tabs="off"><div id="authBar"></div></header>
+
+<main id="beMain" class="s3d" tabindex="-1">
+  <canvas id="s3dCanvas" class="s3d-canvas" tabindex="0" aria-label="Berkeal Studio Room 3D"></canvas>
+  <div class="s3d-tags" id="s3dTags"></div>
+
+  <div class="s3d-top">
+    <div>
+      <h1 class="s3d-title" data-i18n="s3d_title">Berkeal Studio Room 3D</h1>
+      <p class="s3d-sub" data-i18n="s3d_sub">Stüdyoyu gez: sürükleyerek etrafa bak, W A S D ile yürü.</p>
+    </div>
+    <div class="s3d-tools">
+      <div class="s3d-leds" role="group" aria-label="Işık" id="s3dLeds"></div>
+      <button type="button" class="btn btn-sm btn-ghost" id="s3dTagBtn" aria-pressed="true" data-i18n="s3d_labels">Etiketler</button>
+      <button type="button" class="btn btn-sm btn-ghost" id="s3dFull" data-i18n="s3d_full">Tam ekran</button>
+    </div>
+  </div>
+
+  <div class="s3d-bottom">
+    <div class="seg s3d-wps" id="s3dWps" role="group" aria-label="Konumlar"></div>
+    <p class="s3d-hint" id="s3dHint" data-i18n="s3d_hint">Sürükle: bak · W A S D / oklar: yürü · Tekerlek: yakınlaş</p>
+  </div>
+
+  <div class="s3d-load" id="s3dLoad" role="status">
+    <div class="s3d-load-in">
+      <p class="s3d-title" data-i18n="s3d_loading">Stüdyo kuruluyor…</p>
+      <div class="s3d-load-bar"><i></i></div>
+      <p class="s3d-err" id="s3dErr" hidden data-i18n="s3d_nowebgl">Bu tarayıcı 3D grafiği açamadı.</p>
+    </div>
+  </div>
+</main>
+
+<script type="module" src="/assets/js/studio3d/studio-3d.js?v=202610270100"></script>
+</body>
+</html>

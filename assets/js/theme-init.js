@@ -33,6 +33,7 @@
     nav_forum: ['Forum', 'Forum'],
     nav_members: [`Üyeler`, 'Members'],
     nav_lab: ['Lab', 'Lab'],
+    nav_studio3d: ['Berkeal Studio Room 3D', 'Berkeal Studio Room 3D'],
     nav_sss: ['SSS', 'FAQ'],
     nav_lessons: ['Ders Paneli', 'Lessons'],
     nav_trial_lesson: ['Deneme Dersi', 'Trial Lesson'],
@@ -85,6 +86,7 @@
     { id: 'forum', href: '/forum', key: 'nav_forum' },
     { id: 'members', href: '/members', key: 'nav_members' },
     { id: 'ableton-lab', href: '/ableton-lab', key: 'nav_lab' },
+    { id: 'studio-3d', href: '/studio-3d', key: 'nav_studio3d' },
     { id: 'sss', href: '/sss', key: 'nav_sss' },
     { id: 'booking', href: '/booking', key: 'nav_lessons', trial: 'nav_trial_lesson' }
   ];
