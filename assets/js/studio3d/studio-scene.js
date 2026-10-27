@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610271400';
+var MODEL_V = '202610271700';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -376,15 +376,25 @@ export function buildStudio(renderer, CONFIG) {
     });
     lbl(g, 'USB HUB', P(860), Q(474), 9); lbl(g, 'USB-C', P(805), Q(492), 9); lbl(g, 'DC', P(773), Q(521), 9);
   });
-  var td3Tex = gtex(1024, 554, function (g, w, h) {
-    g.fillStyle = '#1b1c1f'; g.fillRect(0, 0, w, h);
-    g.strokeStyle = '#d8dade'; g.lineWidth = 2; g.strokeRect(w * 0.02, h * 0.04, w * 0.96, h * 0.92);
-    label(g, 'TD-3', w * 0.08, h * 0.12, 44, '#e8e8e8', 'left');
-    label(g, 'behringer', w * 0.9, h * 0.12, 30, '#e8e8e8', 'right');
-    var kn = ['TUNING', 'CUT OFF', 'RESONANCE', 'ENV MOD', 'DECAY', 'ACCENT', 'VOLUME'];
-    for (var i = 0; i < 7; i++) label(g, kn[i], w * ((0.03 + i * 0.033 + 0.1475) / 0.295), h * 0.38, 13, '#cfd2d8');
-    label(g, 'TEMPO', w * 0.4, h * 0.58, 14, '#cfd2d8'); label(g, 'WAVEFORM', w * 0.6, h * 0.58, 14, '#cfd2d8');
-    label(g, 'ANALOG BASS LINE SYNTHESIZER', w * 0.32, h * 0.92, 15, '#9a9ea6');
+  // TD-3 (TB-303 düzeni): plaka .301 x .161 m, düğme/tuş koordinatları Blender ile aynı
+  var td3Tex = gtex(1204, 644, function (g, w, h) {
+    var U = function (x) { return (x + 0.1505) / 0.301 * w; }, V = function (y) { return (0.0805 - y) / 0.161 * h; };
+    g.fillStyle = '#1c1d20'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#cfd2d8'; g.lineWidth = 2; g.strokeRect(U(-0.147), V(0.078), U(0.147) - U(-0.147), V(-0.078) - V(0.078));
+    label(g, 'TD-3', U(-0.14), V(0.074), 30, '#f0f0f0', 'left');
+    label(g, 'ANALOG BASS LINE SYNTHESIZER', U(-0.09), V(0.074), 12, '#b9bcc2', 'left');
+    ['TUNING', 'CUT OFF FREQ', 'RESONANCE', 'ENV MOD', 'DECAY', 'ACCENT'].forEach(function (t, i) { label(g, t, U(-0.124 + i * 0.026), V(0.05), 10, '#d9dbe0'); });
+    ['SYNC', 'FILTER', 'TRACK'].forEach(function (t, i) { label(g, t, U(0.072 + i * 0.026), V(0.05), 10, '#d9dbe0'); });
+    label(g, 'TEMPO', U(-0.122), V(0.012), 11, '#d9dbe0'); label(g, 'TRACK', U(-0.045), V(0.012), 11, '#d9dbe0');
+    label(g, 'PATTERN', U(0.0), V(0.012), 11, '#d9dbe0'); label(g, 'VOLUME', U(0.125), V(0.012), 11, '#d9dbe0');
+    label(g, 'MODE', U(-0.085), V(0.038), 9, '#9a9ea6'); label(g, 'WAVEFORM', U(0.085), V(0.038), 9, '#9a9ea6');
+    g.save(); g.translate(U(0.052), V(0.03)); label(g, 'behringer', 0, 0, 22, '#f0f0f0'); g.restore();
+    g.strokeStyle = '#d9dbe0'; g.beginPath(); g.arc(U(0.052), V(0.045), 12, 0, 7); g.stroke();
+    g.fillStyle = '#d9dbe0'; g.fillRect(U(-0.147), V(-0.002), U(0.147) - U(-0.147), 6);
+    ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C'].forEach(function (t, i) { label(g, t, U(-0.06 + i * 0.0185), V(-0.062), 10, '#d9dbe0'); });
+    ['PITCH MODE', 'TIME MODE', 'FUNCTION'].forEach(function (t, i) { label(g, t, U(-0.095), V(-0.018 - i * 0.017) - 14, 8, '#9a9ea6'); });
+    label(g, 'RUN / STOP', U(-0.124), V(-0.064), 9, '#d9dbe0');
+    ['DOWN', 'UP', 'ACCENT', 'SLIDE'].forEach(function (t, i) { label(g, t, U(0.095 + (i % 2) * 0.019), V(-0.02 - (i >> 1) * 0.026) - 16, 8, '#9a9ea6'); });
   });
   // MicroFreak: resmî ürün görselinin piksel düzeni (Blender'daki düğmelerle aynı koordinatlar), tuşlar düz dokunmatik
   var mfTex = gtex(1769, 1315, function (g, w, h) {
@@ -443,11 +453,12 @@ export function buildStudio(renderer, CONFIG) {
     g.fillStyle = '#e9a06a'; for (var yy3 = ky0 + 120; yy3 < ky1 - 10; yy3 += 13) for (var xx3 = k1 + 20; xx3 < P(1430); xx3 += 13) g.fillRect(xx3, yy3, 7, 7);
     label(g, 'MICRO', P(1391), Q(712), 24, '#e8761e'); label(g, 'FREAK', P(1391), Q(728), 24, '#e8761e');
   });
-  var pushTex = gtex(1024, 860, function (g, w, h) {
-    g.fillStyle = '#141416'; g.fillRect(0, 0, w, h);
-    label(g, 'PUSH', w * 0.06, h * 0.05, 22, '#8a8a90', 'left');
-    label(g, 'Ableton', w * 0.94, h * 0.05, 22, '#8a8a90', 'right');
-  });
+  var pushTex = gtex(2048, 1712, function (g, w, h) { g.fillStyle = '#141416'; g.fillRect(0, 0, w, h); });
+  (function () {
+    var im = new Image();
+    im.onload = function () { var g = pushTex.userData.g; g.drawImage(im, 39, 32, 2000, 1671.66, 0, 0, 2048, 1712); pushTex.needsUpdate = true; };
+    im.src = '/assets/img/push3-device.svg';
+  })();
   // Logitech Craft tuş baskıları (saydam; tuş geometrisinin üstünde)
   var craftTex = gtex(1024, 310, function (g, w, h) {
     g.clearRect(0, 0, w, h);
@@ -541,6 +552,8 @@ export function buildStudio(renderer, CONFIG) {
       loadGlb('ps5', function (r) { r.position.set(-0.56, DY, -3.06); r.rotation.y = 0.12; }),
       loadGlb('dualsense', function (r) { r.position.set(-0.38, DY, -2.64); r.rotation.y = -0.25; r.rotation.x = -1.0; r.userData.sitOn = DY + 0.002; }),
       loadGlb('grogu', function (r) { r.position.set(0.42, DY, -3.02); r.rotation.y = -0.3; }),
+      loadGlb('mxkeys', function (r) { r.position.set(-0.06, DY, -2.66); r.userData.sitOn = DY + 0.001; r.traverse(function (o) { if (o.isMesh) [].concat(o.material).forEach(function (m) { m.roughness = 1; m.metalness = Math.min(m.metalness, 0.15); m.color.multiplyScalar(0.22); }); }); }),
+      loadGlb('mxmaster', function (r) { r.position.set(0.28, DY, -2.64); r.rotation.y = 0.15; r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(0.82, DY + 0.056, -2.47); r.rotation.y = -0.6; r.rotation.x = 0.244; })
     ]);
   });

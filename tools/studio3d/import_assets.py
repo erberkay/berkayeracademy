@@ -6,6 +6,8 @@
 # Lisanslar (CC BY 4.0, sayfada kaynak gösterilir):
 #   "PlayStation 5 Set" — Taohid Animation, https://sketchfab.com/3d-models/playstation-5-set-8e602d71ddc94bf09731db9151fc7cd3
 #   "MacBook Pro M3 Space Black 16\" Free" — EV_car2013, https://sketchfab.com/3d-models/macbook-pro-m3-space-black-16-free-6b46aa09dc4d4e90a79ea06f1d0aa719
+#   "Logitech MX Keys" — ArkinRS, https://sketchfab.com/3d-models/logitech-mx-keys-67901d82781f48349f1f61ce78a6b6e0
+#   "Logitech MX Master 3S - Revopoint Mini 3D Scan" — Sircher, https://sketchfab.com/3d-models/logitech-mx-master-3s-revopoint-mini-3d-scan-9a82df69ffee4c6faa28f75e65ba192c
 #   "Star Wars - Grogu" — ஜCIHIRISஜ, https://sketchfab.com/3d-models/star-wars-grogu-4a57954690eb4377b62a6290b2dee070
 import bpy, sys, os, math
 from mathutils import Vector, Matrix
@@ -100,3 +102,27 @@ elif mode == 'macbook':
     m = join(meshes, 'macbook'); normalize(m, 0, 0.3557)
     shrink_images()
     export([m], os.path.join(out, 'macbook.glb'))
+elif mode == 'mxkeys':
+    src, out = argv[1], argv[2]
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.import_scene.fbx(filepath=src)
+    for o in list(bpy.context.scene.objects):
+        if o.type == 'MESH' and o.name.startswith('Dimensions'): bpy.data.objects.remove(o, do_unlink=True)
+    meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+    k = join(meshes, 'mx_keys'); normalize(k, 0, 0.4302)
+    shrink_images()
+    export([k], os.path.join(out, 'mxkeys.glb'))
+elif mode == 'mouse':
+    src, out = argv[1], argv[2]
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    bpy.ops.wm.ply_import(filepath=src)
+    m = [o for o in bpy.context.scene.objects if o.type == 'MESH'][0]
+    m.name = 'mx_master'
+    decimate(m, 16000)
+    for p in m.data.polygons: p.use_smooth = True
+    mt = bpy.data.materials.new('mx_master_graphite'); mt.use_nodes = True
+    b = mt.node_tree.nodes['Principled BSDF']
+    b.inputs['Base Color'].default_value = (0.035, 0.036, 0.04, 1); b.inputs['Roughness'].default_value = 0.55
+    m.data.materials.clear(); m.data.materials.append(mt)
+    normalize(m, 0, 0.1249)
+    export([m], os.path.join(out, 'mxmaster.glb'))

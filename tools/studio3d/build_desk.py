@@ -224,39 +224,61 @@ build_desk()
 def adam(name, x, z, ry):
     W, D, H = 0.25, 0.335, 0.40
     z0 = 0.0
-    o = [rbox(W, D, H, 0.012, M['blackBody'], 0, 0, z0)]
-    fy = -D / 2 - 0.0005
-    baffle = plane(W - 0.02, H - 0.02, mat('baffle', 0x111113, 0.6, 0.15), 0, 0, 0, name='bf')
-    baffle.rotation_euler = (math.pi / 2, 0, 0); baffle.location = (0, fy, z0 + H / 2)
-    o.append(baffle)
-    wz = z0 + 0.15
-    cone = cyl(0.092, 0.03, mat('woofer', 0x1c1c1f, 0.45, 0.35), 0, fy + 0.03, wz, segs=36, r2=0.035, axis='Y')
-    o.append(cone)
-    bmT = bmesh.new()
-    R, rr, n1, n2 = 0.099, 0.008, 40, 10
-    grid = []
+    cab = M['blackBody']
+    o = [rbox(W - 0.03, D, H, 0.01, cab, 0, 0.012, z0)]
+    # ön yüz: ortası düz, iki yanda içe kıvrılan pahlar (T8V'nin trapez görünümü)
+    fy = -D / 2 + 0.012
+    o.append(rbox(W - 0.07, 0.03, H - 0.012, 0.006, mat('t8v_front', 0x101012, 0.6, 0.15), 0, fy - 0.003, z0 + 0.006))
+    for s_ in (-1, 1):
+        ch = prism([(-0.02, 0), (0.02, 0), (0.02, H - 0.012), (-0.02, H - 0.012)], 0.03, mat('t8v_chamfer', 0x1c1c1f, 0.45, 0.25), 0)
+        ch.location = (s_ * (W / 2 - 0.022), fy + 0.005, z0 + 0.006)
+        ch.rotation_euler = (0, 0, s_ * 0.55)
+        o.append(ch)
+    face = fy - 0.018
+    # woofer: koni profili (tornalama), lastik kenar, toz kapağı
+    wz = z0 + 0.155
+    prof = [(0.033, 0.0), (0.05, -0.006), (0.07, -0.013), (0.086, -0.018), (0.089, -0.0185)]
+    bm = bmesh.new(); rings = []
+    for (rr, dz) in prof:
+        ring = [bm.verts.new((rr * math.cos(t * 2 * math.pi / 48), 0, rr * math.sin(t * 2 * math.pi / 48))) for t in range(48)]
+        for v in ring: v.co.y = -dz
+        rings.append(ring)
+    for i in range(len(rings) - 1):
+        for t in range(48):
+            a1, a2 = rings[i][t], rings[i][(t + 1) % 48]; b1, b2 = rings[i + 1][(t + 1) % 48], rings[i + 1][t]
+            bm.faces.new((a1, a2, b1, b2))
+    for v in bm.verts: v.co += Vector((0, face - 0.004 + 2 * v.co.y, wz))
+    o.append(obj_from_bm(bm, 'cone', mat('t8v_cone', 0x232327, 0.6, 0.15), 60))
+    bmT = bmesh.new(); R_, rr_, n1, n2 = 0.0985, 0.009, 48, 10; grid = []
     for i in range(n1):
-        a = 2 * math.pi * i / n1; row = []
+        a_ = 2 * math.pi * i / n1; row = []
         for j in range(n2):
-            b = 2 * math.pi * j / n2
-            row.append(bmT.verts.new(((R + rr * math.cos(b)) * math.cos(a), -rr * math.sin(b), (R + rr * math.cos(b)) * math.sin(a))))
+            b_ = 2 * math.pi * j / n2
+            row.append(bmT.verts.new(((R_ + rr_ * math.cos(b_)) * math.cos(a_), -rr_ * math.sin(b_) * 0.8, (R_ + rr_ * math.cos(b_)) * math.sin(a_))))
         grid.append(row)
     for i in range(n1):
         for j in range(n2):
             bmT.faces.new((grid[i][j], grid[(i + 1) % n1][j], grid[(i + 1) % n1][(j + 1) % n2], grid[i][(j + 1) % n2]))
-    for v in bmT.verts: v.co += Vector((0, fy - 0.002, wz))
+    for v in bmT.verts: v.co += Vector((0, face - 0.024, wz))
     o.append(obj_from_bm(bmT, 'surround', M['rubber'], 60))
-    o.append(sphere(0.032, mat('dustcap', 0x202024, 0.35, 0.5), 0, fy - 0.004, wz, sy=0.45))
-    # U-ART tweeter: dalga kılavuzu + altın şerit
-    tz = z0 + 0.325
-    o.append(rbox(0.105, 0.016, 0.072, 0.005, M['blackBody'], 0, fy - 0.006, tz - 0.036))
-    o.append(rbox(0.078, 0.004, 0.05, 0.002, mat('wg_in', 0x050505, 0.8), 0, fy - 0.0145, tz - 0.025))
+    o.append(cyl(0.108, 0.003, mat('t8v_ring', 0x0d0d0f, 0.5, 0.2), 0, face - 0.003, wz, segs=48, axis='Y'))
+    o.append(sphere(0.034, mat('t8v_cap', 0x18181b, 0.35, 0.3), 0, face - 0.004, wz, sy=0.42, segs=28))
+    # U-ART tweeter: yuvarlatılmış dikdörtgen dalga kılavuzu + altın katlı şerit
+    tz = z0 + 0.315
+    rim = mat('t8v_wg_rim', 0x1d1d20, 0.4, 0.3)
+    o.append(rbox(0.118, 0.004, 0.008, 0.003, rim, 0, face - 0.006, tz + 0.032))
+    o.append(rbox(0.118, 0.004, 0.008, 0.003, rim, 0, face - 0.006, tz - 0.04))
+    for s_ in (-1, 1): o.append(rbox(0.008, 0.004, 0.08, 0.003, rim, s_ * 0.055, face - 0.006, tz - 0.04))
+    o.append(rbox(0.102, 0.004, 0.064, 0.026, mat('t8v_wg', 0x050506, 0.7, 0.1), 0, face - 0.004, tz - 0.032))
+    o.append(rbox(0.046, 0.002, 0.044, 0.004, mat('t8v_tw_frame', 0x0a0a0b, 0.5, 0.2), 0, face - 0.0065, tz - 0.022))
     for i in range(6):
-        o.append(rbox(0.064, 0.002, 0.004, 0, M['gold'], 0, fy - 0.0168, tz - 0.021 + i * 0.0078))
+        o.append(rbox(0.04, 0.002, 0.0045, 0.0008, M['gold'], 0, face - 0.0078, tz - 0.019 + i * 0.0068))
     logo = plane(0.07, 0.0175, TEX('TEX_adam', 0x111111), 0, 0, 0, name='lg')
-    logo.rotation_euler = (math.pi / 2, 0, 0); logo.location = (0, fy - 0.001, z0 + 0.03)
+    logo.rotation_euler = (math.pi / 2, 0, 0); logo.location = (0, face - 0.0012, z0 + 0.034)
     o.append(logo)
-    o.append(cyl(0.003, 0.002, M['meter'], 0.1, fy - 0.001, z0 + 0.03, segs=10, axis='Y'))
+    o.append(cyl(0.0025, 0.002, M['meter'], 0.075, face - 0.001, z0 + 0.034, segs=10, axis='Y'))
+    # arka: bas refleks portu
+    o.append(cyl(0.024, 0.006, M['rubber'], 0, D / 2 + 0.012, z0 + 0.3, segs=28, axis='Y'))
     parts[name] = place(join(o, name), x, SHELF, z, ry)
 SHELF = DY + 0.118
 adam('adam_left', -0.85, -3.04, 0.25)
@@ -351,26 +373,18 @@ def on_stand(o, x, y, z, ry, tilt):
 # ---------------- Ableton Push 3 (380x318x44.5)
 def push3():
     W, D, H = 0.38, 0.318, 0.0445
-    o = [rbox(W, D, H, 0.008, M['blackBody'])]
-    top = H
-    o.append(plane(W - 0.012, D - 0.012, TEX('TEX_push', 0x141416, 0.6), 0, 0, top + 0.0003))
-    ps, pg = 0.0225, 0.0035
-    gx0, gy0 = -0.03 - 3.5 * (ps + pg), -0.035 - 3.5 * (ps + pg)
-    for r in range(8):
-        for c in range(8):
-            o.append(rbox(ps, ps, 0.004, 0.0015, M['pad'], gx0 + c * (ps + pg), gy0 + r * (ps + pg), top))
-    # sol dokunmatik şerit ve düğmeler
-    o.append(rbox(0.018, 0.2, 0.002, 0.002, M['btnDark'], -0.168, -0.035, top))
-    for i in range(8): o.append(rbox(0.022, 0.012, 0.004, 0.0015, M['btnGray'], -0.145, -0.12 + i * 0.026, top))
-    # sağ sütun: sahne düğmeleri + jog + oklar
-    for i in range(8): o.append(rbox(0.016, 0.016, 0.004, 0.0015, M['btnDark'], 0.115, gy0 + i * (ps + pg), top))
-    o += knob(0.017, 0.012, 0.155, 0.02, top, M['knobBlack'], M['darkAlu'], M['line'])
-    for dx, dy in ((0.155, -0.05), (0.155, -0.09), (0.135, -0.07), (0.175, -0.07)):
-        o.append(rbox(0.014, 0.014, 0.004, 0.0015, M['btnDark'], dx, dy, top))
-    # ekran + enkoder sırası (arka)
-    o.append(rbox(0.25, 0.034, 0.0015, 0.001, mat('push_display', 0x05070a, 0.15, 0.2, emit=0x1a2230, es=0.6), -0.03, 0.118, top))
-    for i in range(8): o += knob(0.0085, 0.01, -0.135 + i * 0.03, 0.143, top, M['knobBlack'], M['darkAlu'], M['line'])
-    for i in range(8): o.append(rbox(0.022, 0.009, 0.003, 0.001, M['btnDark'], -0.135 + i * 0.03, 0.093, top))
+    X = lambda sx: (sx - 1200) / 2000 * W
+    Y = lambda sy: (1002.83 - sy) / 1671.66 * D
+    R = lambda r: r / 2000 * W
+    o = [rbox(W, D, H, 0.008, mat('push_body', 0x141416, 0.5, 0.3))]
+    o.append(plane(W - 0.002, D - 0.002, TEX('TEX_push', 0x141416, 0.55), 0, 0, H + 0.0003))
+    # SVG'deki 11 döner kontrol (8 enkoder, sol iki düğme, sağ üst büyük teker)
+    for sx, sy, r in ((646.8, 273.2, 33.5), (801.0, 273.2, 33.0), (956.3, 273.2, 33.0), (1113.2, 273.2, 33.0), (1265.8, 273.2, 33.0),
+                      (1423.2, 273.2, 33.0), (1579.0, 273.2, 33.0), (1731.1, 273.2, 33.5), (297.0, 586.0, 61.0), (296.1, 905.4, 40.3)):
+        o += knob2(R(r), 0.014 if r < 50 else 0.018, X(sx), Y(sy), H, mat('push_knob', 0x26252b, 0.45, 0.4), M['knobBlack'], None)
+    o += knob2(R(104.3), 0.012, X(2071.6), Y(585.2), H, mat('push_jog', 0x2b2a30, 0.35, 0.55), M['knobBlack'], None)
+    # ön kenar: ince parlak şerit (gövde birleşimi)
+    o.append(rbox(W - 0.02, 0.002, 0.004, 0.001, mat('push_trim', 0x3a3a40, 0.3, 0.7), 0, -D / 2 - 0.0005, H * 0.55))
     return join(o, 'push3')
 y = alu_stand('stand_push', -0.74, -2.56, 0.18, 0.42, 0.33, math.radians(20))
 parts['push3'] = place(push3(), -0.74, y, -2.56, 0.18, math.radians(20))
@@ -486,18 +500,34 @@ parts['audiofuse'] = place(audiofuse(), -0.02, y, -2.9, 0.0, math.radians(14))
 
 # ---------------- Acid 303 / Behringer TD-3 (305x165x56)
 def td3():
-    W, D, H = 0.305, 0.165, 0.056
-    o = [rbox(W, D, H, 0.006, mat('td3_body', 0x1b1c1f, 0.45, 0.4))]
+    W, D, H = 0.305, 0.165, 0.046
+    o = [rbox(W, D, H, 0.004, mat('td3_body', 0x1c1d20, 0.45, 0.45), 0, 0, 0.006)]
     for sx in (-0.13, 0.13):
-        for sy in (-0.06, 0.06): o.append(cyl(0.008, 0.006, M['rubber'], sx, sy, -0.006, segs=10))
-    o.append(plane(W - 0.01, D - 0.01, TEX('TEX_td3', 0x1b1c1f, 0.5), 0, 0, H + 0.0003))
-    for i in range(7): o += knob(0.0085, 0.012, -0.12 + i * 0.033, 0.05, H, M['knobBlack'], M['knobSilver'], M['line'])
-    for x in (-0.03, 0.03): o += knob(0.013, 0.014, x, 0.012, H, M['knobBlack'], M['knobSilver'], M['line'])
-    o += knob(0.0085, 0.012, -0.12, 0.012, H, M['knobBlack'], M['knobSilver'], M['line'])
-    # piyano düzeninde adım düğmeleri
-    for i in range(8): o.append(rbox(0.016, 0.026, 0.005, 0.0015, M['btnWhite'], -0.035 + i * 0.019, -0.045, H))
-    for i in (0, 1, 3, 4, 5): o.append(rbox(0.011, 0.016, 0.007, 0.0015, M['keyBlack'], -0.026 + i * 0.019, -0.03, H))
-    for i in range(6): o.append(rbox(0.014, 0.012, 0.005, 0.0015, M['btnDark'], -0.135 + (i % 3) * 0.022, -0.035 - (i // 3) * 0.02, H))
+        for sy in (-0.06, 0.06): o.append(cyl(0.008, 0.006, M['rubber'], sx, sy, 0, segs=12))
+    top = H + 0.006
+    o.append(plane(W - 0.004, D - 0.004, TEX('TEX_td3', 0x1c1d20, 0.5), 0, 0, top + 0.0003))
+    kn = mat('td3_knob', 0x0e0e10, 0.45, 0.2); kc = mat('td3_cap', 0xb7bac0, 0.3, 0.85)
+    # üst sıra: TUNING, CUT OFF FREQ, RESONANCE, ENV MOD, DECAY, ACCENT + sağda 3 (VOLUME vb.)
+    for i in range(6): o += knob2(0.0068, 0.012, -0.124 + i * 0.026, 0.062, top, kc, kn, None)
+    for i in range(3): o += knob2(0.0068, 0.012, 0.072 + i * 0.026, 0.062, top, kc, kn, None)
+    # ikinci sıra: TEMPO (büyük, sol), iki döner seçici (orta), VOLUME (büyük, sağ)
+    o += knob2(0.011, 0.014, -0.122, 0.027, top, kc, kn, None)
+    o += knob2(0.0105, 0.014, -0.045, 0.027, top, kc, kn, None)
+    o += knob2(0.0105, 0.014, 0.0, 0.027, top, kc, kn, None)
+    o += knob2(0.011, 0.014, 0.125, 0.027, top, kc, kn, None)
+    for x in (-0.085, 0.085): o.append(rbox(0.012, 0.006, 0.004, 0.0015, M['knobSilver'], x, 0.027, top))
+    # klavye bölümü: 8 beyaz + 5 siyah adım tuşu, sol fonksiyon tuşları, sağ DOWN/UP/ACCENT/SLIDE
+    wk = mat('td3_white', 0xe8e8e4, 0.45, 0.0)
+    for i in range(8): o.append(rbox(0.0145, 0.022, 0.005, 0.0015, wk, -0.06 + i * 0.0185, -0.046, top))
+    for i in (0, 1, 3, 4, 5):
+        o.append(rbox(0.011, 0.015, 0.006, 0.0015, M['keyBlack'], -0.051 + i * 0.0185, -0.021, top))
+        o.append(cyl(0.0012, 0.0008, M['redLed'], -0.051 + i * 0.0185, -0.016, top + 0.006, segs=8))
+    for i in range(4): o.append(rbox(0.0145, 0.022, 0.005, 0.0015, wk, 0.095 + (i % 2) * 0.019, -0.033 - (i // 2) * 0.026 + 0.013, top))
+    o.append(rbox(0.026, 0.026, 0.006, 0.002, wk, -0.124, -0.045, top))
+    for i in range(3): o.append(rbox(0.0145, 0.012, 0.004, 0.0015, M['keyBlack'], -0.095 + 0.0, -0.018 - i * 0.017, top))
+    # arka: jaklar
+    by = D / 2 + 0.0005
+    for i in range(6): o.append(cyl(0.0042, 0.004, M['knobSilver'], -0.1 + i * 0.035, by, 0.026, segs=16, axis='Y'))
     return join(o, 'td3')
 parts['td3'] = place(td3(), 0.33, DY + 0.006, -2.86, -0.06)
 
@@ -560,14 +590,14 @@ def craft():
     o.append(kj)
     o.append(cyl(0.02, 0.012, mat('crown', 0x26272b, 0.35, 0.6), -0.185, 0.05, 0.024, segs=32, bevel=0.002))
     return join(o, 'craft')
-parts['craft'] = place(craft(), -0.06, DY + 0.002, -2.66)
+# Klavye → hazır model: assets/models/mxkeys.glb
 
 def mx_master():
     o = [sphere(0.05, mat('mx', 0x2c2d31, 0.5, 0.1), 0, 0, 0.0, sx=0.85, sy=1.26, sz=0.5)]
     o.append(cyl(0.009, 0.006, M['knobSilver'], 0.0, 0.03, 0.022, segs=20, axis='Y'))
     o.append(rbox(0.02, 0.05, 0.006, 0.002, mat('mx_thumb', 0x1d1e21, 0.5), -0.042, -0.0, 0.0))
     return join(o, 'mx_master')
-parts['mx'] = place(mx_master(), 0.28, DY + 0.004, -2.64, 0.15)
+# Mouse → hazır model (3D tarama): assets/models/mxmaster.glb
 
 def dualsense():
     o = [rbox(0.1, 0.07, 0.03, 0.012, M['ps5Core'], 0, 0.01, 0.012)]
