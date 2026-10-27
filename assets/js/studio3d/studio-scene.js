@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610272400';
+var MODEL_V = '202610272520';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -256,7 +256,7 @@ export function buildStudio(renderer, CONFIG) {
 
   // ---------- masa düzeni: Blender modeli (tools/studio3d/build_desk.py → assets/models/studio-desk.glb)
   // Baskılı yüzeyler GLB'de TEX_* / SCREEN_* adlı malzemeler; dokular burada canvas ile çizilip bağlanır.
-  obst(-1.2, 1.2, -3.2, -2.55); obst(-2.6, -1.9, -2.1, -0.8); obst(-1.2, -0.45, -2.55, -2.3); obst(0.45, 1.2, -2.55, -2.3); obst(-2.65, -2.25, -2.6, -2.2); obst(-2.65, -2.25, -0.7, -0.3);
+  obst(-1.2, 1.2, -3.2, -2.55); obst(-2.85, -2.05, 2.65, 3.2); obst(-2.6, -1.9, -2.1, -0.8); obst(-1.2, -0.45, -2.55, -2.3); obst(0.45, 1.2, -2.55, -2.3); obst(-2.65, -2.25, -2.6, -2.2); obst(-2.65, -2.25, -0.7, -0.3);
 
   function gtex(w, h, draw, o) { var t = ctex(w, h, draw, o); t.flipY = false; return t; }
 
@@ -577,6 +577,18 @@ export function buildStudio(renderer, CONFIG) {
       loadGlb('ps5', function (r) { r.position.set(-0.6, DY, -3.06); r.rotation.y = 0.12; }),
       loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.59); r.rotation.order = 'YZX'; r.rotation.set(-0.9, -0.25, -0.25); r.userData.sitOn = DY + 0.002; }),
       loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
+      // koleksiyon rafı (sol duvar; raf yüzü +x), plak masası, duvar tabloları
+      loadGlb('db01', function (r) { r.position.set(-2.8, 1.316, 0.95); r.rotation.y = Math.PI / 2; r.userData.sitOn = 1.316; }),
+      loadGlb('batman', function (r) { r.position.set(-2.8, 1.316, 1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 1.316; }),
+      loadGlb('avata', function (r) { r.position.set(-2.8, 1.316, 2.05); r.rotation.y = -Math.PI / 2; r.userData.sitOn = 1.316; }),
+      loadGlb('mando', function (r) { r.position.set(-2.8, 1.716, 1.2); r.rotation.y = Math.PI / 2; r.userData.sitOn = 1.716; }),
+      loadGlb('om5', function (r) { r.position.set(-2.8, 2.116, 2.15); r.rotation.y = Math.PI / 2; r.userData.sitOn = 2.116; }),
+      loadGlb('recordrack', function (r) { r.position.set(-2.45, 0, 2.945); r.rotation.y = Math.PI; r.userData.sitOn = 0; }),
+      loadGlb('art', function (r) {
+        var W = { art_a: [0.9, 1.65, 3.198, Math.PI], art_d: [-0.5, 1.55, 3.198, Math.PI], art_f: [-2.45, 1.75, 3.198, Math.PI], art_c: [2.15, 1.6, 3.198, Math.PI],
+                  art_b: [2.998, 1.6, -2.0, -Math.PI / 2], art_e: [2.998, 1.75, -1.2, -Math.PI / 2] };
+        r.traverse(function (o) { var w = W[o.name]; if (w && o.isMesh || (w && o.children.length)) { o.position.set(w[0], w[1], w[2]); o.rotation.set(0, w[3], 0); } });
+      }),
       loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
       loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.order = 'YZX'; r.rotation.set(1.26, Math.PI / 2 + 0.12, 0.16); r.userData.sitOn = DY + 0.001; }),
       loadGlb('macbook', function (r) { r.position.set(1.0052, DY + 0.0637, -2.6446); r.rotation.y = -0.15;  /* standın eğimli yüzeyine, ön tırnakların arkasına oturur */ r.rotation.x = 0.244; })
@@ -760,7 +772,7 @@ export function buildStudio(renderer, CONFIG) {
     var R = rng(77), pal = [0xc0392b, 0xe8b84b, 0x2c3e50, 0x16a085, 0x8e44ad, 0xecf0f1, 0xd35400, 0x1b1b1b, 0x3a86c8];
     var n = 420, inst = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), std(0xffffff, 0.7), n);
     var d = new THREE.Object3D(), col = new THREE.Color(), idx = 0;
-    for (var lv = 0; lv < 4; lv++) {
+    for (var lv = 0; lv < 3; lv++) {
       var x = -0.94;
       while (x < 0.94 && idx < n) {
         var th = 0.008 + R() * 0.012;
@@ -773,8 +785,6 @@ export function buildStudio(renderer, CONFIG) {
     }
     inst.count = idx; inst.castShadow = true; g.add(inst);
     // üst raflarda dekor
-    cyl(0.1, 0.07, 0.2, std(0x22252b, 0.6), 0.3, 1.835, 0, g, 18);
-    rbox(0.4, 0.2, 0.28, 0.02, std(0x2a2c31, 0.5, 0.4), -0.45, 1.835, 0, g);
     obst(-3.0, -2.5, 0.5, 2.7);
   })();
 
