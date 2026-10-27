@@ -6,13 +6,16 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610273100';
+import { buildStudio, LED } from './studio-scene.js?v=202610273200';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
   { src: '/assets/img/studio/with-you.jpg', title: 'With You', sub: 'Marsias, Berkael', uri: 'spotify:track:5WEQl4cZ78p41LWwIni8yJ' },
   { art: 'golden', title: 'Golden Sound', sub: 'Berkay Er · Playlist', uri: 'spotify:playlist:2DAH389gTrBgFEaVTSuQPD' },
   { src: '/assets/img/studio/cant-sleep.jpg', title: `Can't Sleep`, sub: 'Marsias, Berkael & Woosa', uri: 'spotify:track:3qPfzaAnQWUP9W7JlIGB6I' }
+], records: [
+  // plak rafında kapağı öne dönük; tıklayınca Apple Music oynatıcısı açılır
+  { src: '/assets/img/studio/dinle-beni.jpg', title: 'Dinle Beni', sub: 'Berkael & Tanselik', apple: 'https://embed.music.apple.com/tr/album/dinle-beni-single/6767695540' }
 ] };
 
 var WPS = [
@@ -214,9 +217,10 @@ var tags = studio.hotspots.map(function (h) {
   b.innerHTML = '<span class="s3d-tag-dot"></span><span class="s3d-tag-txt"></span>';
   b.lastChild.textContent = h.text || T(h.key);
   if (h.key) b.setAttribute('data-i18n-tag', h.key);
-  if (h.spotify) b.classList.add('s3d-tag--track');
+  if (h.spotify || h.apple) b.classList.add('s3d-tag--track');
   b.addEventListener('click', function () {
     if (h.spotify) { openPlayer(h.spotify, h.text); return; }
+    if (h.apple) { openApple(h.apple); return; }
     var dx = st.x - h.pos.x, dz = st.z - h.pos.z, d = Math.hypot(dx, dz) || 1;
     var p = [h.pos.x + dx / d * 0.95, Math.max(1.05, h.pos.y + 0.4), h.pos.z + dz / d * 0.95];
     markWp(-1);
@@ -242,7 +246,25 @@ function spLoad() {
   };
   var sc = document.createElement('script'); sc.src = 'https://open.spotify.com/embed/iframe-api/v1'; sc.async = true; document.body.appendChild(sc);
 }
+// Apple Music: aynı panelde Spotify'ın yerine gömülü oynatıcı (çalmak için oynatıcıdaki düğmeye basılır)
+function appleFrame() { return player.querySelector('.s3d-apple'); }
+function spotifyFrame() { return player.querySelector('iframe:not(.s3d-apple)'); }
+function openApple(url) {
+  player.hidden = false; spPlay = false;
+  if (spCtl) spCtl.pause();
+  var sf = spotifyFrame(); if (sf) sf.style.display = 'none';
+  var f = appleFrame();
+  if (!f) {
+    f = document.createElement('iframe'); f.className = 's3d-apple'; f.height = '175'; f.title = 'Apple Music';
+    f.setAttribute('allow', 'autoplay *; encrypted-media *;');
+    f.setAttribute('sandbox', 'allow-forms allow-popups allow-same-origin allow-scripts allow-storage-access-by-user-activation allow-top-navigation-by-user-activation');
+    player.appendChild(f);
+  }
+  if (f.src !== url) f.src = url;
+}
+function closeApple() { var f = appleFrame(); if (f) f.remove(); var sf = spotifyFrame(); if (sf) sf.style.display = ''; }
 function openPlayer(uri) {
+  closeApple();
   player.hidden = false; spPlay = true;
   if (!spCtl) { spWant = uri; spLoad(); return; }
   if (uri !== spUri) { spCtl.loadUri(uri); spUri = uri; }
@@ -258,7 +280,7 @@ if (PLAYLIST) {
   window.addEventListener('pointerdown', autoPlay, true);
   window.addEventListener('keydown', autoPlay, true);
 }
-$('s3dPlayerClose').addEventListener('click', function () { spClosed = true; player.hidden = true; if (spCtl) spCtl.pause(); });
+$('s3dPlayerClose').addEventListener('click', function () { spClosed = true; player.hidden = true; closeApple(); if (spCtl) spCtl.pause(); });
 // çerçeveye tıklama (sürüklemeden): ışın ile hangi çerçeve
 var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), downAt = null;
 canvas.addEventListener('pointerdown', function (e) { downAt = { x: e.clientX, y: e.clientY }; });
@@ -270,7 +292,9 @@ canvas.addEventListener('pointerup', function (e) {
   var list = studio.clickables || [], hit = ray.intersectObjects(list.map(function (c) { return c.mesh; }), false)[0];
   if (!hit || hit.distance > 6) return;
   for (var i = 0; i < list.length; i++) if (list[i].mesh === hit.object) {
-    if (list[i].href) window.open(list[i].href, '_blank', 'noopener'); else openPlayer(list[i].uri);
+    if (list[i].href) window.open(list[i].href, '_blank', 'noopener');
+    else if (list[i].apple) openApple(list[i].apple);
+    else openPlayer(list[i].uri);
     break;
   }
 });

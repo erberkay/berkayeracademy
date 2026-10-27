@@ -12,6 +12,8 @@ from mathutils.kdtree import KDTree
 argv = sys.argv[sys.argv.index('--') + 1:]
 fred_src, out = argv[0], argv[1]
 max_tris = int(argv[2]) if len(argv) > 2 else 40000
+THX, THZ, THY = [float(x) for x in (argv[4].split(',') if len(argv) > 4 else ('0.22', '0.95', '0.05'))]
+TZ, TY, TD, TR = [float(x) for x in (argv[5].split(',') if len(argv) > 5 else ('0.35', '0.25', '0.16', '0.075'))]
 KEEP = {'Walk': (0, 32), 'Idle': (0, 48), 'SitDown': (0, 36), 'SittingIdle': (0, 48), 'StandUp': (0, 36)}
 sc = bpy.context.scene
 for n in ('Camera', 'Light', 'Cube'):
@@ -104,9 +106,20 @@ if mode == 'auto':
     # Fred'in kendi geometrisiyle kemik ısısı ağırlıkları; tutmayan köşeler aşağıda aktarımla dolar
     for g in list(F.vertex_groups): F.vertex_groups.remove(g)
     for b_ in B.data.bones: b_.use_deform = b_.name not in ('Root', 'Eye.L', 'Eye.R')
-    select_only([F, B], B); bpy.ops.object.parent_set(type='ARMATURE_AUTO')
-    F.modifiers.clear(); F.parent = None
-    miss = [v.index for v in F.data.vertices if not v.groups]
+    # kemik ısısı delikli taramada tutmaz: kapalı voksel vekil üzerinde hesapla, Fred'e en yakın yüzeyle aktar
+    PX = F.copy(); PX.data = F.data.copy(); PX.name = 'FredProxy'; sc.collection.objects.link(PX)
+    rm = PX.modifiers.new('rm', 'REMESH'); rm.mode = 'VOXEL'; rm.voxel_size = 0.035
+    select_only([PX], PX); bpy.ops.object.modifier_apply(modifier=rm.name)
+    select_only([PX, B], B); bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+    PX.modifiers.clear(); PX.parent = None
+    print('PROXY verts', len(PX.data.vertices), 'unweighted', sum(1 for v in PX.data.vertices if not v.groups))
+    for g in PX.vertex_groups: F.vertex_groups.new(name=g.name)
+    pt = F.modifiers.new('px', 'DATA_TRANSFER'); pt.object = PX
+    pt.use_vert_data = True; pt.data_types_verts = {'VGROUP_WEIGHTS'}; pt.vert_mapping = 'POLYINTERP_NEAREST'
+    pt.layers_vgroup_select_src = 'ALL'; pt.layers_vgroup_select_dst = 'NAME'
+    select_only([F], F); bpy.ops.object.modifier_apply(modifier=pt.name)
+    bpy.data.objects.remove(PX, do_unlink=True)
+    miss = [v.index for v in F.data.vertices if not v.groups or max(g.weight for g in v.groups) < 1e-4]
     print('AUTO unweighted', len(miss))
     for g in src.vertex_groups:
         if g.name not in F.vertex_groups: F.vertex_groups.new(name=g.name)
@@ -125,6 +138,47 @@ if '_miss' in F.vertex_groups: F.vertex_groups.remove(F.vertex_groups['_miss'])
 bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
 bpy.ops.object.vertex_group_smooth(group_select_mode='ALL', factor=0.5, repeat=3)
 bpy.ops.object.mode_set(mode='OBJECT')
+# oturuşta uyluk eti böğre yapışık; kemik ısısı onu kalçaya (Hip/Butt) bağlar ve kedi ayağa kalkınca et yerde kalır.
+# Yan ve alçak bölgedeki kalça ağırlığını o tarafın uyluğuna (Thigh) aktar.
+z0 = min(v.co.z for v in F.data.vertices)
+G = {g.name: g for g in F.vertex_groups}
+HAUNCH = ('Hip', 'Butt', 'LowerSpine')
+for v in F.data.vertices:
+    x, y, z = v.co
+    if abs(x) < THX or z - z0 > THZ or y > THY: continue
+    side = '.L' if x < 0 else '.R'
+    k = min(1.0, (abs(x) - THX) / 0.15) * min(1.0, (THZ - (z - z0)) / 0.25)
+    moved = 0.0
+    for g in v.groups:
+        n = F.vertex_groups[g.group].name
+        if n.split('.')[0] in HAUNCH:
+            d = g.weight * k * 0.9; g.weight -= d; moved += d
+    if moved: G['Thigh' + side].add([v.index], moved, 'ADD')
+# kuyruk: oturuşta gövdenin yanından yere sarılı; kemik ısısı onu bacaklara bağlar, kedi yürürken yerde sürüklenir.
+# Yerde, arkada ve hiçbir bacak kemiğine yakın olmayan köşeler kuyruktur: sil, yerine kuyruk zincirine bağlı yeni kuyruk koy.
+import bmesh
+from mathutils.geometry import intersect_point_line
+LEGS = [n + sd for n in ('Thigh', 'Heel', 'Foot', 'Paw', 'Arm', 'UpperArm') for sd in ('.L', '.R')]
+segs = [(B.data.bones[n].head_local.copy(), B.data.bones[n].tail_local.copy()) for n in LEGS if n in B.data.bones]
+def segdist(p, a, b):
+    q, t = intersect_point_line(p, a, b); t = min(1.0, max(0.0, t)); return (p - (a + (b - a) * t)).length
+tailv = [v.index for v in F.data.vertices if v.co.z - z0 < TZ and v.co.y < TY and min(segdist(v.co, a, b) for a, b in segs) > TD]
+print('TAIL verts', len(tailv))
+bm = bmesh.new(); bm.from_mesh(F.data); bm.verts.ensure_lookup_table()
+bmesh.ops.delete(bm, geom=[bm.verts[i] for i in tailv], context='VERTS')
+# silmeden kalan küçük kırıntılar
+bm.verts.ensure_lookup_table(); seen = set(); small = []
+for v in bm.verts:
+    if v.index in seen: continue
+    st = [v]; comp = []; seen.add(v.index)
+    while st:
+        x = st.pop(); comp.append(x)
+        for e in x.link_edges:
+            y = e.other_vert(x)
+            if y.index not in seen: seen.add(y.index); st.append(y)
+    if len(comp) < 300: small += comp
+bmesh.ops.delete(bm, geom=small, context='VERTS'); print('CRUMBS', len(small))
+bm.to_mesh(F.data); bm.free()
 bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)
 bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)
 F.parent = B; am = F.modifiers.new('Armature', 'ARMATURE'); am.object = B
@@ -132,6 +186,50 @@ unweighted = sum(1 for v in F.data.vertices if not v.groups)
 print('VERTS', len(F.data.vertices), 'unweighted', unweighted)
 
 # --- 4. animasyonları B'ye pişir
+# yeni kuyruk: dinlenme pozundaki kuyruk zinciri boyunca incelen tüp, her halka en yakın kuyruk kemiğine bağlı
+chain = ['TailBase', 'TailBaseMiddle', 'TailTipMiddle', 'TailTip']
+pts = [B.data.bones[chain[0]].head_local.copy()] + [B.data.bones[n].tail_local.copy() for n in chain]
+# Somali'nin kuyruk kökü Fred'in kalçasından geride: kalçanın içinden köke uzanan köprü (Butt'a bağlı, pelvisle hareket eder)
+fz = [v.co for v in F.data.vertices if abs(v.co.z - pts[0].z) < 0.3 and abs(v.co.x - pts[0].x) < 0.35]
+ry = min(c.y for c in fz); near = [c for c in fz if c.y < ry + 0.06]
+rear = sum(near, Vector()) / len(near)
+start = rear + Vector((0, 0.12, 0)); print('TAIL gap', round((pts[0] - rear).length, 2))
+pts = [start] + pts
+# Catmull-Rom: eklemlerde köşe yapmadan akan kuyruk
+def cr(p0, p1, p2, p3, t):
+    return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t)
+ext = [pts[0] * 2 - pts[1]] + pts + [pts[-1] * 2 - pts[-2]]
+fine = []
+for i in range(len(pts) - 1):
+    for k in range(10): fine.append((cr(ext[i], ext[i + 1], ext[i + 2], ext[i + 3], k / 10), i))
+fine.append((pts[-1], len(pts) - 2))
+L = sum((fine[i + 1][0] - fine[i][0]).length for i in range(len(fine) - 1))
+tm = bpy.data.meshes.new('FredTail'); bmt = bmesh.new(); rings = []; acc = 0.0; NR = 14
+for i, (p, seg) in enumerate(fine):
+    if i: acc += (p - fine[i - 1][0]).length
+    d = (fine[min(i + 1, len(fine) - 1)][0] - fine[max(i - 1, 0)][0]).normalized()
+    u = d.orthogonal().normalized(); w = d.cross(u)
+    r = TR * (1 - 0.55 * (acc / L) ** 1.5)
+    rings.append([bmt.verts.new(p + (u * math.cos(a) + w * math.sin(a)) * r) for a in [k / NR * math.tau for k in range(NR)]])
+for i in range(len(rings) - 1):
+    for k in range(NR): bmt.faces.new((rings[i][k], rings[i][(k + 1) % NR], rings[i + 1][(k + 1) % NR], rings[i + 1][k]))
+tipc = bmt.verts.new(fine[-1][0] + (fine[-1][0] - fine[-2][0]).normalized() * TR * 0.4)
+for k in range(NR): bmt.faces.new((rings[-1][k], rings[-1][(k + 1) % NR], tipc))
+bmt.verts.index_update(); ringi = [[v.index for v in r_] for r_ in rings]; tipi = tipc.index
+bmt.to_mesh(tm); bmt.free()
+TO = bpy.data.objects.new('FredTail', tm); sc.collection.objects.link(TO)
+for n in ('Butt',) + tuple(chain): TO.vertex_groups.new(name=n)
+for i, (p, seg) in enumerate(fine):
+    bone = 'Butt' if seg == 0 else chain[seg - 1]
+    TO.vertex_groups[bone].add(ringi[i], 1.0, 'REPLACE')
+TO.vertex_groups[chain[-1]].add([tipi], 1.0, 'REPLACE')
+tmat = bpy.data.materials.new('FredTail'); tmat.use_nodes = True
+tb = tmat.node_tree.nodes['Principled BSDF']; tb.inputs['Base Color'].default_value = (0.045, 0.03, 0.022, 1); tb.inputs['Roughness'].default_value = 0.85
+tm.materials.append(tmat)
+for poly in tm.polygons: poly.use_smooth = True
+TO.parent = B; tam = TO.modifiers.new('Armature', 'ARMATURE'); tam.object = B
+select_only([TO], TO); bpy.ops.object.mode_set(mode='WEIGHT_PAINT'); bpy.ops.object.vertex_group_smooth(group_select_mode='ALL', factor=0.5, repeat=4); bpy.ops.object.mode_set(mode='OBJECT')
+
 for pb in B.pose.bones:
     c = pb.constraints.new('COPY_TRANSFORMS'); c.target = A; c.subtarget = pb.name
 baked = {}
@@ -148,14 +246,14 @@ for pb in B.pose.bones:
 B.animation_data.action = None
 # Somali parçalarını ve orijinal aksiyonları sil
 for o in list(bpy.context.scene.objects):
-    if o not in (B, F): bpy.data.objects.remove(o, do_unlink=True)
+    if o not in (B, F, TO): bpy.data.objects.remove(o, do_unlink=True)
 for a in list(bpy.data.actions):
     if a not in baked.values(): bpy.data.actions.remove(a)
 for name, act in baked.items(): act.name = name; act.use_fake_user = True
 for im in bpy.data.images:
     if im.size[0] > 1024 or im.size[1] > 1024:
         r = 1024 / max(im.size); im.scale(int(im.size[0] * r), int(im.size[1] * r))
-select_only([B, F], B)
+select_only([B, F, TO], B)
 bpy.ops.export_scene.gltf(filepath=out, export_format='GLB', use_selection=True, export_animations=True, export_animation_mode='ACTIONS',
                           export_image_format='JPEG', export_jpeg_quality=82, export_cameras=False, export_lights=False,
                           export_def_bones=True, export_optimize_animation_size=True)

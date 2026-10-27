@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610273100';
+var MODEL_V = '202610273200';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -918,7 +918,7 @@ export function buildStudio(renderer, CONFIG) {
     var CELLS = [[-0.98, -0.505], [-0.475, -0.015], [0.015, 0.475], [0.505, 0.98]];
     var ZC = 0.2 - 0.025 - 0.1575, H2 = 0.1575;
     // hücre içeriği: 'full' | 'lean' (yarım + yaslananlar) | 'stack' (yatay yığın) | 'face' (önde kapak)
-    var PLAN = [['full', 'lean', 'full', 'full'], ['full', 'face', 'full', 'stack'], ['lean', 'full', 'face', 'full']];
+    var PLAN = [['full', 'lean', 'full', 'full'], ['full', 'face', 'full', 'stack'], ['lean', 'full', 'face', 'face']];
     var faces = [];
     PLAN.forEach(function (row, lv) {
       var y0 = 0.1 + lv * 0.4 + 0.015;
@@ -976,11 +976,16 @@ export function buildStudio(renderer, CONFIG) {
     }
     var ph = CONFIG.photos || [];
     function pick(fn) { return ph.filter(fn)[0]; }
-    var covers = [pick(function (p) { return p.src && /with-you/.test(p.src); }), pick(function (p) { return p.art === 'golden'; })];
+    var covers = [pick(function (p) { return p.src && /with-you/.test(p.src); }), pick(function (p) { return p.art === 'golden'; }), (CONFIG.records || [])[0]];
+    var cv = new THREE.Vector3();
     faces.forEach(function (f, i) {
-      var cm = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.315, 0.004), coverMat(covers[i]));
+      var p = covers[i];
+      var cm = new THREE.Mesh(new THREE.BoxGeometry(0.315, 0.315, 0.004), coverMat(p));
       cm.position.set(f[0], f[1] + 0.1575 * Math.cos(0.05), 0.186); cm.rotation.x = -0.05;
       cm.castShadow = true; g.add(cm);
+      // öne dönük kapağa tıklayınca çalar (Spotify ya da Apple Music)
+      if (p && (p.uri || p.apple)) clickables.push({ mesh: cm, uri: p.uri, apple: p.apple, title: p.title });
+      if (p && p.apple) { g.updateMatrixWorld(true); cm.getWorldPosition(cv); hotspots.push({ text: p.title, apple: p.apple, pos: new THREE.Vector3(cv.x, cv.y + 0.2, cv.z - 0.05) }); }
     });
 
     // plak: oluklu siyah vinil + orta etiket
