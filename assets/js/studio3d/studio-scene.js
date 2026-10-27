@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-var MODEL_V = '202610273400';
+var MODEL_V = '202610273500';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -21,6 +21,16 @@ function rng(seed) {
   };
 }
 
+// tuval dokularının GPU'ya giden boyut sınırı (hafif modda 1024; çizim büyük tuvalde yapılır, küçültülmüş kopya yüklenir)
+var CANVAS_MAX = 4096;
+function fitCanvas(t) {
+  var u = t.userData, src = u.g.canvas, m = CANVAS_MAX;
+  if (src.width <= m && src.height <= m) return;
+  var r = m / Math.max(src.width, src.height), c = u.small || (u.small = document.createElement('canvas'));
+  c.width = Math.round(src.width * r); c.height = Math.round(src.height * r);
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  t.image = c;
+}
 function ctex(w, h, draw, o) {
   o = o || {};
   var c = document.createElement('canvas');
@@ -32,17 +42,24 @@ function ctex(w, h, draw, o) {
   t.anisotropy = 8;
   if (o.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(o.repeat[0], o.repeat[1]); }
   t.userData = { g: g, w: w, h: h, draw: draw };
+  fitCanvas(t);
   return t;
 }
 function redraw(t, time) {
   var u = t.userData;
   u.draw(u.g, u.w, u.h, time);
+  fitCanvas(t);
   t.needsUpdate = true;
 }
 
 export var LED = { red: 0xff2418, violet: 0x8a3dff, cyan: 0x18c8ff, amber: 0xff9a1f };
 
-export function buildStudio(renderer, CONFIG) {
+// OPT.lite: telefon/tablet için hafif mod — model dokuları 512 px, normal/pürüzlülük haritaları yok, tuval dokuları 1024 px,
+// gölge haritası 1024 (GPU belleği masaüstünün ~1/5'i; iOS Safari sekmeyi bellek yüzünden kapatmasın)
+export function buildStudio(renderer, CONFIG, OPT) {
+  OPT = OPT || {};
+  var LITE = !!OPT.lite, TEX_MAX = LITE ? 512 : 1024;
+  CANVAS_MAX = LITE ? 1024 : 4096;
   var scene = new THREE.Scene();
   scene.background = new THREE.Color(0x040406);
   scene.fog = new THREE.FogExp2(0x06060a, 0.05);
@@ -214,7 +231,7 @@ export function buildStudio(renderer, CONFIG) {
   spot.position.set(0, 2.6, -1.6);
   spot.target.position.set(0, 0.8, -2.85);
   spot.castShadow = true;
-  spot.shadow.mapSize.set(2048, 2048);
+  spot.shadow.mapSize.set(LITE ? 1024 : 2048, LITE ? 1024 : 2048);
   spot.shadow.bias = -0.0004;
   spot.shadow.normalBias = 0.02;
   scene.add(spot, spot.target);
@@ -537,11 +554,29 @@ export function buildStudio(renderer, CONFIG) {
   // masa (Blender) + hazır modeller (CC BY, kaynaklar sayfada): PS5, DualSense, Grogu, MacBook
   var draco = new DRACOLoader(); draco.setDecoderPath('/assets/vendor/three/addons/libs/draco/gltf/');
   var gltf = new GLTFLoader(); gltf.setDRACOLoader(draco);
+  // model dokusunu sınıra küçült (paylaşılan dokular bir kez)
+  function shrinkTex(t) {
+    var im = t && t.image;
+    if (!im || t.isCanvasTexture || t.userData.shrunk) return;
+    var w = im.width, h = im.height;
+    if (!w || Math.max(w, h) <= TEX_MAX) return;
+    var r = TEX_MAX / Math.max(w, h), c = document.createElement('canvas');
+    c.width = Math.round(w * r); c.height = Math.round(h * r);
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    if (im.close) im.close();
+    t.image = c; t.userData.shrunk = true; t.needsUpdate = true;
+  }
+  var DETAIL = ['normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap'];
+  function slim(m) {
+    if (LITE) DETAIL.forEach(function (k) { if (m[k] && !m[k].isCanvasTexture) { m[k] = null; m.needsUpdate = true; } });
+    ['map', 'emissiveMap', 'alphaMap'].concat(DETAIL).forEach(function (k) { if (m[k]) shrinkTex(m[k]); });
+    return m;
+  }
   function prep(root) {
     root.traverse(function (o) {
       if (!o.isMesh) return;
       o.castShadow = true; o.receiveShadow = true;
-      if (Array.isArray(o.material)) o.material = o.material.map(swapMat); else o.material = swapMat(o.material);
+      if (Array.isArray(o.material)) o.material = o.material.map(function (m) { return slim(swapMat(m)); }); else o.material = slim(swapMat(o.material));
     });
     return root;
   }
@@ -908,7 +943,7 @@ export function buildStudio(renderer, CONFIG) {
     var tv = new THREE.Group(); tv.position.set(0, 1.715, 0.08); g.add(tv);
     var tvBlack = std(0x0b0b0c, 0.35, 0.2);
     rbox(1.92, 0.366, 0.03, 0.006, tvBlack, 0, 0.184, 0, tv);
-    var TW = 2048, TH = 384, CW = TW / 3;
+    var TW = LITE ? 1024 : 2048, TH = LITE ? 192 : 384, CW = TW / 3;
     var tvC = document.createElement('canvas'); tvC.width = TW; tvC.height = TH;
     var tvX = tvC.getContext('2d'); tvX.fillStyle = '#0b0b0e'; tvX.fillRect(0, 0, TW, TH);
     var tvTex = new THREE.CanvasTexture(tvC); tvTex.colorSpace = THREE.SRGBColorSpace; tvTex.anisotropy = 8;

@@ -6,7 +6,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
-import { buildStudio, LED } from './studio-scene.js?v=202610273400';
+import { buildStudio, LED } from './studio-scene.js?v=202610273500';
 
 // Fotoğraflar geldiğinde: photos: [{ src: '/assets/img/studio/1.jpg' }, ...] (3 çerçeve)
 var CONFIG = { photos: [
@@ -40,6 +40,9 @@ function hex(n) { return '#' + ('000000' + n.toString(16)).slice(-6); }
 var stage = $('s3dStage') || document.querySelector('.s3d');
 var canvas = $('s3dCanvas');
 var coarse = window.matchMedia && matchMedia('(pointer:coarse)').matches;
+// hafif mod: dokunmatik, dar ekran ya da az bellekli cihaz (telefon, tablet)
+var LITE = coarse || window.innerWidth < 900 || (navigator.deviceMemory && navigator.deviceMemory <= 4) || /[?&]lite=1/.test(location.search);
+var PR_MAX = Math.min(window.devicePixelRatio || 1, LITE ? 1.25 : 2), pr = PR_MAX;
 
 function fail() {
   var e = $('s3dErr'); if (e) e.hidden = false;
@@ -48,40 +51,64 @@ function fail() {
 
 var renderer;
 try {
-  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, powerPreference: 'high-performance' });
+  renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false, powerPreference: LITE ? 'default' : 'high-performance' });
 } catch (e) { fail(); throw e; }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 2));
+renderer.setPixelRatio(pr);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.9;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
-var studio = buildStudio(renderer, CONFIG);
+// GPU bağlamı düşerse (telefonda bellek baskısı) sahne donmasın: kullanıcıya yenileme sun, bağlam dönerse sayfayı yenile
+canvas.addEventListener('webglcontextlost', function (e) {
+  e.preventDefault(); running = false;
+  var en = false; try { en = localStorage.getItem('_lang') === 'en'; } catch (x) {}
+  var L = $('s3dLoad'), err = $('s3dErr'), bar = document.querySelector('.s3d-load-bar');
+  L.hidden = false; L.classList.remove('is-done');
+  if (bar) bar.hidden = true;
+  if (err) {
+    err.hidden = false; err.removeAttribute('data-i18n');
+    err.textContent = en ? '3D view stopped (the device ran low on graphics memory).' : '3D görünüm durdu (cihazın grafik belleği yetmedi).';
+    if (!$('s3dReload')) {
+      var b = document.createElement('button'); b.type = 'button'; b.id = 's3dReload'; b.className = 'btn btn-primary btn-sm';
+      b.textContent = en ? 'Reload' : 'Yenile'; b.addEventListener('click', function () { location.reload(); });
+      err.insertAdjacentElement('afterend', b);
+    }
+  }
+});
+canvas.addEventListener('webglcontextrestored', function () { location.reload(); });
+
+var studio = buildStudio(renderer, CONFIG, { lite: LITE });
 var scene = studio.scene;
 
 var cam = new THREE.PerspectiveCamera(62, 1, 0.05, 40);
 cam.rotation.order = 'YXZ';
 
 var size = new THREE.Vector2(1, 1);
-var rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: coarse ? 2 : 4 });
+var rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: LITE ? 0 : 4 });
 var composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, cam));
-var bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.4, 1.7);
-composer.addPass(bloom);
+// bloom hafif modda yok (mip zinciri hem bellek hem kare süresi)
+var bloom = LITE ? null : new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.4, 1.7);
+if (bloom) composer.addPass(bloom);
 var vig = new ShaderPass(VignetteShader);
 vig.uniforms.offset.value = 0.9;
 vig.uniforms.darkness.value = 1.15;
 composer.addPass(vig);
 composer.addPass(new OutputPass());
 
+// dikey ekranda (telefon) dikey görüş açısı genişler, yoksa yatayda yalnızca masanın bir kısmı görünür
+var fovBase = 62;
 function resize() {
   var w = stage.clientWidth, h = stage.clientHeight;
   if (!w || !h) return;
+  var nb = h > w ? Math.min(88, 62 + (h / w - 1) * 22) : 62;
+  if (nb !== fovBase) { if (typeof fovTarget === 'number') fovTarget += nb - fovBase; fovBase = nb; }
   size.set(w, h);
   renderer.setSize(w, h, false);
   composer.setPixelRatio(renderer.getPixelRatio());
   composer.setSize(w, h);
-  bloom.resolution.set(w / 2, h / 2);
+  if (bloom) bloom.resolution.set(w / 2, h / 2);
   cam.aspect = w / h;
   cam.updateProjectionMatrix();
 }
@@ -89,8 +116,8 @@ new ResizeObserver(resize).observe(stage);
 resize();
 
 // ---------- kamera durumu
-var st = { x: 0, y: 1.6, z: 2.9, yaw: 0, pitch: 0, fov: 62 };
-var fovTarget = 62;
+var st = { x: 0, y: 1.6, z: 2.9, yaw: 0, pitch: 0, fov: fovBase };
+var fovTarget = fovBase;
 var tw = null;
 var keys = {};
 var sway = 0;
@@ -168,7 +195,7 @@ canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', endDrag);
 canvas.addEventListener('wheel', function (e) {
   e.preventDefault();
-  fovTarget = Math.max(34, Math.min(78, fovTarget + e.deltaY * 0.03));
+  fovTarget = Math.max(34, Math.min(fovBase + 16, fovTarget + e.deltaY * 0.03));
 }, { passive: false });
 window.addEventListener('keydown', function (e) {
   var t = e.target && e.target.tagName;
@@ -298,16 +325,23 @@ canvas.addEventListener('pointerup', function (e) {
     break;
   }
 });
-var tagsOn = true;
+// telefonda etiketler masada üst üste biner: dar ekranda kapalı başlar
+var tagsOn = window.innerWidth > 600;
 var tagBtn = $('s3dTagBtn');
-tagBtn.addEventListener('click', function () {
-  tagsOn = !tagsOn;
-  tagBtn.setAttribute('aria-pressed', String(tagsOn));
-  stage.classList.toggle('no-tags', !tagsOn);
-});
-$('s3dFull').addEventListener('click', function () {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else if (stage.requestFullscreen) stage.requestFullscreen();
+function setTags(on) {
+  tagsOn = on;
+  tagBtn.setAttribute('aria-pressed', String(on));
+  stage.classList.toggle('no-tags', !on);
+}
+setTags(tagsOn);
+tagBtn.addEventListener('click', function () { setTags(!tagsOn); });
+// tam ekran: iPhone Safari öğe tam ekranını desteklemez, düğme orada gizli
+var fullBtn = $('s3dFull');
+var reqFull = stage.requestFullscreen || stage.webkitRequestFullscreen;
+if (!reqFull) fullBtn.hidden = true;
+fullBtn.addEventListener('click', function () {
+  if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else reqFull.call(stage);
 });
 if (coarse) { var hint = $('s3dHint'); if (hint) { hint.setAttribute('data-i18n', 's3d_hint_touch'); hint.textContent = T('s3d_hint_touch'); } }
 
@@ -334,10 +368,23 @@ var first = true, running = true, modelReady = false;
 studio.ready.then(function () { modelReady = true; });
 document.addEventListener('visibilitychange', function () { running = !document.hidden; last = performance.now(); });
 
+// çözünürlük ölçekleme: 2 sn ortalama kare süresi uzunsa piksel oranını düşür, rahatsa geri yükselt (ısınan telefonda akıcı kalır)
+var perf = { t: 0, n: 0, sum: 0 };
+function adapt(ms) {
+  if (!modelReady || ms <= 0 || ms > 250) return;
+  perf.n++; perf.sum += ms; perf.t += ms;
+  if (perf.t < 2000) return;
+  var avg = perf.sum / perf.n, next = pr;
+  if (avg > 38 && pr > 0.7) next = Math.max(0.7, pr - 0.15);
+  else if (avg < 22 && pr < PR_MAX) next = Math.min(PR_MAX, pr + 0.1);
+  perf.t = perf.n = perf.sum = 0;
+  if (next !== pr) { pr = next; renderer.setPixelRatio(pr); resize(); }
+}
 function frame() {
   requestAnimationFrame(frame);
   if (!running) return;
   var now = performance.now();
+  adapt(now - last);
   var dt = Math.min((now - last) / 1000, 0.05);
   last = now; elapsed += dt;
   var t = elapsed;
