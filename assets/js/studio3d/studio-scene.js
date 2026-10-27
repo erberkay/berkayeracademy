@@ -6,7 +6,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
-var MODEL_V = '202610271900';
+var MODEL_V = '202610272000';
 
 var DY = 0.76; // masa üst yüzeyi
 
@@ -256,7 +256,7 @@ export function buildStudio(renderer, CONFIG) {
 
   // ---------- masa düzeni: Blender modeli (tools/studio3d/build_desk.py → assets/models/studio-desk.glb)
   // Baskılı yüzeyler GLB'de TEX_* / SCREEN_* adlı malzemeler; dokular burada canvas ile çizilip bağlanır.
-  obst(-1.0, 1.0, -3.2, -2.55); obst(-2.6, -1.9, -2.1, -0.8); obst(-1.0, -0.45, -2.55, -2.3); obst(0.45, 1.0, -2.55, -2.3);
+  obst(-1.2, 1.2, -3.2, -2.55); obst(-2.6, -1.9, -2.1, -0.8); obst(-1.2, -0.45, -2.55, -2.3); obst(0.45, 1.2, -2.55, -2.3); obst(-2.65, -2.25, -2.6, -2.2); obst(-2.65, -2.25, -0.7, -0.3);
 
   function gtex(w, h, draw, o) { var t = ctex(w, h, draw, o); t.flipY = false; return t; }
 
@@ -575,22 +575,22 @@ export function buildStudio(renderer, CONFIG) {
   ready.then(function () {
     return Promise.all([
       loadGlb('ps5', function (r) { r.position.set(-0.6, DY, -3.06); r.rotation.y = 0.12; }),
-      loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.57); r.rotation.y = -0.25; r.rotation.x = -1.0; r.userData.sitOn = DY + 0.002; }),
+      loadGlb('dualsense', function (r) { r.position.set(-0.44, DY, -2.59); r.rotation.order = 'YZX'; r.rotation.set(-0.9, -0.25, -0.25); r.userData.sitOn = DY + 0.002; }),
       loadGlb('grogu', function (r) { r.position.set(0.44, DY, -3.05); r.rotation.y = -0.3; }),
       loadGlb('djconsole', function (r) { r.position.set(-2.25, 0.9, -1.45); r.rotation.y = Math.PI / 2; r.userData.sitOn = 0.9; }),
-      loadGlb('mxmaster', function (r) { r.position.set(0.18, DY, -2.62); r.rotation.y = 0.15 + Math.PI; r.userData.sitOn = DY + 0.001; }),
-      loadGlb('macbook', function (r) { r.position.set(0.8, DY + 0.055, -2.61); r.rotation.y = -0.15; r.rotation.x = 0.244; })
+      loadGlb('mxmaster', function (r) { r.position.set(0.22, DY, -2.62); r.rotation.y = 0.15 + Math.PI; r.userData.sitOn = DY + 0.001; }),
+      loadGlb('macbook', function (r) { r.position.set(1.0, DY + 0.055, -2.61); r.rotation.y = -0.15; r.rotation.x = 0.244; })
     ]);
   });
   hot('s3d_t_push', -0.78, DY + 0.2, -2.53);
   hot('s3d_t_screen', -0.05, DY + 0.62, -3.06);
-  hot('s3d_t_mon', -0.85, DY + 0.68, -2.98);
+  hot('s3d_t_mon', -1.05, DY + 0.68, -2.98);
   hot('s3d_t_iface', -0.02, DY + 0.24, -2.9);
-  hot('s3d_t_drum', -0.34, DY + 0.22, -2.84);
-  hot('s3d_t_303', 0.34, DY + 0.1, -2.86);
-  hot('s3d_t_synth', 0.42, DY + 0.2, -2.62);
-  hot('s3d_t_laptop', 0.8, DY + 0.33, -2.61);
-  hot('s3d_t_rec', 0.76, DY + 0.06, -2.33);
+  hot('s3d_t_drum', -0.34, DY + 0.22, -2.86);
+  hot('s3d_t_303', 0.27, DY + 0.1, -2.86);
+  hot('s3d_t_synth', 0.62, DY + 0.2, -2.8);
+  hot('s3d_t_laptop', 1.0, DY + 0.33, -2.61);
+  hot('s3d_t_rec', 0.62, DY + 0.06, -2.42);
   hot('s3d_t_dj', -2.25, 1.08, -1.45);
   // AudioFuse yükselticisinin altındaki kırmızı ışık ve Grogu'nun yanındaki mumlar
   ledLight(-0.02, DY + 0.03, -2.92, 0.22, 1.0);
