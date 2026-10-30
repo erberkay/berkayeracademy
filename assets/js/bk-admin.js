@@ -3781,7 +3781,7 @@ async function adminGrantRescheduleCredit(studentUid, resDataInit) {
 var _admCamp = { list: [], dirty: false };
 function admCampSource() {
   return (_campaigns || PACKAGES).map(c => ({ id: c.id, name: c.name, months: c.months, weekly: c.weekly,
-    discount: c.discount, active: c.active !== false, best: c.best === true }));
+    hours: campaignHours(c), discount: c.discount, active: c.active !== false, best: c.best === true }));
 }
 function admCampInit() {
   if (!_admCamp.dirty) _admCamp.list = admCampSource();
