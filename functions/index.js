@@ -74,9 +74,9 @@ ${lessonLine}
 
 Lütfen ödemenizi aşağıdaki hesaba yapınız:
 
-Banka : Garanti Bankası
+Banka : VakıfBank
 İsim  : Muhammet Berkay Er
-IBAN  : TR35 0006 2000 6870 0006 8982 06
+IBAN  : TR46 0001 5001 5800 7392 5136 44
 
 Ödeme ders saatine kadar gerçekleşmelidir. Gerçekleşmediği takdirde derse giriş butonu aktifleşmeyecektir.
 
@@ -107,9 +107,9 @@ berkayeracademy.com`,
           </div>
           <p style="margin:0 0 12px;font-size:14px;color:#444;line-height:1.6;">Lütfen ödemenizi aşağıdaki hesaba yapınız:</p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f8f8;border-radius:6px;padding:16px;margin-bottom:24px;">
-            <tr><td style="font-size:12px;color:#888;padding:3px 0;">Banka</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">Garanti Bankası</td></tr>
+            <tr><td style="font-size:12px;color:#888;padding:3px 0;">Banka</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">VakıfBank</td></tr>
             <tr><td style="font-size:12px;color:#888;padding:3px 0;">İsim</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">Muhammet Berkay Er</td></tr>
-            <tr><td style="font-size:12px;color:#888;padding:3px 0;">IBAN</td><td style="font-size:13px;color:#222;font-weight:bold;text-align:right;font-family:monospace;letter-spacing:1px;">TR35 0006 2000 6870 0006 8982 06</td></tr>
+            <tr><td style="font-size:12px;color:#888;padding:3px 0;">IBAN</td><td style="font-size:13px;color:#222;font-weight:bold;text-align:right;font-family:monospace;letter-spacing:1px;">TR46 0001 5001 5800 7392 5136 44</td></tr>
           </table>
           <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:12px 16px;margin-bottom:20px;">
             <p style="margin:0;font-size:13px;color:#856404;font-weight:bold;">⚠️ Ödeme ders saatine kadar gerçekleşmelidir.</p>
