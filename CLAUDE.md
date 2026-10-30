@@ -185,6 +185,8 @@ Because of this, the student "↺ Ertele" button does **not** write lessons dire
 
 These flows live almost entirely inside `booking.html` (~8700 lines) — single source of truth for the panel UX. Admin UI (AdminPaneli design): `#admRoot` (`.adm-*`), own sidebar on desktop (shell header/footer hidden via `beShell.hide`, `html.bk-admin`), section tabs `#admRoot[data-tab]` at ≤1024; "Öğrenci görünümü" opens the request form as a read-only preview (`_bkAdminPreview`: submit and placement test disabled).
 
+**Yönetici paneli ayrı dosyada:** `assets/js/bk-admin.js` panelin markup'ını (`#admMount` yerine basar), kodunu ve tüm `adm_*` metinlerini taşır; `booking.html` onu yalnız yönetici oturumunda yükler (`bkLoadAdmin()` → `renderAdminPanel()`). Öğrencinin indirdiği sayfa kaynağında yönetici metni, yönetici kodu ya da yönetimin nasıl çalıştığını anlatan yorum bulunmamalı (ziyaretçiler ve yapay zekâ araçları kaynağı okuyor). Ortak yardımcılar (`escHtml`, önizleme bayrakları, erteleme yardımcıları) `booking.html`'de kalır; `adm_*` anahtarları `i18n.js`'e değil `bk-admin.js`'e eklenir (`window._i18n.add`).
+
 ## Auth Patterns
 
 - `authDomain` is `berkayeracademy.com` (same-origin `/__/auth/handler`; the cross-origin `firebaseapp.com` handler broke on iOS Safari / in-app browsers with "missing initial state"). The OAuth client must list `https://berkayeracademy.com/__/auth/handler` as a redirect URI.
