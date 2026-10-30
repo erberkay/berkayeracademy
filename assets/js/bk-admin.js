@@ -1387,7 +1387,7 @@ function bkDemoApprove() {
   } else {
     const isSingle = r.lesson_type === 'single';
     const lessons = calculateLessonDates(r.schedule, isSingle ? 1 : r.duration_months, isSingle ? 1 : (r.lessons_per_month || 4),
-      isSingle ? toDateStr(new Date()) : r.preferred_start_date);
+      isSingle ? toDateStr(new Date()) : r.preferred_start_date, undefined, isSingle ? 0 : bkPkgCap(r));
     const credits = {}, t = new Date();
     for (let i = 0; i < r.duration_months; i++) {
       const d = new Date(t.getFullYear(), t.getMonth() + i, 1);
@@ -1705,7 +1705,7 @@ function renderAdminRequests(reqSnap) {
     const isSingleReq = r.lesson_type === 'single';
     let reqLessonCount = 1;
     if (!isSingleReq && !isTrialReq) {
-      try { reqLessonCount = calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date).length; }
+      try { reqLessonCount = calculateLessonDates(r.schedule, r.duration_months, r.lessons_per_month, r.preferred_start_date, undefined, bkPkgCap(r)).length; }
       catch (e) { reqLessonCount = 0; }
     }
     // Paket: talepteki fiyat alanlarına güvenilmez — package_id settings/campaigns'teki
@@ -1761,7 +1761,7 @@ function renderAdminRequests(reqSnap) {
         const _effLpm   = isSingleReq ? 1 : (r.lessons_per_month || 4);
         const _effStart = isSingleReq ? toDateStr(new Date()) : r.preferred_start_date;
         // Check conflicts before accepting
-        const allLessons = calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart);
+        const allLessons = calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart, undefined, isSingleReq ? 0 : bkPkgCap(r));
         const conflicts = await checkConflicts(allLessons, r.from_uid);
         // Onay penceresi: oluşacak tarihler, tutar, paket; çakışan tarihler ayrıca listelenir.
         // Paketli talepte öğrenci yalnız yapılacak ders kadar öder ama paketin indirim
@@ -1797,7 +1797,7 @@ function renderAdminRequests(reqSnap) {
         }
         // Final conflict re-check right before committing (closes race window)
         const freshConflicts = await checkConflicts(
-          calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart)
+          calculateLessonDates(r.schedule, _effDur, _effLpm, _effStart, undefined, isSingleReq ? 0 : bkPkgCap(r))
             .filter(l => !conflicts.has(l.date + '_' + l.time)),
           r.from_uid
         );
@@ -3884,10 +3884,15 @@ async function admCampOnClick(e) {
   const c = row && _admCamp.list.find(x => x.id === row.dataset.id);
   if (!c) return;
   const act = b.dataset.act;
-  if (act === 'mon-') c.months = Math.max(1, c.months - 1);
-  else if (act === 'mon+') c.months = Math.min(12, c.months + 1);
-  else if (act === 'wk-') c.weekly = Math.max(1, c.weekly - 1);
-  else if (act === 'wk+') c.weekly = Math.min(CAMP_EDIT_WEEKLY_MAX, c.weekly + 1);
+  // ay değişince toplam saat yeniden ay × 4 hafta × haftalık ders olur
+  if (act === 'mon-') { c.months = Math.max(1, c.months - 1); delete c.hours; }
+  else if (act === 'mon+') { c.months = Math.min(12, c.months + 1); delete c.hours; }
+  else if (act === 'wk-' || act === 'wk+') {
+    // toplam saat 1'er değişir; haftalık ders sayısı ondan türer
+    const weeks = c.months * PKG_LESSONS_PER_MONTH;
+    c.hours = Math.min(weeks * CAMP_EDIT_WEEKLY_MAX, Math.max(1, campaignHours(c) + (act === 'wk+' ? 1 : -1)));
+    c.weekly = Math.max(1, Math.ceil(c.hours / weeks));
+  }
   else if (act === 'dc-') c.discount = Math.max(0, c.discount - 1);
   else if (act === 'dc+') c.discount = Math.min(CAMP_EDIT_DISCOUNT_MAX, c.discount + 1);
   else if (act === 'best') { const on = !c.best; _admCamp.list.forEach(x => { x.best = false; }); c.best = on; }
@@ -4746,7 +4751,7 @@ async function acceptRequest(reqId, r, conflicts = new Set(), opts = {}) {
   const effDur   = isSingle ? 1 : r.duration_months;
   const effLpm   = isSingle ? 1 : (r.lessons_per_month || 4);
   const effStart = isSingle ? toDateStr(new Date()) : r.preferred_start_date;
-  const allLessons = calculateLessonDates(r.schedule, effDur, effLpm, effStart);
+  const allLessons = calculateLessonDates(r.schedule, effDur, effLpm, effStart, undefined, isSingle ? 0 : bkPkgCap(r));
   // Skip conflicting slots
   const lessons = allLessons.filter(l => !conflicts.has(l.date + '_' + l.time));
   if (lessons.length === 0) { toast('Tüm ders saatleri çakışıyor — talep kabul edilemez.', true); return; }

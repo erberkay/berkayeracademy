@@ -3115,7 +3115,8 @@ function slotStartsTooSoon(dateObj, time, now) {
   const start = new Date(dateObj); start.setHours(h || 0, m || 0, 0, 0);
   return start.getTime() < now.getTime() + MIN_LEAD_MS;
 }
-function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate, now = new Date()) {
+// maxCount: paketin toplam saati haftalık düzenle tam bölünmüyorsa (ör. 1 ay · 5 saat) en erken maxCount ders tutulur
+function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate, now = new Date(), maxCount = 0) {
   if (!lessonsPerMonth) lessonsPerMonth = 4;
   const today = startDate ? new Date(startDate + 'T00:00:00') : new Date();
   today.setHours(0,0,0,0);
@@ -3133,20 +3134,25 @@ function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDa
       dates.push({ date: toDateStr(d), time: s.time, status: 'scheduled' });
     }
   });
-  dates.sort((a, b) => a.date.localeCompare(b.date));
-  return dates;
+  dates.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  return maxCount > 0 && dates.length > maxCount ? dates.slice(0, maxCount) : dates;
+}
+// Paketli talepte kanonik paketin toplam saati (ders üst sınırı); paketsiz ya da geçersizse 0
+function bkPkgCap(r) {
+  const chk = r ? requestPackageCheck(r) : null;
+  return chk && chk.valid ? packagePrice(chk.pkg).hours : 0;
 }
 
 // Talep formu / bekleme ekranı için ilk ve son ders: calculateLessonDates'in aynısı.
 // skipped: 24 saat kuralı yüzünden en az bir seçili günün ilk haftası atlandıysa true;
 // skippedSlots: atlanan yuvalar [{ date, time, past }] (past: saati çoktan geçmiş).
 // Tek derste (single) ders onay anında belirlenir; buradaki tarih "şu an onaylansa" tarihidir.
-function bkFirstLessonInfo(schedule, months, lpm, startDate, isSingle) {
+function bkFirstLessonInfo(schedule, months, lpm, startDate, isSingle, cap = 0) {
   if (!Array.isArray(schedule) || !schedule.length) return null;
   const now = new Date();
   const dates = isSingle
     ? calculateLessonDates(schedule.slice(0, 1), 1, 1, toDateStr(now), now)
-    : calculateLessonDates(schedule, months || 1, lpm || 4, startDate || '', now);
+    : calculateLessonDates(schedule, months || 1, lpm || 4, startDate || '', now, cap);
   if (!dates.length) return null;
   const base = startDate && !isSingle ? new Date(startDate + 'T00:00:00') : new Date(now);
   base.setHours(0, 0, 0, 0);
@@ -4776,7 +4782,10 @@ function normalizeCampaign(c) {
   if (!Number.isInteger(weekly) || weekly < 1 || weekly > 7) return null;
   if (!Number.isFinite(discount) || discount < 0 || discount >= 100) return null;
   const name = String(c.name == null ? '' : c.name).trim().slice(0, 40) || id;
-  return { id, name, months, weekly, discount, active: c.active !== false, best: c.best === true };
+  // Toplam saat tek tek ayarlanabilir: haftalık ders sayısı ondan türer (yukarı yuvarlanır), fazlası son haftalarda kesilir
+  const weeks = months * PKG_LESSONS_PER_MONTH, h = Number(c.hours);
+  const hours = Number.isInteger(h) && h >= 1 && h <= weeks * 7 ? h : weeks * weekly;
+  return { id, name, months, weekly: Math.max(1, Math.ceil(hours / weeks)), hours, discount, active: c.active !== false, best: c.best === true };
 }
 // Belge verisinden geçerli kampanya listesi (tekrarlanan id'ler atlanır) — boşsa null
 function campaignsFromDoc(data) {
@@ -4798,7 +4807,7 @@ function findPackage(id) { return allPackages().find(p => p.id === id) || PACKAG
 function packagePrice(pkgOrId) {
   const p = typeof pkgOrId === 'string' ? findPackage(pkgOrId) : pkgOrId;
   if (!p) return null;
-  const hours = p.months * PKG_LESSONS_PER_MONTH * p.weekly;
+  const hours = p.hours > 0 ? p.hours : p.months * PKG_LESSONS_PER_MONTH * p.weekly;
   const list  = hours * LESSON_PRICE;
   const save  = Math.round(list * p.discount / 100);
   const total = list - save;
@@ -4973,7 +4982,7 @@ function campaignItemsForSave(list) {
     if (!c || out.length >= CAMP_MAX_ITEMS) return;
     const n = normalizeCampaign({
       id: c.id, name: c.name,
-      months: Math.round(Number(c.months)), weekly: Math.round(Number(c.weekly)),
+      months: Math.round(Number(c.months)), weekly: Math.round(Number(c.weekly)), hours: Math.round(Number(c.hours)) || undefined,
       discount: Math.min(CAMP_EDIT_DISCOUNT_MAX, Math.max(0, Math.round(Number(c.discount) || 0))),
       active: c.active !== false, best: c.best === true,
     });
@@ -4993,8 +5002,10 @@ function newCampaignId(list, seed) {
   return id;
 }
 // Editör adımlayıcılarının sınırları (ay 1–12, haftalık 1–2, indirim 0–90)
+function campaignHours(c) { return c.hours > 0 ? c.hours : c.months * PKG_LESSONS_PER_MONTH * c.weekly; }
 function campaignStepLimits(c) {
-  return { monMin: c.months <= 1, monMax: c.months >= 12, wkMin: c.weekly <= 1, wkMax: c.weekly >= CAMP_EDIT_WEEKLY_MAX,
+  const h = campaignHours(c), weeks = c.months * PKG_LESSONS_PER_MONTH;
+  return { monMin: c.months <= 1, monMax: c.months >= 12, wkMin: h <= 1, wkMax: h >= weeks * CAMP_EDIT_WEEKLY_MAX,
     dcMin: c.discount <= 0, dcMax: c.discount >= CAMP_EDIT_DISCOUNT_MAX };
 }
 // Editör alt satırı: aktif sayısı, en yüksek indirim, saat başı en ucuz ücret (aktifler)
@@ -5052,7 +5063,8 @@ function tlNum(n) { return Math.round(n).toLocaleString('tr-TR'); }
 function pkgMonthsHours(months, h) { return pkgT('bk_pkg_mh', `{m} Ay · {h} saat`).replace('{m}', months).replace('{h}', h); }
 function pkgPlanText(p) {
   const perMonth = PKG_LESSONS_PER_MONTH * p.weekly;
-  if (p.months > 4) return pkgMonthsHours(p.months, perMonth * p.months);
+  const total = p.hours > 0 ? p.hours : perMonth * p.months;
+  if (p.months > 4 || total !== perMonth * p.months) return pkgMonthsHours(p.months, total);
   return pkgMonthsHours(p.months, Array.from({ length: p.months }, () => perMonth).join(' + '));
 }
 // "Haftada 2 ders saati" — öğrencinin ızgaradan seçeceği haftalık saat sayısı
@@ -5228,7 +5240,7 @@ function updateSlotSummary() {
   const firstSum = document.getElementById('reqSummaryFirst');
   const startVal = document.getElementById('reqStartDate')?.value || '';
   const fi = adjusted.length && (_reqType === 'single' ? adjusted.length === 1 : (pkg && st === 'ok'))
-    ? bkFirstLessonInfo(adjusted, pkg ? pkg.months : 1, PKG_LESSONS_PER_MONTH, startVal, _reqType === 'single') : null;
+    ? bkFirstLessonInfo(adjusted, pkg ? pkg.months : 1, PKG_LESSONS_PER_MONTH, startVal, _reqType === 'single', pkg ? packagePrice(pkg).hours : 0) : null;
   if (firstLine) {
     if (fi) {
       const firstTxt = bkDateTimeShort(fi.first);
@@ -5436,7 +5448,7 @@ async function submitRequest() {
   const phoneE164 = _phoneParsed.e164;
 
   if (!isSingle) {
-    const totalLessons = calculateLessonDates(schedule, duration, lessonsPerMonth, preferredStartDate).length;
+    const totalLessons = calculateLessonDates(schedule, duration, lessonsPerMonth, preferredStartDate, undefined, pkg ? packagePrice(pkg).hours : 0).length;
     if (totalLessons < 3) {
       errEl.textContent = window._i18n?.t('bk_err_min_lessons')||'En az 3 ders seçilmelidir.';
       errEl.style.display = ''; return;
@@ -5744,7 +5756,7 @@ async function renderPendingView(reqData) {
     const isSinglePending = reqData.lesson_type === 'single';
     // Tipli talepte (ödeme/ek ders/erteleme) schedule yoktur — hesap hatası özeti bozmasın
     const pendingLessonCount = isSinglePending ? 1
-      : (Array.isArray(reqData.schedule) ? calculateLessonDates(reqData.schedule, reqData.duration_months, reqData.lessons_per_month).length : 0);
+      : (Array.isArray(reqData.schedule) ? calculateLessonDates(reqData.schedule, reqData.duration_months, reqData.lessons_per_month, undefined, undefined, bkPkgCap(reqData)).length : 0);
     // Paketli talep: tutar kanonik kampanyadan (talepteki package_* alanlarından değil)
     const _pkChk = isSinglePending ? null : requestPackageCheck(reqData);
     const _pk = _pkChk && _pkChk.valid ? _pkChk.pkg : null;
@@ -5753,7 +5765,7 @@ async function renderPendingView(reqData) {
     const _ri2 = window._i18n; const _isEn2 = _ri2?.getLang()==='en';
     // İlk ders: talep şimdi onaylansa hangi gün başlar (24 saat kuralı + istenen başlangıç)
     const _fi = Array.isArray(reqData.schedule) && reqData.schedule.length
-      ? bkFirstLessonInfo(reqData.schedule, reqData.duration_months, reqData.lessons_per_month || PKG_LESSONS_PER_MONTH, reqData.preferred_start_date || '', isSinglePending) : null;
+      ? bkFirstLessonInfo(reqData.schedule, reqData.duration_months, reqData.lessons_per_month || PKG_LESSONS_PER_MONTH, reqData.preferred_start_date || '', isSinglePending, isSinglePending ? 0 : bkPkgCap(reqData)) : null;
     summary.innerHTML = `
       <dl class="bk-dl">
         ${_pk ? _row(pkgT('bk_pkg_col_pkg', 'Paket'), `${pkgName(_pk)} · ${pkgPlanText(_pk)}`)
@@ -7097,7 +7109,7 @@ function isReservationActive(data) {
 // access-request docs are ignored on read; they'll be dropped by the
 // admin panel's cleanup path over time.
 // Yönetim bölümü ayrı dosyada; yalnız yönetici oturumunda yüklenir
-const BK_ADMIN_V = '202610300200';
+const BK_ADMIN_V = '202610300300';
 let _bkAdminLoad = null;
 function bkLoadAdmin() {
   if (_bkAdminLoad) return _bkAdminLoad;
