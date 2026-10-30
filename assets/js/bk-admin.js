@@ -200,7 +200,8 @@
     adm_prev_unpaid:           { tr: `Ödeme bekliyor hâli`, en: 'Awaiting payment' },
     adm_prev_restart:          { tr: `Baştan başla`, en: 'Start over' },
     adm_price_monthly:         { tr: 'Aylık · saat başı', en: 'Monthly · per hour' },
-    adm_price_note:            { tr: 'Liste fiyatları sabittir; kampanya indirimleri bu saat ücretinden hesaplanır.', en: 'List prices are fixed; campaign discounts are calculated from this hourly rate.' },
+    adm_price_note:            { tr: 'Kampanya indirimleri saat başı ücretten hesaplanır. Yeni fiyat bekleyen ve yeni taleplere uygulanır; mevcut öğrencilerin fiyatı değişmez.', en: 'Campaign discounts are calculated from the hourly rate. A new price applies to pending and new requests; current students keep their price.' },
+    adm_price_save:            { tr: 'Fiyatları kaydet', en: 'Save prices' },
     adm_price_single:          { tr: 'Tek ders', en: 'Single lesson' },
     adm_price_title:           { tr: 'Ders başı ücret (TL)', en: 'Price per lesson (TL)' },
     adm_private_note:          { tr: 'Özel not · sadece sen görürsün', en: 'Private note · only you see this' },
@@ -995,6 +996,74 @@ async function renderAdminPanel() {
       e => { const c=errId(); studList.innerHTML = `<div class="adm-empty is-err">${escHtml(bkT('adm_stu_err', 'Öğrenciler yüklenemedi'))} (${c}): ${escHtml(e.message||e.code)}</div>`; });
 }
 
+// ── Liste fiyatları: "Ders başı ücret" kartında düzenlenir, settings/campaigns'e yazılır ──
+// Kayıtta birim fiyatı rezervasyonunda olmayan öğrencilerin fiyatı eski liste fiyatında sabitlenir
+// (price_source 'list'); yeni onaylar o günkü fiyatı zaten yazar (reservationPriceFields).
+function admPriceSync() {
+  const m = document.getElementById('admPriceInM'), s = document.getElementById('admPriceInS');
+  if (m && document.activeElement !== m) m.value = LESSON_PRICE;
+  if (s && document.activeElement !== s) s.value = LESSON_PRICE_SINGLE;
+  admSet('admCampBase', tlFmt(LESSON_PRICE));
+  admSet('admCampSingle', tlFmt(LESSON_PRICE_SINGLE));
+}
+function admPriceEditor() {
+  const cell = document.getElementById('admPriceMonthly');
+  const card = cell && cell.closest('.adm-panel');
+  if (!card) return;
+  if (!card.dataset.edit) {
+    card.dataset.edit = '1';
+    [['admPriceMonthly', 'admPriceInM'], ['admPriceSingle', 'admPriceInS']].forEach(([spanId, inId]) => {
+      const span = document.getElementById(spanId);
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.min = '100'; inp.max = '100000'; inp.step = '50'; inp.inputMode = 'numeric';
+      inp.className = 'input input-sm input-mono'; inp.id = inId;
+      inp.setAttribute('aria-label', span.previousElementSibling ? span.previousElementSibling.textContent : '');
+      span.textContent = ''; span.append(inp);
+    });
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'btn btn-sm btn-primary'; btn.id = 'admPriceSave';
+    btn.setAttribute('data-i18n', 'adm_price_save'); btn.textContent = bkT('adm_price_save', 'Fiyatları kaydet');
+    btn.onclick = admPriceSave;
+    const st = document.createElement('div'); st.className = 'form-status'; st.id = 'admPriceStatus'; st.setAttribute('role', 'status');
+    card.querySelector('.adm-prices').after(btn, st);
+  }
+  admPriceSync();
+  // kampanya belgesi okununca güncel fiyatlar alanlara yansır
+  loadCampaigns().then(admPriceSync);
+}
+async function admPriceSave() {
+  const btn = document.getElementById('admPriceSave'), status = document.getElementById('admPriceStatus');
+  const m = Math.round(Number(document.getElementById('admPriceInM').value));
+  const sg = Math.round(Number(document.getElementById('admPriceInS').value));
+  const ok = v => isFinite(v) && v >= 100 && v <= 100000;
+  if (!ok(m) || !ok(sg)) { admStatus(status, 'Fiyat 100 ile 100.000 TL arasında olmalı.', 'err'); return; }
+  if (m === LESSON_PRICE && sg === LESSON_PRICE_SINGLE) { admStatus(status, 'Değişiklik yok.', ''); return; }
+  const oldM = LESSON_PRICE, oldS = LESSON_PRICE_SINGLE;
+  // tüm rezervasyonlar (panel listesi created_at'siz eski kayıtları göstermez)
+  let all;
+  try { all = (await db.collection('reservations').get()).docs.map(doc => ({ id: doc.id, d: doc.data() })); }
+  catch (e) { const c = errId(); admStatus(status, `Hata (${c}): ` + (e.message || e.code), 'err'); return; }
+  const freeze = all.filter(({ d }) => d && d.lesson_type !== 'trial' && d.price_source !== 'package'
+    && !(d.custom_lesson_price > 0) && typeof d.custom_total_price !== 'number');
+  const msg = `Saat başı ${tlFmt(oldM)} → ${tlFmt(m)}, tek ders ${tlFmt(oldS)} → ${tlFmt(sg)}. `
+    + 'Kampanya paketleri ile bekleyen ve yeni talepler yeni fiyattan hesaplanır. '
+    + (freeze.length ? `Mevcut ${freeze.length} öğrencinin fiyatı eski fiyatta sabitlenir.` : 'Mevcut öğrencilerin fiyatı değişmez.');
+  if (!await admConfirm(msg, { title: bkT('adm_price_save', 'Fiyatları kaydet'), ok: bkT('adm_price_save', 'Fiyatları kaydet') })) return;
+  btn.disabled = true;
+  try {
+    const batch = db.batch();
+    batch.set(db.collection('settings').doc('campaigns'), { list_price: m, single_price: sg, prices_updated_at: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    freeze.forEach(({ id, d }) => batch.update(db.collection('reservations').doc(id), { custom_lesson_price: d.lesson_type === 'single' ? oldS : oldM, price_source: 'list' }));
+    await batch.commit();
+    LESSON_PRICE = m; LESSON_PRICE_SINGLE = sg;
+    admPriceSync();
+    if (typeof admCampRender === 'function') admCampRender();
+    if (_admLastReqSnap) renderAdminRequests(_admLastReqSnap);
+    admStatus(status, '✓ Fiyatlar kaydedildi.', 'ok');
+  } catch (e) { const c = errId(); admStatus(status, `Hata (${c}): ` + (e.message || e.code), 'err'); }
+  btn.disabled = false;
+}
+
 // ── Yan panel, sekmeler, ay seçici, kullanıcı kartı (bağlama bir kez) ──
 function admInitChrome() {
   const name = _user.displayName?.trim() || _user.email?.split('@')[0] || '';
@@ -1005,10 +1074,7 @@ function admInitChrome() {
     if (_user.photoURL) { const i = document.createElement('img'); i.src = _user.photoURL; i.alt = ''; ava.append(i); }
     else ava.textContent = admInitial(name);
   }
-  admSet('admPriceMonthly', tlFmt(LESSON_PRICE));
-  admSet('admPriceSingle', tlFmt(LESSON_PRICE_SINGLE));
-  admSet('admCampBase', tlFmt(LESSON_PRICE));
-  admSet('admCampSingle', tlFmt(LESSON_PRICE_SINGLE));
+  admPriceEditor();
   admSyncLang();
   admSetMonthLabel();
   admSetTab(_admTab, false);
@@ -3889,7 +3955,7 @@ async function admCampPublish() {
   const orig = btn.textContent;
   btn.disabled = true; btn.textContent = bkT('adm_publishing', 'Yayınlanıyor…');
   try {
-    await db.collection('settings').doc('campaigns').set({ items, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection('settings').doc('campaigns').set({ items, list_price: LESSON_PRICE, single_price: LESSON_PRICE_SINGLE, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
     setCampaigns(campaignsFromDoc({ items }));
     _campaignsReq = Promise.resolve();
     _campaignsMeta = { exists: true, valid: true, updatedAt: new Date(), loaded: true };

@@ -4733,8 +4733,14 @@ function adjustSchedule(rawSlots) {
 // metin olarak çekip değerlendirir). Tek kaynak burası: paket tablosu, özet şeridi,
 // fiyat tahmini, tek ders notu, talep kaydı, admin onayı ve öğrenci paneli buradan
 // türetir; markup'a rakam yazılmaz.
-const LESSON_PRICE        = 2500; // TL per lesson hour — paketlerin liste fiyatı
-const LESSON_PRICE_SINGLE = 3000; // TL per lesson — single booking
+let LESSON_PRICE        = 2500; // TL per lesson hour — paketlerin liste fiyatı (settings/campaigns.list_price varsa o)
+let LESSON_PRICE_SINGLE = 3000; // TL per lesson — single booking (settings/campaigns.single_price varsa o)
+// Panelden değiştirilen liste fiyatları settings/campaigns'te; geçersizse varsayılan kalır
+function applyListPrices(data) {
+  const ok = v => typeof v === 'number' && isFinite(v) && v >= 100 && v <= 100000;
+  if (data && ok(data.list_price)) LESSON_PRICE = Math.round(data.list_price);
+  if (data && ok(data.single_price)) LESSON_PRICE_SINGLE = Math.round(data.single_price);
+}
 const LESSON_PRICE_TRIAL  = 0;    // deneme dersi ücretsiz (özet şeridinde gösterilir)
 
 // weekly = öğrencinin ızgaradan seçeceği haftalık ders saati; her haftalık saat
@@ -4852,7 +4858,7 @@ function requestPackageCheck(r) {
 // Önceki rezervasyonda paketsiz onayda KORUNACAK bir özel fiyat var mı? (admin'in
 // elle girdiği ya da price_source'suz eski fiyat). Onay düğmesi bunu admin'e sorar.
 function keptCustomPrice(prevRes) {
-  if (!prevRes || prevRes.price_source === 'package') return null;
+  if (!prevRes || prevRes.price_source === 'package' || prevRes.price_source === 'list') return null;
   const total = prevRes.custom_total_price, per = prevRes.custom_lesson_price;
   if (typeof total !== 'number' && !(per > 0)) return null;
   return { total: typeof total === 'number' ? total : null, per: per > 0 ? per : null };
@@ -4885,6 +4891,13 @@ function reservationPriceFields(r, lessonCount, prevRes, del, opts = {}) {
   const dropCustom = prevSource === 'package' || (opts.keepAdminPrice === false && !!keptCustomPrice(prevRes));
   if (prevSource !== 'admin' || dropCustom) out.price_source = del();
   if (dropCustom) { out.custom_lesson_price = del(); out.custom_total_price = del(); }
+  // Korunan özel fiyat yoksa onay günündeki liste fiyatı rezervasyona yazılır: liste fiyatı
+  // sonradan panelden değişse de bu öğrencinin fiyatı değişmez
+  if (dropCustom || !keptCustomPrice(prevRes)) {
+    out.price_source = 'list';
+    out.custom_lesson_price = r.lesson_type === 'single' ? LESSON_PRICE_SINGLE : LESSON_PRICE;
+    out.custom_total_price = del();
+  }
   return out;
 }
 
@@ -5010,6 +5023,7 @@ function loadCampaigns(force) {
   _campaignsReq = db.collection('settings').doc('campaigns').get()
     .then(snap => {
       const data = snap && snap.exists ? snap.data() : null;
+      applyListPrices(data);
       const list = data ? campaignsFromDoc(data) : null;
       const at = data && data.updated_at && typeof data.updated_at.toDate === 'function' ? data.updated_at.toDate() : null;
       _campaignsMeta = { exists: !!data, valid: !!list, updatedAt: at, loaded: true, error: null };
@@ -7083,7 +7097,7 @@ function isReservationActive(data) {
 // access-request docs are ignored on read; they'll be dropped by the
 // admin panel's cleanup path over time.
 // Yönetim bölümü ayrı dosyada; yalnız yönetici oturumunda yüklenir
-const BK_ADMIN_V = '202610300100';
+const BK_ADMIN_V = '202610300200';
 let _bkAdminLoad = null;
 function bkLoadAdmin() {
   if (_bkAdminLoad) return _bkAdminLoad;
