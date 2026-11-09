@@ -3109,16 +3109,23 @@ function getEndTime(time) {
 // 24 saat kuralı: bir ders saati, hesaplama anına 24 saatten az kaldıysa
 // (ör. Pazar 11:00'de Pazartesi 10:00 seçildi) o hafta atlanır; seri bir
 // sonraki haftadan başlar, öğrencinin ilk dersi diğer seçili güne kayar.
+// Ders saatleri İstanbul saatidir (+03:00, yaz saati yok): dateObj'un takvim günü + time
+// İstanbul'da hangi ana denk geliyorsa o karşılaştırılır — öğrencinin cihaz saat dilimi sonucu değiştirmez.
 const MIN_LEAD_MS = 24 * 60 * 60 * 1000;
 function slotStartsTooSoon(dateObj, time, now) {
   const [h, m] = String(time || '00:00').split(':').map(Number);
-  const start = new Date(dateObj); start.setHours(h || 0, m || 0, 0, 0);
-  return start.getTime() < now.getTime() + MIN_LEAD_MS;
+  const hm = `${String(h || 0).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+  const start = Date.parse(`${toDateStr(dateObj)}T${hm}:00+03:00`);
+  return start < now.getTime() + MIN_LEAD_MS;
+}
+// İstanbul'daki bugünün tarihi (YYYY-MM-DD)
+function bkIstTodayStr(now = new Date()) {
+  return new Date(now.getTime() + 3 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 // maxCount: paketin toplam saati haftalık düzenle tam bölünmüyorsa (ör. 1 ay · 5 saat) en erken maxCount ders tutulur
 function calculateLessonDates(schedule, durationMonths, lessonsPerMonth, startDate, now = new Date(), maxCount = 0) {
   if (!lessonsPerMonth) lessonsPerMonth = 4;
-  const today = startDate ? new Date(startDate + 'T00:00:00') : new Date();
+  const today = new Date((startDate || bkIstTodayStr(now)) + 'T00:00:00');
   today.setHours(0,0,0,0);
   const dates = [];
   const totalPerDay = durationMonths * lessonsPerMonth;
