@@ -1841,3 +1841,31 @@ exports.confirmLesson = onCall(
 const appstore = require("./appstore");
 exports.verifyAppStorePurchase = appstore.verifyAppStorePurchase;
 exports.appStoreNotifications = appstore.appStoreNotifications;
+
+// ─── Uygulama push bildirimi: notifications/{uid}/items oluşunca kullanıcının cihazlarına FCM ───
+// Belirteçler users/{uid}/private/push.tokens (uygulama yazar). Geçersiz belirteçler temizlenir.
+const {getMessaging} = require("firebase-admin/messaging");
+exports.pushOnNotification = onDocumentCreated(
+    {document: "notifications/{uid}/items/{id}", region: "europe-west1"},
+    async (event) => {
+      const n = event.data && event.data.data();
+      if (!n) return;
+      const ref = getFirestore().doc(`users/${event.params.uid}/private/push`);
+      const snap = await ref.get();
+      const tokens = (snap.exists && Array.isArray(snap.data().tokens)) ? snap.data().tokens.filter((t) => typeof t === "string") : [];
+      if (!tokens.length) return;
+      const type = String(n.type || "none");
+      const res = await getMessaging().sendEachForMulticast({
+        tokens: tokens.slice(0, 20),
+        notification: {title: "Berkay Er Academy", body: String(n.text || "").slice(0, 180)},
+        data: {type, postId: String(n.postId || ""), id: event.params.id},
+        apns: {payload: {aps: {"sound": "default", "thread-id": type}}},
+      });
+      const bad = [];
+      res.responses.forEach((r, i) => {
+        const code = r.error && r.error.code;
+        if (!r.success && /registration-token-not-registered|invalid-registration-token|invalid-argument/.test(String(code))) bad.push(tokens[i]);
+      });
+      if (bad.length) await ref.update({tokens: FieldValue.arrayRemove(...bad)});
+    },
+);
