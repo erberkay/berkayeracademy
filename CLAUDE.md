@@ -63,6 +63,10 @@ Env vars in use: `GMAIL_PASS`, `Z_ACCOUNT_ID` / `Z_CLIENT_ID` / `Z_CLIENT_SECRET
 - `confirmLesson` — student "Evet, ders yapıldı" / "Sorun bildir" (`{date,time,action,reason}`): own ended lesson, not cancelled/frozen, no decision yet, dispute ≤48 h after end → `lessons[i].confirmation = {status:'confirmed'|'disputed', at, by:'student', reason?}`; dispute → admin WhatsApp + e-mail. Admin closes a dispute in the panel (`status:'resolved', resolved_at, resolved_note`)
 - `studentSelfReschedule` — öğrencinin ders saati değişikliği **talebi** (kurallar aşağıda "Reservation update rules"): doğrular ve `lesson_requests` `type: 'time_change_request'` yazar (ders taşınmaz); admine e-posta atar, WhatsApp'ı `notifyAdminOnNewRequest` gönderir
 
+**Apple aboneliği (`functions/appstore.js`, yalnız iPhone/Mac uygulaması satar):**
+- `verifyAppStorePurchase` (callable) — StoreKit 2 işlem JWS'ini Apple kök sertifikasıyla (`functions/certs/`) doğrular, `appAccountToken` = UUID(SHA-256(uid)) ile hesaba bağlar, `reservations/{uid}.subscription` + dönemin derslerini yazar (`lesson_type: 'subscription'`, `payment_confirmed: true`, ders satırında `sub_tx`). Ürünler: `com.berkayeracademy.app.temel4` (4 saat/ay, haftada 1, ₺17.499,99) ve `.temel8` (8 saat/ay, haftada 2, ₺34.999,99); saat/haftalık `settings/subscriptions.plans` ile değişebilir, fiyat App Store Connect'te.
+- `appStoreNotifications` (HTTP, App Store Server Notifications V2 — ASC'de Production+Sandbox URL olarak kayıtlı) — yenilemede dersler, iptal/iade/bitişte durum; `appstore_notifications/{uuid}` ile tekrar işlemez, `subscriptions_index/{originalTransactionId}` → uid.
+
 **HTTP:**
 - `twilioWhatsAppWebhook` — Twilio inbound webhook (URL set in Twilio console). Signature validation logs mismatches but does not reject (Cloud Functions v2 URL reconstruction can mismatch).
 

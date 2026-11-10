@@ -1,14 +1,16 @@
-/* assets/js/auth-ui.js — shared sign-in modal: Google + e-posta/şifre.
+/* assets/js/auth-ui.js — shared sign-in modal: Google + Apple (APPLE_SIGNIN bayrağı) + e-posta/şifre.
    Plain <script> (never type="module"), loaded in <head> BEFORE the Firebase SDK,
    so firebase.auth() is only touched inside functions. API: window.bkAuth
      openLogin({ mode:'signin'|'signup'|'reset', error }) → Promise<user|null>
-     signInGoogle() · handleRedirectResult() · isEmbeddedBrowser() · errorMessage(err)
+     signInGoogle() · signInApple() · handleRedirectResult() · isEmbeddedBrowser() · errorMessage(err)
    Markup uses ui.css components only (.modal* .btn* .input .field-label .be-or .toast);
    the modal carries .be-auth (themes.css) for the new design's header. */
 (function () {
   'use strict';
 
   var SPRITE = '/assets/img/icons.svg';
+  // Apple ile giriş: Firebase Auth'ta Apple sağlayıcısı (Services ID com.berkayeracademy.web + anahtar) açılınca true yap
+  var APPLE_SIGNIN = false;
 
   // In-app browsers (WebViews). Google refuses OAuth there (403 disallowed_useragent)
   // and their partitioned storage breaks the redirect handler.
@@ -21,6 +23,7 @@
     title_reset:   { tr: `Şifre Sıfırla`, en: `Reset password` },
     close:         { tr: `Kapat`, en: `Close` },
     google:        { tr: `Google ile devam et`, en: `Continue with Google` },
+    apple:         { tr: `Apple ile devam et`, en: `Continue with Apple` },
     or_email:      { tr: `veya e-posta ile`, en: `or with email` },
     or:            { tr: `veya`, en: `or` },
     name:          { tr: `Ad Soyad`, en: `Full name` },
@@ -385,6 +388,12 @@
       gBtn = h('button', { type: 'button', class: 'btn btn-block btn-lg ' + (googleFirst ? 'btn-primary' : 'btn-ghost') }, t('google'));
       gBtn.onclick = function () { signInGoogle(); };
     }
+    // Apple — Firebase'de Apple sağlayıcısı açılana kadar APPLE_SIGNIN kapalı; Google gibi uygulama içi tarayıcıda gösterilmez
+    var aBtn = null;
+    if (mode !== 'reset' && APPLE_SIGNIN && !wv) {
+      aBtn = h('button', { type: 'button', class: 'btn btn-block btn-lg btn-ghost' }, t('apple'));
+      aBtn.onclick = function () { signInApple(); };
+    }
 
     // secondary actions
     function modeBtn(label, target) {
@@ -404,7 +413,9 @@
       webviewBlock().forEach(function (n) { body.appendChild(n); });
       body.append(M.errBox, form, h('div', { class: 'be-or field' }, t('or')), gBtn);
     } else {
-      body.append(M.errBox, h('div', { class: 'field' }, gBtn), h('div', { class: 'be-or field' }, t('or_email')), form);
+      body.append(M.errBox, h('div', { class: 'field' }, gBtn));
+      if (aBtn) body.appendChild(h('div', { class: 'field' }, aBtn));
+      body.append(h('div', { class: 'be-or field' }, t('or_email')), form);
     }
 
     d.append(closeBtn, h('div', { class: 'modal-eyebrow', 'aria-hidden': 'true' }, t('eyebrow')), h('h2', { class: 'modal-title', id: 'bkAuthTitle' }, t('title_' + mode)), body, actions);
@@ -477,9 +488,21 @@
   // Popup first. Redirect only when the popup itself was blocked / failed
   // internally, and never inside an in-app browser (Google rejects it there).
   function signInGoogle() {
+    return signInWithProvider(new firebase.auth.GoogleAuthProvider(), 'google');
+  }
+
+  // Apple ile giriş: e-posta ve ad kapsamı; Apple adı yalnız ilk girişte verir
+  function signInApple() {
+    var provider = new firebase.auth.OAuthProvider('apple.com');
+    provider.addScope('email');
+    provider.addScope('name');
+    provider.setCustomParameters({ locale: lang() === 'en' ? 'en' : 'tr' });
+    return signInWithProvider(provider, 'apple');
+  }
+
+  function signInWithProvider(provider, label) {
     var auth = getAuth();
     if (!auth) { report({ code: 'bk/unavailable' }); return Promise.resolve(null); }
-    var provider = new firebase.auth.GoogleAuthProvider();
     var wv = isEmbeddedBrowser();
     if (M) { hideMsgs(); setBusy(true); }
     return auth.signInWithPopup(provider).then(function (cred) {
@@ -498,7 +521,7 @@
         });
       }
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return null;
-      console.warn('[bkAuth] google:', err);
+      console.warn('[bkAuth] ' + label + ':', err);
       report(err);
       return null;
     });
@@ -520,6 +543,7 @@
     openLogin: openLogin,
     closeLogin: function () { close(null); },
     signInGoogle: signInGoogle,
+    signInApple: signInApple,
     handleRedirectResult: handleRedirectResult,
     isEmbeddedBrowser: isEmbeddedBrowser,
     errorMessage: errorMessage

@@ -1789,3 +1789,8 @@ exports.confirmLesson = onCall(
       return {ok: true, status: action === "confirm" ? "confirmed" : "disputed"};
     },
 );
+
+// ─── Apple aboneliği (iPhone/Mac uygulaması) — ayrıntı functions/appstore.js ───
+const appstore = require("./appstore");
+exports.verifyAppStorePurchase = appstore.verifyAppStorePurchase;
+exports.appStoreNotifications = appstore.appStoreNotifications;
