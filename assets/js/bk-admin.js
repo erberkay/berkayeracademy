@@ -990,6 +990,18 @@ async function renderAdminPanel() {
       if (_admStudLoaded) admRenderStudents();
     }, e => { const c=errId(); reqList.innerHTML = `<div class="adm-empty is-err">Hata (${c}): ${escHtml(e.message)}</div>`; });
 
+  // Panel erişim talepleri: onaylanınca öğrenci boş saatleri görür (Gelen talepler'in başında)
+  let _accInitial = true;
+  _adminAccessUnsub = db.collection('booking_access_requests').where('status', '==', 'pending')
+    .onSnapshot(snap => {
+      if (!_accInitial && snap.docChanges().some(c => c.type === 'added')) {
+        try { new Audio('assets/audio/bildirim sesi.wav').play().catch(() => {}); } catch (e) {}
+      }
+      _accInitial = false;
+      _admAccessDocs = snap.docs;
+      if (_admLastReqSnap) renderAdminRequests(_admLastReqSnap);
+    }, e => { const c = errId(); toast(`${bkT('adm_acc_err', 'Erişim talepleri yüklenemedi')} (${c}): ${e.message || e.code}`, true); });
+
   // Load active students (real-time)
   _adminStudUnsub = db.collection('reservations').orderBy('created_at','desc').limit(200)
     .onSnapshot(studSnap => renderAdminStudents(studSnap),
@@ -1471,15 +1483,49 @@ function admPendingPkgRequests() {
   return _admLastReqSnap.docs.map(d => d.data()).filter(r => r.package_id && !r.type && (r.lesson_type || 'monthly') === 'monthly');
 }
 
+// Panel erişim talebi satırları: onay → öğrenci boş saatleri görür ve talep formuna geçer
+function admRenderAccessRows(reqList) {
+  _admAccessDocs.slice()
+    .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))
+    .forEach(doc => {
+      const r = doc.data();
+      const who = r.name || r.email || '—';
+      const approveBtn = admBtn(bkT('adm_acc_ok', 'Onayla'), 'btn btn-sm btn-primary');
+      const rejectBtn = admBtn(bkT('adm_reject', 'Reddet'), 'btn btn-sm btn-danger');
+      const row = admReqRow({ name: who, photo: r.photo, chip: bkT('adm_acc_chip', 'Panel erişim talebi'), tone: 'accent',
+        lines: [escHtml(r.email || '')],
+        meta: `<span class="adm-tag">${escHtml(bkT('adm_acc_hint', 'Onaylarsan boş saatleri görüp ders talebi gönderebilir'))}</span>`,
+        note: r.message || '', actions: [rejectBtn, approveBtn] });
+      approveBtn.onclick = async () => {
+        approveBtn.disabled = true;
+        try {
+          await doc.ref.update({ status: 'approved', approvedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          toast(bkT('adm_acc_done', 'Erişim onaylandı — öğrenci artık saatleri görebilir.'));
+        } catch (e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); approveBtn.disabled = false; }
+      };
+      rejectBtn.onclick = async () => {
+        const reason = await showInputModal({ title: bkT('adm_reject_reason', 'Reddetme sebebi'), placeholder: bkT('adm_optional', 'İsteğe bağlı…'), multiline: true });
+        if (reason === null) return;
+        rejectBtn.disabled = true;
+        try {
+          await doc.ref.update({ status: 'rejected', reject_reason: reason.trim(), rejectedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          toast(bkT('adm_acc_rejected', 'Erişim talebi reddedildi.'));
+        } catch (e) { const c = errId(); toast(`Hata (${c}): ` + (e.message || e.code), true); rejectBtn.disabled = false; }
+      };
+      reqList.append(row);
+    });
+}
+
 function renderAdminRequests(reqSnap) {
   const reqList = document.getElementById('adminRequestsList');
   if (!reqList) return;
-  _admReqCount = reqSnap.size;
+  _admReqCount = reqSnap.size + _admAccessDocs.length;
   admUpdateCounts();
   admCampRender();
   reqList.innerHTML = '';
+  admRenderAccessRows(reqList);
   if (reqSnap.empty) {
-    reqList.innerHTML = `<div class="adm-empty">${escHtml(window._i18n?.t('bk_no_requests') || 'Bekleyen talep yok.')}</div>`;
+    if (!_admAccessDocs.length) reqList.innerHTML = `<div class="adm-empty">${escHtml(window._i18n?.t('bk_no_requests') || 'Bekleyen talep yok.')}</div>`;
     return;
   }
   const sortedDocs = reqSnap.docs.slice().sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0));
@@ -4821,7 +4867,8 @@ async function acceptRequest(reqId, r, conflicts = new Set(), opts = {}) {
 
 
 // ─── Admin dinleyicileri ──────────────────────────────────
-let _adminAccessUnsub = null;   // eski erişim talebi dinleyicisi (kaldırıldı; temizlik kodu null görür)
+let _adminAccessUnsub = null;   // bekleyen panel erişim talepleri (booking_access_requests) dinleyicisi
+let _admAccessDocs = [];        // son anlık görüntüdeki bekleyen erişim talepleri
 let _adminReqUnsub = null;
 let _adminStudUnsub = null;
 

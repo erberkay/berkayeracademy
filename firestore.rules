@@ -9,6 +9,10 @@ service cloud.firestore {
         request.auth.token.email == "berkayer032@gmail.com" &&
         request.auth.token.email_verified == true;
     }
+    function hasHoursAccess() {
+      return exists(/databases/$(database)/documents/booking_access_requests/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/booking_access_requests/$(request.auth.uid)).data.status == 'approved';
+    }
 
     // Collection-group query için (members.html reply count sayımı)
     match /{path=**}/replies/{replyId} {
@@ -272,8 +276,10 @@ service cloud.firestore {
     }
 
     // Dolu saatleri yalnız admin (panel) ve Cloud Functions (Admin SDK) yazar; öğrenci istemcisi yazmaz
+    // Dolu saatler yalnız admine ve erişim talebi onaylanmış öğrenciye açık
+    // (booking_access_requests/{uid}.status == 'approved'); aktif öğrenci boş saat göremez.
     match /booked_slots/{slotId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (isAdmin() || hasHoursAccess());
       allow write: if request.auth != null &&
         isAdmin();
     }
@@ -315,8 +321,17 @@ service cloud.firestore {
         request.auth.uid == uid ||
         isAdmin()
       );
-      // Erişim talebi akışı kaldırıldı: istemci artık oluşturmaz (eski belgeler okunur/silinir).
-      // Durumu (onay/red) yalnız admin değiştirir; öğrenci kendi talebini yalnız silebilir
+      // Öğrenci kendi talebini 'pending' olarak oluşturur; onay/red yalnız admin.
+      // Öğrenci kendi talebini silebilir (iptal / red sonrası yeniden talep / plan aktifleşince).
+      allow create: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'photo', 'message', 'status', 'createdAt']) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.message is string && request.resource.data.message.size() <= 500 &&
+        request.resource.data.name is string && request.resource.data.name.size() <= 200 &&
+        request.resource.data.email is string && request.resource.data.email.size() <= 200 &&
+        request.resource.data.photo is string && request.resource.data.photo.size() <= 2000;
       allow update: if isAdmin();
       allow delete: if request.auth != null && (request.auth.uid == uid || isAdmin());
     }

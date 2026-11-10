@@ -1845,7 +1845,7 @@
       .bk-todo-n { width:28px; height:28px; }
     }
   </style>
-<script src="assets/js/i18n.js?v=202610302200"></script>
+<script src="assets/js/i18n.js?v=202611100100"></script>
 <script src="assets/js/trial-nav.js?v=202610300100"></script>
 </head>
 <body data-be-intro-first>
@@ -3525,26 +3525,22 @@ function bkSelfMovedBadge(l) {
   return b;
 }
 
-// Seçici verisi: müsait gün/saatler + haftanın dolu saatleri + öğrencinin
-// kendi diğer dersleri (sunucudaki slotsClash / OCCUPYING_STATUSES ile aynı kural).
+// Seçici verisi: kapalı gün/saatler + öğrencinin kendi diğer dersleri. Başka
+// öğrencilerin dolu saatleri gösterilmez (booked_slots okunmaz) — öğrenci boş saat
+// avlamasın; çakışmayı Berkay Er onaylarken denetler (admApplyTimeChange).
 async function bkScLoadWeek(lesson, res) {
   const weekDates = bkWeekDates(lesson.date);
   let availDays = null, blockedHours = {};
   const starts = {}; // date -> [dakika]
   const addStart = (date, time) => { (starts[date] = starts[date] || []).push(bkMinutes(time)); };
-  const [settingsSnap, slotsSnap] = await Promise.all([
+  const [settingsSnap] = await Promise.all([
     db.collection('settings').doc('global').get().catch(() => null),
-    db.collection('booked_slots').where('date', '>=', weekDates[0]).where('date', '<=', weekDates[6]).get(),
   ]);
   if (settingsSnap && settingsSnap.exists) {
     const sd = settingsSnap.data();
     if (Array.isArray(sd.available_days)) availDays = sd.available_days;
     if (sd.blocked_hours && typeof sd.blocked_hours === 'object') blockedHours = sd.blocked_hours;
   }
-  slotsSnap.forEach(doc => {
-    if (doc.id === `${lesson.date}_${lesson.time}`) return; // taşınan dersin kendi yeri
-    const d = doc.data(); if (d && d.date && d.time) addStart(d.date, d.time);
-  });
   ((res && res.lessons) || []).forEach(x => {
     if (!x || (x.date === lesson.date && x.time === lesson.time)) return;
     if (SELF_RESCHED_OCCUPYING.includes(x.status) && weekDates.includes(x.date)) addStart(x.date, x.time);
@@ -4365,7 +4361,7 @@ function bkWkPaintCells(ui, now) {
   const pk = _bkWkPick ? bkWkKey(_bkWkPick) : null;
   const T = {
     current: bkT('bk_sc_current', `Şu anki dersin`), soon: bkT('bk_wk_cell_soon', `5 saatten yakın veya geçmiş`),
-    busy: bkT('bk_avail_busy', `Dolu`), free: bkT('bk_avail_free', `Müsait`), selected: bkT('bk_avail_sel', `Seçili`),
+    busy: bkT('bk_wk_cell_closed', `Kapalı`), free: bkT('bk_wk_cell_open', `Seçilebilir`), selected: bkT('bk_avail_sel', `Seçili`),
   };
   ui.cells.forEach(cell => {
     const date = cell.dataset.date, time = cell.dataset.time;
@@ -4411,7 +4407,7 @@ function bkWkPaintPicker(now) {
     [k.c2, pk
       ? (compact ? bkT('bk_wk_chk_new_m', `Yeni saat {d} sonra (min. 5 sa)`) : bkT('bk_sc_chk_new', `Yeni saat {d} sonra (en az 5 saat)`)).replace('{d}', bkDurLive(Math.max(0, k.pickLeft), compact))
       : (compact ? bkT('bk_wk_chk_new_empty_m', `Yeni saat en az 5 saat sonra`) : bkT('bk_sc_chk_new_empty', `Yeni saat en az 5 saat sonra olmalı`))],
-    [k.c3, bkT('bk_sc_chk_free', `Seçilen saat müsait`)],
+    [k.c3, bkT('bk_sc_chk_open', `Kapalı bir saat değil · uygunluğu Berkay Er onaylar`)],
     [true, compact ? bkT('bk_wk_chk_week_m', `Aynı hafta · bu dersin tek değişikliği`) : bkT('bk_sc_chk_week', `Aynı hafta içinde · bu dersin tek değişikliği`)],
   ];
   const okT = bkT('bk_wk_chk_ok', `tamam`), noT = bkT('bk_wk_chk_no', `eksik`);
@@ -4658,12 +4654,8 @@ async function rescheduleLesson(lesson, idx, allLessons, res, pendingCount) {
   const oldEnd = lastOf(res.lessons || []), newEnd = lastOf(sim);
   const shifted = moves.length - 1;
 
-  // Hedef saat başka öğrencide görünüyorsa bilgi (engellemez — Berkay Er onaylarken çözer)
-  let takenByOther = false;
-  try {
-    const cs = await db.collection('booked_slots').doc(newDate + '_' + lesson.time).get();
-    takenByOther = cs.exists && cs.data().student_uid !== _user.uid;
-  } catch (_) { /* okunamadıysa uyarısız devam */ }
+  // Öğrenci başka öğrencilerin dolu/boş saatlerini görmez; uygunluğu Berkay Er onaylarken çözer
+  const takenByOther = false;
 
   const lines = [
     bkT('bk_resch_uses', 'Bu talep onaylanınca <strong>1 erteleme hakkı</strong> kullanılır (kalan: {a} → {b}).').replace('{a}', available).replace('{b}', available - 1),
@@ -5804,9 +5796,9 @@ async function renderPendingView(reqData) {
           if (reqData.id && reqData.id !== '_') {
             try { await db.collection('lesson_requests').doc(reqData.id).delete(); } catch(_) {}
           }
-          renderAccessView(_user, 'none');
+          bkWithHoursAccess(_user, () => renderAccessView(_user, 'none'));
         }
-      : () => initRequestForm();
+      : () => bkWithHoursAccess(_user, () => initRequestForm());
     if (!isTrialPending) newBtn.setAttribute('data-be-buy', ''); // ilk kez: sistem tanıtımı (trial-intro.js)
     actions.append(newBtn);
   } else {
@@ -6125,8 +6117,8 @@ async function renderDashboard() {
   const hasActiveLesson = lessons.some(l => (l.status === 'scheduled' || l.status === 'rescheduled' || l.status === 'frozen') && l.date >= today);
   const allCancelled = !hasActiveLesson;
   if (planEnded || allCancelled) {
-    if (isTrial) { _bkPostTrial = true; renderAccessView(_user, 'none'); }
-    else initRequestForm({ endedRes: res, reason: bkEndedReason(res) });
+    if (isTrial) { _bkPostTrial = true; bkWithHoursAccess(_user, () => renderAccessView(_user, 'none')); }
+    else bkWithHoursAccess(_user, () => initRequestForm({ endedRes: res, reason: bkEndedReason(res) }));
     bkCfmRenderEnded(res); // son derslerin onay penceresi hâlâ açık olabilir
     return;
   }
@@ -6428,20 +6420,8 @@ async function renderDashboard() {
       extraBtn.innerHTML = _xIco + `<span>${window._i18n?.t('bk_extra_lesson')||'Ek Ders Satın Al'}</span>`;
     }
     extraBtn.onclick = async () => {
-      // Fetch booked_slots (readable by all authenticated users)
-      let busySlots = {}; // dateStr -> [time, ...]
-      const nowStr = toDateStr(new Date());
-      const end90 = new Date(); end90.setDate(end90.getDate() + 90);
-      try {
-        const bsSnap = await db.collection('booked_slots')
-          .where('date', '>=', nowStr)
-          .where('date', '<=', toDateStr(end90))
-          .get();
-        bsSnap.forEach(doc => {
-          const d = doc.data();
-          if (d.date && d.time) (busySlots[d.date] = busySlots[d.date] || []).push(d.time);
-        });
-      } catch(e) { toast((window._i18n?.t('bk_avail_load_err')||'Müsaitlik yüklenemedi:') + ' ' + (e.code || e.message), true); }
+      // Öğrenci dolu/boş saatleri görmez (booked_slots okunmaz); uygunluğu Berkay Er onaylarken denetler
+      const busySlots = {}; // dateStr -> [time, ...]
 
       let selDate = null;
       let calYear = new Date().getFullYear();
@@ -7111,12 +7091,25 @@ function isReservationActive(data) {
 
 
 // ─── Load user state ──────────────────────────────────────
-// Access gating (booking_access_requests) removed per user request:
-// signed-in students go straight to the booking flow. Existing pending
-// access-request docs are ignored on read; they'll be dropped by the
-// admin panel's cleanup path over time.
+// Boş saatler yalnız Berkay Er'in onayladığı erişim talebinden sonra görünür
+// (booking_access_requests/{uid} status 'approved'; booked_slots okuma kuralı da buna
+// bağlı). Aktif planı olmayan herkes — ilk kez ders alacak, denemesi ya da paketi biten —
+// önce erişim talebi gönderir. Plan aktifleşince onay tüketilir (belge silinir); aktif
+// öğrenci saat değişikliğini dolu/boş görmeden talep olarak gönderir.
+async function bkAccessDoc(user) {
+  try { const s = await db.collection('booking_access_requests').doc(user.uid).get(); return s.exists ? s.data() : null; }
+  catch (e) { return null; }
+}
+async function bkWithHoursAccess(user, proceed) {
+  const a = await bkAccessDoc(user);
+  if (_user !== user) return;
+  if (a && a.status === 'approved') { proceed(); return; }
+  if (a && a.status === 'pending') { renderAccessView(user, 'pending'); return; }
+  if (a && a.status === 'rejected') { renderAccessView(user, 'rejected', a.reject_reason || ''); return; }
+  renderAccessView(user, 'gate');
+}
 // Yönetim bölümü ayrı dosyada; yalnız yönetici oturumunda yüklenir
-const BK_ADMIN_V = '202610300400';
+const BK_ADMIN_V = '202611100100';
 let _bkAdminLoad = null;
 function bkLoadAdmin() {
   if (_bkAdminLoad) return _bkAdminLoad;
@@ -7150,11 +7143,15 @@ async function loadUserState(user) {
   }
   if (resSnap && resSnap.exists) {
     const rd = resSnap.data();
-    if (isReservationActive(rd)) { renderDashboard(); return; }
+    if (isReservationActive(rd)) {
+      // Plan aktif: saat görme onayı tüketilir (bir sonraki planda yeniden talep gerekir)
+      db.collection('booking_access_requests').doc(user.uid).delete().catch(() => {});
+      renderDashboard(); return;
+    }
     // Reservation exists but not active (trial done / plan ended) —
     // show the picker screen (trial vs package) so they can book again.
-    if (rd.lesson_type === 'trial') { _bkPostTrial = true; renderAccessView(user, 'none'); }
-    else initRequestForm({ endedRes: rd, reason: bkEndedReason(rd) });
+    if (rd.lesson_type === 'trial') { _bkPostTrial = true; await bkWithHoursAccess(user, () => renderAccessView(user, 'none')); }
+    else await bkWithHoursAccess(user, () => initRequestForm({ endedRes: rd, reason: bkEndedReason(rd) }));
     bkCfmRenderEnded(rd); // biten derslerin 48 saatlik onay penceresi
     return;
   }
@@ -7168,7 +7165,7 @@ async function loadUserState(user) {
     const latestTrial = trialSnap.docs.sort((a,b) => (b.data().created_at?.seconds||0) - (a.data().created_at?.seconds||0))[0];
     const req = latestTrial.data();
     if (req.status === 'pending') { renderPendingView({ ...req, id: latestTrial.id }); return; }
-    if (req.status === 'accepted') { renderAccessView(user, 'none'); return; }
+    if (req.status === 'accepted') { await bkWithHoursAccess(user, () => renderAccessView(user, 'none')); return; }
     // status === 'rejected' → fall through to picker so they can submit again
   }
 
@@ -7185,8 +7182,8 @@ async function loadUserState(user) {
   if (pendingReqSnap)  { renderPendingView({ ...pendingReqSnap.data(),  id: pendingReqSnap.id  }); return; }
   if (rejectedReqSnap) { renderPendingView({ ...rejectedReqSnap.data(), id: rejectedReqSnap.id }); return; }
 
-  // No reservation, no pending request → show the picker (trial vs package).
-  renderAccessView(user, 'none');
+  // No reservation, no pending request → erişim onaylıysa seçim ekranı (deneme / paket)
+  await bkWithHoursAccess(user, () => renderAccessView(user, 'none'));
 }
 
 // ─── Booking Access View ───────────────────────────────────
@@ -7465,6 +7462,43 @@ function renderAccessView(user, state, rejectReason) {
     return;
   }
 
+  if (state === 'gate') {
+    // Boş saatler ancak erişim talebi onaylanınca görünür (öğrenci saat avlamasın)
+    card.innerHTML = `
+      <div class="bk-form-titles">
+        <span class="bk-kicker bk-kicker--gold">${bkT('bks_access_kicker', 'İlk adım')}</span>
+        <h2 class="bk-h2">${bkT('bk_gate_title', 'Panele erişim talebi gönder')}</h2>
+        <p class="bk-sub">${bkT('bk_gate_desc', 'Ders saatleri, Berkay Er erişim talebini onayladıktan sonra görünür. Onaylanınca bu sayfa kendiliğinden açılır; deneme dersi ya da paket seçip saatini o zaman belirlersin.')}</p>
+      </div>
+      <label class="field-label" for="gateMsg">${bkT('bk_gate_msg_label', 'Kısaca kendini tanıt (isteğe bağlı)')}</label>
+      <textarea class="textarea" id="gateMsg" maxlength="500" rows="3" placeholder="${escHtml(bkT('bk_gate_msg_ph', 'Örn. Ableton\'a yeni başladım, haftada 1 ders düşünüyorum.'))}"></textarea>
+      <div class="form-error" id="gateErr" style="display:none"></div>
+      <button type="button" class="btn btn-primary btn-lg btn-block" id="gateSendBtn">${bkT('bk_access_send_btn', 'Erişim Talebi Gönder →')}</button>`;
+    const gBtn = card.querySelector('#gateSendBtn');
+    gBtn.onclick = async () => {
+      const errEl = card.querySelector('#gateErr');
+      errEl.style.display = 'none';
+      gBtn.disabled = true; gBtn.textContent = bkT('bk_submitting', 'Gönderiliyor…');
+      try {
+        await db.collection('booking_access_requests').doc(user.uid).set({
+          uid: user.uid,
+          name: user.displayName?.trim() || user.email?.split('@')[0] || '',
+          email: (user.email || '').toLowerCase(),
+          photo: user.photoURL || '',
+          message: card.querySelector('#gateMsg').value.trim().slice(0, 500),
+          status: 'pending',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        renderAccessView(user, 'pending');
+      } catch (e) {
+        const c = errId();
+        errEl.textContent = `${bkT('bk_err', 'Hata')} (${c}): ${e.message || e.code}`; errEl.style.display = '';
+        gBtn.disabled = false; gBtn.textContent = bkT('bk_access_send_btn', 'Erişim Talebi Gönder →');
+      }
+    };
+    return;
+  }
+
   if (state === 'pending') {
     const _avp = window._i18n;
     card.innerHTML = `
@@ -7476,7 +7510,7 @@ function renderAccessView(user, state, rejectReason) {
       try {
         await db.collection('booking_access_requests').doc(user.uid).delete();
         if (_accessListenUnsub) { _accessListenUnsub(); _accessListenUnsub = null; }
-        renderAccessView(user, 'none');
+        renderAccessView(user, 'gate');
       } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); }
     };
     // Auto-refresh: watch for status change
@@ -7505,7 +7539,7 @@ function renderAccessView(user, state, rejectReason) {
     card.querySelector('#accessRetryBtn').onclick = async () => {
       // Delete old rejected request so they can send a new one
       try { await db.collection('booking_access_requests').doc(user.uid).delete(); } catch(e) { const c=errId(); toast(`${window._i18n?.getLang()==='en'?'Error':'Hata'} (${c}): ${e.code||e.message}`, true); return; }
-      renderAccessView(user, 'none');
+      renderAccessView(user, 'gate');
     };
   }
 }

@@ -535,6 +535,54 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
     },
 );
 
+// ─── Panel erişim talebi (booking_access_requests/{uid}) ───────────────
+// Öğrenci boş saatleri ancak bu talep onaylanınca görür (firestore.rules hasHoursAccess).
+// Yeni talep → admine WhatsApp; onay/red → öğrenciye e-posta.
+exports.notifyAdminOnAccessRequest = onDocumentCreated(
+    {region: "europe-west1", document: "booking_access_requests/{uid}"},
+    async (event) => {
+      const d = event.data && event.data.data();
+      if (!d || d.status !== "pending") return;
+      if (!(await allowAdminNotify(event.params.uid))) {
+        console.warn("access notify rate-limited", {uid: event.params.uid});
+        return;
+      }
+      const adminNum = process.env.WA_ADMIN_NUMBER || "905523070067";
+      const name = d.name || d.email || "Öğrenci";
+      const msg = d.message ? `\n“${String(d.message).slice(0, 300)}”` : "";
+      const body = `🔑 Panel erişim talebi — ${name}\n${d.email || ""}${msg}\nOnaylarsan boş saatleri görür.\nberkayeracademy.com/booking`;
+      const res = await sendWhatsApp(adminNum, body);
+      if (!res.ok) console.error("access notify failed", res.error);
+    },
+);
+
+exports.notifyStudentOnAccessStatus = onDocumentUpdated(
+    {region: "europe-west1", document: "booking_access_requests/{uid}"},
+    async (event) => {
+      const before = event.data.before.data() || {};
+      const after = event.data.after.data() || {};
+      if (before.status === after.status) return;
+      if (after.status !== "approved" && after.status !== "rejected") return;
+      const to = after.email;
+      if (!to) return;
+      const first = String(after.name || "").split(" ")[0] || "Merhaba";
+      const ok = after.status === "approved";
+      const text = ok ?
+        `${first},\n\nPanel erişim talebin onaylandı. Artık ders saatlerini görüp deneme dersi ya da paket talebi gönderebilirsin:\nhttps://berkayeracademy.com/booking\n\nBerkay Er Academy` :
+        `${first},\n\nPanel erişim talebin şu an için onaylanmadı.${after.reject_reason ? `\nNot: ${after.reject_reason}` : ""}\n\nBerkay Er Academy`;
+      try {
+        await transporter.sendMail({
+          from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
+          to,
+          subject: ok ? "Panel erişimin onaylandı" : "Panel erişim talebin hakkında",
+          text,
+        });
+      } catch (e) {
+        console.error("access status email error", e);
+      }
+    },
+);
+
 // ─── Asistan: öğrencinin "Berkay'a ilet" dediği soru → admine WhatsApp ───
 // Cevap admin panelindeki "Asistan soruları" kartından yazılır; asistan onu öğrenir.
 exports.notifyAdminOnAssistantQuestion = onDocumentCreated(
@@ -1310,7 +1358,8 @@ exports.sendWhatsAppMessage = onCall(
 //   - yeni saat dersin olduğu haftada (Pazartesi–Pazar) olmalı
 //   - her ders yalnızca bir kez taşınabilir (self_changed); ders başına tek bekleyen talep
 //   - erteleme hakkı düşmez; ödemesi onaylanmamış planda (deneme hariç) kapalı
-//   - kapalı gün/saatler ve dolu saatler (60 dk ders + 30 dk ara) seçilemez
+//   - kapalı gün/saatler ve öğrencinin kendi dersleriyle çakışan saatler (60 dk + 30 dk ara) seçilemez;
+//     başka öğrencilerin dolu saatleri öğrenciye gösterilmez, çakışmayı admin onayda görür
 // Saatler İstanbul saatidir (UTC+3, yaz saati uygulaması yok).
 const SELF_RESCHED_MIN_MS = 5 * 60 * 60 * 1000;
 const SELF_RESCHED_STATUSES = ["scheduled", "rescheduled"];
@@ -1403,21 +1452,19 @@ exports.studentSelfReschedule = onCall(
       const settings = settingsSnap.exists ? settingsSnap.data() : {};
       const dow = new Date(`${newDate}T12:00:00Z`).getUTCDay();
       if (Array.isArray(settings.available_days) && !settings.available_days.includes(dow)) {
-        throw new HttpsError("failed-precondition", "Seçilen saat dolu.");
+        throw new HttpsError("failed-precondition", "Seçilen gün ders verilmiyor.");
       }
       const blocked = settings.blocked_hours && settings.blocked_hours[dow];
       if (Array.isArray(blocked) && blocked.includes(newTime)) {
-        throw new HttpsError("failed-precondition", "Seçilen saat dolu.");
+        throw new HttpsError("failed-precondition", "Seçilen saat kapalı.");
       }
-      // Dolu saatler: o günün tüm kayıtları + öğrencinin kendi diğer dersleri
-      // (admin onaylarken yeniden denetlenir; arada dolabilir)
+      // Yalnız öğrencinin kendi diğer dersleriyle çakışma denetlenir. Başka öğrencilerin
+      // dolu saatleri burada reddedilmez: hata mesajı boş saatleri ele verirdi (öğrenci
+      // deneye deneye boşluk bulmasın). Çakışmayı admin onaylarken görür (admApplyTimeChange).
       const t = minutesOf(newTime);
-      const oldSlotId = `${lessonDate}_${lessonTime}`;
-      const daySlots = await db.collection("booked_slots").where("date", "==", newDate).get();
-      const clash = daySlots.docs.some((d) => d.id !== oldSlotId && slotsClash(t, minutesOf(d.data().time))) ||
-          lessons.some((l, i) => i !== idx && l && l.date === newDate &&
-              OCCUPYING_STATUSES.includes(l.status) && slotsClash(t, minutesOf(l.time)));
-      if (clash) throw new HttpsError("failed-precondition", "Seçilen saat dolu. Başka bir saat seç.");
+      const clash = lessons.some((l, i) => i !== idx && l && l.date === newDate &&
+          OCCUPYING_STATUSES.includes(l.status) && slotsClash(t, minutesOf(l.time)));
+      if (clash) throw new HttpsError("failed-precondition", "Bu saatte başka bir dersin var. Başka bir saat seç.");
 
       const who = res.student_name || res.student_email || request.auth.token.email || "Öğrenci";
       const reqRef = await db.collection("lesson_requests").add({
