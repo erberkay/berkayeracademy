@@ -10,7 +10,7 @@
 
   var SPRITE = '/assets/img/icons.svg';
   // Apple ile giriş: Firebase Auth'ta Apple sağlayıcısı (Services ID com.berkayeracademy.web + anahtar) açılınca true yap
-  var APPLE_SIGNIN = false;
+  var APPLE_SIGNIN = true;
 
   // In-app browsers (WebViews). Google refuses OAuth there (403 disallowed_useragent)
   // and their partitioned storage breaks the redirect handler.
