@@ -201,6 +201,20 @@ service cloud.firestore {
       }
     }
 
+    // Uygulama içi şikayet (App Store 1.2): kullanıcı yalnız kendi adına oluşturur; okuma/silme yalnız admin.
+    match /reports/{reportId} {
+      allow read, delete: if request.auth != null && isAdmin();
+      allow create: if request.auth != null &&
+        request.resource.data.keys().hasOnly(['kind', 'targetId', 'targetUid', 'reason', 'reporterUid', 'status', 'createdAt']) &&
+        request.resource.data.reporterUid == request.auth.uid &&
+        request.resource.data.kind in ['post', 'reply', 'user', 'message'] &&
+        request.resource.data.targetId is string && request.resource.data.targetId.size() <= 200 &&
+        request.resource.data.targetUid is string && request.resource.data.targetUid.size() <= 128 &&
+        request.resource.data.reason is string && request.resource.data.reason.size() <= 500 &&
+        request.resource.data.status == 'open' &&
+        request.resource.data.createdAt == request.time;
+    }
+
     match /follows/{followId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.followerId;
