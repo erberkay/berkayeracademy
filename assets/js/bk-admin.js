@@ -978,6 +978,7 @@ async function renderAdminPanel() {
   initAdminZoomLink();
   initLessonAnnouncements(true);
   initAdminQA();
+  admLabInit();
 
   // İlk açılışta "Yükleniyor"; sonraki yeniden çizimlerde eski içerik yerinde kalır (titreme yok)
   const reqList = document.getElementById('adminRequestsList');
@@ -1038,6 +1039,115 @@ async function renderAdminPanel() {
   _adminStudUnsub = db.collection('reservations').orderBy('created_at','desc').limit(200)
     .onSnapshot(studSnap => renderAdminStudents(studSnap),
       e => { const c=errId(); studList.innerHTML = `<div class="adm-empty is-err">${escHtml(bkT('adm_stu_err', 'Öğrenciler yüklenemedi'))} (${c}): ${escHtml(e.message||e.code)}</div>`; });
+}
+
+// ── Lab hunisi: uygulamadaki BE·STUDIO görevlerinin kullanım ölçümü (lab_events) ──
+// Veri yalnız "Yükle" ile çekilir (okuma maliyeti); son N gün, en çok 5000 olay.
+var _admLabDays = 30;
+const ADM_LAB_ORDER = ['giris', 'ritim', 'melodi', 'tasarim', 'aranjman', 'sampler', 'mixing', 'mastering', 'proje'];
+function admLabInit() {
+  if (document.getElementById('adm-lab')) return;
+  const after = document.getElementById('adm-ogrenciler');
+  if (!after) return;
+  const sec = document.createElement('section');
+  sec.className = 'adm-panel adm-lab be-rv';
+  sec.id = 'adm-lab';
+  sec.dataset.admTab = 'ogrenciler';
+  sec.setAttribute('aria-labelledby', 'admLabTitle');
+  sec.innerHTML = `
+    <div class="adm-panel-head adm-panel-head--end">
+      <div class="adm-titles">
+        <h2 class="adm-h2" id="admLabTitle">Lab hunisi</h2>
+        <p class="adm-desc">Uygulamadaki BE·STUDIO görevleri: kim başladı, kim bitirdi, nerede bıraktı, ödeme ekranı ne yaptı.</p>
+      </div>
+      <div class="adm-lab-act">
+        <label class="sr-only" for="admLabDays">Dönem</label>
+        <select id="admLabDays" class="select select-sm"><option value="7">Son 7 gün</option><option value="30" selected>Son 30 gün</option><option value="90">Son 90 gün</option></select>
+        <button type="button" class="btn btn-sm btn-primary" id="admLabLoad">Yükle</button>
+      </div>
+    </div>
+    <div id="admLabBody" class="adm-lab-body"><div class="adm-empty">Veriyi görmek için "Yükle"ye bas.</div></div>`;
+  after.after(sec);
+  sec.querySelector('#admLabDays').addEventListener('change', e => { _admLabDays = +e.target.value || 30; });
+  sec.querySelector('#admLabLoad').addEventListener('click', admLabLoad);
+}
+function admLabKey(id) {
+  const [c, n] = String(id || '').split('-');
+  const i = ADM_LAB_ORDER.indexOf(c);
+  return (i < 0 ? 99 : i) * 100 + (+n || 0);
+}
+function admLabMedian(a) {
+  if (!a.length) return null;
+  const s = a.slice().sort((x, y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function admLabDur(sec) {
+  if (sec == null) return '–';
+  const m = Math.floor(sec / 60), s = Math.round(sec % 60);
+  return m ? `${m} dk ${s} sn` : `${s} sn`;
+}
+async function admLabLoad() {
+  const body = document.getElementById('admLabBody');
+  const btn = document.getElementById('admLabLoad');
+  body.innerHTML = admLoadingHtml();
+  btn.disabled = true;
+  try {
+    const since = new Date(Date.now() - _admLabDays * 86400000);
+    const snap = await db.collection('lab_events').where('at', '>=', since).orderBy('at', 'desc').limit(5000).get();
+    admLabRender(snap.docs.map(d => d.data()), snap.size >= 5000);
+  } catch (e) {
+    const c = errId();
+    body.innerHTML = `<div class="adm-empty is-err">Lab verisi yüklenemedi (${c}): ${escHtml(e.message || e.code)}</div>`;
+  } finally { btn.disabled = false; }
+}
+function admLabRender(ev, capped) {
+  const body = document.getElementById('admLabBody');
+  if (!ev.length) { body.innerHTML = '<div class="adm-empty">Bu dönemde Lab olayı yok.</div>'; return; }
+  const users = k => new Set(ev.filter(e => !k || e.kind === k).map(e => e.uid)).size;
+  const platforms = {};
+  ev.forEach(e => { (platforms[e.platform] = platforms[e.platform] || new Set()).add(e.uid); });
+  const buyers = new Set(ev.filter(e => e.kind === 'purchase' && /:ok$/.test(e.detail || '')).map(e => e.uid)).size;
+  const L = {};
+  const get = (id, title) => (L[id] = L[id] || { id, title: title || id, start: new Set(), done: new Set(), doneSec: [], pass: 0, hinted: 0, exits: {} });
+  ev.forEach(e => {
+    if (!e.lesson) return;
+    const r = get(e.lesson, e.title);
+    if (e.title) r.title = e.title;
+    if (e.kind === 'lesson_start') r.start.add(e.uid);
+    else if (e.kind === 'lesson_done') { r.done.add(e.uid); if (typeof e.sec === 'number') r.doneSec.push(e.sec); }
+    else if (e.kind === 'step_pass') { r.pass++; if (e.detail === 'hint') r.hinted++; }
+    else if (e.kind === 'lesson_exit') { const k = (e.step || 0) + 1; r.exits[k] = (r.exits[k] || 0) + 1; }
+  });
+  const rows = Object.values(L).sort((a, b) => admLabKey(a.id) - admLabKey(b.id));
+  const tile = (v, k, cls) => `<div class="adm-tile"><span class="adm-k">${escHtml(k)}</span><span class="adm-tile-val ${cls || ''}">${v}</span></div>`;
+  const plat = Object.entries(platforms).map(([p, s]) => `${p === 'mac' ? 'Mac' : 'iPhone'} ${s.size}`).join(' · ');
+  let h = `<div class="adm-lab-tiles">
+    ${tile(users(), 'Lab kullanan')}
+    ${tile(users('lesson_start'), 'Görev başlatan')}
+    ${tile(users('lesson_done'), 'Görev bitiren', 'adm-gold')}
+    ${tile(users('paywall_show'), 'Ödeme ekranı gören')}
+    ${tile(buyers, 'Abone olan', 'adm-gold')}
+    ${tile(users('studio_open'), 'Serbest stüdyo açan')}
+  </div>
+  <p class="adm-note">${escHtml(plat)}${users('export_ableton') ? ' · Ableton\'a aktaran ' + users('export_ableton') : ''}${capped ? ' · İlk 5000 olay gösteriliyor, dönemi kısalt.' : ''}</p>
+  <div class="adm-lab-table" role="table" aria-label="Görev bazında huni">
+    <div class="adm-lab-row adm-lab-head" role="row"><span role="columnheader">Görev</span><span role="columnheader">Başlatan</span><span role="columnheader">Bitiren</span><span role="columnheader">Ort. süre</span><span role="columnheader">İpuçlu adım</span><span role="columnheader">En çok bırakılan</span></div>`;
+  rows.forEach(r => {
+    const s = r.start.size, d = r.done.size, pct = s ? Math.round(100 * Math.min(d, s) / s) : null;
+    const ex = Object.entries(r.exits).sort((a, b) => b[1] - a[1])[0];
+    const hp = r.pass ? Math.round(100 * r.hinted / r.pass) : null;
+    const warn = pct != null && s >= 3 && pct < 50;
+    h += `<div class="adm-lab-row${warn ? ' is-warn' : ''}" role="row">
+      <span role="cell"><b>${escHtml(r.title)}</b><small>${escHtml(r.id)}</small></span>
+      <span role="cell">${s}</span>
+      <span role="cell">${d}${pct != null ? ` <small>%${pct}</small>` : ''}</span>
+      <span role="cell">${admLabDur(admLabMedian(r.doneSec))}</span>
+      <span role="cell">${hp != null ? '%' + hp : '–'}</span>
+      <span role="cell">${ex ? `Adım ${ex[0]} <small>(${ex[1]} kişi)</small>` : '–'}</span>
+    </div>`;
+  });
+  h += '</div>';
+  body.innerHTML = h;
 }
 
 // ── Liste fiyatları: "Ders başı ücret" kartında düzenlenir, settings/campaigns'e yazılır ──

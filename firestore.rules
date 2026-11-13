@@ -80,6 +80,24 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // Lab kullanım ölçümü (uygulama): yalnız kendi uid'siyle, izinli alanlarla oluşturulur; yalnız admin okur.
+    // Değiştirilemez, silinemez (huni verisi). Kişisel içerik taşımaz: görev kimliği, adım, süre, platform.
+    match /lab_events/{id} {
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['uid','kind','lesson','title','step','sec','detail','platform','ver','at']) &&
+        request.resource.data.kind is string && request.resource.data.kind.size() <= 32 &&
+        request.resource.data.at == request.time &&
+        (!('lesson' in request.resource.data) || (request.resource.data.lesson is string && request.resource.data.lesson.size() <= 40)) &&
+        (!('title' in request.resource.data) || (request.resource.data.title is string && request.resource.data.title.size() <= 80)) &&
+        (!('detail' in request.resource.data) || (request.resource.data.detail is string && request.resource.data.detail.size() <= 60)) &&
+        (!('step' in request.resource.data) || request.resource.data.step is int) &&
+        (!('sec' in request.resource.data) || request.resource.data.sec is number) &&
+        request.resource.data.platform in ['ios', 'mac'] &&
+        request.resource.data.ver is string && request.resource.data.ver.size() <= 24;
+      allow read, delete: if isAdmin();
+    }
+
     match /testimonials/{id} {
       allow read: if true;
       // Alanlar index.html submitComment() ile birebir (form: ad ≤ 40, yorum ≤ 300 karakter)
