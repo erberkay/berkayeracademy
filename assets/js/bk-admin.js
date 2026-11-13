@@ -1150,7 +1150,7 @@ async function admSubsSend(id, btn) {
 // ── Lab hunisi: uygulamadaki BE·STUDIO görevlerinin kullanım ölçümü (lab_events) ──
 // Veri yalnız "Yükle" ile çekilir (okuma maliyeti); son N gün, en çok 5000 olay.
 var _admLabDays = 30;
-const ADM_LAB_ORDER = ['giris', 'ritim', 'melodi', 'tasarim', 'aranjman', 'sampler', 'mixing', 'kulak', 'mastering', 'proje', 'meydan'];
+const ADM_LAB_ORDER = ['giris', 'ritim', 'melodi', 'tasarim', 'aranjman', 'sampler', 'mixing', 'kulak', 'mastering', 'proje', 'ileri', 'meydan'];
 function admLabInit() {
   if (document.getElementById('adm-lab')) return;
   const after = document.getElementById('adm-ogrenciler');
@@ -1233,6 +1233,8 @@ function admLabRender(ev, capped) {
     ${tile(users('lesson_done'), 'Görev bitiren', 'adm-gold')}
     ${tile(users('paywall_show'), 'Ödeme ekranı gören')}
     ${tile(buyers, 'Abone olan', 'adm-gold')}
+    ${tile(users('submit_project'), 'Parça gönderen')}
+    ${tile(users('trial_cta'), 'Deneme dersine tıklayan', 'adm-gold')}
     ${tile(users('studio_open'), 'Serbest stüdyo açan')}
   </div>
   <p class="adm-note">${escHtml(plat)}${users('export_ableton') ? ' · Ableton\'a aktaran ' + users('export_ableton') : ''}${capped ? ' · İlk 5000 olay gösteriliyor, dönemi kısalt.' : ''}</p>
