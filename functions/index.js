@@ -1869,3 +1869,61 @@ exports.pushOnNotification = onDocumentCreated(
       if (bad.length) await ref.update({tokens: FieldValue.arrayRemove(...bad)});
     },
 );
+
+// ─── Lab: "Projeni Berkay'a gönder" (project_submissions/{id}) ─────────────
+// Uygulama belgeyi "uploading" açar, AAC parçalarını `chunks` alt koleksiyonuna yazar, sonra "new" yapar.
+// "new" → admine WhatsApp (öğrenci başına sınırlı). Admin panelde yorum yazıp "reviewed" yapınca → öğrenciye
+// uygulama içi bildirim (FCM push otomatik: notifications/{uid}/items) + e-posta.
+exports.onLabSubmissionUpdate = onDocumentUpdated(
+    {region: "europe-west1", document: "project_submissions/{id}"},
+    async (event) => {
+      const before = event.data.before.data() || {};
+      const after = event.data.after.data() || {};
+      const id = event.params.id;
+      const db = getFirestore();
+      if (before.status === "uploading" && after.status === "new") {
+        if (!(await allowAdminNotify(after.uid))) {
+          console.warn("lab submission admin notify rate-limited", {id});
+          return;
+        }
+        let name = "Öğrenci";
+        try {
+          const u = await db.collection("users").doc(after.uid).get();
+          name = (u.exists && (u.data().displayName || u.data().name || u.data().email)) || name;
+        } catch (e) {
+          // ad bulunamazsa genel ad
+        }
+        const mins = Math.floor((after.seconds || 0) / 60);
+        const secs = Math.round((after.seconds || 0) % 60);
+        const body = `🎧 Lab'dan yeni parça — ${name}\n"${String(after.title || "").slice(0, 60)}" · ${mins}:${String(secs).padStart(2, "0")}` +
+          `${after.note ? `\nNot: ${String(after.note).slice(0, 160)}` : ""}\nberkayeracademy.com/booking → Lab gönderileri`;
+        const res = await sendWhatsApp(process.env.WA_ADMIN_NUMBER || "905523070067", body);
+        if (!res.ok) console.error("lab submission admin notify failed", res.error);
+        return;
+      }
+      if (after.status === "reviewed" && (before.status !== "reviewed" || before.feedback !== after.feedback) && after.feedback) {
+        const title = String(after.title || "Parçan").slice(0, 60);
+        const fb = String(after.feedback).trim();
+        await db.collection("notifications").doc(after.uid).collection("items").doc(`labfb_${id}`).set({
+          text: `Berkay "${title}" parçanı dinledi: ${fb.length > 140 ? fb.slice(0, 137) + "…" : fb}`,
+          type: "lab_feedback", postId: id, read: false, createdAt: FieldValue.serverTimestamp(),
+        });
+        try {
+          const u = await db.collection("users").doc(after.uid).get();
+          const to = u.exists ? u.data().email : null;
+          if (to) {
+            const first = String((u.data().displayName || "").trim()).split(" ")[0] || "Merhaba";
+            await transporter.sendMail({
+              from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
+              to,
+              subject: `"${title}" parçan için yorum`,
+              text: `${first},\n\nLab'dan gönderdiğin "${title}" parçanı dinledim:\n\n${fb}\n\n` +
+                `Parçanı birlikte açıp canlı düzeltmek istersen birebir deneme dersi ayarlayabilirsin:\nhttps://berkayeracademy.com/booking\n\nBerkay`,
+            });
+          }
+        } catch (e) {
+          console.error("lab feedback email error", e.message);
+        }
+      }
+    },
+);

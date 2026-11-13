@@ -82,6 +82,41 @@ service cloud.firestore {
 
     // Lab kullanım ölçümü (uygulama): yalnız kendi uid'siyle, izinli alanlarla oluşturulur; yalnız admin okur.
     // Değiştirilemez, silinemez (huni verisi). Kişisel içerik taşımaz: görev kimliği, adım, süre, platform.
+    // Lab: "Projeni Berkay'a gönder". Belge "uploading" açılır, ses AAC parçaları `chunks`a yazılır, sonra "new".
+    // Yorum (feedback, reviewed) yalnız admin; öğrenci yalnız kendi gönderilerini okur.
+    match /project_submissions/{id} {
+      allow create: if request.auth != null &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['uid','title','note','status','chunks','bytes','seconds','mime','platform','created_at','project']) &&
+        request.resource.data.status == 'uploading' &&
+        request.resource.data.title is string && request.resource.data.title.size() >= 1 && request.resource.data.title.size() <= 80 &&
+        request.resource.data.note is string && request.resource.data.note.size() <= 600 &&
+        request.resource.data.chunks is int && request.resource.data.chunks >= 1 && request.resource.data.chunks <= 12 &&
+        request.resource.data.bytes is int && request.resource.data.bytes <= 6000000 &&
+        request.resource.data.seconds is number && request.resource.data.seconds <= 400 &&
+        request.resource.data.mime == 'audio/mp4' &&
+        request.resource.data.platform in ['ios', 'mac'] &&
+        request.resource.data.created_at == request.time &&
+        (!('project' in request.resource.data) || (request.resource.data.project is string && request.resource.data.project.size() <= 600000));
+      allow update: if isAdmin() ||
+        (request.auth != null && resource.data.uid == request.auth.uid && resource.data.status == 'uploading' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'new');
+      allow read: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+
+      match /chunks/{n} {
+        allow create: if request.auth != null &&
+          get(/databases/$(database)/documents/project_submissions/$(id)).data.uid == request.auth.uid &&
+          get(/databases/$(database)/documents/project_submissions/$(id)).data.status == 'uploading' &&
+          request.resource.data.keys().hasOnly(['n','data']) &&
+          request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n < 12 &&
+          request.resource.data.data is bytes && request.resource.data.data.size() <= 750000;
+        allow read: if isAdmin() ||
+          (request.auth != null && get(/databases/$(database)/documents/project_submissions/$(id)).data.uid == request.auth.uid);
+        allow delete: if isAdmin();
+      }
+    }
+
     match /lab_events/{id} {
       allow create: if request.auth != null &&
         request.resource.data.uid == request.auth.uid &&

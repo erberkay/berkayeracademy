@@ -979,6 +979,7 @@ async function renderAdminPanel() {
   initLessonAnnouncements(true);
   initAdminQA();
   admLabInit();
+  admSubsInit();
 
   // İlk açılışta "Yükleniyor"; sonraki yeniden çizimlerde eski içerik yerinde kalır (titreme yok)
   const reqList = document.getElementById('adminRequestsList');
@@ -1039,6 +1040,111 @@ async function renderAdminPanel() {
   _adminStudUnsub = db.collection('reservations').orderBy('created_at','desc').limit(200)
     .onSnapshot(studSnap => renderAdminStudents(studSnap),
       e => { const c=errId(); studList.innerHTML = `<div class="adm-empty is-err">${escHtml(bkT('adm_stu_err', 'Öğrenciler yüklenemedi'))} (${c}): ${escHtml(e.message||e.code)}</div>`; });
+}
+
+// ── Lab gönderileri: uygulamadan "Projeni Berkay'a gönder" (project_submissions + chunks) ──
+// Liste canlı dinlenir (son 60). Ses parçaları yalnız "Dinle"ye basınca okunur (okuma maliyeti).
+var _admSubsUnsub = null;
+const _admSubsUrls = {};
+function admSubsInit() {
+  if (document.getElementById('adm-subs')) return;
+  const after = document.getElementById('adm-talepler');
+  if (!after) return;
+  const sec = document.createElement('section');
+  sec.className = 'adm-panel adm-subs be-rv';
+  sec.id = 'adm-subs';
+  sec.dataset.admTab = 'talepler';
+  sec.setAttribute('aria-labelledby', 'admSubsTitle');
+  sec.innerHTML = `
+    <div class="adm-panel-head adm-panel-head--end">
+      <div class="adm-titles">
+        <h2 class="adm-h2" id="admSubsTitle">Lab gönderileri <span class="adm-k adm-k--gold" id="admSubsCount"></span></h2>
+        <p class="adm-desc">Öğrencilerin uygulamadan gönderdiği parçalar. Dinle, yorum yaz: yorum öğrenciye bildirim ve e-posta olarak gider, deneme dersi daveti eklenir.</p>
+      </div>
+    </div>
+    <div id="admSubsList" class="adm-subs-list"><div class="adm-empty">Yükleniyor…</div></div>`;
+  const grid = after.closest('.adm-grid-req') || after;
+  grid.after(sec);
+  if (_admSubsUnsub) _admSubsUnsub();
+  _admSubsUnsub = db.collection('project_submissions').orderBy('created_at', 'desc').limit(60).onSnapshot(
+    snap => admSubsRender(snap.docs.filter(d => d.data().status !== 'uploading')),
+    e => { document.getElementById('admSubsList').innerHTML = `<div class="adm-empty is-err">Gönderiler yüklenemedi: ${escHtml(e.message || e.code)}</div>`; });
+}
+const _admSubsNames = {};
+async function admSubsName(uid) {
+  if (_admSubsNames[uid]) return _admSubsNames[uid];
+  try {
+    const u = await db.collection('users').doc(uid).get();
+    const d = u.exists ? u.data() : {};
+    _admSubsNames[uid] = d.displayName || d.name || d.email || uid.slice(0, 8);
+  } catch (e) { _admSubsNames[uid] = uid.slice(0, 8); }
+  return _admSubsNames[uid];
+}
+function admSubsRender(docs) {
+  const list = document.getElementById('admSubsList');
+  const open = docs.filter(d => d.data().status === 'new').length;
+  document.getElementById('admSubsCount').textContent = open ? `· ${open} yeni` : '';
+  if (!docs.length) { list.innerHTML = '<div class="adm-empty">Henüz gönderi yok.</div>'; return; }
+  list.innerHTML = docs.map(doc => {
+    const d = doc.data();
+    const when = d.created_at && d.created_at.toDate ? d.created_at.toDate().toLocaleString('tr-TR', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+    const len = `${Math.floor((d.seconds || 0) / 60)}:${String(Math.round((d.seconds || 0) % 60)).padStart(2, '0')}`;
+    const isNew = d.status === 'new';
+    return `<article class="adm-sub${isNew ? ' is-new' : ''}" data-sub="${doc.id}">
+      <div class="adm-sub-head">
+        <span class="adm-chip ${isNew ? 'adm-chip--gold' : 'adm-chip--ok'}">${isNew ? 'Yeni' : 'Yorumlandı'}</span>
+        <strong class="adm-sub-title">${escHtml(d.title || 'Parça')}</strong>
+        <span class="adm-k" data-sub-name="${escHtml(d.uid)}">…</span>
+        <span class="adm-k">${when} · ${len} · ${escHtml(d.platform || '')}</span>
+      </div>
+      ${d.note ? `<p class="adm-sub-note">“${escHtml(d.note)}”</p>` : ''}
+      <div class="adm-sub-play">
+        <button type="button" class="btn btn-sm btn-subtle" data-sub-play="${doc.id}">▶ Dinle</button>
+        ${d.project ? `<button type="button" class="btn btn-sm btn-ghost" data-sub-proj="${doc.id}">Proje dosyası (.json)</button>` : ''}
+        <span class="adm-sub-audio" id="admSubAudio_${doc.id}"></span>
+      </div>
+      <label class="sr-only" for="admSubFb_${doc.id}">Yorum</label>
+      <textarea class="textarea" id="admSubFb_${doc.id}" rows="3" placeholder="Neyi iyi yapmış, neyi geliştirebilir? (öğrenciye bildirim + e-posta)">${escHtml(d.feedback || '')}</textarea>
+      <div class="adm-btn2"><button type="button" class="btn btn-sm btn-primary" data-sub-send="${doc.id}">${isNew ? 'Yorumu gönder' : 'Yorumu güncelle'}</button><span class="form-status" id="admSubSt_${doc.id}" role="status"></span></div>
+    </article>`;
+  }).join('');
+  list.querySelectorAll('[data-sub-name]').forEach(async el => { el.textContent = await admSubsName(el.dataset.subName); });
+  list.querySelectorAll('[data-sub-play]').forEach(b => b.addEventListener('click', () => admSubsPlay(b.dataset.subPlay, b)));
+  list.querySelectorAll('[data-sub-send]').forEach(b => b.addEventListener('click', () => admSubsSend(b.dataset.subSend, b)));
+  list.querySelectorAll('[data-sub-proj]').forEach(b => b.addEventListener('click', () => {
+    const d = docs.find(x => x.id === b.dataset.subProj).data();
+    const url = URL.createObjectURL(new Blob([d.project], {type: 'application/json'}));
+    const a = document.createElement('a');
+    a.href = url; a.download = `${(d.title || 'parca').replace(/[^\wçğıöşüÇĞİÖŞÜ -]/g, '')}.bestudio.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }));
+}
+async function admSubsPlay(id, btn) {
+  const box = document.getElementById(`admSubAudio_${id}`);
+  if (_admSubsUrls[id]) { box.innerHTML = `<audio controls autoplay src="${_admSubsUrls[id]}"></audio>`; return; }
+  btn.disabled = true; btn.textContent = 'Yükleniyor…';
+  try {
+    const snap = await db.collection('project_submissions').doc(id).collection('chunks').orderBy('n').get();
+    const parts = snap.docs.map(c => c.data().data.toUint8Array());
+    _admSubsUrls[id] = URL.createObjectURL(new Blob(parts, {type: 'audio/mp4'}));
+    box.innerHTML = `<audio controls autoplay src="${_admSubsUrls[id]}"></audio>`;
+    btn.textContent = '▶ Dinle';
+  } catch (e) {
+    btn.textContent = '▶ Dinle';
+    box.innerHTML = `<span class="adm-k is-err">Ses yüklenemedi: ${escHtml(e.message || e.code)}</span>`;
+  } finally { btn.disabled = false; }
+}
+async function admSubsSend(id, btn) {
+  const ta = document.getElementById(`admSubFb_${id}`), st = document.getElementById(`admSubSt_${id}`);
+  const text = (ta.value || '').trim();
+  if (text.length < 3) { st.textContent = 'Yorum yaz.'; return; }
+  btn.disabled = true; st.textContent = 'Gönderiliyor…';
+  try {
+    await db.collection('project_submissions').doc(id).update({status: 'reviewed', feedback: text.slice(0, 2000), reviewed_at: firebase.firestore.FieldValue.serverTimestamp()});
+    st.textContent = 'Gönderildi ✓';
+  } catch (e) {
+    st.textContent = `Gönderilemedi: ${e.message || e.code}`;
+  } finally { btn.disabled = false; }
 }
 
 // ── Lab hunisi: uygulamadaki BE·STUDIO görevlerinin kullanım ölçümü (lab_events) ──
