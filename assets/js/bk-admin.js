@@ -607,6 +607,38 @@ function ptWatchAll() {
   });
 }
 
+// ─── BE·STUDIO Lab ilerlemesi (uygulama) ─────────────
+// Uygulama tamamlanan görevleri users/{uid}/private/studio belgesine yazar ({done: [...], total, updated_at}).
+// Admin kuralı bu belgeyi okur; öğrenci başına bir kez çekilir, satırdaki rozet yerinde güncellenir.
+var _labMap = {};            // uid -> {done, total, at} | null (belge yok)
+var _labPending = {};
+
+function labBadgeHtml(uid) {
+  if (!uid) return '';
+  if (!(uid in _labMap)) labFetch(uid);
+  const d = _labMap[uid];
+  if (!d) return `<span class="badge" data-lab-uid="${escHtml(uid)}" hidden></span>`;
+  const n = d.done, t = d.total || 52;
+  const when = d.at ? d.at.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : '';
+  const title = bkT('adm_lab_title', 'Uygulamadaki BE·STUDIO görevleri') + (when ? ' · ' + when : '');
+  return `<span class="badge ${n >= t ? 'ok' : n > 0 ? 'info' : ''}" data-lab-uid="${escHtml(uid)}" title="${escHtml(title)}">Lab ${n}/${t}</span>`;
+}
+
+function labFetch(uid) {
+  if (_labPending[uid]) return;
+  _labPending[uid] = true;
+  db.collection('users').doc(uid).collection('private').doc('studio').get().then(snap => {
+    const v = snap.exists ? snap.data() : null;
+    _labMap[uid] = v && Array.isArray(v.done) ? { done: v.done.length, total: v.total || 0, at: v.updated_at && v.updated_at.toDate ? v.updated_at.toDate() : null } : null;
+    document.querySelectorAll(`[data-lab-uid="${CSS.escape(uid)}"]`).forEach(el => {
+      const tmp = document.createElement('div'); tmp.innerHTML = labBadgeHtml(uid);
+      const fresh = tmp.firstElementChild;
+      el.className = fresh.className; el.textContent = fresh.textContent; el.hidden = fresh.hidden;
+      if (fresh.title) el.title = fresh.title;
+    });
+  }).catch(e => { console.warn('[lab admin]', e); _labMap[uid] = null; });
+}
+
 // Satırlara gömülen rozet: <span class="badge ..." data-pt-uid="UID">
 // asButton: satırın kendisi düğme değilse (talep satırı, öğrenci detayı) klavyeyle ulaşılan
 // <button> — detay + "Sınavı Sıfırla" başka yoldan açılmıyor. Öğrenci satırı zaten <button>: span kalır.
@@ -2395,6 +2427,7 @@ function admRenderStudents() {
       finished ? `<span class="badge">${escHtml(bkT('adm_finished', 'Paket bitti'))}</span>` : '',
       (() => { const n = allLessonsArr.filter(l => l.confirmation && l.confirmation.status === 'disputed').length; return n ? `<span class="badge err">${escHtml(bkT('adm_cfm_disputed', 'İtiraz'))}${n > 1 ? ' · ' + n : ''}</span>` : ''; })(),
       ptBadgeHtml(studentUid),
+      labBadgeHtml(studentUid),
     ].join('');
     const payChip = isTrial ? ['is-ok', bkT('adm_free', 'Ücretsiz')]
       : isResPaid ? ['is-ok', '✓ ' + bkT('adm_paid', 'Ödendi')]
