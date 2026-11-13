@@ -1044,7 +1044,7 @@ async function renderAdminPanel() {
 // ── Lab hunisi: uygulamadaki BE·STUDIO görevlerinin kullanım ölçümü (lab_events) ──
 // Veri yalnız "Yükle" ile çekilir (okuma maliyeti); son N gün, en çok 5000 olay.
 var _admLabDays = 30;
-const ADM_LAB_ORDER = ['giris', 'ritim', 'melodi', 'tasarim', 'aranjman', 'sampler', 'mixing', 'kulak', 'mastering', 'proje'];
+const ADM_LAB_ORDER = ['giris', 'ritim', 'melodi', 'tasarim', 'aranjman', 'sampler', 'mixing', 'kulak', 'mastering', 'proje', 'meydan'];
 function admLabInit() {
   if (document.getElementById('adm-lab')) return;
   const after = document.getElementById('adm-ogrenciler');
