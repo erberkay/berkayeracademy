@@ -29,6 +29,10 @@ const DEFAULT_PLANS = {
   "com.berkayeracademy.app.temel8": {name: "Temel 8", hours_per_month: 8, weekly: 2},
 };
 
+// BE·STUDIO Lab aboneliği (ayrı abonelik grubu): ders oluşturmaz, lab_access/{uid}'ye yazılır. App Store dışı
+// "Berkay Er Academy VST" Mac sürümü StoreKit kullanamaz; Lab'ı aynı hesapla girişte bu belgeden açar.
+const LAB_PRODUCTS = new Set(["com.berkayeracademy.app.lab.aylik", "com.berkayeracademy.app.lab.yillik"]);
+
 const ROOT_CERTS = ["AppleRootCA-G3.cer", "AppleRootCA-G2.cer"]
     .map((f) => fs.readFileSync(path.join(__dirname, "certs", f)));
 
@@ -210,6 +214,51 @@ async function applyTransaction(db, uid, tx, opts) {
   });
 }
 
+// Lab erişimi: dönem sonu, durum, yenileme. İstemci yazamaz (firestore.rules: lab_access yalnız okunur).
+async function applyLab(db, uid, tx, environment) {
+  const nowMs = Date.now();
+  const expiresMs = Number(tx.expiresDate) || 0;
+  const ref = db.collection("lab_access").doc(uid);
+  const prev = (await ref.get()).data() || {};
+  const doc = {
+    source: "apple",
+    product_id: tx.productId,
+    status: tx.revocationDate ? "refunded" : (expiresMs > nowMs ? "active" : "ended"),
+    original_transaction_id: String(tx.originalTransactionId),
+    transaction_id: String(tx.transactionId),
+    period_end: expiresMs ? new Date(expiresMs).toISOString() : "",
+    auto_renew: prev.auto_renew !== false,
+    environment,
+    updated_at: new Date(nowMs).toISOString(),
+  };
+  await ref.set(doc, {merge: true});
+  await db.collection("subscriptions_index").doc(doc.original_transaction_id)
+      .set({uid, product_id: tx.productId, kind: "lab", updated_at: doc.updated_at}, {merge: true});
+  return doc;
+}
+
+// Uygulama Lab satın aldıktan / geri yükledikten / açılışta güncel hakkı bulunca çağırır
+exports.verifyLabPurchase = onCall({region: "europe-west1"}, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "Giriş yapmalısın.");
+  const uid = request.auth.uid;
+  const jws = String((request.data || {}).signedTransaction || "");
+  if (!jws || jws.length > 20000) throw new HttpsError("invalid-argument", "İşlem bilgisi eksik.");
+  let verified;
+  try {
+    verified = await verifyEither((v) => v.verifyAndDecodeTransaction(jws));
+  } catch (e) {
+    console.warn("lab verify failed", e && e.message);
+    throw new HttpsError("permission-denied", "Satın alma doğrulanamadı.");
+  }
+  const tx = verified.data;
+  if (!LAB_PRODUCTS.has(tx.productId)) throw new HttpsError("failed-precondition", "Lab ürünü değil.");
+  if (String(tx.appAccountToken || "").toLowerCase() !== accountTokenFor(uid)) {
+    throw new HttpsError("permission-denied", "Bu satın alma başka bir hesaba ait.");
+  }
+  const doc = await applyLab(getFirestore(), uid, tx, verified.env);
+  return {ok: true, status: doc.status, period_end: doc.period_end, product_id: doc.product_id};
+});
+
 exports.verifyAppStorePurchase = onCall({region: "europe-west1"}, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Giriş yapmalısın.");
   const uid = request.auth.uid;
@@ -284,6 +333,24 @@ exports.appStoreNotifications = onRequest({region: "europe-west1"}, async (req, 
     const resRef = db.collection("reservations").doc(uid);
     const type = n.notificationType;
     const nowIso = new Date().toISOString();
+
+    // Lab aboneliği: lab_access/{uid}
+    if (idx.data().kind === "lab" || (tx && LAB_PRODUCTS.has(tx.productId))) {
+      const labRef = db.collection("lab_access").doc(uid);
+      if ((type === "SUBSCRIBED" || type === "DID_RENEW") && tx) {
+        await applyLab(db, uid, tx, verified.env);
+      } else if (type === "DID_CHANGE_RENEWAL_STATUS" && renewal) {
+        await labRef.set({auto_renew: renewal.autoRenewStatus === 1, updated_at: nowIso}, {merge: true});
+      } else if (type === "DID_FAIL_TO_RENEW") {
+        await labRef.set({status: n.subtype === "GRACE_PERIOD" ? "grace" : "billing_retry", updated_at: nowIso}, {merge: true});
+      } else if (type === "EXPIRED" || type === "GRACE_PERIOD_EXPIRED") {
+        await labRef.set({status: "ended", auto_renew: false, updated_at: nowIso}, {merge: true});
+      } else if (type === "REFUND" || type === "REVOKE") {
+        await labRef.set({status: "refunded", updated_at: nowIso}, {merge: true});
+      }
+      res.status(200).send("ok");
+      return;
+    }
 
     if ((type === "SUBSCRIBED" || type === "DID_RENEW") && tx) {
       await applyTransaction(db, uid, tx, {environment: verified.env});

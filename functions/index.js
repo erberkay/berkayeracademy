@@ -1840,6 +1840,7 @@ exports.confirmLesson = onCall(
 // ─── Apple aboneliği (iPhone/Mac uygulaması) — ayrıntı functions/appstore.js ───
 const appstore = require("./appstore");
 exports.verifyAppStorePurchase = appstore.verifyAppStorePurchase;
+exports.verifyLabPurchase = appstore.verifyLabPurchase;
 exports.appStoreNotifications = appstore.appStoreNotifications;
 
 // ─── Uygulama push bildirimi: notifications/{uid}/items oluşunca kullanıcının cihazlarına FCM ───
