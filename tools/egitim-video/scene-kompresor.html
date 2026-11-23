@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><title>Kompresör — sahne</title>
+<style>html,body{margin:0;background:#0b0b0e}canvas{display:block}</style></head>
+<body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* Kare çizici. Hiçbir sayı burada uydurulmaz: ses, gain azaltması ve parametreler build-kompresor.mjs'ten gelir. */
+const W = 1080, H = 1920, cv = document.getElementById('c'), g = cv.getContext('2d');
+const C = { bg: '#0b0b0e', panel: '#111115', line: 'rgba(255,255,255,.09)', fg: '#f3efe6', mut: '#8d887e', acc: '#e8b84b', red: '#ff5a5f', grey: 'rgba(243,239,230,.34)' };
+let meta, D = {}, SR = 48000, FPS = 30;
+window.ready = (async () => {
+  meta = await (await fetch('meta.json')).json(); SR = meta.sr; FPS = meta.fps;
+  for (const s of meta.scenes) {
+    D[s.id] = {};
+    for (const k of ['in', 'out', 'gr']) D[s.id][k] = new Float32Array(await (await fetch(`${s.id}.${k}.f32`)).arrayBuffer());
+  }
+  return true;
+})();
+
+const nf = (v, d = 1) => { let s = v.toFixed(d); if (Number(s) === 0) s = (0).toFixed(d); return s.replace('.', ',').replace('-', '−'); };
+const lin = d => Math.pow(10, d / 20), dB = x => 20 * Math.log10(Math.max(Math.abs(x), 1e-6));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ease = u => u * u * (3 - 2 * u);
+function transfer(l, T, R, k) { const o = l - T; k = Math.max(k, .01); if (2 * o < -k) return l; if (2 * Math.abs(o) <= k) return l + (1 / R - 1) * Math.pow(o + k / 2, 2) / (2 * k); return T + o / R; }
+
+function txt(s, x, y, font, color, align = 'left', ls = 0) { g.font = font; g.fillStyle = color; g.textAlign = align; g.textBaseline = 'alphabetic'; g.letterSpacing = ls + 'px'; g.fillText(s, x, y); g.letterSpacing = '0px'; }
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+
+function bg() {
+  g.fillStyle = C.bg; g.fillRect(0, 0, W, H);
+  const r = g.createRadialGradient(W / 2, 520, 40, W / 2, 520, 900); r.addColorStop(0, 'rgba(232,184,75,.10)'); r.addColorStop(1, 'rgba(232,184,75,0)');
+  g.fillStyle = r; g.fillRect(0, 0, W, H);
+}
+function header() {
+  rr(60, 64, 64, 64, 14); g.fillStyle = '#16161b'; g.fill(); g.strokeStyle = C.line; g.lineWidth = 2; g.stroke();
+  g.fillStyle = C.acc; g.fillRect(60, 64, 64, 5);
+  txt('BE', 92, 108, '800 30px Inter', C.acc, 'center');
+  txt('BERKAY ER ACADEMY', 144, 108, '600 24px "Space Mono", "DejaVu Sans Mono", monospace', C.fg, 'left', 4);
+  txt('ABLETON · COMPRESSOR', W - 60, 108, '600 22px "Space Mono", "DejaVu Sans Mono", monospace', C.mut, 'right', 3);
+}
+function title(S) {
+  txt(S.title, 60, 262, '800 92px Inter', C.fg, 'left', -1);
+  g.fillStyle = C.acc; g.fillRect(60, 292, 120, 8);
+}
+
+/* ── dalga biçimi ─────────────────────────────────────────────────────────────── */
+function wave(arr, n, x, cy, w, amp, t0, span, color, cols = w) {   // t0 = pencere başı (s), span = süre (s); cols < w → yalnız soldan cols sütun (ölçek bozulmaz)
+  g.fillStyle = color;
+  for (let i = 0; i < cols; i++) {
+    const a = Math.floor((t0 + i / w * span) * SR), b = Math.max(a + 1, Math.floor((t0 + (i + 1) / w * span) * SR));
+    if (b <= 0 || a >= n) continue;
+    let mn = 0, mx = 0;
+    for (let k = Math.max(0, a); k < Math.min(n, b); k++) { const v = arr[k]; if (v < mn) mn = v; if (v > mx) mx = v; }
+    g.fillRect(x + i, cy - mx * amp, 1, Math.max(1, (mx - mn) * amp));
+  }
+}
+function grTrace(arr, n, x, y0, w, h, t0, span, maxDb, color, cols = w) {      // y0 = üst çizgi (0 dB); aşağı doğru kısılma
+  g.fillStyle = color; g.globalAlpha = .85;
+  for (let i = 0; i < cols; i++) {
+    const a = Math.floor((t0 + i / w * span) * SR), b = Math.max(a + 1, Math.floor((t0 + (i + 1) / w * span) * SR));
+    if (b <= 0 || a >= n) continue;
+    let mn = 0; for (let k = Math.max(0, a); k < Math.min(n, b); k++) if (arr[k] < mn) mn = arr[k];
+    g.fillRect(x + i, y0, 1, clamp(-mn / maxDb, 0, 1) * h);
+  }
+  g.globalAlpha = 1;
+}
+function thrLines(T, x, cy, w, amp) {
+  const y = lin(T) * amp; g.save(); g.setLineDash([14, 10]); g.strokeStyle = C.acc; g.lineWidth = 3; g.globalAlpha = .9;
+  g.beginPath(); g.moveTo(x, cy - y); g.lineTo(x + w, cy - y); g.moveTo(x, cy + y); g.lineTo(x + w, cy + y); g.stroke(); g.restore();
+  g.fillStyle = 'rgba(255,90,95,.07)'; g.fillRect(x, cy - amp, w, amp - y); g.fillRect(x, cy + y, w, amp - y);
+}
+function box(x, y, w, h) { rr(x, y, w, h, 24); g.fillStyle = '#0e0e12'; g.fill(); g.strokeStyle = C.line; g.lineWidth = 2; g.stroke(); }
+
+/* ── sahne kipleri ─────────────────────────────────────────────────────────────── */
+function modeWave(S, ts, P, big = true) {
+  const X = 60, Y = 400, Wd = 960, Hh = 520, cy = Y + Hh / 2, amp = 236, win = 2.0, ph = .65, n = D[S.id].in.length;
+  box(X, Y, Wd, Hh);
+  const t0 = ts - ph * win; g.save(); rr(X, Y, Wd, Hh, 24); g.clip();
+  g.strokeStyle = C.line; g.lineWidth = 1; g.beginPath(); g.moveTo(X, cy); g.lineTo(X + Wd, cy); g.stroke();
+  if (!S.off) thrLines(P[0], X, cy, Wd, amp);
+  if (!S.off) wave(D[S.id].in, n, X, cy, Wd, amp, t0, win, C.grey);
+  wave(D[S.id].out, n, X, cy, Wd, amp, t0, win, C.acc);
+  g.fillStyle = C.fg; g.fillRect(X + ph * Wd - 1.5, Y, 3, Hh);
+  g.restore();
+  txt(S.off ? 'KOMPRESÖR KAPALI' : 'GİRİŞ (gri)  ·  ÇIKIŞ (sarı)', X + 24, Y + 44, '600 22px "Space Mono", monospace', C.mut, 'left', 2);
+  if (!S.off) { const lb = 'THRESHOLD ' + nf(P[0], 1) + ' dB', yy = cy - lin(P[0]) * amp - 52; g.font = '600 22px "Space Mono", monospace'; g.letterSpacing = '2px'; const lw = g.measureText(lb).width; g.letterSpacing = '0px';
+    rr(X + Wd - 24 - lw - 20, yy, lw + 20, 38, 19); g.fillStyle = 'rgba(11,11,14,.92)'; g.fill(); g.strokeStyle = C.acc; g.lineWidth = 2; g.stroke(); txt(lb, X + Wd - 34, yy + 27, '600 22px "Space Mono", monospace', C.acc, 'right', 2); }
+  grStrip(S, ts, X, 950, Wd, 170, win, ph, 12);
+}
+function grStrip(S, ts, X, Y, Wd, Hh, win, ph, maxDb) {
+  const n = D[S.id].gr.length, idx = clamp(Math.floor(ts * SR), 0, n - 1);
+  box(X, Y, Wd, Hh); g.save(); rr(X, Y, Wd, Hh, 24); g.clip();
+  grTrace(D[S.id].gr, n, X, Y, Wd, Hh, ts - ph * win, win, maxDb, C.red);
+  g.fillStyle = C.fg; g.fillRect(X + ph * Wd - 1.5, Y, 3, Hh); g.restore();
+  txt('KISILAN MİKTAR (gain reduction)', X + 24, Y + Hh - 22, '600 20px "Space Mono", monospace', C.mut, 'left', 2);
+  const v = D[S.id].gr[idx]; txt(nf(v, 1) + ' dB', X + Wd - 24, Y + Hh - 24, '800 52px Inter', v < -0.2 ? C.red : C.mut, 'right');
+}
+function modeCurve(S, ts, P) {
+  const X0 = 120, Y0 = 410, Sz = 470, n = D[S.id].in.length, idx = clamp(Math.floor(ts * SR), 0, n - 1), lo = -36;
+  const px = d => X0 + (clamp(d, lo, 0) - lo) / -lo * Sz, py = d => Y0 + Sz - (clamp(d, lo, 0) - lo) / -lo * Sz;
+  box(X0 - 24, Y0 - 20, Sz + 48, Sz + 40);
+  g.strokeStyle = C.line; g.lineWidth = 1; for (let d = -30; d <= 0; d += 6) { g.beginPath(); g.moveTo(px(d), Y0); g.lineTo(px(d), Y0 + Sz); g.moveTo(X0, py(d)); g.lineTo(X0 + Sz, py(d)); g.stroke(); }
+  g.save(); g.setLineDash([10, 10]); g.strokeStyle = C.grey; g.lineWidth = 2; g.beginPath(); g.moveTo(px(lo), py(lo)); g.lineTo(px(0), py(0)); g.stroke(); g.restore();
+  g.strokeStyle = 'rgba(232,184,75,.5)'; g.setLineDash([6, 8]); g.lineWidth = 2; g.beginPath(); g.moveTo(px(P[0]), Y0); g.lineTo(px(P[0]), Y0 + Sz); g.stroke(); g.setLineDash([]);
+  g.strokeStyle = C.acc; g.lineWidth = 7; g.lineJoin = 'round'; g.beginPath();
+  for (let d = lo; d <= 0; d += .5) { const o = transfer(d, P[0], P[1], 6); d === lo ? g.moveTo(px(d), py(o)) : g.lineTo(px(d), py(o)); } g.stroke();
+  let m = 0; for (let k = Math.max(0, idx - Math.floor(.012 * SR)); k <= idx; k++) m = Math.max(m, Math.abs(D[S.id].in[k]));
+  const li = Math.max(lo, dB(m)), lo2 = transfer(li, P[0], P[1], 6);
+  g.fillStyle = C.fg; g.beginPath(); g.arc(px(li), py(lo2), 15, 0, 7); g.fill(); g.strokeStyle = C.bg; g.lineWidth = 4; g.stroke();
+  txt('GİRİŞ (dB)', X0 + Sz / 2, Y0 + Sz + 52, '600 20px "Space Mono", monospace', C.mut, 'center', 2);
+  g.save(); g.translate(X0 - 52, Y0 + Sz / 2); g.rotate(-Math.PI / 2); txt('ÇIKIŞ (dB)', 0, 0, '600 20px "Space Mono", monospace', C.mut, 'center', 2); g.restore();
+  const over = Math.max(0, li - P[0]), oOut = Math.max(0, lo2 - P[0]);                       // sağ metin: eşiğin üstü kaç dB → kaç dB
+  txt('EŞİĞİN ÜSTÜ', 690, 500, '600 22px "Space Mono", monospace', C.mut, 'left', 2);
+  txt('giriş', 690, 560, '500 30px Inter', C.mut); txt(nf(over, 1) + ' dB', 1020, 560, '800 48px Inter', C.fg, 'right');
+  txt('çıkış', 690, 640, '500 30px Inter', C.mut); txt(nf(oOut, 1) + ' dB', 1020, 640, '800 48px Inter', C.acc, 'right');
+  txt('oran', 690, 720, '500 30px Inter', C.mut); txt(P[1] <= 1.01 ? '1 : 1' : nf(over / Math.max(oOut, .05), 1) + ' : 1', 1020, 720, '800 48px Inter', C.fg, 'right');
+  txt('(sarı çizgi = kompresörün', 690, 800, '500 24px Inter', C.mut); txt('giriş → çıkış kuralı)', 690, 834, '500 24px Inter', C.mut);
+  // alt şerit: kısa dalga
+  const Y1 = 990, Hh = 190, cy = Y1 + Hh / 2; box(60, Y1, 960, Hh); g.save(); rr(60, Y1, 960, Hh, 24); g.clip();
+  wave(D[S.id].in, n, 60, cy, 960, 86, ts - 1.1, 1.7, C.grey); wave(D[S.id].out, n, 60, cy, 960, 86, ts - 1.1, 1.7, C.acc);
+  g.fillStyle = C.fg; g.fillRect(60 + (1.1 / 1.7) * 960 - 1.5, Y1, 3, Hh); g.restore();
+}
+function latestOnset(S, ts) { let o = S.onsets[0]; for (const k of S.onsets) if (k.t <= ts) o = k; return o; }
+function modeZoom(S, ts, P) {
+  const X = 60, Y = 400, Wd = 960, Hh = 560, cy = Y + Hh / 2, amp = 250, n = D[S.id].in.length, on = latestOnset(S, ts), pre = .012, span = .15;
+  box(X, Y, Wd, Hh); const t0 = on.t - pre; g.save(); rr(X, Y, Wd, Hh, 24); g.clip();
+  g.strokeStyle = C.line; g.lineWidth = 1; g.beginPath(); g.moveTo(X, cy); g.lineTo(X + Wd, cy); g.stroke();
+  thrLines(P[0], X, cy, Wd, amp);
+  const reveal = clamp((ts - t0) / span, 0, 1), wdRev = Math.round(Wd * reveal);
+  const axp = X + pre / span * Wd, aw = Math.max(3, P[2] / 1000 / span * Wd);
+  g.fillStyle = 'rgba(232,184,75,.13)'; g.fillRect(axp, Y, aw, Hh);
+  wave(D[S.id].in, n, X, cy, Wd, amp, t0, span, C.grey, wdRev); wave(D[S.id].out, n, X, cy, Wd, amp, t0, span, C.acc, wdRev);
+  g.fillStyle = C.fg; g.fillRect(X + wdRev - 1.5, Y, 3, Hh); g.restore();
+  txt('GİRİŞ (gri)  ·  ÇIKIŞ (sarı)  ·  tek vuruşun ilk 150 ms’si', X + 24, Y + 44, '600 20px "Space Mono", monospace', C.mut, 'left', 1);
+  txt('ATTACK ' + (P[2] < 1 ? nf(P[2], 1) : String(Math.round(P[2]))) + ' ms', clamp(axp + aw + 14, X + 20, X + 640), Y + Hh - 24, '700 30px Inter', C.acc);
+  txt('VURUŞ', axp + 14, cy - 150 - 10, '700 26px Inter', C.fg); g.strokeStyle = C.fg; g.lineWidth = 3; g.beginPath(); g.moveTo(axp + 30, cy - 144); g.lineTo(axp + 8, cy - 116); g.stroke();
+  const Y2 = 990, H2 = 150; box(X, Y2, Wd, H2); g.save(); rr(X, Y2, Wd, H2, 24); g.clip();
+  grTrace(D[S.id].gr, n, X, Y2, Wd, H2, t0, span, 12, C.red, wdRev); g.fillStyle = C.fg; g.fillRect(X + wdRev - 1.5, Y2, 3, H2); g.restore();
+  txt('KISILAN MİKTAR (gain reduction)', X + 24, Y2 + H2 - 22, '600 20px "Space Mono", monospace', C.mut, 'left', 2);
+  const gv = D[S.id].gr[clamp(Math.floor(clamp(ts, t0, t0 + span) * SR), 0, n - 1)]; txt(nf(gv, 1) + ' dB', X + Wd - 24, Y2 + H2 - 22, '800 52px Inter', gv < -.2 ? C.red : C.mut, 'right');
+}
+function modeGr(S, ts, P) {
+  const X = 60, Y = 400, Wd = 960, Hh = 330, n = D[S.id].in.length, win = 1.6, ph = .6;
+  box(X, Y, Wd, Hh); g.save(); rr(X, Y, Wd, Hh, 24); g.clip();
+  g.strokeStyle = C.line; for (let d = 3; d <= 9; d += 3) { g.beginPath(); g.moveTo(X, Y + d / 12 * Hh); g.lineTo(X + Wd, Y + d / 12 * Hh); g.stroke(); }
+  grTrace(D[S.id].gr, n, X, Y, Wd, Hh, ts - ph * win, win, 12, C.red);
+  g.fillStyle = C.fg; g.fillRect(X + ph * Wd - 1.5, Y, 3, Hh); g.restore();
+  txt('KISILAN MİKTAR: aşağı = daha çok kısıyor', X + 24, Y + Hh - 22, '600 20px "Space Mono", monospace', C.mut, 'left', 1);
+  const v = D[S.id].gr[clamp(Math.floor(ts * SR), 0, n - 1)]; txt(nf(v, 1) + ' dB', X + Wd - 24, Y + Hh - 24, '800 52px Inter', v < -.2 ? C.red : C.mut, 'right');
+  const Y1 = 770, H1 = 300, cy = Y1 + H1 / 2; box(X, Y1, Wd, H1); g.save(); rr(X, Y1, Wd, H1, 24); g.clip();
+  wave(D[S.id].in, n, X, cy, Wd, 128, ts - ph * win, win, C.grey); wave(D[S.id].out, n, X, cy, Wd, 128, ts - ph * win, win, C.acc);
+  g.fillStyle = C.fg; g.fillRect(X + ph * Wd - 1.5, Y1, 3, H1); g.restore();
+  txt('RELEASE ' + Math.round(P[3]) + ' ms', X + 24, Y1 + 44, '700 30px Inter', C.acc);
+}
+function modeBars(S, ts, P) {
+  const n = D[S.id].in.length, ab = S.ab, isOn = (ts >= ab[0] && ts < ab[1]) || ts >= ab[2];
+  const X = 60, Y = 400, Wd = 960, Hh = 250, cy = Y + Hh / 2; box(X, Y, Wd, Hh); g.save(); rr(X, Y, Wd, Hh, 24); g.clip();
+  wave(D[S.id].out, n, X, cy, Wd, 104, ts - 1.3, 2.0, isOn ? C.acc : C.grey); g.fillStyle = C.fg; g.fillRect(X + .65 * Wd - 1.5, Y, 3, Hh); g.restore();
+  rr(X + 24, Y + 20, isOn ? 300 : 360, 52, 26); g.fillStyle = isOn ? C.acc : '#2a2a31'; g.fill();
+  txt(isOn ? 'KOMPRESÖRLÜ' : 'KOMPRESÖRSÜZ', X + 24 + (isOn ? 150 : 180), Y + 56, '800 28px Inter', isOn ? '#0b0b0e' : C.fg, 'center', 1);
+  // çubuklar: her vuruşun yüksekliği (ilk 150 ms RMS)
+  const B = S.bars, lo = -22, hi = -9, by = 1160, bh = 300, bw = 92;
+  box(X, 690, Wd, 520);
+  txt('4 VURUŞUN SES YÜKSEKLİĞİ', X + 24, 740, '600 20px "Space Mono", monospace', C.mut, 'left', 2);
+  const compK = ts < ab[0] ? 0 : isOn ? ease(clamp(((ts < ab[1] ? ts - ab[0] : ts - ab[2])) / .6, 0, 1)) : (ts >= ab[1] && ts < ab[2]) ? clamp(1 - (ts - ab[1]) / .35, 0, 1) : 0;
+  const sp = a => Math.max(...a) - Math.min(...a), spRaw = sp(B.raw), spNow = spRaw + (sp(B.comp) - spRaw) * compK;
+  txt('vuruşlar arası fark', X + 24, 805, '500 30px Inter', C.mut);
+  if (compK > 0.02) { txt(nf(spRaw, 1) + ' dB', X + Wd - 24 - 210, 808, '800 44px Inter', C.mut, 'right'); txt('→', X + Wd - 24 - 168, 806, '700 38px Inter', C.mut, 'center'); txt(nf(spNow, 1) + ' dB', X + Wd - 24, 808, '800 44px Inter', C.acc, 'right'); }
+  else txt(nf(spRaw, 1) + ' dB', X + Wd - 24, 808, '800 44px Inter', C.fg, 'right');
+  for (let k = 0; k < 4; k++) {
+    const gx = X + 90 + k * 210, h = v => clamp((v - lo) / (hi - lo), 0, 1) * bh;
+    g.fillStyle = C.grey; rr(gx, by - h(B.raw[k]), bw, h(B.raw[k]), 10); g.fill();
+    if (compK > 0) { g.fillStyle = C.acc; const hh = h(B.raw[k]) + (h(B.comp[k]) - h(B.raw[k])) * compK; rr(gx + bw + 10, by - hh, bw, hh, 10); g.fill(); }
+    txt(String(k + 1), gx + bw + 5, by + 36, '700 26px Inter', C.mut, 'center');
+  }
+}
+function modeOutro(S, ts) {
+  const items = [['THRESHOLD', 'nereden itibaren kısılsın'], ['RATIO', 'ne kadar sert kısılsın'], ['ATTACK', 'ne kadar geç tepki versin'], ['RELEASE', 'ne kadar hızlı bıraksın']];
+  items.forEach((it, i) => {
+    const a = ease(clamp((ts - .25 * i) / .4, 0, 1)), y = 470 + i * 150; g.globalAlpha = a;
+    box(60, y - 60, 960, 124); g.fillStyle = C.acc; g.fillRect(60, y - 60, 8, 124);
+    txt(it[0], 110, y + 10, '800 52px Inter', C.fg); txt(it[1], 1000, y + 8, '500 30px Inter', C.mut, 'right'); g.globalAlpha = 1;
+  });
+  const b = ease(clamp((ts - 3) / .5, 0, 1)); g.globalAlpha = b; rr(60, 1110, 960, 100, 50); g.fillStyle = C.acc; g.fill();
+  txt('SIRADAKİ: SATURATOR', W / 2, 1176, '800 44px Inter', '#0b0b0e', 'center', 2); g.globalAlpha = 1;
+}
+
+/* ── parametre paneli ─────────────────────────────────────────────────────────── */
+function panel(S, P) {
+  const defs = [
+    ['T', 'THRESHOLD', nf(P[0], 1) + ' dB', clamp((P[0] + 30) / 30, 0, 1)],
+    ['R', 'RATIO', P[1] >= 9.5 ? '10 : 1' : (Math.abs(P[1] - Math.round(P[1])) < .05 ? Math.round(P[1]) : nf(P[1], 1)) + ' : 1', clamp((Math.log(P[1]) / Math.log(10)), 0, 1)],
+    ['A', 'ATTACK', (P[2] < 1 ? nf(P[2], 1) : Math.round(P[2])) + ' ms', clamp((Math.log10(P[2]) + 1) / 3, 0, 1)],
+    ['Rl', 'RELEASE', Math.round(P[3]) + ' ms', clamp((Math.log10(P[3]) - 1) / 2, 0, 1)],
+  ];
+  const Y = 1262, w = 225, h = 190;
+  defs.forEach((d, i) => {
+    const x = 60 + i * (w + 20), act = S.focus === d[0], dim = S.focus && !act, a = S.off ? .35 : dim ? .5 : 1;
+    g.globalAlpha = a; rr(x, Y, w, h, 22); g.fillStyle = act ? 'rgba(232,184,75,.10)' : C.panel; g.fill(); g.strokeStyle = act ? C.acc : C.line; g.lineWidth = act ? 4 : 2; g.stroke();
+    txt(d[1], x + w / 2, Y + 46, '600 19px "Space Mono", monospace', act ? C.acc : C.mut, 'center', 2);
+    txt(d[2], x + w / 2, Y + 112, '800 ' + (d[2].length > 7 ? 40 : 46) + 'px Inter', C.fg, 'center');
+    g.fillStyle = 'rgba(255,255,255,.08)'; rr(x + 28, Y + 146, w - 56, 8, 4); g.fill(); g.fillStyle = act ? C.acc : C.mut; rr(x + 28, Y + 146, Math.max(8, (w - 56) * d[3]), 8, 4); g.fill();
+    g.globalAlpha = 1;
+  });
+}
+
+/* ── alt yazı ───────────────────────────────────────────────────────────────── */
+function caption(S, ts) {
+  const c = S.cap.find(k => ts >= k[0] && ts < k[1]); if (!c) return;
+  const a = Math.min(clamp((ts - c[0]) / .22, 0, 1), clamp((c[1] - ts) / .22, 0, 1)), words = c[2].split(' ');
+  g.font = '800 60px Inter'; const lines = []; let cur = '';
+  for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > 940 && cur) { lines.push(cur); cur = wd; } else cur = t; } lines.push(cur);
+  g.globalAlpha = a; const y0 = 1640 + (3 - lines.length) * 36;
+  lines.forEach((ln, i) => {
+    const first = i === 0 && /^[A-ZÇĞİÖŞÜ0-9:]{4,}/.test(ln) ? ln.split(' ')[0] : '';
+    if (first) { const rest = ln.slice(first.length); g.font = '800 60px Inter'; const wf = g.measureText(first).width, wr = g.measureText(rest).width, x0 = W / 2 - (wf + wr) / 2;
+      txt(first, x0, y0 + i * 76, '800 60px Inter', C.acc, 'left'); txt(rest, x0 + wf, y0 + i * 76, '800 60px Inter', C.fg, 'left'); }
+    else txt(ln, W / 2, y0 + i * 76, '800 60px Inter', C.fg, 'center');
+  }); g.globalAlpha = 1;
+}
+
+window.seek = t => {
+  const S = meta.scenes.find(s => t >= s.start && t < s.start + s.dur) || meta.scenes[meta.scenes.length - 1], ts = clamp(t - S.start, 0, S.dur - 1e-6);
+  const P = S.params[Math.min(S.params.length - 1, Math.floor(ts * FPS))];
+  bg(); header(); title(S);
+  if (S.mode === 'wave') modeWave(S, ts, P); else if (S.mode === 'curve') modeCurve(S, ts, P); else if (S.mode === 'zoom') modeZoom(S, ts, P);
+  else if (S.mode === 'gr') modeGr(S, ts, P); else if (S.mode === 'bars') modeBars(S, ts, P); else if (S.mode === 'outro') modeOutro(S, ts);
+  if (S.mode !== 'outro') panel(S, P);
+  caption(S, ts);
+  txt('berkayeracademy.com', W / 2, 1880, '600 22px "Space Mono", monospace', C.mut, 'center', 3);
+  const fi = Math.min(clamp(ts / .18, 0, 1), clamp((S.dur - ts) / .18, 0, 1)); if (fi < 1) { g.fillStyle = `rgba(11,11,14,${(1 - fi) * .85})`; g.fillRect(0, 0, W, H); }
+};
+</script></body></html>
