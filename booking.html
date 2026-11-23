@@ -15,14 +15,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202611102000">
-  <script src="assets/js/theme-init.js?v=202611102000"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202611102000">
-  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202611102000">
-  <script src="assets/js/auth-ui.js?v=202611102000"></script>
-  <script src="assets/js/trial-intro.js?v=202611102000" defer></script>
-  <script src="assets/js/placement-quiz.js?v=202611102000"></script>
-  <script src="assets/js/be-tour.js?v=202611102000"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202611231200">
+  <script src="assets/js/theme-init.js?v=202611231200"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202611231200">
+  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202611231200">
+  <script src="assets/js/auth-ui.js?v=202611231200"></script>
+  <script src="assets/js/trial-intro.js?v=202611231200" defer></script>
+  <script src="assets/js/placement-quiz.js?v=202611231200"></script>
+  <script src="assets/js/be-tour.js?v=202611231200"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -1866,7 +1866,7 @@
     }
   </style>
 <script src="assets/js/i18n.js?v=202611100100"></script>
-<script src="assets/js/trial-nav.js?v=202611102000"></script>
+<script src="assets/js/trial-nav.js?v=202611231200"></script>
 </head>
 <body data-be-intro-first>
 <header class="be-header" id="beHeader" data-be-page="booking" data-be-cta="off"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -2955,17 +2955,35 @@ function showRulesAcceptanceModal(opts) {
 // ─── Banka / IBAN bilgisi — istemci tarafında TEK KAYNAK ─────────
 // Ek hak modalındaki ödeme tablosu, "Yapman gereken" kartı ve Ders Paneli asistanı
 // (be-assistant-ui.js → window.BK_BANK) buradan okur; markup'a IBAN yazılmaz.
-// Ödeme bilgisi değişirse functions/index.js'teki e-posta kopyası da güncellenir.
-var BK_BANK = (function () {
-  var iban = `TR46 0001 5001 5800 7392 5136 44`;
-  return { bank: `VakıfBank`, name: `Muhammet Berkay Er`, iban: iban, ibanRaw: iban.replace(/\s+/g, '') };
-})();
+// Hangi hesabın gösterileceğini yönetici panelindeki "Ödeme hesabı" kartı seçer: settings/payment.bank_id
+// ('vakif' | 'garanti'; yoksa vakif). BK_BANK yerinde güncellenir (asistan aynı nesneyi okur).
+// Hesap eklenir/değişirse functions/index.js'teki BANKS kopyası da güncellenir (e-postalar oradan).
+var BK_BANKS = {
+  vakif:   { bank: `VakıfBank`,       name: `Muhammet Berkay Er`, iban: `TR46 0001 5001 5800 7392 5136 44`, b20: true },
+  garanti: { bank: `Garanti Bankası`, name: `Muhammet Berkay Er`, iban: `TR35 0006 2000 6870 0006 8982 06`, b20: false },
+};
+var BK_BANK = {};
+function bkSetBank(id) {
+  if (!BK_BANKS[id]) id = 'vakif';
+  var b = BK_BANKS[id];
+  BK_BANK.id = id; BK_BANK.bank = b.bank; BK_BANK.name = b.name; BK_BANK.iban = b.iban;
+  BK_BANK.ibanRaw = b.iban.replace(/\s+/g, ''); BK_BANK.b20 = b.b20;
+}
+bkSetBank('vakif');
+var _bkBankReq = null;
+function bkLoadBank(force) {
+  if (_bkBankReq && !force) return _bkBankReq;
+  _bkBankReq = db.collection('settings').doc('payment').get()
+    .then(snap => { bkSetBank(snap && snap.exists ? snap.data().bank_id : 'vakif'); })
+    .catch(e => { console.warn('[bank]', e && (e.code || e.message)); });
+  return _bkBankReq;
+}
 
 // Ödeme güven notu: 20/B istisna belgesi + alıcı adı kontrolü (iki ödeme kutusunda ortak).
 function bkPayTrustHtml() {
   return `<div class="bk-pay-trust" role="note">
       <strong class="bk-pay-trust-h">${bkT('bk_pay_trust_h', '🔒 Güvenli ödeme')}</strong>
-      <p>${bkT('bk_pay_trust_1', 'Ödemeler, Gelir Vergisi Kanunu 20/B kapsamında Aydın Defterdarlığı’ndan alınan istisna belgesine bağlı, <strong>Muhammet Berkay Er</strong> adına açılmış VakıfBank hesabına yapılır. Gerekli vergi kesintisini banka yapar.')}</p>
+      <p>${BK_BANK.b20 ? bkT('bk_pay_trust_1', 'Ödemeler, Gelir Vergisi Kanunu 20/B kapsamında Aydın Defterdarlığı’ndan alınan istisna belgesine bağlı, <strong>Muhammet Berkay Er</strong> adına açılmış VakıfBank hesabına yapılır. Gerekli vergi kesintisini banka yapar.') : bkT('bk_pay_trust_1_g', 'Ödemeler <strong>Muhammet Berkay Er</strong> adına açılmış {bank} hesabına yapılır.').replace('{bank}', escHtml(BK_BANK.bank))}</p>
       <p>${bkT('bk_pay_trust_2', 'Havale ederken alıcı adının <strong>MUHAMMET BERKAY ER</strong> olduğunu kontrol et.')}</p>
       <p>${bkT('bk_pay_trust_3', 'Belgeyi görmek istersen bize yaz, doğrulama kodunu paylaşalım.')}</p>
     </div>`;
@@ -6073,6 +6091,7 @@ async function renderDashboard() {
   if (!_bkClockTimer) _bkClockTimer = setInterval(bkSyncClock, 5 * 60 * 1000);
   const _onRes = async (snap) => {
   if (!snap || !snap.exists) { initRequestForm(); return; }
+  await bkLoadBank();
   const res = snap.data();
 
   // Seviye belirleme sınavı: ödemesi tamamlanmamış (henüz başlamamış) öğrenciye
@@ -7129,7 +7148,7 @@ async function bkWithHoursAccess(user, proceed) {
   renderAccessView(user, 'gate');
 }
 // Yönetim bölümü ayrı dosyada; yalnız yönetici oturumunda yüklenir
-const BK_ADMIN_V = '202611141000';
+const BK_ADMIN_V = '202611231200';
 let _bkAdminLoad = null;
 function bkLoadAdmin() {
   if (_bkAdminLoad) return _bkAdminLoad;
@@ -7151,6 +7170,7 @@ async function loadUserState(user) {
   }
   _bkPostTrial = false;
   loadCampaigns(); // kampanyalar erken okunur (talep formu / bekleme özeti aynı isteği bekler)
+  bkLoadBank();    // ödeme hesabı (VakıfBank / Garanti) — ödeme kutusu çizilmeden önce beklenir
 
   // Check active reservation first
   let resSnap = null;
@@ -7826,9 +7846,9 @@ auth.onAuthStateChanged(user => {
 });
 </script>
 <!-- Site içi asistan: motor + bilgi tabanı + arayüz (window.beAssistant) -->
-<script src="assets/js/be-assistant.js?v=202611102000"></script>
-<script src="assets/js/be-assistant-kb.js?v=202611102000"></script>
-<script src="assets/js/be-assistant-ui.js?v=202611102000"></script>
+<script src="assets/js/be-assistant.js?v=202611231200"></script>
+<script src="assets/js/be-assistant-kb.js?v=202611231200"></script>
+<script src="assets/js/be-assistant-ui.js?v=202611231200"></script>
 <script>(function(){
   // Dil değişince JS'in ürettiği metinler (paket tablosu, slot ipucu, tek ders notu) yeniden çizilir
   function init(){

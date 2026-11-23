@@ -55,7 +55,24 @@ async function getZoomLink(db) {
  * - Plain-text alternative
  * - Reply-To + List-Unsubscribe headers
  */
-function buildReminderMailOptions(name, toEmail, nextLesson, nextDateFormatted) {
+// Ödeme hesapları — booking.html'deki BK_BANKS ile aynı (iki yeri birlikte güncelle).
+// Hangisinin gösterileceğini yönetici panelindeki "Ödeme hesabı" kartı seçer: settings/payment.bank_id.
+const BANKS = {
+  vakif: {bank: "VakıfBank", name: "Muhammet Berkay Er", iban: "TR46 0001 5001 5800 7392 5136 44"},
+  garanti: {bank: "Garanti Bankası", name: "Muhammet Berkay Er", iban: "TR35 0006 2000 6870 0006 8982 06"},
+};
+async function activeBank(db) {
+  try {
+    const snap = await db.collection("settings").doc("payment").get();
+    const id = snap.exists ? snap.data().bank_id : null;
+    return BANKS[id] || BANKS.vakif;
+  } catch (e) {
+    console.warn("activeBank", e.message);
+    return BANKS.vakif;
+  }
+}
+
+function buildReminderMailOptions(name, toEmail, nextLesson, nextDateFormatted, bank = BANKS.vakif) {
   const lessonLine = nextLesson ?
     `Yaklaşan dersiniz: ${nextDateFormatted} – ${nextLesson.time}` : "";
 
@@ -74,9 +91,9 @@ ${lessonLine}
 
 Lütfen ödemenizi aşağıdaki hesaba yapınız:
 
-Banka : VakıfBank
-İsim  : Muhammet Berkay Er
-IBAN  : TR46 0001 5001 5800 7392 5136 44
+Banka : ${bank.bank}
+İsim  : ${bank.name}
+IBAN  : ${bank.iban}
 
 Ödeme ders saatine kadar gerçekleşmelidir. Gerçekleşmediği takdirde derse giriş butonu aktifleşmeyecektir.
 
@@ -107,9 +124,9 @@ berkayeracademy.com`,
           </div>
           <p style="margin:0 0 12px;font-size:14px;color:#444;line-height:1.6;">Lütfen ödemenizi aşağıdaki hesaba yapınız:</p>
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f8f8;border-radius:6px;padding:16px;margin-bottom:24px;">
-            <tr><td style="font-size:12px;color:#888;padding:3px 0;">Banka</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">VakıfBank</td></tr>
-            <tr><td style="font-size:12px;color:#888;padding:3px 0;">İsim</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">Muhammet Berkay Er</td></tr>
-            <tr><td style="font-size:12px;color:#888;padding:3px 0;">IBAN</td><td style="font-size:13px;color:#222;font-weight:bold;text-align:right;font-family:monospace;letter-spacing:1px;">TR46 0001 5001 5800 7392 5136 44</td></tr>
+            <tr><td style="font-size:12px;color:#888;padding:3px 0;">Banka</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">${escHtml(bank.bank)}</td></tr>
+            <tr><td style="font-size:12px;color:#888;padding:3px 0;">İsim</td><td style="font-size:13px;color:#333;font-weight:bold;text-align:right;">${escHtml(bank.name)}</td></tr>
+            <tr><td style="font-size:12px;color:#888;padding:3px 0;">IBAN</td><td style="font-size:13px;color:#222;font-weight:bold;text-align:right;font-family:monospace;letter-spacing:1px;">${escHtml(bank.iban)}</td></tr>
           </table>
           <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:12px 16px;margin-bottom:20px;">
             <p style="margin:0;font-size:13px;color:#856404;font-weight:bold;">⚠️ Ödeme ders saatine kadar gerçekleşmelidir.</p>
@@ -169,10 +186,11 @@ exports.paymentReminder = onSchedule(
       const db = getFirestore();
       const snapshot = await db.collection("reservations").get();
       const students = collectUnpaidStudents(snapshot);
+      const bank = await activeBank(db);
       const promises = students.map(({doc, data, email, name, nextLesson}) => {
         const nextDateFormatted = new Date(nextLesson.date + "T12:00:00")
             .toLocaleDateString("tr-TR", {day: "numeric", month: "long", year: "numeric"});
-        const mail = buildReminderMailOptions(name, email, nextLesson, nextDateFormatted);
+        const mail = buildReminderMailOptions(name, email, nextLesson, nextDateFormatted, bank);
         const tasks = [];
         // Email branch (existing)
         tasks.push(transporter.sendMail(mail).then(() => {
@@ -890,10 +908,11 @@ exports.sendPaymentRemindersManual = onCall(
       const db = getFirestore();
       const snapshot = await db.collection("reservations").get();
       const students = collectUnpaidStudents(snapshot);
+      const bank = await activeBank(db);
       const promises = students.map(({doc, email, name, nextLesson}) => {
         const nextDateFormatted = new Date(nextLesson.date + "T12:00:00")
             .toLocaleDateString("tr-TR", {day: "numeric", month: "long", year: "numeric"});
-        const mail = buildReminderMailOptions(name, email, nextLesson, nextDateFormatted);
+        const mail = buildReminderMailOptions(name, email, nextLesson, nextDateFormatted, bank);
         return transporter.sendMail(mail).then(() =>
           db.collection("reservations").doc(doc.id).update({
             last_reminder_sent: FieldValue.serverTimestamp(),
