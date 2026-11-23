@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><title>IMD — sahne</title>
+<style>html,body{margin:0;background:#0b0b0e}canvas{display:block}</style></head>
+<body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* Kare çizici. Spektrum çizgileri build-imd.mjs'in ÖLÇTÜĞÜ değerlerdir (meta.lines); burada sayı uydurulmaz. */
+const W = 1080, H = 1920, cv = document.getElementById('c'), g = cv.getContext('2d');
+const C = { bg: '#0b0b0e', panel: '#111115', line: 'rgba(255,255,255,.09)', fg: '#f3efe6', mut: '#8d887e', acc: '#e8b84b', red: '#ff5a5f', grey: 'rgba(243,239,230,.34)' };
+const MONO = '"Space Mono", "DejaVu Sans Mono", monospace';
+const NOTE = { 440: 'LA', 554.4: 'DO#', 659.3: 'Mİ' };
+let meta, D = {}, SR = 48000, FPS = 30;
+window.ready = (async () => {
+  meta = await (await fetch('meta.json')).json(); SR = meta.sr; FPS = meta.fps;
+  for (const s of meta.scenes) D[s.id] = new Float32Array(await (await fetch(`${s.id}.out.f32`)).arrayBuffer());
+  return true;
+})();
+const nf = (v, d = 1) => { let s = v.toFixed(d); if (Number(s) === 0) s = (0).toFixed(d); return s.replace('.', ',').replace('-', '−'); };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), ease = u => u * u * (3 - 2 * u);
+function txt(s, x, y, font, color, align = 'left', ls = 0) { g.font = font; g.fillStyle = color; g.textAlign = align; g.textBaseline = 'alphabetic'; g.letterSpacing = ls + 'px'; g.fillText(s, x, y); g.letterSpacing = '0px'; }
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function box(x, y, w, h) { rr(x, y, w, h, 24); g.fillStyle = '#0e0e12'; g.fill(); g.strokeStyle = C.line; g.lineWidth = 2; g.stroke(); }
+function bg() { g.fillStyle = C.bg; g.fillRect(0, 0, W, H); const r = g.createRadialGradient(W / 2, 520, 40, W / 2, 520, 900); r.addColorStop(0, 'rgba(232,184,75,.10)'); r.addColorStop(1, 'rgba(232,184,75,0)'); g.fillStyle = r; g.fillRect(0, 0, W, H); }
+function header() {
+  rr(60, 64, 64, 64, 14); g.fillStyle = '#16161b'; g.fill(); g.strokeStyle = C.line; g.lineWidth = 2; g.stroke(); g.fillStyle = C.acc; g.fillRect(60, 64, 64, 5);
+  txt('BE', 92, 108, '800 30px Inter', C.acc, 'center'); txt('BERKAY ER ACADEMY', 144, 108, '600 24px ' + MONO, C.fg, 'left', 4); txt('MIX · DISTORSİYON', W - 60, 108, '600 22px ' + MONO, C.mut, 'right', 3);
+}
+function title(S) { let fs = 92; g.font = '800 92px Inter'; while (g.measureText(S.title).width > 960 && fs > 48) { fs -= 2; g.font = '800 ' + fs + 'px Inter'; } txt(S.title, 60, 262, '800 ' + fs + 'px Inter', C.fg, 'left', -1); g.fillStyle = C.acc; g.fillRect(60, 292, 120, 8); }
+function wave(arr, x, cy, w, amp, t0, span, color) {
+  g.fillStyle = color; const n = arr.length;
+  for (let i = 0; i < w; i++) { const a = Math.floor((t0 + i / w * span) * SR), b = Math.max(a + 1, Math.floor((t0 + (i + 1) / w * span) * SR)); if (b <= 0 || a >= n) continue;
+    let mn = 0, mx = 0; for (let k = Math.max(0, a); k < Math.min(n, b); k++) { const v = arr[k]; if (v < mn) mn = v; if (v > mx) mx = v; } g.fillRect(x + i, cy - mx * amp, 1, Math.max(1, (mx - mn) * amp)); }
+}
+const STATE = { dry: ['TEMİZ', C.mut], tog: ['BİRLİKTE DOYUR', C.red], apart: ['AYRI DOYUR', C.acc], low: ['AZ DRIVE', C.acc] };
+function stateAt(S, ts) { if (S.split) return ts < S.split[0] ? 'tog' : ts < S.split[1] ? 'apart' : 'low'; return S.wetFrom != null && ts >= S.wetFrom ? 'tog' : 'dry'; }
+function since(S, ts) { if (S.split) return ts < S.split[0] ? ts : ts < S.split[1] ? ts - S.split[0] : ts - S.split[1]; return S.wetFrom != null && ts >= S.wetFrom ? ts - S.wetFrom : ts; }
+
+const F0 = 80, F1 = 3000, LO = -60, X = 60, Y = 380, WD = 960, HH = 640;
+const fx = f => X + 40 + Math.log(f / F0) / Math.log(F1 / F0) * (WD - 150), dy = d => Y + HH - 70 - (clamp(d, LO, 0) - LO) / -LO * (HH - 150);
+function spectrum(S, ts) {
+  box(X, Y, WD, HH);
+  g.strokeStyle = C.line; g.lineWidth = 1; for (let d = -50; d <= 0; d += 10) { const y = dy(d); g.beginPath(); g.moveTo(X + 30, y); g.lineTo(X + WD - 30, y); g.stroke(); txt(d + ' dB', X + WD - 34, y - 6, '500 15px ' + MONO, C.mut, 'right'); }
+  for (const f of [100, 200, 500, 1000, 2000]) txt(f >= 1000 ? (f / 1000) + ' kHz' : f + ' Hz', fx(f), Y + HH - 30, '500 19px ' + MONO, C.mut, 'center');
+  const st = stateAt(S, ts), L = S.lines[st], grow = ease(clamp(since(S, ts) / .6, 0, 1));
+  const shown = st === 'dry' ? S.lines.dry.filter(l => l.kind === 'in') : L;
+  for (const l of shown) {
+    const col = l.kind === 'in' ? C.fg : l.kind === 'harm' ? C.acc : C.red, k = l.kind === 'in' ? 1 : grow, y = dy(LO + (l.db - LO) * k), x = fx(l.f);
+    g.fillStyle = col; g.globalAlpha = l.kind === 'in' ? 1 : .92; g.fillRect(x - 4, y, 8, dy(LO) - y); g.beginPath(); g.arc(x, y, 8, 0, 7); g.fill(); g.globalAlpha = 1;
+    if (l.kind === 'in') { const nm = NOTE[Math.round(l.f * 10) / 10] || '', j = S.freqs.findIndex(f => Math.abs(f - l.f) < 1); txt(nm, x, y - 22 - (j % 2) * 34, '800 26px Inter', C.fg, 'center'); }
+  }
+  if (S.id === 's2' && st === 'tog' && grow > .9) for (const l of L.filter(l => l.kind === 'imd' && l.db > -16 && l.f < 1000)) txt(Math.round(l.f) + ' Hz', fx(l.f), dy(l.db) - 22, '700 22px ' + MONO, C.red, 'center');
+  if (S.id === 's1' && st === 'tog' && grow > .9) for (const l of L.filter(l => l.kind === 'harm')) txt('×' + Math.round(l.f / S.freqs[0]), fx(l.f), dy(l.db) - 22, '800 26px Inter', C.acc, 'center');
+  // gösterge
+  const lg = [['NOTA', C.fg], ['HARMONİK', C.acc], ['IMD', C.red]]; let lx = X + 34;
+  for (const [n, c] of lg) { g.fillStyle = c; g.beginPath(); g.arc(lx + 8, Y + 44, 8, 0, 7); g.fill(); txt(n, lx + 26, Y + 51, '600 19px ' + MONO, C.mut, 'left', 2); g.font = '600 19px ' + MONO; lx += 50 + g.measureText(n).width + 30; }
+}
+function stats(S, ts) {
+  const st = stateAt(S, ts), L = S.lines[st], imd = L.filter(l => l.kind === 'imd' && l.db > -50), mx = Math.max(-99, ...L.filter(l => l.kind === 'imd').map(l => l.db));
+  const y0 = 1060, w = 465, h = 200, k = st === 'dry' ? 0 : ease(clamp(since(S, ts) / .6, 0, 1));
+  box(60, y0, w, h); txt('IMD ÇİZGİSİ', 60 + w / 2, y0 + 50, '600 20px ' + MONO, C.mut, 'center', 2);
+  txt(String(Math.round(imd.length * k)), 60 + w / 2, y0 + 150, '800 88px Inter', imd.length ? C.red : C.fg, 'center');
+  box(555, y0, w, h); txt('EN GÜÇLÜ IMD', 555 + w / 2, y0 + 50, '600 20px ' + MONO, C.mut, 'center', 2);
+  txt(mx < -55 || st === 'dry' ? 'YOK' : nf(mx, 1) + ' dB', 555 + w / 2, y0 + 150, '800 ' + (mx < -55 || st === 'dry' ? 88 : 72) + 'px Inter', mx < -55 || st === 'dry' ? C.fg : C.red, 'center');
+  const [lab, col] = (st === 'tog' && !S.split && S.freqs.length === 1) ? ['SATURATOR AÇIK', C.acc] : STATE[st]; rr(60, 1290, 960, 84, 42); g.fillStyle = col === C.red ? 'rgba(255,90,95,.14)' : st === 'dry' ? '#16161b' : 'rgba(232,184,75,.12)'; g.fill(); g.strokeStyle = col; g.lineWidth = 3; g.stroke();
+  txt(lab, W / 2, 1346, '800 38px Inter', col, 'center', 2);
+  const Yw = 1400, Hw = 170, cy = Yw + Hw / 2; box(60, Yw, 960, Hw); g.save(); rr(60, Yw, 960, Hw, 24); g.clip();
+  wave(D[S.id], 60, cy, 960, 140, ts - .012, .02, st === 'dry' ? C.grey : col); g.restore();
+  txt('DALGA (20 ms)', 84, Yw + 36, '600 16px ' + MONO, C.mut, 'left', 2);
+}
+function outro(S, ts) {
+  const items = [['HARMONİK', 'notanın tam katları · müzikal', C.acc], ['IMD', 'notaların karışımı · kirli', C.red], ['AKOR', 'nota arttıkça IMD katlanır', C.fg], ['ÇÖZÜM', 'ayrı doyur · az drive', C.acc]];
+  items.forEach((it, i) => { const a = ease(clamp((ts - .25 * i) / .4, 0, 1)), y = 470 + i * 150; g.globalAlpha = a; box(60, y - 60, 960, 124); g.fillStyle = it[2]; g.fillRect(60, y - 60, 8, 124);
+    txt(it[0], 110, y + 10, '800 50px Inter', C.fg); txt(it[1], 1000, y + 8, '500 30px Inter', C.mut, 'right'); g.globalAlpha = 1; });
+  const b = ease(clamp((ts - 3) / .5, 0, 1)); g.globalAlpha = b; rr(60, 1110, 960, 100, 50); g.fillStyle = C.acc; g.fill(); txt('SIRADAKİ: MASKELEME', W / 2, 1176, '800 44px Inter', '#0b0b0e', 'center', 2); g.globalAlpha = 1;
+}
+function caption(S, ts) {
+  const c = S.cap.find(k => ts >= k[0] && ts < k[1]); if (!c) return;
+  const a = Math.min(clamp((ts - c[0]) / .22, 0, 1), clamp((c[1] - ts) / .22, 0, 1)), words = c[2].split(' ');
+  g.font = '800 60px Inter'; const lines = []; let cur = '';
+  for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > 940 && cur) { lines.push(cur); cur = wd; } else cur = t; } lines.push(cur);
+  g.globalAlpha = a; const y0 = 1660 + (2 - lines.length) * 38;
+  lines.forEach((ln, i) => { const first = i === 0 && /^[A-ZÇĞİÖŞÜ0-9:/]{3,}:?/.test(ln) ? ln.split(' ')[0] : '';
+    if (first) { const rest = ln.slice(first.length); const wf = g.measureText(first).width, wr = g.measureText(rest).width, x0 = W / 2 - (wf + wr) / 2; txt(first, x0, y0 + i * 76, '800 60px Inter', C.acc, 'left'); txt(rest, x0 + wf, y0 + i * 76, '800 60px Inter', C.fg, 'left'); }
+    else txt(ln, W / 2, y0 + i * 76, '800 60px Inter', C.fg, 'center'); }); g.globalAlpha = 1;
+}
+window.seek = t => {
+  const S = meta.scenes.find(s => t >= s.start && t < s.start + s.dur) || meta.scenes[meta.scenes.length - 1], ts = clamp(t - S.start, 0, S.dur - 1e-6);
+  bg(); header(); title(S);
+  if (S.outro) outro(S, ts); else { spectrum(S, ts); stats(S, ts); }
+  caption(S, ts); txt('berkayeracademy.com', W / 2, 1880, '600 22px ' + MONO, C.mut, 'center', 3);
+  const fi = Math.min(clamp(ts / .18, 0, 1), clamp((S.dur - ts) / .18, 0, 1)); if (fi < 1) { g.fillStyle = `rgba(11,11,14,${(1 - fi) * .85})`; g.fillRect(0, 0, W, H); }
+};
+</script></body></html>
