@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><title>Saturator — sahne</title>
+<style>html,body{margin:0;background:#0b0b0e}canvas{display:block}</style></head>
+<body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* Kare çizici. Hiçbir sayı burada uydurulmaz: ses, parametreler build-saturator.mjs'ten gelir; spektrum gerçek FFT'dir. */
+const W = 1080, H = 1920, cv = document.getElementById('c'), g = cv.getContext('2d');
+const C = { bg: '#0b0b0e', panel: '#111115', line: 'rgba(255,255,255,.09)', fg: '#f3efe6', mut: '#8d887e', acc: '#e8b84b', red: '#ff5a5f', grey: 'rgba(243,239,230,.34)' };
+const TYPES = ['SOFT', 'HARD', 'FOLD'];
+const CURVE = [v => Math.tanh(v), v => Math.max(-1, Math.min(1, v)), v => Math.sin(v * Math.PI / 2)];
+let meta, D = {}, SR = 48000, FPS = 30;
+window.ready = (async () => {
+  meta = await (await fetch('meta.json')).json(); SR = meta.sr; FPS = meta.fps;
+  for (const s of meta.scenes) { D[s.id] = {}; for (const k of ['in', 'out', 'gr']) D[s.id][k] = new Float32Array(await (await fetch(`${s.id}.${k}.f32`)).arrayBuffer()); }
+  return true;
+})();
+const nf = (v, d = 1) => { let s = v.toFixed(d); if (Number(s) === 0) s = (0).toFixed(d); return s.replace('.', ',').replace('-', '−'); };
+const lin = d => Math.pow(10, d / 20), clamp = (v, a, b) => Math.min(b, Math.max(a, v)), ease = u => u * u * (3 - 2 * u);
+function txt(s, x, y, font, color, align = 'left', ls = 0) { g.font = font; g.fillStyle = color; g.textAlign = align; g.textBaseline = 'alphabetic'; g.letterSpacing = ls + 'px'; g.fillText(s, x, y); g.letterSpacing = '0px'; }
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+function box(x, y, w, h) { rr(x, y, w, h, 24); g.fillStyle = '#0e0e12'; g.fill(); g.strokeStyle = C.line; g.lineWidth = 2; g.stroke(); }
+const MONO = '"Space Mono", "DejaVu Sans Mono", monospace';
+
+function bg() { g.fillStyle = C.bg; g.fillRect(0, 0, W, H); const r = g.createRadialGradient(W / 2, 520, 40, W / 2, 520, 900); r.addColorStop(0, 'rgba(232,184,75,.10)'); r.addColorStop(1, 'rgba(232,184,75,0)'); g.fillStyle = r; g.fillRect(0, 0, W, H); }
+function header() {
+  rr(60, 64, 64, 64, 14); g.fillStyle = '#16161b'; g.fill(); g.strokeStyle = C.line; g.lineWidth = 2; g.stroke(); g.fillStyle = C.acc; g.fillRect(60, 64, 64, 5);
+  txt('BE', 92, 108, '800 30px Inter', C.acc, 'center'); txt('BERKAY ER ACADEMY', 144, 108, '600 24px ' + MONO, C.fg, 'left', 4); txt('ABLETON · SATURATOR', W - 60, 108, '600 22px ' + MONO, C.mut, 'right', 3);
+}
+function title(S) { let fs = 92; g.font = '800 92px Inter'; while (g.measureText(S.title).width > 960 && fs > 48) { fs -= 2; g.font = '800 ' + fs + 'px Inter'; } txt(S.title, 60, 262, '800 ' + fs + 'px Inter', C.fg, 'left', -1); g.fillStyle = C.acc; g.fillRect(60, 292, 120, 8); }
+
+/* ── FFT (4096, Hann) → log aralıklı çubuklar ─────────────────────────────────── */
+const N = 4096, HANN = Float32Array.from({ length: N }, (_, i) => .5 - .5 * Math.cos(2 * Math.PI * i / N));
+const COS = Float32Array.from({ length: N / 2 }, (_, i) => Math.cos(2 * Math.PI * i / N)), SIN = Float32Array.from({ length: N / 2 }, (_, i) => -Math.sin(2 * Math.PI * i / N));
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let b = n >> 1; for (; j & b; b >>= 1) j ^= b; j ^= b; if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+  for (let len = 2; len <= n; len <<= 1) { const h = len >> 1, st = n / len;
+    for (let i = 0; i < n; i += len) for (let k = 0; k < h; k++) { const wr = COS[k * st], wi = SIN[k * st], a = i + k, b = a + h, xr = re[b] * wr - im[b] * wi, xi = re[b] * wi + im[b] * wr; re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi; } }
+}
+const NB = 72, F0 = 35, F1 = 9000, EDGES = Array.from({ length: NB + 1 }, (_, i) => F0 * Math.pow(F1 / F0, i / NB));
+function spec(arr, idx) {                                      // dB (tam ölçeğe göre) — NB çubuk
+  const re = new Float32Array(N), im = new Float32Array(N), s = idx - N;
+  for (let i = 0; i < N; i++) { const k = s + i; re[i] = (k >= 0 && k < arr.length ? arr[k] : 0) * HANN[i]; }
+  fft(re, im); const out = new Float32Array(NB).fill(-120);
+  for (let b = 0; b < NB; b++) { const k0 = Math.max(1, Math.floor(EDGES[b] * N / SR)), k1 = Math.max(k0, Math.floor(EDGES[b + 1] * N / SR)); let m = 0;
+    for (let k = k0; k <= k1; k++) m = Math.max(m, Math.hypot(re[k], im[k]) * 4 / N); out[b] = 20 * Math.log10(Math.max(m, 1e-6)); }
+  return out;
+}
+function specHold(arr, idx) {                                  // sahnesiz (stateless) "peak hold": son 9 kare, her karede 3 dB sönüm
+  const out = new Float32Array(NB).fill(-120);
+  for (let k = 0; k < 14; k++) { const s = spec(arr, idx - Math.round(k / FPS * SR)); for (let b = 0; b < NB; b++) out[b] = Math.max(out[b], s[b] - 1.5 * k); }
+  return out;
+}
+const LO = -90, HI = 0;
+function drawSpec(S, ts, X, Y, Wd, Hh, series) {                // series: [{arr, color, fill}]
+  box(X, Y, Wd, Hh); g.save(); rr(X, Y, Wd, Hh, 24); g.clip();
+  const idx = clamp(Math.floor(ts * SR), 0, D[S.id].in.length - 1), bw = (Wd - 40) / NB;
+  g.strokeStyle = C.line; g.lineWidth = 1; for (let d = -80; d <= -10; d += 10) { const y = Y + Hh - 40 - (d - LO) / (HI - LO) * (Hh - 70); g.beginPath(); g.moveTo(X + 20, y); g.lineTo(X + Wd - 20, y); g.stroke(); }
+  for (const sr of series) {
+    const sp = specHold(sr.arr, idx); g.fillStyle = sr.color;
+    for (let b = 0; b < NB; b++) { const h = clamp((sp[b] - LO) / (HI - LO), 0, 1) * (Hh - 70); g.globalAlpha = sr.alpha || 1; g.fillRect(X + 20 + b * bw + 1, Y + Hh - 40 - h, bw - 2, h); }
+  }
+  g.globalAlpha = 1; g.restore();
+  for (const f of [50, 100, 200, 500, 1000, 2000, 5000]) { const b = Math.log(f / F0) / Math.log(F1 / F0) * NB; txt(f >= 1000 ? (f / 1000) + ' kHz' : f + ' Hz', X + 20 + b * bw, Y + Hh - 12, '500 19px ' + MONO, C.mut, 'center'); }
+}
+function bandDb(arr, idx, f0, f1) {                              // f0–f1 aralığı toplam enerji (dB)
+  const re = new Float32Array(N), im = new Float32Array(N), s = idx - N;
+  for (let i = 0; i < N; i++) { const k = s + i; re[i] = (k >= 0 && k < arr.length ? arr[k] : 0) * HANN[i]; } fft(re, im);
+  let e = 0; for (let k = Math.floor(f0 * N / SR); k <= Math.floor(f1 * N / SR); k++) e += Math.pow(Math.hypot(re[k], im[k]) * 4 / N, 2); return 10 * Math.log10(Math.max(e, 1e-12));
+}
+function bandAvg(arr, idx, f0, f1) {                              // son 0,48 sn (≈ 1 vuruş) ortalama enerji (dB)
+  let e = 0, c = 0; for (let k = 0; k < 12; k++) { e += Math.pow(10, bandDb(arr, idx - Math.round(k * .04 * SR), f0, f1) / 10); c++; } return 10 * Math.log10(Math.max(e / c, 1e-12));
+}
+function wave(arr, n, x, cy, w, amp, t0, span, color, cols = w) {
+  g.fillStyle = color;
+  for (let i = 0; i < cols; i++) { const a = Math.floor((t0 + i / w * span) * SR), b = Math.max(a + 1, Math.floor((t0 + (i + 1) / w * span) * SR)); if (b <= 0 || a >= n) continue;
+    let mn = 0, mx = 0; for (let k = Math.max(0, a); k < Math.min(n, b); k++) { const v = arr[k]; if (v < mn) mn = v; if (v > mx) mx = v; } g.fillRect(x + i, cy - mx * amp, 1, Math.max(1, (mx - mn) * amp)); }
+}
+
+/* ── kipler ─────────────────────────────────────────────────────────────────── */
+function modeCurve(S, ts, P) {
+  const X0 = 100, Y0 = 410, Sz = 400, n = D[S.id].in.length, idx = clamp(Math.floor(ts * SR), 0, n - 1), f = CURVE[P[1]], d = lin(P[0]);
+  const px = v => X0 + (v + 1) / 2 * Sz, py = v => Y0 + Sz - (v + 1) / 2 * Sz;
+  box(X0 - 24, Y0 - 20, Sz + 48, Sz + 40);
+  g.strokeStyle = C.line; g.lineWidth = 1; for (let v = -1; v <= 1; v += .5) { g.beginPath(); g.moveTo(px(v), Y0); g.lineTo(px(v), Y0 + Sz); g.moveTo(X0, py(v)); g.lineTo(X0 + Sz, py(v)); g.stroke(); }
+  g.save(); g.setLineDash([10, 10]); g.strokeStyle = C.grey; g.lineWidth = 2; g.beginPath(); g.moveTo(px(-1), py(-1)); g.lineTo(px(1), py(1)); g.stroke(); g.restore();
+  g.strokeStyle = C.acc; g.lineWidth = 7; g.lineJoin = 'round'; g.beginPath();
+  for (let v = -1; v <= 1.0001; v += .01) { const o = f(v * d); v <= -.999 ? g.moveTo(px(v), py(o)) : g.lineTo(px(v), py(o)); } g.stroke();
+  // izlek: son 20 ms'de sinyalin eğri üzerindeki yolu + şimdiki nokta
+  g.strokeStyle = 'rgba(243,239,230,.5)'; g.lineWidth = 3; g.beginPath(); let first = true;
+  for (let k = 0.02; k >= 0; k -= .0005) { const i = clamp(idx - Math.floor(k * SR), 0, n - 1), v = D[S.id].in[i] / .95, o = f(v * d); first ? g.moveTo(px(v), py(o)) : g.lineTo(px(v), py(o)); first = false; } g.stroke();
+  const v = D[S.id].in[idx] / .95; g.fillStyle = C.fg; g.beginPath(); g.arc(px(v), py(f(v * d)), 14, 0, 7); g.fill(); g.strokeStyle = C.bg; g.lineWidth = 4; g.stroke();
+  txt('GİRİŞ', X0 + Sz / 2, Y0 + Sz + 50, '600 20px ' + MONO, C.mut, 'center', 2);
+  g.save(); g.translate(X0 - 50, Y0 + Sz / 2); g.rotate(-Math.PI / 2); txt('ÇIKIŞ', 0, 0, '600 20px ' + MONO, C.mut, 'center', 2); g.restore();
+  // sağ: dalga biçimi (45 ms) — kareleşmeyi gösterir
+  const WX = 560, WY = 410, WW = 460, WH = 400, cy = WY + WH / 2; box(WX, WY, WW, WH); g.save(); rr(WX, WY, WW, WH, 24); g.clip();
+  g.strokeStyle = C.line; g.beginPath(); g.moveTo(WX, cy); g.lineTo(WX + WW, cy); g.stroke();
+  const win = .045, t0 = ts - win * .78; wave(D[S.id].in, n, WX, cy, WW, WH / 2 - 20, t0, win, C.grey); wave(D[S.id].gr, n, WX, cy, WW, WH / 2 - 20, t0, win, C.acc);
+  g.fillStyle = C.fg; g.fillRect(WX + .78 * WW - 1.5, WY, 3, WH); g.restore();
+  txt('DALGA (45 ms) · gri = ham · sarı = doygun', WX + 20, WY + 38, '600 17px ' + MONO, C.mut, 'left', 1);
+  drawSpec(S, ts, 60, 840, 960, 340, [{ arr: D[S.id].in, color: C.grey, alpha: .7 }, { arr: D[S.id].gr, color: C.acc, alpha: .9 }]);
+  txt('SPEKTRUM · harmonikler = sarının gri üstündeki kısmı', 84, 884, '600 17px ' + MONO, C.mut, 'left', 1);
+}
+function modeSpec(S, ts, P) {                                       // s0: kick yalnız alt frekansta
+  const n = D[S.id].in.length;
+  drawSpec(S, ts, 60, 410, 960, 520, [{ arr: D[S.id].out, color: C.acc, alpha: .95 }]);
+  txt('KICK SPEKTRUMU', 84, 456, '600 20px ' + MONO, C.mut, 'left', 2);
+  const idx = clamp(Math.floor(ts * SR), 0, n - 1), Y = 970, Hh = 200, cy = Y + Hh / 2; box(60, Y, 960, Hh); g.save(); rr(60, Y, 960, Hh, 24); g.clip();
+  wave(D[S.id].out, n, 60, cy, 960, 84, ts - 1.2, 2.0, C.acc); g.fillStyle = C.fg; g.fillRect(60 + .6 * 960 - 1.5, Y, 3, Hh); g.restore();
+  const grn = Math.log(120 / F0) / Math.log(F1 / F0) * NB;
+  txt('Enerjinin %99,5’i 200 Hz’in altında', 540, 560, '500 28px Inter', C.mut, 'center');
+}
+function modeAb(S, ts, P) {
+  const ab = S.ab, n = D[S.id].in.length, isOn = (ts >= ab[0] && ts < ab[1]) || ts >= ab[2], idx = clamp(Math.floor(ts * SR), 0, n - 1);
+  drawSpec(S, ts, 60, 410, 960, 540, [{ arr: D[S.id].in, color: C.grey, alpha: .8 }].concat(isOn ? [{ arr: D[S.id].gr, color: C.acc, alpha: .85 }] : []));
+  rr(84, 432, isOn ? 330 : 390, 52, 26); g.fillStyle = isOn ? C.acc : '#2a2a31'; g.fill();
+  txt(isOn ? 'SATURATORLU' : 'SATURATORSUZ', 84 + (isOn ? 165 : 195), 468, '800 28px Inter', isOn ? '#0b0b0e' : C.fg, 'center', 1);
+  // 150 Hz – 1,5 kHz bandı: ham vs doygun (aynı anda ölçülür)
+  const bx0 = 60 + 20 + Math.log(250 / F0) / Math.log(F1 / F0) * NB * ((960 - 40) / NB), bx1 = 60 + 20 + Math.log(2500 / F0) / Math.log(F1 / F0) * NB * ((960 - 40) / NB);
+  g.fillStyle = 'rgba(232,184,75,.10)'; g.fillRect(bx0, 500, bx1 - bx0, 370); txt('HARMONİKLER', (bx0 + bx1) / 2, 540, '800 26px Inter', C.acc, 'center', 1);
+  const dr = bandAvg(D[S.id].in, idx, 250, 2500), we = bandAvg(D[S.id].gr, idx, 250, 2500), gain = Math.max(0, we - dr);
+  const bar = ease(clamp(((ts < ab[1] ? ts - ab[0] : ts - ab[2])) / .6, 0, 1)); const k = ts < ab[0] ? 0 : isOn ? bar : 0;
+  box(60, 990, 960, 190); txt('250 Hz – 2,5 kHz enerjisi (harmonikler)', 90, 1050, '500 30px Inter', C.mut);
+  txt(isOn ? '+' + nf(gain * k, 1) + ' dB' : '0,0 dB', 990, 1135, '800 76px Inter', isOn ? C.acc : C.mut, 'right');
+}
+function modeOutro(S, ts) {
+  const items = [['DRIVE', 'sesi eğriye ne kadar sert gönder'], ['TYPE', 'bozulmanın karakteri'], ['OUTPUT', 'çıkış seviyesi'], ['DRY/WET', 'ham ile doygun karışımı']];
+  items.forEach((it, i) => { const a = ease(clamp((ts - .25 * i) / .4, 0, 1)), y = 470 + i * 150; g.globalAlpha = a; box(60, y - 60, 960, 124); g.fillStyle = C.acc; g.fillRect(60, y - 60, 8, 124);
+    txt(it[0], 110, y + 10, '800 52px Inter', C.fg); txt(it[1], 1000, y + 8, '500 30px Inter', C.mut, 'right'); g.globalAlpha = 1; });
+  const b = ease(clamp((ts - 3) / .5, 0, 1)); g.globalAlpha = b; rr(60, 1110, 960, 100, 50); g.fillStyle = C.acc; g.fill(); txt('SIRADAKİ: REVERB', W / 2, 1176, '800 44px Inter', '#0b0b0e', 'center', 2); g.globalAlpha = 1;
+}
+function panel(S, P) {
+  const defs = [['drive', 'DRIVE', nf(P[0], 1) + ' dB', clamp(P[0] / 24, 0, 1)], ['type', 'TYPE', TYPES[P[1]], P[1] / 2], ['out', 'OUTPUT', nf(P[2], 1) + ' dB', clamp((P[2] + 24) / 30, 0, 1)], ['wet', 'DRY/WET', P[3] + ' %', P[3] / 100]];
+  const Y = 1262, w = 225, h = 190;
+  defs.forEach((d, i) => { const x = 60 + i * (w + 20), act = S.focus === d[0], dim = S.focus && !act, a = S.dry ? .35 : dim ? .5 : 1;
+    g.globalAlpha = a; rr(x, Y, w, h, 22); g.fillStyle = act ? 'rgba(232,184,75,.10)' : C.panel; g.fill(); g.strokeStyle = act ? C.acc : C.line; g.lineWidth = act ? 4 : 2; g.stroke();
+    txt(d[1], x + w / 2, Y + 46, '600 19px ' + MONO, act ? C.acc : C.mut, 'center', 2); txt(d[2], x + w / 2, Y + 112, '800 ' + (d[2].length > 7 ? 40 : 46) + 'px Inter', C.fg, 'center');
+    g.fillStyle = 'rgba(255,255,255,.08)'; rr(x + 28, Y + 146, w - 56, 8, 4); g.fill(); g.fillStyle = act ? C.acc : C.mut; rr(x + 28, Y + 146, Math.max(8, (w - 56) * d[3]), 8, 4); g.fill(); g.globalAlpha = 1; });
+}
+function caption(S, ts) {
+  const c = S.cap.find(k => ts >= k[0] && ts < k[1]); if (!c) return;
+  const a = Math.min(clamp((ts - c[0]) / .22, 0, 1), clamp((c[1] - ts) / .22, 0, 1)), words = c[2].split(' ');
+  g.font = '800 60px Inter'; const lines = []; let cur = '';
+  for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > 940 && cur) { lines.push(cur); cur = wd; } else cur = t; } lines.push(cur);
+  g.globalAlpha = a; const y0 = 1640 + (3 - lines.length) * 36;
+  lines.forEach((ln, i) => { const first = i === 0 && /^[A-ZÇĞİÖŞÜ0-9:/]{4,}/.test(ln) ? ln.split(' ')[0] : '';
+    if (first) { const rest = ln.slice(first.length); const wf = g.measureText(first).width, wr = g.measureText(rest).width, x0 = W / 2 - (wf + wr) / 2; txt(first, x0, y0 + i * 76, '800 60px Inter', C.acc, 'left'); txt(rest, x0 + wf, y0 + i * 76, '800 60px Inter', C.fg, 'left'); }
+    else txt(ln, W / 2, y0 + i * 76, '800 60px Inter', C.fg, 'center'); }); g.globalAlpha = 1;
+}
+window.seek = t => {
+  const S = meta.scenes.find(s => t >= s.start && t < s.start + s.dur) || meta.scenes[meta.scenes.length - 1], ts = clamp(t - S.start, 0, S.dur - 1e-6);
+  const P = S.params[Math.min(S.params.length - 1, Math.floor(ts * FPS))];
+  bg(); header(); title(S);
+  if (S.mode === 'curve') modeCurve(S, ts, P); else if (S.mode === 'spec') modeSpec(S, ts, P); else if (S.mode === 'ab') modeAb(S, ts, P); else if (S.mode === 'outro') modeOutro(S, ts);
+  if (S.mode !== 'outro') panel(S, P);
+  caption(S, ts); txt('berkayeracademy.com', W / 2, 1880, '600 22px ' + MONO, C.mut, 'center', 3);
+  const fi = Math.min(clamp(ts / .18, 0, 1), clamp((S.dur - ts) / .18, 0, 1)); if (fi < 1) { g.fillStyle = `rgba(11,11,14,${(1 - fi) * .85})`; g.fillRect(0, 0, W, H); }
+};
+</script></body></html>

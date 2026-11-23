@@ -8,14 +8,14 @@ export const lin = d => Math.pow(10, d / 20);
 export function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 // Tek kick vuruşu: düşen frekanslı sinüs (gövde) + çok kısa gürültü patlaması (click = vuruş / transient)
-export function kickHit(rand = rng(7)) {
+export function kickHit(rand = rng(7), clickAmp = 0.62) {
   const n = Math.floor(0.55 * SR), out = new Float32Array(n);
   let ph = 0;
   for (let i = 0; i < n; i++) {
     const t = i / SR, f = 48 + 120 * Math.exp(-t / 0.028);
     ph += 2 * Math.PI * f / SR;
     const body = Math.sin(ph) * Math.exp(-t / 0.16) * 0.78;
-    const click = (rand() * 2 - 1) * Math.exp(-t / 0.0014) * 0.62;
+    const click = (rand() * 2 - 1) * Math.exp(-t / 0.0014) * clickAmp;
     out[i] = body + click;
   }
   let pk = 0; for (const v of out) pk = Math.max(pk, Math.abs(v));
