@@ -516,7 +516,7 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
       if (d.type === "reschedule_request") {
         detail = `↺ Erteleme · ${d.lesson_date} ${d.lesson_time} → ${d.new_date}`;
       } else if (d.type === "time_change_request") {
-        detail = `⇄ Saat değişikliği · ${d.lesson_date} ${d.lesson_time} → ${d.new_date} ${d.new_time} (onayın bekleniyor, hak düşmez)`;
+        detail = `⇄ Saat değişikliği · ${d.lesson_date} ${d.lesson_time} → ${d.new_date} ${d.new_time} (onayın bekleniyor, ${d.uses_credit ? "1 hak düşer" : "hak düşmez"})`;
       } else if (d.type === "payment_request") {
         detail = `₺ Ödeme bildirimi · ${(d.total_price || 0).toLocaleString("tr-TR")} TL`;
       } else if (d.type === "extra_lesson") {
@@ -1357,7 +1357,10 @@ exports.sendWhatsAppMessage = onCall(
 //   - dersin başlamasına en az 5 saat olmalı, yeni saat de en az 5 saat sonra
 //   - yeni saat dersin olduğu haftada (Pazartesi–Pazar) olmalı
 //   - her ders yalnızca bir kez taşınabilir (self_changed); ders başına tek bekleyen talep
-//   - erteleme hakkı düşmez; ödemesi onaylanmamış planda (deneme hariç) kapalı
+//   - 1 erteleme hakkı kullanır (uses_credit; admin onaylayınca düşer): kullanılabilir hakkı
+//     (toplam − bekleyen hak kullanan talepler) olmayan öğrenci talep gönderemez.
+//     Deneme dersinde hak kavramı yoktur; saat değişikliği haksız ve bir kez yapılır.
+//   - ödemesi onaylanmamış planda (deneme hariç) kapalı
 //   - kapalı gün/saatler ve öğrencinin kendi dersleriyle çakışan saatler (60 dk + 30 dk ara) seçilemez;
 //     başka öğrencilerin dolu saatleri öğrenciye gösterilmez, çakışmayı admin onayda görür
 // Saatler İstanbul saatidir (UTC+3, yaz saati uygulaması yok).
@@ -1436,8 +1439,23 @@ exports.studentSelfReschedule = onCall(
       const resSnap = await db.collection("reservations").doc(uid).get();
       if (!resSnap.exists) throw new HttpsError("not-found", "Rezervasyon bulunamadı.");
       const res = resSnap.data();
-      if (res.lesson_type !== "trial" && !res.payment_confirmed) {
+      const isTrial = res.lesson_type === "trial";
+      if (!isTrial && !res.payment_confirmed) {
         throw new HttpsError("failed-precondition", "Ödeme onaylanmadan ders saati değiştirilemez.");
+      }
+      // Saat değişikliği 1 erteleme hakkı kullanır: bekleyen (hak kullanan) talepler düşüldükten
+      // sonra kullanılabilir hak kalmadıysa talep açılmaz.
+      if (!isTrial) {
+        const totalCredits = Object.values(res.reschedule_credits || {})
+            .reduce((a, v) => a + Math.max(0, Number(v) || 0), 0);
+        const heldCredits = pending.docs.map((d) => d.data())
+            .filter((x) => x.type === "reschedule_request" ||
+                (x.type === "time_change_request" && x.uses_credit)).length;
+        if (totalCredits - heldCredits <= 0) {
+          throw new HttpsError("failed-precondition", totalCredits > 0 ?
+            "Erteleme hakkın bekleyen talepte; yanıtlanınca yeniden deneyebilirsin." :
+            "Erteleme hakkın kalmadı. Saat değişikliği 1 erteleme hakkı kullanır; ek hak alabilirsin.");
+        }
       }
       const lessons = Array.isArray(res.lessons) ? res.lessons : [];
       const idx = lessons.findIndex((l) => l && l.date === lessonDate && l.time === lessonTime &&
@@ -1478,6 +1496,7 @@ exports.studentSelfReschedule = onCall(
         lesson_time: lessonTime,
         new_date: newDate,
         new_time: newTime,
+        uses_credit: !isTrial,
         status: "pending",
         created_at: FieldValue.serverTimestamp(),
       });
@@ -1488,12 +1507,12 @@ exports.studentSelfReschedule = onCall(
           from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
           to: "berkayer032@gmail.com",
           subject: `Saat değişikliği talebi — ${who}`,
-          text: `${who} ders saatinin değişmesini istiyor.\n\nEski: ${trLabel(lessonDate, lessonTime)}\nYeni: ${trLabel(newDate, newTime)}\n\nOnaylarsan ders taşınır; erteleme hakkı düşmez.\nhttps://berkayeracademy.com/booking`,
+          text: `${who} ders saatinin değişmesini istiyor.\n\nEski: ${trLabel(lessonDate, lessonTime)}\nYeni: ${trLabel(newDate, newTime)}\n\n${isTrial ? "Deneme dersi: onaylarsan ders taşınır, hak kullanılmaz." : "Onaylarsan ders taşınır ve 1 erteleme hakkı düşer."}\nhttps://berkayeracademy.com/booking`,
         });
       } catch (e) {
         console.error("time-change request admin email error", e);
       }
-      return {ok: true, pending: true, requestId: reqRef.id, date: newDate, time: newTime};
+      return {ok: true, pending: true, requestId: reqRef.id, date: newDate, time: newTime, usesCredit: !isTrial};
     },
 );
 

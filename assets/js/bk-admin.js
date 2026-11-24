@@ -394,6 +394,12 @@
     adm_rq_tc:     { tr: `Saat değişikliği talebi`, en: `Time change request` },
     adm_rq_tc_ok:  { tr: `Onayla & taşı`, en: `Approve & move` },
     adm_rq_tc_nocredit: { tr: `Erteleme hakkı düşmez`, en: `No reschedule credit used` },
+    adm_rq_tc_old: { tr: `Eski kuralla gönderildi — hak düşmez`, en: `Sent under the old rule — no credit used` },
+    adm_rq_tc_trial: { tr: `Deneme dersi — hak kullanılmaz`, en: `Trial lesson — no credit used` },
+    adm_cr_h_used_tc: { tr: `Kullanıldı — {date} dersinin saati değişti`, en: `Used — the {date} lesson's time was changed` },
+    adm_tc_lead: { tr: `{who} dersi yeni saate taşınacak:`, en: `{who} lesson will move to the new time:` },
+    adm_tc_free: { tr: `Hak düşmeden taşı (benden kaynaklı)`, en: `Move without using a credit (my side)` },
+    adm_tc_done_use: { tr: `Ders yeni saate taşındı · kalan hak {n} — öğrenciye bildirildi.`, en: `Lesson moved · {n} credits left — the student was notified.` },
     adm_rq_tc_done: { tr: `Ders yeni saate taşındı — öğrenciye WhatsApp ile bildirildi.`, en: `Lesson moved to the new time — the student was notified on WhatsApp.` },
     adm_rq_tc_rejected: { tr: `Saat değişikliği talebi reddedildi — ders eski saatinde kaldı, öğrenciye bildirildi.`, en: `Time change request rejected — the lesson stays at its old time; the student was notified.` },
     adm_rq_tc_clash: { tr: `Yeni saat artık dolu ya da başka bir dersle çakışıyor. Yine de taşınsın mı?`, en: `The new time is now taken or clashes with another lesson. Move it anyway?` },
@@ -1790,13 +1796,21 @@ function renderAdminRequests(reqSnap) {
     const lblReject = bkT('adm_reject', 'Reddet');
 
     if (isTimeChgReq) {
-      // Öğrencinin aynı hafta içindeki saat değişikliği talebi: onayda ders taşınır, erteleme hakkı düşmez
+      // Öğrencinin aynı hafta içindeki saat değişikliği talebi: onayda ders taşınır ve 1 erteleme hakkı
+      // düşer (uses_credit). Eski kuralla gönderilmiş talepler ve deneme dersi hak kullanmaz.
       const approveBtn = admBtn(bkT('adm_rq_tc_ok', 'Onayla & taşı'), 'btn btn-sm btn-primary');
       const rejectBtn = admBtn(lblReject, 'btn btn-sm btn-danger');
       const stu = _admStudDocs.find(x => x.id === r.from_uid);
       const sL = stu ? stu.d.lessons || [] : [];
       const found = sL.some(l => l.date === r.lesson_date && l.time === r.lesson_time && (l.status === 'scheduled' || l.status === 'rescheduled'));
-      const tags = [`<span class="adm-tag adm-tag--gold">${escHtml(bkT('adm_rq_tc_nocredit', 'Erteleme hakkı düşmez'))}</span>`];
+      const tcCr = stu ? totalRescheduleCredits(stu.d) : null;
+      const tcTrial = !!(stu && stu.d.lesson_type === 'trial');
+      const tags = [!r.uses_credit
+        ? `<span class="adm-tag adm-tag--gold">${escHtml(tcTrial ? bkT('adm_rq_tc_trial', 'Deneme dersi — hak kullanılmaz') : bkT('adm_rq_tc_old', 'Eski kuralla gönderildi — hak düşmez'))}</span>`
+        : tcCr === null ? ''
+        : tcCr > 0
+          ? `<span class="adm-tag adm-tag--gold">${escHtml(bkT('adm_rq_cr', 'Erteleme hakkı: {a} → {b} olacak').replace('{a}', tcCr).replace('{b}', tcCr - 1))}</span>`
+          : `<span class="adm-tag adm-tag--err">${escHtml(bkT('adm_rq_cr_none', 'Hak yok — onaylarsan hak düşmez'))}</span>`];
       if (stu && !found) tags.push(`<span class="adm-tag adm-tag--err">${escHtml(bkT('adm_rq_nolesson', 'Ders bulunamadı (taşınmış ya da iptal)'))}</span>`);
       const row = admReqRow({ name: who, photo: r.from_photo, chip: bkT('adm_rq_tc', 'Saat değişikliği talebi'), tone: 'info',
         lines: [`${escHtml(bkSlotLabel(r.lesson_date, r.lesson_time))} <span class="adm-arrow" aria-hidden="true">→</span><span class="sr-only">→</span> <strong>${escHtml(bkSlotLabel(r.new_date, r.new_time))}</strong>`],
@@ -1806,7 +1820,9 @@ function renderAdminRequests(reqSnap) {
         try {
           const ok = await admApplyTimeChange(doc.ref, r);
           if (!ok) { approveBtn.disabled = false; return; }
-          toast(bkT('adm_rq_tc_done', 'Ders yeni saate taşındı — öğrenciye WhatsApp ile bildirildi.'));
+          toast(ok.consumed
+            ? bkT('adm_tc_done_use', 'Ders yeni saate taşındı · kalan hak {n} — öğrenciye bildirildi.').replace('{n}', ok.left)
+            : bkT('adm_rq_tc_done', 'Ders yeni saate taşındı — öğrenciye WhatsApp ile bildirildi.'));
           row.remove();
         } catch(e) { const c=errId(); toast(`Hata (${c}): `+(e.message||e.code), true); approveBtn.disabled = false; }
       };
@@ -3974,7 +3990,7 @@ function admCreditLogLine(x) {
   const plus = x.kind === 'added' || (x.kind === 'undo' && x.up);
   const sign = plus ? `+${n}` : `−${n}`;
   const txt = x.kind === 'used'
-    ? (x.lesson_date ? bkT('adm_cr_h_used_l', 'Kullanıldı — {date} dersi ertelendi').replace('{date}', formatDateStr(x.lesson_date)) : bkT('adm_cr_h_used', 'Kullanıldı (elle düşüldü)'))
+    ? (x.lesson_date ? (x.via === 'time_change' ? bkT('adm_cr_h_used_tc', 'Kullanıldı — {date} dersinin saati değişti') : bkT('adm_cr_h_used_l', 'Kullanıldı — {date} dersi ertelendi')).replace('{date}', formatDateStr(x.lesson_date)) : bkT('adm_cr_h_used', 'Kullanıldı (elle düşüldü)'))
     : x.kind === 'added' ? bkT('adm_cr_h_added', 'Hak verildi')
     : x.kind === 'undo' ? (x.of === 'added' ? bkT('adm_cr_h_undo_added', 'Geri alındı — verilen hak iptal')
       : x.of === 'used' ? bkT('adm_cr_h_undo_used', 'Geri alındı — düşülen hak iade')
@@ -4014,7 +4030,7 @@ async function adminGrantRescheduleCredit(studentUid, resDataInit) {
       - log.filter(x => x.kind === 'undo' && x.of === k).reduce((a, x) => a + Math.max(1, x.n || 1), 0));
     const used = log.length ? sum('used') : dedupLessons(resData.lessons || []).filter(l => l.status === 'rescheduled').length;
     const added = sum('added'), revoked = sum('revoked');
-    const pendCount = (_admLastReqSnap ? _admLastReqSnap.docs.map(d => d.data()) : []).filter(r => r.type === 'reschedule_request' && r.from_uid === studentUid).length;
+    const pendCount = (_admLastReqSnap ? _admLastReqSnap.docs.map(d => d.data()) : []).filter(r => (r.type === 'reschedule_request' || (r.type === 'time_change_request' && r.uses_credit)) && r.from_uid === studentUid).length;
     const facts = [
       pkgM ? (pkgM === 1 ? bkT('adm_cr_f_pkg_one', 'Paket: {m} aylık → {m} hak') : bkT('adm_cr_f_pkg', 'Paket: {m} aylık → {m} hak')).replace(/\{m\}/g, pkgM) : '',
       bkT('adm_cr_f_used', 'Kullanılan: {n}').replace('{n}', used),
@@ -4984,12 +5000,17 @@ async function checkConflicts(lessons, skipUid = null) {
 
 // ─── Saat değişikliği talebini onayla ─────────────────────
 // Ders yeni saate taşınır (self_changed: her ders bir kez), eski yer bırakılır, yeni yer tutulur,
-// talep 'accepted' olur — tek batch. Erteleme hakkı düşmez. Saat bu arada dolduysa admin uyarılır.
+// talep 'accepted' olur — tek batch. Hak kullanan talepte (r.uses_credit) öğrencinin hakkı varsa
+// admin "hakkından düş" ya da "hak düşmeden (benden kaynaklı)" seçer; eski kuralla gönderilmiş
+// talepler ve deneme dersi hak kullanmaz. Saat bu arada dolduysa admin uyarılır.
+// Dönüş: yazılmadıysa false; yazıldıysa { consumed, left }.
 async function admApplyTimeChange(reqRef, r) {
   const resRef = db.collection('reservations').doc(r.from_uid);
   const resSnap = await resRef.get();
   if (!resSnap.exists) { toast(bkT('adm_rq_nores', 'Rezervasyon bulunamadı.'), true); return false; }
-  const lessons = (resSnap.data().lessons || []).slice();
+  const resData = resSnap.data();
+  const credit = totalRescheduleCredits(resData);
+  const lessons = (resData.lessons || []).slice();
   const idx = lessons.findIndex(l => l && l.date === r.lesson_date && l.time === r.lesson_time && (l.status === 'scheduled' || l.status === 'rescheduled'));
   if (idx < 0) { toast(bkT('adm_rq_nolesson', 'Ders bulunamadı (taşınmış ya da iptal)'), true); return false; }
   const oldId = `${r.lesson_date}_${r.lesson_time}`, newId = `${r.new_date}_${r.new_time}`;
@@ -4998,18 +5019,40 @@ async function admApplyTimeChange(reqRef, r) {
   const clash = day.docs.some(d => d.id !== oldId && bkSlotsClash(t, bkMinutes(d.data().time))) ||
     lessons.some((l, i) => i !== idx && l && l.date === r.new_date && SELF_RESCHED_OCCUPYING.includes(l.status) && bkSlotsClash(t, bkMinutes(l.time)));
   if (clash && !confirm(bkT('adm_rq_tc_clash', 'Yeni saat artık dolu ya da başka bir dersle çakışıyor. Yine de taşınsın mı?'))) return false;
+  let consume = false;
+  if (r.uses_credit && credit > 0) {
+    const name = resData.student_name || resData.student_email || bkT('adm_student', 'Öğrenci');
+    const a = await admAsk({
+      eyebrow: bkT('adm_rq_tc', 'Saat değişikliği talebi'),
+      title: bkT('adm_rs_t_req', 'Talebi onayla'),
+      body: `<p>${escHtml(bkT('adm_tc_lead', '{who} dersi yeni saate taşınacak:').replace('{who}', admPoss(name)))}</p>
+        <ul class="adm-ask-list adm-ask-moves"><li>${escHtml(bkSlotLabel(r.lesson_date, r.lesson_time))} <span aria-hidden="true">→</span><span class="sr-only">→</span> <strong>${escHtml(bkSlotLabel(r.new_date, r.new_time))}</strong></li></ul>
+        <p class="adm-ask-big">${escHtml(bkT('adm_rs_credit', 'Erteleme hakkı'))}: <strong>${credit}</strong> ${escHtml(bkT('adm_rs_left', 'kalan'))}</p>`,
+      choices: [
+        { label: bkT('adm_rs_use', 'Öğrencinin hakkından düş ({a} → {b})').replace('{a}', credit).replace('{b}', credit - 1), value: 'use', cls: 'btn-primary' },
+        { label: bkT('adm_tc_free', 'Hak düşmeden taşı (benden kaynaklı)'), value: 'free', cls: 'btn-ghost' }],
+    });
+    if (!a) return false;
+    consume = a.value === 'use';
+  }
   lessons[idx] = Object.assign({}, lessons[idx], {
     date: r.new_date, time: r.new_time, self_changed: true,
     self_changed_at: new Date().toISOString(), self_changed_from: { date: r.lesson_date, time: r.lesson_time },
   });
   const batch = db.batch();
-  batch.update(resRef, { lessons, last_self_change_at: firebase.firestore.FieldValue.serverTimestamp() });
+  const upd = { lessons, last_self_change_at: firebase.firestore.FieldValue.serverTimestamp() };
+  if (consume) {
+    upd.reschedule_credits = consumeRescheduleCredit(resData, r.lesson_date);
+    // reschedule_log: öğrenci panelindeki "Erteleme Hakkı → Geçmiş" satırı (via: saat değişikliği)
+    upd.reschedule_log = firebase.firestore.FieldValue.arrayUnion({ at: new Date().toISOString(), kind: 'used', via: 'time_change', lesson_date: r.lesson_date, n: 1, by: 'admin' });
+  }
+  batch.update(resRef, upd);
   const oldSlot = await db.collection('booked_slots').doc(oldId).get();
   if (oldSlot && oldSlot.exists && oldSlot.data().student_uid === r.from_uid) batch.delete(db.collection('booked_slots').doc(oldId));
   batch.set(db.collection('booked_slots').doc(newId), { date: r.new_date, time: r.new_time, student_uid: r.from_uid });
-  batch.update(reqRef, { status: 'accepted', updated_at: firebase.firestore.FieldValue.serverTimestamp() });
+  batch.update(reqRef, { status: 'accepted', credit_used: consume, updated_at: firebase.firestore.FieldValue.serverTimestamp() });
   await batch.commit();
-  return true;
+  return { consumed: consume, left: consume ? credit - 1 : credit };
 }
 
 // ─── Accept Trial Request ─────────────────────────────────

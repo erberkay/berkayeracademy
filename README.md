@@ -48,7 +48,7 @@ Eski Lab adresleri `/site_1` ve `/site_1.html`, `firebase.json`'daki yönlendirm
 - **Tanıtım videoları** (`assets/js/trial-intro.js`): deneme dersi düğmelerinde deneme animasyonu (10 sn) ve sistem tanıtımı (60 sn), paket düğmelerinde sistem tanıtımı, panele ilk girişte ikisi; panelde "Tanıtım videosu" ile yeniden izlenir.
 - **Seviye belirleme sınavı:** 20 soru, zorunlu.
 - **Ödeme ve kurallar:** ödeme bildirimi, akademi kuralları onayı (kural başına ayrı onay kaydı).
-- **Derslerim · Bu hafta:** canlı geri sayımlı ders kartları. Öğrenci aynı hafta içinde yeni bir saat için **saat değişikliği talebi** gönderir (dersten en az 5 saat önce, ders başına bir kez); admin onaylayınca ders taşınır, erteleme hakkı düşmez. Kurallar sunucuda (`studentSelfReschedule`) denetlenir.
+- **Derslerim · Bu hafta:** canlı geri sayımlı ders kartları. Öğrenci aynı hafta içinde yeni bir saat için **saat değişikliği talebi** gönderir (dersten en az 5 saat önce, ders başına bir kez); admin onaylayınca ders taşınır ve 1 erteleme hakkı düşer; hakkı kalmayan öğrenci saat değiştiremez (deneme dersi hariç). Kurallar sunucuda (`studentSelfReschedule`) denetlenir.
 - **Erteleme:** dersi 1 hafta ileri alır; talep edilir, admin onaylar. Erteleme hakları paket bazında tutulur (N aylık paket = N hak, ek hak 500 TL).
 - **Ders kanıtı:** her dersten sonra öğrenci 48 saat içinde onaylar ya da itiraz eder; Zoom katılım kaydı saklanır. Biten dersler "Son derslerin" bölümünde durumuyla görünür.
 - **Zoom:** ders saatinden 15 dakika önce "Derse Katıl" düğmesi açılır.

@@ -1,7 +1,7 @@
 /* be-assistant-kb.js — Ders Paneli asistanının BİLGİ TABANI (window.beAssistantKB).
    Kurallar ve rakamlar booking.html'den alınmıştır; değişirse ikisi birlikte güncellenir:
    - fiyatlar: LESSON_PRICE / LESSON_PRICE_SINGLE / PACKAGES (arayüz bunları sayfadan okur → {price} …)
-   - saat değiştirme: SELF_RESCHED_MIN_MS (5 sa), aynı Pzt–Paz haftası, ders başına bir kez, ücretsiz
+   - saat değiştirme: SELF_RESCHED_MIN_MS (5 sa), aynı Pzt–Paz haftası, ders başına bir kez, onaylanınca 1 erteleme hakkı kullanır (hak yoksa kapalı; deneme dersi hariç)
    - erteleme: N aylık paket = N hak (havuz), ≥24 sa önce (MIN_LEAD_MS), Berkay Er onaylar, ek hak 500 TL
    - Derse Katıl: 15 dk önce (BK_JOIN_MS) · ders 60 dk · onay/itiraz penceresi 48 sa (BK_CFM_WINDOW_MS)
    - kurallar: RULES_CONSENT_ITEMS (geç kalma 10 dk, devamsızlık, telif, iptal/devir yok)
@@ -325,8 +325,8 @@
     ex: { tr: [`salı dersini perşembeye alabilir miyim`, `aynı hafta içinde başka güne almak`, `Ders saatimi değiştirebilir miyim?`, `dersin saatini nasıl değiştiririm`, `dersimi başka saate alabilir miyim`, `saat değiştirmek istiyorum`, `dersimi aynı hafta başka güne taşıyabilir miyim`, `derse başka saatte girmek istiyorum`, `saati kaydırmak istiyorum`, `dersin saatini öne alabilir miyim`, `bu haftaki dersin saatini değiştir`, `saat değişikliği nasıl yapılır`, `dersi akşama çekebilir miyim`, `dersi sabaha almak istiyorum`, `cumartesi dersimi pazara alabilir miyim`, `dersin saatini 2 saat ileri almak`, `saat 19'daki dersi 21'e çekmek`, `saati kendim değiştirebiliyor muyum`, `saati değiştir butonu nerede`],
       en: [`Can I change my lesson time?`, `how do I move my lesson to another time`, `change the hour of my class`] },
     a: [
-      A(`Evet. Sıradaki dersin (**{next}**) için aynı hafta içinde yeni bir saat seçip talep gönderebilirsin; Berkay Er onaylayınca taşınır, ücretsizdir — seçim **{change_until}**'e kadar açık ({change_left}).\n\nKurallar:\n- Dersine {self_h} saatten fazla olmalı; yeni saat de en az {self_h} saat sonra olmalı\n- Yalnız aynı hafta içinde (Pzt–Paz)\n- Her ders için bir kez\n- Erteleme hakkı düşmez`,
-        `Yes. For your next lesson (**{next}**) you can pick a new time in the same week and send a request; it moves once Berkay Er approves, free — open until **{change_until}** ({change_left} left).\n\nRules:\n- More than {self_h} hours before the lesson, and the new time at least {self_h} hours away\n- Within the same week only (Mon–Sun)\n- Once per lesson\n- No reschedule credit used`, 'canChange'),
+      A(`Evet. Sıradaki dersin (**{next}**) için aynı hafta içinde yeni bir saat seçip talep gönderebilirsin; Berkay Er onaylayınca taşınır ve **1 erteleme hakkı** düşer — seçim **{change_until}**'e kadar açık ({change_left}).\n\nKurallar:\n- Dersine {self_h} saatten fazla olmalı; yeni saat de en az {self_h} saat sonra olmalı\n- Yalnız aynı hafta içinde (Pzt–Paz)\n- Her ders için bir kez\n- Onaylanınca 1 erteleme hakkı düşer; hakkın yoksa saat değiştirilemez`,
+        `Yes. For your next lesson (**{next}**) you can pick a new time in the same week and send a request; it moves once Berkay Er approves and uses **1 reschedule credit** — open until **{change_until}** ({change_left} left).\n\nRules:\n- More than {self_h} hours before the lesson, and the new time at least {self_h} hours away\n- Within the same week only (Mon–Sun)\n- Once per lesson\n- 1 reschedule credit is used once approved; with no credits left you can't change the time`, 'canChange'),
       A(`Sıradaki dersin (**{next}**) bir kez taşındı; aynı ders ikinci kez taşınamaz. Ama **{change_any}** dersin için bu hafta içinde saat değişikliği talebi gönderebilirsin — **Saat seçiciyi aç**'a bas.`,
         `Your next lesson (**{next}**) was already moved once and can't be moved again. But you can still move your **{change_any}** lesson this week by sending a time change request — tap **Open the time picker**.`, 'changeMoved anyChange'),
       A(`Sıradaki dersine ({next}) {self_h} saatten az kaldığı için o dersin saati artık değiştirilemez. Ama **{change_any}** dersin için bu hafta içinde saat değişikliği talebi gönderebilirsin — **Saat seçiciyi aç**'a bas.`,
@@ -339,10 +339,10 @@
         `Your next lesson ({next}) is less than {self_h} hours away, so time changes are closed for it. It reopens for your later lessons.`, 'changeLocked'),
       A(`Sıradaki dersin için bekleyen bir erteleme talebin var; talep yanıtlanana kadar o dersin saati değiştirilemez.`,
         `You have a pending reschedule request for your next lesson; its time can't be changed until that's answered.`, 'reschPendingNext'),
-      A(`Saat değiştirme ödemen onaylanınca açılır. Kural: dersine {self_h} saatten fazla varsa aynı hafta içinde yeni bir saat için talep gönderebilirsin; Berkay Er onaylayınca taşınır, ücretsizdir (her ders için bir kez).`,
-        `Changing times unlocks once your payment is confirmed. Rule: if your lesson is more than {self_h} hours away you can request a new time within the same week; it moves once Berkay Er approves, free (once per lesson).`, 'st_unpaid'),
-      A(`Kural: dersine {self_h} saatten fazla varsa aynı hafta içinde (Pzt–Paz) yeni bir saat için talep gönderirsin; Berkay Er onaylayınca ders taşınır, erteleme hakkı düşmez, her ders için bir kez. Bunu ders kartındaki **Saati değiştir** düğmesinden yaparsın.`,
-        `Rule: if your lesson is more than {self_h} hours away you can request a new time within the same week (Mon–Sun); it moves once Berkay Er approves, no credit used, once per lesson. Use **Change time** on the lesson card.`),
+      A(`Saat değiştirme ödemen onaylanınca açılır. Kural: dersine {self_h} saatten fazla varsa aynı hafta içinde yeni bir saat için talep gönderebilirsin; Berkay Er onaylayınca taşınır ve 1 erteleme hakkı düşer (her ders için bir kez).`,
+        `Changing times unlocks once your payment is confirmed. Rule: if your lesson is more than {self_h} hours away you can request a new time within the same week; it moves once Berkay Er approves and uses 1 reschedule credit (once per lesson).`, 'st_unpaid'),
+      A(`Kural: dersine {self_h} saatten fazla varsa aynı hafta içinde (Pzt–Paz) yeni bir saat için talep gönderirsin; Berkay Er onaylayınca ders taşınır ve 1 erteleme hakkı düşer (hakkın yoksa saat değiştirilemez), her ders için bir kez. Bunu ders kartındaki **Saati değiştir** düğmesinden yaparsın.`,
+        `Rule: if your lesson is more than {self_h} hours away you can request a new time within the same week (Mon–Sun); it moves once Berkay Er approves and uses 1 reschedule credit (with no credits left you can't change the time), once per lesson. Use **Change time** on the lesson card.`),
     ],
     actions: [ACT.selfchange, ACT.week] });
 
@@ -369,8 +369,8 @@
   add({ id: 'change_vs_resched', need: ['@degis', '@ertele'], pub: true, topic: ['@degis', '@ertele'],
     ex: { tr: [`Saat değiştirmek ile ertelemek arasındaki fark ne?`, `ertele mi saati değiştir mi`, `hangisi hak kullanır`, `saat değiştirme hak düşer mi`, `ertelemek ücretli mi`, `saat değiştirince erteleme hakkım gider mi`, `ertele ile saati değiştir farkı`, `başka haftaya mı almalıyım aynı haftada mı`, `saat değişikliği ücretli mi`, `başka haftaya taşıyabilir miyim`],
       en: [`What's the difference between changing the time and rescheduling?`, `does changing the time use a credit`] },
-    a: [A(`İki ayrı şey:\n- **Saati değiştir**: aynı hafta içinde başka saate, talep gönderirsin ve Berkay Er onaylayınca taşınır; derse {self_h} saatten fazla olmalı, her ders için bir kez, **hak düşmez**.\n- **Ertele**: dersi **1 hafta ileri** alır; en az {resch_h} saat önce talep edilir, Berkay Er onaylayınca **1 erteleme hakkı** düşer.`,
-      `Two different things:\n- **Change time**: another hour in the same week, by request — it moves once Berkay Er approves; more than {self_h} hours before, once per lesson, **no credit used**.\n- **Reschedule**: moves the lesson **one week later**; request at least {resch_h} hours ahead, and **1 credit** is used once Berkay Er approves.`)],
+    a: [A(`İki ayrı şey:\n- **Saati değiştir**: aynı hafta içinde başka saate, talep gönderirsin ve Berkay Er onaylayınca taşınır; derse {self_h} saatten fazla olmalı, her ders için bir kez, onaylanınca **1 erteleme hakkı** düşer.\n- **Ertele**: dersi **1 hafta ileri** alır; en az {resch_h} saat önce talep edilir, Berkay Er onaylayınca **1 erteleme hakkı** düşer.`,
+      `Two different things:\n- **Change time**: another hour in the same week, by request — it moves once Berkay Er approves; more than {self_h} hours before, once per lesson, **1 credit** is used once approved.\n- **Reschedule**: moves the lesson **one week later**; request at least {resch_h} hours ahead, and **1 credit** is used once Berkay Er approves.`)],
     actions: [ACT.selfchange, ACT.resch] });
 
   // ───────────────────────── Erteleme ─────────────────────────
@@ -384,8 +384,8 @@
         `Rescheduling unlocks once your payment is confirmed. Rule: **Reschedule** on a lesson row moves it one week later, requested at least {resch_h} hours ahead; 1 credit is used when Berkay Er approves.`, 'st_unpaid'),
       A(`Deneme dersinde erteleme hakkı yok. Saatini aynı hafta içinde ({self_h} saatten fazla varsa) **Saati değiştir** ile taşıyabilirsin; olmuyorsa WhatsApp'tan Berkay Er'e yaz.`,
         `Trial lessons have no reschedule credits. You can still move it within the same week with **Change time** (if it's more than {self_h} hours away); otherwise message Berkay Er on WhatsApp.`, 'st_trial'),
-      A(`Erteleme hakkın kalmadı (ya da bekleyen talepte). Aynı hafta içinde saati yine ücretsiz değiştirebilirsin ya da **ek hak** alabilirsin ({extra_price}).`,
-        `You have no usable credits left (or they're in a pending request). You can still change the time within the same week for free, or buy an **extra credit** ({extra_price}).`, 'dash !creditsAvail'),
+      A(`Erteleme hakkın kalmadı (ya da bekleyen talepte). Erteleme de saat değişikliği de hak kullanır; **ek hak** alabilirsin ({extra_price}).`,
+        `You have no usable credits left (or they're in a pending request). Both rescheduling and changing the time use a credit; you can buy an **extra credit** ({extra_price}).`, 'dash !creditsAvail'),
       A(`Sıradaki dersine {resch_h} saatten az kaldığı için o ders ertelenemez. Acil durumda WhatsApp'tan Berkay Er'e yaz.`,
         `Your next lesson is less than {resch_h} hours away, so it can't be rescheduled. In an emergency, message Berkay Er on WhatsApp.`, 'reschTooSoon'),
       A(`Ders satırındaki **Ertele** düğmesi dersi **1 hafta ileri** alır. En az {resch_h} saat önce talep edilir; Berkay Er onaylayınca **1 erteleme hakkı** düşer. Paketin kaç aylıksa o kadar hakkın olur.`,
@@ -403,8 +403,8 @@
         `You have **{credits}** credits; **{credits_pending}** of them are in a pending request, so **{credits_avail}** are usable now. Your package is {pkg_months} month(s) → {pkg_months} credit(s).`, 'creditsInPending'),
       A(`**{credits}** erteleme hakkın kaldı. Paketin {pkg_months} aylık → paket hakkı {pkg_months} (N aylık paket = N hak; ay ay yenilenmez). Hakları paket süresince istediğin derste kullanabilirsin.`,
         `You have **{credits}** reschedule credit(s) left. Your package is {pkg_months} month(s) → {pkg_months} credit(s) (N-month package = N credits; they don't renew monthly). Use them on any lesson during the package.`, 'hasCredits'),
-      A(`Erteleme hakkın kalmadı. Aynı hafta içinde saati yine ücretsiz değiştirebilirsin; ya da tanesi {extra_price} olan **ek hak** alabilirsin.`,
-        `You have no reschedule credits left. You can still change the time within the same week for free, or buy an **extra credit** for {extra_price} each.`, 'dash !st_trial'),
+      A(`Erteleme hakkın kalmadı. Erteleme de saat değişikliği de hak kullanır; tanesi {extra_price} olan **ek hak** alabilirsin.`,
+        `You have no reschedule credits left. Both rescheduling and changing the time use a credit; you can buy an **extra credit** for {extra_price} each.`, 'dash !st_trial'),
       A(`Deneme dersinde erteleme hakkı yok.`, `Trial lessons have no reschedule credits.`, 'st_trial'),
       A(`Erteleme hakkı paket bazlıdır: N aylık paket = N hak. Paketin onaylanınca hak sayın burada görünür.`,
         `Credits are per package: an N-month package = N credits. Your count shows here once your package is approved.`),
@@ -512,10 +512,10 @@
     ex: { tr: [`Hastayım derse giremeyeceğim`, `mazeretim var ne yapmalıyım`, `acil bir durum çıktı`, `rahatsızım dersi yapamayacağım`, `ailevi bir sorun var derse katılamam`, `sınavım var derse gelemem`, `ameliyat oldum`, `işten çıkamıyorum derse yetişemem`, `bu hafta derse gelemeyeceğim`, `işim çıktı derse katılamayacağım`],
       en: [`I'm sick and can't attend`, `I have an emergency`, `I'm sick today`, `I am ill and can't come`] },
     a: [
-      A(`Geçmiş olsun! Seçeneklerin:\n- Dersine {self_h} saatten fazla varsa aynı hafta içinde **saatini değiştir** (ücretsiz)\n- {resch_h} saatten fazla varsa **Ertele** (1 hafta ileri, 1 hak)\n- Daha az kaldıysa ya da hakkın yoksa hemen WhatsApp'tan Berkay Er'e yaz\n\nSıradaki dersin: **{next}**.`,
-        `Get well soon! Your options:\n- More than {self_h} hours before: **change the time** within the same week (free)\n- More than {resch_h} hours before: **Reschedule** (one week later, 1 credit)\n- Less time left or no credits: message Berkay Er on WhatsApp right away\n\nYour next lesson: **{next}**.`, 'hasNext'),
-      A(`Geçmiş olsun! Dersine {self_h} saatten fazla varsa aynı hafta içinde saatini ücretsiz değiştirebilirsin; {resch_h} saatten fazla varsa **Ertele** kullanabilirsin. Daha az kaldıysa hemen WhatsApp'tan Berkay Er'e yaz — haber vermeden katılmamak dersi yapılmış saydırır.`,
-        `Get well soon! More than {self_h} hours before you can change the time within the same week for free; more than {resch_h} hours before you can **Reschedule**. If less time is left, message Berkay Er on WhatsApp right away — missing without notice counts the lesson as done.`),
+      A(`Geçmiş olsun! Seçeneklerin:\n- Dersine {self_h} saatten fazla varsa aynı hafta içinde **saatini değiştir** (1 hak)\n- {resch_h} saatten fazla varsa **Ertele** (1 hafta ileri, 1 hak)\n- Daha az kaldıysa ya da hakkın yoksa hemen WhatsApp'tan Berkay Er'e yaz\n\nSıradaki dersin: **{next}**.`,
+        `Get well soon! Your options:\n- More than {self_h} hours before: **change the time** within the same week (1 credit)\n- More than {resch_h} hours before: **Reschedule** (one week later, 1 credit)\n- Less time left or no credits: message Berkay Er on WhatsApp right away\n\nYour next lesson: **{next}**.`, 'hasNext'),
+      A(`Geçmiş olsun! Dersine {self_h} saatten fazla varsa aynı hafta içinde saatini değiştirebilirsin; {resch_h} saatten fazla varsa **Ertele** kullanabilirsin (ikisi de 1 erteleme hakkı kullanır). Daha az kaldıysa hemen WhatsApp'tan Berkay Er'e yaz — haber vermeden katılmamak dersi yapılmış saydırır.`,
+        `Get well soon! More than {self_h} hours before you can change the time within the same week; more than {resch_h} hours before you can **Reschedule** (each uses 1 reschedule credit). If less time is left, message Berkay Er on WhatsApp right away — missing without notice counts the lesson as done.`),
     ],
     actions: [ACT.selfchange, ACT.resch, ACT.wa] });
 
@@ -838,8 +838,8 @@
   add({ id: 'rules', avoid: ['@popup'], pub: true, topic: ['@kural'],
     ex: { tr: [`Ders kuralları neler?`, `kurallar nerede`, `kuralları görmek istiyorum`, `ders politikası`, `şartlar neler`, `kuralları oku`, `hangi kurallar var`, `ders kuralları özet`],
       en: [`What are the lesson rules?`, `show the rules`] },
-    a: [A(`Özetle:\n- **Saat değiştirme**: {self_h} saatten fazla varsa aynı hafta içinde, ders başına bir kez, ücretsiz\n- **Erteleme**: N aylık paket = N hak, en az {resch_h} saat önce, ders 1 hafta ileri; ek hak {extra_price}\n- Kullanılmayan haklar paket bitince sona erer\n- **{late_min} dakika** içinde girilmeyen ders yapılmış sayılır\n- Haber vermeden katılmamak: ders yapılmış sayılır\n- Dersler iptal edilemez, devredilemez\n- Ders içerikleri Berkay Er'e aittir, paylaşılamaz\n- {cfm_h} saat içinde itiraz edilmeyen ders yapılmış sayılır`,
-      `In short:\n- **Change time**: more than {self_h} hours before, same week, once per lesson, free\n- **Reschedule**: N-month package = N credits, at least {resch_h} hours ahead, moves one week; extra credit {extra_price}\n- Unused credits expire when the package ends\n- Not joining within **{late_min} minutes** counts as done\n- No-show without notice counts as done\n- Lessons can't be cancelled or transferred\n- Lesson content belongs to Berkay Er and can't be shared\n- Lessons not disputed within {cfm_h} hours count as done`)],
+    a: [A(`Özetle:\n- **Saat değiştirme**: {self_h} saatten fazla varsa aynı hafta içinde, ders başına bir kez, 1 erteleme hakkı kullanır\n- **Erteleme**: N aylık paket = N hak, en az {resch_h} saat önce, ders 1 hafta ileri; ek hak {extra_price}\n- Kullanılmayan haklar paket bitince sona erer\n- **{late_min} dakika** içinde girilmeyen ders yapılmış sayılır\n- Haber vermeden katılmamak: ders yapılmış sayılır\n- Dersler iptal edilemez, devredilemez\n- Ders içerikleri Berkay Er'e aittir, paylaşılamaz\n- {cfm_h} saat içinde itiraz edilmeyen ders yapılmış sayılır`,
+      `In short:\n- **Change time**: more than {self_h} hours before, same week, once per lesson, uses 1 reschedule credit\n- **Reschedule**: N-month package = N credits, at least {resch_h} hours ahead, moves one week; extra credit {extra_price}\n- Unused credits expire when the package ends\n- Not joining within **{late_min} minutes** counts as done\n- No-show without notice counts as done\n- Lessons can't be cancelled or transferred\n- Lesson content belongs to Berkay Er and can't be shared\n- Lessons not disputed within {cfm_h} hours count as done`)],
     actions: [ACT.rules] });
 
   add({ id: 'rules_accept', topic: ['@kural', '@onay'],
