@@ -534,7 +534,7 @@ exports.notifyAdminOnNewRequest = onDocumentCreated(
       if (d.type === "reschedule_request") {
         detail = `↺ Erteleme · ${d.lesson_date} ${d.lesson_time} → ${d.new_date}`;
       } else if (d.type === "time_change_request") {
-        detail = `⇄ Saat değişikliği · ${d.lesson_date} ${d.lesson_time} → ${d.new_date} ${d.new_time} (onayın bekleniyor, hak düşmez)`;
+        detail = `⇄ Saat değişikliği · ${d.lesson_date} ${d.lesson_time} → ${d.new_date} ${d.new_time} (onayın bekleniyor, onaylanırsa 1 erteleme hakkı düşer)`;
       } else if (d.type === "payment_request") {
         detail = `₺ Ödeme bildirimi · ${(d.total_price || 0).toLocaleString("tr-TR")} TL`;
       } else if (d.type === "extra_lesson") {
@@ -1376,7 +1376,8 @@ exports.sendWhatsAppMessage = onCall(
 //   - dersin başlamasına en az 5 saat olmalı, yeni saat de en az 5 saat sonra
 //   - yeni saat dersin olduğu haftada (Pazartesi–Pazar) olmalı
 //   - her ders yalnızca bir kez taşınabilir (self_changed); ders başına tek bekleyen talep
-//   - erteleme hakkı düşmez; ödemesi onaylanmamış planda (deneme hariç) kapalı
+//   - onaylanınca 1 erteleme hakkı kullanır (deneme dersi hariç): kullanılabilir hak (bekleyen erteleme +
+//     saat talepleri düşülmüş) yoksa talep reddedilir; ödemesi onaylanmamış planda (deneme hariç) kapalı
 //   - kapalı gün/saatler ve öğrencinin kendi dersleriyle çakışan saatler (60 dk + 30 dk ara) seçilemez;
 //     başka öğrencilerin dolu saatleri öğrenciye gösterilmez, çakışmayı admin onayda görür
 // Saatler İstanbul saatidir (UTC+3, yaz saati uygulaması yok).
@@ -1465,6 +1466,19 @@ exports.studentSelfReschedule = onCall(
       if (lessons[idx].self_changed) {
         throw new HttpsError("failed-precondition", "Bu dersin saati daha önce değişti; her ders bir kez değiştirilebilir.");
       }
+      // Saat değişikliği onayda 1 erteleme hakkı kullanır (admApplyTimeChange düşer). Bekleyen
+      // erteleme / saat talepleri de birer hak ayırır; hak kalmadıysa talep alınmaz. Deneme dersinde hak yok.
+      if (res.lesson_type !== "trial") {
+        const credits = Object.values(res.reschedule_credits || {})
+            .reduce((a, v) => a + Math.max(0, Number(v) || 0), 0);
+        const reserved = pending.docs.map((d) => d.data())
+            .filter((x) => x.type === "reschedule_request" || x.type === "time_change_request").length;
+        if (credits - reserved <= 0) {
+          throw new HttpsError("failed-precondition", credits > 0 ?
+            "Erteleme hakkın bekleyen bir talepte. Berkay Er yanıtlayınca yeniden deneyebilirsin." :
+            "Erteleme hakkın kalmadı; saat değişikliği de 1 hak kullanır. Ek hak alabilirsin.");
+        }
+      }
 
       // Kapalı gün / saat (admin müsaitliği)
       const settingsSnap = await db.collection("settings").doc("global").get();
@@ -1507,7 +1521,7 @@ exports.studentSelfReschedule = onCall(
           from: `"Berkay Er Academy" <berkayer032@gmail.com>`,
           to: "berkayer032@gmail.com",
           subject: `Saat değişikliği talebi — ${who}`,
-          text: `${who} ders saatinin değişmesini istiyor.\n\nEski: ${trLabel(lessonDate, lessonTime)}\nYeni: ${trLabel(newDate, newTime)}\n\nOnaylarsan ders taşınır; erteleme hakkı düşmez.\nhttps://berkayeracademy.com/booking`,
+          text: `${who} ders saatinin değişmesini istiyor.\n\nEski: ${trLabel(lessonDate, lessonTime)}\nYeni: ${trLabel(newDate, newTime)}\n\nOnaylarsan ders taşınır ve öğrencinin 1 erteleme hakkı düşer.\nhttps://berkayeracademy.com/booking`,
         });
       } catch (e) {
         console.error("time-change request admin email error", e);

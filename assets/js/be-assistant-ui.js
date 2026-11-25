@@ -255,7 +255,7 @@
       var ds = document.getElementById('dashSub'); if (ds && ds.textContent.trim()) vars.plan = ds.textContent.trim();
       var rtp = pf('reservationTotalPrice'); if (rtp) { try { vars.total = tl(rtp(res)); } catch (_) {} }
       var trc = pf('totalRescheduleCredits');
-      var credits = trc ? trc(res) : 0, pend = (wk.pendingSet && wk.pendingSet.size) || 0;
+      var credits = trc ? trc(res) : 0, pend = ((wk.pendingSet && wk.pendingSet.size) || 0) + ((wk.timeChg && wk.timeChg.size) || 0); // saat talebi de onayda 1 hak kullanır
       vars.credits = credits; vars.credits_pending = pend; vars.credits_avail = Math.max(0, credits - pend); vars.pkg_months = res.duration_months || 1;
       flags.hasCredits = credits > 0; flags.creditsAvail = credits - pend > 0; flags.creditsInPending = pend > 0 && credits > 0;
       // Bu hafta
@@ -301,7 +301,7 @@
           flags.changeMoved = !!nx.self_changed;
           flags.changeLocked = left < selfH * 3600e3;
           flags.reschPendingNext = pendNext;
-          flags.canChange = flags.paidOrTrial && !flags.changeMoved && !flags.changeLocked && !pendNext;
+          flags.canChange = flags.paidOrTrial && !flags.changeMoved && !flags.changeLocked && !pendNext && (!!wk.isTrial || flags.creditsAvail);
         }
         if (flags.canChange) { vars.change_until = fmtMs(ms - selfH * 3600e3, l); vars.change_left = dur(ms - selfH * 3600e3 - now, l); }
         flags.reschTooSoon = ms - now < reschH * 3600e3;
