@@ -15,14 +15,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
-  <link rel="stylesheet" href="assets/css/ui.css?v=202611251200">
-  <script src="assets/js/theme-init.js?v=202611251200"></script>
-  <link rel="stylesheet" href="assets/css/themes.css?v=202611251200">
-  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202611251200">
-  <script src="assets/js/auth-ui.js?v=202611251200"></script>
-  <script src="assets/js/trial-intro.js?v=202611251200" defer></script>
-  <script src="assets/js/placement-quiz.js?v=202611251200"></script>
-  <script src="assets/js/be-tour.js?v=202611251200"></script>
+  <link rel="stylesheet" href="assets/css/ui.css?v=202611251400">
+  <script src="assets/js/theme-init.js?v=202611251400"></script>
+  <link rel="stylesheet" href="assets/css/themes.css?v=202611251400">
+  <link rel="stylesheet" href="assets/css/be-assistant.css?v=202611251400">
+  <script src="assets/js/auth-ui.js?v=202611251400"></script>
+  <script src="assets/js/trial-intro.js?v=202611251400" defer></script>
+  <script src="assets/js/placement-quiz.js?v=202611251400"></script>
+  <script src="assets/js/be-tour.js?v=202611251400"></script>
   <style>
     /* booking.html — sayfa CSS'i. Token, kontrol, kart, modal, toast ve kabuk ui.css +
        themes.css'ten gelir. Öğrenci ekranları "ÖĞRENCİ TARAFI" (.bk-*), admin paneli
@@ -1866,7 +1866,7 @@
     }
   </style>
 <script src="assets/js/i18n.js?v=202611100100"></script>
-<script src="assets/js/trial-nav.js?v=202611251200"></script>
+<script src="assets/js/trial-nav.js?v=202611251400"></script>
 </head>
 <body data-be-intro-first>
 <header class="be-header" id="beHeader" data-be-page="booking" data-be-cta="off"><div data-be-slot class="be-slot--mobile bk-admin-slot"><span class="bk-admin-badge"><span class="be-live be-live--err" aria-hidden="true"></span><span data-i18n="adm_role">Admin</span></span></div><div id="authBar"></div></header>
@@ -3544,9 +3544,11 @@ function bkSelfReschedControl(l, res, { isPaid, isTrial, pendingResch, pendingTc
     return btn;
   }
   if (!isTrial && _bkCreditAvail <= 0) {
-    btn.disabled = true;
+    // saat değişikliği 1 hak kullanır: hak yoksa ek hak satın alma penceresi açılır
     btn.title = bkT('bk_sc_nocredit', 'Erteleme hakkın kalmadı — saat değiştirilemez');
-    btn.setAttribute('aria-describedby', 'bkReschHint');
+    btn.innerHTML = `<svg class="icon" aria-hidden="true"><use href="/assets/img/icons.svg#i-clock"/></svg>${bkT('bk_sc_buy', 'Hakkın kalmadı — Ek hak al (500 TL)')}`;
+    btn.setAttribute('aria-haspopup', 'dialog');
+    btn.onclick = () => window._openExtraCreditModal && window._openExtraCreditModal();
     return btn;
   }
   if (_bkMobileMq.matches) btn.setAttribute('aria-haspopup', 'dialog');
@@ -4045,8 +4047,8 @@ function bkWkBtnSpec(l, s, open, compact) {
     }
     case 'unpaid':
       return { cls: 'btn-subtle', dis: true, html: bkT('bk_sc_btn', `Saati değiştir`), reason: true };
-    case 'nocredit':
-      return { cls: 'btn-subtle btn-wrap', dis: true, html: bkT('bk_sc_nocredit', `Erteleme hakkın kalmadı — saat değiştirilemez`) };
+    case 'nocredit':   // saat değişikliği 1 hak kullanır: hak yoksa düğme ek hak satın alma penceresini açar
+      return { cls: 'btn-subtle btn-wrap', dis: false, title: bkT('bk_sc_nocredit', `Erteleme hakkın kalmadı — saat değiştirilemez`), html: bkT('bk_sc_buy', `Hakkın kalmadı — Ek hak al (500 TL)`) };
     case 'done':
       return { cls: 'btn-subtle', dis: true, html: bkT('bk_wk_badge_done', `Tamamlandı`) };
     default: return null;
@@ -4109,10 +4111,11 @@ function bkWkPaintCard(c, now, compact) {
     if (!c.btn) {
       c.btn = document.createElement('button');
       c.btn.type = 'button';
-      c.btn.onclick = () => bkWkOpenFor(c.l, 'card');
+      c.btn.onclick = () => (c.kind === 'nocredit' && window._openExtraCreditModal) ? window._openExtraCreditModal() : bkWkOpenFor(c.l, 'card');
       c.act.append(c.btn);
     }
     const b = c.btn;
+    c.kind = s.kind;
     b.className = `btn btn-block bk-wk-btn ${spec.cls}`;
     b.innerHTML = spec.html;
     b.disabled = spec.dis;
@@ -4120,6 +4123,7 @@ function bkWkPaintCard(c, now, compact) {
     if (spec.reason) b.setAttribute('aria-describedby', 'bkWkReason'); else b.removeAttribute('aria-describedby');
     if (s.actionable && !compact) { b.setAttribute('aria-expanded', open ? 'true' : 'false'); b.setAttribute('aria-controls', 'bkWkPicker'); b.removeAttribute('aria-haspopup'); }
     else if (s.actionable) { b.setAttribute('aria-haspopup', 'dialog'); b.removeAttribute('aria-expanded'); b.removeAttribute('aria-controls'); }
+    else if (s.kind === 'nocredit') { b.setAttribute('aria-haspopup', 'dialog'); b.removeAttribute('aria-expanded'); b.removeAttribute('aria-controls'); }
     else { b.removeAttribute('aria-expanded'); b.removeAttribute('aria-controls'); b.removeAttribute('aria-haspopup'); }
   }
   // Odaktaki düğme pasifleşti/kalktıysa odak <body>'ye düşmesin
@@ -7859,9 +7863,9 @@ auth.onAuthStateChanged(user => {
 });
 </script>
 <!-- Site içi asistan: motor + bilgi tabanı + arayüz (window.beAssistant) -->
-<script src="assets/js/be-assistant.js?v=202611251200"></script>
-<script src="assets/js/be-assistant-kb.js?v=202611251200"></script>
-<script src="assets/js/be-assistant-ui.js?v=202611251200"></script>
+<script src="assets/js/be-assistant.js?v=202611251400"></script>
+<script src="assets/js/be-assistant-kb.js?v=202611251400"></script>
+<script src="assets/js/be-assistant-ui.js?v=202611251400"></script>
 <script>(function(){
   // Dil değişince JS'in ürettiği metinler (paket tablosu, slot ipucu, tek ders notu) yeniden çizilir
   function init(){

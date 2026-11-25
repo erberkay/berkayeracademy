@@ -532,6 +532,7 @@
     bk_wk_badge_tcreq:     { tr: `Saat talebi bekliyor`, en: `Time change pending` },
     bk_wk_badge_nocredit:  { tr: `Hak kalmadı`, en: `No credits left` },
     bk_sc_nocredit:        { tr: `Erteleme hakkın kalmadı — saat değiştirilemez`, en: `No reschedule credits left — time can’t be changed` },
+    bk_sc_buy:             { tr: `Hakkın kalmadı — Ek hak al (500 TL)`, en: `No credits left — Buy an extra credit (500 TL)` },
     bk_wk_btn_tcreq:       { tr: `Talebin Berkay Er'de`, en: `Request with Berkay Er` },
     bk_tc_new:             { tr: `İstenen`, en: `Requested` },
     bk_wk_btn_open:        { tr: `Seçim açık`, en: `Picker open` },
