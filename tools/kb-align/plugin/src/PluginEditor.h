@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 #pragma once
 
 #include "PluginProcessor.h"
@@ -28,7 +30,7 @@ private:
     juce::Label title;
     ui::ParamCombo mode, autoTarget, latency;
     juce::TextButton learn{"Learn"}, ab{"A / B"}, copyAB{juce::String::fromUTF8("A→B")}, undoB{"Geri"}, redoB{"Yinele"};
-    juce::TextButton save{"Kaydet"}, load{juce::String::fromUTF8("Aç")};
+    juce::TextButton save{"Kaydet"}, load{juce::String::fromUTF8("Aç")}, about{"?"};
     juce::ComboBox factory, scale;
     ui::ParamToggle bypass;
     juce::Label scWarn;

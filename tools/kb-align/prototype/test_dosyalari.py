@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Berkay Er — KB-Align. Lisans: LICENSE (GNU AGPL v3 ya da sonrası).
 """Ableton testleri için bilinen ofsetli WAV dosyaları (48 kHz, 24 bit, mono) → ../test-dosyalari/
 
 Çalıştırma: python3 -I test_dosyalari.py

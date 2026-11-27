@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 // İşlemciyi host gibi sürer: sidechain'li bus düzeni, gerçek zamanlı (analiz thread'i) ↔ çevrimdışı render eşliği,
 // durum kaydı/geri yükleme, mod geçişleri. Çalıştırma: kb_plugin_test <tests/parity klasörü>
 #include "../src/PluginProcessor.h"

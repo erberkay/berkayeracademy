@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Berkay Er — KB-Align. Lisans: LICENSE (GNU AGPL v3 ya da sonrası).
 """C++ sayısal eşleşme testleri için referans verileri üretir → plugin/tests/parity/.
 
 Çalıştırma: python3 -I export_parity.py   (prototype/ klasöründen)

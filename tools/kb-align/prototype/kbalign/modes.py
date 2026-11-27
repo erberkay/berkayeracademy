@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Berkay Er — KB-Align. Lisans: LICENSE (GNU AGPL v3 ya da sonrası).
 """Dört otomatik hizalama modu — gerçek zaman nedenselliğiyle (causality) simülasyon.
 
 Zaman çizgisi: kick vuruşu içerik zamanı t0'da. Çıkışta bas ile kick, gerçek zamanda

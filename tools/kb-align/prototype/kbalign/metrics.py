@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Berkay Er — KB-Align. Lisans: LICENSE (GNU AGPL v3 ya da sonrası).
 """'%100 hizalama' ölçütleri (talimat §4) ve kaba kuvvet teorik sınır.
 
 Hepsi TAM örnekleme hızında, alt bantta (LR4 LP), kick penceresinde

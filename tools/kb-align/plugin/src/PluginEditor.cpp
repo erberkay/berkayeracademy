@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 #include "PluginEditor.h"
 
 namespace kb {
@@ -57,6 +59,19 @@ EditorContent::EditorContent(KBAlignProcessor& p)
     copyAB.setTooltip(juce::String::fromUTF8("Geçerli durumu öbür yuvaya kopyala"));
     undoB.onClick = [this] { proc.undo.undo(); };
     redoB.onClick = [this] { proc.undo.redo(); };
+    about.setTooltip(juce::String::fromUTF8("Hakkında · lisans · kaynak kodu"));
+    about.setTitle(juce::String::fromUTF8("Hakkında"));
+    about.onClick = [] {
+        juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon, "KB-Align " JucePlugin_VersionString,
+            juce::String::fromUTF8(
+                "Kick ile bası zaman ve faz olarak hizalar.\n\n"
+                "© 2026 Berkay Er · berkayeracademy.com\n"
+                "Ücretsizdir. GNU Affero Genel Kamu Lisansı v3 (ya da sonrası) ile dağıtılır: "
+                "kaynak kodunu alma, değiştirme ve aynı lisansla paylaşma hakkın var. Hiçbir garanti verilmez.\n\n"
+                "Kaynak kodu: Ders Paneli'ndeki indirme kartında (KB-Align kaynak kodu .zip).\n"
+                "JUCE (AGPLv3), VST3 SDK (MIT), CLAP (MIT), clap-juce-extensions (MIT) kullanır."));
+    };
+    addAndMakeVisible(about);
     save.onClick = [this] { savePreset(); };
     load.onClick = [this] { loadPreset(); };
     for (int i = 0; i < proc.getNumPrograms(); ++i) factory.addItem(proc.getProgramName(i), i + 1);
@@ -163,6 +178,7 @@ void EditorContent::resized() {
     autoTarget.setBounds(top.removeFromLeft(140).reduced(2));
     latency.setBounds(top.removeFromLeft(150).reduced(2));
     bypass.setBounds(top.removeFromRight(96).reduced(2));
+    about.setBounds(top.removeFromRight(36).reduced(2));
     scale.setBounds(top.removeFromRight(80).reduced(2));
     redoB.setBounds(top.removeFromRight(64).reduced(2));
     undoB.setBounds(top.removeFromRight(56).reduced(2));

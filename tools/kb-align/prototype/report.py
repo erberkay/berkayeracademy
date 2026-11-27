@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Berkay Er — KB-Align. Lisans: LICENSE (GNU AGPL v3 ya da sonrası).
 """Aşama 3 raporu: tüm ölçütleri sentetik setlerde ölçer, rapor/ozet.md + grafikler yazar.
 
 Çalıştırma:  python3 -I report.py   (prototype/ klasöründen; ~10 dk, 4 çekirdek)

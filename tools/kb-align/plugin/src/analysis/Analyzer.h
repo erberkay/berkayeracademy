@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 // KB-Align — hizalama analizi (arka plan thread'i). Python referansı: prototype/kbalign/align.py, pitch.py
 // Ses thread'inde ÇAĞRILMAZ (bellek ayırır). Ses thread'inde çalışan tek parça OnsetDetector'dır.
 #pragma once
