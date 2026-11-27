@@ -15,20 +15,35 @@
 
 ## Kullanıcıdan beklenenler
 
-- [ ] (a) Çizdiği sidechain eğrisi (noktalar ya da görsel) — gelene kadar yer tutucu eğri (VARSAYIM)
-- [ ] (b) Gerçek kick ve bas stem'leri — gelene kadar yalnız sentetik set
-- [ ] (c) İşletim sistemi ve Ableton sürümü
-- [ ] (d) Ürün adı fikri
-- [ ] Uzak depo: ayrı GitHub reposu açılsın mı?
+- [ ] (a) Çizdiği sidechain eğrisi (noktalar ya da görsel) — şimdilik yer tutucu eğri (VARSAYIM)
+- [ ] (b) Gerçek kick ve bas stem'leri — şimdilik yalnız sentetik setler
+- [ ] (c) İşletim sistemi ve Ableton sürümü → `docs/dogrulama/ableton-kontrol-listesi.md`, `mac-kontrol-listesi.md`
+- [ ] (d) Ürün adı
+- [ ] JUCE lisans kararı (AGPL / Starter / Indie) → `docs/lisanslar.md`
+- [ ] Ayrı GitHub reposu açılsın mı?
 
-## Aşama 1 — Araştırma (bitti, kullanıcı onayı bekleniyor)
+## Aşama 1 — Araştırma ✅ (onaylandı 2026-11-27, 6 öneri dahil)
+- `docs/arastirma/rakipler.md`, `dsp-yontemleri.md`, `notlar/` (~240 kaynak).
 
-- `rakipler.md` yazıldı: 19 hizalama/faz ürünü + 5 osiloskop, özellik tablosu, zayıf yanlar, host/teknik bulgular, talimata 6 öneri (§5).
-- Ham notlar ve ~240 kaynak URL'si: `docs/arastirma/notlar/`.
-- Kısıt: üretici siteleri bu oturumun ağından açılamadı; bilgilerin çoğu arama özetlerinden (rakipler.md §0).
-- `dsp-yontemleri.md` yazıldı. Ölçülen sayılar: FIR Hilbert alt frekans doğruluğu (41 Hz için ~25 ms yarı-boy), Doppler (1 ms/100 ms rampa ≈ 17 cent).
-- Önemli bulgu: negatif kayma lookahead'i yer — kullanılabilir lookahead = `L + d`.
+## Aşama 2 — Spesifikasyon ✅
+- `docs/spec.md` — Aşama 3 ölçümleriyle kesinleşti; talimattan 6 sapma gerekçesiyle işaretli.
+
+## Aşama 3 — Python algoritma kanıtı ✅
+- `prototype/` — 21 pytest testi geçiyor; rapor `prototype/rapor/ozet.md` (`python3 -I report.py`, ~2,5 dk).
+- Ölçüt 3 (gecikme ≤ 0,1 ms): %100 (en kötü 0,042 ms) · Ölçüt 1 (enerji): %100 · Ölçüt 2: göreli %93,8 / tabanlı %99,8 · Ölçüt 4: bit düzeyinde.
+- Bulunan ve düzeltilen hatalar: ham enerji hedefi bası pencereye kaydırıyordu → normalize korelasyon; −5 ms pencere başı korelasyonu bozuyordu → 0 ms; "Her vuruşta" simülasyonu gerçek zamanda olmayan veriyi kullanıyordu → veri sınırı + 20 ms gerçek zaman payı; onset çift tetikleme ve üst üste binen kuyruklar → hızlı/yavaş zarf + yeniden kurulma.
+
+## Aşama 4 — JUCE eklentisi ✅ (Linux'ta derlendi: VST3, CLAP, Standalone; AU Mac'te)
+- `plugin/` — çekirdek JUCE'den bağımsız (`src/dsp`, `src/analysis`, `src/engine`), Python ile sayısal eşleşme: LR4 −235 dB, Lagrange −146 dB, evrişim −298 dB, ses yolu −139 dB, analiz/onset/nota/Learn/Her vuruşta birebir.
+- Gerçek zaman ↔ çevrimdışı render: üç modda bit düzeyinde aynı.
+- CPU: %1,30 (48 kHz, 64 örnek, stereo, tüm özellikler).
+
+## Aşama 5 — Doğrulama (kısmen ✅)
+- pluginval strictness 10 (VST3, Linux): SUCCESS · clap-validator: 32 geçti, 0 hata, 1 uyarı (rastgele baytlı durum yüklemesi çökmeden yok sayılıyor).
+- `kb_tests` 59/59 · `kb_plugin_test` 0 hata. Raporlar: `docs/dogrulama/`.
+- Bekleyen (senin bilgisayarında): `auval`, Mac pluginval, Ableton kontrol listesi (14 madde).
+
+## Aşama 6 — Yayın hazırlığı ⏸ (onay bekliyor: ad, lisans, imzalama, kurulum paketi, kanal)
 
 ## Açık VARSAYIM'lar
-
-Bkz. `docs/arastirma/dsp-yontemleri.md` §11.
+Bkz. `docs/spec.md` §8.
