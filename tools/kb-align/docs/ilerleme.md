@@ -21,8 +21,11 @@
 - [ ] (d) Ürün adı fikri
 - [ ] Uzak depo: ayrı GitHub reposu açılsın mı?
 
-## Aşama 1 — Araştırma (sürüyor)
+## Aşama 1 — Araştırma (bitti, kullanıcı onayı bekleniyor)
 
+- `rakipler.md` yazıldı: 19 hizalama/faz ürünü + 5 osiloskop, özellik tablosu, zayıf yanlar, host/teknik bulgular, talimata 6 öneri (§5).
+- Ham notlar ve ~240 kaynak URL'si: `docs/arastirma/notlar/`.
+- Kısıt: üretici siteleri bu oturumun ağından açılamadı; bilgilerin çoğu arama özetlerinden (rakipler.md §0).
 - `dsp-yontemleri.md` yazıldı. Ölçülen sayılar: FIR Hilbert alt frekans doğruluğu (41 Hz için ~25 ms yarı-boy), Doppler (1 ms/100 ms rampa ≈ 17 cent).
 - Önemli bulgu: negatif kayma lookahead'i yer — kullanılabilir lookahead = `L + d`.
 
