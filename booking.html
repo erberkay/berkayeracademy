@@ -2972,7 +2972,11 @@ var _bkBankReq = null;
 function bkLoadBank(force) {
   if (_bkBankReq && !force) return _bkBankReq;
   _bkBankReq = db.collection('settings').doc('payment').get()
-    .then(snap => { if (snap && snap.exists) bkApplyBank(snap.data()); })
+    .then(snap => {
+      const d = snap && snap.exists ? snap.data() : null;
+      if (d && d.iban && d.bank) { bkApplyBank(d); return; }
+      return firebase.app().functions('europe-west1').httpsCallable('paymentInfo')().then(r => bkApplyBank(r.data));
+    })
     .catch(() => {});
   return _bkBankReq;
 }

@@ -945,6 +945,21 @@ exports.sendCustomEmail = onCall(
 );
 
 // ── Zoom: Create Meeting ────────────────────────────────────────────────────
+// Giriş yapan kullanıcı: settings/payment henüz yoksa / eski biçimdeyse güncel hesabı yazar ve yalnız onu döner.
+exports.paymentInfo = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!request.auth) throw new HttpsError("unauthenticated", "Giriş gerekli");
+      const ref = getFirestore().collection("settings").doc("payment");
+      const snap = await ref.get();
+      const d = snap.exists ? snap.data() : null;
+      if (d && d.iban && d.bank) return {bank: d.bank, name: d.name, iban: d.iban, b20: d.b20 === true};
+      const b = BANKS[bankIdOf(d)];
+      await ref.set({bank: b.bank, name: b.name, iban: b.iban, b20: b.b20, updated_at: FieldValue.serverTimestamp()});
+      return {bank: b.bank, name: b.name, iban: b.iban, b20: b.b20};
+    },
+);
+
 // Yönetici: ödeme hesabını listeler / değiştirir. Öğrenciye açık settings/payment'a yalnız güncel hesap yazılır.
 exports.paymentBank = onCall(
     {region: "europe-west1"},
