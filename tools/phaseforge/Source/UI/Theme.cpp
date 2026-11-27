@@ -22,6 +22,27 @@ juce::String fmtNum(double v, int decimals, bool plus) {
 
 juce::String fmtHz(double hz) { return hz >= 1000 ? fmtNum(hz / 1000.0, hz >= 10000 ? 1 : 2) + " kHz" : fmtNum(hz, hz < 100 ? 1 : 0) + " Hz"; }
 
+juce::String upper(const juce::String& s) {
+    juce::String out;
+    out.preallocateBytes(s.getNumBytesAsUTF8() + 8);
+    for (auto p = s.getCharPointer(); !p.isEmpty();) {
+        const juce::juce_wchar c = p.getAndAdvance();
+        juce::juce_wchar u = c;
+        switch (c) {
+            case 'i': u = isTurkish() ? 0x130 : 'I'; break;
+            case 0x131: u = 'I'; break;      // ı
+            case 0x15f: u = 0x15e; break;    // ş
+            case 0xe7: u = 0xc7; break;      // ç
+            case 0x11f: u = 0x11e; break;    // ğ
+            case 0xfc: u = 0xdc; break;      // ü
+            case 0xf6: u = 0xd6; break;      // ö
+            default: u = (c < 128) ? (juce::juce_wchar) std::toupper((int) c) : juce::CharacterFunctions::toUpperCase(c);
+        }
+        out += juce::String::charToString(u);
+    }
+    return out;
+}
+
 juce::PropertiesFile& userSettings() {
     static juce::PropertiesFile::Options o = [] {
         juce::PropertiesFile::Options x;
@@ -40,6 +61,7 @@ Look::Look() {
     setColour(juce::Label::textColourId, col::fgSoft);
     setColour(juce::Slider::textBoxTextColourId, col::fg);
     setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    setColour(juce::Label::outlineColourId, juce::Colours::transparentBlack);
     setColour(juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     setColour(juce::Slider::thumbColourId, col::accent);
     setColour(juce::ComboBox::backgroundColourId, col::panelHi);
@@ -177,6 +199,7 @@ Knob::Knob(juce::AudioProcessorValueTreeState& s, const juce::String& paramId, c
     slider.setColour(juce::Slider::rotarySliderFillColourId, c);
     slider.setVelocityModeParameters(1.0, 1, 0.1, false, juce::ModifierKeys::shiftModifier);
     slider.setTitle(l);
+    slider.setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     addAndMakeVisible(slider);
     rebind(s, paramId);
 }
@@ -196,7 +219,7 @@ void Knob::resized() {
 void Knob::paint(juce::Graphics& g) {
     g.setColour(col::fgFaint);
     g.setFont(juce::FontOptions(10.5f, juce::Font::bold).withKerningFactor(0.06f));
-    g.drawText(label.toUpperCase(), getLocalBounds().removeFromTop(16), juce::Justification::centred);
+    g.drawText(upper(label), getLocalBounds().removeFromTop(16), juce::Justification::centred);
 }
 
 // ───────────────────────────── PillToggle

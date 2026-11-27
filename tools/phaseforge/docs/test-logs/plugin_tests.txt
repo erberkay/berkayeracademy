@@ -1,0 +1,115 @@
+PHASEFORGE plugin tests
+
+== (1) Bypass and 0 deg identity: output = input delayed by the reported latency
+  [PASS] FIR Rotate, nodes off, 0 deg: latency 5680, max |out - in(t-L)| = 0 (bit-exact expected)
+  [PASS] FIR Match, nodes off, 0 deg: latency 5680, max |out - in(t-L)| = 0 (bit-exact expected)
+  [PASS] IIR Rotate, nodes off, 0 deg: latency 0, max |out - in(t-L)| = 0 (bit-exact expected)
+  [PASS] IIR Match, nodes off, 0 deg: latency 1328, max |out - in(t-L)| = 0 (bit-exact expected)
+  [PASS] FIR bypass (bypass parameter), 90 deg + node + 6 dB in: latency 5680, max |out - in(t-L)| = 0
+  [PASS] FIR bypass (processBlockBypassed), 90 deg + node + 6 dB in: latency 5680, max |out - in(t-L)| = 0
+  [PASS] IIR bypass (bypass parameter), 90 deg + node + 6 dB in: latency 0, max |out - in(t-L)| = 0
+  [PASS] IIR bypass (processBlockBypassed), 90 deg + node + 6 dB in: latency 0, max |out - in(t-L)| = 0
+  [PASS] bypass switch at 180 deg (processed = -dry): max sample step 0.00654 vs sine slope 0.00654 (10 ms fade)
+
+== (6) Reported latency = measured impulse delay, all (filterMode, phaseMode), 44.1/48/96/192 kHz
+     fs      filter  phase   reported  expected(phase+eq)  measured  peak
+  [PASS]  44100  IIR  Rotate         0         0 + 0                0  1.000000
+  [PASS]  44100  IIR  Match       1231      1231 + 0             1231  1.000000
+  [PASS]  44100  FIR  Rotate      5583      1231 + 4352          5583  1.000000
+  [PASS]  44100  FIR  Match       5583      1231 + 4352          5583  1.000000
+  [PASS]  48000  IIR  Rotate         0         0 + 0                0  1.000000
+  [PASS]  48000  IIR  Match       1328      1328 + 0             1328  1.000000
+  [PASS]  48000  FIR  Rotate      5680      1328 + 4352          5680  1.000000
+  [PASS]  48000  FIR  Match       5680      1328 + 4352          5680  1.000000
+  [PASS]  96000  IIR  Rotate         0         0 + 0                0  1.000000
+  [PASS]  96000  IIR  Match       2528      2528 + 0             2528  1.000000
+  [PASS]  96000  FIR  Rotate     11232      2528 + 8704         11232  1.000000
+  [PASS]  96000  FIR  Match      11232      2528 + 8704         11232  1.000000
+  [PASS] 192000  IIR  Rotate         0         0 + 0                0  1.000000
+  [PASS] 192000  IIR  Match       4928      4928 + 0             4928  1.000000
+  [PASS] 192000  FIR  Rotate     22336      4928 + 17408        22336  1.000000
+  [PASS] 192000  FIR  Match      22336      4928 + 17408        22336  1.000000
+  [PASS] band 60-900 Hz keeps latency 5680 -> 5680; FIR -> IIR: 5680 before message thread, 0 after
+
+== (2) Kick (sidechain) / bass = kick rotated by alpha: Analyze -> apply -> low band sum improves
+  [PASS] FIR fs 48000 alpha -110: status Ok, angle +110.0 (expected +110.0, err 0.00), conf 1.00, score 1.000 (at 0: -0.342), predicted sum +4.72 dB, 3.43 s analysed
+  [PASS]   FIR result is refused while the filter mode is IIR
+  [PASS]   applyPhaseResult wrote phaseAngle = +110.0
+  [PASS]   FIR: summed 20-200 Hz energy +4.71 dB (analyzer predicted +4.72); residual angle after processing +0.0
+  [PASS] IIR fs 48000 alpha -110: status Ok, angle -119.3 vs IIR all-pass reference (pure-rotation angle +110.0), conf 1.00, predicted sum +2.73 dB
+  [PASS]   applyPhaseResult wrote phaseAngle = -119.3
+  [PASS]   IIR: summed 20-200 Hz energy +2.74 dB (predicted for the IIR network +2.73)
+  [PASS] FIR fs 48000 alpha +75: status Ok, angle -75.0 (expected -75.0, err 0.00), conf 1.00, score 1.000 (at 0: 0.259), predicted sum +1.98 dB, 3.37 s analysed
+  [PASS]   applyPhaseResult wrote phaseAngle = -75.0
+  [PASS]   FIR: summed 20-200 Hz energy +1.97 dB (analyzer predicted +1.98); residual angle after processing -0.1
+  [PASS] IIR fs 48000 alpha +75: status Ok, angle +53.3 vs IIR all-pass reference (pure-rotation angle -75.0), conf 1.00, predicted sum +0.15 dB
+  [PASS]   applyPhaseResult wrote phaseAngle = +53.3
+  [PASS]   IIR: summed 20-200 Hz energy +0.01 dB (predicted for the IIR network +0.15)
+  [PASS] FIR fs 96000 alpha -110: status Ok, angle +110.0 (expected +110.0, err 0.00), conf 1.00, score 1.000 (at 0: -0.341), predicted sum +4.71 dB, 3.04 s analysed
+  [PASS]   applyPhaseResult wrote phaseAngle = +110.0
+  [PASS]   FIR: summed 20-200 Hz energy +4.71 dB (analyzer predicted +4.71); residual angle after processing +0.0
+  [PASS] IIR fs 96000 alpha -110: status Ok, angle +144.2 vs IIR all-pass reference (pure-rotation angle +110.0), conf 1.00, predicted sum +2.82 dB
+  [PASS]   applyPhaseResult wrote phaseAngle = +144.2
+  [PASS]   IIR: summed 20-200 Hz energy +2.74 dB (predicted for the IIR network +2.82)
+  [PASS] FIR fs 96000 alpha +75: status Ok, angle -75.0 (expected -75.0, err 0.00), conf 1.00, score 1.000 (at 0: 0.258), predicted sum +1.98 dB, 3.00 s analysed
+  [PASS]   applyPhaseResult wrote phaseAngle = -75.0
+  [PASS]   FIR: summed 20-200 Hz energy +1.97 dB (analyzer predicted +1.98); residual angle after processing -0.1
+  [PASS] IIR fs 96000 alpha +75: status Ok, angle -45.2 vs IIR all-pass reference (pure-rotation angle -75.0), conf 1.00, predicted sum +0.13 dB
+  [PASS]   applyPhaseResult wrote phaseAngle = -45.2
+  [PASS]   IIR: summed 20-200 Hz energy +0.00 dB (predicted for the IIR network +0.13)
+  [PASS] Phase Match: status Ok conf 1.00 aggressive 1, applied 1; summed 20-200 Hz energy +4.73 dB (kernel max corr 109 deg, mag dev 0.076 dB)
+  [PASS] Phase On off -> max |out - in(t-L)| = 0; blend 50 % -> summed energy +3.11 dB (between 0 and full)
+
+== (3) Sidechain-keyed node (60 Hz, range 12 dB) reduces only its band; main = 60 Hz + 1 kHz + 5 kHz
+  [PASS] IIR: sidechain on: 60 Hz -12.00 dB, 1 kHz -0.015 dB, 5 kHz -0.001 dB | off: -0.001 / -0.000 / +0.000 dB
+  [PASS] FIR: sidechain on: 60 Hz -11.98 dB, 1 kHz -0.015 dB, 5 kHz -0.001 dB | off: -0.002 / -0.000 / -0.000 dB
+
+== (4) Delta: wet + delta = dry (post phase) delayed; single-node audition = combined delta for one node
+  [PASS] IIR: max |wet + delta - dry(t-L)| = 6e-08 (delta peak 0.277)
+  [PASS] IIR: node-1 audition vs combined delta (one node): max diff 0 (0.00 % of delta peak)
+  [PASS] FIR: max |wet + delta - dry(t-L)| = 6e-08 (delta peak 0.269)
+  [PASS] FIR: node-1 audition vs combined delta (one node): max diff 0 (0.00 % of delta peak)
+
+== (5) State save/restore round trip incl. A/B, Phase Match estimate, presets, garbage
+  [PASS] Phase Match estimate obtained (Ok) and applied
+  [PASS] restore: 138 params identical (|diff| <= 1e-6 normalised), slot B active, match estimate identical (200 points), UI state, latency 1328
+  [PASS] restored processor: toggle -> slot A values (|diff| <= 1e-6 normalised)
+  [PASS] toggle again -> slot B values
+  [PASS] copy active -> inactive, toggle: slot A now equals B, active slot untouched
+  [PASS] original vs restored processor: max output difference 0 over 2 s (bit-exact expected)
+  [PASS] preset file save/load round trip; factory program 1 'Kick & Bass — Low End' sets node 1 = 55 Hz and clears the match estimate
+  [PASS] garbage blobs ignored; bad values clamped/defaulted (outGain 1e30 -> 24, mix -5 -> 0.0, filterMode 7 -> 1, inGain 'abc' -> 0.0)
+  [PASS] processor still renders finite audio after garbage state
+
+== (7) Missing sidechain: disabled bus (mono and stereo main), mono sidechain
+  [PASS] main 1 ch, sidechain disabled, IIR: finite output (peak 0.65), phase analysis -> NoSidechain, resolve -> status 2 (0 nodes), sidechain reported not connected
+  [PASS] main 1 ch, sidechain disabled, FIR: finite output (peak 0.67), phase analysis -> NoSidechain, resolve -> status 2 (0 nodes), sidechain reported not connected
+  [PASS] main 1 ch, sidechain mono, IIR: finite output (peak 0.45), phase analysis -> Ok, resolve -> status 0 (1 nodes), sidechain reported connected
+  [PASS] main 1 ch, sidechain mono, FIR: finite output (peak 0.60), phase analysis -> Ok, resolve -> status 0 (1 nodes), sidechain reported connected
+  [PASS] main 2 ch, sidechain disabled, IIR: finite output (peak 0.65), phase analysis -> NoSidechain, resolve -> status 2 (0 nodes), sidechain reported not connected
+  [PASS] main 2 ch, sidechain disabled, FIR: finite output (peak 0.67), phase analysis -> NoSidechain, resolve -> status 2 (0 nodes), sidechain reported not connected
+  [PASS] main 2 ch, sidechain mono, IIR: finite output (peak 0.45), phase analysis -> Ok, resolve -> status 0 (1 nodes), sidechain reported connected
+  [PASS] main 2 ch, sidechain mono, FIR: finite output (peak 0.60), phase analysis -> Ok, resolve -> status 0 (1 nodes), sidechain reported connected
+  [PASS] layouts: mono->stereo refused, 5.1 sidechain refused, mono + disabled sidechain accepted
+
+== Resolve Conflicts through the processor (kick on sidechain, bass on main)
+  [PASS] 1 node(s) from 141 frames; node 1: 94.9 Hz, range 4.5 dB, Q 0.76, ch 1, suggested thr -13.0 -> written -19.0 dB (band level - 12 dB); others off
+  [PASS] node 1 reduction on the kick hits reaches 4.5 dB of 4.5 dB range
+
+== UI API: phaseResult / pending flags / spectrum / meters / latencyMs10 / isB
+  [PASS] result serial 1 status 0 angle +110.0 curve 361; spectrum 400 points (sidechain 1); meters in -15.2 / sc -13.4 LUFS-S; latency 118.3 ms; resolve pending 1
+
+== (8) Realtime (paced, analysis thread running) vs offline render: identical output
+  [PASS] FIR: max |realtime - offline| = 0 over 3 s
+  [PASS] IIR: max |realtime - offline| = 0 over 3 s
+         (info) FIR, block 64 vs 512: max difference 0
+         (info) FIR, block 64 vs 1000: max difference 0
+         (info) FIR, block 64 vs 37: max difference 0
+
+== CPU: 48 kHz, 64-sample blocks, stereo main + stereo sidechain, 4 active nodes keyed by a kick
+     FIR  Rotate: 7.88 % of one core (process calls only 7.85 %), per 64-sample call p99 0.193 ms, p99.9 0.261 ms, max 0.373 ms (budget 1.333 ms)
+     IIR  Rotate: 1.35 % of one core (process calls only 1.33 %), per 64-sample call p99 0.039 ms, p99.9 0.052 ms, max 2.067 ms (budget 1.333 ms)
+     FIR  Match : 6.74 % of one core (process calls only 6.71 %), per 64-sample call p99 0.180 ms, p99.9 0.343 ms, max 0.985 ms (budget 1.333 ms)
+     IIR  Match : 1.02 % of one core (process calls only 1.00 %), per 64-sample call p99 0.031 ms, p99.9 0.040 ms, max 0.054 ms (budget 1.333 ms)
+
+82 passed, 0 failed

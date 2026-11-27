@@ -38,19 +38,22 @@ void MeterComponent::paint(juce::Graphics& g) {
         g.fillRect(toX(b, hold) - 1, b.getY() - 2, 2.0f, b.getHeight() + 4);
         return;
     }
+    // one row: NAME | peak bar | M S I (LUFS)
     g.setColour(col::fgFaint);
     g.setFont(juce::FontOptions(10.5f, juce::Font::bold).withKerningFactor(0.06f));
-    g.drawText(name, r.removeFromTop(14), juce::Justification::centredLeft);
-    auto b = r.removeFromTop(8);
+    g.drawText(name, r.removeFromLeft(74), juce::Justification::centredLeft);
+    auto vals = r.removeFromRight(150);
+    auto b = r.reduced(0, r.getHeight() * 0.5f - 4).withTrimmedRight(10);
     g.setColour(col::panelHi2);
     g.fillRoundedRectangle(b, 2);
-    g.setColour(col::accent);
+    g.setColour(hold > -0.1f ? col::bad : col::accent);
     g.fillRoundedRectangle(b.withRight(toX(b, bar)), 2);
-    r.removeFromTop(4);
-    auto cell = [&](const juce::String& k, float v) {
-        auto c = r.removeFromLeft(r.getWidth() / 3.0f + 0.5f);
-        g.setColour(col::fgFaint); g.setFont(juce::FontOptions(10.0f)); g.drawText(k, c.removeFromTop(12), juce::Justification::centredLeft);
-        g.setColour(col::fg); g.setFont(juce::FontOptions(13.0f, juce::Font::bold)); g.drawText(lufsText(v), c, juce::Justification::centredLeft);
+    g.setColour(col::fg);
+    g.fillRect(toX(b, hold) - 1, b.getY() - 2, 2.0f, b.getHeight() + 4);
+    auto cell = [&](const char* k, float v) {
+        auto c = vals.removeFromLeft(50);
+        g.setColour(col::fgFaint); g.setFont(juce::FontOptions(10.0f)); g.drawText(k, c.removeFromLeft(12), juce::Justification::centredLeft);
+        g.setColour(col::fg); g.setFont(juce::FontOptions(12.5f, juce::Font::bold)); g.drawText(lufsText(v), c, juce::Justification::centredLeft);
     };
     cell("M", val.momentary);
     cell("S", val.shortTerm);

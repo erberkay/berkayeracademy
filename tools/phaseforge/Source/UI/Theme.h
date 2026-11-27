@@ -21,6 +21,7 @@ void setTurkish(bool tr);
 inline juce::String L(const char* en, const char* tr) { return juce::String::fromUTF8(isTurkish() ? tr : en); }
 juce::String fmtNum(double v, int decimals, bool plus = false);
 juce::String fmtHz(double hz);
+juce::String upper(const juce::String& s);   // Turkish-aware (i → İ, ı → I, ş → Ş …); JUCE's toUpperCase misses these
 juce::PropertiesFile& userSettings();
 
 class Look : public juce::LookAndFeel_V4 {
@@ -48,6 +49,7 @@ public:
     void resized() override;
     void paint(juce::Graphics&) override;
     juce::Slider slider;
+    void setTooltip(const juce::String& t) { slider.setTooltip(t); }
     void rebind(juce::AudioProcessorValueTreeState& s, const juce::String& paramId);  // bottom bar follows the selected node
 private:
     juce::String label;
@@ -65,7 +67,7 @@ private:
 };
 
 // Segmented choice bound to a choice parameter
-class Segmented : public juce::Component {
+class Segmented : public juce::Component, public juce::SettableTooltipClient {
 public:
     Segmented(juce::AudioProcessorValueTreeState& s, const juce::String& paramId, const juce::StringArray& labels);
     void paint(juce::Graphics&) override;
