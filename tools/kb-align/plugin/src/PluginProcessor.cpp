@@ -52,8 +52,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout KBAlignProcessor::createLayo
     p.push_back(std::make_unique<APF>(juce::ParameterID{pid::search, 1}, juce::String::fromUTF8("Arama aralığı"), NR(1.f, 50.f, 0.1f), 10.f, attrMs));
     p.push_back(choice(pid::latency, "Gecikme modu",
         juce::StringArray{juce::String::fromUTF8("Düşük (±10 ms)"), juce::String::fromUTF8("Tam (±50 ms)"), "Tam + lookahead"}, 1));
-    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::crossover, 1}, "Crossover", true));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::fc, 1}, "Crossover frekans", NR(40.f, 300.f, 0.1f, 0.5f), 120.f, attrHz));
+    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::crossover, 1}, "Crossover", false));  // ölçüm: kapalıyken kazanç en yüksek
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::fc, 1}, "Crossover frekans", NR(60.f, 400.f, 0.1f, 0.5f), 250.f, attrHz));
     p.push_back(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{pid::learnHits, 1}, juce::String::fromUTF8("Learn vuruş sayısı"), 1, 32, 8));
     p.push_back(std::make_unique<APF>(juce::ParameterID{pid::winStart, 1}, juce::String::fromUTF8("Analiz penceresi başı"), NR(0.f, 50.f, 0.1f), 0.f, attrMs));
     p.push_back(std::make_unique<APF>(juce::ParameterID{pid::winMs, 1}, juce::String::fromUTF8("Analiz penceresi"), NR(20.f, 150.f, 0.1f), 150.f, attrMs));
@@ -75,6 +75,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout KBAlignProcessor::createLayo
     p.push_back(std::make_unique<APB>(juce::ParameterID{pid::bypass, 1}, "Bypass", false));
     p.push_back(std::make_unique<APF>(juce::ParameterID{pid::contRate, 1}, juce::String::fromUTF8("Takip hızı"), NR(0.1f, 5.f, 0.01f, 0.5f), 0.5f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return juce::String(v, 2) + " ms/s"; })));
+    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::polarity, 1}, "Polarite", false));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::outGain, 1}, juce::String::fromUTF8("Çıkış"), NR(-24.f, 12.f, 0.01f), 0.f,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return (v > 0 ? "+" : "") + juce::String(v, 1) + " dB"; })
+            .withValueFromStringFunction([](const juce::String& t) { return (float) t.getDoubleValue(); }).withLabel("dB")));
     return {p.begin(), p.end()};
 }
 
@@ -113,7 +117,7 @@ void KBAlignProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     preparedXover = apvts.getRawParameterValue(pid::crossover)->load() > 0.5f;
     const double fc = apvts.getRawParameterValue(pid::fc)->load();
     engine.prepare(sr, std::min(samplesPerBlock, 256), numCh, preparedLm, preparedXover, fc);
-    align.prepare(&engine, sr, fc);
+    align.prepare(&engine, sr, kAnalysisHz);
     pushAlignSettings();
     if (learned && (int) apvts.getRawParameterValue(pid::mode)->load() == (int) Mode::Learn)
         engine.events.push({0, learned->first, learned->second});
@@ -171,7 +175,9 @@ BlockParams KBAlignProcessor::makeBlockParams(juce::AudioPlayHead* ph, int) {
     BlockParams bp;
     bp.manualD = v(pid::predelay);
     double th = v(pid::phase);
+    bp.polarity = v(pid::polarity) > 0.5;
     bp.manualTh = th;
+    bp.outGain = juce::Decibels::decibelsToGain(v(pid::outGain));
     bp.scOffsetMs = v(pid::scOffset);
     bp.trigHz = v(pid::trigHz);
     bp.bassMono = v(pid::bassMono) > 0.5;

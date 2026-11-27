@@ -5,6 +5,7 @@
 #include "../src/PluginProcessor.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <cstdio>
 #include <fstream>
 #include <thread>
@@ -89,6 +90,10 @@ int main(int argc, char** argv) {
             std::printf("  %s: gecikme %d örnek, uygulanan d %.3f θ %.2f, vuruş %zu, uygulanan vuruş %d\n", offline ? "çevrimdışı" : "gerçek zamanlı",
                         p->getLatencySamples(), p->engine.uiD.load(), p->engine.uiTh.load(), hs.size(),
                         (int) std::count_if(hs.begin(), hs.end(), [](auto& h) { return h.applied; }));
+        }
+        if (const char* dump = std::getenv("KB_DUMP")) {
+            std::ofstream f(std::string(dump) + "/mod" + std::to_string(mode) + ".f32", std::ios::binary);
+            f.write((const char*) outs[1].data(), (std::streamsize) (outs[1].size() * 4));
         }
         double m = 0;
         for (size_t i = 0; i < outs[0].size(); ++i) m = std::max(m, (double) std::abs(outs[0][i] - outs[1][i]));

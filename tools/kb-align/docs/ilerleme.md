@@ -46,6 +46,13 @@
 - `kb_tests` 59/59 · `kb_plugin_test` 0 hata. Raporlar: `docs/dogrulama/`.
 - Bekleyen (senin bilgisayarında): `auval`, Mac pluginval, Ableton kontrol listesi (14 madde).
 
+## Gerçek çıktı ölçümü ve arayüz v2 (2026-11-27)
+- Ölçümler artık eklentinin gerçek çıktısında. Bulgu: crossover 120 Hz'te açıkken kazancın çoğu kayboluyordu → varsayılan kapalı, analiz bandı ayrıldı (`spec.md` §5b).
+- Nota modu: nota bilinmezse genel değere düşer (asla Learn'den kötü değil).
+- `prototype/gercek_olcum.py`: kendi kick/bas loop'larınla ölçüm + hizalanmış bas WAV'ları (dinleme için).
+- Arayüz v2 + ilk açılış turu, polarite, çıkış kazancı, seviye ölçerleri. Görüntüler `docs/ekran/v2-*.png`.
+- pluginval strictness 10 SUCCESS · clap-validator 0 hata · kb_tests 59/59 · kb_plugin_test 0 hata.
+
 ## Aşama 6 — Yayın hazırlığı 🔧 (satış yok, AGPLv3, Ders Paneli) — betikler ve kart hazır; Mac paketi + deploy bekliyor → `docs/yayin.md`
 
 ## Açık VARSAYIM'lar

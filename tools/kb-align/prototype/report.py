@@ -24,6 +24,7 @@ from kbalign import align, datasets as ds, dsp, engine, evaluate, metrics, modes
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rapor")
 SEED = 20261127
+XOVER = False  # eklentinin varsayılanı: crossover kapalı (ölçüm: açıkken 120 Hz'te kazancın çoğu kaybolur)
 
 
 def _f(v):
@@ -37,7 +38,7 @@ def job_identity(args):
     rng = np.random.default_rng([SEED, fs, i, list(ds.KICKS).index(kind), 0 if snr is None else snr])
     d0, th0 = rng.uniform(-20, 20), rng.uniform(0, 360)
     h = ds.identity_hit(fs, kind, d0, th0, rng, snr_db=snr)
-    r = evaluate.eval_hit(h, engine.Config(fs=fs))
+    r = evaluate.eval_hit(h, engine.Config(fs=fs, crossover=XOVER))
     return {k: _f(v) for k, v in r.items()} | dict(fs=fs)
 
 
@@ -52,7 +53,7 @@ def job_musical(args):
     snr = [None, 60, 40, 20][rng.integers(4)]
     h = ds.musical_hit(fs, kind, note, btype, rng, attack_off_ms=float(rng.choice([0, 0, 8, 20, -15])),
                        d0_ms=rng.uniform(-8, 8), th0=rng.uniform(0, 360), snr_db=snr, duck=bool(rng.integers(2)))
-    cfg = engine.Config(fs=fs)
+    cfg = engine.Config(fs=fs, crossover=XOVER)
     ap = align.AnalysisParams(d_min_ms=-search, d_max_ms=search)
     r = evaluate.eval_hit(h, cfg, ap)
     return {k: _f(v) for k, v in r.items()} | dict(fs=fs, search=search)
@@ -65,7 +66,7 @@ def job_compatible(args):
     h = ds.compatible_hit(fs, kind, rng, d0_ms=rng.uniform(-8, 8), th0=rng.uniform(0, 360),
                           snr_db=[None, 60, 40][i % 3])
     ap = align.AnalysisParams(d_min_ms=-10, d_max_ms=10)
-    r = evaluate.eval_hit(h, engine.Config(fs=fs), ap)
+    r = evaluate.eval_hit(h, engine.Config(fs=fs, crossover=XOVER), ap)
     return {k: _f(v) for k, v in r.items()} | dict(fs=fs, search=10.0)
 
 
@@ -84,7 +85,7 @@ def job_mode(args):
     fs = 48000
     k, b, on, notes = ds.loop(fs, bars=4, kind=kind, btype=btype, d0_ms=3.0, th0=70.0,
                               rng=np.random.default_rng([SEED, list(SCEN).index(scen), list(ds.KICKS).index(kind)]), **SCEN[scen])
-    cfg = engine.Config(fs=fs, latency_mode=lm)
+    cfg = engine.Config(fs=fs, latency_mode=lm, crossover=XOVER)
     ap = align.AnalysisParams(d_min_ms=-10, d_max_ms=10)
     sim = None if mode == "yok" else modes.simulate(k, b, cfg, ap, modes.ModeParams(mode=mode))  # onset'ler tespit edilir
     rows = evaluate.eval_loop(k, b, on, cfg, ap, sim, notes)

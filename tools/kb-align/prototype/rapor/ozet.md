@@ -1,6 +1,6 @@
 # Aşama 3 — Python algoritma kanıtı: rapor
 
-Üretim: `python3 -I report.py` · süre 1.8 dk · seed 20261127 · ham sonuçlar `sonuclar.json`.
+Üretim: `python3 -I report.py` · süre 3.0 dk · seed 20261127 · ham sonuçlar `sonuclar.json`.
 
 Bütün sinyaller sentetik (talimat §5.1). Gerçek kick/bas stem'leri henüz yok — kullanıcıdan bekleniyor.
 
@@ -118,15 +118,15 @@ Bas, kick'ten 20 ms sonra başlıyor (A1 sinüs). Ham toplam enerjiyi en büyüt
 | nota_degisir_faz_sabit | learn | tam | 78 | 0.178 | 0.504 | -1.30 | 58 % |
 | nota_degisir_faz_sabit | hit | tam | 78 | 0.151 | 0.504 | -1.23 | 42 % |
 | nota_degisir_faz_sabit | hit | tam_lookahead | 138 | 0.472 | 0.504 | -0.09 | 100 % |
-| nota_degisir_faz_sabit | note | tam | 78 | 0.497 | 0.504 | -0.03 | 100 % |
-| nota_degisir_faz_sabit | note | tam_lookahead | 138 | 0.497 | 0.504 | -0.03 | 100 % |
+| nota_degisir_faz_sabit | note | tam | 78 | 0.494 | 0.504 | -0.04 | 96 % |
+| nota_degisir_faz_sabit | note | tam_lookahead | 138 | 0.494 | 0.504 | -0.04 | 96 % |
 | nota_degisir_faz_sabit | cont | tam | 78 | -0.078 | 0.504 | -2.52 | 29 % |
 | nota_degisir_faz_serbest | yok | tam | 78 | -0.078 | 0.516 | -2.53 | 29 % |
 | nota_degisir_faz_serbest | learn | tam | 78 | -0.094 | 0.516 | -2.38 | 25 % |
 | nota_degisir_faz_serbest | hit | tam | 78 | 0.166 | 0.516 | -1.21 | 42 % |
 | nota_degisir_faz_serbest | hit | tam_lookahead | 138 | 0.484 | 0.516 | -0.09 | 100 % |
-| nota_degisir_faz_serbest | note | tam | 78 | 0.017 | 0.516 | -2.11 | 25 % |
-| nota_degisir_faz_serbest | note | tam_lookahead | 138 | 0.017 | 0.516 | -2.11 | 25 % |
+| nota_degisir_faz_serbest | note | tam | 78 | 0.018 | 0.516 | -2.10 | 29 % |
+| nota_degisir_faz_serbest | note | tam_lookahead | 138 | 0.018 | 0.516 | -2.10 | 29 % |
 | nota_degisir_faz_serbest | cont | tam | 78 | 0.113 | 0.516 | -1.51 | 29 % |
 | tek_nota | yok | tam | 78 | 0.015 | 0.610 | -2.43 | 33 % |
 | tek_nota | learn | tam | 78 | 0.611 | 0.610 | -0.00 | 100 % |
@@ -139,11 +139,11 @@ Bas, kick'ten 20 ms sonra başlıyor (A1 sinüs). Ham toplam enerjiyi en büyüt
 | genis_aralik_E1_C3 | learn | tam | 78 | 0.056 | 0.201 | -0.56 | 75 % |
 | genis_aralik_E1_C3 | hit | tam | 78 | 0.134 | 0.201 | -0.25 | 83 % |
 | genis_aralik_E1_C3 | hit | tam_lookahead | 138 | 0.129 | 0.201 | -0.26 | 83 % |
-| genis_aralik_E1_C3 | note | tam | 78 | 0.124 | 0.201 | -0.31 | 75 % |
-| genis_aralik_E1_C3 | note | tam_lookahead | 138 | 0.162 | 0.201 | -0.14 | 83 % |
+| genis_aralik_E1_C3 | note | tam | 78 | 0.166 | 0.201 | -0.12 | 100 % |
+| genis_aralik_E1_C3 | note | tam_lookahead | 138 | 0.173 | 0.201 | -0.10 | 100 % |
 | genis_aralik_E1_C3 | cont | tam | 78 | -0.013 | 0.201 | -0.88 | 50 % |
 
-**Sabit hizalama (Learn) ↔ nota başına** (nota değişir, synth fazı her notada aynı başlar): enerji farkı -1.30 → -0.03 dB, korelasyon 0.178 → 0.497.
+**Sabit hizalama (Learn) ↔ nota başına** (nota değişir, synth fazı her notada aynı başlar): enerji farkı -1.30 → -0.04 dB, korelasyon 0.178 → 0.494.
 
 Yorum:
 - **Nota başına**, synth her notayı aynı fazla başlatıyorsa (çoğu synth'te "retrigger") sınıra ulaşır ve lookahead gerektirmez.

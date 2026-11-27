@@ -35,8 +35,8 @@ void AudioEngine::prepare(double sampleRate, int /*maxBlock*/, int numChannels, 
         c.hi.allocate(ringSize);
         c.dry.allocate(ringSize);
     }
-    aKick.design(fs, fc, false);
-    aBass.design(fs, fc, false);
+    aKick.design(fs, kAnalysisHz, false);
+    aBass.design(fs, kAnalysisHz, false);
     onset.prepare(fs);
     kickDelay.allocate(ringSize);
     for (HistoryRing* r : {&hKickLow, &hBassLow, &hBassRaw, &hKickRaw, &hOut}) r->allocate(kHistSize);
@@ -66,6 +66,7 @@ void AudioEngine::reset() {
         for (int q = 0; q < curveN; ++q) curve[(size_t) q] = ph[(size_t) q];
     }
     bypassMix = monoMix = 0;
+    polGain = 1;
     ParamEvent e;
     while (events.pop(e)) {}
     while (contTargets.pop(e)) {}
@@ -96,8 +97,6 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
     if (std::abs(bp.fc - fcCur) > 1e-6) {
         fcCur = bp.fc;
         for (auto& c : ch) { c.lp.retune(fs, fcCur, false); c.hp.retune(fs, fcCur, true); }
-        aKick.retune(fs, fcCur, false);
-        aBass.retune(fs, fcCur, false);
     }
     onset.setTriggerHz(bp.trigHz);
     if (bp.bassMono) for (auto& c : ch) {
@@ -123,13 +122,15 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
     };
 
     double monoOut = 0;
+    float pkIn = 0, pkOut = 0, pkKick = 0;
     for (int i = 0; i < n; ++i) {
         const int64_t t = nIn + i;
         double k = 0;
         for (int c = 0; c < kickCh; ++c) k += kick[c][i];
         if (kickCh > 0) k /= kickCh;
         double b = 0;
-        for (int c = 0; c < numCh; ++c) b += bass[c][i];
+        for (int c = 0; c < numCh; ++c) { b += bass[c][i]; pkIn = std::max(pkIn, std::abs(bass[c][i])); }
+        pkKick = std::max(pkKick, (float) std::abs(k));
         b /= std::max(1, numCh);
         hKickLow.write(t, (float) aKick.process(k));
         hBassLow.write(t, (float) aBass.process(b));
@@ -206,11 +207,13 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
         const double w = fading ? 0.5 - 0.5 * std::cos(kPi * (double) (cc - fadeStart) / X) : 0.0;
         bypassMix = std::clamp(bypassMix + (bp.bypass ? bypassStep : -bypassStep), 0.0, 1.0);
         monoMix = std::clamp(monoMix + (bp.bassMono && numCh == 2 ? monoStep : -monoStep), 0.0, 1.0);
+        polGain = std::clamp(polGain + (bp.polarity ? -2.0 : 2.0) / (0.01 * fs), -1.0, 1.0);
         double outs[2] = {0, 0};
         for (int c = 0; c < numCh && c < nch; ++c) {
             auto& C = ch[(size_t) c];
             double yl = chain(C, t, curD + offD, curTh + knobTh);
             if (fading) yl = (1.0 - w) * yl + w * chain(C, t, nextD + offD, nextTh + knobTh);
+            yl *= polGain;
             const double yh = xover ? (double) C.hi.read(t - L) : 0.0;
             double y;
             if (bp.listen == Listen::LowSolo) y = yl * g;
@@ -218,7 +221,7 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
             else y = (yl + yh) * g;
             if (bp.listen == Listen::KickPlusBass) y += kickDelay.read(t - L + scSamples);
             outs[c < 2 ? c : 1] = y;
-            if (numCh != 2) bass[c][i] = (float) ((1.0 - bypassMix) * y + bypassMix * C.dry.read(t - L));
+            if (numCh != 2) bass[c][i] = (float) ((1.0 - bypassMix) * y * bp.outGain + bypassMix * C.dry.read(t - L));
         }
         if (numCh == 2) {
             double l = outs[0], r = outs[1];
@@ -230,17 +233,21 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
                 l = (1 - monoMix) * l + monoMix * (Map + Sout);
                 r = (1 - monoMix) * r + monoMix * (Map - Sout);
             }
-            bass[0][i] = (float) ((1.0 - bypassMix) * l + bypassMix * ch[0].dry.read(t - L));
-            bass[1][i] = (float) ((1.0 - bypassMix) * r + bypassMix * ch[1].dry.read(t - L));
+            bass[0][i] = (float) ((1.0 - bypassMix) * l * bp.outGain + bypassMix * ch[0].dry.read(t - L));
+            bass[1][i] = (float) ((1.0 - bypassMix) * r * bp.outGain + bypassMix * ch[1].dry.read(t - L));
             monoOut = 0.5 * (bass[0][i] + bass[1][i]);
         } else {
             monoOut = bass[0][i];
         }
         hOut.write(t, (float) monoOut);
+        for (int c = 0; c < numCh; ++c) pkOut = std::max(pkOut, std::abs(bass[c][i]));
     }
     nIn += n;
     nInPub.store(nIn, std::memory_order_release);
     for (HistoryRing* r : {&hKickLow, &hBassLow, &hBassRaw, &hKickRaw, &hOut}) r->publish(nIn);
+    uiInPeak.store(std::max(uiInPeak.load(std::memory_order_relaxed), pkIn), std::memory_order_relaxed);
+    uiOutPeak.store(std::max(uiOutPeak.load(std::memory_order_relaxed), pkOut), std::memory_order_relaxed);
+    uiKickPeak.store(std::max(uiKickPeak.load(std::memory_order_relaxed), pkKick), std::memory_order_relaxed);
     uiD.store(curD + knobD - scShift, std::memory_order_relaxed);
     uiTh.store(curTh + knobTh, std::memory_order_relaxed);
     uiPos.store(nIn, std::memory_order_relaxed);

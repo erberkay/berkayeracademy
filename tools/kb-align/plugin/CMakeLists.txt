@@ -48,7 +48,8 @@ if(KB_BUILD_PLUGIN)
         src/PluginProcessor.cpp
         src/PluginEditor.cpp
         src/ui/Scope.cpp
-        src/ui/Widgets.cpp)
+        src/ui/Widgets.cpp
+        src/ui/Extras.cpp)
     target_compile_definitions(KBAlign PUBLIC
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=0)

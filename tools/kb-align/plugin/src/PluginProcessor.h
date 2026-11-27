@@ -38,6 +38,8 @@ inline constexpr const char* duckTarget = "duckTarget";
 inline constexpr const char* listen = "listen";
 inline constexpr const char* bypass = "bypass";
 inline constexpr const char* contRate = "contRate";
+inline constexpr const char* polarity = "polarity";
+inline constexpr const char* outGain = "outGain";
 } // namespace pid
 
 class AnalysisThread : public juce::Thread {

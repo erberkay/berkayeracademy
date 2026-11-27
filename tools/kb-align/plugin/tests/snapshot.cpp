@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 // Editörün gerçek sinyalle ekran görüntüsü: işlemciye kick/bas döngüsü beslenir, editör PNG'ye çizilir.
-// Kullanım: kb_snapshot <parity klasörü> <çıktı.png> [mod] [sekme]
+// Kullanım: kb_snapshot <parity klasörü> <çıktı.png> [mod] [sekme: -1 = basit görünüm] [görünüm 0/1/2] [tur adımı, -1 = yok]
 #include "../src/PluginEditor.h"
 
 #include <fstream>
@@ -23,6 +23,9 @@ int main(int argc, char** argv) {
     const juce::File out(juce::File::getCurrentWorkingDirectory().getChildFile(argc > 2 ? argv[2] : "kb-align.png"));
     const int mode = argc > 3 ? std::atoi(argv[3]) : (int) Mode::PerNote;
     const int tab = argc > 4 ? std::atoi(argv[4]) : 0;
+    const int viewIdx = argc > 5 ? std::atoi(argv[5]) : 0;
+    const int tourStep = argc > 6 ? std::atoi(argv[6]) : -1;
+    EditorContent::autoTour = false;
     auto k = load(dir + "/mloop_k.f64"), b = load(dir + "/mloop_b.f64");
     KBAlignProcessor p;
     auto layout = p.getBusesLayout();
@@ -45,9 +48,11 @@ int main(int argc, char** argv) {
             p.processBlock(buf, midi);
             juce::MessageManager::getInstance()->runDispatchLoopUntil(1);
         }
-    if (auto* tabs = ed->findChildWithID("tabs")) (void) tabs;
-    for (auto* c : ed->getChildren()) if (auto* content = dynamic_cast<EditorContent*>(c))
-        for (auto* cc : content->getChildren()) if (auto* t = dynamic_cast<juce::TabbedComponent*>(cc)) t->setCurrentTabIndex(tab);
+    auto& content = dynamic_cast<KBAlignEditor*>(ed.get())->getContent();
+    content.setAdvanced(tab >= 0);
+    if (tab >= 0) content.advancedTabs().setCurrentTabIndex(tab);
+    content.setView(viewIdx);
+    if (tourStep >= 0) content.startTour(tourStep);
     juce::MessageManager::getInstance()->runDispatchLoopUntil(400);
     auto img = ed->createComponentSnapshot(ed->getLocalBounds(), true, 2.0f);
     out.deleteFile();

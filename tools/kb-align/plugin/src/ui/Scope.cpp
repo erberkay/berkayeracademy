@@ -85,6 +85,17 @@ bool ScopeView::acquire(ScopeFrame& f) {
     if (!eng.hKickRaw.copyF(a + sc, a + sc + n, k.data())) return false;
     if (!eng.hOut.copyF(a + L, a + L + n, b.data())) return false;
     if (!eng.hBassRaw.copyF(a, a + n, bi.data())) return false;
+    {   // ölçüm bandı: analizle aynı alt bant (görüntü filtresinden bağımsız)
+        const double fcA = kAnalysisHz;
+        auto band = [&](std::vector<float> v) {
+            LR4 q; q.design(fs, fcA, false);
+            for (auto& x : v) x = (float) q.process(x);
+            q.reset();
+            for (auto it = v.rbegin(); it != v.rend(); ++it) *it = (float) q.process(*it);
+            return std::vector<float>(v.begin() + M, v.begin() + M + N);
+        };
+        f.mk = band(k); f.mb = band(b); f.mbi = band(bi);
+    }
     if (lowView) { displayFilter(k, fs); displayFilter(b, fs); displayFilter(bi, fs); }
     f.kick.assign(k.begin() + M, k.begin() + M + N);
     f.bass.assign(b.begin() + M, b.begin() + M + N);
@@ -106,16 +117,17 @@ void ScopeView::timerCallback() {
         history.push_back(f);
         while ((int) history.size() > average) history.pop_front();
         ScopeFrame avg = f;
-        for (auto* v : {&avg.kick, &avg.bass, &avg.sum, &avg.bassIn}) std::fill(v->begin(), v->end(), 0.0f);
+        for (auto* v : {&avg.kick, &avg.bass, &avg.sum, &avg.bassIn, &avg.mk, &avg.mb, &avg.mbi}) std::fill(v->begin(), v->end(), 0.0f);
         int cnt = 0;
         for (auto& h : history) {
             if (h.kick.size() != avg.kick.size()) continue;
             for (size_t i = 0; i < avg.kick.size(); ++i) {
                 avg.kick[i] += h.kick[i]; avg.bass[i] += h.bass[i]; avg.sum[i] += h.sum[i]; avg.bassIn[i] += h.bassIn[i];
+                avg.mk[i] += h.mk[i]; avg.mb[i] += h.mb[i]; avg.mbi[i] += h.mbi[i];
             }
             ++cnt;
         }
-        for (auto* v : {&avg.kick, &avg.bass, &avg.sum, &avg.bassIn}) for (auto& x : *v) x /= (float) std::max(1, cnt);
+        for (auto* v : {&avg.kick, &avg.bass, &avg.sum, &avg.bassIn, &avg.mk, &avg.mb, &avg.mbi}) for (auto& x : *v) x /= (float) std::max(1, cnt);
         cur = avg;
     } else {
         if (persistence) { history.push_back(cur); while (history.size() > 6) history.pop_front(); }
@@ -337,7 +349,7 @@ void MeterPanel::update() {
     if (w.isEmpty()) w = {0, (int) f.kick.size()};
     double ek = 0, eb = 0, x = 0, es = 0, pkB = 0, pkA = 0, eBefore = 0;
     for (int i = w.getStart(); i < w.getEnd(); ++i) {
-        const double k = f.kick[(size_t) i], b = f.bass[(size_t) i], bi = f.bassIn[(size_t) i];
+        const double k = f.mk[(size_t) i], b = f.mb[(size_t) i], bi = f.mbi[(size_t) i];
         ek += k * k; eb += b * b; x += k * b; es += (k + b) * (k + b);
         eBefore += (k + bi) * (k + bi);
         pkA = std::max(pkA, std::abs(k + b)); pkB = std::max(pkB, std::abs(k + bi));
@@ -355,8 +367,8 @@ void MeterPanel::update() {
     std::vector<std::complex<double>> K((size_t) N), B((size_t) N);
     for (int i = 0; i < len; ++i) {
         const double hw = 0.5 - 0.5 * std::cos(2 * kPi * i / std::max(1, len - 1));
-        K[(size_t) i] = f.kick[(size_t) (w.getStart() + i)] * hw;
-        B[(size_t) i] = f.bass[(size_t) (w.getStart() + i)] * hw;
+        K[(size_t) i] = f.mk[(size_t) (w.getStart() + i)] * hw;
+        B[(size_t) i] = f.mb[(size_t) (w.getStart() + i)] * hw;
     }
     fft.perform(K.data(), false);
     fft.perform(B.data(), false);
@@ -375,79 +387,84 @@ void MeterPanel::update() {
         coh.push_back((float) (std::norm(sx) / (sk * sb + 1e-30)));
     }
     xy.clear();
-    const int stepXY = std::max(1, len / 600);
-    for (int i = w.getStart(); i < w.getEnd(); i += stepXY) xy.push_back({f.kick[(size_t) i], f.bass[(size_t) i]});
+    const int stepXY = std::max(1, len / 900);
+    for (int i = w.getStart(); i < w.getEnd(); i += stepXY) xy.push_back({f.mk[(size_t) i], f.mb[(size_t) i]});
+    has = true;
     repaint();
+    if (onUpdate) onUpdate();
 }
 
 void MeterPanel::paint(juce::Graphics& g) {
     auto r = getLocalBounds().toFloat();
     g.setColour(col::panel);
     g.fillRoundedRectangle(r, 10);
-    auto in = r.reduced(12, 10);
-    g.setFont(juce::FontOptions(12.5f));
+    auto in = r.reduced(14, 10);
     auto row = [&](const juce::String& name, const juce::String& val, juce::Colour c = col::fg) {
-        auto line = in.removeFromTop(18);
-        g.setColour(col::fgSoft); g.drawText(name, line, juce::Justification::centredLeft);
+        auto line = in.removeFromTop(19);
+        g.setColour(col::fgSoft); g.setFont(juce::FontOptions(12.5f)); g.drawText(name, line, juce::Justification::centredLeft);
         g.setColour(c); g.drawText(val, line, juce::Justification::centredRight);
     };
     auto bar = [&](double v, double lo, double hi, juce::Colour c, double zero) {
-        auto b = in.removeFromTop(10).reduced(0, 1);
+        auto b = in.removeFromTop(9).reduced(0, 1);
         g.setColour(col::panelHi); g.fillRoundedRectangle(b, 3);
         const auto xOf = [&](double t) { return b.getX() + (float) ((juce::jlimit(lo, hi, t) - lo) / (hi - lo)) * b.getWidth(); };
         const float x0 = xOf(zero), x1 = xOf(v);
-        g.setColour(c); g.fillRoundedRectangle(std::min(x0, x1), b.getY(), std::abs(x1 - x0), b.getHeight(), 3);
-        in.removeFromTop(6);
+        g.setColour(c); g.fillRoundedRectangle(std::min(x0, x1), b.getY(), std::max(2.0f, std::abs(x1 - x0)), b.getHeight(), 3);
+        in.removeFromTop(7);
     };
     g.setColour(col::fg); g.setFont(juce::FontOptions(13.5f, juce::Font::bold));
-    g.drawText(juce::String::fromUTF8("Ölçerler · alt bant, analiz penceresi"), in.removeFromTop(20), juce::Justification::centredLeft);
-    g.setFont(juce::FontOptions(12.5f));
-    row("Korelasyon", juce::String(corr, 3), corr >= 0.5 ? col::ok : corr < 0 ? col::warn : col::fg);
+    g.drawText(juce::String::fromUTF8("Ölçüm · alt bant, analiz penceresi"), in.removeFromTop(22), juce::Justification::centredLeft);
+    if (!has) {
+        g.setColour(col::fgFaint); g.setFont(juce::FontOptions(12.5f));
+        g.drawFittedText(juce::String::fromUTF8("Kick vuruşu gelince ölçümler burada görünür."), in.removeFromTop(40).toNearestInt(), juce::Justification::centredLeft, 2);
+        return;
+    }
+    row("Korelasyon", juce::String(corr, 2), corr >= 0.5 ? col::ok : corr < 0 ? col::warn : col::fg);
     bar(corr, -1, 1, corr >= 0 ? col::ok : col::warn, 0);
-    row(juce::String::fromUTF8("İptal / güçlenme"), (cancelDb >= 0 ? "+" : "") + juce::String(cancelDb, 2) + " dB", cancelDb >= 0 ? col::ok : col::warn);
+    row(juce::String::fromUTF8("Güçlenme / iptal"), (cancelDb >= 0 ? "+" : "") + juce::String(cancelDb, 1) + " dB", cancelDb >= 0 ? col::ok : col::warn);
     bar(cancelDb, -12, 3.1, cancelDb >= 0 ? col::ok : col::warn, 0);
-    row(juce::String::fromUTF8("Tepe önce → sonra"), juce::String(peakBefore, 1) + juce::String::fromUTF8(" → ") + juce::String(peakAfter, 1) + " dB  (" +
-        (peakAfter - peakBefore >= 0 ? "+" : "") + juce::String(peakAfter - peakBefore, 1) + ")");
-    row(juce::String::fromUTF8("RMS önce → sonra"), juce::String(rmsBefore, 1) + juce::String::fromUTF8(" → ") + juce::String(rmsAfter, 1) + " dB  (" +
-        (rmsAfter - rmsBefore >= 0 ? "+" : "") + juce::String(rmsAfter - rmsBefore, 1) + ")");
-    const double d = proc.engine.uiD.load(), th = std::fmod(proc.engine.uiTh.load() + 3600.0, 360.0);
-    row("Uygulanan", juce::String(d, 3) + juce::String::fromUTF8(" ms  ·  ") + juce::String(th, 1) + juce::String::fromUTF8("°"), col::accent);
-    row(juce::String::fromUTF8("Güven (son vuruş)"), juce::String(proc.align.lastConfidence(), 3));
+    row(juce::String::fromUTF8("Toplam RMS önce → sonra"), (rmsAfter - rmsBefore >= 0 ? "+" : "") + juce::String(rmsAfter - rmsBefore, 1) + " dB");
+    row(juce::String::fromUTF8("Toplam tepe önce → sonra"), (peakAfter - peakBefore >= 0 ? "+" : "") + juce::String(peakAfter - peakBefore, 1) + " dB");
+    row(juce::String::fromUTF8("Güven (son vuruş)"), juce::String(proc.align.lastConfidence(), 2));
     row("Gecikme (L)", juce::String(proc.engine.latency() * 1000.0 / proc.engine.sampleRate(), 1) + " ms");
-    if (proc.align.learnInProgress())
-        row("Learn", juce::String(proc.align.learnCollected.load()) + " / " + juce::String((int) proc.apvts.getRawParameterValue(pid::learnHits)->load()) +
-                         juce::String::fromUTF8(" vuruş"), col::accent);
-    in.removeFromTop(6);
-    // faz-frekans grafiği
-    auto ph = in.removeFromTop(in.getHeight() * 0.5f).reduced(0, 4);
-    g.setColour(col::fgSoft); g.drawText(juce::String::fromUTF8("Faz farkı (bas − kick), 20–300 Hz"), ph.removeFromTop(16), juce::Justification::centredLeft);
+}
+
+void MeterPanel::paintPhase(juce::Graphics& g, juce::Rectangle<float> ph) const {
+    g.setColour(col::fgSoft); g.setFont(juce::FontOptions(12.5f));
+    g.drawText(juce::String::fromUTF8("Faz farkı (bas − kick), 20–300 Hz · nokta parlaklığı = güvenilirlik (coherence). Düz yatay çizgi 0° = aynı faz."),
+               ph.removeFromTop(18), juce::Justification::centredLeft);
+    ph.removeFromBottom(14);
     g.setColour(col::panelHi); g.fillRoundedRectangle(ph, 6);
     const auto fx = [&](float hz) { return ph.getX() + std::log(hz / 20.0f) / std::log(15.0f) * ph.getWidth(); };
     const auto fy = [&](float deg) { return ph.getCentreY() - deg / 180.0f * ph.getHeight() * 0.46f; };
-    g.setColour(col::grid);
-    for (float hz : {30.f, 50.f, 100.f, 200.f}) {
-        g.drawVerticalLine((int) fx(hz), ph.getY(), ph.getBottom());
-        g.setColour(col::fgFaint); g.setFont(juce::FontOptions(10.0f));
-        g.drawText(juce::String((int) hz), (int) fx(hz) - 14, (int) ph.getBottom() - 12, 28, 12, juce::Justification::centred);
-        g.setColour(col::grid);
+    g.setFont(juce::FontOptions(10.5f));
+    for (float hz : {30.f, 40.f, 50.f, 60.f, 80.f, 100.f, 150.f, 200.f, 300.f}) {
+        g.setColour(col::grid); g.drawVerticalLine((int) fx(hz), ph.getY(), ph.getBottom());
+        g.setColour(col::fgFaint); g.drawText(juce::String((int) hz), (int) fx(hz) - 14, (int) ph.getBottom() + 1, 28, 12, juce::Justification::centred);
     }
-    g.drawHorizontalLine((int) fy(0), ph.getX(), ph.getRight());
+    for (float d : {-180.f, -90.f, 0.f, 90.f, 180.f}) {
+        g.setColour(d == 0 ? col::accent.withAlpha(0.5f) : col::grid); g.drawHorizontalLine((int) fy(d), ph.getX(), ph.getRight());
+        g.setColour(col::fgFaint); g.drawText(juce::String((int) d) + juce::String::fromUTF8("°"), (int) ph.getX() + 3, (int) fy(d) - 13, 40, 12, juce::Justification::centredLeft);
+    }
     for (size_t i = 0; i < phaseHz.size(); ++i) {
         const float a = juce::jlimit(0.08f, 1.0f, coh[i]);
         g.setColour(col::bass.withAlpha(a));
-        g.fillEllipse(fx(phaseHz[i]) - 2.5f, fy(phaseDeg[i]) - 2.5f, 5, 5);
+        g.fillEllipse(fx(phaseHz[i]) - 3, fy(phaseDeg[i]) - 3, 6, 6);
     }
-    // XY
-    in.removeFromTop(6);
-    auto xyR = in.reduced(0, 2);
+}
+
+void MeterPanel::paintXY(juce::Graphics& g, juce::Rectangle<float> r) const {
     g.setColour(col::fgSoft); g.setFont(juce::FontOptions(12.5f));
-    g.drawText(juce::String::fromUTF8("XY — kick (x) · bas (y)"), xyR.removeFromTop(16), juce::Justification::centredLeft);
-    const float s = std::min(xyR.getWidth(), xyR.getHeight());
-    auto sq = juce::Rectangle<float>(s, s).withCentre(xyR.getCentre());
+    g.drawText(juce::String::fromUTF8("XY · kick (yatay) – bas (dikey). Sağa yatık çizgi = aynı faz, sola yatık = ters faz, daire = 90°."),
+               r.removeFromTop(18), juce::Justification::centredLeft);
+    const float s = std::min(r.getWidth(), r.getHeight());
+    auto sq = juce::Rectangle<float>(s, s).withCentre(r.getCentre());
     g.setColour(col::panelHi); g.fillRoundedRectangle(sq, 6);
     g.setColour(col::grid);
     g.drawLine(sq.getX(), sq.getBottom(), sq.getRight(), sq.getY());
     g.drawLine(sq.getX(), sq.getY(), sq.getRight(), sq.getBottom());
+    g.drawLine(sq.getCentreX(), sq.getY(), sq.getCentreX(), sq.getBottom());
+    g.drawLine(sq.getX(), sq.getCentreY(), sq.getRight(), sq.getCentreY());
     float mx = 1e-6f;
     for (auto& p : xy) mx = std::max({mx, std::abs(p.x), std::abs(p.y)});
     juce::Path pth;
@@ -455,8 +472,8 @@ void MeterPanel::paint(juce::Graphics& g) {
         const float px = sq.getCentreX() + xy[i].x / mx * s * 0.46f, py = sq.getCentreY() - xy[i].y / mx * s * 0.46f;
         if (i == 0) pth.startNewSubPath(px, py); else pth.lineTo(px, py);
     }
-    g.setColour(col::sum.withAlpha(0.8f));
-    g.strokePath(pth, juce::PathStrokeType(1.2f));
+    g.setColour(col::sum.withAlpha(0.85f));
+    g.strokePath(pth, juce::PathStrokeType(1.4f));
 }
 
 } // namespace kb::ui

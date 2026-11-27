@@ -121,6 +121,7 @@ ParamSlider::ParamSlider(juce::AudioProcessorValueTreeState& s, const char* id, 
 void ParamSlider::resized() {
     auto r = getLocalBounds();
     if (rotary) { label.setBounds(r.removeFromTop(16)); slider.setBounds(r); }
+    else if (stacked) { label.setBounds(r.removeFromTop(16)); slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 78, 20); slider.setBounds(r); }
     else { label.setBounds(r.removeFromLeft(std::min(150, r.getWidth() / 3))); slider.setBounds(r); }
 }
 

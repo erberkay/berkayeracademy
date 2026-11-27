@@ -38,8 +38,9 @@ CONV_BLOCK = 128  # Hilbert FIR, C++'ta bölümlü FFT evrişimiyle: B örnek ek
 @dataclass
 class Config:
     fs: float = 48000.0
-    fc: float = 120.0
+    fc: float = 120.0  # crossover frekansı (crossover açıksa)
     crossover: bool = True
+    analysis_fc: float = 120.0  # analiz bandı (kick bölgesi) — crossover'dan bağımsız
     latency_mode: str = "tam"
     xfade_ms: float = 10.0
     frac: str = "lagrange"

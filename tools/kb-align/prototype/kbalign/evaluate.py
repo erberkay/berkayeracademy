@@ -11,13 +11,14 @@ from . import align, dsp, engine, metrics
 def eval_hit(hit, cfg: engine.Config, ap: align.AnalysisParams | None = None, analyzer=None):
     fs = hit.fs
     ap = ap or align.AnalysisParams(d_min_ms=cfg.d_min_ms, d_max_ms=cfg.d_max_ms)
-    an = analyzer or align.Analyzer(fs, cfg.fc)
-    k_low = dsp.lowpass4(hit.kick, fs, cfg.fc)
-    b_low = dsp.lowpass4(hit.bass, fs, cfg.fc)
+    an = analyzer or align.Analyzer(fs, cfg.analysis_fc)
+    k_low = dsp.lowpass4(hit.kick, fs, cfg.analysis_fc)
+    b_low = dsp.lowpass4(hit.bass, fs, cfg.analysis_fc)
     r = an.hit(k_low, b_low, hit.onset, ap)
-    out, y_low = engine.render(hit.bass, cfg, events=[(0, r.d_ms, r.theta)], return_low=True)
+    out = engine.render(hit.bass, cfg, events=[(0, r.d_ms, r.theta)])
     L = cfg.latency
-    y_al = y_low[L:]  # içerik zamanı
+    # ölçüm GERÇEK çıktıda: tüm çıkış (crossover açıksa iki bandın toplamı), analiz bandında
+    y_al = dsp.lowpass4(out[L:], fs, cfg.analysis_fc)  # içerik zamanı
     st = metrics.window_stats(k_low, y_al, hit.onset, fs)
     bf = metrics.brute_force(k_low, b_low, hit.onset, fs, ap.d_min_ms, ap.d_max_ms, ap.auto)
     W = int(round(metrics.METRIC_WIN_MS * fs / 1000))
@@ -39,13 +40,10 @@ def eval_loop(kick, bass, onsets, cfg: engine.Config, ap: align.AnalysisParams, 
     """Döngüde vuruş başına ölçütler. sim None → hizalama yok (nötr)."""
     from . import modes
     fs = cfg.fs
-    k_low = dsp.lowpass4(kick, fs, cfg.fc)
-    b_low = dsp.lowpass4(bass, fs, cfg.fc)
-    if sim is None:
-        _, y_low = engine.render(bass, cfg, return_low=True)
-    else:
-        _, y_low = modes.render(bass, cfg, sim, return_low=True)
-    y_al = y_low[cfg.latency:]
+    k_low = dsp.lowpass4(kick, fs, cfg.analysis_fc)
+    b_low = dsp.lowpass4(bass, fs, cfg.analysis_fc)
+    out = engine.render(bass, cfg) if sim is None else modes.render(bass, cfg, sim)
+    y_al = dsp.lowpass4(out[cfg.latency:], fs, cfg.analysis_fc)  # gerçek çıktı, analiz bandında
     rows = []
     for i, t0 in enumerate(onsets):
         st = metrics.window_stats(k_low, y_al, int(t0), fs)

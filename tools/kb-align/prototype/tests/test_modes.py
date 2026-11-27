@@ -12,7 +12,7 @@ def _loop(retrig):
 
 def _score(mode, retrig, lm="tam"):
     k, b, on, notes = _loop(retrig)
-    cfg = engine.Config(fs=48000, latency_mode=lm)
+    cfg = engine.Config(fs=48000, latency_mode=lm, crossover=False)  # eklenti varsayılanı
     ap = align.AnalysisParams(d_min_ms=-10, d_max_ms=10)
     sim = modes.simulate(k, b, cfg, ap, modes.ModeParams(mode=mode), onsets=on)
     rows = evaluate.eval_loop(k, b, on, cfg, ap, sim, notes)

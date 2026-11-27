@@ -73,15 +73,33 @@ Kick sidechain ─→ onset tespiti (ses thread'i) + LR4 LP geçmiş tamponu ─
 - İmleçler A/B: Δ ms, örnek ve derece (referans: son tespit edilen nota). Analiz penceresi görünür ve kenarları sürüklenebilir (öneri 2).
 - Ölçerler (analiz penceresi, alt bant görünümü): korelasyon, iptal/güçlenme dB, tepe ve RMS önce→sonra (öneri 4), uygulanan (d, θ), güven, L; faz farkı 20–300 Hz (8 vuruş çapraz spektrum ortalaması, coherence ile soluklaşır); XY.
 
+## 5b. Crossover varsayılanı ve analiz bandı (ölçüm, 2026-11-27)
+
+**[SAPMA] Crossover varsayılanı KAPALI** (talimat: LR4 120 Hz açık). Eklentinin gerçek çıktısında, kick + bas toplam enerjisi (120 Hz altı), Nota başına modu, 48 kHz:
+
+| Malzeme | Crossover açık 120 Hz | açık 200 Hz | açık 300 Hz | **kapalı** |
+|---|---|---|---|---|
+| Testere bas, A1-A1-C2-G1 | +0,25 dB | +1,08 dB | +1,37 dB | **+1,92 dB** (en kötü vuruş +0,27) |
+| Sinüs sub | +0,51 dB | +1,62 dB | +1,93 dB | **+2,11 dB** |
+| 808 + kare | +0,41 dB | +1,17 dB | +1,37 dB | **+1,52 dB** |
+
+Neden: kick bölgesindeki bas harmonikleri (ör. A1'in 110 Hz'i) crossover sınırında iki banda bölünür; yalnız alt bandı kaydırmak toplamı yeniden karıştırır.
+- **Analiz bandı crossover'dan ayrıldı:** analiz ve ölçüm hep 120 Hz altında (`kAnalysisHz`, Python `Config.analysis_fc`).
+- Crossover açılırsa varsayılan sınır 250 Hz (60–400 Hz).
+- Önceki raporlar ölçümü yalnız işlenen alt bant yolunda yapıyordu; artık tüm ölçümler **gerçek çıktıda** (bütün bantlar, analiz bandında süzülmüş). Yeni varsayılanla ölçütler değişmedi (rapor/ozet.md).
+
 ## 6. Ek özellikler
 - Faz döndürme 0–360°, Hilbert tabanlı, yalnız alt bantta (crossover açıkken).
-- Crossover: LR4, fc 40–300 Hz. **[SAPMA] Lineer fazlı crossover 1. sürümde yok** (ölçüm planı: bütçeye ek 10–20 ms; ihtiyaç kullanıcı testine bağlı).
+- Crossover: LR4, varsayılan kapalı (§5b), açıkken 60–400 Hz (varsayılan 250). **[SAPMA] Lineer fazlı crossover 1. sürümde yok.**
+- Polarite (Ø): işlenen bandın işareti 10 ms geçişle çevrilir. Çıkış kazancı −24…+12 dB (yalnız işlenmiş ses).
 - Bass Mono: fc altındaki side, genişlik 0–1; mid aynı tüm-geçirenden geçer.
 - Ducking: kick ya da tempo tetikli çizilebilir eğri (≤32 nokta, eğrilik), derinlik, ms ya da nota uzunluğu, alt bant/tüm sinyal. **VARSAYIM:** varsayılan eğri yer tutucu; kullanıcının eğrisi gelince varsayılan preset olacak.
 - Dinleme: Bas · Kick+bas önizleme (uyarılı) · Alt bant solo.
 - Presetler: 7 fabrika, kullanıcı presetleri (`~/Documents/KB-Align/Presets/*.kbpreset`), A/B, geri al/yinele (APVTS UndoManager), tüm parametreler otomasyona açık; durum sürümlü (`version=1`), nota tablosu + eğri + Learn sonucu dahil.
 - Bypass: gecikmeyi koruyan, 20 ms geçişli.
-- Arayüz: 1180×760 taban, %75–200 ölçek; klavye: osiloskopta oklar (imleç), [ ] (zaman), F (dondur); eğri düzenleyicide oklar.
+- Arayüz (v2): 1180×780 taban, %75–200 ölçek. Mod düğme sırası, büyük gösterge (kaydırma, faz, toplam alt bant kazancı, bas notası), Önce/Sonra düğmesi, kick/giriş/çıkış seviye ölçerleri, Dalga · Faz · XY sekmeleri, Basit/Gelişmiş görünüm (basitte 3 adımlık kullanım), preset ‹ › okları, her kontrolde ipucu + alt bilgi çubuğu.
+- İlk açılışta 12 adımlık yazılı tanıtım turu (hedefi vurgular; Esc/Enter/oklar; `? > Tanıtım turunu başlat`). Gösterildiği makine başına `KB-Align.settings` dosyasında tutulur.
+- Klavye: osiloskopta oklar (imleç), [ ] (zaman), F (dondur); eğri düzenleyicide oklar.
 
 ## 7. "%100" ölçütleri — tanım ve sonuç (rapor §1–4)
 

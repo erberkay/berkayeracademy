@@ -49,7 +49,8 @@ def tile(x, n):
     return np.tile(x, int(np.ceil(n / len(x))))[:n]
 
 
-def measure(kick, bass, fs, fc, search, out_dir, stem):
+def measure(kick, bass, fs, fc, search, out_dir, stem, xover=None):
+    # fc = analiz/ölçüm bandı; xover = crossover frekansı (None → kapalı, eklentinin varsayılanı)
     k_low = dsp.lowpass4(kick, fs, fc)
     b_low = dsp.lowpass4(bass, fs, fc)
     onsets = align.detect_onsets(kick, fs)
@@ -60,16 +61,16 @@ def measure(kick, bass, fs, fc, search, out_dir, stem):
     limits = [metrics.brute_force(k_low, b_low, int(t), fs, -search, search).rho for t in onsets]
     res = {}
     for name, mode, lm in MODES:
-        cfg = engine.Config(fs=fs, fc=fc, latency_mode=lm)
+        cfg = engine.Config(fs=fs, fc=xover or 250.0, crossover=xover is not None, analysis_fc=fc, latency_mode=lm)
         if mode is None:
-            out, y_low = engine.render(bass, cfg, return_low=True)
+            out = engine.render(bass, cfg)
             sim = None
         else:
             sim = modes.simulate(kick, bass, cfg, ap, modes.ModeParams(mode=mode), onsets=onsets)
-            out, y_low = modes.render(bass, cfg, sim, return_low=True)
+            out = modes.render(bass, cfg, sim)
         L = cfg.latency
-        y_al = y_low[L:L + len(bass)]
         full = out[L:L + len(bass)]
+        y_al = dsp.lowpass4(full, fs, fc)  # GERÇEK çıktı (tüm bantlar), ölçüm bandında
         rows = []
         for t in onsets:
             st = metrics.window_stats(k_low, y_al, int(t), fs)
@@ -128,13 +129,16 @@ def main():
     p.add_argument("kick")
     p.add_argument("bas", nargs="+")
     p.add_argument("--cikti", default=None)
-    p.add_argument("--fc", type=float, default=120.0, help="crossover / alt bant frekansı (Hz)")
+    p.add_argument("--fc", type=float, default=120.0, help="ölçüm/analiz bandı (Hz)")
+    p.add_argument("--crossover", type=float, default=None, help="crossover frekansı (Hz); verilmezse kapalı (eklentinin varsayılanı)")
     p.add_argument("--arama", type=float, default=10.0, help="otomatik arama aralığı ± ms")
     a = p.parse_args()
     out_dir = a.cikti or os.path.join(os.getcwd(), "kbalign-olcum-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
     os.makedirs(out_dir, exist_ok=True)
     kick0, fs = load_mono(a.kick)
-    lines = [f"# KB-Align — gerçek loop ölçümü\n", f"Kick: `{os.path.basename(a.kick)}` · {fs} Hz · alt bant {a.fc:.0f} Hz · arama ±{a.arama:g} ms\n",
+    lines = [f"# KB-Align — gerçek loop ölçümü\n", f"Kick: `{os.path.basename(a.kick)}` · {fs} Hz · ölçüm bandı {a.fc:.0f} Hz · arama ±{a.arama:g} ms · crossover "
+             + (f"{a.crossover:.0f} Hz" if a.crossover else "kapalı (bütün bas kaydırılır)") + "\n",
+             "Ölçüm eklentinin **gerçek çıktısında** (bütün bantlar) yapılır.\n",
              "Ölçüm: her kick vuruşunda 150 ms, alt bantta. Learn'ün ilk 8 vuruşu (öğrenme) özetten çıkarıldı (her modda aynı vuruşlar).",
              "**Sınır** = o vuruşta (d, θ) ile ulaşılabilecek en yüksek korelasyon (kaba kuvvet). "
              "**Toplam enerji** = kick + bas alt bant enerjisinin hizalamasız duruma göre değişimi.\n"]
@@ -144,7 +148,7 @@ def main():
         kick, bass = tile(kick0, n), tile(bass0, n)
         stem = os.path.splitext(os.path.basename(bp))[0]
         print(f"ölçülüyor: {stem} ({n / fs:.1f} s)", flush=True)
-        onsets, limits, res = measure(kick, bass, fs, a.fc, a.arama, out_dir, stem)
+        onsets, limits, res = measure(kick, bass, fs, a.fc, a.arama, out_dir, stem, a.crossover)
         if len(onsets) < 2:
             lines.append(f"## {stem}\n\nKick vuruşu bulunamadı (onset {len(onsets)}). Kick dosyası doğru mu?\n")
             continue

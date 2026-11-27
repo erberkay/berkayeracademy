@@ -33,6 +33,7 @@ public:
 class ParamSlider : public juce::Component {
 public:
     ParamSlider(juce::AudioProcessorValueTreeState& s, const char* id, const juce::String& label, bool rotary = false);
+    bool stacked = false;  // etiket üstte, kaydırıcı altta (dar sütunlar için)
     void resized() override;
     juce::Slider slider;
 private:

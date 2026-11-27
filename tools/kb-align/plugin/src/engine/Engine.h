@@ -29,6 +29,7 @@ inline LatencySpec latencySpec(LatencyMode m) {
     }
 }
 constexpr int kMargin = 4;
+constexpr double kAnalysisHz = 120.0;  // analiz bandı (kick bölgesi) — crossover frekansından bağımsız (Python Config.analysis_fc)
 constexpr int kConvBlock = 128;
 constexpr double kRtMarginMs = 20.0;
 constexpr int kGlobalHits = 16;  // Python modes.GLOBAL_HITS  // VARSAYIM (Python modes.RT_MARGIN_MS ile aynı)
@@ -56,6 +57,8 @@ struct BlockParams {
     bool duckTempo = false; double duckBeats = 1.0;
     Listen listen = Listen::Normal;
     bool bypass = false;
+    double outGain = 1.0;  // çıkış kazancı (doğrusal), yalnız işlenmiş sinyale
+    bool polarity = false;  // alt bant (işlenen bölüm) ters çevrilir = 180°; 10 ms geçişle
     double fc = 120;
     const CurvePoint* curvePts = nullptr;  // ses thread'ine ait kopya (bellek ayırmadan)
     int curveN = 0;
@@ -86,6 +89,7 @@ public:
     HistoryRing hKickLow, hBassLow, hBassRaw, hKickRaw, hOut;
     // UI için: uygulanmakta olan (d, θ)
     std::atomic<double> uiD{0}, uiTh{0};
+    std::atomic<float> uiInPeak{0}, uiOutPeak{0}, uiKickPeak{0};  // blok tepe değerleri (UI söndürür)
     std::atomic<int64_t> uiPos{0};
     // UI için onset geçmişi (içerik zamanı)
     static constexpr int kOnsetHist = 64;
@@ -136,7 +140,7 @@ private:
     std::array<CurvePoint, kMaxCurvePoints> curve{};
     int curveN = 0;
     // bypass / mono / dinleme geçişleri
-    double bypassMix = 0, monoMix = 0;
+    double bypassMix = 0, monoMix = 0, polGain = 1;
     Ring<float> kickDelay;  // önizleme için
 };
 

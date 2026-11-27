@@ -64,10 +64,10 @@ def _joint(segs, an: align.Analyzer, ap: align.AnalysisParams, lags):
 def simulate(kick, bass, cfg: engine.Config, ap: align.AnalysisParams, mp: ModeParams,
              onsets=None, analyzer=None) -> SimResult:
     fs = cfg.fs
-    an = analyzer or align.Analyzer(fs, cfg.fc)
+    an = analyzer or align.Analyzer(fs, cfg.analysis_fc)
     fa = an.fa
-    k_low = dsp.lowpass4(kick, fs, cfg.fc)
-    b_low = dsp.lowpass4(bass, fs, cfg.fc)
+    k_low = dsp.lowpass4(kick, fs, cfg.analysis_fc)
+    b_low = dsp.lowpass4(bass, fs, cfg.analysis_fc)
     if onsets is None:
         onsets = align.detect_onsets(kick, fs)
     L_ms = cfg.latency * 1000 / fs

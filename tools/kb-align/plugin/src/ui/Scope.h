@@ -9,6 +9,7 @@ namespace kb::ui {
 // Osiloskop verisi: motorun geçmiş tamponlarından tetiklenmiş anlık görüntü (UI thread'i, 60 fps)
 struct ScopeFrame {
     std::vector<float> kick, bass, sum, bassIn;  // görüntü filtresi uygulanmış (alt bant görünümü açıksa)
+    std::vector<float> mk, mb, mbi;  // ölçüm için: hizalamanın yapıldığı alt bant (LR4, crossover frekansı)
     int64_t c0 = 0;          // ilk örneğin içerik zamanı
     double fs = 48000;
     double preMs = 10;       // tetikten önceki süre
@@ -69,7 +70,15 @@ public:
     MeterPanel(KBAlignProcessor& p, ScopeView& s) : proc(p), scope(s) {}
     void paint(juce::Graphics&) override;
     void update();
+    void paintPhase(juce::Graphics&, juce::Rectangle<float>) const;
+    void paintXY(juce::Graphics&, juce::Rectangle<float>) const;
+    double correlation() const { return corr; }
+    double rmsGainDb() const { return rmsAfter - rmsBefore; }
+    double peakGainDb() const { return peakAfter - peakBefore; }
+    bool hasData() const { return has; }
+    std::function<void()> onUpdate;
 private:
+    bool has = false;
     KBAlignProcessor& proc;
     ScopeView& scope;
     double corr = 0, cancelDb = 0, peakBefore = 0, peakAfter = 0, rmsBefore = 0, rmsAfter = 0;
@@ -79,4 +88,22 @@ private:
     std::deque<std::vector<double>> gkk, gbb;
 };
 
+} // namespace kb::ui
+
+namespace kb::ui {
+// Faz-frekans ya da XY büyük görünümü (osiloskop alanında sekme)
+class PlotView : public juce::Component {
+public:
+    PlotView(MeterPanel& m, int which) : meters(m), kind(which) {}
+    void paint(juce::Graphics& g) override {
+        auto r = getLocalBounds().toFloat();
+        g.setColour(col::panel);
+        g.fillRoundedRectangle(r, 10);
+        if (kind == 0) meters.paintPhase(g, r.reduced(14, 12));
+        else meters.paintXY(g, r.reduced(14, 12));
+    }
+private:
+    MeterPanel& meters;
+    int kind;
+};
 } // namespace kb::ui
