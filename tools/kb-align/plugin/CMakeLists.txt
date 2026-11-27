@@ -31,7 +31,8 @@ if(KB_BUILD_PLUGIN)
     endif()
 
     juce_add_plugin(KBAlign
-        COMPANY_NAME "Berkay Er"
+        COMPANY_NAME "BE Akademi"       # DAW'larda üretici klasörü: BE Akademi › KB-Align
+        BUNDLE_ID com.berkayer.kbalign  # sabit (üretici adı değişse de)
         COMPANY_CODE Bker
         PLUGIN_MANUFACTURER_CODE Bker
         PLUGIN_CODE KbAl

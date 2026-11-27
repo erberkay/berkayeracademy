@@ -2,6 +2,12 @@
 
 Bu ortam Linux; AU derlemesi, `auval`, imzalama ve notarization yalnız Mac'te yapılır. **İmzalama ve notarization için Apple Developer hesabı gerekir (ücretli) — talimat gereği önce bana onay ver, ben komutları hazırlarım; burada yalnız imzasız yerel test var.**
 
+**Kısa yol (yalnız bu Mac'te denemek için, imzasız):** Terminal'e tek satır — her şeyi `scripts/mac-kur.sh` yapar (araçlar, JUCE, derleme, kurulum, auval):
+```bash
+[ -d ~/be-akademi ] || git clone -b claude/nice-goodall-ygxn6x https://github.com/erberkay/berkayeracademy.git ~/be-akademi; cd ~/be-akademi && git pull && bash tools/kb-align/scripts/mac-kur.sh
+```
+Ableton'da: Plug-Ins → **BE Akademi** → KB-Align.
+
 ## 1. Araçlar
 ```bash
 xcode-select --install                 # Xcode komut satırı araçları
