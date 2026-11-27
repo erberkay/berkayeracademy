@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np  # noqa: E402
 from scipy import signal  # noqa: E402
 
-from kbalign import align, datasets as ds, dsp, engine, modes, pitch  # noqa: E402
+from kbalign import advisor, align, datasets as ds, dsp, engine, modes, pitch  # noqa: E402
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugin", "tests", "parity")
 os.makedirs(OUT, exist_ok=True)
@@ -105,6 +105,22 @@ for m in ("learn", "note", "hit"):
     sim = modes.simulate(k2, b2, cfgm, apm, modes.ModeParams(mode=m))
     res[m] = [(int(c), float(d), float(th)) for c, d, th in sim.events]
 man["modes"] = res
+
+# Danışman (advisor.py): üç döngü — retrigger açık/kapalı, akort önerisi
+RT = {"belirsiz": 0, "tutarli": 1, "serbest": 2}
+MD = {"": 0, "nota": 1, "learn": 2, "her_vurus": 3}
+adv = []
+for i, (kind, bt, notes, rt) in enumerate((("kisa", "testere", (29, 29, 29, 36), True),
+                                           ("kisa", "testere", (33, 33, 36, 31), False),
+                                           ("yumusak", "sinus", (31,), True))):
+    ka, ba, _, _ = ds.loop(fs, 125, 4, notes, kind, bt, rng=np.random.default_rng(3), retrigger_phase=rt, d0_ms=2.0, th0=70)
+    ka = np.concatenate([ka, np.zeros(fs)]); ba = np.concatenate([ba, np.zeros(fs)])
+    save(f"adv{i}_k", ka)
+    save(f"adv{i}_b", ba)
+    A = advisor.advise(ka, ba, fs)
+    adv.append(dict(hits=A.hits, kick_hz=A.kick_hz, body=A.kick_body_ms, top=A.top_note, R=float(A.retrig_R), rt=RT[A.retrig],
+                    tune=A.tune_st, g0=A.tune_gain0, g=A.tune_gain, duck=A.duck, mode=MD[A.mode]))
+man["advisor"] = adv
 with open(os.path.join(OUT, "manifest.json"), "w") as f:
     json.dump(man, f, indent=1)
 print("yazıldı:", OUT)
@@ -132,4 +148,8 @@ with open(os.path.join(OUT, "expected.inc"), "w") as f:
     f.write("static const int kPitch[][2] = {%s};\n" % ", ".join("{%d, %d}" % (p["note"], -1 if p["got"] is None else p["got"]) for p in man["pitch"]))
     for m in ("learn", "note", "hit"):
         f.write("static const ParamEvent kMode_%s[] = {%s};\n" % (m, ", ".join("{%d, %r, %r}" % (c, float(d), float(t)) for c, d, t in man["modes"][m])))
+    f.write("struct AdvCase { int hits; double kickHz, body; int top; double R; int rt; double tune, g0, g; bool duck; int mode; };\n")
+    f.write("static const AdvCase kAdv[] = {%s};\n" % ", ".join(
+        "{%d, %r, %r, %d, %r, %d, %r, %r, %r, %s, %d}" % (a["hits"], a["kick_hz"], a["body"], a["top"], a["R"], a["rt"], a["tune"],
+                                                         a["g0"], a["g"], "true" if a["duck"] else "false", a["mode"]) for a in man["advisor"]))
 print("expected.inc yazıldı")

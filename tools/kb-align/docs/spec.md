@@ -88,6 +88,18 @@ Neden: kick bölgesindeki bas harmonikleri (ör. A1'in 110 Hz'i) crossover sın�
 - Crossover açılırsa varsayılan sınır 250 Hz (60–400 Hz).
 - Önceki raporlar ölçümü yalnız işlenen alt bant yolunda yapıyordu; artık tüm ölçümler **gerçek çıktıda** (bütün bantlar, analiz bandında süzülmüş). Yeni varsayılanla ölçütler değişmedi (rapor/ozet.md).
 
+## 5c. Danışman / Öneriler paneli (ölçüm, 2026-11-27)
+
+Kick'e hiçbir zaman dokunulmaz; öneriler kullanıcının DAW'da yapacağı değişikliklerdir. Kod: `prototype/kbalign/advisor.py` (referans) = `plugin/src/engine/Advisor.cpp` (aynı eşikler, `kb_tests` birebir karşılaştırır). Kendi düşük öncelikli thread'inde, ses yoluna yazmadan çalışır; vuruş başına ~8 ms.
+
+**Neden bunlar?** Tek bir (d, θ) ile ulaşılabilecek en iyiye zaten ulaşılıyor. Ötesi ölçüldü (160 vuruş): frekans bantlarına bölüp ayrı hizalama ortalamayı düşürdü (+0,93 → +0,75 dB, en kötü vuruş −0,79); vuruş başı/kuyruk ayrı +1,02; frekansa bağlı faz eşleme +1,00 ama en kötü vuruş −1,47 ve kick'ten önceki 50 ms'ye +5…+17 dB ön çınlama (bas yayılır). Teorik tavan +1,48. Engel fiziksel: kick ile bas farklı frekanstaysa hiçbir kaydırma ikisini birlikte tutamaz.
+
+1. **Kick akordu** — son 12 vuruşta kick, Warp kapalı sampler gibi (perde + uzunluk birlikte) −2…+2 yarım ses, 25 cent adımla yeniden örneklenir; her aday için gerçek basla en iyi ρ* aranır (`rho_quick`: tamsayı gecikme ızgarasının tepesi, fa ≈ 3 kHz'de hata < 0,002). Öneri = en iyi kazancın %90'ına ulaşan en küçük |n|; koşullar: ortalama kazanç ≥ 0,25 dB, hiçbir vuruş −0,5 dB'den fazla kötüleşmez. Sınır ±2 yarım ses: kaynaklar büyük transpozun kick'i bozduğunu söylüyor (Sound on Sound, KVR); sayısal bir eşik yayımlanmamış → VARSAYIM, Ableton testinde kulakla doğrulanacak. Ölçüm (4 bas hattı × 5 kick × 2 bas tipi): bugün +0,92 → en iyi ±2 +1,23 dB (F hattı +0,78 → +1,43); "kök notaya akort" kuralı yalnız +0,94 — bu yüzden kural değil ölçüm kullanılır.
+2. **Synth retrigger** — aynı notanın vuruşlarında gecikme 0'daki faz ilişkisinin dairesel ortalama uzunluğu R. Retrigger açık / audio örnek R = 1,00; serbest osilatör 0,26–0,59 (12 döngü). Karar: ≥ 0,85 tutarlı, < 0,65 serbest, en az 6 vuruş. Serbestse mod önerisi "Her vuruşta + Tam+LA"; tutarlıysa çok notada "Nota başına", tek notada "Learn". Synth ayar adları: Operator R düğmesi (Live 11 kılavuzu), Drift "Retrigger", Meld "Phase Reset" (Live 12 kılavuzu), Serum Random Phase 0 (tutorial). Ableton Wavetable'ın osilatör retrigger'ı belgelenmemiş → anılmaz.
+3. **Ducking** — akorttan sonra da ρ* < 0,2 ve bas notası kick'e ≤ 5 yarım ses yakınsa (yavaş vuruşma = duyulan dalgalanma): uzunluk = kick gövdesi (alt bant zarfı tepeden −12 dB, 60–300 ms), %60, alt bant. Ölçüm: ducking fazı düzeltmez, basın altını kick'e bırakır. Bu yüzden yalnız bu durumda önerilir.
+
+**Alt bant ducking (crossover kapalıyken)** — önceden "Alt bant" hedefi crossover kapalıyken basın tamamını kısıyordu (ölçüm: 120 Hz üstü −0,9 dB). Şimdi y − (1−g)·LP(y): LP doğrusal fazlı FIR (2·Hs+1, Kaiser β = 4, 120 Hz) ve Hilbert'i, mevcut gecikme bütçesine sığar (ek gecikme yok); g = 1 iken çıktı bit düzeyinde aynı. Test: ducking sırasında 50 Hz −68 dB, 1 kHz −0,2 dB (pencere sızıntısı), ducking dışında fark 0. LR4 ile çıkarma faz kaydırdığı için kullanılmadı (ölçüldü: bası kısmak yerine artırıyordu).
+
 ## 6. Ek özellikler
 - Faz döndürme 0–360°, Hilbert tabanlı, yalnız alt bantta (crossover açıkken).
 - Crossover: LR4, varsayılan kapalı (§5b), açıkken 60–400 Hz (varsayılan 250). **[SAPMA] Lineer fazlı crossover 1. sürümde yok.**

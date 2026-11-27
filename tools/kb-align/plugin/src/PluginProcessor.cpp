@@ -92,9 +92,14 @@ KBAlignProcessor::KBAlignProcessor()
                      pid::latency, pid::crossover})
         apvts.addParameterListener(id, this);
     thread.startThread(juce::Thread::Priority::normal);
+    advThread.startThread(juce::Thread::Priority::low);
 }
 
-KBAlignProcessor::~KBAlignProcessor() { thread.stopThread(2000); }
+KBAlignProcessor::~KBAlignProcessor() {
+    cancelPendingUpdate();
+    thread.stopThread(2000);
+    advThread.stopThread(2000);
+}
 
 bool KBAlignProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
     const auto in = layouts.getMainInputChannelSet(), out = layouts.getMainOutputChannelSet();
@@ -110,6 +115,7 @@ bool KBAlignProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const 
 void KBAlignProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     // analiz thread'i motorun tamponlarını okur: yeniden kurulumda durdurulur
     thread.stopThread(2000);
+    advThread.stopThread(2000);
     sr = sampleRate;
     maxBlock = samplesPerBlock;
     numCh = std::max(1, getMainBusNumInputChannels());
@@ -118,11 +124,13 @@ void KBAlignProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
     const double fc = apvts.getRawParameterValue(pid::fc)->load();
     engine.prepare(sr, std::min(samplesPerBlock, 256), numCh, preparedLm, preparedXover, fc);
     align.prepare(&engine, sr, kAnalysisHz);
+    advisor.prepare(&engine, sr);
     pushAlignSettings();
     if (learned && (int) apvts.getRawParameterValue(pid::mode)->load() == (int) Mode::Learn)
         engine.events.push({0, learned->first, learned->second});
     setLatencySamples(engine.latency());
     thread.startThread(juce::Thread::Priority::normal);
+    advThread.startThread(juce::Thread::Priority::low);
 }
 
 void KBAlignProcessor::releaseResources() {}
@@ -139,7 +147,7 @@ void KBAlignProcessor::parameterChanged(const juce::String& id, float) {
         if (juce::MessageManager::getInstanceWithoutCreating() && juce::MessageManager::getInstance()->isThisTheMessageThread())
             reconfigure();
         else
-            juce::MessageManager::callAsync([this] { reconfigure(); });
+            triggerAsyncUpdate();  // callAsync([this]) işlemci silindikten sonra çalışabiliyordu (pluginval çökmesi)
         return;
     }
     pushAlignSettings();

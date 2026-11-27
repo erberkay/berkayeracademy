@@ -77,6 +77,11 @@ public:
 
     static cplx interpC(const std::vector<int>& lags, const std::vector<cplx>& c, double tau);
 
+    // Hızlı ρ* (Danışman'ın akort adayları; Python Analyzer.segment / rho_quick): hit() ile aynı segment,
+    // kesin inceltme yok — tamsayı gecikmelerde en büyük |normalize korelasyon|.
+    std::vector<double> segment(const double* x, long long n, long long onset, const AnalysisParams& p) const;
+    double rhoQuick(const std::vector<double>& kd, const std::vector<double>& bd, const AnalysisParams& p) const;
+
     // Python modes._joint: segmentlerin birleşik hedefi
     Pick joint(const std::vector<const HitSegment*>& segs, const std::vector<int>& lags, const AnalysisParams& p) const;
 

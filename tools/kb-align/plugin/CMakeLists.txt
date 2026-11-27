@@ -12,7 +12,8 @@ set(KB_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../kbdeps" CACHE PATH "JUC
 # ── JUCE'den bağımsız çekirdek (DSP + analiz + motor)
 add_library(kbcore STATIC
     src/analysis/Analyzer.cpp
-    src/engine/Engine.cpp)
+    src/engine/Engine.cpp
+    src/engine/Advisor.cpp)
 target_include_directories(kbcore PUBLIC src)
 if(NOT MSVC)
     target_compile_options(kbcore PRIVATE -Wall -Wextra -O3)
@@ -49,7 +50,8 @@ if(KB_BUILD_PLUGIN)
         src/PluginEditor.cpp
         src/ui/Scope.cpp
         src/ui/Widgets.cpp
-        src/ui/Extras.cpp)
+        src/ui/Extras.cpp
+        src/ui/Advice.cpp)
     target_compile_definitions(KBAlign PUBLIC
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=0)

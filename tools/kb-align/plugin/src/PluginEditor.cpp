@@ -43,9 +43,9 @@ void Readout::paint(juce::Graphics& g) {
     auto bot = in.removeFromTop(40);
     double gain = meters.rmsGainDb();
     if (std::abs(gain) < 0.05) gain = 0.0;
-    cell(bot.removeFromLeft(w), U("TOPLAM ALT BANT"), meters.hasData() ? (gain >= 0 ? "+" : "") + juce::String(gain, 1) + " dB" : juce::String("—"),
+    cell(bot.removeFromLeft(w), U("TOPLAM ALT BANT"), meters.hasData() ? (gain >= 0 ? "+" : "") + juce::String(gain, 1) + " dB" : U("—"),
          !meters.hasData() ? col::fgFaint : gain >= 0.05 ? col::ok : gain <= -0.05 ? col::warn : col::fg);
-    juce::String note = "—";
+    juce::String note = U("—");
     auto hs = proc.align.recentHits();
     for (auto it = hs.rbegin(); it != hs.rend(); ++it) if (it->note >= 0) { note = noteName(it->note); break; }
     cell(bot, U("BAS NOTASI"), note, col::fg);
@@ -210,16 +210,23 @@ EditorContent::EditorContent(KBAlignProcessor& p)
     addAndMakeVisible(simplePane);
     styleLabel(stepsTitle, U("3 adımda kullanım"), col::fg, 14.0f);
     stepsTitle.setFont(juce::FontOptions(14.0f, juce::Font::bold));
-    styleLabel(step1, U("1  Eklentiyi BAS kanalına koy; sidechain kaynağı olarak KICK kanalını seç."), col::fgSoft, 13.0f);
-    styleLabel(step2, U("2  Çal ve Learn'e bas — bas notaları değişiyorsa modu 'Nota başına' yap."), col::fgSoft, 13.0f);
-    styleLabel(step3, U("3  Önce / Sonra ile dinle; Toplam alt bant artı gösteriyorsa kick ile bas artık birlikte çalışıyor."), col::fgSoft, 13.0f);
-    for (auto* c : std::initializer_list<juce::Component*>{&stepsTitle, &step1, &step2, &step3, &sCrossover, &sBassMono, &sDuck, &sFc})
+    styleLabel(step1, U("1  Eklentiyi BAS kanalına koy, sidechain kaynağı olarak KICK kanalını seç."), col::fgSoft, 13.0f);
+    styleLabel(step2, U("2  Çal ve Learn'e bas (notalar değişiyorsa 'Nota başına')."), col::fgSoft, 13.0f);
+    styleLabel(step3, U("3  Önce / Sonra ile dinle; yandaki önerilere göz at."), col::fgSoft, 13.0f);
+    for (auto* l : {&step1, &step2, &step3}) l->setMinimumHorizontalScale(1.0f);
+    for (auto* c : std::initializer_list<juce::Component*>{&stepsTitle, &step1, &step2, &step3, &sCrossover, &sBassMono, &sDuck, &sFc, &adviceMini})
         simplePane.addAndMakeVisible(c);
+    adviceMini.onDetails = [this] {
+        setAdvanced(true);
+        userSettings().setValue("advanced", true);
+        tabs.setCurrentTabIndex(0);
+    };
     sCrossover.button.setTooltip(U("Açıkken yalnız sınırın altındaki bas hizalanır, üstü hiç değişmez. Kapalıyken (önerilen) bütün bas birlikte kaydırılır: "
                                    "ölçümde kazanç kapalıyken 1,5–2 dB, 120 Hz'te açıkken 0,3–0,5 dB. Açacaksan sınırı yüksek tut (250 Hz ve üstü)."));
     sFc.slider.setTooltip(U("Crossover sınırı (yalnız crossover açıkken): bu frekansın altı hizalanır. Öneri 250 Hz ve üstü — düşük sınır kazancı azaltır."));
     sBassMono.button.setTooltip(U("Alt bandı mono yapar (stereo baslarda faz sorunlarını azaltır)."));
-    sDuck.button.setTooltip(U("Kick vuruşunda bası kısar (çizilebilir eğri — Gelişmiş > Ducking)."));
+    sDuck.button.setTooltip(U("Kick vuruşunda basın altını (≤120 Hz) kısar, üstü korunur; kick'e dokunmaz. Eğri ve uzunluk: Gelişmiş > Ducking. "
+                              "Öneriler paneli gerekip gerekmediğini ve uzunluğu söyler."));
 
     // ── alt alan: gelişmiş
     for (auto* c : std::initializer_list<juce::Component*>{&search, &learnHits, &winStart, &winMs, &scOffset, &trigHz, &contRate}) pAlign.addAndMakeVisible(c);
@@ -235,6 +242,9 @@ EditorContent::EditorContent(KBAlignProcessor& p)
     trigHz.slider.setTooltip(U("Kick tespiti bu frekansın altını dinler (davul bus'ında kick'i ayırmak için)."));
     contRate.slider.setTooltip(U("Takip modunda kaydırmanın en hızlı değişimi (ms/s). Düşük = pürüzsüz."));
     listen.box.setTooltip(U("Bas · Kick + bas önizleme · Alt bant solo"));
+    duckTarget.box.setTooltip(U("Alt bant: yalnız 120 Hz altı kısılır (crossover açıksa crossover sınırının altı), faz kaydırmadan — basın üstü korunur. "
+                                "Tüm sinyal: basın tamamı kısılır (klasik pompalama)."));
+    tabs.addTab(U("Öneriler"), col::panel, &adviceTab, false);
     tabs.addTab(U("Analiz"), col::panel, &pAlign, false);
     tabs.addTab(U("Crossover · Mono · Dinleme"), col::panel, &pXover, false);
     tabs.addTab("Ducking", col::panel, &pDuck, false);
@@ -359,15 +369,18 @@ void EditorContent::resized() {
     else {
         simplePane.setBounds(bottom);
         auto b = simplePane.getLocalBounds().reduced(14, 10);
-        auto right = b.removeFromRight(360);
+        auto right = b.removeFromRight(262);
+        b.removeFromRight(14);
+        adviceMini.setBounds(b.removeFromRight(430));
+        b.removeFromRight(14);
         stepsTitle.setBounds(b.removeFromTop(22));
-        step1.setBounds(b.removeFromTop(28));
-        step2.setBounds(b.removeFromTop(28));
-        step3.setBounds(b.removeFromTop(28));
+        step1.setBounds(b.removeFromTop(30));
+        step2.setBounds(b.removeFromTop(30));
+        step3.setBounds(b.removeFromTop(30));
         sCrossover.setBounds(right.removeFromTop(26));
         sFc.setBounds(right.removeFromTop(30));
         auto row = right.removeFromTop(28);
-        sBassMono.setBounds(row.removeFromLeft(150));
+        sBassMono.setBounds(row.removeFromLeft(108));
         sDuck.setBounds(row);
     }
     // sağ sütun
@@ -476,8 +489,11 @@ void EditorContent::startTour(int step) {
         {&compare, U("9 · Önce / Sonra"),
          U("Tıkla ve orijinal bası dinle; tekrar tıkla, hizalanmış hâle dön. Gecikme değişmez, karşılaştırma adil olur. "
            "Seviye farkı varsa Çıkış ile eşitle.")},
-        {&viewAdv, U("10 · Gelişmiş görünüm"),
-         U("Crossover, Bass Mono, sidechain ducking eğrisi, nota tablosu, analiz penceresi ve osiloskop araçları burada.")},
+        {advanced ? static_cast<juce::Component*>(&tabs) : static_cast<juce::Component*>(&adviceMini), U("10 · Öneriler"),
+         U("Eklenti kick'i ve bası dinler, üç şey söyler: kick'i birkaç cent/yarım ses akort etmek kazandırır mı (ölçerek; en fazla ±2), "
+           "synth'in retrigger'ı açık mı, ducking gerekiyor mu. Kick'e hiçbir zaman dokunmaz; ducking ve mod önerisi tek tıkla uygulanır.")},
+        {&viewAdv, U("11 · Gelişmiş görünüm"),
+         U("Önerilerin ayrıntısı, crossover, Bass Mono, sidechain ducking eğrisi, nota tablosu, analiz penceresi ve osiloskop araçları burada.")},
         {&help, U("Hazırsın"),
          U("Bir kontrolün ne yaptığını merak edersen fareyle üzerine gel: alttaki çubuk anlatır. Turu ? menüsünden her zaman yeniden açabilirsin.")},
     };

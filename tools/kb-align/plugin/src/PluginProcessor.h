@@ -7,6 +7,8 @@
 #include <chrono>
 #include <thread>
 
+#include "engine/Advisor.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_audio_utils/juce_audio_utils.h>
 
@@ -55,7 +57,21 @@ private:
     AlignEngine& align;
 };
 
-class KBAlignProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener {
+class AdvisorThread : public juce::Thread {  // Danışman: düşük öncelik, ses yoluna dokunmaz
+public:
+    explicit AdvisorThread(Advisor& a) : juce::Thread("KB-Align danisman"), adv(a) {}
+    void run() override {
+        while (!threadShouldExit()) {
+            adv.step();
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        }
+    }
+private:
+    Advisor& adv;
+};
+
+class KBAlignProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener,
+                         private juce::AsyncUpdater {
 public:
     static constexpr int kStateVersion = 1;
 
@@ -89,6 +105,7 @@ public:
     juce::UndoManager undo;
     AudioEngine engine;
     AlignEngine align;
+    Advisor advisor;
     std::vector<CurvePoint> curve = placeholderCurve();  // mesaj thread'i düzenler
     void setCurve(const std::vector<CurvePoint>& c);
     void startLearn() { align.startLearn(); }
@@ -108,11 +125,13 @@ public:
 
 private:
     void parameterChanged(const juce::String& id, float v) override;
+    void handleAsyncUpdate() override { reconfigure(); }  // ses thread'inden gelen değişiklik; yıkımda iptal edilir
     void pushAlignSettings();
     void reconfigure();  // gecikme modu / crossover değişti
     BlockParams makeBlockParams(juce::AudioPlayHead* ph, int n);
 
     AnalysisThread thread{align};
+    AdvisorThread advThread{advisor};
     double sr = 48000;
     int maxBlock = 512, numCh = 2;
     std::atomic<bool> scConnected{false};

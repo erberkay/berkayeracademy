@@ -31,6 +31,7 @@ inline LatencySpec latencySpec(LatencyMode m) {
 constexpr int kMargin = 4;
 constexpr double kAnalysisHz = 120.0;  // analiz bandı (kick bölgesi) — crossover frekansından bağımsız (Python Config.analysis_fc)
 constexpr int kConvBlock = 128;
+constexpr double kDuckLowHz = 120.0;  // crossover kapalıyken ducking "Alt bant" sınırı (kick bölgesi)
 constexpr double kRtMarginMs = 20.0;
 constexpr int kGlobalHits = 16;  // Python modes.GLOBAL_HITS  // VARSAYIM (Python modes.RT_MARGIN_MS ile aynı)
 
@@ -94,6 +95,7 @@ public:
     // UI için onset geçmişi (içerik zamanı)
     static constexpr int kOnsetHist = 64;
     std::array<std::atomic<int64_t>, kOnsetHist> onsetHist{};
+    std::array<std::atomic<int64_t>, kOnsetHist> onsetRaw{};  // sidechain ofseti uygulanmamış (Danışman)
     std::atomic<int> onsetCount{0};
     // playhead anlık görüntüsü
     std::atomic<double> phPpq{0}, phBpm{120};
@@ -111,6 +113,8 @@ private:
         PartitionedConvolver conv;
         Ring<float> lo, v, hi, dry;
         LR4 monoLp, monoHp, monoMlp, monoMhp;
+        PartitionedConvolver duckU, duckV;  // alt bant ducking: LP ve Hilbert(LP) (crossover kapalıyken)
+        Ring<float> du, dv;
     };
     double fs = 48000, xfadeMs = 10;
     int L = 0, hsamp = 0, X = 480, nch = 1;
@@ -137,6 +141,7 @@ private:
     int nDuck = 0;
     int64_t duckStart = -1;
     double lastBeat = -1;
+    bool lowDuckOn = false;  // alt bant ducking evrişimleri çalışıyor mu
     std::array<CurvePoint, kMaxCurvePoints> curve{};
     int curveN = 0;
     // bypass / mono / dinleme geçişleri

@@ -53,6 +53,13 @@
 - Arayüz v2 + ilk açılış turu, polarite, çıkış kazancı, seviye ölçerleri. Görüntüler `docs/ekran/v2-*.png`.
 - pluginval strictness 10 SUCCESS · clap-validator 0 hata · kb_tests 59/59 · kb_plugin_test 0 hata.
 
+## Öneriler paneli (Danışman) + alt bant ducking (2026-11-27)
+- Kick akordu (ölçülmüş "ne olurdu", ±2 yarım ses), synth retrigger tespiti, ducking önerisi; ducking ve mod tek tıkla uygulanır. Kick'e dokunulmaz. Ayrıntı: `spec.md` §5c.
+- Crossover kapalıyken ducking artık yalnız 120 Hz altını kısar (doğrusal fazlı, ek gecikme yok).
+- `gercek_olcum.py` raporu önerileri de yazar.
+- Düzeltilen eski hata: parametre değişiminde ertelenen yeniden kurulum, eklenti silindikten sonra çalışabiliyordu (pluginval parametre fuzz'ında çöktü) → `AsyncUpdater`.
+- pluginval strictness 10 SUCCESS · clap-validator 0 hata · kb_tests 90/90 · kb_plugin_test 0 hata · pytest 25/25. Görüntüler `docs/ekran/v3-*.png`.
+
 ## Aşama 6 — Yayın hazırlığı 🔧 (satış yok, AGPLv3, Ders Paneli) — betikler ve kart hazır; Mac paketi + deploy bekliyor → `docs/yayin.md`
 
 ## Açık VARSAYIM'lar

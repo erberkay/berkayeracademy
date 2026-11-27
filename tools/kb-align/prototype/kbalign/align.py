@@ -143,6 +143,42 @@ class Analyzer:
                          (kw, ba, j0, ek))
 
 
+    # ─── hızlı ρ* (Danışman'ın akort adayları için): tamsayı gecikmelerde en büyük |normalize korelasyon|
+    def segment(self, x: np.ndarray, onset: int, p: AnalysisParams) -> np.ndarray:
+        """hit() ile aynı desimasyonlu segment."""
+        ws = int(round(p.win_start_ms * self.fa / 1000))
+        W = int(round(p.win_ms * self.fa / 1000))
+        tmin = int(np.floor(p.d_min_ms * self.fa / 1000)) - INTERP_HALF - 1
+        tmax = int(np.ceil(p.d_max_ms * self.fa / 1000)) + INTERP_HALF + 1
+        seg_start = -tmax - 256 + ws
+        seg_len = W + (tmax - tmin) + 2 * 256
+        return self.decimate(x, onset + seg_start * self.M, seg_len)
+
+    def rho_quick(self, k_d: np.ndarray, b_d: np.ndarray, p: AnalysisParams) -> float:
+        """Kesin inceltme olmadan ρ*: |c(τ)| zarfı yavaş değiştiği için tamsayı ızgaranın tepesi yeterli
+        (fa ≈ 3 kHz'de hata < 0,002). Geçerlilik ve arama aralığı hit() ile aynı."""
+        fa = self.fa
+        ws = int(round(p.win_start_ms * fa / 1000))
+        W = int(round(p.win_ms * fa / 1000))
+        tmin = int(np.floor(p.d_min_ms * fa / 1000)) - INTERP_HALF - 1
+        tmax = int(np.ceil(p.d_max_ms * fa / 1000)) + INTERP_HALF + 1
+        del ws
+        ka = analytic_pow2(k_d)
+        ba = analytic_pow2(b_d)
+        j0 = tmax + 256
+        kw = ka[j0:j0 + W]
+        ek = float(np.sum(np.abs(kw) ** 2))
+        lags = np.arange(tmin, tmax + 1)
+        c = np.array([np.vdot(ba[j0 - t:j0 - t + W], kw) for t in lags])
+        eb = np.array([np.sum(np.abs(ba[j0 - t:j0 - t + W]) ** 2) for t in lags])
+        if ek <= 1e-20 or eb.max() <= 1e-20:
+            return 0.0
+        sel = (eb >= 0.3 * eb.max()) & (lags >= np.ceil(p.d_min_ms * fa / 1000)) & (lags <= np.floor(p.d_max_ms * fa / 1000))
+        if not np.any(sel):
+            return 0.0
+        return float(min(1.0, np.max(np.abs(c[sel]) / np.sqrt(ek * eb[sel]))))
+
+
 def interp_c(lags: np.ndarray, c: np.ndarray, tau: float) -> complex:
     """Kaiser-sinc ile tamsayı gecikmeler arasında bant sınırlı ara değerleme."""
     i0 = int(np.floor(tau)) - lags[0]

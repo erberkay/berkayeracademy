@@ -135,6 +135,28 @@ inline std::vector<double> hilbertFir(double fs, double halfMs, double beta = 8.
     return h;
 }
 
+// Doğrusal fazlı alçak geçiren FIR (uzunluk 2·hs+1, grup gecikmesi hs) ve onun Hilbert dönüşümü.
+// Yalnız alt banda ducking için (crossover kapalıyken): y − (1−g)·LP(y), g = 1 iken y'ye birebir eşit,
+// faz kaydırmaz (LR4 ile çıkarma fazı kaydırırdı). Kaiser β = 4 → ~45 dB, geçiş bandı ≈ ±25 Hz @ hs = 25 ms.
+// İdeal LP: h[k] = sin(ωc·k)/(π·k); Hilbert'i: (1 − cos(ωc·k))/(π·k)  (ωc = π → hilbertFir ile aynı biçim).
+inline void lowpassFirPair(double fs, double fc, int hs, std::vector<double>& lp, std::vector<double>& hlp, double beta = 4.0) {
+    const int n = 2 * hs + 1;
+    lp.assign((size_t) n, 0.0);
+    hlp.assign((size_t) n, 0.0);
+    const double wc = 2.0 * kPi * fc / fs;
+    const double i0b = besselI0(beta);
+    double sum = 0;
+    for (int i = 0; i < n; ++i) {
+        const int k = i - hs;
+        const double r = 2.0 * i / (n - 1) - 1.0;
+        const double win = besselI0(beta * std::sqrt(std::max(0.0, 1.0 - r * r))) / i0b;
+        lp[(size_t) i] = (k == 0 ? wc / kPi : std::sin(wc * k) / (kPi * k)) * win;
+        hlp[(size_t) i] = (k == 0 ? 0.0 : (1.0 - std::cos(wc * k)) / (kPi * k)) * win;
+        sum += lp[(size_t) i];
+    }
+    for (int i = 0; i < n; ++i) { lp[(size_t) i] /= sum; hlp[(size_t) i] /= sum; }  // DC kazancı 1
+}
+
 // ───────────────────────────── Radix-2 karmaşık FFT (yerinde, yinelemeli)
 class FFT {
 public:

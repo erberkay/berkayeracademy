@@ -24,6 +24,8 @@ void AudioEngine::prepare(double sampleRate, int /*maxBlock*/, int numChannels, 
     hsamp = hilbertHalfSamples(fs, lm);
     X = std::max(1, (int) std::lround(xfadeMs * fs / 1000.0));
     const auto h = hilbertFir(fs, latencySpec(lm).hilbertMs);
+    std::vector<double> dlp, dhlp;
+    lowpassFirPair(fs, kDuckLowHz, hsamp, dlp, dhlp);
     const int64_t ringSize = L + (int64_t) (0.06 * fs) + 1024;
     ch.assign((size_t) nch, Chan{});
     for (auto& c : ch) {
@@ -34,6 +36,10 @@ void AudioEngine::prepare(double sampleRate, int /*maxBlock*/, int numChannels, 
         c.v.allocate(ringSize);
         c.hi.allocate(ringSize);
         c.dry.allocate(ringSize);
+        c.duckU.prepare(dlp, kConvBlock);
+        c.duckV.prepare(dhlp, kConvBlock);
+        c.du.allocate(ringSize);
+        c.dv.allocate(ringSize);
     }
     aKick.design(fs, kAnalysisHz, false);
     aBass.design(fs, kAnalysisHz, false);
@@ -47,6 +53,7 @@ void AudioEngine::reset() {
     for (auto& c : ch) {
         c.lp.reset(); c.hp.reset(); c.conv.reset();
         c.lo.clear(); c.v.clear(); c.hi.clear(); c.dry.clear();
+        c.duckU.reset(); c.duckV.reset(); c.du.clear(); c.dv.clear();
         c.monoLp.design(fs, 100, false); c.monoHp.design(fs, 100, true);
         c.monoMlp.design(fs, 100, false); c.monoMhp.design(fs, 100, true);
     }
@@ -60,6 +67,7 @@ void AudioEngine::reset() {
     tgtD = tgtTh = 0;
     knobInit = false;
     nDuck = 0; duckStart = -1; lastBeat = -1;
+    lowDuckOn = false;
     {
         const auto ph = placeholderCurve();
         curveN = (int) ph.size();
@@ -99,6 +107,11 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
         for (auto& c : ch) { c.lp.retune(fs, fcCur, false); c.hp.retune(fs, fcCur, true); }
     }
     onset.setTriggerHz(bp.trigHz);
+    // alt bant ducking (crossover kapalı): yalnız gerektiğinde çalışır; açılışta temiz başlar
+    // (boş halka → ilk ~50 ms çıkarılacak bir şey yok = ducking yok; tıkırtı yok)
+    const bool wantLowDuck = !xover && bp.duck && bp.duckTarget == DuckTarget::LowBand;
+    if (wantLowDuck && !lowDuckOn) for (auto& c : ch) { c.duckU.reset(); c.duckV.reset(); c.du.clear(); c.dv.clear(); }
+    lowDuckOn = wantLowDuck;
     if (bp.bassMono) for (auto& c : ch) {
         c.monoLp.retune(fs, bp.monoHz, false); c.monoHp.retune(fs, bp.monoHz, true);
         c.monoMlp.retune(fs, bp.monoHz, false); c.monoMhp.retune(fs, bp.monoHz, true);
@@ -119,6 +132,12 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
         const double D = L + d * fs / 1000.0;
         const double s = std::sin(th * kPi / 180.0), co = std::cos(th * kPi / 180.0);
         return co * fracRead(c.lo, t, D) - s * fracRead(c.v, t, D - hsamp - kConvBlock);
+    };
+    auto chainLow = [&](const Chan& c, int64_t t, double d, double th) {  // aynı kaydırma/döndürme, LP'li kopya
+        d = std::clamp(d, dMin, dMax);
+        const double D = L + d * fs / 1000.0 - hsamp - kConvBlock;
+        const double s = std::sin(th * kPi / 180.0), co = std::cos(th * kPi / 180.0);
+        return co * fracRead(c.du, t, D) - s * fracRead(c.dv, t, D);
     };
 
     double monoOut = 0;
@@ -142,6 +161,7 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
             onsets.push({on});
             const int idx = onsetCount.load(std::memory_order_relaxed);
             onsetHist[(size_t) (idx % kOnsetHist)].store(on - scSamples, std::memory_order_relaxed);
+            onsetRaw[(size_t) (idx % kOnsetHist)].store(on, std::memory_order_relaxed);
             onsetCount.store(idx + 1, std::memory_order_release);
             if (!bp.duckTempo && nDuck < (int) duckOnsets.size()) duckOnsets[(size_t) nDuck++] = on - scSamples;
         }
@@ -154,6 +174,7 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
             C.lo.write(t, (float) lo);
             C.v.write(t, (float) C.conv.process(lo));
             C.hi.write(t, (float) hi);
+            if (lowDuckOn) { C.du.write(t, (float) C.duckU.process(lo)); C.dv.write(t, (float) C.duckV.process(lo)); }
         }
 
         // ── parametre durumu (içerik zamanı cc)
@@ -216,8 +237,13 @@ void AudioEngine::process(float* const* bass, int numCh, const float* const* kic
             yl *= polGain;
             const double yh = xover ? (double) C.hi.read(t - L) : 0.0;
             double y;
-            if (bp.listen == Listen::LowSolo) y = yl * g;
-            else if (bp.duckTarget == DuckTarget::LowBand) y = yl * g + yh;
+            if (lowDuckOn && g < 1.0) {  // crossover kapalı: yalnız ≤kDuckLowHz kısılır
+                double ylo = chainLow(C, t, curD + offD, curTh + knobTh);
+                if (fading) ylo = (1.0 - w) * ylo + w * chainLow(C, t, nextD + offD, nextTh + knobTh);
+                yl -= (1.0 - g) * ylo * polGain;
+            }
+            if (bp.listen == Listen::LowSolo) y = lowDuckOn ? yl : yl * g;
+            else if (bp.duckTarget == DuckTarget::LowBand) y = lowDuckOn ? yl : yl * g + yh;
             else y = (yl + yh) * g;
             if (bp.listen == Listen::KickPlusBass) y += kickDelay.read(t - L + scSamples);
             outs[c < 2 ? c : 1] = y;

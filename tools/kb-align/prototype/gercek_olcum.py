@@ -11,6 +11,8 @@ Kullanım (Mac/Linux, prototype/ klasöründen):
 - Her bas için dört durum ölçülür: hizalama yok · Learn · Nota başına · Her vuruşta (Tam + lookahead).
 - Ölçüm her kick vuruşunda 150 ms, alt bantta (LR4 fc): korelasyon, kick+bas toplam enerjisi, tepe;
   ayrıca kaba kuvvetle o vuruşta ulaşılabilecek en iyi korelasyon (sınır).
+- Danışman önerileri (eklentideki Öneriler paneliyle aynı hesap): kick akordu (±2 yarım ses içinde ölçülen
+  kazanç), synth retrigger, ducking. Kick'e dokunulmaz; öneriler DAW'da yapılacak değişikliklerdir.
 - Çıktı: rapor.md + grafik + her mod için hizalanmış bas WAV'ı (gecikmesi çıkarılmış, aynı uzunlukta;
   DAW'da orijinal basın yerine koyup kulakla karşılaştırabilirsin). Kick'e dokunulmaz.
 """
@@ -27,7 +29,7 @@ import numpy as np  # noqa: E402
 import soundfile as sf  # noqa: E402
 from scipy import signal  # noqa: E402
 
-from kbalign import align, dsp, engine, metrics, modes  # noqa: E402
+from kbalign import advisor, align, dsp, engine, metrics, modes  # noqa: E402
 
 MODES = [("yok", None, "tam"), ("learn", "learn", "tam"), ("nota", "note", "tam"), ("her_vurus", "hit", "tam_lookahead")]
 MODE_TR = {"yok": "Hizalama yok", "learn": "Learn (sabit)", "nota": "Nota başına", "her_vurus": "Her vuruşta (Tam+LA)"}
@@ -41,6 +43,11 @@ def load_mono(path, fs_target=None):
         x = signal.resample_poly(x, int(fs_target) // g, int(fs) // g)
         fs = fs_target
     return x.astype(np.float64), int(fs)
+
+
+def ds_note(n: int) -> str:
+    names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    return f"{names[n % 12]}{n // 12 - 1}"
 
 
 def tile(x, n):
@@ -164,6 +171,17 @@ def main():
         ap_ = res["learn"]["applied"]
         if ap_:
             lines.append(f"\nLearn'ün bulduğu: d = {ap_[-1][1]:+.3f} ms, θ = {ap_[-1][2] % 360:.1f}°.")
+        A = advisor.advise(kick, bass, fs, onsets=onsets, fc=a.fc, search_ms=a.arama)
+        lines.append("\n**Öneriler** (eklentideki Öneriler paneli):\n")
+        nn = f"{ds_note(A.top_note)}" if A.top_note is not None else "—"
+        lines.append(f"- Kick ~{A.kick_hz:.1f} Hz, gövde ~{A.kick_body_ms:.0f} ms; bas en çok {nn} çalıyor." if A.kick_hz else "- Kick frekansı ölçülemedi.")
+        if A.tune_st:
+            lines.append(f"- **Kick akordu:** {A.tune_st:+.2f} yarım ses → toplam alt bant {A.tune_gain0:+.2f} → {A.tune_gain:+.2f} dB "
+                         f"(en kötü vuruş {A.tune_worst:+.2f} dB). Eğri: " + ", ".join(f"{n:+.2f}: {g:+.2f}" for n, g in A.tune_curve.items() if abs(n * 4) % 2 == 0))
+        else:
+            lines.append(f"- **Kick akordu:** önerilmez (±2 yarım ses içinde kazanç {advisor.MIN_GAIN_DB} dB'yi geçmiyor; en iyi {A.tune_best_st:+.2f}).")
+        lines.append(f"- **Retrigger:** {A.retrig} (tutarlılık {A.retrig_R:.2f})" if A.retrig_R is not None else "- **Retrigger:** nota okunamadı")
+        lines.append(f"- **Ducking:** {'öner — ' + format(A.duck_len_ms, '.0f') + ' ms, %60, alt bant' if A.duck else 'gerekmiyor'} · önerilen mod: {A.mode}\n")
         best = max(range(len(onsets)), key=lambda i: res["nota"]["rows"][i]["e_sum"] / (res["yok"]["rows"][i]["e_sum"] + 1e-30))
         png = f"{stem}__grafik.png"
         plot(dsp.lowpass4(kick, fs, a.fc), res, onsets, fs, os.path.join(out_dir, png), best)

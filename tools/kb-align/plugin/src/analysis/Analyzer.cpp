@@ -238,6 +238,52 @@ HitResult Analyzer::hit(const double* kLow, const double* bLow, long long n, lon
     return R;
 }
 
+std::vector<double> Analyzer::segment(const double* x, long long n, long long onset, const AnalysisParams& p) const {
+    const int ws = (int) std::lround(p.winStartMs * fa_ / 1000.0);
+    const int W = (int) std::lround(p.winMs * fa_ / 1000.0);
+    const int tmin = (int) std::floor(p.dMinMs * fa_ / 1000.0) - kInterpHalf - 1;
+    const int tmax = (int) std::ceil(p.dMaxMs * fa_ / 1000.0) + kInterpHalf + 1;
+    const int segStart = -tmax - kPad + ws;
+    const int segLen = W + (tmax - tmin) + 2 * kPad;
+    return decimate(x, n, onset + (long long) segStart * M, segLen);
+}
+
+double Analyzer::rhoQuick(const std::vector<double>& kd, const std::vector<double>& bd, const AnalysisParams& p) const {
+    const double fa = fa_;
+    const int W = (int) std::lround(p.winMs * fa / 1000.0);
+    const int tmin = (int) std::floor(p.dMinMs * fa / 1000.0) - kInterpHalf - 1;
+    const int tmax = (int) std::ceil(p.dMaxMs * fa / 1000.0) + kInterpHalf + 1;
+    const auto ka = analyticPow2(kd);
+    const auto ba = analyticPow2(bd);
+    const int j0 = tmax + kPad;
+    double ek = 0;
+    for (int j = 0; j < W; ++j) ek += std::norm(ka[(size_t) (j0 + j)]);
+    const int nl = tmax - tmin + 1;
+    std::vector<double> eb((size_t) nl), ca((size_t) nl);
+    double ebMax = 0;
+    for (int t = tmin; t <= tmax; ++t) {
+        cplx c = 0;
+        double e = 0;
+        for (int j = 0; j < W; ++j) {
+            const cplx b = ba[(size_t) (j0 + j - t)];
+            c += std::conj(b) * ka[(size_t) (j0 + j)];
+            e += std::norm(b);
+        }
+        eb[(size_t) (t - tmin)] = e;
+        ca[(size_t) (t - tmin)] = std::abs(c);
+        ebMax = std::max(ebMax, e);
+    }
+    if (ek <= 1e-20 || ebMax <= 1e-20) return 0.0;
+    const double lo = std::ceil(p.dMinMs * fa / 1000.0), hi = std::floor(p.dMaxMs * fa / 1000.0);
+    double best = 0;
+    for (int t = tmin; t <= tmax; ++t) {
+        const size_t i = (size_t) (t - tmin);
+        if (t < lo || t > hi || eb[i] < 0.3 * ebMax) continue;
+        best = std::max(best, ca[i] / std::sqrt(ek * eb[i]));
+    }
+    return std::min(1.0, best);
+}
+
 Analyzer::Pick Analyzer::joint(const std::vector<const HitSegment*>& segs, const std::vector<int>& lags,
                                const AnalysisParams& p) const {
     ExactEval ex(segs);

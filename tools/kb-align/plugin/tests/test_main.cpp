@@ -3,6 +3,7 @@
 // KB-Align C++ testleri: birim + Python ile sayısal eşleşme (tests/parity, export_parity.py üretir).
 #include "../src/analysis/Analyzer.h"
 #include "../src/dsp/Dsp.h"
+#include "../src/engine/Advisor.h"
 #include "../src/engine/Engine.h"
 
 #include <chrono>
@@ -255,6 +256,94 @@ static void testModes() {
     }
 }
 
+// Danışman: AudioEngine akışı + Advisor adımları, Python advisor.advise ile
+static void testAdvisor() {
+    std::printf("Danışman — Python advisor.advise ile\n");
+    const char* rtName[] = {"belirsiz", "tutarlı", "serbest"};
+    for (int i = 0; i < (int) (sizeof(kAdv) / sizeof(kAdv[0])); ++i) {
+        auto k = load("adv" + std::to_string(i) + "_k"), b = load("adv" + std::to_string(i) + "_b");
+        if (k.empty()) continue;
+        AudioEngine eng;
+        eng.prepare(48000, 256, 1, LatencyMode::Full, false, 250, 10);
+        Advisor ad;
+        ad.prepare(&eng, 48000);
+        const int n = (int) k.size();
+        std::vector<float> buf((size_t) n), kf((size_t) n);
+        for (int j = 0; j < n; ++j) { buf[(size_t) j] = (float) b[(size_t) j]; kf[(size_t) j] = (float) k[(size_t) j]; }
+        BlockParams bp;
+        const auto t0 = std::chrono::steady_clock::now();
+        double advMs = 0;
+        for (int j = 0; j < n; j += 256) {
+            float* p = buf.data() + j; const float* kk = kf.data() + j;
+            eng.process(&p, 1, &kk, 1, std::min(256, n - j), bp);
+            const auto a0 = std::chrono::steady_clock::now();
+            ad.step();
+            advMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - a0).count();
+        }
+        for (int q = 0; q < 64; ++q) ad.step();
+        (void) t0;
+        const auto A = ad.result();
+        const auto& P = kAdv[i];
+        std::printf("  döngü %d: vuruş %d (Py %d) | kick %.2f Hz (Py %.2f) gövde %.0f ms (Py %.0f) | en çok nota %d (Py %d) | "
+                    "retrigger R %.2f %s (Py %.2f %s) | akort %+.2f yarım ses (Py %+.2f), kazanç %+.2f → %+.2f dB (Py %+.2f → %+.2f) | "
+                    "ducking %d (Py %d) | mod %d (Py %d) | süre %.0f ms\n",
+                    i, A.hits, P.hits, A.kickHz, P.kickHz, A.kickBodyMs, P.body, A.topNote, P.top, A.retrigR, rtName[(int) A.retrig], P.R,
+                    rtName[P.rt], A.tuneSt, P.tune, A.tuneGain0, A.tuneGain, P.g0, P.g, (int) A.duck, (int) P.duck, (int) A.mode, P.mode, advMs);
+        CHECK(A.hits == P.hits, "vuruş sayısı farklı");
+        CHECK(std::abs(A.kickHz - P.kickHz) < 0.5, "kick frekansı farklı");
+        CHECK(std::abs(A.kickBodyMs - P.body) < 6.0, "kick gövdesi farklı");
+        CHECK(A.topNote == P.top, "en çok çalan nota farklı");
+        CHECK(std::abs(A.retrigR - P.R) < 0.05 && (int) A.retrig == P.rt, "retrigger kararı farklı");
+        CHECK(std::abs(A.tuneSt - P.tune) < 1e-9, "akort önerisi farklı");
+        CHECK(std::abs(A.tuneGain0 - P.g0) < 0.05 && std::abs(A.tuneGain - P.g) < 0.05, "akort kazancı farklı");
+        CHECK(A.duck == P.duck && (int) A.mode == P.mode, "ducking/mod önerisi farklı");
+        CHECK(std::abs(A.tuneSt) <= adv::kMaxSt, "akort sınırı aşıldı");
+    }
+}
+
+// Alt bant ducking (crossover kapalı): yalnız ≤120 Hz kısılır, üst kısım ve ducking dışı çıktı birebir aynı
+static void testLowDuck() {
+    std::printf("Alt bant ducking (crossover kapalı, doğrusal fazlı)\n");
+    const double fs = 48000;
+    const int n = (int) (1.8 * fs);
+    std::vector<float> kick((size_t) n, 0.0f), b0((size_t) n);
+    const int on = (int) (0.5 * fs);
+    for (int i = on; i < n; ++i) kick[(size_t) i] = (float) (0.9 * std::sin(2 * kPi * 55.0 * (i - on) / fs) * std::exp(-(i - on) / (0.12 * fs)));
+    for (int i = 0; i < n; ++i) b0[(size_t) i] = (float) (0.5 * std::sin(2 * kPi * 50.0 * i / fs) + 0.2 * std::sin(2 * kPi * 1000.0 * i / fs));
+    auto run = [&](bool duck) {
+        AudioEngine eng;
+        eng.prepare(fs, 256, 1, LatencyMode::Full, false, 250, 10);
+        std::vector<float> y = b0;
+        BlockParams bp;
+        bp.duck = duck; bp.duckDepth = 1.0; bp.duckLenMs = 1000;  // eğrinin düz ilk %4'ü = 40 ms bp.duckTarget = DuckTarget::LowBand;
+        for (int j = 0; j < n; j += 256) {
+            float* p = y.data() + j; const float* kk = kick.data() + j;
+            eng.process(&p, 1, &kk, 1, std::min(256, n - j), bp);
+        }
+        return std::make_pair(y, eng.latency());
+    };
+    auto [y0, L] = run(false);
+    auto [y1, L1] = run(true);
+    // tonların genliği (içerik zamanı [a, a+w) → çıktı +L)
+    auto amp = [&](const std::vector<float>& y, double f, int a, int w) {
+        double re = 0, im = 0;
+        for (int i = a; i < a + w; ++i) { re += y[(size_t) (i + L)] * std::cos(2 * kPi * f * i / fs); im += y[(size_t) (i + L)] * std::sin(2 * kPi * f * i / fs); }
+        return 2.0 * std::sqrt(re * re + im * im) / w;
+    };
+    const int a = on + (int) (0.002 * fs), w = (int) (0.036 * fs);  // ducking'in en derin, düz yeri
+    const double l0 = amp(y0, 50, a, w), l1 = amp(y1, 50, a, w), h0 = amp(y0, 1000, a, w), h1 = amp(y1, 1000, a, w);
+    const double lowDb = 20 * std::log10(l1 / l0), highDb = 20 * std::log10(h1 / h0);
+    double before = 0;
+    for (int i = 0; i < on - 2000; ++i) before = std::max(before, (double) std::abs(y1[(size_t) i] - y0[(size_t) i]));
+    double after = 0;
+    for (int i = on + (int) (1.05 * fs) + L; i < n; ++i) after = std::max(after, (double) std::abs(y1[(size_t) i] - y0[(size_t) i]));
+    std::printf("  50 Hz %+.1f dB, 1 kHz %+.2f dB (ducking sırasında) | ducking dışı fark: önce %.2g, sonra %.2g\n", lowDb, highDb, before, after);
+    CHECK(L == L1, "gecikme değişti");
+    CHECK(lowDb < -25.0, "alt bant yeterince kısılmadı");
+    CHECK(std::abs(highDb) < 0.3, "üst bant etkilendi");
+    CHECK(before == 0.0 && after == 0.0, "ducking dışında çıktı değişti");
+}
+
 static void testCpu() {
     std::printf("CPU (48 kHz, 64 örnek blok, stereo, tüm özellikler)\n");
     for (double fs : {48000.0, 192000.0}) {
@@ -285,6 +374,8 @@ int main(int argc, char** argv) {
     testAnalyzer();
     testOnsetPitch();
     testModes();
+    testAdvisor();
+    testLowDuck();
     testCpu();
     std::printf("\n%d kontrol, %d hata\n", checks, failures);
     return failures ? 1 : 0;

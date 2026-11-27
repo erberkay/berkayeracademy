@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 // Editörün gerçek sinyalle ekran görüntüsü: işlemciye kick/bas döngüsü beslenir, editör PNG'ye çizilir.
 // Kullanım: kb_snapshot <parity klasörü> <çıktı.png> [mod] [sekme: -1 = basit görünüm] [görünüm 0/1/2] [tur adımı, -1 = yok]
+//           [veri: mloop | adv0 | adv1 | adv2]
 #include "../src/PluginEditor.h"
 
 #include <fstream>
@@ -26,7 +27,8 @@ int main(int argc, char** argv) {
     const int viewIdx = argc > 5 ? std::atoi(argv[5]) : 0;
     const int tourStep = argc > 6 ? std::atoi(argv[6]) : -1;
     EditorContent::autoTour = false;
-    auto k = load(dir + "/mloop_k.f64"), b = load(dir + "/mloop_b.f64");
+    const std::string src = argc > 7 ? argv[7] : "mloop";
+    auto k = load(dir + "/" + src + "_k.f64"), b = load(dir + "/" + src + "_b.f64");
     KBAlignProcessor p;
     auto layout = p.getBusesLayout();
     layout.inputBuses.getReference(0) = juce::AudioChannelSet::mono();
@@ -48,6 +50,13 @@ int main(int argc, char** argv) {
             p.processBlock(buf, midi);
             juce::MessageManager::getInstance()->runDispatchLoopUntil(1);
         }
+    // Danışman kendi thread'inde vuruşları işler: sonuç durulana kadar bekle (en çok 8 s)
+    for (int w = 0, same = 0, lastV = -1; w < 160 && same < 6; ++w) {
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(50);
+        const int v = p.advisor.version();
+        same = v == lastV ? same + 1 : 0;
+        lastV = v;
+    }
     auto& content = dynamic_cast<KBAlignEditor*>(ed.get())->getContent();
     content.setAdvanced(tab >= 0);
     if (tab >= 0) content.advancedTabs().setCurrentTabIndex(tab);

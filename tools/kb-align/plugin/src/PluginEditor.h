@@ -3,6 +3,7 @@
 #pragma once
 
 #include "PluginProcessor.h"
+#include "ui/Advice.h"
 #include "ui/Extras.h"
 #include "ui/Scope.h"
 #include "ui/Widgets.h"
@@ -103,6 +104,7 @@ private:
     ui::CurveEditor curve;
     ui::NoteTable notes;
     juce::Label xoverNote, duckNote;
+    ui::AdvicePanel adviceTab{proc, false}, adviceMini{proc, true};  // Danışman: Gelişmiş > Öneriler ve basit görünüm
 
     ui::HelpBar helpBar{*this};
     juce::TooltipWindow tooltips{this, 600};
