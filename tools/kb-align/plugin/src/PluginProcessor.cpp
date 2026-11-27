@@ -10,7 +10,7 @@ using APC = juce::AudioParameterChoice;
 using APB = juce::AudioParameterBool;
 using NR = juce::NormalisableRange<float>;
 
-static juce::String fmtMs(float v, int) { return juce::String(v, 3) + " ms"; }
+static juce::String fmtMs(float v, int) { return juce::String(v, std::abs(v) >= 10.0f ? 1 : 2) + " ms"; }
 static juce::String fmtHz(float v, int) { return juce::String(v, 1) + " Hz"; }
 static juce::String fmtDeg(float v, int) { return juce::String(v, 1) + juce::String::fromUTF8(" \xc2\xb0"); }
 static juce::String fmtPct(float v, int) { return juce::String(juce::roundToInt(v * 100)) + " %"; }
@@ -42,41 +42,36 @@ juce::AudioProcessorValueTreeState::ParameterLayout KBAlignProcessor::createLayo
     auto attrDeg = juce::AudioParameterFloatAttributes().withStringFromValueFunction(fmtDeg);
     auto attrPct = juce::AudioParameterFloatAttributes().withStringFromValueFunction(fmtPct)
                        .withValueFromStringFunction([](const juce::String& t) { return (float) (t.getDoubleValue() / 100.0); });
-    const juce::StringArray modes{juce::String::fromUTF8("Elle"), "Learn", juce::String::fromUTF8("Her vuruşta"),
-                                  juce::String::fromUTF8("Nota başına"), juce::String::fromUTF8("Sürekli takip")};
-    p.push_back(choice(pid::mode, "Mod", modes, 0));
-    p.push_back(choice(pid::autoTarget, "Otomatik hedef",
-        juce::StringArray{"Gecikme + faz", juce::String::fromUTF8("Yalnız gecikme"), juce::String::fromUTF8("Yalnız faz")}, 0));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::predelay, 1}, "Pre-delay", NR(-50.f, 50.f, 0.001f), 0.f, attrMs));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::phase, 1}, juce::String::fromUTF8("Faz döndürme"), NR(0.f, 360.f, 0.01f), 0.f, attrDeg));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::search, 1}, juce::String::fromUTF8("Arama aralığı"), NR(1.f, 50.f, 0.1f), 10.f, attrMs));
-    p.push_back(choice(pid::latency, "Gecikme modu",
-        juce::StringArray{juce::String::fromUTF8("Düşük (±10 ms)"), juce::String::fromUTF8("Tam (±50 ms)"), "Tam + lookahead"}, 1));
+    // DAW'da görünen adlar İngilizce (otomasyon şeritleri, host listeleri); arayüz kendi dilinde gösterir
+    const juce::StringArray modes{"Manual", "Learn", "Per Hit", "Per Note", "Follow"};
+    p.push_back(choice(pid::mode, "Mode", modes, 0));
+    p.push_back(choice(pid::autoTarget, "Auto Target", juce::StringArray{"Delay + Phase", "Delay Only", "Phase Only"}, 0));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::predelay, 1}, "Delay Trim", NR(-50.f, 50.f, 0.001f), 0.f, attrMs));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::phase, 1}, "Phase Trim", NR(0.f, 360.f, 0.01f), 0.f, attrDeg));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::search, 1}, "Search Range", NR(1.f, 50.f, 0.1f), 10.f, attrMs));
+    p.push_back(choice(pid::latency, "Latency Mode", juce::StringArray{"Low (+-10 ms)", "Full (+-50 ms)", "Full + Lookahead"}, 1));
     p.push_back(std::make_unique<APB>(juce::ParameterID{pid::crossover, 1}, "Crossover", false));  // ölçüm: kapalıyken kazanç en yüksek
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::fc, 1}, "Crossover frekans", NR(60.f, 400.f, 0.1f, 0.5f), 250.f, attrHz));
-    p.push_back(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{pid::learnHits, 1}, juce::String::fromUTF8("Learn vuruş sayısı"), 1, 32, 8));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::winStart, 1}, juce::String::fromUTF8("Analiz penceresi başı"), NR(0.f, 50.f, 0.1f), 0.f, attrMs));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::winMs, 1}, juce::String::fromUTF8("Analiz penceresi"), NR(20.f, 150.f, 0.1f), 150.f, attrMs));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::scOffset, 1}, "Sidechain ofseti", NR(-20.f, 20.f, 0.001f), 0.f, attrMs));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::trigHz, 1}, "Tetik frekans", NR(40.f, 400.f, 0.1f, 0.5f), 150.f, attrHz));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::fc, 1}, "Crossover Freq", NR(60.f, 400.f, 0.1f, 0.5f), 250.f, attrHz));
+    p.push_back(std::make_unique<juce::AudioParameterInt>(juce::ParameterID{pid::learnHits, 1}, "Learn Hits", 1, 32, 8));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::winStart, 1}, "Window Start", NR(0.f, 50.f, 0.1f), 0.f, attrMs));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::winMs, 1}, "Window Length", NR(20.f, 150.f, 0.1f), 150.f, attrMs));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::scOffset, 1}, "Sidechain Offset", NR(-20.f, 20.f, 0.001f), 0.f, attrMs));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::trigHz, 1}, "Trigger Freq", NR(40.f, 400.f, 0.1f, 0.5f), 150.f, attrHz));
     p.push_back(std::make_unique<APB>(juce::ParameterID{pid::bassMono, 1}, "Bass Mono", false));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::monoHz, 1}, "Mono frekans", NR(40.f, 300.f, 0.1f, 0.5f), 100.f, attrHz));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::monoWidth, 1}, juce::String::fromUTF8("Alt bant genişlik"), NR(0.f, 1.f, 0.001f), 0.f, attrPct));
-    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::duck, 1}, "Ducking", false));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::duckDepth, 1}, "Ducking derinlik", NR(0.f, 1.f, 0.001f), 0.6f, attrPct));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::duckLen, 1}, "Ducking uzunluk", NR(20.f, 1000.f, 0.1f, 0.5f), 250.f, attrMs));
-    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::duckSync, 1}, "Ducking tempo", false));
-    p.push_back(choice(pid::duckBeats, "Ducking nota",
-        juce::StringArray{"1/16", "1/8", "1/4", "1/2", juce::String::fromUTF8("1 ölçü")}, 2));
-    p.push_back(choice(pid::duckTarget, "Ducking hedef",
-        juce::StringArray{"Alt bant", juce::String::fromUTF8("Tüm sinyal")}, 0));
-    p.push_back(choice(pid::listen, "Dinleme",
-        juce::StringArray{"Bas", juce::String::fromUTF8("Kick + bas (önizleme)"), "Alt bant solo"}, 0));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::monoHz, 1}, "Mono Freq", NR(40.f, 300.f, 0.1f, 0.5f), 100.f, attrHz));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::monoWidth, 1}, "Low Width", NR(0.f, 1.f, 0.001f), 0.f, attrPct));
+    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::duck, 1}, "Duck", false));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::duckDepth, 1}, "Duck Depth", NR(0.f, 1.f, 0.001f), 0.6f, attrPct));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::duckLen, 1}, "Duck Length", NR(20.f, 1000.f, 0.1f, 0.5f), 250.f, attrMs));
+    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::duckSync, 1}, "Duck Tempo Sync", false));
+    p.push_back(choice(pid::duckBeats, "Duck Note", juce::StringArray{"1/16", "1/8", "1/4", "1/2", "1 bar"}, 2));
+    p.push_back(choice(pid::duckTarget, "Duck Target", juce::StringArray{"Low Band", "Full Signal"}, 0));
+    p.push_back(choice(pid::listen, "Listen", juce::StringArray{"Bass", "Kick + Bass (preview)", "Low Band Solo"}, 0));
     p.push_back(std::make_unique<APB>(juce::ParameterID{pid::bypass, 1}, "Bypass", false));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::contRate, 1}, juce::String::fromUTF8("Takip hızı"), NR(0.1f, 5.f, 0.01f, 0.5f), 0.5f,
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::contRate, 1}, "Follow Rate", NR(0.1f, 5.f, 0.01f, 0.5f), 0.5f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return juce::String(v, 2) + " ms/s"; })));
-    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::polarity, 1}, "Polarite", false));
-    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::outGain, 1}, juce::String::fromUTF8("Çıkış"), NR(-24.f, 12.f, 0.01f), 0.f,
+    p.push_back(std::make_unique<APB>(juce::ParameterID{pid::polarity, 1}, "Polarity", false));
+    p.push_back(std::make_unique<APF>(juce::ParameterID{pid::outGain, 1}, "Output", NR(-24.f, 12.f, 0.01f), 0.f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction([](float v, int) { return (v > 0 ? "+" : "") + juce::String(v, 1) + " dB"; })
             .withValueFromStringFunction([](const juce::String& t) { return (float) t.getDoubleValue(); }).withLabel("dB")));
     return {p.begin(), p.end()};
@@ -113,6 +108,8 @@ bool KBAlignProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const 
 }
 
 void KBAlignProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
+    // host'un prepareToPlay'i ile ertelenen yeniden kurulum (mesaj thread'i) aynı anda çalışmasın
+    const juce::ScopedLock pl(prepareLock);
     // analiz thread'i motorun tamponlarını okur: yeniden kurulumda durdurulur
     thread.stopThread(2000);
     advThread.stopThread(2000);
@@ -137,6 +134,7 @@ void KBAlignProcessor::releaseResources() {}
 
 void KBAlignProcessor::reconfigure() {
     // yalnız gecikme modu ya da crossover değişince: ses durur, motor yeniden kurulur, host'a yeni gecikme bildirilir
+    const juce::ScopedLock pl(prepareLock);
     suspendProcessing(true);
     prepareToPlay(sr, maxBlock);
     suspendProcessing(false);
@@ -349,13 +347,13 @@ void KBAlignProcessor::copyAtoB() {
 struct FactoryPreset { const char* name; std::vector<std::pair<const char*, float>> v; };
 static const std::vector<FactoryPreset>& factory() {
     static const std::vector<FactoryPreset> f = {
-        {"Varsayılan", {}},
-        {"Learn — sabit bas (techno)", {{pid::mode, 1}, {pid::search, 10}}},
-        {"Nota başına — retrigger synth", {{pid::mode, 3}, {pid::search, 10}}},
-        {"Her vuruşta — serbest faz (lookahead)", {{pid::mode, 2}, {pid::latency, 2}, {pid::search, 10}}},
-        {"Sürekli takip — canlı", {{pid::mode, 4}, {pid::latency, 0}, {pid::contRate, 0.5f}}},
-        {"Yalnız faz — gecikmesiz düzen", {{pid::mode, 1}, {pid::autoTarget, 2}}},
-        {"Ducking + Bass Mono", {{pid::duck, 1}, {pid::bassMono, 1}, {pid::duckSync, 1}}},
+        {"Default", {}},
+        {"Learn - steady bass (techno)", {{pid::mode, 1}, {pid::search, 10}}},
+        {"Per Note - retriggered synth", {{pid::mode, 3}, {pid::search, 10}}},
+        {"Per Hit - free-running phase (lookahead)", {{pid::mode, 2}, {pid::latency, 2}, {pid::search, 10}}},
+        {"Follow - live", {{pid::mode, 4}, {pid::latency, 0}, {pid::contRate, 0.5f}}},
+        {"Phase only - no time shift", {{pid::mode, 1}, {pid::autoTarget, 2}}},
+        {"Duck + Bass Mono", {{pid::duck, 1}, {pid::bassMono, 1}, {pid::duckSync, 1}}},
     };
     return f;
 }

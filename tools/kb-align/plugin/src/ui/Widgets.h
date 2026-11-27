@@ -8,12 +8,19 @@
 
 namespace kb::ui {
 
+// ── Dil: arayüz İngilizce (varsayılan) ya da Türkçe. DAW'a giden parametre adları hep İngilizce.
+bool isTurkish();
+void setTurkish(bool tr);
+inline juce::String L(const char* en, const char* tr) { return juce::String::fromUTF8(isTurkish() ? tr : en); }
+// Türkçe/İngilizce sayı: ondalık ayırıcı (TR virgül), gerçek eksi işareti, −0 yok
+juce::String fmtNum(double v, int decimals, bool plusSign = false);
+
 // Renk körlüğüne uygun (Okabe–Ito) iz renkleri; izler çizgi tipiyle de ayrılır
 namespace col {
 inline const juce::Colour bg{0xff0b0b0e}, panel{0xff15151b}, panelHi{0xff1d1d25}, line{0x22ffffff}, grid{0x14ffffff};
 inline const juce::Colour fg{0xfff3efe6}, fgSoft{0xffb9b3a8}, fgFaint{0xff8a857c};
 inline const juce::Colour accent{0xffe8b84b};
-inline const juce::Colour kick{0xffe69f00}, bass{0xff56b4e9}, sum{0xfff0e442}, ok{0xff009e73}, warn{0xffd55e00};
+inline const juce::Colour kick{0xffe69f00}, bass{0xff56b4e9}, sum{0xffd9d4ca}, ok{0xff009e73}, warn{0xffd55e00};
 } // namespace col
 
 class KBLook : public juce::LookAndFeel_V4 {
@@ -26,8 +33,26 @@ public:
     void drawToggleButton(juce::Graphics&, juce::ToggleButton&, bool over, bool down) override;
     juce::Font getComboBoxFont(juce::ComboBox&) override { return juce::FontOptions(13.0f); }
     juce::Font getTextButtonFont(juce::TextButton&, int) override { return juce::FontOptions(13.0f, juce::Font::bold); }
-    juce::Font getLabelFont(juce::Label&) override { return juce::FontOptions(12.5f); }
+    // etiketin kendi yazı tipi (başlık gibi); dokunulmamış (JUCE varsayılanı 15 px) etiketler 12,5 px
+    juce::Font getLabelFont(juce::Label& l) override {
+        const auto f = l.getFont();
+        return std::abs(f.getHeight() - 15.0f) < 0.01f && !f.isBold() ? juce::Font(juce::FontOptions(12.5f)) : f;
+    }
+    // gömülü Inter: normal → Regular, kalın → SemiBold, büyük kalın (≥ 19 px) → Display Bold
+    juce::Typeface::Ptr getTypefaceForFont(const juce::Font&) override;
+    // sekmeler: arayüzün geri kalanıyla aynı hap biçimi
+    void drawTabButton(juce::TabBarButton&, juce::Graphics&, bool over, bool down) override;
+    int getTabButtonBestWidth(juce::TabBarButton&, int depth) override;
+    void drawTabbedButtonBarBackground(juce::TabbedButtonBar&, juce::Graphics&) override {}
+    void drawTabAreaBehindFrontButton(juce::TabbedButtonBar&, juce::Graphics&, int w, int h) override;
+    void drawTooltip(juce::Graphics&, const juce::String& text, int w, int h) override;
+    juce::Rectangle<int> getTooltipBounds(const juce::String& text, juce::Point<int> pos, juce::Rectangle<int> parent) override;
+private:
+    juce::Typeface::Ptr tfRegular, tfSemi, tfDisplay;
 };
+
+// Basit/çip düğmesi: açıkken kendi rengiyle dolar (osiloskop izleri gibi)
+void makeChip(juce::TextButton& b, const juce::String& text, juce::Colour on, const juce::String& tip);
 
 // Etiketli parametre kontrolü (slider + değer kutusu + APVTS bağlantısı)
 class ParamSlider : public juce::Component {
@@ -53,7 +78,7 @@ private:
 
 class ParamCombo : public juce::Component {
 public:
-    ParamCombo(juce::AudioProcessorValueTreeState& s, const char* id, const juce::String& label);
+    ParamCombo(juce::AudioProcessorValueTreeState& s, const char* id, const juce::String& label, const juce::StringArray& items = {});
     void resized() override;
     juce::ComboBox box;
 private:
@@ -64,7 +89,7 @@ private:
 // Ducking eğri düzenleyici: tık = nokta ekle, çift tık = sil, sürükle = taşı, Alt+sürükle = eğrilik
 class CurveEditor : public juce::Component {
 public:
-    explicit CurveEditor(KBAlignProcessor& p) : proc(p) { setWantsKeyboardFocus(true); setTitle(juce::String::fromUTF8("Ducking eğrisi")); }
+    explicit CurveEditor(KBAlignProcessor& p) : proc(p) { setWantsKeyboardFocus(true); setTitle(L("Ducking curve", "Ducking eğrisi")); }
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
@@ -94,7 +119,8 @@ private:
     void timerCallback() override { refresh(); }
     KBAlignProcessor& proc;
     juce::TableListBox table;
-    juce::TextButton clearAll{juce::String::fromUTF8("Tabloyu temizle")};
+    juce::TextButton clearAll;
+    int curNote = -1;
     juce::Label hint;
     std::vector<std::pair<int, NoteEntry>> rows;
 };

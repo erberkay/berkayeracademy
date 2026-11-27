@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
+// Editör (arayüz v4): İngilizce varsayılan, Türkçe seçeneği; dil değişince içerik yeniden kurulur.
 #pragma once
 
 #include "PluginProcessor.h"
@@ -10,17 +11,47 @@
 
 namespace kb {
 
-// Büyük okunur gösterge: uygulanan kaydırma, faz, toplamdaki kazanç, nota
+// Sonuç kartı: alt bant kazancı (büyük), uygulanan kaydırma / faz / nota
 class Readout : public juce::Component {
 public:
-    Readout(KBAlignProcessor& p, ui::MeterPanel& m) : proc(p), meters(m) {
-        setTitle(juce::String::fromUTF8("Uygulanan hizalama"));
-        setDescription(juce::String::fromUTF8("Şu an uygulanan kaydırma (ms) ve faz (°), ve kick + bas toplamının hizalamayla ne kadar değiştiği."));
-    }
+    Readout(KBAlignProcessor& p, ui::MeterPanel& m) : proc(p), meters(m) {}
     void paint(juce::Graphics&) override;
 private:
     KBAlignProcessor& proc;
     ui::MeterPanel& meters;
+};
+
+// Görünüm sekmeleri (Waveform · Phase · Spectrum · XY): seçili olanın altı çizili
+class ViewTabs : public juce::Component {
+public:
+    explicit ViewTabs(juce::StringArray names) : items(std::move(names)) { setWantsKeyboardFocus(true); }
+    void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent&) override;
+    bool keyPressed(const juce::KeyPress&) override;
+    void setSelected(int i) { sel = i; repaint(); }
+    std::function<void(int)> onChange;
+    juce::StringArray tips;
+private:
+    juce::Rectangle<float> itemRect(int i) const;
+    juce::StringArray items;
+    int sel = 0;
+};
+
+// Basit görünümdeki 3 adım: yapıldıkça işaretlenir
+class GuideSteps : public juce::Component {
+public:
+    void set(bool a, bool b, bool c) { if (a != done[0] || b != done[1] || c != done[2]) { done[0] = a; done[1] = b; done[2] = c; repaint(); } }
+    void paint(juce::Graphics&) override;
+private:
+    bool done[3] = {false, false, false};
+};
+
+// Kart zemini (başlıklı panel)
+class Card : public juce::Component {
+public:
+    explicit Card(juce::String t = {}) : title(std::move(t)) { setInterceptsMouseClicks(false, true); }
+    void paint(juce::Graphics&) override;
+    juce::String title;
 };
 
 // Tüm içerik sabit taban boyutta (1180×780) çizilir; "UI ölçeği" %75–200 dönüşümle uygulanır.
@@ -34,9 +65,10 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     std::function<void(float)> onScale;
+    std::function<void()> onLanguage;  // dil değişti: editör içeriği yeniden kurar
 
     void setAdvanced(bool adv);
-    void setView(int v);  // 0 dalga, 1 faz, 2 XY
+    void setView(int v);  // 0 dalga, 1 faz, 2 spektrum, 3 XY
     void startTour(int step = 0);
     void maybeAutoTour();
     juce::TabbedComponent& advancedTabs() { return tabs; }
@@ -47,50 +79,51 @@ private:
     void loadPreset();
     void showHelpMenu();
     void stepPreset(int dir);
+    void updateEnablement();
     juce::File presetDir() const;
 
     KBAlignProcessor& proc;
-    ui::KBLook look;
+    juce::SharedResourcePointer<ui::KBLook> look;  // ortak: varsayılan L&F (gömülü yazı tipi)
     bool advanced = false;
     int view = 0;
 
     // üst çubuk
     juce::Label title, subtitle;
-    juce::TextButton presetPrev{juce::String::fromUTF8("‹")}, presetNext{juce::String::fromUTF8("›")};
+    juce::Rectangle<int> brandMark;
+    juce::TextButton presetPrev, presetNext;
     juce::ComboBox factory, scale;
-    juce::TextButton save{"Kaydet"}, load{juce::String::fromUTF8("Aç")};
-    juce::TextButton ab{"A"}, copyAB{juce::String::fromUTF8("A→B")}, undoB{juce::String::fromUTF8("↶")}, redoB{juce::String::fromUTF8("↷")};
-    juce::TextButton viewSimple{"Basit"}, viewAdv{juce::String::fromUTF8("Gelişmiş")};
-    juce::TextButton help{"?"};
-    juce::TextButton compare;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> compareAtt;
+    juce::TextButton save, load, copyAB, undoB, redoB, help;
+    ui::TwoWaySwitch abSwitch{"A", "B"}, viewSwitch{"", ""}, langSwitch{"EN", "TR"};
 
-    // mod çubuğu
+    // kontrol çubuğu
+    ui::StatusPill statusPill;
     ui::SegmentedChoice modeSeg;
-    juce::TextButton learn{juce::String::fromUTF8("Learn'ü başlat")};
-    ui::ParamCombo autoTarget, latency;
-    juce::Label status;
+    ui::ParamCombo modeCombo, autoTarget, latency;
+    ui::PrimaryButton learn;
 
     // orta alan
-    juce::TextButton vWave{"Dalga"}, vPhase{"Faz"}, vXY{"XY"};
+    ViewTabs viewTabs;
     ui::ScopeView scope;
     ui::MeterPanel meters;
-    ui::PlotView phasePlot, xyPlot;
+    ui::PlotView phasePlot, xyPlot, specPlot;
     juce::ComboBox trig, tempoBeats;
     juce::Slider zoom, pre, viewHz, avg;
-    juce::ToggleButton lowView{juce::String::fromUTF8("Alt bant görünümü")}, persist{juce::String::fromUTF8("Kalıcılık")}, freeze{"Dondur"},
-        tKick{"Kick"}, tBass{"Bas"}, tSum{"Toplam"}, tBefore{juce::String::fromUTF8("Önceki bas")};
+    juce::ToggleButton lowView;
+    juce::TextButton persist, freeze, tKick, tBass, tSum, tBefore;  // çipler
     juce::Label zoomL, preL, viewL, avgL;
 
     // sağ sütun
+    ui::TwoWaySwitch compare{"", ""};
+    std::unique_ptr<juce::ParameterAttachment> compareAtt;
     Readout readout;
+    Card trimCard, meterCard;
     ui::ParamSlider predelay, phase, outGain;
     ui::ParamToggle polarity;
-    ui::LevelMeter mKick{"KICK"}, mIn{juce::String::fromUTF8("GİRİŞ")}, mOut{juce::String::fromUTF8("ÇIKIŞ")};
+    ui::LevelMeter mKick{"KICK"}, mIn{"IN"}, mOut{"OUT"};
 
     // alt alan — basit
     juce::Component simplePane;
-    juce::Label stepsTitle, step1, step2, step3;
+    GuideSteps guide;
     ui::ParamToggle sCrossover, sBassMono, sDuck;
     ui::ParamSlider sFc;
 
@@ -103,14 +136,15 @@ private:
     ui::ParamCombo listen, duckBeats, duckTarget;
     ui::CurveEditor curve;
     ui::NoteTable notes;
-    juce::Label xoverNote, duckNote;
-    ui::AdvicePanel adviceTab{proc, false}, adviceMini{proc, true};  // Danışman: Gelişmiş > Öneriler ve basit görünüm
+    juce::Label xoverNote, alignNote;
+    ui::AdvicePanel adviceTab{proc, false}, adviceMini{proc, true};
 
     ui::HelpBar helpBar{*this};
     juce::TooltipWindow tooltips{this, 600};
     std::unique_ptr<ui::TourOverlay> tour;
     std::unique_ptr<juce::FileChooser> chooser;
-    int tick = 0;
+    int tick = 0, lastOnsets = 0;
+    bool compared = false;
 };
 
 class KBAlignEditor : public juce::AudioProcessorEditor, private juce::Timer {
@@ -118,11 +152,13 @@ public:
     explicit KBAlignEditor(KBAlignProcessor& p);
     void resized() override {}
     void paint(juce::Graphics& g) override { g.fillAll(ui::col::bg); }
-    EditorContent& getContent() { return content; }
+    EditorContent& getContent() { return *content; }
 private:
-    void timerCallback() override { stopTimer(); content.maybeAutoTour(); }
+    void timerCallback() override { stopTimer(); content->maybeAutoTour(); }
+    void build();
     void applyScale(float s);
-    EditorContent content;
+    KBAlignProcessor& proc;
+    std::unique_ptr<EditorContent> content;
     float scale = 1.0f;
 };
 

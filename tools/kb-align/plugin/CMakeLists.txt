@@ -46,6 +46,9 @@ if(KB_BUILD_PLUGIN)
         VST3_CATEGORIES Fx Tools
         AU_MAIN_TYPE kAudioUnitType_Effect)
 
+    # gömülü yazı tipi (Inter, SIL OFL 1.1 — resources/fonts/OFL.txt): her işletim sisteminde aynı görünüm
+    juce_add_binary_data(kb_fonts NAMESPACE KBFonts SOURCES
+        resources/fonts/Inter-Regular.otf resources/fonts/Inter-SemiBold.otf resources/fonts/InterDisplay-Bold.otf)
     target_sources(KBAlign PRIVATE
         src/PluginProcessor.cpp
         src/PluginEditor.cpp
@@ -56,7 +59,10 @@ if(KB_BUILD_PLUGIN)
     target_compile_definitions(KBAlign PUBLIC
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0
         JUCE_DISPLAY_SPLASH_SCREEN=0)
-    target_link_libraries(KBAlign PRIVATE kbcore
+    if(MSVC)
+        target_compile_options(KBAlign PRIVATE /utf-8)  # Türkçe metinler UTF-8 kaynakta
+    endif()
+    target_link_libraries(KBAlign PRIVATE kbcore kb_fonts
         juce::juce_audio_utils juce::juce_dsp
         PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
 

@@ -26,6 +26,7 @@ Bu testleri ben (Claude) yapamıyorum: Ableton yalnız senin bilgisayarında var
 | 15 | **Öneriler:** Bas = `05_…`, 16 vuruş çal. Öneriler panelini oku. Sonra kick'i (Simpler) panelin önerdiği kadar akort et (Transp/Detune), "Yeniden ölç". | Panel kick frekansını, bas notasını, akort önerisini gösterir. Akorttan sonra "Toplam alt bant" önerinin söylediği kadar artar. **Kulakla:** akortlu kick sana hâlâ iyi geliyor mu? (±2 yarım ses sınırı burada doğrulanır.) | |
 | 16 | **Retrigger:** Operator'da bir bas çal (osilatör R kapalı), sonra R açık. | Kapalıyken "serbest çalışıyor" + "Her vuruşta (Tam+LA)" düğmesi; açıkken "aynı fazdan başlıyor". | |
 | 17 | **Alt bant ducking:** crossover kapalı, Ducking aç (hedef: Alt bant), derinlik %100. "Alt bant solo" ile ve normal dinle. | Kick vurduğunda yalnız sub kısılır, basın üstü (tını) kesilmez; tıkırtı yok. | |
+| 18 | **Dil:** üst çubukta EN → TR → EN. | Bütün metinler değişir, ayarlar ve ses kesilmeden devam eder. Ableton'ın otomasyon listesindeki parametre adları İngilizce kalır. | |
 
 ## Sonuçlar
 

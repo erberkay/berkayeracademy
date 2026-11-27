@@ -14,6 +14,11 @@ SegmentedChoice::SegmentedChoice(juce::AudioProcessorValueTreeState& s, const ch
         b->setClickingTogglesState(false);
         b->setRadioGroupId(0x5e9);
         b->setTitle(labels[i]);
+        b->getProperties().set("flat", true);
+        b->setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
+        b->setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xff2c2c37));
+        b->setColour(juce::TextButton::textColourOnId, col::accent);
+        b->setColour(juce::TextButton::textColourOffId, col::fgSoft);
         if (i < tips.size()) b->setTooltip(tips[i]);
         b->onClick = [this, i] { if (att) att->setValueAsCompleteGesture((float) i); };
         addAndMakeVisible(b);
@@ -29,17 +34,20 @@ void SegmentedChoice::sync(float v) {
 }
 
 void SegmentedChoice::resized() {
-    auto r = getLocalBounds();
+    auto r = getLocalBounds().reduced(3);
     const int n = buttons.size();
     for (int i = 0; i < n; ++i) {
         const int w = r.getWidth() / (n - i);
-        buttons[i]->setBounds(r.removeFromLeft(w).reduced(2, 0));
+        buttons[i]->setBounds(r.removeFromLeft(w).reduced(1, 0));
     }
 }
 
 void SegmentedChoice::paint(juce::Graphics& g) {
-    g.setColour(col::panel);
-    g.fillRoundedRectangle(getLocalBounds().toFloat(), (float) getHeight() / 2);
+    auto r = getLocalBounds().toFloat().reduced(0.5f);
+    g.setColour(juce::Colour(0xff111117));
+    g.fillRoundedRectangle(r, r.getHeight() / 2);
+    g.setColour(col::line);
+    g.drawRoundedRectangle(r, r.getHeight() / 2, 1.0f);
 }
 
 // ───────────────────────────── LevelMeter
@@ -64,8 +72,8 @@ void LevelMeter::paint(juce::Graphics& g) {
         return bar.getBottom() - (db + 60.0f) / 66.0f * bar.getHeight();  // −60…+6 dBFS
     };
     const float y = toY(level);
-    juce::ColourGradient grad(col::ok, 0, bar.getBottom(), col::warn, 0, toY(1.0f), false);
-    grad.addColour(0.75, col::sum);
+    juce::ColourGradient grad(col::bass, 0, bar.getBottom(), col::warn, 0, toY(1.0f), false);
+    grad.addColour(0.8, col::accent);
     g.setGradientFill(grad);
     g.fillRoundedRectangle(bar.withTop(y), 3);
     g.setColour(hold >= 0.999f ? col::warn : col::fg);
@@ -100,10 +108,12 @@ void HelpBar::paint(juce::Graphics& g) {
 // ───────────────────────────── TourOverlay
 TourOverlay::TourOverlay(std::vector<Step> s) : steps(std::move(s)) {
     setWantsKeyboardFocus(true);
-    setTitle("Tur");
-    next.setButtonText(juce::String::fromUTF8("İleri →"));
-    back.setButtonText(juce::String::fromUTF8("← Geri"));
-    skip.setButtonText(juce::String::fromUTF8("Turu kapat"));
+    setTitle(L("Tour", "Tur"));
+    next.setButtonText(L("Next", "İleri"));
+    back.setButtonText(L("Back", "Geri"));
+    skip.setButtonText(L("Skip tour", "Turu kapat"));
+    next.setColour(juce::TextButton::buttonColourId, col::accent);
+    next.setColour(juce::TextButton::textColourOffId, col::bg);
     next.onClick = [this] { go(idx + 1); };
     back.onClick = [this] { go(idx - 1); };
     skip.onClick = [this] { if (onFinish) onFinish(); };
@@ -114,8 +124,8 @@ TourOverlay::TourOverlay(std::vector<Step> s) : steps(std::move(s)) {
 void TourOverlay::go(int i) {
     if (i >= (int) steps.size()) { if (onFinish) onFinish(); return; }
     idx = juce::jlimit(0, (int) steps.size() - 1, i);
-    back.setEnabled(idx > 0);
-    next.setButtonText(idx + 1 == (int) steps.size() ? juce::String::fromUTF8("Başla ✓") : juce::String::fromUTF8("İleri →"));
+    back.setVisible(idx > 0);
+    next.setButtonText(idx + 1 == (int) steps.size() ? L("Get started", "Başla") : L("Next", "İleri"));
     resized();
     repaint();
     setDescription(steps[(size_t) idx].title + ". " + steps[(size_t) idx].body);  // ekran okuyucu
@@ -130,7 +140,13 @@ juce::Rectangle<float> TourOverlay::targetRect() const {
 }
 
 juce::Rectangle<int> TourOverlay::bubbleRect() const {
-    const int w = 380, h = 188;
+    const int w = 400;
+    juce::AttributedString as;
+    as.append(steps[(size_t) idx].body, juce::FontOptions(13.5f), col::fg);
+    as.setLineSpacing(2.0f);
+    juce::TextLayout tl;
+    tl.createLayout(as, (float) w - 32);
+    const int h = 14 + 24 + 4 + (int) std::ceil(tl.getHeight()) + 14 + 34 + 14;
     auto tr = targetRect();
     auto area = getLocalBounds().reduced(16);
     if (tr.isEmpty()) return juce::Rectangle<int>(w, h).withCentre(area.getCentre());
@@ -173,7 +189,8 @@ void TourOverlay::paint(juce::Graphics& g) {
     g.setColour(col::accent);
     g.setFont(juce::FontOptions(16.0f, juce::Font::bold));
     g.drawText(steps[(size_t) idx].title, top.withTrimmedRight(50), juce::Justification::centredLeft);
-    in.removeFromBottom(36);
+    in.removeFromBottom(34);
+    in.removeFromTop(4);
     g.setColour(col::fg);
     g.setFont(juce::FontOptions(13.5f));
     juce::AttributedString as;
@@ -186,6 +203,96 @@ bool TourOverlay::keyPressed(const juce::KeyPress& k) {
     if (k == juce::KeyPress::escapeKey) { if (onFinish) onFinish(); return true; }
     if (k == juce::KeyPress::returnKey || k.getKeyCode() == juce::KeyPress::rightKey) { go(idx + 1); return true; }
     if (k.getKeyCode() == juce::KeyPress::leftKey) { go(idx - 1); return true; }
+    return false;
+}
+
+// ───────────────────────────── StatusPill
+void StatusPill::set(int state, const juce::String& text, bool pulse) {
+    if (pulse) glow = 1.0f;
+    else glow *= 0.82f;
+    if (state != st || text != txt || glow > 0.02f) { st = state; txt = text; repaint(); }
+}
+
+void StatusPill::paint(juce::Graphics& g) {
+    auto r = getLocalBounds().toFloat().reduced(0.5f);
+    const juce::Colour c = st == 1 ? col::ok : st == 2 ? col::warn : st == 3 ? col::accent : col::fgFaint;
+    g.setColour(c.withAlpha(0.10f));
+    g.fillRoundedRectangle(r, r.getHeight() / 2);
+    g.setColour(c.withAlpha(0.45f));
+    g.drawRoundedRectangle(r, r.getHeight() / 2, 1.0f);
+    auto led = juce::Rectangle<float>(9, 9).withCentre({r.getX() + 15, r.getCentreY()});
+    if (st == 1 && glow > 0.02f) { g.setColour(c.withAlpha(0.35f * glow)); g.fillEllipse(led.expanded(5 * glow)); }
+    g.setColour(st == 1 ? c.interpolatedWith(juce::Colours::white, 0.35f * glow) : c);
+    g.fillEllipse(led);
+    g.setColour(col::fg);
+    g.setFont(juce::FontOptions(12.5f, juce::Font::bold));
+    g.drawFittedText(txt, r.withTrimmedLeft(28).withTrimmedRight(12).toNearestInt(), juce::Justification::centredLeft, 1, 0.85f);
+}
+
+// ───────────────────────────── PrimaryButton
+void PrimaryButton::paintButton(juce::Graphics& g, bool over, bool down) {
+    auto r = getLocalBounds().toFloat().reduced(0.5f);
+    const float rad = r.getHeight() / 2;
+    auto base = col::accent;
+    if (!isEnabled()) base = base.withAlpha(0.4f);
+    else if (down) base = base.darker(0.15f);
+    else if (over) base = base.brighter(0.08f);
+    if (progress >= 0) {
+        g.setColour(base.withAlpha(0.22f));
+        g.fillRoundedRectangle(r, rad);
+        juce::Path clip;
+        clip.addRoundedRectangle(r, rad);
+        g.saveState();
+        g.reduceClipRegion(clip);
+        g.setColour(base);
+        g.fillRect(r.withWidth(r.getWidth() * juce::jlimit(0.0f, 1.0f, progress)));
+        g.restoreState();
+        g.setColour(base);
+        g.drawRoundedRectangle(r, rad, 1.0f);
+    } else {
+        g.setColour(base);
+        g.fillRoundedRectangle(r, rad);
+    }
+    if (hasKeyboardFocus(false)) { g.setColour(col::fg); g.drawRoundedRectangle(r.reduced(2), rad - 2, 1.5f); }
+    g.setColour(progress >= 0 && progress < 0.55f ? col::fg : col::bg);
+    g.setFont(juce::FontOptions(14.0f, juce::Font::bold));
+    juce::String t = getButtonText();
+    if (done && progress < 0) t = juce::String::fromUTF8("\u2713  ") + t;
+    g.drawText(t, r, juce::Justification::centred);
+}
+
+// ───────────────────────────── TwoWaySwitch
+void TwoWaySwitch::paint(juce::Graphics& g) {
+    auto r = getLocalBounds().toFloat().reduced(0.5f);
+    g.setColour(juce::Colour(0xff111117));
+    g.fillRoundedRectangle(r, r.getHeight() / 2);
+    g.setColour(hasKeyboardFocus(false) ? col::accent : col::line);
+    g.drawRoundedRectangle(r, r.getHeight() / 2, 1.0f);
+    auto in = r.reduced(3);
+    auto a = in.withWidth(in.getWidth() / 2), b = in.withTrimmedLeft(in.getWidth() / 2);
+    auto sel = second ? b : a;
+    g.setColour(second ? onSecond : onFirst);
+    g.fillRoundedRectangle(sel, sel.getHeight() / 2);
+    g.setFont(juce::FontOptions(fontSize, juce::Font::bold));
+    g.setColour(second ? col::fgSoft : col::bg);
+    g.drawText(la, a, juce::Justification::centred);
+    g.setColour(second ? col::bg : col::fgSoft);
+    g.drawText(lb, b, juce::Justification::centred);
+}
+
+void TwoWaySwitch::mouseDown(const juce::MouseEvent& e) {
+    const bool s = e.position.x >= getWidth() / 2.0f;
+    if (s != second) { second = s; repaint(); if (onChange) onChange(second); }
+}
+
+bool TwoWaySwitch::keyPressed(const juce::KeyPress& k) {
+    if (k == juce::KeyPress::spaceKey || k == juce::KeyPress::returnKey || k.getKeyCode() == juce::KeyPress::leftKey ||
+        k.getKeyCode() == juce::KeyPress::rightKey) {
+        second = k.getKeyCode() == juce::KeyPress::leftKey ? false : k.getKeyCode() == juce::KeyPress::rightKey ? true : !second;
+        repaint();
+        if (onChange) onChange(second);
+        return true;
+    }
     return false;
 }
 

@@ -10,6 +10,7 @@ namespace kb::ui {
 struct ScopeFrame {
     std::vector<float> kick, bass, sum, bassIn;  // görüntü filtresi uygulanmış (alt bant görünümü açıksa)
     std::vector<float> mk, mb, mbi;  // ölçüm için: hizalamanın yapıldığı alt bant (LR4, crossover frekansı)
+    std::vector<float> rk, rb;       // filtresiz kick ve bas çıkışı (spektrum görünümü)
     int64_t c0 = 0;          // ilk örneğin içerik zamanı
     double fs = 48000;
     double preMs = 10;       // tetikten önceki süre
@@ -72,11 +73,13 @@ public:
     void update();
     void paintPhase(juce::Graphics&, juce::Rectangle<float>) const;
     void paintXY(juce::Graphics&, juce::Rectangle<float>) const;
+    void paintSpectrum(juce::Graphics&, juce::Rectangle<float>) const;
     double correlation() const { return corr; }
     double rmsGainDb() const { return rmsAfter - rmsBefore; }
     double peakGainDb() const { return peakAfter - peakBefore; }
     bool hasData() const { return has; }
     std::function<void()> onUpdate;
+    bool compact = false;  // basit görünüm: yalnız ana ölçüler
 private:
     bool has = false;
     KBAlignProcessor& proc;
@@ -86,6 +89,7 @@ private:
     std::vector<juce::Point<float>> xy;
     std::deque<std::vector<std::complex<double>>> gkb;
     std::deque<std::vector<double>> gkk, gbb;
+    std::vector<float> specHz, specK, specB;  // 20–500 Hz, dB (yumuşatılmış)
 };
 
 } // namespace kb::ui
@@ -99,8 +103,9 @@ public:
         auto r = getLocalBounds().toFloat();
         g.setColour(col::panel);
         g.fillRoundedRectangle(r, 10);
-        if (kind == 0) meters.paintPhase(g, r.reduced(14, 12));
-        else meters.paintXY(g, r.reduced(14, 12));
+        if (kind == 0) meters.paintPhase(g, r.reduced(16, 12));
+        else if (kind == 1) meters.paintXY(g, r.reduced(16, 12));
+        else meters.paintSpectrum(g, r.reduced(16, 12));
     }
 private:
     MeterPanel& meters;

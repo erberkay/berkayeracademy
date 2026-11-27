@@ -60,6 +60,13 @@
 - Düzeltilen eski hata: parametre değişiminde ertelenen yeniden kurulum, eklenti silindikten sonra çalışabiliyordu (pluginval parametre fuzz'ında çöktü) → `AsyncUpdater`.
 - pluginval strictness 10 SUCCESS · clap-validator 0 hata · kb_tests 90/90 · kb_plugin_test 0 hata · pytest 25/25. Görüntüler `docs/ekran/v3-*.png`.
 
+## Arayüz v4 — endüstri standardı, İngilizce + Türkçe (2026-11-27)
+- Referans: FUSER (Mastering The Mix) — otomatik faz döndürme (tek sefer), elle ±180°, frekans ekranında çakışma bölgeleri, dinamik EQ ile "Resolve". KB-Align'da karşılıkları: zaman + faz birlikte, nota/vuruş başına, kick'e kilitli osiloskop, Öneriler ve yeni **Spectrum** görünümü (kick ve bas spektrumu, örtüşen bölge kırmızı). Bağımsız bir tasarım eleştirisi (alt ajan) alındı; bulguların çoğu uygulandı.
+- Dil: arayüz varsayılan İngilizce, üst çubukta EN | TR (seçim makineye kaydedilir, içerik yeniden kurulur). DAW'a giden parametre adları, seçenekleri ve fabrika presetleri İngilizce (otomasyon şeritleri). Kayıtlı durumlar normalize değer tuttuğu için eski setler etkilenmez.
+- Gömülü yazı tipi Inter (SIL OFL 1.1, `plugin/resources/fonts/OFL.txt`): her işletim sisteminde aynı görünüm.
+- Düzen: üst çubuk (BE Akademi işareti, presetler, A|B, Simple|Advanced, EN|TR, ölçek), sidechain ışığı (her kick'te yanar), birincil Learn düğmesi (ilerleme çubuğu), ÖNCE | SONRA anahtarı, büyük "alt bant kazancı" sonuç kartı, Elle ince ayar kartı (döner düğmeler, Ters çevir, seviye ölçerleri), iki yönlü korelasyon ölçerleri, görünüm sekmeleri (Waveform · Phase · Spectrum · XY), basit görünümde kendini işaretleyen 3 adım; bağımlı kontroller kapalıyken soluk; tur 10 adım, hedefe bağlı, altın "İleri".
+- Düzeltilen yarış durumu: host'un `prepareToPlay`'i ile ertelenen yeniden kurulum aynı anda çalışabiliyordu → kilit.
+
 ## Aşama 6 — Yayın hazırlığı 🔧 (satış yok, AGPLv3, Ders Paneli) — betikler ve kart hazır; Mac paketi + deploy bekliyor → `docs/yayin.md`
 
 ## Açık VARSAYIM'lar

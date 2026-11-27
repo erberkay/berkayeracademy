@@ -12,7 +12,7 @@ namespace kb::ui {
 struct AdviceCard {
     enum State { Waiting = 0, Good = 1, Suggest = 2, Info = 3 };
     State state = Waiting;
-    juce::String title, headline, detail, action;
+    juce::String title, headline, detail, action, actionShort;  // actionShort: kısa görünümün düğmesi
 };
 
 struct AdviceContext {

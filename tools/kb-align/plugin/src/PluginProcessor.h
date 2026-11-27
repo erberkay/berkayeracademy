@@ -136,6 +136,7 @@ private:
     int maxBlock = 512, numCh = 2;
     std::atomic<bool> scConnected{false};
     std::atomic<bool> needReconfigure{false};
+    juce::CriticalSection prepareLock;  // prepareToPlay ↔ reconfigure
     int currentProgram = 0;
     std::vector<CurvePoint> curveAudio = placeholderCurve();  // ses thread'i kopyası
     std::atomic<bool> curveDirty{true};

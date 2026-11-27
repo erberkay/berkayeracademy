@@ -2,7 +2,23 @@
 // Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 #include "Widgets.h"
 
+#include <BinaryData.h>
+
 namespace kb::ui {
+
+static bool gTurkish = false;
+bool isTurkish() { return gTurkish; }
+void setTurkish(bool tr) { gTurkish = tr; }
+
+juce::String fmtNum(double v, int decimals, bool plusSign) {
+    const double q = std::pow(10.0, decimals);
+    double r = std::round(v * q) / q;
+    if (r == 0.0) r = 0.0;  // −0 → 0
+    juce::String s = juce::String(std::abs(r), decimals);
+    if (isTurkish()) s = s.replaceCharacter('.', ',');
+    if (r < 0) return juce::String::fromUTF8("\u2212") + s;
+    return (plusSign && r > 0 ? "+" : "") + s;
+}
 
 juce::String noteName(int midi) {
     static const char* n[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
@@ -41,6 +57,78 @@ KBLook::KBLook() {
     setColour(juce::CaretComponent::caretColourId, col::accent);
     setColour(juce::TooltipWindow::backgroundColourId, col::panelHi);
     setColour(juce::TooltipWindow::textColourId, col::fg);
+    setColour(juce::TooltipWindow::outlineColourId, col::line);
+    tfRegular = juce::Typeface::createSystemTypefaceFor(KBFonts::InterRegular_otf, KBFonts::InterRegular_otfSize);
+    tfSemi = juce::Typeface::createSystemTypefaceFor(KBFonts::InterSemiBold_otf, KBFonts::InterSemiBold_otfSize);
+    tfDisplay = juce::Typeface::createSystemTypefaceFor(KBFonts::InterDisplayBold_otf, KBFonts::InterDisplayBold_otfSize);
+}
+
+juce::Typeface::Ptr KBLook::getTypefaceForFont(const juce::Font& f) {
+    if (f.getTypefaceName() != juce::Font::getDefaultSansSerifFontName() || tfRegular == nullptr)
+        return LookAndFeel_V4::getTypefaceForFont(f);
+    if (f.isBold()) return f.getHeight() >= 19.0f && tfDisplay ? tfDisplay : tfSemi;
+    return tfRegular;
+}
+
+void KBLook::drawTabButton(juce::TabBarButton& b, juce::Graphics& g, bool over, bool) {
+    auto r = b.getActiveArea().toFloat().reduced(3, 5);
+    const bool front = b.isFrontTab();
+    if (front || over) {
+        g.setColour(front ? col::panelHi : col::panelHi.withAlpha(0.5f));
+        g.fillRoundedRectangle(r, r.getHeight() / 2);
+    }
+    if (front) {
+        g.setColour(col::accent.withAlpha(0.55f));
+        g.drawRoundedRectangle(r, r.getHeight() / 2, 1.0f);
+    }
+    if (b.hasKeyboardFocus(false)) { g.setColour(col::accent); g.drawRoundedRectangle(r.expanded(1.5f), r.getHeight() / 2 + 1.5f, 1.2f); }
+    g.setColour(front ? col::fg : over ? col::fg : col::fgSoft);
+    g.setFont(juce::FontOptions(13.0f, front ? juce::Font::bold : juce::Font::plain));
+    g.drawText(b.getButtonText(), r, juce::Justification::centred);
+}
+
+int KBLook::getTabButtonBestWidth(juce::TabBarButton& b, int) {
+    return (int) std::ceil(juce::GlyphArrangement::getStringWidth(juce::FontOptions(13.0f, juce::Font::bold), b.getButtonText())) + 36;
+}
+
+void KBLook::drawTabAreaBehindFrontButton(juce::TabbedButtonBar&, juce::Graphics& g, int w, int h) {
+    g.setColour(col::line);
+    g.drawHorizontalLine(h - 1, 0.0f, (float) w);
+}
+
+void KBLook::drawTooltip(juce::Graphics& g, const juce::String& text, int w, int h) {
+    auto r = juce::Rectangle<float>(0, 0, (float) w, (float) h);
+    g.setColour(col::panelHi);
+    g.fillRoundedRectangle(r, 8);
+    g.setColour(col::line);
+    g.drawRoundedRectangle(r.reduced(0.5f), 8, 1);
+    juce::AttributedString as;
+    as.append(text, juce::FontOptions(13.0f), col::fg);
+    as.setWordWrap(juce::AttributedString::byWord);
+    as.setLineSpacing(1.5f);
+    as.draw(g, r.reduced(12, 9));
+}
+
+juce::Rectangle<int> KBLook::getTooltipBounds(const juce::String& text, juce::Point<int> pos, juce::Rectangle<int> parent) {
+    juce::AttributedString as;
+    as.append(text, juce::FontOptions(13.0f), col::fg);
+    as.setWordWrap(juce::AttributedString::byWord);
+    as.setLineSpacing(1.5f);
+    juce::TextLayout tl;
+    tl.createLayout(as, 340.0f);
+    const int w = (int) std::ceil(tl.getWidth()) + 24, h = (int) std::ceil(tl.getHeight()) + 18;
+    return juce::Rectangle<int>(pos.x > parent.getCentreX() ? pos.x - (w + 12) : pos.x + 18,
+                                pos.y > parent.getCentreY() ? pos.y - (h + 8) : pos.y + 14, w, h).constrainedWithin(parent);
+}
+
+void makeChip(juce::TextButton& b, const juce::String& text, juce::Colour on, const juce::String& tip) {
+    b.setButtonText(text);
+    b.setClickingTogglesState(true);
+    b.setColour(juce::TextButton::buttonOnColourId, on);
+    b.setColour(juce::TextButton::textColourOnId, col::bg);
+    b.setColour(juce::TextButton::textColourOffId, col::fgSoft);
+    b.setTooltip(tip);
+    b.setTitle(text);
 }
 
 void KBLook::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, float pos, float a0, float a1, juce::Slider& s) {
@@ -48,9 +136,12 @@ void KBLook::drawRotarySlider(juce::Graphics& g, int x, int y, int w, int h, flo
     const float rad = std::min(r.getWidth(), r.getHeight()) / 2;
     const auto c = r.getCentre();
     const float a = a0 + pos * (a1 - a0);
+    // iki yönlü parametrede (−…+) yay sıfırdan başlar
+    const double mn = s.getMinimum(), mx = s.getMaximum();
+    const float az = (mn < 0 && mx > 0) ? a0 + (float) ((0 - mn) / (mx - mn)) * (a1 - a0) : a0;
     juce::Path bgArc, arc;
     bgArc.addCentredArc(c.x, c.y, rad - 3, rad - 3, 0, a0, a1, true);
-    arc.addCentredArc(c.x, c.y, rad - 3, rad - 3, 0, a0, a, true);
+    arc.addCentredArc(c.x, c.y, rad - 3, rad - 3, 0, std::min(az, a), std::max(az, a), true);
     g.setColour(col::line.withAlpha(0.4f));
     g.strokePath(bgArc, juce::PathStrokeType(4, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     g.setColour(col::accent);
@@ -78,12 +169,15 @@ void KBLook::drawLinearSlider(juce::Graphics& g, int x, int y, int w, int h, flo
 
 void KBLook::drawButtonBackground(juce::Graphics& g, juce::Button& b, const juce::Colour& c, bool over, bool down) {
     auto r = b.getLocalBounds().toFloat().reduced(0.5f);
-    auto fill = b.getToggleState() ? col::accent : c;
+    auto fill = b.getToggleState() ? b.findColour(juce::TextButton::buttonOnColourId) : c;
     if (down) fill = fill.brighter(0.2f); else if (over) fill = fill.brighter(0.08f);
     g.setColour(fill);
     g.fillRoundedRectangle(r, r.getHeight() / 2);
-    g.setColour(b.hasKeyboardFocus(true) ? col::accent : col::line);
-    g.drawRoundedRectangle(r, r.getHeight() / 2, 1.0f);
+    const bool flat = (bool) b.getProperties().getWithDefault("flat", false);
+    if (!flat || b.hasKeyboardFocus(true)) {
+        g.setColour(b.hasKeyboardFocus(true) ? col::accent : col::line);
+        g.drawRoundedRectangle(r, r.getHeight() / 2, 1.0f);
+    }
 }
 
 void KBLook::drawToggleButton(juce::Graphics& g, juce::ToggleButton& b, bool over, bool) {
@@ -120,7 +214,11 @@ ParamSlider::ParamSlider(juce::AudioProcessorValueTreeState& s, const char* id, 
 
 void ParamSlider::resized() {
     auto r = getLocalBounds();
-    if (rotary) { label.setBounds(r.removeFromTop(16)); slider.setBounds(r); }
+    if (rotary) {
+        label.setBounds(r.removeFromTop(16));
+        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, std::max(40, r.getWidth() - 6), 20);
+        slider.setBounds(r);
+    }
     else if (stacked) { label.setBounds(r.removeFromTop(16)); slider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 78, 20); slider.setBounds(r); }
     else { label.setBounds(r.removeFromLeft(std::min(150, r.getWidth() / 3))); slider.setBounds(r); }
 }
@@ -132,8 +230,9 @@ ParamToggle::ParamToggle(juce::AudioProcessorValueTreeState& s, const char* id, 
     addAndMakeVisible(button);
 }
 
-ParamCombo::ParamCombo(juce::AudioProcessorValueTreeState& s, const char* id, const juce::String& text) {
-    if (auto* p = dynamic_cast<juce::AudioParameterChoice*>(s.getParameter(id))) box.addItemList(p->choices, 1);
+ParamCombo::ParamCombo(juce::AudioProcessorValueTreeState& s, const char* id, const juce::String& text, const juce::StringArray& items) {
+    if (!items.isEmpty()) box.addItemList(items, 1);  // arayüz dilinde etiketler (sıra parametreyle aynı)
+    else if (auto* p = dynamic_cast<juce::AudioParameterChoice*>(s.getParameter(id))) box.addItemList(p->choices, 1);
     box.setTitle(text);
     att = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(s, id, box);
     label.setText(text, juce::dontSendNotification);
@@ -148,12 +247,13 @@ void ParamCombo::resized() {
 }
 
 // ───────────────────────────── CurveEditor
+static juce::Rectangle<float> curveArea(juce::Rectangle<float> r) { return r.withTrimmedLeft(40).withTrimmedBottom(36).reduced(14, 14); }
 juce::Point<float> CurveEditor::toScreen(const CurvePoint& p) const {
-    auto r = getLocalBounds().toFloat().reduced(10);
+    auto r = curveArea(getLocalBounds().toFloat());
     return {r.getX() + (float) p.t * r.getWidth(), r.getBottom() - (float) p.g * r.getHeight()};
 }
 CurvePoint CurveEditor::fromScreen(juce::Point<float> s) const {
-    auto r = getLocalBounds().toFloat().reduced(10);
+    auto r = curveArea(getLocalBounds().toFloat());
     return {juce::jlimit(0.0, 1.0, (double) ((s.x - r.getX()) / r.getWidth())), juce::jlimit(0.0, 1.0, (double) ((r.getBottom() - s.y) / r.getHeight())), 0.0};
 }
 int CurveEditor::hit(juce::Point<float> s) const {
@@ -165,12 +265,20 @@ void CurveEditor::paint(juce::Graphics& g) {
     auto r = getLocalBounds().toFloat();
     g.setColour(col::panel);
     g.fillRoundedRectangle(r, 8);
-    auto in = r.reduced(10);
-    g.setColour(col::grid);
-    for (int i = 1; i < 4; ++i) {
-        g.drawHorizontalLine((int) (in.getY() + in.getHeight() * i / 4), in.getX(), in.getRight());
-        g.drawVerticalLine((int) (in.getX() + in.getWidth() * i / 4), in.getY(), in.getBottom());
+    auto in = curveArea(r);
+    g.setColour(col::panelHi);
+    g.fillRoundedRectangle(in.expanded(6), 6);
+    g.setFont(juce::FontOptions(11.0f));
+    for (int i = 0; i <= 4; ++i) {
+        const float y = in.getY() + in.getHeight() * i / 4, x = in.getX() + in.getWidth() * i / 4;
+        g.setColour(col::grid);
+        if (i > 0 && i < 4) { g.drawHorizontalLine((int) y, in.getX(), in.getRight()); g.drawVerticalLine((int) x, in.getY(), in.getBottom()); }
+        g.setColour(col::fgFaint);
+        g.drawText(juce::String(100 - 25 * i) + "%", (int) in.getX() - 46, (int) y - 7, 36, 14, juce::Justification::centredRight);
+        g.drawText(juce::String(25 * i) + "%", (int) x - 20, (int) in.getBottom() + 8, 40, 14, juce::Justification::centred);
     }
+    g.drawText(L("gain \u2191   time \u2192 (share of duck length)", "kazanç \u2191   zaman \u2192 (ducking uzunluğu)"),
+               in.withY(in.getBottom() + 20).withHeight(14).toNearestInt(), juce::Justification::centred);
     juce::Path p;
     for (int i = 0; i <= 200; ++i) {
         const double u = i / 200.0;
@@ -178,16 +286,21 @@ void CurveEditor::paint(juce::Graphics& g) {
         const float x = in.getX() + (float) u * in.getWidth(), y = in.getBottom() - (float) v * in.getHeight();
         if (i == 0) p.startNewSubPath(x, y); else p.lineTo(x, y);
     }
+    juce::Path fill(p);
+    fill.lineTo(in.getRight(), in.getBottom());
+    fill.lineTo(in.getX(), in.getBottom());
+    fill.closeSubPath();
+    g.setColour(col::accent.withAlpha(0.10f));
+    g.fillPath(fill);
     g.setColour(col::accent);
     g.strokePath(p, juce::PathStrokeType(2.0f));
     for (int i = 0; i < (int) proc.curve.size(); ++i) {
         auto s = toScreen(proc.curve[(size_t) i]);
+        g.setColour(col::bg);
+        g.fillEllipse(s.x - 6, s.y - 6, 12, 12);
         g.setColour(i == selected && hasKeyboardFocus(false) ? col::fg : col::accent);
-        g.fillEllipse(s.x - 5, s.y - 5, 10, 10);
+        g.drawEllipse(s.x - 5, s.y - 5, 10, 10, 2.0f);
     }
-    g.setColour(col::fgFaint);
-    g.setFont(juce::FontOptions(11.5f));
-    g.drawText(juce::String::fromUTF8("tık: ekle · çift tık: sil · Alt+sürükle: eğrilik · oklar: seçili nokta"), in.removeFromBottom(14), juce::Justification::centredRight);
 }
 
 void CurveEditor::mouseDown(const juce::MouseEvent& e) {
@@ -251,18 +364,21 @@ bool CurveEditor::keyPressed(const juce::KeyPress& k) {
 NoteTable::NoteTable(KBAlignProcessor& p) : proc(p) {
     table.setModel(this);
     auto& h = table.getHeader();
-    h.addColumn("Nota", 1, 70);
-    h.addColumn("d (ms)", 2, 90);
-    h.addColumn(juce::String::fromUTF8("θ (°)"), 3, 90);
-    h.addColumn(juce::String::fromUTF8("vuruş"), 4, 60);
-    h.addColumn("kilit", 5, 60);
+    h.addColumn(L("Note", "Nota"), 1, 110);
+    h.addColumn(L("Shift (ms)", "Kaydırma (ms)"), 2, 130);
+    h.addColumn(L("Phase (\u00b0)", "Faz (\u00b0)"), 3, 130);
+    h.addColumn(L("Hits", "Vuruş"), 4, 90);
+    h.addColumn(L("Lock", "Kilit"), 5, 80);
     h.addColumn("", 6, 60);
-    table.setRowHeight(24);
-    table.setTitle(juce::String::fromUTF8("Nota tablosu"));
+    h.setStretchToFitActive(true);
+    table.setRowHeight(26);
+    table.setTitle(L("Note table", "Nota tablosu"));
     addAndMakeVisible(table);
     clearAll.onClick = [this] { for (auto& r : rows) proc.align.clearNote(r.first); refresh(); };
     addAndMakeVisible(clearAll);
-    hint.setText(juce::String::fromUTF8("Nota başına modunda her bas notası için (d, θ) öğrenilir. Değeri çift tıkla düzenle → nota kilitlenir."),
+    clearAll.setButtonText(L("Clear all", "Tümünü sil"));
+    hint.setText(L("Per Note mode learns a shift and phase for every bass note. Double-click a value to edit it (the note gets locked).",
+                   "Nota başına modunda her bas notası için kaydırma ve faz öğrenilir. Değeri çift tıkla düzenle (nota kilitlenir)."),
                  juce::dontSendNotification);
     hint.setColour(juce::Label::textColourId, col::fgFaint);
     addAndMakeVisible(hint);
@@ -278,6 +394,12 @@ void NoteTable::resized() {
 }
 
 void NoteTable::refresh() {
+    {   // çalan nota (vurgulanır)
+        int cn = -1;
+        auto hs = proc.align.recentHits();
+        for (auto it = hs.rbegin(); it != hs.rend(); ++it) if (it->note >= 0) { cn = it->note; break; }
+        if (cn != curNote) { curNote = cn; table.repaint(); }
+    }
     auto t = proc.align.noteTable();
     std::vector<std::pair<int, NoteEntry>> nr(t.begin(), t.end());
     const bool changed = nr.size() != rows.size() || !std::equal(nr.begin(), nr.end(), rows.begin(), [](auto& a, auto& b) {
@@ -293,11 +415,12 @@ void NoteTable::paintCell(juce::Graphics& g, int row, int c, int w, int h, bool)
     if (row >= (int) rows.size()) return;
     const auto& [note, e] = rows[(size_t) row];
     juce::String s;
-    if (c == 1) s = noteName(note) + "  (" + juce::String(note) + ")";
+    if (c == 1) s = noteName(note);
     else if (c == 4) s = juce::String(e.count) + (e.manual ? " *" : "");
-    g.setColour(col::fg);
-    g.setFont(juce::FontOptions(13.0f));
-    g.drawText(s, 6, 0, w - 8, h, juce::Justification::centredLeft);
+    const bool playing = note == curNote;
+    g.setColour(playing && c == 1 ? col::accent : col::fg);
+    g.setFont(juce::FontOptions(13.0f, c == 1 ? juce::Font::bold : juce::Font::plain));
+    g.drawText(s, 8, 0, w - 16, h, c == 1 ? juce::Justification::centredLeft : juce::Justification::centredRight);
 }
 
 juce::Component* NoteTable::refreshComponentForCell(int row, int c, bool, juce::Component* existing) {
@@ -308,12 +431,13 @@ juce::Component* NoteTable::refreshComponentForCell(int row, int c, bool, juce::
     if (c == 2 || c == 3) {
         auto* l = new juce::Label();
         l->setEditable(false, true);
-        l->setText(juce::String(c == 2 ? e.d : e.th, c == 2 ? 3 : 1), juce::dontSendNotification);
+        l->setText(c == 2 ? fmtNum(e.d, 2, true) : fmtNum(e.th, 0), juce::dontSendNotification);
+        l->setJustificationType(juce::Justification::centredRight);
         l->setColour(juce::Label::textColourId, col::fg);
         l->onTextChange = [this, note, c, l] {
             auto t = proc.align.noteTable();
             auto cur = t[note];
-            const double v = l->getText().getDoubleValue();
+            const double v = l->getText().replaceCharacter(',', '.').replace(juce::String::fromUTF8("\u2212"), "-").getDoubleValue();
             proc.align.setNoteValue(note, c == 2 ? juce::jlimit(-50.0, 50.0, v) : cur.d, c == 3 ? v : cur.th);
         };
         return l;
@@ -321,15 +445,22 @@ juce::Component* NoteTable::refreshComponentForCell(int row, int c, bool, juce::
     if (c == 5) {
         auto* b = new juce::ToggleButton();
         b->setToggleState(e.locked, juce::dontSendNotification);
-        b->setTitle("kilit " + noteName(note));
+        b->setTitle(L("lock ", "kilit ") + noteName(note));
         b->onClick = [this, note, b] { proc.align.lockNote(note, b->getToggleState()); };
         return b;
     }
     if (c == 6) {
-        auto* b = new juce::TextButton("sil");
-        b->setTitle("sil " + noteName(note));
-        b->onClick = [this, note] { proc.align.clearNote(note); juce::MessageManager::callAsync([this] { refresh(); }); };
-        return b;
+        struct Small : juce::Component {
+            juce::TextButton b;
+            Small() { addAndMakeVisible(b); }
+            void resized() override { b.setBounds(getLocalBounds().withSizeKeepingCentre(30, 22)); }
+        };
+        auto* w = new Small();
+        w->b.setButtonText(juce::String::fromUTF8("\u00d7"));
+        w->b.setTitle(L("remove ", "sil ") + noteName(note));
+        w->b.setTooltip(L("Remove this note", "Bu notayı sil"));
+        w->b.onClick = [this, note] { proc.align.clearNote(note); juce::MessageManager::callAsync([this] { refresh(); }); };
+        return w;
     }
     return nullptr;
 }

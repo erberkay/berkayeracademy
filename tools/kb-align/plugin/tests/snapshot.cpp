@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Berkay Er — KB-Align. Lisans: ../LICENSE (GNU AGPL v3 ya da sonrası).
 // Editörün gerçek sinyalle ekran görüntüsü: işlemciye kick/bas döngüsü beslenir, editör PNG'ye çizilir.
-// Kullanım: kb_snapshot <parity klasörü> <çıktı.png> [mod] [sekme: -1 = basit görünüm] [görünüm 0/1/2] [tur adımı, -1 = yok]
-//           [veri: mloop | adv0 | adv1 | adv2]
+// Kullanım: kb_snapshot <parity klasörü> <çıktı.png> [mod] [sekme: -1 = basit görünüm] [görünüm 0 dalga/1 faz/2 spektrum/3 XY] [tur adımı, -1 = yok]
+//           [veri: mloop | adv0 | adv1 | adv2] [dil: en | tr]
 #include "../src/PluginEditor.h"
 
 #include <fstream>
@@ -40,6 +40,8 @@ int main(int argc, char** argv) {
     auto* prm = p.apvts.getParameter(pid::mode);
     prm->setValueNotifyingHost(prm->convertTo0to1((float) mode));
     p.setNonRealtime(true);
+    ui::userSettings().setValue("lang", argc > 8 ? argv[8] : "en");
+    ui::userSettings().setValue("scale", 100);
     std::unique_ptr<juce::AudioProcessorEditor> ed(p.createEditor());
     ed->setVisible(true);
     juce::AudioBuffer<float> buf(2, 256);

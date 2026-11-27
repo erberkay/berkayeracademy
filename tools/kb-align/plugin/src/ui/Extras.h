@@ -71,6 +71,47 @@ private:
     juce::TextButton next, back, skip;
 };
 
+// Sidechain durum hapı: LED (yeşil = kick geliyor, her vuruşta yanıp söner; kırmızı = sidechain yok) + metin
+class StatusPill : public juce::Component, public juce::SettableTooltipClient {
+public:
+    void set(int state, const juce::String& text, bool pulse);  // 0 bekliyor, 1 iyi, 2 sorun, 3 meşgul (Learn)
+    void paint(juce::Graphics&) override;
+private:
+    int st = 0;
+    juce::String txt;
+    float glow = 0;
+};
+
+// Birincil eylem düğmesi (Learn): altın dolgulu; dinlerken ilerleme çubuğu, bitince onay
+class PrimaryButton : public juce::Button {
+public:
+    PrimaryButton() : juce::Button("primary") {}
+    void setProgress(float p) { if (p != progress) { progress = p; repaint(); } }  // < 0: yok
+    void setDone(bool d) { if (d != done) { done = d; repaint(); } }
+    void paintButton(juce::Graphics&, bool over, bool down) override;
+private:
+    float progress = -1;
+    bool done = false;
+};
+
+// İki parçalı anahtar (ÖNCE | SONRA, EN | TR, Basit | Gelişmiş): seçili parça dolu
+class TwoWaySwitch : public juce::Component, public juce::SettableTooltipClient {
+public:
+    TwoWaySwitch(const juce::String& a, const juce::String& b) : la(a), lb(b) { setWantsKeyboardFocus(true); }
+    void setLabels(const juce::String& a, const juce::String& b) { la = a; lb = b; repaint(); }
+    void setSecond(bool s) { if (s != second) { second = s; repaint(); } }
+    bool isSecond() const { return second; }
+    std::function<void(bool)> onChange;
+    juce::Colour onFirst = col::fgSoft, onSecond = col::accent;  // seçili parçanın dolgusu
+    float fontSize = 13.0f;
+    void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent&) override;
+    bool keyPressed(const juce::KeyPress&) override;
+private:
+    juce::String la, lb;
+    bool second = false;
+};
+
 // Kalıcı kullanıcı ayarları (tur gösterildi mi vb.) — makine başına
 juce::PropertiesFile& userSettings();
 
