@@ -30,7 +30,8 @@ inline LatencySpec latencySpec(LatencyMode m) {
 }
 constexpr int kMargin = 4;
 constexpr int kConvBlock = 128;
-constexpr double kRtMarginMs = 20.0;  // VARSAYIM (Python modes.RT_MARGIN_MS ile aynı)
+constexpr double kRtMarginMs = 20.0;
+constexpr int kGlobalHits = 16;  // Python modes.GLOBAL_HITS  // VARSAYIM (Python modes.RT_MARGIN_MS ile aynı)
 
 inline int hilbertHalfSamples(double fs, LatencyMode m) { return (int) std::lround(latencySpec(m).hilbertMs * fs / 1000.0); }
 inline int latencySamples(double fs, LatencyMode m) {
@@ -199,6 +200,8 @@ private:
     std::optional<std::pair<double, double>> learnResult;
     std::map<int, std::vector<HitSegment>> noteSegs;
     std::map<int, NoteEntry> table;
+    std::vector<std::vector<cplx>> gCs;  // nota modu: son vuruşların korelasyonları (nota bilinmezse genel değer)
+    std::optional<std::pair<double, double>> gEst;
     std::vector<cplx> contC;
     std::vector<int> contLags;
     double contLastT = -1;

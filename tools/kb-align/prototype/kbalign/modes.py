@@ -25,6 +25,7 @@ from . import align, dsp, engine, pitch
 # VARSAYIM: gerçek zamanda analiz sonucu, crossfade başlamadan en az bu kadar önce hazır olmalı
 # (host bloğu ≤ 512 örnek @48 kHz ≈ 10,7 ms + analiz süresi ≤ ~9 ms). C++ ölçümüyle doğrulanacak.
 RT_MARGIN_MS = 20.0
+GLOBAL_HITS = 16  # nota modunun genel (nota bilinmeyen) değeri için son vuruş sayısı
 
 
 @dataclass
@@ -80,6 +81,8 @@ def simulate(kick, bass, cfg: engine.Config, ap: align.AnalysisParams, mp: ModeP
     table: dict[int, list] = {}
     table_est: dict[int, tuple] = {}
     pending = None  # (d, θ) — sonraki vuruşa uygulanacak
+    g_cs: list = []  # nota modu: son vuruşların normalize korelasyonları (nota bilinmezse genel değer)
+    g_est = None
     cont_C = None
     cont_last_t = None
     cont_targets = []  # (gerçek zamanda uygulanabilir olduğu içerik zamanı, d, θ)
@@ -133,10 +136,24 @@ def simulate(kick, bass, cfg: engine.Config, ap: align.AnalysisParams, mp: ModeP
             else:
                 note_late = note
             info["note"] = note
+            target = None
             if note is not None and note in table_est:
-                d, th = table_est[note]
-                if (d, th) != cur:
-                    info["why"] = apply(t0, (d, th), f"tablo: {note}")
+                target, why = table_est[note], f"tablo: {note}"
+            elif g_est is not None:  # nota bilinmiyor ya da tabloda yok → bütün vuruşlardan öğrenilen genel değer
+                target, why = g_est, "genel (nota yok)"
+            if target is not None and target != cur:
+                info["why"] = apply(t0, target, why)
+            if full.rho >= mp.conf_min:
+                g_cs.append(full.c)
+                del g_cs[:-GLOBAL_HITS]
+                gm = np.mean(g_cs, axis=0)
+                gd, gth, gv = align.pick(full.lags, gm, fa, ap)
+                if g_est is None:
+                    g_est = (gd, gth)
+                else:
+                    zo = align.interp_c(full.lags, gm, g_est[0] * fa / 1000)
+                    if gv >= float(np.real(zo * np.exp(-1j * np.deg2rad(g_est[1])))) + mp.accept:
+                        g_est = (gd, gth)
             # tabloyu güncelle (vuruştan sonra, son tarih yok)
             key = note if note is not None else note_late
             if key is not None and full.rho >= mp.conf_min:

@@ -265,6 +265,8 @@ void AlignEngine::prepare(AudioEngine* e, double sampleRate, double fcIn) {
     learnSegs.clear();
     noteSegs.clear();
     contC.clear();
+    gCs.clear();
+    gEst.reset();
     contLastT = -1;
     cur = {0, 0};
     pendingNext.reset();
@@ -431,14 +433,16 @@ bool AlignEngine::processHit(Pending& pd, int64_t written) {
         if (copyRegion(eng->hBassRaw, a, bEnd, raw)) {
             auto bd = an->decimate(raw.data(), (long long) raw.size(), 8 * M, nPts);
             auto note = detectNote(bd, fa, fmin);
+            std::optional<std::pair<double, double>> target;
             if (note) {
                 pd.note = *note;
                 auto it = table.find(*note);
-                if (it != table.end() && it->second.count + (it->second.manual ? 1 : 0) > 0 &&
-                    (it->second.d != cur.first || it->second.th != cur.second)) {
-                    const int64_t c = t0 - (int64_t) (0.001 * fs);
-                    if (eng->inputCount() - eng->latency() < c - (int64_t) (0.010 * fs)) emit(c, it->second.d, it->second.th);
-                }
+                if (it != table.end() && it->second.count + (it->second.manual ? 1 : 0) > 0) target = std::make_pair(it->second.d, it->second.th);
+            }
+            if (!target && gEst) target = gEst;  // nota bilinmiyor ya da tabloda yok → genel değer
+            if (target && (target->first != cur.first || target->second != cur.second)) {
+                const int64_t c = t0 - (int64_t) (0.001 * fs);
+                if (eng->inputCount() - eng->latency() < c - (int64_t) (0.010 * fs)) emit(c, target->first, target->second);
             }
         }
         pd.stage = 1;
@@ -487,6 +491,19 @@ bool AlignEngine::processHit(Pending& pd, int64_t written) {
                 auto pk = an->joint(ps, full->lags, ap);
                 if (te.count == 0 || pk.value >= objAt(ps, te.d, te.th) + set.accept) { te.d = pk.dMs; te.th = pk.theta; }
                 te.count++;
+            }
+        }
+        if (full->rho >= set.confMin) {
+            gCs.push_back(full->c);
+            if ((int) gCs.size() > kGlobalHits) gCs.erase(gCs.begin());
+            std::vector<cplx> gm(full->c.size(), 0.0);
+            for (auto& v : gCs) if (v.size() == gm.size()) for (size_t i = 0; i < gm.size(); ++i) gm[i] += v[i];
+            for (auto& z : gm) z /= (double) gCs.size();
+            auto pk = Analyzer::pick(full->lags, gm, fa, ap, nullptr, nullptr);
+            if (!gEst) gEst = std::make_pair(pk.dMs, pk.theta);
+            else {
+                const cplx zo = Analyzer::interpC(full->lags, gm, gEst->first * fa / 1000.0);
+                if (pk.value >= (zo * std::polar(1.0, -gEst->second * kPi / 180.0)).real() + set.accept) gEst = std::make_pair(pk.dMs, pk.theta);
             }
         }
     } else if (mode == Mode::Continuous) {
