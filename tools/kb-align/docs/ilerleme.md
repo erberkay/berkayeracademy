@@ -20,8 +20,9 @@
 - [ ] (c) İşletim sistemi ve Ableton sürümü → `docs/dogrulama/ableton-kontrol-listesi.md`, `mac-kontrol-listesi.md`
 - [ ] (d) Ürün adı
 - [x] Satış yok, öğrencilere ücretsiz (2026-11-27) → kopya koruma/lisans anahtarı/mağaza gereksiz
-- [ ] JUCE lisans kararı: AGPLv3 (öneri) ya da Starter → `docs/lisanslar.md`
-- [ ] macOS imzalama/notarization için Apple Developer hesabı (ücretli) — öğrenciler Gatekeeper uyarısı görmesin diye
+- [x] Lisans: AGPLv3, kaynak açık (2026-11-27) → `LICENSE`, `KAYNAK.md`, eklentide Hakkında
+- [x] Apple Developer hesabı var → `scripts/mac-paketle.sh` (senin Mac'inde çalıştırılacak)
+- [x] Dağıtım: Ders Paneli kartı (`booking.html`, deploy edilmedi) → `docs/yayin.md`
 - [ ] Ayrı GitHub reposu açılsın mı?
 
 ## Aşama 1 — Araştırma ✅ (onaylandı 2026-11-27, 6 öneri dahil)
@@ -45,7 +46,7 @@
 - `kb_tests` 59/59 · `kb_plugin_test` 0 hata. Raporlar: `docs/dogrulama/`.
 - Bekleyen (senin bilgisayarında): `auval`, Mac pluginval, Ableton kontrol listesi (14 madde).
 
-## Aşama 6 — Yayın hazırlığı ⏸ (satış yok, öğrencilere ücretsiz; onay bekliyor: ad, lisans, imzalama, kurulum paketi, dağıtım yeri)
+## Aşama 6 — Yayın hazırlığı 🔧 (satış yok, AGPLv3, Ders Paneli) — betikler ve kart hazır; Mac paketi + deploy bekliyor → `docs/yayin.md`
 
 ## Açık VARSAYIM'lar
 Bkz. `docs/spec.md` §8.
