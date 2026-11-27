@@ -33,12 +33,19 @@
 //                   at every rate). Reductions are delayed by exactly M/2 samples (16 blocks) before they enter
 //                   the kernel, so that the gain stays aligned with the latency-compensated audio. Mix, solo and
 //                   delta are part of the kernel / the latency-aligned dry path, so all outputs share one latency.
+//                   The kernel for boundary j+1 is decided at boundary j and designed in ~50 small steps spread
+//                   over block j (G(f) per node, M-point IFFT pass by pass, one partition FFT per step), so no
+//                   single host callback carries a whole kernel design. A kernel is only rebuilt when something
+//                   changed (reduction by > 0.002 dB, f/Q, solo, mix, delta); idle → bit-exact delay path.
+//                   Accuracy: the kernel spans M/2 = 85 ms each side, so bells narrower than ~15 Hz (f/Q) come
+//                   out shallower than in IIR mode (60 Hz Q4: −11.7 of −12 dB, 60 Hz Q10: −9.1 of −12 dB).
 //
 // ─ Solo / mix / delta ───────────────────────────────────────────────────────────────────────────────────────
 //   any node solo → output = Σ_solo unity-peak band-pass(f_i, Q_i) of the node's channel (linear-phase |BP| in
 //   FIR mode), cross-faded (5 ms). out = (1 − soloW)·(mix·wet + (1 − mix)·dry) + Σ soloW_i·BP_i(dry).
 //   Delta: −2 off, −1 → dry − out (out as above, latency-aligned), i ≥ 0 → mix·(dry − Bell_i(dry)) (node i alone,
-//   on its own channel). Switching the delta mode fades the output down/up in ~3 ms (FIR: + one block).
+//   on its own channel). Switching the delta mode fades the output down/up in 3 ms (FIR: silent for 3 blocks
+//   in between so the kernel switch is complete).
 #pragma once
 
 #include "Common.h"
