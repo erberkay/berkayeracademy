@@ -2960,27 +2960,20 @@ function showRulesAcceptanceModal(opts) {
 // ─── Banka / IBAN bilgisi — istemci tarafında TEK KAYNAK ─────────
 // Ek hak modalındaki ödeme tablosu, "Yapman gereken" kartı ve Ders Paneli asistanı
 // (be-assistant-ui.js → window.BK_BANK) buradan okur; markup'a IBAN yazılmaz.
-// Hangi hesabın gösterileceğini yönetici panelindeki "Ödeme hesabı" kartı seçer: settings/payment.bank_id
-// ('vakif' | 'garanti'; yoksa vakif). BK_BANK yerinde güncellenir (asistan aynı nesneyi okur).
-// Hesap eklenir/değişirse functions/index.js'teki BANKS kopyası da güncellenir (e-postalar oradan).
-var BK_BANKS = {
-  vakif:   { bank: `VakıfBank`,       name: `Muhammet Berkay Er`, iban: `TR46 0001 5001 5800 7392 5136 44`, b20: true },
-  garanti: { bank: `Garanti Bankası`, name: `Muhammet Berkay Er`, iban: `TR35 0006 2000 6870 0006 8982 06`, b20: false },
-};
+// Güncel hesap settings/payment'tan okunur ({bank, name, iban, b20}); ödeme kutuları çizilmeden önce beklenir.
 var BK_BANK = {};
-function bkSetBank(id) {
-  if (!BK_BANKS[id]) id = 'vakif';
-  var b = BK_BANKS[id];
-  BK_BANK.id = id; BK_BANK.bank = b.bank; BK_BANK.name = b.name; BK_BANK.iban = b.iban;
-  BK_BANK.ibanRaw = b.iban.replace(/\s+/g, ''); BK_BANK.b20 = b.b20;
+function bkApplyBank(d) {
+  if (!d || !d.iban || !d.bank) return;
+  BK_BANK.bank = String(d.bank); BK_BANK.name = String(d.name || `Muhammet Berkay Er`);
+  BK_BANK.iban = String(d.iban); BK_BANK.ibanRaw = BK_BANK.iban.replace(/\s+/g, ''); BK_BANK.b20 = d.b20 === true;
 }
-bkSetBank('vakif');
+BK_BANK.bank = BK_BANK.iban = BK_BANK.ibanRaw = ''; BK_BANK.name = `Muhammet Berkay Er`; BK_BANK.b20 = false;
 var _bkBankReq = null;
 function bkLoadBank(force) {
   if (_bkBankReq && !force) return _bkBankReq;
   _bkBankReq = db.collection('settings').doc('payment').get()
-    .then(snap => { bkSetBank(snap && snap.exists ? snap.data().bank_id : 'vakif'); })
-    .catch(e => { console.warn('[bank]', e && (e.code || e.message)); });
+    .then(snap => { if (snap && snap.exists) bkApplyBank(snap.data()); })
+    .catch(() => {});
   return _bkBankReq;
 }
 
@@ -7224,7 +7217,7 @@ async function loadUserState(user) {
   }
   _bkPostTrial = false;
   loadCampaigns(); // kampanyalar erken okunur (talep formu / bekleme özeti aynı isteği bekler)
-  bkLoadBank();    // ödeme hesabı (VakıfBank / Garanti) — ödeme kutusu çizilmeden önce beklenir
+  bkLoadBank();    // ödeme hesabı — ödeme kutusu çizilmeden önce beklenir
 
   // Check active reservation first
   let resSnap = null;

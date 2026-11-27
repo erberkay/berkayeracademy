@@ -55,17 +55,22 @@ async function getZoomLink(db) {
  * - Plain-text alternative
  * - Reply-To + List-Unsubscribe headers
  */
-// Ödeme hesapları — booking.html'deki BK_BANKS ile aynı (iki yeri birlikte güncelle).
-// Hangisinin gösterileceğini yönetici panelindeki "Ödeme hesabı" kartı seçer: settings/payment.bank_id.
+// Ödeme hesapları YALNIZ burada (sunucu): öğrenci tarafı sadece settings/payment'taki güncel hesabı görür,
+// başka hesap olduğunu bilmez. Yönetici panelindeki "Ödeme hesabı" kartı paymentBank callable'ını çağırır.
 const BANKS = {
-  vakif: {bank: "VakıfBank", name: "Muhammet Berkay Er", iban: "TR46 0001 5001 5800 7392 5136 44"},
-  garanti: {bank: "Garanti Bankası", name: "Muhammet Berkay Er", iban: "TR35 0006 2000 6870 0006 8982 06"},
+  vakif: {bank: "VakıfBank", name: "Muhammet Berkay Er", iban: "TR46 0001 5001 5800 7392 5136 44", b20: true},
+  garanti: {bank: "Garanti Bankası", name: "Muhammet Berkay Er", iban: "TR35 0006 2000 6870 0006 8982 06", b20: false},
 };
+function bankIdOf(d) {
+  if (!d) return "vakif";
+  if (BANKS[d.bank_id]) return d.bank_id;
+  const raw = String(d.iban || "").replace(/\s+/g, "");
+  return Object.keys(BANKS).find((k) => BANKS[k].iban.replace(/\s+/g, "") === raw) || "vakif";
+}
 async function activeBank(db) {
   try {
     const snap = await db.collection("settings").doc("payment").get();
-    const id = snap.exists ? snap.data().bank_id : null;
-    return BANKS[id] || BANKS.vakif;
+    return BANKS[bankIdOf(snap.exists ? snap.data() : null)];
   } catch (e) {
     console.warn("activeBank", e.message);
     return BANKS.vakif;
@@ -940,6 +945,40 @@ exports.sendCustomEmail = onCall(
 );
 
 // ── Zoom: Create Meeting ────────────────────────────────────────────────────
+// Yönetici: ödeme hesabını listeler / değiştirir. Öğrenciye açık settings/payment'a yalnız güncel hesap yazılır.
+exports.paymentBank = onCall(
+    {region: "europe-west1"},
+    async (request) => {
+      if (!isAdminAuth(request.auth)) {
+        throw new HttpsError("permission-denied", "Yetkisiz erişim");
+      }
+      const db = getFirestore();
+      const ref = db.collection("settings").doc("payment");
+      const id = request.data && request.data.id;
+      let current;
+      if (id !== undefined && id !== null) {
+        if (!BANKS[id]) throw new HttpsError("invalid-argument", "Bilinmeyen hesap");
+        const b = BANKS[id];
+        await ref.set({bank: b.bank, name: b.name, iban: b.iban, b20: b.b20,
+          updated_at: FieldValue.serverTimestamp()});
+        current = id;
+      } else {
+        const snap = await ref.get();
+        current = bankIdOf(snap.exists ? snap.data() : null);
+        if (!snap.exists || !snap.data().iban) {
+          // Eski kayıt (bank_id) ya da hiç kayıt yok: öğrencinin okuduğu biçimde yazılır
+          const b = BANKS[current];
+          await ref.set({bank: b.bank, name: b.name, iban: b.iban, b20: b.b20,
+            updated_at: FieldValue.serverTimestamp()});
+        }
+      }
+      return {
+        current,
+        accounts: Object.keys(BANKS).map((k) => ({id: k, bank: BANKS[k].bank, iban: BANKS[k].iban})),
+      };
+    },
+);
+
 exports.createZoomMeeting = onCall(
     {region: "europe-west1"},
     async (request) => {
