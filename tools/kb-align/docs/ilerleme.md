@@ -19,7 +19,9 @@
 - [ ] (b) Gerçek kick ve bas stem'leri — şimdilik yalnız sentetik setler
 - [ ] (c) İşletim sistemi ve Ableton sürümü → `docs/dogrulama/ableton-kontrol-listesi.md`, `mac-kontrol-listesi.md`
 - [ ] (d) Ürün adı
-- [ ] JUCE lisans kararı (AGPL / Starter / Indie) → `docs/lisanslar.md`
+- [x] Satış yok, öğrencilere ücretsiz (2026-11-27) → kopya koruma/lisans anahtarı/mağaza gereksiz
+- [ ] JUCE lisans kararı: AGPLv3 (öneri) ya da Starter → `docs/lisanslar.md`
+- [ ] macOS imzalama/notarization için Apple Developer hesabı (ücretli) — öğrenciler Gatekeeper uyarısı görmesin diye
 - [ ] Ayrı GitHub reposu açılsın mı?
 
 ## Aşama 1 — Araştırma ✅ (onaylandı 2026-11-27, 6 öneri dahil)
@@ -43,7 +45,7 @@
 - `kb_tests` 59/59 · `kb_plugin_test` 0 hata. Raporlar: `docs/dogrulama/`.
 - Bekleyen (senin bilgisayarında): `auval`, Mac pluginval, Ableton kontrol listesi (14 madde).
 
-## Aşama 6 — Yayın hazırlığı ⏸ (onay bekliyor: ad, lisans, imzalama, kurulum paketi, kanal)
+## Aşama 6 — Yayın hazırlığı ⏸ (satış yok, öğrencilere ücretsiz; onay bekliyor: ad, lisans, imzalama, kurulum paketi, dağıtım yeri)
 
 ## Açık VARSAYIM'lar
 Bkz. `docs/spec.md` §8.

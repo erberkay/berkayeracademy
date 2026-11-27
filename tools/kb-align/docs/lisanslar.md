@@ -12,3 +12,20 @@
 
 - Rakip kod kullanılmadı. PhasePaw AGPL-3.0 — koduna bakılmadı.
 - Ürünün kendi lisansı ve JUCE lisansı seçilmeden **dağıtım yapılmayacak** (talimat §1).
+
+## Karar girdisi (kullanıcı, 2026-11-27): satış yok, öğrencilere ücretsiz
+
+JUCE'yi kullanmanın iki yolu var (JUCE 9.0.6 `LICENSE.md`, doğrudan okundu):
+
+| | AGPLv3 | JUCE ticari lisansı — Starter kademesi |
+|---|---|---|
+| Ücret | yok | yok (ücretsiz kademe) |
+| Şart | Eklentiyi alan herkese **kaynak kodunu da** vermek (aynı lisansla); değiştirilmiş sürümler de AGPL kalır | JUCE 9 EULA'yı kabul etmek; kaynak kapalı kalabilir |
+| Gelir sınırı | yok | var (forum bilgisi: yıllık ~20 bin $; **doğrulanamadı** — juce.com bu oturumdan açılamadı). Sınırın yalnız eklentinin gelirine mi, şirketin/akademinin toplam gelirine mi baktığı EULA'da okunmalı |
+| Risk | yok denecek kadar az; açık kaynak olur | ücretli derslerin geliri sınırı aşarsa ücretli kademeye geçmek gerekebilir |
+
+**Öneri: AGPLv3.** Ücretsiz dağıtımla tam uyumlu, gelir sorusu doğurmuyor. Kod zaten MIT lisanslı parçalarla (VST3, CLAP, clap-juce-extensions) uyumlu. Kaynak, indirme bağlantısının yanında zip olarak ya da açık bir GitHub reposunda verilebilir.
+Kapalı kaynak isteniyorsa Starter da olur, ama EULA'nın gelir tanımını önce senin okuman (ya da bir hukukçuya sorman) gerekir — JUCE ekibi uyum onayı vermiyor (LICENSE.md).
+
+Satış olmadığı için gereksiz olanlar: kopya koruma, lisans anahtarı, ödeme altyapısı, mağaza (KVR / Plugin Boutique / Gumroad).
+Hâlâ gerekli olanlar: macOS imzalama + notarization (öğrenciler Gatekeeper uyarısı görmesin; Apple Developer hesabı, yıllık ücretli), isteğe bağlı Windows imzası (SmartScreen uyarısı), kurulum paketi, kısa kılavuz.
