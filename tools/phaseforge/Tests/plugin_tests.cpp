@@ -7,6 +7,7 @@
 #pragma GCC diagnostic ignored "-Wfloat-equal"  // exact comparisons are the point of these tests
 
 #include <chrono>
+#include <functional>
 #include <cstdarg>
 #include <cstdio>
 #include <random>
@@ -150,7 +151,7 @@ static void settle(PhaseForgeProcessor& p) { p.processPendingWork(); }
 
 struct Out { std::vector<float> L, R; };
 static Out run(PhaseForgeProcessor& p, const Sig& s, int block, bool pace = false, bool bypassedCall = false,
-               std::vector<double>* callMs = nullptr) {
+               std::vector<double>* callMs = nullptr, const std::function<void(size_t)>& beforeBlock = {}) {
     const int mainCh = p.getMainBusNumInputChannels();
     const int total = p.getTotalNumInputChannels();
     const int scCh = total - mainCh;
@@ -171,6 +172,7 @@ static Out run(PhaseForgeProcessor& p, const Sig& s, int block, bool pace = fals
             if (scCh > 0) buf.setSample(mainCh, i, s.sL[t]);
             if (scCh > 1) buf.setSample(mainCh + 1, i, s.sR[t]);
         }
+        if (beforeBlock) beforeBlock(pos);
         const auto t0 = std::chrono::steady_clock::now();
         if (bypassedCall) p.processBlockBypassed(buf, midi);
         else p.processBlock(buf, midi);
@@ -864,39 +866,56 @@ static void testOffline() {
 }
 
 // ═════════════════════════════ CPU
+// Info only (no pass/fail): 48 kHz, stereo main + stereo sidechain, 4 active nodes keyed by a kick, 20 s of audio.
+// "static" = parameters fixed; "automated" = node 1 frequency/threshold and the phase angle change every block (host
+// automation), which exercises the kernel/coefficient redesign paths. Times are per processBlock call.
 static void testCpu() {
-    std::printf("\n== CPU: 48 kHz, 64-sample blocks, stereo main + stereo sidechain, 4 active nodes keyed by a kick\n");
     const double fs = 48000;
     struct Case { int fm, pm; const char* name; };
-    for (const Case c : {Case{1, 0, "FIR  Rotate"}, Case{0, 0, "IIR  Rotate"}, Case{1, 1, "FIR  Match "}, Case{0, 1, "IIR  Match "}}) {
-        auto p = make(fs, 64);
-        setP(*p, id::filterMode, (float) c.fm);
-        setP(*p, id::phaseMode, (float) c.pm);
-        setP(*p, id::phaseAngle, 30.f);
-        const float fr[4] = {55, 110, 800, 3000};
-        for (int i = 0; i < 4; ++i) {
-            setP(*p, id::node(i, "on"), 1.f);
-            setP(*p, id::node(i, "freq"), fr[i]);
-            setP(*p, id::node(i, "thr"), -40.f);
-            setP(*p, id::node(i, "ch"), (float) (i % 3));
+    for (int block : {64, 128})
+        for (int automate : {0, 1}) {
+            std::printf("\n== CPU: 48 kHz, %d-sample blocks, 4 active nodes, %s parameters\n", block, automate ? "automated" : "static");
+            for (const Case c : {Case{1, 0, "FIR  Rotate"}, Case{0, 0, "IIR  Rotate"}, Case{1, 1, "FIR  Match "}, Case{0, 1, "IIR  Match "}}) {
+                auto p = make(fs, block);
+                setP(*p, id::filterMode, (float) c.fm);
+                setP(*p, id::phaseMode, (float) c.pm);
+                setP(*p, id::phaseAngle, 30.f);
+                const float fr[4] = {55, 110, 800, 3000};
+                for (int i = 0; i < 4; ++i) {
+                    setP(*p, id::node(i, "on"), 1.f);
+                    setP(*p, id::node(i, "freq"), fr[i]);
+                    setP(*p, id::node(i, "thr"), -40.f);
+                    setP(*p, id::node(i, "ch"), (float) (i % 3));
+                }
+                settle(*p);
+                Sig s = kickBass(fs, 20.0, 30.0, 0.8, 0.05);
+                for (auto& v : s.R) v *= 0.7f;
+                std::vector<double> ms;
+                ms.reserve(s.size() / (size_t) block + 1);
+                std::function<void(size_t)> hook;
+                if (automate)
+                    hook = [&](size_t pos) {
+                        const double ph = (double) pos / fs;
+                        setP(*p, id::node(0, "freq"), (float) (55.0 * std::pow(2.0, std::sin(ph * 1.3))));
+                        setP(*p, id::node(0, "thr"), (float) (-40.0 + 10.0 * std::sin(ph * 0.7)));
+                        setP(*p, id::phaseAngle, (float) (90.0 * std::sin(ph * 0.5)));
+                    };
+                const auto t0 = std::chrono::steady_clock::now();
+                run(*p, s, block, false, false, &ms, hook);
+                const double total = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+                double sum = 0;
+                for (double v : ms) sum += v;
+                const double mean = sum / (double) ms.size();
+                std::sort(ms.begin(), ms.end());
+                const double budget = block / fs * 1000.0;
+                int over = 0;
+                for (double v : ms) over += v > budget ? 1 : 0;
+                std::printf("     %s: %.2f %% of one core (process calls %.2f %%), per call mean %.4f ms, p99 %.3f, p99.9 %.3f, max %.3f ms, "
+                            "%d / %zu over the %.3f ms budget\n",
+                            c.name, 100.0 * total / 20000.0, 100.0 * sum / 20000.0, mean, ms[(size_t) (ms.size() * 0.99)],
+                            ms[(size_t) (ms.size() * 0.999)], ms.back(), over, ms.size(), budget);
+            }
         }
-        settle(*p);
-        Sig s = kickBass(fs, 20.0, 30.0, 0.8, 0.05);
-        for (auto& v : s.R) v *= 0.7f;
-        std::vector<double> ms;
-        ms.reserve(s.size() / 64 + 1);
-        const auto t0 = std::chrono::steady_clock::now();
-        run(*p, s, 64, false, false, &ms);
-        const double total = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-        double sum = 0;
-        for (double v : ms) sum += v;
-        std::sort(ms.begin(), ms.end());
-        const double budget = 64.0 / fs * 1000.0;
-        std::printf("     %s: %.2f %% of one core (process calls only %.2f %%), per 64-sample call p99 %.3f ms, p99.9 %.3f ms, max %.3f ms "
-                    "(budget %.3f ms)\n",
-                    c.name, 100.0 * total / 20000.0, 100.0 * sum / 20000.0, ms[(size_t) (ms.size() * 0.99)], ms[(size_t) (ms.size() * 0.999)],
-                    ms.back(), budget);
-    }
 }
 
 int main(int argc, char** argv) {
