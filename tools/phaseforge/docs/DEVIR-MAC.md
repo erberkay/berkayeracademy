@@ -85,6 +85,26 @@ editor).
 
 ## 3. Steps
 
+### Step 0 — Remove the old plugin (KB-Align) from the Mac (the user asked for this)
+Remove **only from the computer**. The `tools/kb-align/` source code in the repo stays; do not delete it without
+asking the user.
+
+1. Close Ableton first.
+2. Run:
+   ```bash
+   rm -rf ~/Library/Audio/Plug-Ins/Components/KB-Align.component \
+          ~/Library/Audio/Plug-Ins/VST3/KB-Align.vst3 \
+          ~/Library/Audio/Plug-Ins/CLAP/KB-Align.clap \
+          "$HOME/Library/Application Support/KB-Align" \
+          ~/be-akademi/tools/kb-align/plugin/build-mac-kur
+   killall -9 AudioComponentRegistrar 2>/dev/null || true
+   ```
+3. Also check the system-wide folders: `/Library/Audio/Plug-Ins/{Components,VST3,CLAP}/KB-Align.*`. If anything
+   is there, explain that removing it needs the administrator password, and only then remove it with `sudo rm -rf`.
+4. Check with `auval -a | grep -i kbal`; the output should be empty. Tell the user to rescan the plugins in
+   Ableton.
+5. `~/kbdeps` (JUCE) is shared with PHASEFORGE; **do not delete it**.
+
 ### Step 1 — Build, install, check (do it yourself)
 ```bash
 cd ~/be-akademi && git pull
