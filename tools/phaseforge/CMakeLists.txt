@@ -78,6 +78,12 @@ if(PF_BUILD_PLUGIN)
     target_compile_definitions(pf_ui_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_MODAL_LOOPS_PERMITTED=1)
     target_link_libraries(pf_ui_tests PRIVATE PHASEFORGE juce::juce_audio_utils juce::juce_recommended_config_flags)
 
+    # pf_render: real stems through the plugin offline (bass = main, kick = sidechain) + measurement report
+    juce_add_console_app(pf_render PRODUCT_NAME "pf_render")
+    target_sources(pf_render PRIVATE Tests/render_files.cpp)
+    target_compile_definitions(pf_render PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JucePlugin_Build_Standalone=0)
+    target_link_libraries(pf_render PRIVATE PHASEFORGE juce::juce_audio_utils juce::juce_recommended_config_flags)
+
     juce_add_console_app(pf_snapshot PRODUCT_NAME "pf_snapshot")
     target_sources(pf_snapshot PRIVATE Tests/snapshot.cpp)
     target_compile_definitions(pf_snapshot PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_MODAL_LOOPS_PERMITTED=1)

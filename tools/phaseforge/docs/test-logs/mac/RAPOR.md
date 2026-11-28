@@ -62,3 +62,44 @@ her senaryo 3 kez çalıştırıldı. Ayrıntı: `cpu.txt`.
   sunucudaki gerçek zamanlı ses iş parçacığı. Testler, çevrimdışı bir döngüde yapıldı. Ableton'daki CPU göstergesi Adım 4'te kontrol edilecek.
 - Değişen dosya: `Tests/plugin_tests.cpp`. CPU testine 128 örneklik blok, ortalama, bütçe aşımı sayısı ve
   otomasyon senaryosu eklendi. Bu değişiklik yalnızca bilgi veriyor, geçti/kaldı sayısını değiştirmiyor. 82/82 test hâlâ geçiyor.
+
+## Adım 3 — Gerçek sesle ölçüm (2026-11-28)
+
+**Malzeme:** Kullanıcı stem dışa aktarmak yerine SSD'deki malzemeyi kullanmamı istedi. Aynı tempoda kick ve bas
+loop'larından 4 çift seçtim: 1'i "Master mix Demo" projesinden (122 BPM), 3'ü PML Melodic Techno paketinin aynı
+parçaya ait önizlemelerinden (126 / 128 / 126 BPM). Hepsi 44.1 kHz, 8–15 sn. Kick loop'u kısaysa bas boyunca
+tekrarlandı. Bunlar bir şarkının gerçek stem'i değil, satılan loop'lardır. Ses dosyaları commit edilmedi.
+
+**Araç:** `Tests/render_files.cpp` → `pf_render` hedefi. Bas ana girişe, kick sidechain'e gidiyor. Her iki modda
+RESOLVE + ANALYZE PHASE çalışıyor ve sonuçlar uygulanıyor (APPLY gibi). Ardından temiz bir render alınıp gecikme
+hizalanıyor. Raporlar `render/` klasöründe.
+
+**Kontrol deneyi (araç doğru mu?):** Bas yerine ters çevrilmiş kick verildi (`kontrol-s3-rapor.md`). ANALYZE
+PHASE iki modda da +180.0° buldu (güven 1.00) ve uyguladı. Analiz ve uygulama zinciri çalışıyor.
+
+| Çift | RESOLVE | ANALYZE PHASE | Vuruşta bas kısılması | Kick+bas 20–200 Hz | Vuruşlar dışında bas | Vuruş öncesine sızma |
+|---|---|---|---|---|---|---|
+| s1 122 | çakışma yok, 0 düğüm | ilişkisiz → reddetti | 0 dB | 0 dB | 0 dB | — |
+| s2 126 | 1 düğüm (102 Hz, 2.8 dB) | ilişkisiz → reddetti | −0.3 dB | −0.08 dB | −0.13 dB | −46 dB |
+| s3 128 | 4 düğüm (170, 234, 1021, 1317 Hz) | ilişkisiz → reddetti | −0.5 dB | −0.06 dB | −0.09 dB | −48…−50 dB |
+| s4 126 | 1 düğüm (31 Hz, 2.6 dB) | ilişkisiz → reddetti | −0.04 dB | −0.03 dB | −0.04 dB | −52…−55 dB |
+
+(FIR ve IIR arasındaki fark bu malzemede ≤ 0.07 dB. Ayrıntılar raporlarda.)
+
+**Ne anlama geliyor:**
+1. **Sesi bozmuyor.** Vuruşlar dışında bas en fazla 0.13 dB değişiyor. Vuruştan önce sızma (Linear Phase'in ön
+   çınlaması) bas seviyesinin 45 dB'den fazla altında. KB-Align'daki "sesi bozuyor" şikâyetinin ölçülebilir bir
+   karşılığı bu malzemede yok.
+2. **Ama etkisi çok küçük.** RESOLVE vuruş anında basa en fazla 0.5 dB kısma uyguluyor. Bunun kulakla duyulması
+   zor. FUSER gibi "çamur açıldı" etkisi beklenirse bu yetersiz kalır. Düğümlerin aralığı (2.5–4 dB) ve eşiği
+   bu malzeme için çok temkinli görünüyor. **Kulakla dinlenmedi**; Adım 4'te kullanıcının kulağı belirleyecek.
+3. **s1'de "çakışma yok" doğru görünüyor.** Bas enerjisinin yalnız %10'u vuruş anlarına düşüyor; bas, kick'in
+   arasında çalıyor.
+4. **Faz analizi gerçek malzemede hep reddetti.** Kick ile bas farklı notalarda ve farklı seslerde; aralarında
+   tutarlı bir faz ilişkisi yok. Kontrol deneyi aracın doğru çalıştığını gösteriyor, yani bu bilinçli bir ret.
+   Ancak kullanıcı açısından ANALYZE PHASE gerçek kick+bas'ta hiçbir şey yapmıyor demek. Bu, Adım 5'te
+   konuşulmalı.
+5. Toplamın tepesi s3'te 0.4 dB düştü. Loop'lar 0 dBFS'e normalize edildiği için toplam tepe 0 dBFS'in üstünde
+   (2.7–5.4 dBFS); bu, kayan noktalı (float) işlemede sorun değil.
+
+**Test edilmedi:** Tam bir şarkının gerçek stem'leri ve dinleme.
