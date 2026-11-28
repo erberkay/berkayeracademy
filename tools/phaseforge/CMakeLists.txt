@@ -4,6 +4,12 @@ project(PHASEFORGE VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# No fused multiply-add contraction: on Apple Silicon (and other ARM) clang otherwise fuses a*b+c, which made
+# JUCE's 0.1-step parameter snapping return 0.0000027 deg / dB instead of 0, so a "0 deg" Zero Latency rotator
+# stayed engaged and bit-exact identities broke. Same arithmetic on every platform as the tested x86 build.
+if(NOT MSVC)
+    add_compile_options(-ffp-contract=off)
+endif()
 
 option(PF_BUILD_PLUGIN "Build the JUCE plugin targets" ON)
 set(PF_DEPS_DIR "$ENV{HOME}/kbdeps" CACHE PATH "Folder that contains juce/ (JUCE 9.0.6)")

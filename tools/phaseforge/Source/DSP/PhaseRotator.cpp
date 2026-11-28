@@ -8,6 +8,9 @@ namespace pf {
 
 namespace {
 
+// below the 0.1 deg parameter step: treated as exactly 0 (rotator bypassed)
+constexpr double kZeroDeg = 1e-3;
+
 // (−180, 180]
 inline double wrapDeg(double a) noexcept {
     a = std::fmod(a, 360.0);
@@ -223,11 +226,12 @@ int PhaseRotator::latency() const {
 
 void PhaseRotator::setAngle(double deg) noexcept {
     if (!std::isfinite(deg)) return;
+    if (std::abs(deg) < kZeroDeg) deg = 0.0;   // float rounding of a "0" parameter must not engage the network
     target.store(std::clamp(deg, -180.0, 180.0), std::memory_order_relaxed);
 }
 
 void PhaseRotator::snapAngle(double deg) noexcept {
-    if (!std::isfinite(deg)) deg = 0.0;
+    if (!std::isfinite(deg) || std::abs(deg) < kZeroDeg) deg = 0.0;
     deg = std::clamp(deg, -180.0, 180.0);
     target.store(deg, std::memory_order_relaxed);
     lastTarget = deg;

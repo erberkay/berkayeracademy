@@ -1,0 +1,138 @@
+PHASEFORGE phase tests
+
+== FIR: theta = 0 preserves input (after latency), all rates, stereo, random block sizes
+  [PASS] fs= 44100 latency= 1231 (Hs=1103+B=128)  max|err| = 0 (-inf dB re peak), head silent=1
+  [PASS] fs= 48000 latency= 1328 (Hs=1200+B=128)  max|err| = 0 (-inf dB re peak), head silent=1
+  [PASS] fs= 88200 latency= 2333 (Hs=2205+B=128)  max|err| = 0 (-inf dB re peak), head silent=1
+  [PASS] fs= 96000 latency= 2528 (Hs=2400+B=128)  max|err| = 0 (-inf dB re peak), head silent=1
+  [PASS] fs=176400 latency= 4538 (Hs=4410+B=128)  max|err| = 0 (-inf dB re peak), head silent=1
+  [PASS] fs=192000 latency= 4928 (Hs=4800+B=128)  max|err| = 0 (-inf dB re peak), head silent=1
+  [PASS] after 0 -> 120 -> 0 excursion: max|err| = 0 (-400.0 dB re 1)
+
+== FIR: in-band sinusoid rotates by exactly theta (band 20-200 Hz)
+  [PASS] fs= 44100  f in {30,40,60,100,150}, 8 angles: worst phase err 0.192 deg (30Hz@-45), worst |mag| 0.0593 dB, 30 Hz 0.192 deg
+         (info) 25 Hz: 0.599 deg / 0.181 dB   180-200 Hz (band edge): 0.292 deg / 0.085 dB
+  [PASS] fs= 48000  f in {30,40,60,100,150}, 8 angles: worst phase err 0.190 deg (30Hz@-45), worst |mag| 0.0589 dB, 30 Hz 0.190 deg
+         (info) 25 Hz: 0.604 deg / 0.182 dB   180-200 Hz (band edge): 0.291 deg / 0.085 dB
+  [PASS] fs= 88200  f in {30,60,100,150}, 8 angles: worst phase err 0.190 deg (30Hz@-45), worst |mag| 0.0589 dB, 30 Hz 0.190 deg
+  [PASS] fs= 96000  f in {30,60,100,150}, 8 angles: worst phase err 0.190 deg (30Hz@-45), worst |mag| 0.0589 dB, 30 Hz 0.190 deg
+  [PASS] fs=176400  f in {30,60,100,150}, 8 angles: worst phase err 0.190 deg (30Hz@-45), worst |mag| 0.0589 dB, 30 Hz 0.190 deg
+  [PASS] fs=192000  f in {30,60,100,150}, 8 angles: worst phase err 0.190 deg (30Hz@-45), worst |mag| 0.0589 dB, 30 Hz 0.190 deg
+
+== FIR: out-of-band sinusoids unchanged
+  [PASS] fs= 44100  1 kHz & 5 kHz, theta in {-120,90,180}: worst phase 0.0166 deg, worst |mag| 0.00080 dB
+         (info) 500 Hz @ -120 deg: -0.0227 deg / 0.0026 dB
+         (info) 500 Hz @   90 deg: 0.0262 deg / 0.0017 dB
+         (info) 500 Hz @  180 deg: 0.0000 deg / 0.0034 dB
+  [PASS] fs= 48000  1 kHz & 5 kHz, theta in {-120,90,180}: worst phase 0.0166 deg, worst |mag| 0.00038 dB
+  [PASS] fs= 88200  1 kHz & 5 kHz, theta in {-120,90,180}: worst phase 0.0166 deg, worst |mag| 0.00042 dB
+  [PASS] fs= 96000  1 kHz & 5 kHz, theta in {-120,90,180}: worst phase 0.0167 deg, worst |mag| 0.00044 dB
+  [PASS] fs=176400  1 kHz & 5 kHz, theta in {-120,90,180}: worst phase 0.0167 deg, worst |mag| 0.00053 dB
+  [PASS] fs=192000  1 kHz & 5 kHz, theta in {-120,90,180}: worst phase 0.0167 deg, worst |mag| 0.00054 dB
+
+== Angle smoothing: no clicks, 20 ms ramp, wrap-aware
+  [PASS] FIR fs= 48000  random target every 512 samples (10.7 ms): max|dy| = 0.0316 vs max|dx| = 0.0300 (ratio 1.05, bound 2.0)
+  [PASS] FIR fs=192000  random target every 512 samples (10.7 ms): max|dy| = 0.0079 vs max|dx| = 0.0075 (ratio 1.05, bound 2.0)
+  [PASS] IIR fs= 48000  random target every 512 samples (10.7 ms): max|dy| = 0.0322 vs max|dx| = 0.0300 (ratio 1.07, bound 2.0)
+  [PASS] IIR fs=192000  random target every 512 samples (10.7 ms): max|dy| = 0.0079 vs max|dx| = 0.0075 (ratio 1.05, bound 2.0)
+  [PASS] 170 -> -170 takes the short arc through 180 (min |angle| on the way 170.000) and lands after 960 samples (20 ms @48k)
+  [PASS] FIR: n = 20000 in one call (maxBlock 128) is bit-identical to 37-sample chunks
+  [PASS] IIR: n = 20000 in one call (maxBlock 128) is bit-identical to 37-sample chunks
+
+== IIR (zero latency): quadrature pair accuracy, all rates (IirQuadrature designed for fLo = 5 Hz)
+  [PASS] fs= 44100  16 all-pass sections: 90 deg error analytic 0.0369 / measured (20 Hz-15 kHz) 0.0369 deg, |I|,|Q| dev 0.00001 dB
+         (info) rotator band 20-200: LR8 corners 14.1 / 282.8 Hz, quadrature fLo 3.54 Hz: 17 sections, design error 0.0304 deg
+  [PASS] fs= 48000  16 all-pass sections: 90 deg error analytic 0.0380 / measured (20 Hz-15 kHz) 0.0380 deg, |I|,|Q| dev 0.00001 dB
+         (info) rotator band 20-200: LR8 corners 14.1 / 282.8 Hz, quadrature fLo 3.54 Hz: 17 sections, design error 0.0328 deg
+  [PASS] fs= 88200  17 all-pass sections: 90 deg error analytic 0.0377 / measured (20 Hz-15 kHz) 0.0377 deg, |I|,|Q| dev 0.00001 dB
+         (info) rotator band 20-200: LR8 corners 14.1 / 282.8 Hz, quadrature fLo 3.54 Hz: 18 sections, design error 0.0343 deg
+  [PASS] fs= 96000  17 all-pass sections: 90 deg error analytic 0.0356 / measured (20 Hz-15 kHz) 0.0357 deg, |I|,|Q| dev 0.00001 dB
+         (info) rotator band 20-200: LR8 corners 14.1 / 282.8 Hz, quadrature fLo 3.54 Hz: 18 sections, design error 0.0368 deg
+  [PASS] fs=176400  18 all-pass sections: 90 deg error analytic 0.0353 / measured (20 Hz-15 kHz) 0.0353 deg, |I|,|Q| dev 0.00001 dB
+         (info) rotator band 20-200: LR8 corners 14.1 / 282.8 Hz, quadrature fLo 3.54 Hz: 19 sections, design error 0.0381 deg
+  [PASS] fs=192000  18 all-pass sections: 90 deg error analytic 0.0449 / measured (20 Hz-15 kHz) 0.0449 deg, |I|,|Q| dev 0.00001 dB
+         (info) rotator band 20-200: LR8 corners 14.1 / 282.8 Hz, quadrature fLo 3.54 Hz: 19 sections, design error 0.0407 deg
+
+== IIR: theta = 0 is an exact bypass; leaving and returning to 0
+  [PASS] fs= 44100  theta=0: output bit-identical to input, latency 0
+  [PASS] fs= 44100  0 -> 90 -> 0: exact before, processed during, exact again 882 samples (20 ms) after return
+  [PASS] fs=192000  theta=0: output bit-identical to input, latency 0
+  [PASS] fs=192000  0 -> 90 -> 0: exact before, processed during, exact again 3840 samples (20 ms) after return
+
+== IIR: relative rotation inside the band (difference of two angles, band 20-200 Hz)
+  [PASS] fs= 44100  30/40/63/100/140 Hz: |(phase@120 - phase@30) - 90| worst 0.063 deg (140 Hz), |mag| dev 0.045 dB
+  [PASS] fs= 48000  30/40/63/100/140 Hz: |(phase@120 - phase@30) - 90| worst 0.060 deg (30 Hz), |mag| dev 0.045 dB
+  [PASS] fs= 88200  30/40/63/100/140 Hz: |(phase@120 - phase@30) - 90| worst 0.093 deg (140 Hz), |mag| dev 0.049 dB
+  [PASS] fs= 96000  30/40/63/100/140 Hz: |(phase@120 - phase@30) - 90| worst 0.095 deg (140 Hz), |mag| dev 0.049 dB
+  [PASS] fs=176400  30/40/63/100/140 Hz: |(phase@120 - phase@30) - 90| worst 0.066 deg (30 Hz), |mag| dev 0.044 dB
+  [PASS] fs=192000  30/40/63/100/140 Hz: |(phase@120 - phase@30) - 90| worst 0.069 deg (30 Hz), |mag| dev 0.044 dB
+         (info) IIR @48k theta=120: 10:-0.79 14.1:-6.02 20:-0.79 25:-0.14 30:-0.03 100:-0.00 150:-0.08 200:-0.79 283:-6.02 400:-0.79 1000:-0.00 dB
+         (info) IIR @48k theta=180: 10:-1.09 14.1:-38.46 20:-1.09 25:-0.18 30:-0.04 100:-0.00 150:-0.11 200:-1.09 283:-53.06 400:-1.09 1000:-0.00 dB
+
+== Analyzer: known relationship (bass = kick rotated by alpha, x0.8, + white noise sigma 0.01), 5 s
+  [PASS] fs= 44100 alpha=  73.0 -> angle   -73.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 0.293) coh 1.000 R 0.9999 gain +1.87 dB win 65
+  [PASS] fs= 44100 alpha=-120.0 -> angle   120.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 -0.500) coh 1.000 R 0.9999 gain +5.86 dB win 65
+  [PASS] fs= 44100 alpha=   0.0 -> angle     0.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 1.000) coh 1.000 R 0.9999 gain +0.00 dB win 65
+  [PASS] fs= 48000 alpha=  73.0 -> angle   -73.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 0.292) coh 1.000 R 0.9999 gain +1.87 dB win 65
+  [PASS] fs= 48000 alpha=-120.0 -> angle   120.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 -0.500) coh 1.000 R 0.9999 gain +5.86 dB win 65
+  [PASS] fs= 48000 alpha=   0.0 -> angle     0.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 1.000) coh 1.000 R 0.9999 gain +0.00 dB win 65
+  [PASS] fs= 88200 alpha=  73.0 -> angle   -73.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 0.292) coh 1.000 R 0.9999 gain +1.87 dB win 65
+  [PASS] fs= 88200 alpha=-120.0 -> angle   120.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 -0.500) coh 1.000 R 0.9999 gain +5.86 dB win 65
+  [PASS] fs= 88200 alpha=   0.0 -> angle     0.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 1.000) coh 1.000 R 0.9999 gain +0.00 dB win 65
+  [PASS] fs= 96000 alpha=  73.0 -> angle   -73.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 0.292) coh 1.000 R 0.9999 gain +1.87 dB win 65
+  [PASS] fs= 96000 alpha=-120.0 -> angle   120.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 -0.500) coh 1.000 R 0.9999 gain +5.86 dB win 65
+  [PASS] fs= 96000 alpha=   0.0 -> angle     0.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 1.000) coh 1.000 R 0.9999 gain +0.00 dB win 65
+  [PASS] fs=176400 alpha=  73.0 -> angle   -73.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 0.292) coh 1.000 R 0.9999 gain +1.87 dB win 65
+  [PASS] fs=176400 alpha=-120.0 -> angle   120.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 -0.500) coh 1.000 R 0.9999 gain +5.86 dB win 65
+  [PASS] fs=176400 alpha=   0.0 -> angle     0.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 1.000) coh 1.000 R 0.9999 gain +0.00 dB win 65
+  [PASS] fs=192000 alpha=  73.0 -> angle   -73.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 0.292) coh 1.000 R 0.9999 gain +1.87 dB win 65
+  [PASS] fs=192000 alpha=-120.0 -> angle   120.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 -0.500) coh 1.000 R 0.9999 gain +5.86 dB win 65
+  [PASS] fs=192000 alpha=   0.0 -> angle     0.0 (err 0.00) Ok conf 1.000 score 1.0000 (at0 1.000) coh 1.000 R 0.9999 gain +0.00 dB win 65
+
+== Analyzer: destructive (bass = -kick) -> 180 deg
+  [PASS] fs= 44100  angle 180.0 Ok conf 1.000 scoreAt0 -1.0000 score 1.0000 gain +60.0 dB (clamped at +60)
+  [PASS] fs= 96000  angle 180.0 Ok conf 1.000 scoreAt0 -1.0000 score 1.0000 gain +60.0 dB (clamped at +60)
+  [PASS] fs=192000  angle 180.0 Ok conf 1.000 scoreAt0 -1.0000 score 1.0000 gain +60.0 dB (clamped at +60)
+
+== Analyzer: Gain Stage Fix changes gain/gate, not the angle
+  [PASS] angle -60.0 / -60.0 / -60.0 at 0 / +6 / -12 dB; sumGainDb +1.23 / +1.17 / +0.65
+
+== End to end: analyzer angle applied with the FIR PhaseRotator re-aligns the bass
+  [PASS] fs= 48000  before: angle 110.0 scoreAt0 -0.342 -> after rotating by it: residual angle 0.0, scoreAt0 0.9995
+  [PASS] fs= 96000  before: angle 110.0 scoreAt0 -0.342 -> after rotating by it: residual angle 0.0, scoreAt0 0.9996
+
+== Analyzer: silence / not enough audio -> angle 0
+  [PASS] fs= 44100  zeros:Silent  kick+silent bass:Silent  kick+(-100 dBFS noise):Silent  0.3 s:NotEnoughAudio  0.15 s burst:NotEnoughAudio (4 win)
+  [PASS] fs= 48000  zeros:Silent  kick+silent bass:Silent  kick+(-100 dBFS noise):Silent  0.3 s:NotEnoughAudio  0.15 s burst:NotEnoughAudio (4 win)
+  [PASS] fs= 88200  zeros:Silent  kick+silent bass:Silent  kick+(-100 dBFS noise):Silent  0.3 s:NotEnoughAudio  0.15 s burst:NotEnoughAudio (4 win)
+  [PASS] fs= 96000  zeros:Silent  kick+silent bass:Silent  kick+(-100 dBFS noise):Silent  0.3 s:NotEnoughAudio  0.15 s burst:NotEnoughAudio (4 win)
+  [PASS] fs=176400  zeros:Silent  kick+silent bass:Silent  kick+(-100 dBFS noise):Silent  0.3 s:NotEnoughAudio  0.15 s burst:NotEnoughAudio (4 win)
+  [PASS] fs=192000  zeros:Silent  kick+silent bass:Silent  kick+(-100 dBFS noise):Silent  0.3 s:NotEnoughAudio  0.15 s burst:NotEnoughAudio (4 win)
+
+== Analyzer: unrelated / inconsistent -> angle 0
+  [PASS] fs= 44100  white noise vs 80 Hz tone : Unrelated angle 0.0 coh 0.157 R 0.060 conf 0.000
+  [PASS] fs= 44100  50 Hz vs 80 Hz tones      : Unrelated angle 0.0 coh 0.072 R 0.018 conf 0.000
+  [PASS] fs= 44100  random phase per hit     : Inconsistent angle 0.0 coh 0.999 R 0.260 conf 0.000 (argmax would be -154.7)
+  [PASS] fs= 48000  white noise vs 80 Hz tone : Unrelated angle 0.0 coh 0.153 R 0.063 conf 0.000
+  [PASS] fs= 48000  50 Hz vs 80 Hz tones      : Unrelated angle 0.0 coh 0.071 R 0.014 conf 0.000
+  [PASS] fs= 48000  random phase per hit     : Inconsistent angle 0.0 coh 0.999 R 0.260 conf 0.000 (argmax would be -154.7)
+  [PASS] fs= 88200  white noise vs 80 Hz tone : Unrelated angle 0.0 coh 0.122 R 0.169 conf 0.000
+  [PASS] fs= 88200  50 Hz vs 80 Hz tones      : Unrelated angle 0.0 coh 0.072 R 0.018 conf 0.000
+  [PASS] fs= 88200  random phase per hit     : Inconsistent angle 0.0 coh 0.999 R 0.260 conf 0.000 (argmax would be -154.7)
+  [PASS] fs= 96000  white noise vs 80 Hz tone : Unrelated angle 0.0 coh 0.168 R 0.038 conf 0.000
+  [PASS] fs= 96000  50 Hz vs 80 Hz tones      : Unrelated angle 0.0 coh 0.071 R 0.014 conf 0.000
+  [PASS] fs= 96000  random phase per hit     : Inconsistent angle 0.0 coh 0.999 R 0.260 conf 0.000 (argmax would be -154.7)
+  [PASS] fs=176400  white noise vs 80 Hz tone : Unrelated angle 0.0 coh 0.157 R 0.204 conf 0.000
+  [PASS] fs=176400  50 Hz vs 80 Hz tones      : Unrelated angle 0.0 coh 0.072 R 0.018 conf 0.000
+  [PASS] fs=176400  random phase per hit     : Inconsistent angle 0.0 coh 0.999 R 0.260 conf 0.000 (argmax would be -154.7)
+  [PASS] fs=192000  white noise vs 80 Hz tone : Unrelated angle 0.0 coh 0.162 R 0.236 conf 0.000
+  [PASS] fs=192000  50 Hz vs 80 Hz tones      : Unrelated angle 0.0 coh 0.071 R 0.014 conf 0.000
+  [PASS] fs=192000  random phase per hit     : Inconsistent angle 0.0 coh 0.999 R 0.260 conf 0.000 (argmax would be -154.7)
+
+== Analyzer timing (one core)
+  [PASS] fs= 48000  5 s analysis: min 6.5 ms, max 7.0 ms over 5 runs (limit 300 ms), angle -73.0
+  [PASS] fs=192000  5 s analysis: min 29.8 ms, max 30.4 ms over 5 runs (limit 300 ms), angle -73.0
+         (info) FIR rotator stereo fs= 48000: 10.6 ms per second of audio (1.1 % of one core)
+         (info) FIR rotator stereo fs=192000: 116.1 ms per second of audio (11.6 % of one core)
+
+92 passed, 0 failed
